@@ -1,0 +1,461 @@
+import React from "react";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Bot,
+  BrainCircuit,
+  Boxes,
+  Building2,
+  CheckCircle2,
+  CircleDollarSign,
+  Code2,
+  Database,
+  LayoutGrid,
+  Lock,
+  Network,
+  ShieldCheck,
+  Sparkles,
+  Workflow,
+  Zap,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+const nav = ["Platform", "Use Cases", "AI Layer", "Architecture", "Pricing", "Resources"];
+
+const trusted = [
+  "B2B SaaS",
+  "Procurement Tech",
+  "Fintech",
+  "Healthcare",
+  "Manufacturing",
+  "Logistics",
+  "Enterprise IT",
+  "AI Startups",
+];
+
+const featureTabs = [
+  {
+    title: "Faster product launches",
+    desc: "Ship MVPs in weeks with reusable identity, tenancy, workflow, billing, permissions, notifications, audit, and AI-ready data foundations.",
+    points: ["Reusable platform core", "Prebuilt business primitives", "Lower engineering drag"],
+    stat: "8–12 weeks",
+    label: "Typical MVP acceleration",
+  },
+  {
+    title: "Built for enterprise depth",
+    desc: "IronSaaS gives startups and product teams a serious architecture from day one—multi-tenant, extensible, secure, and API-first.",
+    points: ["Tenant isolation", "Policy-driven access", "API-first services"],
+    stat: "Enterprise-ready",
+    label: "From the first customer",
+  },
+  {
+    title: "AI-ready by design",
+    desc: "Blend application workflows, data, automation, and agents without rebuilding your stack later.",
+    points: ["Structured data + JSON context", "Agent orchestration hooks", "Prompt-safe workflow controls"],
+    stat: "AI-native",
+    label: "Without AI chaos",
+  },
+];
+
+const pillars = [
+  {
+    icon: Workflow,
+    title: "Core SaaS Foundation",
+    desc: "Auth, RBAC, tenancy, audit trails, notifications, workflow, approvals, search, file handling, and configuration systems.",
+  },
+  {
+    icon: BrainCircuit,
+    title: "AI Application Layer",
+    desc: "Agent-ready orchestration, contextual retrieval patterns, prompt gateways, evaluation hooks, and human-in-the-loop controls.",
+  },
+  {
+    icon: Boxes,
+    title: "Composable Business Modules",
+    desc: "Rapidly assemble domain-specific apps for procurement, operations, finance workflows, B2B process automation, and more.",
+  },
+  {
+    icon: Network,
+    title: "Integration Fabric",
+    desc: "Eventing, webhooks, APIs, ERP/CRM integration patterns, import/export pipelines, and extensibility for customer-specific needs.",
+  },
+];
+
+const agentCards = [
+  {
+    title: "Build Agent",
+    desc: "Scaffold modules, CRUD flows, APIs, UI shells, and workflow states based on your product model.",
+  },
+  {
+    title: "Data Agent",
+    desc: "Map relational and JSON data structures, validations, document schemas, and reporting-ready models.",
+  },
+  {
+    title: "Ops Agent",
+    desc: "Prepare CI/CD, deployment conventions, environment config, observability, and operational guardrails.",
+  },
+  {
+    title: "Integration Agent",
+    desc: "Accelerate ERP, payment, identity, messaging, and third-party integration design and implementation.",
+  },
+  {
+    title: "Quality Agent",
+    desc: "Generate test scenarios, edge-case validation, workflow assertions, and release-readiness checks.",
+  },
+  {
+    title: "Growth Agent",
+    desc: "Support pricing pages, GTM workflows, demo data packs, onboarding flows, and customer-facing product stories.",
+  },
+];
+
+const architecture = [
+  { icon: Building2, title: "Tenant-aware architecture" },
+  { icon: Database, title: "PostgreSQL-first, extensible data model" },
+  { icon: Lock, title: "Security and audit by default" },
+  { icon: LayoutGrid, title: "Modular UI and service design" },
+  { icon: Code2, title: "Clean-code engineering patterns" },
+  { icon: ShieldCheck, title: "Operational controls for scale" },
+];
+
+const pricing = [
+  {
+    name: "Starter Core",
+    subtitle: "For early-stage product teams",
+    bullets: ["Foundation modules", "Single product line", "Reusable UI + API patterns", "Basic AI hooks"],
+  },
+  {
+    name: "Growth Platform",
+    subtitle: "For scaling SaaS businesses",
+    bullets: ["Advanced workflows", "Multi-module apps", "Extensibility layer", "Integration accelerators"],
+  },
+  {
+    name: "Co-Build / Equity+",
+    subtitle: "For high-conviction founder partnerships",
+    bullets: ["Strategic architecture support", "Faster productization", "Selective equity structures", "Long-term roadmap alignment"],
+  },
+];
+
+function SectionHeading({ eyebrow, title, desc }) {
+  return (
+    <div className="mx-auto mb-12 max-w-3xl text-center">
+      <Badge className="mb-4 rounded-full px-4 py-1 text-sm">{eyebrow}</Badge>
+      <h2 className="text-3xl font-semibold tracking-tight sm:text-5xl">{title}</h2>
+      <p className="mt-4 text-base leading-7 text-zinc-400 sm:text-lg">{desc}</p>
+    </div>
+  );
+}
+
+export default function IronSaaSLandingPage() {
+  return (
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-1/2 top-0 h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="absolute right-0 top-40 h-[26rem] w-[26rem] rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-[24rem] w-[24rem] rounded-full bg-emerald-500/10 blur-3xl" />
+      </div>
+
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-400/30 bg-white/5 shadow-lg shadow-cyan-500/10">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-lg font-semibold tracking-wide">IronSaaS</div>
+              <div className="text-xs text-zinc-400">Build serious SaaS, faster</div>
+            </div>
+          </div>
+
+          <nav className="hidden items-center gap-8 lg:flex">
+            {nav.map((item) => (
+              <a key={item} href="#" className="text-sm text-zinc-300 transition hover:text-white">
+                {item}
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" className="hidden rounded-xl text-zinc-200 lg:inline-flex">
+              Book Demo
+            </Button>
+            <Button className="rounded-xl px-5">
+              Start Building
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section className="mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-20 lg:grid-cols-2 lg:px-8 lg:pt-24">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="max-w-2xl"
+          >
+            <Badge className="mb-6 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1.5 text-sm text-cyan-100">
+              AI-native SaaS foundation for ambitious startups
+            </Badge>
+            <h1 className="text-4xl font-semibold leading-tight tracking-tight sm:text-6xl">
+              Build your next SaaS product on a platform designed for speed, scale, and AI.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-zinc-300">
+              IronSaaS helps founders and product teams skip the undifferentiated plumbing and focus on the domain. Launch faster with a reusable foundation for multi-tenancy, workflows, integrations, analytics, and agent-ready experiences.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Button size="lg" className="rounded-2xl px-6 py-6 text-base">
+                Book an IronSaaS Demo
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button size="lg" variant="outline" className="rounded-2xl border-white/15 bg-white/5 px-6 py-6 text-base text-white hover:bg-white/10">
+                See Architecture
+              </Button>
+            </div>
+            <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[
+                ["Weeks", "to MVP"],
+                ["Multi-tenant", "by default"],
+                ["API-first", "architecture"],
+                ["AI-ready", "orchestration"],
+              ].map(([a, b]) => (
+                <div key={a} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-lg font-semibold">{a}</div>
+                  <div className="text-sm text-zinc-400">{b}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="relative"
+          >
+            <div className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-4 shadow-2xl shadow-cyan-500/10">
+              <div className="rounded-[1.5rem] border border-white/10 bg-zinc-900 p-5">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <div className="text-sm text-zinc-400">IronSaaS Control Plane</div>
+                    <div className="mt-1 text-xl font-semibold">Launch products without rebuilding the basics</div>
+                  </div>
+                  <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-sm text-emerald-200">
+                    Live Foundation
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                  {[
+                    { icon: Bot, title: "AI Orchestration", desc: "Agent hooks, prompt gateways, approvals" },
+                    { icon: Database, title: "Tenant Data Core", desc: "Isolated, extensible, reporting-ready" },
+                    { icon: Workflow, title: "Workflow Engine", desc: "States, approvals, escalations, SLAs" },
+                    { icon: ShieldCheck, title: "Enterprise Controls", desc: "Audit, permissions, policies, logs" },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div className="font-medium">{item.title}</div>
+                        <div className="mt-2 text-sm leading-6 text-zinc-400">{item.desc}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-sm text-cyan-100">Recommended for</div>
+                      <div className="mt-1 text-lg font-semibold">Procurement, operations, fintech, healthtech, logistics, B2B workflows</div>
+                    </div>
+                    <Zap className="mt-1 h-5 w-5 text-cyan-200" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </section>
+
+        <section className="border-y border-white/10 bg-white/[0.03] py-8">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <p className="mb-6 text-center text-sm uppercase tracking-[0.25em] text-zinc-400">
+              Designed for modern B2B product categories
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+              {trusted.map((item) => (
+                <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-zinc-300">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+          <SectionHeading
+            eyebrow="Why IronSaaS"
+            title="Everything ambitious SaaS teams keep rebuilding—made reusable."
+            desc="Inspired by the storytelling rhythm of top AI-first SaaS websites, but tailored for IronSaaS as a serious product foundation for founders and product companies."
+          />
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {featureTabs.map((item) => (
+              <Card key={item.title} className="rounded-[1.75rem] border-white/10 bg-white/5 text-white">
+                <CardContent className="p-7">
+                  <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
+                    {item.label}
+                  </div>
+                  <h3 className="text-2xl font-semibold">{item.title}</h3>
+                  <p className="mt-4 text-sm leading-7 text-zinc-400">{item.desc}</p>
+                  <div className="mt-6 text-3xl font-semibold">{item.stat}</div>
+                  <div className="mt-6 space-y-3">
+                    {item.points.map((point) => (
+                      <div key={point} className="flex items-start gap-3 text-sm text-zinc-300">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4" />
+                        <span>{point}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-gradient-to-b from-transparent to-white/[0.03] py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <SectionHeading
+              eyebrow="Platform pillars"
+              title="A strong base layer for products that need to grow up fast"
+              desc="IronSaaS combines a robust SaaS core, composable modules, and an AI-ready layer so your product architecture does not need a painful rewrite later."
+            />
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {pillars.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Card key={item.title} className="rounded-[1.75rem] border-white/10 bg-zinc-900/70 text-white">
+                    <CardContent className="p-7">
+                      <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <h3 className="text-2xl font-semibold">{item.title}</h3>
+                      <p className="mt-4 text-sm leading-7 text-zinc-400">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+          <SectionHeading
+            eyebrow="AI layer"
+            title="Agent-augmented product development for the next generation of SaaS"
+            desc="Not hype. Practical building blocks that help teams move from manual engineering effort to accelerated delivery and intelligent automation."
+          />
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {agentCards.map((item, idx) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.35, delay: idx * 0.04 }}
+              >
+                <Card className="h-full rounded-[1.75rem] border-white/10 bg-white/5 text-white">
+                  <CardContent className="p-7">
+                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-xl font-semibold">{item.title}</h3>
+                    <p className="mt-4 text-sm leading-7 text-zinc-400">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-y border-white/10 bg-white/[0.03] py-24">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <SectionHeading
+              eyebrow="Architecture"
+              title="Designed for real-world SaaS complexity"
+              desc="IronSaaS is positioned as a durable product foundation, not just a starter template. The architecture is meant to support enterprise customers, product extensions, integrations, and AI experiences." 
+            />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {architecture.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.title} className="rounded-[1.5rem] border border-white/10 bg-zinc-900/70 p-5">
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/5">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="font-medium text-zinc-100">{item.title}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+          <SectionHeading
+            eyebrow="Commercial model"
+            title="Flexible ways to engage with IronSaaS"
+            desc="Choose the model that fits your stage: buy the platform core, scale with the full growth stack, or explore selective co-build and strategic partnership structures."
+          />
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {pricing.map((item, idx) => (
+              <Card key={item.name} className={`rounded-[1.75rem] border-white/10 ${idx === 1 ? "bg-white/10" : "bg-white/5"} text-white`}>
+                <CardContent className="p-7">
+                  <div className="mb-3 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
+                    {item.subtitle}
+                  </div>
+                  <h3 className="text-2xl font-semibold">{item.name}</h3>
+                  <div className="mt-6 space-y-3">
+                    {item.bullets.map((bullet) => (
+                      <div key={bullet} className="flex items-start gap-3 text-sm text-zinc-300">
+                        <CircleDollarSign className="mt-0.5 h-4 w-4" />
+                        <span>{bullet}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button className="mt-8 w-full rounded-2xl">Talk to Us</Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-5xl px-6 pb-24 lg:px-8">
+          <div className="rounded-[2rem] border border-cyan-400/20 bg-gradient-to-br from-cyan-400/15 via-white/5 to-violet-400/10 p-8 text-center shadow-2xl shadow-cyan-500/10 sm:p-12">
+            <Badge className="mb-4 rounded-full px-4 py-1">IronSaaS for founders and serious product teams</Badge>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-5xl">
+              Stop rebuilding the base layer. Start building the product that matters.
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg">
+              Turn your SaaS vision into a launch-ready platform with the right foundation for scale, extensibility, and AI-native evolution.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Button size="lg" className="rounded-2xl px-6 py-6 text-base">
+                Book a Strategy Call
+              </Button>
+              <Button size="lg" variant="outline" className="rounded-2xl border-white/15 bg-white/5 px-6 py-6 text-base text-white hover:bg-white/10">
+                Request Architecture Deck
+              </Button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
