@@ -1,866 +1,858 @@
-export default function IronSaaSLandingPage() {
-  return (
-    <>
-      <style>{`
-        :root {
-          --bg: #09090b;
-          --panel: rgba(255,255,255,0.05);
-          --panel-strong: rgba(255,255,255,0.08);
-          --border: rgba(255,255,255,0.10);
-          --text: #ffffff;
-          --muted: #a1a1aa;
-          --cyan-soft: rgba(34,211,238,0.12);
-          --shadow: 0 20px 60px rgba(0,0,0,0.35);
-          --radius: 24px;
-          --max: 1200px;
-        }
-
-        * { box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body {
-          margin: 0;
-          font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          background: var(--bg);
-          color: var(--text);
-          line-height: 1.6;
-          overflow-x: hidden;
-        }
-
-        a { color: inherit; text-decoration: none; }
-
-        .page {
-          min-height: 100vh;
-          background: var(--bg);
-          color: var(--text);
-          position: relative;
-          overflow-x: hidden;
-        }
-
-        .bg-blur {
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          overflow: hidden;
-          z-index: 0;
-        }
-
-        .blur-orb {
-          position: absolute;
-          border-radius: 999px;
-          filter: blur(90px);
-          opacity: 0.9;
-        }
-
-        .orb-1 {
-          width: 34rem;
-          height: 34rem;
-          left: 50%;
-          top: -4rem;
-          transform: translateX(-50%);
-          background: rgba(34,211,238,0.12);
-        }
-
-        .orb-2 {
-          width: 28rem;
-          height: 28rem;
-          right: -6rem;
-          top: 9rem;
-          background: rgba(139,92,246,0.12);
-        }
-
-        .orb-3 {
-          width: 24rem;
-          height: 24rem;
-          left: -5rem;
-          bottom: -2rem;
-          background: rgba(16,185,129,0.10);
-        }
-
-        .content {
-          position: relative;
-          z-index: 1;
-        }
-
-        .container {
-          width: min(var(--max), calc(100% - 32px));
-          margin: 0 auto;
-        }
-
-        .pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 14px;
-          border: 1px solid var(--border);
-          border-radius: 999px;
-          background: rgba(255,255,255,0.05);
-          color: #d4d4d8;
-          font-size: 0.875rem;
-        }
-
-        .pill.cyan {
-          background: var(--cyan-soft);
-          border-color: rgba(34,211,238,0.24);
-          color: #cffafe;
-        }
-
-        .btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 14px 22px;
-          border-radius: 18px;
-          border: 1px solid transparent;
-          font-weight: 600;
-          transition: 0.25s ease;
-          cursor: pointer;
-          white-space: nowrap;
-        }
-
-        .btn-primary {
-          background: #fff;
-          color: #111827;
-        }
-
-        .btn-primary:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 15px 35px rgba(255,255,255,0.12);
-        }
-
-        .btn-secondary {
-          background: rgba(255,255,255,0.05);
-          border-color: var(--border);
-          color: #fff;
-        }
-
-        .btn-secondary:hover {
-          background: rgba(255,255,255,0.10);
-        }
-
-        .site-header {
-          position: sticky;
-          top: 0;
-          z-index: 50;
-          backdrop-filter: blur(18px);
-          background: rgba(9,9,11,0.78);
-          border-bottom: 1px solid var(--border);
-        }
-
-        .site-header .inner {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-          min-height: 76px;
-        }
-
-        .brand {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .brand-mark {
-          width: 42px;
-          height: 42px;
-          border-radius: 16px;
-          display: grid;
-          place-items: center;
-          border: 1px solid rgba(34,211,238,0.22);
-          background: rgba(255,255,255,0.05);
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 14px 35px rgba(34,211,238,0.10);
-          font-size: 18px;
-        }
-
-        .brand-title {
-          font-size: 1.05rem;
-          font-weight: 700;
-          letter-spacing: 0.02em;
-        }
-
-        .brand-sub {
-          color: var(--muted);
-          font-size: 0.78rem;
-        }
-
-        .nav {
-          display: flex;
-          align-items: center;
-          gap: 28px;
-        }
-
-        .nav a {
-          color: #d4d4d8;
-          font-size: 0.95rem;
-        }
-
-        .nav a:hover { color: #fff; }
-
-        .header-actions {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-        }
-
-        .hero {
-          padding: 64px 0 72px;
-        }
-
-        .hero-grid {
-          display: grid;
-          grid-template-columns: 1.05fr 0.95fr;
-          gap: 48px;
-          align-items: center;
-        }
-
-        h1 {
-          margin: 0;
-          font-size: clamp(2.6rem, 6vw, 4.6rem);
-          line-height: 1.05;
-          letter-spacing: -0.04em;
-        }
-
-        .hero p.lead {
-          font-size: 1.1rem;
-          color: #d4d4d8;
-          max-width: 680px;
-          margin: 22px 0 0;
-        }
-
-        .actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 14px;
-          margin-top: 32px;
-        }
-
-        .stats-grid,
-        .logo-grid,
-        .grid-3,
-        .grid-2,
-        .grid-6 {
-          display: grid;
-          gap: 16px;
-        }
-
-        .stats-grid {
-          margin-top: 34px;
-          grid-template-columns: repeat(4, 1fr);
-        }
-
-        .card {
-          background: var(--panel);
-          border: 1px solid var(--border);
-          border-radius: var(--radius);
-          box-shadow: var(--shadow);
-        }
-
-        .mini-card {
-          padding: 18px;
-          border-radius: 20px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid var(--border);
-        }
-
-        .mini-card strong {
-          display: block;
-          font-size: 1.05rem;
-          margin-bottom: 4px;
-        }
-
-        .mini-card span {
-          color: var(--muted);
-          font-size: 0.92rem;
-        }
-
-        .hero-panel {
-          padding: 18px;
-          border-radius: 34px;
-          background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
-          border: 1px solid var(--border);
-          box-shadow: var(--shadow);
-        }
-
-        .hero-panel-inner {
-          padding: 22px;
-          border-radius: 26px;
-          border: 1px solid var(--border);
-          background: rgba(24,24,27,0.85);
-        }
-
-        .panel-top {
-          display: flex;
-          justify-content: space-between;
-          gap: 20px;
-          align-items: flex-start;
-          padding-bottom: 18px;
-          border-bottom: 1px solid var(--border);
-        }
-
-        .panel-top small,
-        .muted { color: var(--muted); }
-
-        .panel-grid {
-          margin-top: 18px;
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
-        }
-
-        .feature-box {
-          padding: 16px;
-          border-radius: 20px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid var(--border);
-        }
-
-        .icon {
-          width: 44px;
-          height: 44px;
-          border-radius: 16px;
-          display: grid;
-          place-items: center;
-          background: rgba(255,255,255,0.08);
-          margin-bottom: 12px;
-          font-size: 20px;
-        }
-
-        .highlight-box {
-          margin-top: 16px;
-          padding: 16px;
-          border-radius: 20px;
-          background: var(--cyan-soft);
-          border: 1px solid rgba(34,211,238,0.22);
-        }
-
-        .band {
-          padding: 34px 0;
-          border-top: 1px solid var(--border);
-          border-bottom: 1px solid var(--border);
-          background: rgba(255,255,255,0.03);
-        }
-
-        .eyebrow {
-          text-transform: uppercase;
-          letter-spacing: 0.26em;
-          color: var(--muted);
-          font-size: 0.76rem;
-          text-align: center;
-          margin: 0 0 20px;
-        }
-
-        .logo-grid {
-          grid-template-columns: repeat(8, 1fr);
-        }
-
-        .logo-pill {
-          text-align: center;
-          padding: 13px 10px;
-          border-radius: 18px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid var(--border);
-          color: #d4d4d8;
-          font-size: 0.92rem;
-        }
-
-        section.section {
-          padding: 92px 0;
-        }
-
-        .section-heading {
-          max-width: 760px;
-          margin: 0 auto 52px;
-          text-align: center;
-        }
-
-        .section-heading h2 {
-          margin: 14px 0 0;
-          font-size: clamp(2rem, 4vw, 3.4rem);
-          line-height: 1.1;
-          letter-spacing: -0.03em;
-        }
-
-        .section-heading p {
-          color: var(--muted);
-          font-size: 1.06rem;
-          margin-top: 16px;
-        }
-
-        .grid-3 { grid-template-columns: repeat(3, 1fr); }
-        .grid-2 { grid-template-columns: repeat(2, 1fr); }
-        .grid-6 { grid-template-columns: repeat(3, 1fr); }
-
-        .content-card {
-          padding: 28px;
-          height: 100%;
-        }
-
-        .label-chip {
-          display: inline-block;
-          padding: 7px 12px;
-          border-radius: 999px;
-          border: 1px solid var(--border);
-          background: rgba(255,255,255,0.04);
-          color: #d4d4d8;
-          font-size: 0.76rem;
-          margin-bottom: 18px;
-        }
-
-        .content-card h3 {
-          margin: 0;
-          font-size: 1.55rem;
-          line-height: 1.2;
-        }
-
-        .content-card p {
-          color: var(--muted);
-          margin: 16px 0 0;
-          font-size: 0.98rem;
-        }
-
-        .content-card .big-stat {
-          font-size: 2rem;
-          font-weight: 700;
-          margin-top: 18px;
-        }
-
-        .checks {
-          margin-top: 18px;
-          display: grid;
-          gap: 10px;
-        }
-
-        .checks div {
-          display: flex;
-          gap: 10px;
-          align-items: flex-start;
-          color: #d4d4d8;
-          font-size: 0.95rem;
-        }
-
-        .checks span:first-child { color: #86efac; }
-
-        .architecture-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 14px;
-        }
-
-        .arch-item {
-          padding: 20px;
-          border-radius: 22px;
-          background: rgba(24,24,27,0.72);
-          border: 1px solid var(--border);
-        }
-
-        .cta-box {
-          padding: 46px 34px;
-          border-radius: 32px;
-          border: 1px solid rgba(34,211,238,0.22);
-          background: linear-gradient(135deg, rgba(34,211,238,0.14), rgba(255,255,255,0.05), rgba(139,92,246,0.10));
-          text-align: center;
-          box-shadow: var(--shadow);
-        }
-
-        .cta-box h2 {
-          margin: 14px 0 0;
-          font-size: clamp(2rem, 4vw, 3.2rem);
-          line-height: 1.12;
-          letter-spacing: -0.03em;
-        }
-
-        .cta-box p {
-          max-width: 760px;
-          margin: 18px auto 0;
-          color: #d4d4d8;
-          font-size: 1.05rem;
-        }
-
-        footer {
-          padding: 30px 0 50px;
-          color: var(--muted);
-          text-align: center;
-          font-size: 0.92rem;
-        }
-
-        @media (max-width: 1100px) {
-          .hero-grid,
-          .grid-3,
-          .grid-6,
-          .logo-grid,
-          .architecture-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .stats-grid { grid-template-columns: repeat(2, 1fr); }
-          .nav { display: none; }
-        }
-
-        @media (max-width: 768px) {
-          .hero { padding-top: 36px; }
-          .hero-grid,
-          .grid-2,
-          .grid-3,
-          .grid-6,
-          .logo-grid,
-          .architecture-grid,
-          .panel-grid,
-          .stats-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .site-header .inner {
-            min-height: 68px;
-          }
-
-          .header-actions a:first-child { display: none; }
-          .panel-top {
-            flex-direction: column;
-          }
-
-          .section { padding: 72px 0; }
-          .container { width: min(var(--max), calc(100% - 24px)); }
-        }
-      `}</style>
-
-      <div className="page">
-        <div className="bg-blur" aria-hidden="true">
-          <div className="blur-orb orb-1"></div>
-          <div className="blur-orb orb-2"></div>
-          <div className="blur-orb orb-3"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IronSaaS | Build serious SaaS, faster</title>
+  <meta name="description" content="IronSaaS helps founders and product teams build SaaS products faster with a reusable foundation for multi-tenancy, workflows, integrations, analytics, and AI-ready experiences." />
+  <style>
+    :root {
+      --bg: #09090b;
+      --panel: rgba(255,255,255,0.05);
+      --panel-strong: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.10);
+      --text: #ffffff;
+      --muted: #a1a1aa;
+      --cyan-soft: rgba(34,211,238,0.12);
+      --shadow: 0 20px 60px rgba(0,0,0,0.35);
+      --radius: 24px;
+      --max: 1200px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    .page {
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .bg-blur {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .blur-orb {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(90px);
+      opacity: 0.9;
+    }
+
+    .orb-1 {
+      width: 34rem;
+      height: 34rem;
+      left: 50%;
+      top: -4rem;
+      transform: translateX(-50%);
+      background: rgba(34,211,238,0.12);
+    }
+
+    .orb-2 {
+      width: 28rem;
+      height: 28rem;
+      right: -6rem;
+      top: 9rem;
+      background: rgba(139,92,246,0.12);
+    }
+
+    .orb-3 {
+      width: 24rem;
+      height: 24rem;
+      left: -5rem;
+      bottom: -2rem;
+      background: rgba(16,185,129,0.10);
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .container {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      color: #d4d4d8;
+      font-size: 0.875rem;
+    }
+
+    .pill.cyan {
+      background: var(--cyan-soft);
+      border-color: rgba(34,211,238,0.24);
+      color: #cffafe;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 22px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      font-weight: 600;
+      transition: 0.25s ease;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: #fff;
+      color: #111827;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 15px 35px rgba(255,255,255,0.12);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      border-color: var(--border);
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.10);
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(18px);
+      background: rgba(9,9,11,0.78);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .site-header .inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 76px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(34,211,238,0.22);
+      background: rgba(255,255,255,0.05);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 14px 35px rgba(34,211,238,0.10);
+      font-size: 18px;
+    }
+
+    .brand-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-sub {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .nav a {
+      color: #d4d4d8;
+      font-size: 0.95rem;
+    }
+
+    .nav a:hover { color: #fff; }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .hero {
+      padding: 64px 0 72px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.6rem, 6vw, 4.6rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p.lead {
+      font-size: 1.1rem;
+      color: #d4d4d8;
+      max-width: 680px;
+      margin: 22px 0 0;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .stats-grid,
+    .logo-grid,
+    .grid-3,
+    .grid-2,
+    .grid-6 {
+      display: grid;
+      gap: 16px;
+    }
+
+    .stats-grid {
+      margin-top: 34px;
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .mini-card {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+    }
+
+    .mini-card strong {
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+
+    .mini-card span {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .hero-panel {
+      padding: 18px;
+      border-radius: 34px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-panel-inner {
+      padding: 22px;
+      border-radius: 26px;
+      border: 1px solid var(--border);
+      background: rgba(24,24,27,0.85);
+    }
+
+    .panel-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-top small,
+    .muted { color: var(--muted); }
+
+    .panel-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .feature-box {
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+    }
+
+    .icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.08);
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+
+    .highlight-box {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 20px;
+      background: var(--cyan-soft);
+      border: 1px solid rgba(34,211,238,0.22);
+    }
+
+    .band {
+      padding: 34px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.26em;
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-align: center;
+      margin: 0 0 20px;
+    }
+
+    .logo-grid {
+      grid-template-columns: repeat(8, 1fr);
+    }
+
+    .logo-pill {
+      text-align: center;
+      padding: 13px 10px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: #d4d4d8;
+      font-size: 0.92rem;
+    }
+
+    section.section {
+      padding: 92px 0;
+    }
+
+    .section-heading {
+      max-width: 760px;
+      margin: 0 auto 52px;
+      text-align: center;
+    }
+
+    .section-heading h2 {
+      margin: 14px 0 0;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .section-heading p {
+      color: var(--muted);
+      font-size: 1.06rem;
+      margin-top: 16px;
+    }
+
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-6 { grid-template-columns: repeat(3, 1fr); }
+
+    .content-card {
+      padding: 28px;
+      height: 100%;
+    }
+
+    .label-chip {
+      display: inline-block;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: #d4d4d8;
+      font-size: 0.76rem;
+      margin-bottom: 18px;
+    }
+
+    .content-card h3 {
+      margin: 0;
+      font-size: 1.55rem;
+      line-height: 1.2;
+    }
+
+    .content-card p {
+      color: var(--muted);
+      margin: 16px 0 0;
+      font-size: 0.98rem;
+    }
+
+    .content-card .big-stat {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 18px;
+    }
+
+    .checks {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .checks div {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: #d4d4d8;
+      font-size: 0.95rem;
+    }
+
+    .checks span:first-child { color: #86efac; }
+
+    .architecture-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .arch-item {
+      padding: 20px;
+      border-radius: 22px;
+      background: rgba(24,24,27,0.72);
+      border: 1px solid var(--border);
+    }
+
+    .cta-box {
+      padding: 46px 34px;
+      border-radius: 32px;
+      border: 1px solid rgba(34,211,238,0.22);
+      background: linear-gradient(135deg, rgba(34,211,238,0.14), rgba(255,255,255,0.05), rgba(139,92,246,0.10));
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .cta-box h2 {
+      margin: 14px 0 0;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.12;
+      letter-spacing: -0.03em;
+    }
+
+    .cta-box p {
+      max-width: 760px;
+      margin: 18px auto 0;
+      color: #d4d4d8;
+      font-size: 1.05rem;
+    }
+
+    footer {
+      padding: 30px 0 50px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1100px) {
+      .hero-grid,
+      .grid-3,
+      .grid-6,
+      .logo-grid,
+      .architecture-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .nav { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .hero { padding-top: 36px; }
+      .hero-grid,
+      .grid-2,
+      .grid-3,
+      .grid-6,
+      .logo-grid,
+      .architecture-grid,
+      .panel-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .site-header .inner {
+        min-height: 68px;
+      }
+
+      .header-actions a:first-child { display: none; }
+      .panel-top {
+        flex-direction: column;
+      }
+
+      .section { padding: 72px 0; }
+      .container { width: min(var(--max), calc(100% - 24px)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="bg-blur" aria-hidden="true">
+      <div class="blur-orb orb-1"></div>
+      <div class="blur-orb orb-2"></div>
+      <div class="blur-orb orb-3"></div>
+    </div>
+
+    <div class="content">
+      <header class="site-header">
+        <div class="container inner">
+          <a href="#top" class="brand">
+            <div class="brand-mark">✦</div>
+            <div>
+              <div class="brand-title">IronSaaS</div>
+              <div class="brand-sub">Build serious SaaS, faster</div>
+            </div>
+          </a>
+
+          <nav class="nav">
+            <a href="#platform">Platform</a>
+            <a href="#use-cases">Use Cases</a>
+            <a href="#ai-layer">AI Layer</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#resources">Resources</a>
+          </nav>
+
+          <div class="header-actions">
+            <a class="btn btn-secondary" href="#cta">Book Demo</a>
+            <a class="btn btn-primary" href="#cta">Start Building →</a>
+          </div>
         </div>
+      </header>
 
-        <div className="content">
-          <header className="site-header">
-            <div className="container inner">
-              <a href="#top" className="brand">
-                <div className="brand-mark">✦</div>
-                <div>
-                  <div className="brand-title">IronSaaS</div>
-                  <div className="brand-sub">Build serious SaaS, faster</div>
-                </div>
-              </a>
+      <main id="top">
+        <section class="hero">
+          <div class="container hero-grid">
+            <div>
+              <span class="pill cyan">AI-native SaaS foundation for ambitious startups</span>
+              <h1>Build your next SaaS product on a platform designed for speed, scale, and AI.</h1>
+              <p class="lead">IronSaaS helps founders and product teams skip the undifferentiated plumbing and focus on the domain. Launch faster with a reusable foundation for multi-tenancy, workflows, integrations, analytics, and agent-ready experiences.</p>
 
-              <nav className="nav">
-                <a href="#platform">Platform</a>
-                <a href="#use-cases">Use Cases</a>
-                <a href="#ai-layer">AI Layer</a>
-                <a href="#architecture">Architecture</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#resources">Resources</a>
-              </nav>
+              <div class="actions">
+                <a class="btn btn-primary" href="#cta">Book an IronSaaS Demo →</a>
+                <a class="btn btn-secondary" href="#architecture">See Architecture</a>
+              </div>
 
-              <div className="header-actions">
-                <a className="btn btn-secondary" href="#cta">Book Demo</a>
-                <a className="btn btn-primary" href="#cta">Start Building →</a>
+              <div class="stats-grid">
+                <div class="mini-card"><strong>Weeks</strong><span>to MVP</span></div>
+                <div class="mini-card"><strong>Multi-tenant</strong><span>by default</span></div>
+                <div class="mini-card"><strong>API-first</strong><span>architecture</span></div>
+                <div class="mini-card"><strong>AI-ready</strong><span>orchestration</span></div>
               </div>
             </div>
-          </header>
 
-          <main id="top">
-            <section className="hero">
-              <div className="container hero-grid">
-                <div>
-                  <span className="pill cyan">AI-native SaaS foundation for ambitious startups</span>
-                  <h1>Build your next SaaS product on a platform designed for speed, scale, and AI.</h1>
-                  <p className="lead">IronSaaS helps founders and product teams skip the undifferentiated plumbing and focus on the domain. Launch faster with a reusable foundation for multi-tenancy, workflows, integrations, analytics, and agent-ready experiences.</p>
-
-                  <div className="actions">
-                    <a className="btn btn-primary" href="#cta">Book an IronSaaS Demo →</a>
-                    <a className="btn btn-secondary" href="#architecture">See Architecture</a>
+            <div class="hero-panel">
+              <div class="hero-panel-inner">
+                <div class="panel-top">
+                  <div>
+                    <small>IronSaaS Control Plane</small>
+                    <h3 style="margin:6px 0 0; font-size:1.5rem; line-height:1.25;">Launch products without rebuilding the basics</h3>
                   </div>
-
-                  <div className="stats-grid">
-                    <div className="mini-card"><strong>Weeks</strong><span>to MVP</span></div>
-                    <div className="mini-card"><strong>Multi-tenant</strong><span>by default</span></div>
-                    <div className="mini-card"><strong>API-first</strong><span>architecture</span></div>
-                    <div className="mini-card"><strong>AI-ready</strong><span>orchestration</span></div>
-                  </div>
+                  <div class="pill" style="background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.24); color:#d1fae5;">Live Foundation</div>
                 </div>
 
-                <div className="hero-panel">
-                  <div className="hero-panel-inner">
-                    <div className="panel-top">
-                      <div>
-                        <small>IronSaaS Control Plane</small>
-                        <h3 style={{ margin: '6px 0 0', fontSize: '1.5rem', lineHeight: 1.25 }}>Launch products without rebuilding the basics</h3>
-                      </div>
-                      <div
-                        className="pill"
-                        style={{
-                          background: 'rgba(16,185,129,0.12)',
-                          borderColor: 'rgba(16,185,129,0.24)',
-                          color: '#d1fae5',
-                        }}
-                      >
-                        Live Foundation
-                      </div>
-                    </div>
-
-                    <div className="panel-grid">
-                      <div className="feature-box">
-                        <div className="icon">🤖</div>
-                        <strong>AI Orchestration</strong>
-                        <div className="muted">Agent hooks, prompt gateways, approvals</div>
-                      </div>
-                      <div className="feature-box">
-                        <div className="icon">🗄️</div>
-                        <strong>Tenant Data Core</strong>
-                        <div className="muted">Isolated, extensible, reporting-ready</div>
-                      </div>
-                      <div className="feature-box">
-                        <div className="icon">⚙️</div>
-                        <strong>Workflow Engine</strong>
-                        <div className="muted">States, approvals, escalations, SLAs</div>
-                      </div>
-                      <div className="feature-box">
-                        <div className="icon">🛡️</div>
-                        <strong>Enterprise Controls</strong>
-                        <div className="muted">Audit, permissions, policies, logs</div>
-                      </div>
-                    </div>
-
-                    <div className="highlight-box">
-                      <div className="muted" style={{ color: '#cffafe' }}>Recommended for</div>
-                      <div style={{ fontWeight: 700, marginTop: 4 }}>Procurement, operations, fintech, healthtech, logistics, B2B workflows</div>
-                    </div>
+                <div class="panel-grid">
+                  <div class="feature-box">
+                    <div class="icon">🤖</div>
+                    <strong>AI Orchestration</strong>
+                    <div class="muted">Agent hooks, prompt gateways, approvals</div>
+                  </div>
+                  <div class="feature-box">
+                    <div class="icon">🗄️</div>
+                    <strong>Tenant Data Core</strong>
+                    <div class="muted">Isolated, extensible, reporting-ready</div>
+                  </div>
+                  <div class="feature-box">
+                    <div class="icon">⚙️</div>
+                    <strong>Workflow Engine</strong>
+                    <div class="muted">States, approvals, escalations, SLAs</div>
+                  </div>
+                  <div class="feature-box">
+                    <div class="icon">🛡️</div>
+                    <strong>Enterprise Controls</strong>
+                    <div class="muted">Audit, permissions, policies, logs</div>
                   </div>
                 </div>
-              </div>
-            </section>
 
-            <section className="band" id="use-cases">
-              <div className="container">
-                <p className="eyebrow">Designed for modern B2B product categories</p>
-                <div className="logo-grid">
-                  <div className="logo-pill">B2B SaaS</div>
-                  <div className="logo-pill">Procurement Tech</div>
-                  <div className="logo-pill">Fintech</div>
-                  <div className="logo-pill">Healthcare</div>
-                  <div className="logo-pill">Manufacturing</div>
-                  <div className="logo-pill">Logistics</div>
-                  <div className="logo-pill">Enterprise IT</div>
-                  <div className="logo-pill">AI Startups</div>
+                <div class="highlight-box">
+                  <div class="muted" style="color:#cffafe;">Recommended for</div>
+                  <div style="font-weight:700; margin-top:4px;">Procurement, operations, fintech, healthtech, logistics, B2B workflows</div>
                 </div>
               </div>
-            </section>
+            </div>
+          </div>
+        </section>
 
-            <section className="section" id="platform">
-              <div className="container">
-                <div className="section-heading">
-                  <span className="pill">Why IronSaaS</span>
-                  <h2>Everything ambitious SaaS teams keep rebuilding—made reusable.</h2>
-                  <p>Inspired by the storytelling rhythm of premium AI-first SaaS websites, but tailored for IronSaaS as a serious product foundation for founders and product companies.</p>
+        <section class="band" id="use-cases">
+          <div class="container">
+            <p class="eyebrow">Designed for modern B2B product categories</p>
+            <div class="logo-grid">
+              <div class="logo-pill">B2B SaaS</div>
+              <div class="logo-pill">Procurement Tech</div>
+              <div class="logo-pill">Fintech</div>
+              <div class="logo-pill">Healthcare</div>
+              <div class="logo-pill">Manufacturing</div>
+              <div class="logo-pill">Logistics</div>
+              <div class="logo-pill">Enterprise IT</div>
+              <div class="logo-pill">AI Startups</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="platform">
+          <div class="container">
+            <div class="section-heading">
+              <span class="pill">Why IronSaaS</span>
+              <h2>Everything ambitious SaaS teams keep rebuilding—made reusable.</h2>
+              <p>Inspired by the storytelling rhythm of premium AI-first SaaS websites, but tailored for IronSaaS as a serious product foundation for founders and product companies.</p>
+            </div>
+
+            <div class="grid-3">
+              <article class="card content-card">
+                <span class="label-chip">Typical MVP acceleration</span>
+                <h3>Faster product launches</h3>
+                <p>Ship MVPs in weeks with reusable identity, tenancy, workflow, billing, permissions, notifications, audit, and AI-ready data foundations.</p>
+                <div class="big-stat">8–12 weeks</div>
+                <div class="checks">
+                  <div><span>✔</span><span>Reusable platform core</span></div>
+                  <div><span>✔</span><span>Prebuilt business primitives</span></div>
+                  <div><span>✔</span><span>Lower engineering drag</span></div>
                 </div>
+              </article>
 
-                <div className="grid-3">
-                  <article className="card content-card">
-                    <span className="label-chip">Typical MVP acceleration</span>
-                    <h3>Faster product launches</h3>
-                    <p>Ship MVPs in weeks with reusable identity, tenancy, workflow, billing, permissions, notifications, audit, and AI-ready data foundations.</p>
-                    <div className="big-stat">8–12 weeks</div>
-                    <div className="checks">
-                      <div><span>✔</span><span>Reusable platform core</span></div>
-                      <div><span>✔</span><span>Prebuilt business primitives</span></div>
-                      <div><span>✔</span><span>Lower engineering drag</span></div>
-                    </div>
-                  </article>
-
-                  <article className="card content-card">
-                    <span className="label-chip">From the first customer</span>
-                    <h3>Built for enterprise depth</h3>
-                    <p>IronSaaS gives startups and product teams a serious architecture from day one—multi-tenant, extensible, secure, and API-first.</p>
-                    <div className="big-stat">Enterprise-ready</div>
-                    <div className="checks">
-                      <div><span>✔</span><span>Tenant isolation</span></div>
-                      <div><span>✔</span><span>Policy-driven access</span></div>
-                      <div><span>✔</span><span>API-first services</span></div>
-                    </div>
-                  </article>
-
-                  <article className="card content-card">
-                    <span className="label-chip">Without AI chaos</span>
-                    <h3>AI-ready by design</h3>
-                    <p>Blend application workflows, data, automation, and agents without rebuilding your stack later.</p>
-                    <div className="big-stat">AI-native</div>
-                    <div className="checks">
-                      <div><span>✔</span><span>Structured data + JSON context</span></div>
-                      <div><span>✔</span><span>Agent orchestration hooks</span></div>
-                      <div><span>✔</span><span>Prompt-safe workflow controls</span></div>
-                    </div>
-                  </article>
+              <article class="card content-card">
+                <span class="label-chip">From the first customer</span>
+                <h3>Built for enterprise depth</h3>
+                <p>IronSaaS gives startups and product teams a serious architecture from day one—multi-tenant, extensible, secure, and API-first.</p>
+                <div class="big-stat">Enterprise-ready</div>
+                <div class="checks">
+                  <div><span>✔</span><span>Tenant isolation</span></div>
+                  <div><span>✔</span><span>Policy-driven access</span></div>
+                  <div><span>✔</span><span>API-first services</span></div>
                 </div>
+              </article>
+
+              <article class="card content-card">
+                <span class="label-chip">Without AI chaos</span>
+                <h3>AI-ready by design</h3>
+                <p>Blend application workflows, data, automation, and agents without rebuilding your stack later.</p>
+                <div class="big-stat">AI-native</div>
+                <div class="checks">
+                  <div><span>✔</span><span>Structured data + JSON context</span></div>
+                  <div><span>✔</span><span>Agent orchestration hooks</span></div>
+                  <div><span>✔</span><span>Prompt-safe workflow controls</span></div>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" style="background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.03));">
+          <div class="container">
+            <div class="section-heading">
+              <span class="pill">Platform pillars</span>
+              <h2>A strong base layer for products that need to grow up fast</h2>
+              <p>IronSaaS combines a robust SaaS core, composable modules, and an AI-ready layer so your product architecture does not need a painful rewrite later.</p>
+            </div>
+
+            <div class="grid-2">
+              <article class="card content-card">
+                <div class="icon">🧱</div>
+                <h3>Core SaaS Foundation</h3>
+                <p>Auth, RBAC, tenancy, audit trails, notifications, workflow, approvals, search, file handling, and configuration systems.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">🧠</div>
+                <h3>AI Application Layer</h3>
+                <p>Agent-ready orchestration, contextual retrieval patterns, prompt gateways, evaluation hooks, and human-in-the-loop controls.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">📦</div>
+                <h3>Composable Business Modules</h3>
+                <p>Rapidly assemble domain-specific apps for procurement, operations, finance workflows, B2B process automation, and more.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">🔗</div>
+                <h3>Integration Fabric</h3>
+                <p>Eventing, webhooks, APIs, ERP/CRM integration patterns, import/export pipelines, and extensibility for customer-specific needs.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="ai-layer">
+          <div class="container">
+            <div class="section-heading">
+              <span class="pill">AI layer</span>
+              <h2>Agent-augmented product development for the next generation of SaaS</h2>
+              <p>Not hype. Practical building blocks that help teams move from manual engineering effort to accelerated delivery and intelligent automation.</p>
+            </div>
+
+            <div class="grid-6">
+              <article class="card content-card">
+                <div class="icon">🤖</div>
+                <h3>Build Agent</h3>
+                <p>Scaffold modules, CRUD flows, APIs, UI shells, and workflow states based on your product model.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">🧾</div>
+                <h3>Data Agent</h3>
+                <p>Map relational and JSON data structures, validations, document schemas, and reporting-ready models.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">🛠️</div>
+                <h3>Ops Agent</h3>
+                <p>Prepare CI/CD, deployment conventions, environment config, observability, and operational guardrails.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">🔌</div>
+                <h3>Integration Agent</h3>
+                <p>Accelerate ERP, payment, identity, messaging, and third-party integration design and implementation.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">✅</div>
+                <h3>Quality Agent</h3>
+                <p>Generate test scenarios, edge-case validation, workflow assertions, and release-readiness checks.</p>
+              </article>
+              <article class="card content-card">
+                <div class="icon">📈</div>
+                <h3>Growth Agent</h3>
+                <p>Support pricing pages, demo data packs, onboarding flows, and customer-facing product stories.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="architecture" style="background: rgba(255,255,255,0.03); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+          <div class="container">
+            <div class="section-heading">
+              <span class="pill">Architecture</span>
+              <h2>Designed for real-world SaaS complexity</h2>
+              <p>IronSaaS is positioned as a durable product foundation, not just a starter template. The architecture is meant to support enterprise customers, product extensions, integrations, and AI experiences.</p>
+            </div>
+
+            <div class="architecture-grid">
+              <div class="arch-item"><div class="icon">🏢</div><strong>Tenant-aware architecture</strong></div>
+              <div class="arch-item"><div class="icon">🗃️</div><strong>PostgreSQL-first, extensible data model</strong></div>
+              <div class="arch-item"><div class="icon">🔒</div><strong>Security and audit by default</strong></div>
+              <div class="arch-item"><div class="icon">🧩</div><strong>Modular UI and service design</strong></div>
+              <div class="arch-item"><div class="icon">💻</div><strong>Clean-code engineering patterns</strong></div>
+              <div class="arch-item"><div class="icon">🛡️</div><strong>Operational controls for scale</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="pricing">
+          <div class="container">
+            <div class="section-heading">
+              <span class="pill">Commercial model</span>
+              <h2>Flexible ways to engage with IronSaaS</h2>
+              <p>Choose the model that fits your stage: buy the platform core, scale with the full growth stack, or explore selective co-build and strategic partnership structures.</p>
+            </div>
+
+            <div class="grid-3">
+              <article class="card content-card">
+                <span class="label-chip">For early-stage product teams</span>
+                <h3>Starter Core</h3>
+                <div class="checks">
+                  <div><span>•</span><span>Foundation modules</span></div>
+                  <div><span>•</span><span>Single product line</span></div>
+                  <div><span>•</span><span>Reusable UI + API patterns</span></div>
+                  <div><span>•</span><span>Basic AI hooks</span></div>
+                </div>
+                <div class="actions"><a class="btn btn-primary" href="#cta">Talk to Us</a></div>
+              </article>
+
+              <article class="card content-card" style="background: var(--panel-strong);">
+                <span class="label-chip">For scaling SaaS businesses</span>
+                <h3>Growth Platform</h3>
+                <div class="checks">
+                  <div><span>•</span><span>Advanced workflows</span></div>
+                  <div><span>•</span><span>Multi-module apps</span></div>
+                  <div><span>•</span><span>Extensibility layer</span></div>
+                  <div><span>•</span><span>Integration accelerators</span></div>
+                </div>
+                <div class="actions"><a class="btn btn-primary" href="#cta">Talk to Us</a></div>
+              </article>
+
+              <article class="card content-card">
+                <span class="label-chip">For high-conviction founder partnerships</span>
+                <h3>Co-Build / Equity+</h3>
+                <div class="checks">
+                  <div><span>•</span><span>Strategic architecture support</span></div>
+                  <div><span>•</span><span>Faster productization</span></div>
+                  <div><span>•</span><span>Selective equity structures</span></div>
+                  <div><span>•</span><span>Long-term roadmap alignment</span></div>
+                </div>
+                <div class="actions"><a class="btn btn-primary" href="#cta">Talk to Us</a></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="cta">
+          <div class="container">
+            <div class="cta-box">
+              <span class="pill">IronSaaS for founders and serious product teams</span>
+              <h2>Stop rebuilding the base layer. Start building the product that matters.</h2>
+              <p>Turn your SaaS vision into a launch-ready platform with the right foundation for scale, extensibility, and AI-native evolution.</p>
+              <div class="actions" style="justify-content:center; margin-top:28px;">
+                <a class="btn btn-primary" href="mailto:hello@ironsaas.com">Book a Strategy Call</a>
+                <a class="btn btn-secondary" href="#resources">Request Architecture Deck</a>
               </div>
-            </section>
+            </div>
+          </div>
+        </section>
+      </main>
 
-            <section className="section" style={{ background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.03))' }}>
-              <div className="container">
-                <div className="section-heading">
-                  <span className="pill">Platform pillars</span>
-                  <h2>A strong base layer for products that need to grow up fast</h2>
-                  <p>IronSaaS combines a robust SaaS core, composable modules, and an AI-ready layer so your product architecture does not need a painful rewrite later.</p>
-                </div>
-
-                <div className="grid-2">
-                  <article className="card content-card">
-                    <div className="icon">🧱</div>
-                    <h3>Core SaaS Foundation</h3>
-                    <p>Auth, RBAC, tenancy, audit trails, notifications, workflow, approvals, search, file handling, and configuration systems.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">🧠</div>
-                    <h3>AI Application Layer</h3>
-                    <p>Agent-ready orchestration, contextual retrieval patterns, prompt gateways, evaluation hooks, and human-in-the-loop controls.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">📦</div>
-                    <h3>Composable Business Modules</h3>
-                    <p>Rapidly assemble domain-specific apps for procurement, operations, finance workflows, B2B process automation, and more.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">🔗</div>
-                    <h3>Integration Fabric</h3>
-                    <p>Eventing, webhooks, APIs, ERP/CRM integration patterns, import/export pipelines, and extensibility for customer-specific needs.</p>
-                  </article>
-                </div>
-              </div>
-            </section>
-
-            <section className="section" id="ai-layer">
-              <div className="container">
-                <div className="section-heading">
-                  <span className="pill">AI layer</span>
-                  <h2>Agent-augmented product development for the next generation of SaaS</h2>
-                  <p>Not hype. Practical building blocks that help teams move from manual engineering effort to accelerated delivery and intelligent automation.</p>
-                </div>
-
-                <div className="grid-6">
-                  <article className="card content-card">
-                    <div className="icon">🤖</div>
-                    <h3>Build Agent</h3>
-                    <p>Scaffold modules, CRUD flows, APIs, UI shells, and workflow states based on your product model.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">🧾</div>
-                    <h3>Data Agent</h3>
-                    <p>Map relational and JSON data structures, validations, document schemas, and reporting-ready models.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">🛠️</div>
-                    <h3>Ops Agent</h3>
-                    <p>Prepare CI/CD, deployment conventions, environment config, observability, and operational guardrails.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">🔌</div>
-                    <h3>Integration Agent</h3>
-                    <p>Accelerate ERP, payment, identity, messaging, and third-party integration design and implementation.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">✅</div>
-                    <h3>Quality Agent</h3>
-                    <p>Generate test scenarios, edge-case validation, workflow assertions, and release-readiness checks.</p>
-                  </article>
-                  <article className="card content-card">
-                    <div className="icon">📈</div>
-                    <h3>Growth Agent</h3>
-                    <p>Support pricing pages, demo data packs, onboarding flows, and customer-facing product stories.</p>
-                  </article>
-                </div>
-              </div>
-            </section>
-
-            <section
-              className="section"
-              id="architecture"
-              style={{ background: 'rgba(255,255,255,0.03)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
-            >
-              <div className="container">
-                <div className="section-heading">
-                  <span className="pill">Architecture</span>
-                  <h2>Designed for real-world SaaS complexity</h2>
-                  <p>IronSaaS is positioned as a durable product foundation, not just a starter template. The architecture is meant to support enterprise customers, product extensions, integrations, and AI experiences.</p>
-                </div>
-
-                <div className="architecture-grid">
-                  <div className="arch-item"><div className="icon">🏢</div><strong>Tenant-aware architecture</strong></div>
-                  <div className="arch-item"><div className="icon">🗃️</div><strong>PostgreSQL-first, extensible data model</strong></div>
-                  <div className="arch-item"><div className="icon">🔒</div><strong>Security and audit by default</strong></div>
-                  <div className="arch-item"><div className="icon">🧩</div><strong>Modular UI and service design</strong></div>
-                  <div className="arch-item"><div className="icon">💻</div><strong>Clean-code engineering patterns</strong></div>
-                  <div className="arch-item"><div className="icon">🛡️</div><strong>Operational controls for scale</strong></div>
-                </div>
-              </div>
-            </section>
-
-            <section className="section" id="pricing">
-              <div className="container">
-                <div className="section-heading">
-                  <span className="pill">Commercial model</span>
-                  <h2>Flexible ways to engage with IronSaaS</h2>
-                  <p>Choose the model that fits your stage: buy the platform core, scale with the full growth stack, or explore selective co-build and strategic partnership structures.</p>
-                </div>
-
-                <div className="grid-3">
-                  <article className="card content-card">
-                    <span className="label-chip">For early-stage product teams</span>
-                    <h3>Starter Core</h3>
-                    <div className="checks">
-                      <div><span>•</span><span>Foundation modules</span></div>
-                      <div><span>•</span><span>Single product line</span></div>
-                      <div><span>•</span><span>Reusable UI + API patterns</span></div>
-                      <div><span>•</span><span>Basic AI hooks</span></div>
-                    </div>
-                    <div className="actions"><a className="btn btn-primary" href="#cta">Talk to Us</a></div>
-                  </article>
-
-                  <article className="card content-card" style={{ background: 'var(--panel-strong)' }}>
-                    <span className="label-chip">For scaling SaaS businesses</span>
-                    <h3>Growth Platform</h3>
-                    <div className="checks">
-                      <div><span>•</span><span>Advanced workflows</span></div>
-                      <div><span>•</span><span>Multi-module apps</span></div>
-                      <div><span>•</span><span>Extensibility layer</span></div>
-                      <div><span>•</span><span>Integration accelerators</span></div>
-                    </div>
-                    <div className="actions"><a className="btn btn-primary" href="#cta">Talk to Us</a></div>
-                  </article>
-
-                  <article className="card content-card">
-                    <span className="label-chip">For high-conviction founder partnerships</span>
-                    <h3>Co-Build / Equity+</h3>
-                    <div className="checks">
-                      <div><span>•</span><span>Strategic architecture support</span></div>
-                      <div><span>•</span><span>Faster productization</span></div>
-                      <div><span>•</span><span>Selective equity structures</span></div>
-                      <div><span>•</span><span>Long-term roadmap alignment</span></div>
-                    </div>
-                    <div className="actions"><a className="btn btn-primary" href="#cta">Talk to Us</a></div>
-                  </article>
-                </div>
-              </div>
-            </section>
-
-            <section className="section" id="cta">
-              <div className="container">
-                <div className="cta-box">
-                  <span className="pill">IronSaaS for founders and serious product teams</span>
-                  <h2>Stop rebuilding the base layer. Start building the product that matters.</h2>
-                  <p>Turn your SaaS vision into a launch-ready platform with the right foundation for scale, extensibility, and AI-native evolution.</p>
-                  <div className="actions" style={{ justifyContent: 'center', marginTop: 28 }}>
-                    <a className="btn btn-primary" href="mailto:hello@ironsaas.com">Book a Strategy Call</a>
-                    <a className="btn btn-secondary" href="#resources">Request Architecture Deck</a>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </main>
-
-          <footer id="resources">
-            <div className="container">© 2026 IronSaaS. Built for modern SaaS founders and product teams.</div>
-          </footer>
-        </div>
-      </div>
-    </>
-  );
-}
+      <footer id="resources">
+        <div class="container">© 2026 IronSaaS. Built for modern SaaS founders and product teams.</div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
