@@ -35,3 +35,18 @@ jobs:
       # Microsoft Testing Platform mode (global.json): the solution is passed with --solution.
       - name: Test
         run: dotnet test --solution Foundation.slnx --configuration Release --no-build
+
+  platform-config:
+    name: Platform compose file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      # Validates infra/compose/compose.yaml and its variable references with throw-away credentials.
+      # Starting the platform in CI comes with T18.
+      - name: Validate the compose file
+        run: |
+          sh infra/compose/scripts/init-env.sh
+          docker compose --file infra/compose/compose.yaml --env-file infra/compose/.env \
+            --profile telemetry --profile ci config --quiet

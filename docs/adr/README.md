@@ -10,5 +10,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0002](0002-isolated-deployment-unit-per-tenant.md) | One isolated deployment unit per tenant on shared infrastructure | Accepted |
 | [0003](0003-open-source-first-and-decided-versions.md) | Open source first, every dependency listed once, decided platform versions | Accepted |
 | [0004](0004-build-and-test-conventions.md) | Build and test conventions | Accepted |
+| [0005](0005-laptop-platform-stack.md) | The laptop platform stack on Compose | Accepted |
+| [0006](0006-object-storage-stand-in.md) | Azurite replaces MinIO as the laptop object storage | Proposed |
 
-Coming with their tasks in S1: identity and sessions (T10), permission catalogue and audit protection (T8, T9), data conventions (T4), API conventions (T5), telemetry and correlation (T6), secrets and storage interfaces (T12), the laptop stack and the unit runtime (T2, T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).
+Coming with their tasks in S1: identity and sessions (T10), permission catalogue and audit protection (T8, T9), data conventions (T4), API conventions (T5), telemetry and correlation (T6), secrets and storage interfaces (T12), the unit runtime (T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).

@@ -1,0 +1,39 @@
+# Traefik static configuration for the laptop (ADR-0005).
+# Routes come from container labels (docker provider). TLS certificates come from the dynamic folder (make certs).
+
+api:
+  dashboard: true
+
+ping:
+  entryPoint: traefik
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":8080" # dashboard API and ping; reached through the traefik.localhost router, never published
+  metrics:
+    address: ":8082" # scraped by Prometheus
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: foundation
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+log:
+  level: INFO
+
+accessLog: {}

@@ -13,7 +13,7 @@ The slice is done when this demo runs on a fresh WSL laptop:
 3. The link opens the shell at acme.localhost. The administrator sets a password and logs in.
 4. The Users page shows the administrator in the grid with server paging and sorting. The response carries a correlation id. The same id finds the trace in Grafana, with API and database spans.
 5. A second user without the permission gets a 403 with a stable error code. An audit row records the denial.
-6. A token issued for tenant bravo is refused by acme's unit. Stopping MinIO during provisioning leaves the tenant in Provisioning with the failed step named; running provision again resumes from that step.
+6. A token issued for tenant bravo is refused by acme's unit. Stopping the blob storage during provisioning leaves the tenant in Provisioning with the failed step named; running provision again resumes from that step.
 7. A push to main builds and scans the code, publishes images, starts the stack on the runner, provisions a tenant and runs the smoke test.
 
 ## 2. Requirement coverage
@@ -35,13 +35,13 @@ The slice is done when this demo runs on a fresh WSL laptop:
 | TF-100 | REST conventions | Envelope, problem details with error code and correlation id, snake_case JSON, OpenAPI from code | done |
 | TF-101 | Paging, filter, sort | Offset paging capped at 200, multi-field sort, filter grammar, sparse fields, whitelist per resource | done |
 | TF-130 | Tracing | One trace per request with API and database spans; correlation id returned and shown on errors; loss counter | S4 (job links) |
-| TF-160 | File storage | Storage interface, one bucket per tenant with its own credentials, readiness probe | S4 (upload, versions, links) |
+| TF-160 | File storage | Storage interface (Azure Blob, against Azurite locally), one container per tenant with its own credentials, readiness probe | S4 (upload, versions, links) |
 | TF-170 | Application shell | Login, navigation from module manifests filtered by permission, error page with correlation id, session expiry, route registration with guard | S2 (entitlement and flag filters) |
 | TF-171 | Design system | Grid wrapper over AG Grid Community with server paging, sorting, filtering, column chooser, lint rule | S2 to S5 (forms, saved views, panels) |
 | TF-180 | Operator console | Control plane API and CLI for create, provision and list | S6 (screens) |
 | TF-190 | Repository and conventions | Layout, build checks, one-command stack, one-command provisioning | S2 (scaffolding tool) |
 | TF-209 | Docs and ADRs | One ADR per S1 decision, developer guide v1, local stack runbook, API docs from code | ongoing |
-| TF-210 | Deployment units | One Compose project per tenant with own network, limits by size class, own roles, bucket, secrets path and routes; de-provision keeps data | S6 (network policies on Kubernetes, retention) |
+| TF-210 | Deployment units | One Compose project per tenant with own network, limits by size class, own roles, blob container, secrets path and routes; de-provision keeps data | S6 (network policies on Kubernetes, retention) |
 | TF-220 | Owning organisation | Base record type with owning organisation and sharing mode, plus the build check | S2 (visibility filters) |
 
 ## 3. Design
@@ -50,12 +50,12 @@ The slice is done when this demo runs on a fresh WSL laptop:
 
 | Plane | Containers | Hostnames |
 |---|---|---|
-| Platform services | traefik, postgres, minio, openbao (dev mode), otel-collector, tempo, loki, prometheus, grafana | grafana.localhost, minio.localhost |
+| Platform services | traefik, postgres 19, blob (Azurite), openbao (dev mode), otel-collector, tempo, loki, prometheus, grafana | traefik.localhost, grafana.localhost, prometheus.localhost, openbao.localhost |
 | Control plane | controlplane-api (Tenancy, Fleet, Identity, Authorization, Audit modules), fleet-worker (runs provisioning jobs, has the Docker socket) | control.localhost |
-| Tenant unit acme | acme-api, acme-worker in Compose project tenant-acme: own network, own database roles, own bucket, own secrets path, limits by size class | acme.localhost for /api, /auth, /connect, /.well-known, /health |
+| Tenant unit acme | acme-api, acme-worker in Compose project tenant-acme: own network, own database roles, own blob container, own secrets path, limits by size class | acme.localhost for /api, /auth, /connect, /.well-known, /health |
 | Shell | one container serving every tenant hostname | acme.localhost, all other paths |
 
-Traefik routes by hostname and path using container labels. Browsers resolve `*.localhost` on their own; command line tools need /etc/hosts entries. Traefik terminates TLS with a local mkcert certificate; plain HTTP stays available for the slim profile and CI. Profiles: `full` (everything), `slim` (no telemetry stack). CI uses slim plus Tempo so the trace check still works.
+Traefik routes by hostname and path using container labels. Browsers resolve `*.localhost` on their own; command line tools need /etc/hosts entries. TLS is optional on the laptop (`make certs` with mkcert); plain HTTP works everywhere. Profiles: none for the core, `telemetry` for the telemetry stack, `ci` for the collector and Tempo only, so the pipeline can check traces (ADR-0005).
 
 ### 3.2 Module pattern
 
@@ -100,7 +100,7 @@ The OpenTelemetry SDK with ASP.NET Core, HttpClient and Npgsql instrumentation e
 
 ### 3.8 Secrets and storage
 
-`ISecretStore` has an OpenBao implementation now (through VaultSharp) and Key Vault later. `IObjectStorage` has MinIO (S3 API) now and Blob Storage later. The unit's environment contains only the store address, a unit token scoped by policy to `secret/tenants/<id>`, and the telemetry endpoint. Everything else is read from the store at start. Readiness checks the database, the bucket and the store.
+`ISecretStore` has an OpenBao implementation now (through VaultSharp) and Key Vault later. `IObjectStorage` has one Azure Blob implementation, run against Azurite on the laptop and Azure Blob Storage later (ADR-0006, replaces MinIO). The unit's environment contains only the store address, a unit token scoped by policy to `secret/tenants/<id>`, and the telemetry endpoint. Everything else is read from the store at start. Readiness checks the database, the bucket and the store.
 
 ### 3.9 Provisioning steps (fleet worker)
 
@@ -110,7 +110,7 @@ Each step is recorded with status and duration. A re-run continues from the firs
 2. Database: create the owner and app roles and the database.
 3. Migrate: run the API image with the `migrate` command and the owner connection string.
 4. Seed: run the API image with the `seed` command: reference data, the tenant-administrator role with all permissions, the first administrator in Invited status with an invitation token, grants for the app role.
-5. Storage: create the bucket with its own access key.
+5. Storage: create the tenant's blob container and a container-scoped access signature.
 6. Secrets: write the app connection string, storage credentials and generated token keys to the tenant path; create the policy and one unit token.
 7. Unit: render the Compose file from the template (image tag, hostnames, size class limits, unit token) and apply it with `docker compose`.
 8. Verify: wait for readiness through the ingress, set status Active, write the audit event, print the invitation link.
@@ -146,9 +146,9 @@ MFA, SSO, lockout, rate limits, role editor, entitlements, flags, settings, emai
 
 | # | Task | We build | Done when | State |
 |---|---|---|---|---|
-| T1 | Repository skeleton and build checks | Solution, Directory.Build.props and Directory.Packages.props (versions with licences), .editorconfig, Makefile, README, ADR template and first ADRs, architecture test project with the module boundary rule, CI workflow for build and tests, this plan in docs/slices | `dotnet build` passes with warnings as errors; a test reference from one module to another module's Data fails the architecture test naming the file; CI is green | done, to verify on the laptop |
-| T2 | Platform stack with Compose | traefik, postgres 19, minio, openbao, otel-collector, tempo, loki, prometheus, grafana; profiles full and slim; hostnames and TLS; Grafana data sources and one request dashboard; make up, up-slim, down, logs | `make up` brings every platform container to healthy; Grafana shows the three data sources; `make up-slim` starts without telemetry | next |
-| T3 | Iron.Core | Result and Error types, Clock, Ids (UUIDv7), TenantContext, correlation, paging types, validation primitives, unit tests | Tests pass; the project has no third-party dependencies | |
+| T1 | Repository skeleton and build checks | Solution, Directory.Build.props and Directory.Packages.props (versions with licences), .editorconfig, Makefile, README, ADR template and first ADRs, architecture test project with the module boundary rule, CI workflow for build and tests, this plan in docs/slices | `dotnet build` passes with warnings as errors; a test reference from one module to another module's Data fails the architecture test naming the file; CI is green | done |
+| T2 | Platform stack with Compose | traefik, postgres 19, Azurite, openbao, otel-collector, tempo, loki, prometheus, grafana; profiles telemetry and ci; hostnames, optional TLS; Grafana data sources and one request dashboard; make up, up-slim, up-ci, down, reset, logs; runbook | `make up` brings every platform container to healthy; Grafana shows the three data sources; `make up-slim` starts without telemetry | done, to verify on the laptop |
+| T3 | Iron.Core | Result and Error types, Clock, Ids (UUIDv7), TenantContext, correlation, paging types, validation primitives, unit tests | Tests pass; the project has no third-party dependencies | next |
 | T4 | Iron.Data | Base entities (Entity, Audited, BusinessRecord), snake_case and schema conventions, version column, module DbContext base with its own migrations history, schema check with Testcontainers, owning-organisation check | The schema check fails on a table without standard columns and on a cross-schema foreign key; the owning-organisation check fails on a test entity without it | |
 | T5 | Iron.Api | Endpoint groups, module endpoint registration, snake_case JSON, list envelope, problem details, FluentValidation with field errors, ListQuery grammar with whitelist, OpenAPI and Scalar | A sample endpoint returns the envelope; page size 500 is capped to 200 with a note in meta; a non-whitelisted filter field returns a problem naming the field | |
 | T6 | Iron.Telemetry and Iron.Security (thin) | OpenTelemetry traces, metrics and logs, Npgsql and HttpClient instrumentation, tenant id on every span, correlation middleware, security headers, cookie policy, CORS from configuration, health endpoints | A request shows one trace in Tempo with API and database spans; every response carries the TF-070 headers and X-Correlation-Id | |
@@ -157,9 +157,9 @@ MFA, SSO, lockout, rate limits, role editor, entitlements, flags, settings, emai
 | T9 | Iron.Audit (thin) | audit.events table, IAuditWriter on the same transaction, grants for the app role, S1 event types | UPDATE and DELETE on audit.events as the app role are refused by PostgreSQL; login and denial write rows | |
 | T10 | Iron.Identity part 1: principals and login | Principal model, ASP.NET Core Identity stores, Argon2id hasher, server-side session store with idle and absolute limits, cookie settings, login, logout, me, invitation acceptance, audit events | Correct login creates a session row and the cookie; wrong login returns the fixed message and counts the attempt; the stored hash is Argon2id; an expired session returns the session-expired problem | |
 | T11 | Iron.Identity part 2: OpenIddict and the protected operation | OpenIddict server with token endpoint and client credentials, 15-minute tokens, keys from the secret store, bearer validation with tenant claim check, seeded smoke client, GET /api/v1/users with ListQuery whitelist | The smoke client gets a token and lists users; a token for another tenant is refused; an expired token is refused; OpenAPI shows the permission | |
-| T12 | Iron.Files and secrets (thin) | ISecretStore with OpenBao, IObjectStorage with MinIO, start-up reads connection string, storage credentials and keys from the secrets path, readiness checks | The API starts with only the store address and unit token in its environment; readiness fails with a clear message when the bucket is missing | |
+| T12 | Iron.Files and secrets (thin) | ISecretStore with OpenBao, IObjectStorage with Azure Blob (Azurite locally), start-up reads connection string, storage credentials and keys from the secrets path, readiness checks | The API starts with only the store address and unit token in its environment; readiness fails with a clear message when the container is missing | |
 | T13 | Iron.Tenancy and Iron.Host.ControlPlane | Tenant registry, control plane API (create, list, get, request provisioning), hostname uniqueness, operator service account with client credentials, Dockerfile | A duplicate hostname is refused; a provisioning request creates the fleet job; make provision authenticates and calls the API | |
-| T14 | Iron.Fleet and Iron.Host.Fleet | Provisioning job and step records, IUnitRuntime with the Compose implementation, the eight provisioning steps, resume from the failed step, refusal on Active, size classes, thin de-provision, fleet worker image with docker and mc | `make provision TENANT=acme` serves acme.localhost within minutes and prints the invitation link; a failed step is reported and resumed; bravo runs beside acme and each unit reaches only its own database | |
+| T14 | Iron.Fleet and Iron.Host.Fleet | Provisioning job and step records, IUnitRuntime with the Compose implementation, the eight provisioning steps, resume from the failed step, refusal on Active, size classes, thin de-provision, fleet worker image with the docker CLI | `make provision TENANT=acme` serves acme.localhost within minutes and prints the invitation link; a failed step is reported and resumed; bravo runs beside acme and each unit reaches only its own database | |
 | T15 | Shell foundation | Vite, React 19.3, TypeScript, Mantine 9.7.3, TanStack Query, react-i18next (English), Zod on Node v26.12.0; AppShell, navigation from manifests filtered by permissions, route registration with permission guard, login page, session handling, error boundary with correlation id, API client, Dockerfile and route | Login works on acme.localhost; navigation shows Identity and Users; a route without a permission fails in development | |
 | T16 | DataGrid and the Users page | AG Grid Community wrapper with server paging, sorting and filtering mapped to the ListQuery grammar, column chooser, page size cap notice, keyboard navigation, loading and empty states, theming tokens; eslint rule; Users page | The grid lists users with server paging and sorting; a bad filter shows the problem message; a raw ag-grid import in a page fails lint | |
 | T17 | Smoke and end-to-end tests | Iron.Smoke: provision or reuse, login, protected call with cookie and with token, denial case, trace lookup in Tempo by correlation id; Playwright: login and Users grid | `make smoke` passes against the local stack | |
@@ -178,6 +178,8 @@ T10, T11 and T14 may each split into two sessions.
 6. TF-220 in S1 is the base record type plus the build check only.
 7. Versions: .NET 10 LTS, PostgreSQL 19, Node.js v26.12.0, React 19.3, Mantine 9.7.3, AG Grid Community current release (ADR-0003).
 8. Control plane access in S1: the control plane composes Identity, Authorization and Audit like a tenant unit; `make provision` gets a client credentials token for a seeded local operator service account.
+
+Open for confirmation (2026-10-18): Azurite replaces MinIO as the laptop object storage, because MinIO's community edition ended (ADR-0006). PostgreSQL 19 runs as release candidate 1 until the GA image, planned for 2026-11-19.
 
 ## 6. How we build
 

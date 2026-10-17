@@ -20,10 +20,13 @@ node_modules/
 dist/
 .pnpm-store/
 
-# Local stack (from T2): generated per-tenant unit files and local certificates
+# Local stack: credentials, generated per-tenant unit files, certificates and the generated TLS file
+infra/compose/.env
 infra/compose/units/*/
 !infra/compose/units/README.md
-infra/compose/certs/
+infra/compose/certs/*
+!infra/compose/certs/.gitkeep
+infra/compose/traefik/dynamic/tls.yaml
 .env
 .env.*
 

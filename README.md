@@ -11,17 +11,28 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | Task | State |
 |---|---|
 | T1 Repository skeleton and build checks | done |
-| T2 Platform stack with Compose | next |
+| T2 Platform stack with Compose | done |
+| T3 Iron.Core | next |
 
 ## Prerequisites
 
-- Linux, or WSL 2 with Ubuntu. The runtime is Linux; nothing targets Windows.
-- .NET SDK 10.0. `global.json` accepts any 10.0.1xx feature band.
-- GNU make and git.
-- From T2: Docker Engine with the Compose plugin.
-- From T15: Node.js v26.12.0 (see `.node-version`).
+- Linux, or WSL 2 with Ubuntu. The runtime is Linux; nothing targets Windows. Clone inside the Linux file system (for example `~/foundation`), not under `/mnt/c`.
+- .NET SDK 10.0. Install inside WSL with Microsoft's script:
 
-Check: `dotnet --version` prints 10.0.x.
+  ```bash
+  sudo apt update && sudo apt install -y libicu-dev make git
+  curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+  chmod +x /tmp/dotnet-install.sh && /tmp/dotnet-install.sh --channel 10.0
+  cat >> ~/.bashrc <<'EOT'
+  export DOTNET_ROOT="$HOME/.dotnet"
+  export PATH="$PATH:$HOME/.dotnet:$HOME/.dotnet/tools"
+  EOT
+  source ~/.bashrc && dotnet --version
+  ```
+
+  `global.json` accepts any 10.0.1xx feature band. A system-wide install through `ppa:dotnet/backports` works too.
+- Docker with the Compose plugin: Docker Engine inside WSL, or Docker Desktop with WSL integration. `docker compose version` prints 2.x.
+- From T15: Node.js v26.12.0 (see `.node-version`).
 
 ## Quick start
 
@@ -29,9 +40,11 @@ Check: `dotnet --version` prints 10.0.x.
 make build     # build every project; warnings are errors
 make test      # run every test project
 make check     # run only the architecture checks
+make up        # start the laptop platform (PostgreSQL, blob storage, OpenBao, Traefik, telemetry) and wait until healthy
+make down      # stop it; data is kept
 ```
 
-`make` with no target lists the commands.
+`make` with no target lists every command. The platform runbook is `docs/guides/local-stack.md`. After `make up`, Grafana is at http://grafana.localhost and the Traefik dashboard at http://traefik.localhost.
 
 ## Repository layout
 
@@ -50,7 +63,8 @@ src/
   Iron.Host.ControlPlane/  Iron.Host.Fleet/      control plane hosts
   Iron.Shell/                React shell and design system (T15)
 tests/                       Iron.Architecture.Tests holds the build checks
-products/  tools/  infra/    products, developer tools, the laptop stack (later tasks)
+infra/compose/               the laptop platform: compose.yaml, configs, scripts
+products/  tools/            products and developer tools (later tasks)
 docs/                        prd/, adr/, guides/, slices/
 ```
 
@@ -74,6 +88,7 @@ docs/                        prd/, adr/, guides/, slices/
 - `docs/slices/` the slice plans; S1 is the current one and the brief for every build session
 - `docs/adr/` architecture decision records; every decision gets one as it is built
 - `docs/guides/developer-guide.md` how to work on the repository and add a module
+- `docs/guides/local-stack.md` the runbook of the laptop platform
 - `docs/prd/` the Technical Foundation PRD and the Functional Foundation PRD
 
 ## Versions decided for Foundation
@@ -81,8 +96,9 @@ docs/                        prd/, adr/, guides/, slices/
 | Component | Version |
 |---|---|
 | .NET | 10 (LTS) |
-| PostgreSQL | 19 |
+| PostgreSQL | 19 (release candidate image until the GA planned for 2026-11-19) |
 | Node.js | v26.12.0 |
 | React | 19.3 |
 | Mantine | 9.7.3 |
 | AG Grid | Community edition; Enterprise later by decision |
+| Object storage on the laptop | Azurite (Azure Blob stand-in), see ADR-0006 |
