@@ -14,5 +14,6 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0006](0006-object-storage-stand-in.md) | Azurite replaces MinIO as the laptop object storage | Proposed |
 | [0007](0007-core-primitives.md) | Core primitives: results and errors, tenant identifier, ids, time, correlation | Accepted |
 | [0008](0008-data-conventions.md) | Data conventions | Accepted |
+| [0009](0009-api-conventions.md) | API conventions | Accepted |
 
-Coming with their tasks in S1: API conventions (T5), telemetry (T6), permission catalogue and audit protection (T8, T9), identity and sessions (T10), secrets and storage interfaces (T12), the unit runtime (T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).
+Coming with their tasks in S1: telemetry (T6), permission catalogue and audit protection (T8, T9), identity and sessions (T10), secrets and storage interfaces (T12), the unit runtime (T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).

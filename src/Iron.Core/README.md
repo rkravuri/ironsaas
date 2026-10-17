@@ -8,7 +8,8 @@ Shared primitives used by every module and host. No database schema. No dependen
 | `Iron.Core.Tenancy` | `TenantId`, the slug that identifies a tenant everywhere, and `TenantContext`, the one tenant a running unit serves |
 | `Iron.Core.Identifiers` | `Ids.New()`: time-ordered UUID version 7 identifiers |
 | `Iron.Core.Correlation` | `CorrelationId`: the trace id of the current request, returned to clients and shown on error pages |
-| `Iron.Core.Paging` | `PageRequest`, `Page<T>`, and the `ListQuery` model (sort terms, filter terms, fields) that the API parses and the data layer applies |
+| `Iron.Core.Paging` | `PageRequest`, `Page<T>`, the `ListQuery` model (sort terms, filter terms, fields), `ListFields<T>` (the fields a list exposes, with their operators) and `ListValues` (text to typed values) |
+| `Iron.Core.Text` | `Naming`: the snake_case and kebab-case rules |
 | `Iron.Core.Finance` | `Money` and `Currency` |
 | `Iron.Core.Principals` | `ICurrentPrincipal`, who acts in the current request or job, and `SystemPrincipal` for jobs and seeds |
 

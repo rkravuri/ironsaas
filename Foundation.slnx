@@ -47,6 +47,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj" />
     <Project Path="tests/Iron.Core.Tests/Iron.Core.Tests.csproj" />
+    <Project Path="tests/Iron.Api.Tests/Iron.Api.Tests.csproj" />
     <Project Path="tests/Iron.Data.Tests/Iron.Data.Tests.csproj" />
   </Folder>
 </Solution>

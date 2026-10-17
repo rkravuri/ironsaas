@@ -8,6 +8,7 @@ Database conventions for every module (TF-080, TF-220, ADR-0008). No schema of i
 | `Iron.Data.Contexts` | `ModuleDbContext`, the base of every module's DbContext, and `[Schema("...")]` |
 | `Iron.Data.Conventions` | `ModelConventions` (applied to every model) and `AuditStampInterceptor` (fills the audit columns on save) |
 | `Iron.Data.Checks` | `SchemaCheck` (a live database against the conventions) and `ModelCheck` (an EF model against the entity rules) |
+| `Iron.Data.Lists` | `ApplyListQuery`, `ApplyFilters`, `ApplySorts` and `ToPageAsync`: a parsed `ListQuery` applied to an `IQueryable` with the resource's `ListFields` (TF-101) |
 | `Iron.Data` | `AddIronDatabase(connectionString)` and `AddIronDbContext<TContext>()` for hosts |
 
 How a module uses it:

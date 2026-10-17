@@ -1,3 +1,4 @@
+using Iron.Core.Text;
 using Iron.Data.Conventions;
 using Npgsql;
 
@@ -104,23 +105,7 @@ public static class SchemaCheck
         return violations;
     }
 
-    public static bool IsSnakeCase(string? name)
-    {
-        if (string.IsNullOrEmpty(name) || !char.IsAsciiLetterLower(name[0]))
-        {
-            return false;
-        }
-
-        foreach (var character in name)
-        {
-            if (!char.IsAsciiLetterLower(character) && !char.IsAsciiDigit(character) && character != '_')
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    public static bool IsSnakeCase(string? name) => Naming.IsSnakeCase(name);
 
     private static void RequireColumn(List<string> violations, TableInfo table, string name, string dataType, bool nullable = false)
     {

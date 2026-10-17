@@ -22,7 +22,18 @@
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
   </ItemGroup>
 
+  <ItemGroup Label="Api">
+    <!-- Request validation with a fluent interface (Apache-2.0). -->
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <!-- OpenAPI document generation (MIT), same version train as the runtime. -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <!-- Interactive API reference on top of the OpenAPI document (MIT). Development only. -->
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.3" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
+    <!-- In-memory ASP.NET Core server for API tests (MIT). -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
     <!-- xUnit.net v3 (Apache-2.0). Runs on Microsoft Testing Platform v2; the runner is selected in global.json. -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
     <!-- Throw-away PostgreSQL containers for integration tests (MIT). -->

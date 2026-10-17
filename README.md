@@ -14,7 +14,8 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T2 Platform stack with Compose | done |
 | T3 Iron.Core | done |
 | T4 Iron.Data | done |
-| T5 Iron.Api | next |
+| T5 Iron.Api | done |
+| T6 Iron.Telemetry and Iron.Security | next |
 
 ## Prerequisites
 
