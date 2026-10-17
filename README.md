@@ -12,7 +12,9 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 |---|---|
 | T1 Repository skeleton and build checks | done |
 | T2 Platform stack with Compose | done |
-| T3 Iron.Core | next |
+| T3 Iron.Core | done |
+| T4 Iron.Data | done |
+| T5 Iron.Api | next |
 
 ## Prerequisites
 
@@ -38,7 +40,7 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 
 ```bash
 make build     # build every project; warnings are errors
-make test      # run every test project
+make test      # run every test project (the data tests start a PostgreSQL container, so Docker must be running)
 make check     # run only the architecture checks
 make up        # start the laptop platform (PostgreSQL, blob storage, OpenBao, Traefik, telemetry) and wait until healthy
 make down      # stop it; data is kept
@@ -75,6 +77,8 @@ docs/                        prd/, adr/, guides/, slices/
 - Module boundaries: a module may reference shared libraries and `Contracts` projects only. The compiler enforces it through project references; `tests/Iron.Architecture.Tests` names any violation.
 - Another module's `Api`, `Services` and `Data` namespaces are private. The architecture tests read the compiled assemblies and fail on any type reference into them.
 - Every project sits in a folder with its own name; every module has a `Contracts` project inside it.
+- No Foundation assembly reads the system clock directly; time comes from an injected `TimeProvider` (ADR-0007).
+- Every module DbContext passes the model rules: entities derive from the Foundation base classes and business entities carry an owning organisation (ADR-0008).
 
 ## Try the boundary check
 

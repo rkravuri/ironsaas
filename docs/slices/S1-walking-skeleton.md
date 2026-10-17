@@ -74,7 +74,7 @@ app.MapGet("/api/v1/users", ListUsers)
 
 ### 3.3 Tenant binding (TF-003)
 
-A unit reads its tenant id and hostnames once at start. A middleware refuses any request whose Host header is not in that list. Bearer tokens must carry a tenant claim equal to the unit's id. The data layer holds one connection string, read from the unit's secrets path. Every span and log line carries the tenant id. There is no tenant switch anywhere in the code.
+The tenant identifier is a slug such as `acme` (ADR-0007); it is the same in every environment and names the tenant's database, containers, secrets path and default hostname. A unit reads its tenant id and hostnames once at start. A middleware refuses any request whose Host header is not in that list. Bearer tokens must carry a tenant claim equal to the unit's id. The data layer holds one connection string, read from the unit's secrets path. Every span and log line carries the tenant id. There is no tenant switch anywhere in the code.
 
 ### 3.4 Login, sessions and tokens
 
@@ -124,10 +124,11 @@ One React build serves every tenant hostname. Modules register a manifest: name,
 ### 3.11 Build checks in S1
 
 - Module boundary: Contracts projects only (compiler), and the architecture test names any violation. (T1, done)
-- Standard columns and snake_case on every table; no cross-schema foreign keys (schema check against a real database). (T4)
-- Owning organisation on every BusinessRecord (architecture test). (T4)
+- Standard columns and snake_case on every table; no cross-schema foreign keys (schema check against a real database). (T4, done; runs in the pipeline against migrated databases from T7)
+- Owning organisation on every business entity of a product (model check in the architecture tests). (T4, done)
 - Permission or anonymous marker on every endpoint (start-up check and test); fixed anonymous list. (T8)
 - No raw ag-grid import outside the wrapper (eslint). (T16)
+- No direct reads of the system clock; time comes from TimeProvider (T3, done).
 - Warnings as errors, nullable enabled (T1, done); gitleaks on every push (T18).
 
 ### 3.12 Pipeline
@@ -147,10 +148,10 @@ MFA, SSO, lockout, rate limits, role editor, entitlements, flags, settings, emai
 | # | Task | We build | Done when | State |
 |---|---|---|---|---|
 | T1 | Repository skeleton and build checks | Solution, Directory.Build.props and Directory.Packages.props (versions with licences), .editorconfig, Makefile, README, ADR template and first ADRs, architecture test project with the module boundary rule, CI workflow for build and tests, this plan in docs/slices | `dotnet build` passes with warnings as errors; a test reference from one module to another module's Data fails the architecture test naming the file; CI is green | done |
-| T2 | Platform stack with Compose | traefik, postgres 19, Azurite, openbao, otel-collector, tempo, loki, prometheus, grafana; profiles telemetry and ci; hostnames, optional TLS; Grafana data sources and one request dashboard; make up, up-slim, up-ci, down, reset, logs; runbook | `make up` brings every platform container to healthy; Grafana shows the three data sources; `make up-slim` starts without telemetry | done, to verify on the laptop |
-| T3 | Iron.Core | Result and Error types, Clock, Ids (UUIDv7), TenantContext, correlation, paging types, validation primitives, unit tests | Tests pass; the project has no third-party dependencies | next |
-| T4 | Iron.Data | Base entities (Entity, Audited, BusinessRecord), snake_case and schema conventions, version column, module DbContext base with its own migrations history, schema check with Testcontainers, owning-organisation check | The schema check fails on a table without standard columns and on a cross-schema foreign key; the owning-organisation check fails on a test entity without it | |
-| T5 | Iron.Api | Endpoint groups, module endpoint registration, snake_case JSON, list envelope, problem details, FluentValidation with field errors, ListQuery grammar with whitelist, OpenAPI and Scalar | A sample endpoint returns the envelope; page size 500 is capped to 200 with a note in meta; a non-whitelisted filter field returns a problem naming the field | |
+| T2 | Platform stack with Compose | traefik, postgres 19, Azurite, openbao, otel-collector, tempo, loki, prometheus, grafana; profiles telemetry and ci; hostnames, optional TLS; Grafana data sources and one request dashboard; make up, up-slim, up-ci, down, reset, logs; runbook | `make up` brings every platform container to healthy; Grafana shows the three data sources; `make up-slim` starts without telemetry | done |
+| T3 | Iron.Core | Result and Error types, TenantId and TenantContext, Ids (UUID v7), CorrelationId, paging and ListQuery model, Money and Currency, unit tests, build check against direct clock reads | Tests pass; the project has no third-party dependencies | done |
+| T4 | Iron.Data | Base entities (Entity, Audited, AppendOnly, BusinessRecord, ISoftDeletable), snake_case and schema conventions, version column, audit stamp interceptor, module DbContext base with its own migrations history, ICurrentPrincipal, schema check (live database) and model check, Testcontainers tests, architecture test over every module context | The schema check fails on a table without standard columns and on a cross-schema foreign key; the owning-organisation check fails on a test entity without it | done, to verify on the laptop |
+| T5 | Iron.Api | Endpoint groups, module endpoint registration, snake_case JSON, list envelope, problem details, FluentValidation with field errors, ListQuery grammar with whitelist, OpenAPI and Scalar | A sample endpoint returns the envelope; page size 500 is capped to 200 with a note in meta; a non-whitelisted filter field returns a problem naming the field | next |
 | T6 | Iron.Telemetry and Iron.Security (thin) | OpenTelemetry traces, metrics and logs, Npgsql and HttpClient instrumentation, tenant id on every span, correlation middleware, security headers, cookie policy, CORS from configuration, health endpoints | A request shows one trace in Tempo with API and database spans; every response carries the TF-070 headers and X-Correlation-Id | |
 | T7 | Hosts: Iron.Host.Api and Iron.Host.Worker | IModule pattern, explicit composition, tenant binding, hostname check middleware, migrate and seed commands, Dockerfiles, worker heartbeat trace | The API image starts bound to one tenant; a request with another hostname is refused; migrate applies all module migrations; the heartbeat trace carries the tenant id | |
 | T8 | Iron.Authorization (thin) | Permission type and catalogue, RequirePermission metadata, start-up check and allow-list test, roles and assignments tables, seeded tenant-administrator role, evaluation with 60-second cache, fail closed, 403 problem, denial audit | Start-up fails naming an endpoint without a permission; a principal without the permission gets 403 and an audit row | |

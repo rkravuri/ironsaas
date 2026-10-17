@@ -48,6 +48,26 @@ docs/                        prd/, adr/, guides/, slices/
 
 The messages name the project file or the assembly and the forbidden reference.
 
+## Writing code: the Core conventions (ADR-0007)
+
+- A service returns `Result` or `Result<T>` for expected failures and never throws for them. `return Error.NotFound("identity.user.not_found", "The user does not exist.");` reads as plain code. Exceptions are for programmer errors and infrastructure failures.
+- Error codes are lowercase dotted segments, at least two: `module.resource.reason`. The constructor rejects other shapes.
+- Time: inject `TimeProvider` and call `GetUtcNow()`. Never `DateTime.UtcNow`; the build fails on it. Store UTC.
+- Ids: `Ids.New()` (UUID version 7). Never `Guid.NewGuid()` for a key.
+- Argument checks: `ArgumentNullException.ThrowIfNull(x)`, `ArgumentException.ThrowIfNullOrWhiteSpace(s)`, `ArgumentOutOfRangeException.ThrowIfNegative(n)`.
+- The tenant is `TenantContext`, a singleton bound at start. Never pass a tenant id through business code; the unit serves one tenant.
+- Lists take a `ListQuery` and return a `Page<T>`.
+
+## Writing an entity and a module context (ADR-0008)
+
+- Pick the base class: `BusinessRecord` for business and master data (it needs an owning organisation), `AuditedEntity` for platform data that changes, `AppendOnlyEntity` for rows that are never changed or deleted. Add `ISoftDeletable` when a record may be deleted by users.
+- Give the entity a private parameterless constructor for Entity Framework and public constructors for your code. Change state through methods, not public setters.
+- Never set `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` or `Version`. The save interceptor fills them from `TimeProvider` and `ICurrentPrincipal`.
+- The module's context derives from `ModuleDbContext`, carries `[Schema("module")]`, exposes a `DbSet<T>` per entity and maps module-internal relations and indexes in `ConfigureModule`. Snake_case names, the key, the version token, the soft-delete filter and the append-only comment come from the conventions.
+- Never add a foreign key to a table of another module. Store the other record's id as a `Guid`.
+- Register the context in the host with `services.AddIronDbContext<MyDbContext>()` after `services.AddIronDatabase(connectionString)`.
+- Tests that touch the database use the `PostgresFixture` pattern from `tests/Iron.Data.Tests`: a throw-away container, `EnsureCreated` from the context, `FakeTimeProvider` and a fixed principal.
+
 ## Add a module
 
 Example: a new module `Iron.Settings`.

@@ -12,9 +12,23 @@
     <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
+  <ItemGroup Label="Data">
+    <!-- Entity Framework Core (MIT). All Microsoft.EntityFrameworkCore.* packages stay on the same version. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+    <!-- Npgsql provider for EF Core (PostgreSQL licence). -->
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- snake_case table and column names (Apache-2.0). -->
+    <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <!-- xUnit.net v3 (Apache-2.0). Runs on Microsoft Testing Platform v2; the runner is selected in global.json. -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <!-- Throw-away PostgreSQL containers for integration tests (MIT). -->
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.14.0" />
+    <!-- FakeTimeProvider for tests (MIT). -->
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.9.0" />
   </ItemGroup>
 
 </Project>
