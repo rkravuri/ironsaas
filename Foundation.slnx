@@ -1,0 +1,50 @@
+<Solution>
+  <Folder Name="/solution items/">
+    <File Path="README.md" />
+    <File Path="Makefile" />
+    <File Path="global.json" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path=".editorconfig" />
+  </Folder>
+  <Folder Name="/src/shared/">
+    <Project Path="src/Iron.Core/Iron.Core.csproj" />
+    <Project Path="src/Iron.Data/Iron.Data.csproj" />
+    <Project Path="src/Iron.Api/Iron.Api.csproj" />
+    <Project Path="src/Iron.Telemetry/Iron.Telemetry.csproj" />
+    <Project Path="src/Iron.Security/Iron.Security.csproj" />
+  </Folder>
+  <Folder Name="/src/modules/Iron.Authorization/">
+    <Project Path="src/Iron.Authorization/Iron.Authorization.csproj" />
+    <Project Path="src/Iron.Authorization/Contracts/Iron.Authorization.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/modules/Iron.Audit/">
+    <Project Path="src/Iron.Audit/Iron.Audit.csproj" />
+    <Project Path="src/Iron.Audit/Contracts/Iron.Audit.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/modules/Iron.Identity/">
+    <Project Path="src/Iron.Identity/Iron.Identity.csproj" />
+    <Project Path="src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/modules/Iron.Files/">
+    <Project Path="src/Iron.Files/Iron.Files.csproj" />
+    <Project Path="src/Iron.Files/Contracts/Iron.Files.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/modules/Iron.Tenancy/">
+    <Project Path="src/Iron.Tenancy/Iron.Tenancy.csproj" />
+    <Project Path="src/Iron.Tenancy/Contracts/Iron.Tenancy.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/modules/Iron.Fleet/">
+    <Project Path="src/Iron.Fleet/Iron.Fleet.csproj" />
+    <Project Path="src/Iron.Fleet/Contracts/Iron.Fleet.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/hosts/">
+    <Project Path="src/Iron.Host.Api/Iron.Host.Api.csproj" />
+    <Project Path="src/Iron.Host.Worker/Iron.Host.Worker.csproj" />
+    <Project Path="src/Iron.Host.ControlPlane/Iron.Host.ControlPlane.csproj" />
+    <Project Path="src/Iron.Host.Fleet/Iron.Host.Fleet.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj" />
+  </Folder>
+</Solution>

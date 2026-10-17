@@ -1,0 +1,27 @@
+<Project>
+
+  <!--
+    Build settings shared by every project in the repository (ADR-0004).
+    A project file should only list what is special about that project.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- A warning is a problem we have not fixed yet. The build stops on it. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <!-- The same source always produces the same binary. -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Company>IronSaaS</Company>
+    <Product>Foundation</Product>
+  </PropertyGroup>
+
+</Project>

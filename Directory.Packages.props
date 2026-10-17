@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    Central package versions (ADR-0003).
+    Every NuGet package used anywhere in the repository is listed here exactly once, with its licence.
+    A project references a package by name only: <PackageReference Include="xunit.v3" />.
+    Rule: open source with a licence that allows commercial use at no cost. A commercial
+    component needs its own ADR. Versions are exact and are upgraded on purpose.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="Testing">
+    <!-- xUnit.net v3 (Apache-2.0). Runs on Microsoft Testing Platform v2; the runner is selected in global.json. -->
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+  </ItemGroup>
+
+</Project>

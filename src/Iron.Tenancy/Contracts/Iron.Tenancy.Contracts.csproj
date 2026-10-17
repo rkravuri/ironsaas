@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Tenancy: interfaces and DTOs other modules may use. References Iron.Core only. -->
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Core/Iron.Core.csproj" />
+  </ItemGroup>
+
+</Project>

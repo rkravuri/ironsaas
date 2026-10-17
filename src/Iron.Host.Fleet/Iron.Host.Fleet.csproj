@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../Iron.Core/Iron.Core.csproj" />
+    <ProjectReference Include="../Iron.Data/Iron.Data.csproj" />
+    <ProjectReference Include="../Iron.Api/Iron.Api.csproj" />
+    <ProjectReference Include="../Iron.Telemetry/Iron.Telemetry.csproj" />
+    <ProjectReference Include="../Iron.Security/Iron.Security.csproj" />
+    <ProjectReference Include="../Iron.Tenancy/Iron.Tenancy.csproj" />
+    <ProjectReference Include="../Iron.Fleet/Iron.Fleet.csproj" />
+    <ProjectReference Include="../Iron.Identity/Iron.Identity.csproj" />
+    <ProjectReference Include="../Iron.Authorization/Iron.Authorization.csproj" />
+    <ProjectReference Include="../Iron.Audit/Iron.Audit.csproj" />
+  </ItemGroup>
+
+</Project>

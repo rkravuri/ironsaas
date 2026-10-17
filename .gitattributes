@@ -1,0 +1,7 @@
+# Normalise line endings to LF. Windows and WSL developers share this repository.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+*.pdf binary

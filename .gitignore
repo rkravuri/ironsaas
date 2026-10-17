@@ -1,0 +1,32 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+artifacts/
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.swp
+
+# Node (the shell)
+node_modules/
+dist/
+.pnpm-store/
+
+# Local stack (from T2): generated per-tenant unit files and local certificates
+infra/compose/units/*/
+!infra/compose/units/README.md
+infra/compose/certs/
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
