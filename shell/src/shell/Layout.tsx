@@ -21,7 +21,7 @@ export function Layout() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Toggle navigation" />
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label={t("app.toggleNavigation")} />
             <Title order={4}>{t("app.name")}</Title>
             <Text c="dimmed" size="sm" visibleFrom="sm">
               {window.location.hostname}

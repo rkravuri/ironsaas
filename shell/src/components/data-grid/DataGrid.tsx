@@ -209,7 +209,8 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
           {t("grid.capped", { size: capped.page_size, max: capped.max_page_size })}
         </Alert>
       )}
-      <div style={{ flex: 1, minHeight: 360 }} role="region" aria-label={label}>
+      {/* Tabular figures: numbers line up in a column. */}
+      <div style={{ flex: 1, minHeight: 360, fontVariantNumeric: "tabular-nums" }} role="region" aria-label={label}>
         <AgGridReact<T>
           theme={dataGridTheme}
           columnDefs={columnDefs}

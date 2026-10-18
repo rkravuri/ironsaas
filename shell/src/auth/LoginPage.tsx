@@ -55,13 +55,13 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
 
   return (
     <Container size={420} py="xl">
-      <Title order={2} ta="center" mb="lg">
+      <Title order={2} variant="display" ta="center" mb="lg">
         {t("login.title")}
       </Title>
       <Text c="dimmed" size="sm" ta="center" mb="md">
         {t("app.tenant", { hostname: window.location.hostname })}
       </Text>
-      <Paper withBorder shadow="sm" p="lg" radius="md">
+      <Paper withBorder shadow="sm" p="lg">
         <form onSubmit={submit} noValidate>
           <Stack>
             <TextInput label={t("login.loginId")} autoComplete="username" autoFocus={autoFocus} required {...form.getInputProps("loginId")} />

@@ -8,6 +8,8 @@ export const dataGridTheme = themeQuartz.withParams({
   accentColor: "var(--mantine-primary-color-filled)",
   backgroundColor: "var(--mantine-color-body)",
   foregroundColor: "var(--mantine-color-text)",
+  // The pager and other subtle text: Mantine mixes the foreground at half, which falls under 4.5:1.
+  subtleTextColor: "var(--mantine-color-dimmed)",
   borderColor: "var(--mantine-color-default-border)",
   headerBackgroundColor: "var(--mantine-color-default-hover)",
   headerTextColor: "var(--mantine-color-text)",

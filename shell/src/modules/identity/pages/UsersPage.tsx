@@ -22,7 +22,7 @@ export function UsersPage() {
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchUsers(query, signal), []);
 
   return (
-    <Stack style={{ height: "calc(100vh - 56px - 2 * var(--mantine-spacing-md))" }}>
+    <Stack style={{ height: "calc(100dvh - var(--app-shell-header-height) - 2 * var(--app-shell-padding))" }}>
       <Title order={2}>{t("users.title")}</Title>
       <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} />
     </Stack>

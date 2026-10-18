@@ -4,7 +4,8 @@
     "loading": "Loading…",
     "signOut": "Sign out",
     "signedInAs": "Signed in as {{name}}",
-    "tenant": "Tenant {{hostname}}"
+    "tenant": "Tenant {{hostname}}",
+    "toggleNavigation": "Toggle navigation"
   },
   "login": {
     "title": "Sign in",
