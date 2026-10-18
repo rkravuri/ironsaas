@@ -27,6 +27,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Later items
 
+- The keyboard test against the smoke tenant (shell/e2e/users.spec.ts) is written but was not run in the D3 session: the control plane was not running, so make update-unit could not deploy the rebuilt shell image (foundation/iron-shell:dev now holds the D3 build). To run it: make up-control, make update-unit TENANT=smoke, make e2e.
 - Saved views on the grid (S5); the approval and comment panels get their behaviour with the workflow and comments slices; an attachment panel on a real record wires the storage API of its module.
 - The Users page opens a dialog from the row's own data; once the Identity API reads a user by id, it becomes a user record page on RecordPage.
 - The grid-import lint test (src/lint.test.ts, the first case) failed once in a full make shell-check on main run straight after make test, and passed alone and in the next full run; its first case takes 5 to 9 seconds of type-checked linting under a 60-second limit. If it recurs, give the lint tests their own worker or a longer limit.
