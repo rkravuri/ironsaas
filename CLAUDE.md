@@ -5,7 +5,7 @@ Foundation is the IronSaaS enterprise SaaS platform (namespace `Iron.*`). Read t
 ## Commands
 
 - `.NET`: `make build`, `make test` (386+ tests; the data tests start PostgreSQL, Azurite and OpenBao with Testcontainers, so Docker must run), `make check` (architecture tests only), `make format` (run it before you finish; CI verifies).
-- Shell: `make shell-install` once, `make shell-check` (lint, type check, tests, build), `make shell-dev`.
+- Shell: `make shell-install` once, `make shell-check` (lint, type check, tests, build), `make shell-a11y` (the gallery scan), `make shell-dev`.
 - Migrations: `make ef-add MODULE=<Module> NAME=<WhatChanged>` after an entity change; commit the generated files; never edit a committed migration.
 - The stack: `make up`, `make images`, `make provision TENANT=x`, `make update-unit TENANT=x`, `make smoke`, `make e2e`, `make integration`. The runbook is `docs/guides/local-stack.md`.
 

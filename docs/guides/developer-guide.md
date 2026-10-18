@@ -6,7 +6,7 @@ How to work on the repository and how to add the things a product needs: a modul
 
 - Develop in WSL 2 (Ubuntu) or on Linux. Clone inside the Linux file system (for example `~/src/foundation`), not under `/mnt/c`; builds are many times faster there.
 - Install the .NET SDK 10.0. `dotnet --version` must print 10.0.x. `global.json` accepts any 10.0.1xx feature band.
-- Commands: `make build`, `make test`, `make check`, `make format` for the .NET side; `make shell-install`, `make shell-check`, `make shell-dev` for the shell. `make` alone lists them.
+- Commands: `make build`, `make test`, `make check`, `make format` for the .NET side; `make shell-install`, `make shell-check`, `make shell-a11y`, `make shell-dev` for the shell. `make` alone lists them.
 - Before you push: `make test` and `make shell-check` are green and `make format` made no change; CI checks all three.
 - Every pull request follows `definition-of-done.md`, summarised in `.github/pull_request_template.md`.
 
@@ -204,13 +204,18 @@ The fleet worker needs nothing else: it runs the steps of the job's kind in orde
 A page reads the signed-in principal with `useSession()`; it never checks a permission itself beyond what the manifest declares, since the API's answer is the one that counts. Errors from `request()` are `ApiError` with the correlation id; the error views show it.
 
 
+## Styling a page (D1, ADR-0024, ADR-0025)
+
+A page uses the components as the theme styles them and names colours by meaning: `color="danger"` on an alert, `c="dimmed"` on a hint, a `var(--iron-...)` variable from `shell/src/design/tokens.ts` when a style needs a value. A hex, `rgb()`, `hsl()`, a CSS colour name or a Mantine palette name (`red`, `gray.6`) in a `style`, `styles`, `vars` or `gradient` object or in `c`, `bg`, `bd`, `color`, `fill` or `stroke` fails lint, and the message says what to use. The title of a moment (the login page, a home page, an opener) says `<Title order={2} variant="display">` to take the display family; the work area keeps the reading family. The gallery (`make shell-dev`, then http://localhost:5173/gallery, with `?scheme=dark` and `?density=compact` to switch) shows every token and every themed component in both schemes and both densities; a new component or token gets its example there, and `make shell-a11y` runs the WCAG 2.1 AA scan on it and leaves a screenshot of each run in `shell/test-results/`. The density setting (`useDensity`) and the reduced-motion hook (`usePrefersReducedMotion`) live in `shell/src/design/`.
+
 ## Proving a change (T17, T18, ADR-0022)
 
 | Level | Command | What it proves |
 |---|---|---|
 | Unit and integration tests | `make test`, `make shell-check` | the code, on real platform services in containers |
+| Accessibility | `make shell-a11y` | the gallery against WCAG 2.1 AA with axe in a real browser; no stack needed |
 | Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace |
 | Browser | `make e2e` | login and the grid in a real browser |
 | Pipeline's stage | `make integration` | platform and control plane from images, then the smoke |
 
-Every pull request runs the first level in CI; every merge to main builds the images and runs the pipeline's stage on the runner. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.
+Every pull request runs the first two levels in CI; every merge to main builds the images and runs the pipeline's stage on the runner. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.
