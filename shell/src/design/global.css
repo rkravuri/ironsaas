@@ -1,0 +1,15 @@
+/*
+ * The one global rule of the design system (ADR-0024 item 6): with reduced motion, every transition and animation
+ * becomes a cut. Near zero rather than none, so transitionend and animationend still fire for code that waits on
+ * them. Values live in src/design/tokens.ts; this file holds no colour and no size.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

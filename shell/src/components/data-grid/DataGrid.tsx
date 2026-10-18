@@ -20,6 +20,8 @@ import {
 } from "ag-grid-community";
 import { ApiError } from "@/api/client";
 import type { ListMeta } from "@/api/client";
+import { useDensity } from "@/design/density";
+import { tokens } from "@/design/tokens";
 import { buildListQuery, defaultPageSize, filtersFromGrid, maxPageSize, pageFromRows, sortFromGrid, type GridFilterModel, type SortTerm } from "./list-query";
 import { dataGridTheme } from "./theme";
 
@@ -77,6 +79,7 @@ const dateFilterParams = { filterOptions: ["equals", "lessThan", "greaterThan"],
  */
 export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize, defaultSort = [], label, refreshKey }: DataGridProps<T>) {
   const { t } = useTranslation();
+  const density = useDensity();
   const apiRef = useRef<GridApi<T> | null>(null);
   const [problem, setProblem] = useState<DataGridProblem | undefined>();
   const [capped, setCapped] = useState<ListMeta | undefined>();
@@ -218,6 +221,7 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
           paginationPageSize={initialPageSize}
           paginationPageSizeSelector={[25, 50, 100, 200]}
           onGridReady={onGridReady}
+          rowHeight={tokens.density.rowHeight[density]}
           overlayNoRowsTemplate={`<span>${t("grid.empty")}</span>`}
           suppressCellFocus={false}
           ensureDomOrder

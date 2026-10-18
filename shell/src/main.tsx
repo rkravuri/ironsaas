@@ -1,5 +1,8 @@
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "@fontsource-variable/source-sans-3";
+import "@fontsource-variable/fraunces";
+import "@/design/global.css";
 import "@/i18n";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -8,8 +11,9 @@ import { Notifications } from "@mantine/notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import { SessionProvider } from "@/auth/session";
+import { applyDensity, readDensity } from "@/design/density";
 import { ErrorBoundary } from "@/shell/ErrorBoundary";
-import { theme } from "./theme";
+import { cssVariablesResolver, theme } from "./theme";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,9 +21,12 @@ const queryClient = new QueryClient({
   },
 });
 
+// The density is on the root before anything renders, so the first paint is already the viewer's.
+applyDensity(readDensity());
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="auto">
+    <MantineProvider theme={theme} defaultColorScheme="auto" cssVariablesResolver={cssVariablesResolver}>
       <Notifications position="top-right" />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
