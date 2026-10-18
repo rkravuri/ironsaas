@@ -53,7 +53,9 @@
     "lastLogin": "Last sign-in",
     "never": "Never",
     "empty": "No users yet.",
-    "count": "{{count}} of {{total}} shown"
+    "count": "{{count}} of {{total}} shown",
+    "email": "Email",
+    "created": "Created"
   },
   "profile": {
     "title": "My profile",
@@ -63,5 +65,10 @@
     "permissions": "Permissions",
     "sessionEnds": "Session ends {{when}}",
     "none": "None"
+  },
+  "grid": {
+    "columns": "Columns",
+    "empty": "Nothing to show.",
+    "capped": "The page size was limited to {{max}} rows (asked for more than the API allows); showing {{size}} per page."
   }
 }

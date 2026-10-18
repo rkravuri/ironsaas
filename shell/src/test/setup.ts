@@ -7,7 +7,8 @@ afterEach(() => {
   cleanup();
 });
 
-// jsdom has no matchMedia; Mantine asks for the colour scheme.
+// jsdom has no matchMedia; Mantine asks for the colour scheme. (A test file in the node environment has no window.)
+if (typeof window !== "undefined") {
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({
@@ -28,3 +29,4 @@ class ResizeObserverStub {
   disconnect() {}
 }
 Object.defineProperty(window, "ResizeObserver", { writable: true, value: ResizeObserverStub });
+}
