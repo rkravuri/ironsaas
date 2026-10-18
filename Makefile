@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -30,6 +30,39 @@ format: ## Apply the code style from .editorconfig
 clean: ## Remove build output
 	dotnet clean Foundation.slnx
 	find . -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+
+DEV_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=postgres;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
+DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost
+TAG ?= dev
+
+run-api: env ## Run the tenant API host on the laptop against the platform (http://localhost:5100)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	ASPNETCORE_URLS=http://localhost:5100 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) \
+	dotnet run --project src/Iron.Host.Api
+
+run-worker: env ## Run the tenant worker host on the laptop against the platform (http://localhost:5101)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	ASPNETCORE_URLS=http://localhost:5101 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) \
+	Heartbeat__Interval=00:00:15 dotnet run --project src/Iron.Host.Worker
+
+migrate: env ## Run the tenant API image command "migrate" against the laptop database (dotnet run)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	$(DEV_TENANT) $(DEV_DATABASE) dotnet run --project src/Iron.Host.Api -- migrate
+
+ef-add: ## Add a migration for a module context: make ef-add MODULE=Authorization NAME=Initial
+	@test -n "$(MODULE)" && test -n "$(NAME)" || (echo "usage: make ef-add MODULE=Authorization NAME=Initial" && exit 1)
+	dotnet tool restore
+	dotnet ef migrations add $(NAME) --project src/Iron.$(MODULE) --startup-project src/Iron.$(MODULE) --context $(MODULE)DbContext --output-dir Data/Migrations
+
+ef-script: ## Print the SQL of a module's migrations: make ef-script MODULE=Authorization
+	dotnet tool restore
+	dotnet ef migrations script --project src/Iron.$(MODULE) --startup-project src/Iron.$(MODULE) --context $(MODULE)DbContext --idempotent
+
+images: ## Build the four host images (foundation/iron-*:$(TAG))
+	docker build -f src/Iron.Host.Api/Dockerfile -t foundation/iron-api:$(TAG) .
+	docker build -f src/Iron.Host.Worker/Dockerfile -t foundation/iron-worker:$(TAG) .
+	docker build -f src/Iron.Host.ControlPlane/Dockerfile -t foundation/iron-control-plane:$(TAG) .
+	docker build -f src/Iron.Host.Fleet/Dockerfile -t foundation/iron-fleet:$(TAG) .
 
 # ---------------------------------------------------------------- laptop platform (infra/compose)
 env: ## Create infra/compose/.env with random local credentials (runs once)

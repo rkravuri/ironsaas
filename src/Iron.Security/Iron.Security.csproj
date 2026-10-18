@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Iron.Security: secure defaults for the web surface (TF-070, ADR-0010). Secrets and encryption follow in T12 and S3. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Iron.Core/Iron.Core.csproj" />
   </ItemGroup>

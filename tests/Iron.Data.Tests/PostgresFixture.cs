@@ -1,6 +1,7 @@
 using Iron.Core.Principals;
 using Iron.Data.Tests.Sample;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
@@ -50,7 +51,8 @@ public sealed class PostgresFixture : IAsyncLifetime
         services.AddSingleton(time);
         services.AddSingleton(principal);
         services.AddIronDatabase(ConnectionString);
-        services.AddIronDbContext<SampleDbContext>();
+        // The sample context is created with EnsureCreated and has no migrations; the migrate command must still run over it.
+        services.AddIronDbContext<SampleDbContext>(options => options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
         return services.BuildServiceProvider();
     }
 }

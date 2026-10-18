@@ -23,3 +23,5 @@ Conventions that come with Iron.Core (ADR-0007):
 - Validation of request bodies is done in the API layer (T5). Iron.Core only carries the result shape (`FieldError`).
 
 Tests: `tests/Iron.Core.Tests`.
+
+`Iron.Core.Permissions`: `Permission` (`module.resource.action`, description, `Risk`) and `Iron.Core.Principals.AnonymousPrincipal` were added in T8.

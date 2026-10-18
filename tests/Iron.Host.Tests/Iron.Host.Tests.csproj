@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Starts each of the four hosts in memory with its real module list: the start-up checks pass, the tenant binding holds, and the anonymous allow-list is the fixed one. No database. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Iron.Api/Iron.Api.csproj" />
+    <ProjectReference Include="../../src/Iron.Host.Api/Iron.Host.Api.csproj" />
+    <ProjectReference Include="../../src/Iron.Host.Worker/Iron.Host.Worker.csproj" />
+    <ProjectReference Include="../../src/Iron.Host.ControlPlane/Iron.Host.ControlPlane.csproj" />
+    <ProjectReference Include="../../src/Iron.Host.Fleet/Iron.Host.Fleet.csproj" />
+  </ItemGroup>
+
+</Project>

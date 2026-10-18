@@ -15,7 +15,10 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T3 Iron.Core | done |
 | T4 Iron.Data | done |
 | T5 Iron.Api | done |
-| T6 Iron.Telemetry and Iron.Security | next |
+| T6 Iron.Telemetry and Iron.Security | done |
+| T7 Hosts | done |
+| T8 Iron.Authorization | done |
+| T9 Iron.Audit | next |
 
 ## Prerequisites
 
@@ -45,6 +48,11 @@ make test      # run every test project (the data tests start a PostgreSQL conta
 make check     # run only the architecture checks
 make up        # start the laptop platform (PostgreSQL, blob storage, OpenBao, Traefik, telemetry) and wait until healthy
 make down      # stop it; data is kept
+make run-api   # run the tenant API host on http://localhost:5100 against the platform
+make run-worker # run the tenant worker host on http://localhost:5101 (heartbeat every 15 s)
+make migrate   # run the migrate command against the laptop database
+make images    # build the four host images foundation/iron-*:dev
+make ef-add MODULE=Authorization NAME=Initial   # generate a migration for a module context (dotnet ef via the tool manifest)
 ```
 
 `make` with no target lists every command. The platform runbook is `docs/guides/local-stack.md`. After `make up`, Grafana is at http://grafana.localhost and the Traefik dashboard at http://traefik.localhost.

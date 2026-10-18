@@ -1,5 +1,6 @@
 using Iron.Core.Correlation;
 using Iron.Core.Results;
+using Iron.Telemetry.Correlation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -58,7 +59,7 @@ public static class ProblemFactory
             Instance = context?.Request.Path.Value,
         };
         problem.Extensions[ErrorCodeKey] = error.Code;
-        problem.Extensions[CorrelationIdKey] = CorrelationId.Current().Value;
+        problem.Extensions[CorrelationIdKey] = (context is null ? CorrelationId.Current() : RequestCorrelation.Get(context)).Value;
         if (error.Fields.Count > 0)
         {
             problem.Extensions[ErrorsKey] = error.Fields.Select(f => new FieldProblem(f.Field, f.Code, f.Message)).ToArray();

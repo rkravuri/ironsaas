@@ -1,9 +1,14 @@
 # Iron.Authorization
 
-Permission catalogue, roles, role assignments with scope, record-level policies, segregation of duties, delegation. Schema: `authz`.
+Schema `authz`. Permissions, roles and role assignments (TF-030 to TF-033; thin in S1, ADR-0012).
 
-Slice S1 (T8): permissions declared in code, the start-up check, roles and assignments tables with a seeded tenant-administrator role, permission evaluation with a 60-second cache, denial handling.
+| Folder | Holds |
+|---|---|
+| `Contracts/` | `AuthorizationPermissions` (`authz.roles.read`, `authz.roles.manage`, `authz.assignments.manage`), `SystemRoles`, `IRoleAssignments` for other modules (Identity assigns the first administrator), `AuthorizationErrors` |
+| `Data/` | `AuthorizationDbContext`, `Role` (permissions as a text array), `RoleAssignment` (tenant scope in S1), the design-time factory, generated `Migrations/` |
+| `Services/` | `PermissionEvaluator` (60-second cache, fail closed, denial audit, `authz.denials` metric), `RoleAssignments`, `AuthorizationSeeder` (system roles from the catalogue), `PermissionCacheOptions` |
+| `Api/` | `GET /api/v1/roles` with the list grammar, permission `authz.roles.read` |
 
-Folders: `Api/` endpoints (thin), `Services/` business logic (plain classes), `Data/` entities, repositories and migrations for this module's schema, `Contracts/` the public interfaces and DTOs other modules may use (its own project, `Iron.Authorization.Contracts`).
+Configuration: `Authorization:CacheSeconds` (default and maximum 60; 0 reads the database on every check).
 
-Only `Contracts/` is public. Another module may reference `Iron.Authorization.Contracts` and nothing else from this folder; the build checks enforce it.
+Model change: edit the entity, then `make ef-add MODULE=Authorization NAME=<WhatChanged>` and commit `Data/Migrations`. The test `ModelTests` fails until the migration exists.

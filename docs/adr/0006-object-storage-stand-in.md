@@ -1,6 +1,6 @@
 # ADR-0006: Azurite replaces MinIO as the laptop object storage
 
-**Status:** Proposed (confirm before T12)
+**Status:** Accepted (confirmed by the product owner on 2026-10-18)
 **Date:** 2026-10-18
 **Decided by:** Product owner and architect
 

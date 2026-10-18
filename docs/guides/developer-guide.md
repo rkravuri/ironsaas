@@ -77,6 +77,13 @@ The messages name the project file or the assembly and the forbidden reference.
 - Never catch exceptions to return an error status; let the unexpected exception handler produce the 500 problem with the correlation id. Return `Error`s for expected failures.
 - The OpenAPI document and the Scalar browser are at `/openapi/v1.json` and `/scalar/v1` in Development.
 
+## Observability and security in a host (ADR-0010)
+
+- `builder.AddIronTelemetry("iron-api", t => t.TenantId = ...)` then `app.UseIronTelemetry()` first in the pipeline. Every request gets a trace, the response carries `X-Correlation-Id`, and metrics and logs flow to the collector. Set `OTEL_EXPORTER_OTLP_ENDPOINT` when the collector is not on `localhost:4317`.
+- `builder.Services.AddIronSecurity(builder.Configuration)` then `app.UseIronSecurity()` after `UseIronApi()`. Allowed browser origins go in `Security:Cors:AllowedOrigins`; the shell needs none.
+- `builder.Services.AddIronHealth()` plus `app.MapIronHealth()`; a module or infrastructure adds readiness checks with the tag `ready` (`AddIronDatabaseHealthCheck()` for PostgreSQL).
+- Log through `ILogger<T>` with structured values (`logger.LogInformation("Tenant {TenantId} provisioned", id)`); never string-concatenate values into the message. Do not log secrets or personal data.
+
 ## Add a module
 
 Example: a new module `Iron.Settings`.
@@ -98,3 +105,37 @@ Same steps under `products/<Name>/`, with namespace `<Name>` (for example `Procu
 ## Write an ADR
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).
+
+## Hosts and unit commands (T7)
+
+A host's `Program.cs` is the only place that decides what runs in a process. It has one shape:
+
+1. `HealthProbe.IsCommand(args)`: answer the `health` command without building the host.
+2. `TenantBinding.FromConfiguration`: bind to one tenant or stop.
+3. List the modules: `IReadOnlyList<IModule> modules = [...]`.
+4. Register the shared libraries, then `AddModules`.
+5. Build; if `DatabaseCommands.IsCommand(args)`, run `migrate`, `seed` or `schema-check` and exit.
+6. Pipeline order: `UseIronTelemetry`, `UseIronApi`, `UseIronSecurity`, `UseIronTenant`, then endpoints.
+
+Adding a module to a host means adding one line to the list. Adding reference data means one `ISeeder` registered by the module. Adding a table means a migration in the module's project; `migrate` picks it up because the module context is registered with `AddIronDbContext`.
+
+On the laptop: `make run-api` serves http://localhost:5100 bound to tenant `dev` for hostnames `localhost` and `dev.localhost`; `make run-worker` runs the worker on http://localhost:5101 with a heartbeat every 15 seconds; `make migrate` runs the migrate command against the laptop database; `make images` builds the four images.
+
+
+## An endpoint with a permission (T8)
+
+1. Declare the permission in the module's Contracts project: `public static readonly Permission UsersRead = new("identity.users.read", "List and view users", Risk.Low);` and list it in the module's `Permissions`.
+2. Put it on the endpoint or the group: `endpoints.MapApiGroup("users").RequirePermission(IdentityPermissions.UsersRead);`.
+3. Run the host. It starts only when every endpoint has a permission or `.AllowAnonymous()`; the message names what is missing.
+4. The filter runs before the handler: 401 for nobody, 403 `authz.permission_denied` (with the permission named) for a principal without it, and a denial audit event. OpenAPI shows "Requires permission" on the operation.
+
+Anonymous endpoints are the short list of TF-030: health, login, recovery, invitation acceptance, public branding. `Iron.Host.Tests` keeps the list fixed; adding to it is a reviewed change.
+
+## A table and its migration (T8)
+
+1. Add or change the entity in the module's `Data/` folder (derive from `AuditedEntity`, `AppendOnlyEntity` or `BusinessRecord`) and map it in `ConfigureModule`.
+2. Generate the migration: `make ef-add MODULE=Authorization NAME=AddRoleColour`. The first time, `dotnet tool restore` installs `dotnet-ef` from `.config/dotnet-tools.json`. The generated files land in `src/Iron.<Module>/Data/Migrations`; read the `Up` method once, then commit them with the entity change.
+3. `make test`: the module's `ModelTests` passes only when the migration matches the model; the schema check runs over the migrated schema.
+4. Apply it: `make migrate` on the laptop; the fleet runs the image's `migrate` command for every tenant unit.
+
+Migrations are never written by hand and never edited after they are committed; a correction is a new migration.

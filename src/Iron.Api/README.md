@@ -6,6 +6,8 @@ REST conventions for every endpoint of every host (TF-100, TF-101, ADR-0009). No
 |---|---|
 | `Iron.Api` | `AddIronApi()` and `UseIronApi()`: JSON shape, problem details, the last-line exception handler |
 | `Iron.Api.Modules` | `IModule` and `AddModules` / `MapModules`: how a host composes modules |
+| `Iron.Api.Permissions` | `RequirePermission` on endpoints and groups, `PermissionFilter` (401/403), `IPermissionEvaluator` for the Authorization module, `PermissionCatalogue`, `EndpointPermissionCheck` at start-up (TF-030, TF-031) |
+| `Iron.Api.Tenancy` | `TenantBinding.FromConfiguration`, `AddIronTenant`, `UseIronTenant`: the unit's one tenant from configuration and the hostname check (TF-003) |
 | `Iron.Api.Routing` | `MapApiGroup("users")`: a route group under `/api/v1/users`, tagged for OpenAPI |
 | `Iron.Api.Responses` | `ApiResults` (problem, result mapping, list envelope) and `ListResponse`, `ListMeta`, `ListLinks` |
 | `Iron.Api.Problems` | `ProblemFactory` (Error to problem details), `ApiErrors` (the API's own codes), `UnexpectedExceptionHandler` |

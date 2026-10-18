@@ -1,3 +1,5 @@
+using Iron.Api.Permissions;
+using Iron.Core.Permissions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,7 @@ public static class ModuleExtensions
         ArgumentNullException.ThrowIfNull(modules);
 
         var names = new HashSet<string>(StringComparer.Ordinal);
+        var permissions = new List<Permission>();
         foreach (var module in modules)
         {
             if (!names.Add(module.Name))
@@ -27,10 +30,21 @@ public static class ModuleExtensions
                 throw new InvalidOperationException($"The module '{module.Name}' is listed twice.");
             }
 
+            foreach (var permission in module.Permissions)
+            {
+                if (!string.Equals(permission.Module, module.Name, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException($"The module '{module.Name}' declares '{permission.Name}', but a permission starts with the name of the module that owns it.");
+                }
+
+                permissions.Add(permission);
+            }
+
             module.AddServices(services, configuration);
         }
 
         services.AddSingleton(new ModuleCollection(modules));
+        services.AddSingleton(new PermissionCatalogue(permissions));
         return services;
     }
 

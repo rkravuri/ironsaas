@@ -11,6 +11,9 @@ public readonly record struct CorrelationId
 {
     public const int Length = 32;
 
+    /// <summary>The response header that carries the id back to the client (TF-130).</summary>
+    public const string HeaderName = "X-Correlation-Id";
+
     private readonly string? _value;
 
     private CorrelationId(string value)

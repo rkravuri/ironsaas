@@ -77,6 +77,16 @@ public class ProblemTests(ApiFixture fixture)
         Assert.DoesNotContain("secret detail", json.GetRawText(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task TheCorrelationIdInTheBodyIsTheOneInTheHeader()
+    {
+        using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things/missing", UriKind.Relative), TestContext.Current.CancellationToken);
+        var json = await Json(response);
+
+        var header = Assert.Single(response.Headers.GetValues("X-Correlation-Id"));
+        Assert.Equal(header, json.GetProperty("correlation_id").GetString());
+    }
+
     private static async Task<JsonElement> Json(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);

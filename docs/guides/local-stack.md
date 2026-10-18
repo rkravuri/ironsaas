@@ -42,6 +42,16 @@ Inside the Docker network `foundation` the services are reached by name: `postgr
 
 Hostnames: browsers (Chrome, Edge, Firefox) resolve every `*.localhost` name to the laptop by themselves, so `http://grafana.localhost` works from Windows without any setup. Command line tools in WSL (`curl`, `psql`) do not; run `make hosts` once and add the printed line to `/etc/hosts`.
 
+## Running a host against the platform
+
+`make run-api` starts the tenant API host on http://localhost:5100 with `dotnet run`, bound to the tenant id `dev`, with the platform database (superuser, a laptop shortcut until T14 creates tenant roles) and the collector on `localhost:4317`. Then:
+
+```bash
+curl -i http://localhost:5100/health/ready     # the headers show X-Correlation-Id and the security headers
+```
+
+In Grafana, Explore, data source Tempo, search for service `iron-api`: the request appears as a trace with the `GET /health/ready` span and the PostgreSQL `select 1` span under it. The dashboard `Foundation requests` fills after a few requests. In Development the API browser is at http://localhost:5100/scalar/v1.
+
 ## Credentials
 
 `make up` creates `infra/compose/.env` with random values on first use. The file is ignored by git and holds only laptop credentials. To rotate them: `make reset`, delete the file, `make up`. The values must match the data volumes, so do not delete the file without resetting the volumes.
@@ -65,3 +75,19 @@ Hostnames: browsers (Chrome, Edge, Firefox) resolve every `*.localhost` name to 
 | Postgres starts but tools cannot connect | Check the user name and password in `infra/compose/.env`; connect to database `postgres`. |
 | Grafana shows the dashboard but no data | Expected until T6: nothing sends OpenTelemetry metrics yet. The Traefik panel and the scrape targets panel should already show values. |
 | Old credentials after recreating `.env` | The volumes still hold the old values. `make reset`, then `make up`. |
+
+## Host images
+
+`make images` builds `foundation/iron-api:dev`, `foundation/iron-worker:dev`, `foundation/iron-control-plane:dev` and `foundation/iron-fleet:dev` from the repository root. The first build downloads the SDK and runtime images (about 1 GB) and restores packages; later builds reuse the layers.
+
+To run the API image by hand against the laptop database, note that inside a container `localhost` is the container itself, so the database host is `host.docker.internal` (Docker Desktop) or the Compose network name `postgres` when the container joins the platform network:
+
+```bash
+docker run --rm -p 5100:8080 --network foundation \
+  -e Tenant__Id=dev -e Tenant__Hostnames__0=localhost \
+  -e ConnectionStrings__Database="Host=postgres;Port=5432;Database=postgres;Username=...;Password=..." \
+  -e OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317 \
+  foundation/iron-api:dev
+```
+
+T14 generates these settings per tenant unit; nobody types them by hand after that.

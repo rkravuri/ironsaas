@@ -1,7 +1,9 @@
 using Iron.Api.Json;
+using Iron.Api.Permissions;
 using Iron.Api.Problems;
-using Iron.Core.Correlation;
+using Iron.Telemetry.Correlation;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Api;
@@ -21,16 +23,20 @@ public static class IronApiExtensions
             var problem = context.ProblemDetails;
             var status = problem.Status ?? context.HttpContext.Response.StatusCode;
             problem.Extensions.TryAdd(ProblemFactory.ErrorCodeKey, ApiErrors.ForStatus(status));
-            problem.Extensions.TryAdd(ProblemFactory.CorrelationIdKey, CorrelationId.Current().Value);
+            problem.Extensions.TryAdd(ProblemFactory.CorrelationIdKey, RequestCorrelation.Get(context.HttpContext).Value);
             if (problem.Type is null || !problem.Type.StartsWith(ProblemFactory.TypePrefix, StringComparison.Ordinal))
             {
                 problem.Type = ProblemFactory.TypePrefix + problem.Extensions[ProblemFactory.ErrorCodeKey];
             }
 
             problem.Instance ??= context.HttpContext.Request.Path.Value;
+            // The framework adds the W3C trace id under the JSON naming policy's key; the correlation id already is the trace id.
+            problem.Extensions.Remove("trace_id");
+            problem.Extensions.Remove("traceId");
         });
 
         services.AddExceptionHandler<UnexpectedExceptionHandler>();
+        services.AddTransient<IStartupFilter, EndpointPermissionCheck>();
         return services;
     }
 

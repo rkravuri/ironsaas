@@ -1,0 +1,10 @@
+# Only the source needed to publish a host goes into the build context.
+**/bin/
+**/obj/
+.git/
+.github/
+docs/
+infra/
+tests/
+node_modules/
+*.zip

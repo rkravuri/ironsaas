@@ -11,9 +11,12 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0003](0003-open-source-first-and-decided-versions.md) | Open source first, every dependency listed once, decided platform versions | Accepted |
 | [0004](0004-build-and-test-conventions.md) | Build and test conventions | Accepted |
 | [0005](0005-laptop-platform-stack.md) | The laptop platform stack on Compose | Accepted |
-| [0006](0006-object-storage-stand-in.md) | Azurite replaces MinIO as the laptop object storage | Proposed |
+| [0006](0006-object-storage-stand-in.md) | Azurite replaces MinIO as the laptop object storage | Accepted |
 | [0007](0007-core-primitives.md) | Core primitives: results and errors, tenant identifier, ids, time, correlation | Accepted |
 | [0008](0008-data-conventions.md) | Data conventions | Accepted |
 | [0009](0009-api-conventions.md) | API conventions | Accepted |
+| [0010](0010-telemetry-and-security-baseline.md) | Telemetry and security baseline | Accepted |
 
-Coming with their tasks in S1: telemetry (T6), permission catalogue and audit protection (T8, T9), identity and sessions (T10), secrets and storage interfaces (T12), the unit runtime (T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).
+Coming with their tasks in S1: permission catalogue and audit protection (T8, T9), identity and sessions (T10), secrets and storage interfaces (T12), the unit runtime (T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).
+| [0011](0011-hosts-and-unit-commands.md) | Hosts, tenant binding and unit commands | Accepted |
+| [0012](0012-authorization-thin.md) | Permissions, roles and the migration workflow | Accepted |

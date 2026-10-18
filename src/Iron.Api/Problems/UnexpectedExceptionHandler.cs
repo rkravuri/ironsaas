@@ -1,5 +1,5 @@
-using Iron.Core.Correlation;
 using Iron.Core.Results;
+using Iron.Telemetry.Correlation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +16,7 @@ public sealed class UnexpectedExceptionHandler(ILogger<UnexpectedExceptionHandle
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
-        var correlationId = CorrelationId.Current().Value;
+        var correlationId = RequestCorrelation.Get(httpContext).Value;
         logger.LogError(exception, "Unhandled exception. correlation_id={CorrelationId} path={Path}", correlationId, httpContext.Request.Path);
 
         var error = Error.Unexpected(ApiErrors.Unexpected, "Something went wrong. Quote the correlation id when you ask for help.");

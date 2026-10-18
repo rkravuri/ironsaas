@@ -1,9 +1,8 @@
 # Iron.Audit
 
-Append-only audit log, change history, electronic signatures, hash chaining, retention, export. Schema: `audit`.
+Schema `audit`. The audit trail (TF-060). T8 added the contract (`AuditEvent`, `IAuditWriter`) and a log-line writer; T9 adds the `audit.events` table, the database writer on the caller's connection and transaction, and `GET /api/v1/audit/events`.
 
-Slice S1 (T9): the `audit.events` table, a writer that runs in the caller's transaction, database grants that block update and delete, and the S1 event types (login, denial, invitation, provisioning).
-
-Folders: `Api/` endpoints (thin), `Services/` business logic (plain classes), `Data/` entities, repositories and migrations for this module's schema, `Contracts/` the public interfaces and DTOs other modules may use (its own project, `Iron.Audit.Contracts`).
-
-Only `Contracts/` is public. Another module may reference `Iron.Audit.Contracts` and nothing else from this folder; the build checks enforce it.
+| Folder | Holds |
+|---|---|
+| `Contracts/` | `AuditEvent`, `AuditOutcome`, `IAuditWriter` |
+| `Services/` | `LoggingAuditWriter` (until T9) |

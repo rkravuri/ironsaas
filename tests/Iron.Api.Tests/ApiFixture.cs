@@ -7,6 +7,7 @@ using Iron.Api.Validation;
 using Iron.Core.Paging;
 using Iron.Core.Results;
 using Iron.Data.Lists;
+using Iron.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -32,9 +33,10 @@ public sealed class ApiFixture : IAsyncLifetime
         builder.Services.AddScoped<IValidator<CreateThing>, CreateThingValidator>();
 
         var app = builder.Build();
+        app.UseIronTelemetry();
         app.UseIronApi();
 
-        var things = app.MapApiGroup("things");
+        var things = app.MapApiGroup("things").AllowAnonymous(); // the sample tests the list grammar; permissions have their own tests
         things.MapGet("/", (HttpContext http) =>
         {
             var parsed = ListQueryParser.Parse(http.Request.Query, Things.Fields);
