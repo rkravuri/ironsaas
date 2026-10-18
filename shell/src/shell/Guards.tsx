@@ -1,25 +1,13 @@
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 import { Navigate, useLocation } from "react-router";
-import { Center, Stack, Text } from "@mantine/core";
 import { useSession } from "@/auth/session-context";
-import { Loading } from "@/design/illustrations";
+import { LoadingState } from "@/components/panels";
 import { ErrorView } from "./ErrorBoundary";
 import { ApiError } from "@/api/client";
 
-/** The wait before the session is known: a drawn loader, never a spinner (brief section 7); the gallery shows it too. */
+/** The wait before the session is known: the loading state, full height. */
 export function LoadingView({ height = "100vh" }: { height?: string | number } = {}) {
-  const { t } = useTranslation();
-  return (
-    <Center h={height}>
-      <Stack align="center" gap="xs">
-        <Loading decorative size="sm" />
-        <Text c="dimmed" size="sm">
-          {t("app.loading")}
-        </Text>
-      </Stack>
-    </Center>
-  );
+  return <LoadingState height={height} />;
 }
 
 /** Signed-in principals only; others go to the login page and come back afterwards. */

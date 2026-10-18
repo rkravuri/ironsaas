@@ -56,7 +56,11 @@
     "empty": "No users yet.",
     "count": "{{count}} of {{total}} shown",
     "email": "Email",
-    "created": "Created"
+    "created": "Created",
+    "description": "Everyone who can sign in to this tenant: people and service accounts.",
+    "open": "Open",
+    "updated": "Updated",
+    "details": "Details"
   },
   "profile": {
     "title": "My profile",
@@ -246,5 +250,57 @@
     "home": "A small building with its flag up: home.",
     "success": "Someone holding up a stamped document: success.",
     "loading": "Documents drawing themselves in: loading."
+  },
+  "density": {
+    "label": "Density",
+    "comfortable": "Comfortable",
+    "compact": "Compact"
+  },
+  "dialog": {
+    "cancel": "Cancel"
+  },
+  "wizard": {
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "summary": "What you have entered"
+  },
+  "console": {
+    "contents": "On this page"
+  },
+  "attachments": {
+    "title": "Attachments",
+    "upload": "Upload a file",
+    "name": "Name",
+    "size": "Size",
+    "uploaded": "Uploaded",
+    "by": "By",
+    "download": "Download {{name}}",
+    "remove": "Remove {{name}}",
+    "empty": "No attachments yet.",
+    "kilobytes": "{{count}} KB"
+  },
+  "history": {
+    "title": "History",
+    "empty": "Nothing has happened yet."
+  },
+  "approval": {
+    "title": "Approval",
+    "approve": "Approve",
+    "reject": "Reject",
+    "placeholder": "Approving and rejecting arrive with the workflow slice; the shape is here so pages can plan for it.",
+    "states": {
+      "waiting": "Waiting",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    }
+  },
+  "comments": {
+    "title": "Comments",
+    "label": "Your comment",
+    "add": "Add the comment",
+    "empty": "No comments yet.",
+    "later": "Comments arrive with a later slice; the shape is here so pages can plan for it."
   }
 }
