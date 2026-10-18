@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, type ErrorInfo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { isRouteErrorResponse, useRouteError } from "react-router";
 import { Alert, Button, Code, Container, Stack, Text, Title } from "@mantine/core";
@@ -57,9 +57,12 @@ export function ErrorView({ error, onRetry }: ErrorViewProps) {
   );
 }
 
-/** The router's errorElement: render errors and loader errors of a route land here. */
+/** The router's errorElement: render errors and loader errors of a route land here, and in the console for whoever is looking. */
 export function RouteErrorPage() {
   const error = useRouteError();
+  useEffect(() => {
+    console.error("A page failed to render.", error);
+  }, [error]);
   return <ErrorView error={error} onRetry={() => window.location.reload()} />;
 }
 

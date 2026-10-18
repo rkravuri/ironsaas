@@ -1,19 +1,18 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink as RouterNavLink, Outlet, useLocation } from "react-router";
 import { AppShell, Burger, Group, Menu, NavLink, ScrollArea, Text, Title, UnstyledButton } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconChevronDown, IconLogout, IconUser } from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
-import type { NavigationGroup } from "@/modules/registry";
+import { manifests } from "@/modules";
+import { navigationFor } from "@/modules/registry";
 
-interface LayoutProps {
-  navigation: NavigationGroup[];
-}
-
-/** Header, navigation from the manifests filtered by permissions, the signed-in principal and sign out (S1 plan 3.10). */
-export function Layout({ navigation }: LayoutProps) {
+/** Header, navigation from the manifests filtered by the session's permissions, the signed-in principal and sign out (S1 plan 3.10). */
+export function Layout() {
   const { t } = useTranslation();
   const session = useSession();
+  const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }), [session.permissions]);
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure();
 

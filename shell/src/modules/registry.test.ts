@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ManifestError, navigationFor, routesFor, validateManifests, type ModuleManifest } from "./registry";
+import { declaredRoutes, ManifestError, navigationFor, routesFor, validateManifests, type ModuleManifest } from "./registry";
 
 const manifests: ModuleManifest[] = [
   {
@@ -27,6 +27,10 @@ describe("the module registry", () => {
     const navigation = navigationFor(manifests, ["identity.users.read"], { strict: true });
     expect(navigation).toHaveLength(1);
     expect(navigation[0]?.entries.map((e) => e.path)).toEqual(["/users", "/me"]);
+  });
+
+  it("declares every route for the router whatever the permissions, since the check happens at render time", () => {
+    expect(declaredRoutes(manifests, { strict: true }).map((r) => r.path)).toEqual(["/users", "/me"]);
   });
 
   it("throws in development for a route without a declared permission, and hides it in production", () => {

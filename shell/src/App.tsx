@@ -1,10 +1,9 @@
-import { useMemo } from "react";
 import { createBrowserRouter, Navigate, RouterProvider, type RouteObject } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { LoginPage } from "@/auth/LoginPage";
 import { InvitationPage } from "@/auth/InvitationPage";
 import { manifests } from "@/modules";
-import { navigationFor, routesFor, validateManifests } from "@/modules/registry";
+import { declaredRoutes, navigationFor, validateManifests } from "@/modules/registry";
 import { Layout } from "@/shell/Layout";
 import { RouteErrorPage } from "@/shell/ErrorBoundary";
 import { RedirectIfSignedIn, RequirePermission, RequireSession } from "@/shell/Guards";
@@ -14,33 +13,46 @@ const strict = import.meta.env.DEV;
 // Checked once at start: a manifest mistake fails the development build loudly and is hidden in production.
 validateManifests(manifests, { strict });
 
-/** The router: public pages, then the shell with the routes the signed-in principal may see. */
-export function App() {
+/** The first page the signed-in principal may see, by the navigation its permissions leave visible. */
+function Home() {
   const session = useSession();
-  const router = useMemo(() => {
-    const permissions = session.permissions;
-    const navigation = navigationFor(manifests, permissions, { strict });
-    const routes = routesFor(manifests, permissions, { strict });
-    const home = navigation[0]?.entries[0]?.path ?? "/me";
-    const children: RouteObject[] = routes.map((route) => ({
-      path: route.path.replace(/^\//, ""),
-      element: <RequirePermission permission={route.permission ?? null}>{route.element}</RequirePermission>,
-    }));
-    return createBrowserRouter([
-      { path: "/login", element: <RedirectIfSignedIn><LoginPage /></RedirectIfSignedIn>, errorElement: <RouteErrorPage /> },
-      { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
-      {
-        path: "/",
-        element: (
-          <RequireSession>
-            <Layout navigation={navigation} />
-          </RequireSession>
-        ),
-        errorElement: <RouteErrorPage />,
-        children: [{ index: true, element: <Navigate to={home} replace /> }, ...children],
-      },
-    ]);
-  }, [session.permissions]);
+  const navigation = navigationFor(manifests, session.permissions, { strict });
+  return <Navigate to={navigation[0]?.entries[0]?.path ?? "/me"} replace />;
+}
 
+const children: RouteObject[] = declaredRoutes(manifests, { strict }).map((route) => ({
+  path: route.path.replace(/^\//, ""),
+  element: <RequirePermission permission={route.permission ?? null}>{route.element}</RequirePermission>,
+}));
+
+/**
+ * The router, built once with every declared route: public pages, then the shell with the pages the signed-in
+ * principal may open. Permissions decide at render time (and the API decides for real), so a deep link or a reload
+ * lands on the page, on the login page, or on "no access", never on "not found".
+ */
+const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: (
+      <RedirectIfSignedIn>
+        <LoginPage />
+      </RedirectIfSignedIn>
+    ),
+    errorElement: <RouteErrorPage />,
+  },
+  { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
+  {
+    path: "/",
+    element: (
+      <RequireSession>
+        <Layout />
+      </RequireSession>
+    ),
+    errorElement: <RouteErrorPage />,
+    children: [{ index: true, element: <Home /> }, ...children],
+  },
+]);
+
+export function App() {
   return <RouterProvider router={router} />;
 }

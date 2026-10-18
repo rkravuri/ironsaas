@@ -77,6 +77,49 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    public async Task ALoginThatRacesAnotherAttemptOnTheSameAccountStillSucceeds()
+    {
+        // While this login verifies the password, another attempt (a wrong one) saves its stamp on the same row.
+        // Seen by Playwright running two browsers against one administrator: the second save hit the version column.
+        var time = new FakeTimeProvider();
+        var loginId = $"raced-{Ids.New():N}@acme.test";
+        var interfering = fixture.BuildServices(time);
+        await using var provider = fixture.BuildServices(time, configure: services => services.AddSingleton<IPasswordHasher>(sp => new HookedHasher(new Argon2PasswordHasher(sp.GetRequiredService<IdentityOptions>()), () =>
+        {
+            using var other = interfering.CreateScope();
+            var context = other.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var row = context.Principals.Single(p => p.LoginId == loginId);
+            row.RecordFailedLogin(time.GetUtcNow());
+            context.SaveChanges();
+        })));
+        await using var scope = provider.CreateAsyncScope();
+        var user = await IdentityFixture.CreateActiveUserAsync(scope.ServiceProvider, loginId, Password);
+
+        var result = await scope.ServiceProvider.GetRequiredService<LoginService>().LoginAsync(loginId, Password, TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsSuccess, result.IsFailure ? result.Error.Message : null);
+        await using var check = provider.CreateAsyncScope();
+        var stored = await check.ServiceProvider.GetRequiredService<IdentityDbContext>().Principals.AsNoTracking().SingleAsync(p => p.Id == user.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(0, stored.FailedLoginAttempts); // the success wrote last and reset the count
+        Assert.Equal(1, await check.ServiceProvider.GetRequiredService<IdentityDbContext>().Sessions.AsNoTracking().CountAsync(s => s.PrincipalId == user.Id, TestContext.Current.CancellationToken));
+        await interfering.DisposeAsync();
+    }
+
+    /// <summary>Verifies like the real hasher, and runs a hook first so a test can make something happen mid-login.</summary>
+    private sealed class HookedHasher(IPasswordHasher inner, Action onVerify) : IPasswordHasher
+    {
+        public string Hash(string password) => inner.Hash(password);
+
+        public bool Verify(string password, string encodedHash)
+        {
+            onVerify();
+            return inner.Verify(password, encodedHash);
+        }
+
+        public bool VerifyOrDecoy(string password, string? encodedHash) => inner.VerifyOrDecoy(password, encodedHash);
+    }
+
+    [Fact]
     public async Task ASessionEndsAfterSixtyIdleMinutesAndTheExpiryIsAudited()
     {
         var time = new FakeTimeProvider();

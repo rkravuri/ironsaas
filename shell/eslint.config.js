@@ -39,7 +39,12 @@ export default tseslint.config(
     rules: { "no-restricted-imports": "off" },
   },
   {
-    files: ["eslint.config.js", "vite.config.ts"],
+    files: ["eslint.config.js", "vite.config.ts", "playwright.config.ts"],
     extends: [tseslint.configs.disableTypeChecked],
+  },
+  {
+    files: ["e2e/**/*.ts"],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+    rules: { "react-refresh/only-export-components": "off" },
   },
 );

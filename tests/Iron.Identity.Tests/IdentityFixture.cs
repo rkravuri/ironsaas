@@ -64,7 +64,7 @@ public sealed class IdentityFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 
-    public ServiceProvider BuildServices(FakeTimeProvider time, string? administratorLoginId = null)
+    public ServiceProvider BuildServices(FakeTimeProvider time, string? administratorLoginId = null, Action<IServiceCollection>? configure = null)
     {
         var values = new Dictionary<string, string?>(Configuration, StringComparer.Ordinal);
         if (administratorLoginId is not null)
@@ -79,6 +79,7 @@ public sealed class IdentityFixture : IAsyncLifetime
         services.AddLogging();
         services.AddIronDatabase(ConnectionString);
         services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule()]);
+        configure?.Invoke(services);
         return services.BuildServiceProvider();
     }
 

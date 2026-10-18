@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -36,6 +36,7 @@ DEV_STORAGE = Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountNa
 DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost Tokens__SigningKeyPath=$(COMPOSE_DIR)/.dev-signing-key.pem
 DEV_SMOKE_SECRET = dev-smoke-client-secret-not-for-real-tenants
 DEV_OPERATOR_SECRET = dev-operator-secret-not-for-real-deployments
+DEV_SMOKE_READER_SECRET = dev-smoke-reader-secret-change-me
 CONTROL_URL ?= http://localhost:5200
 CONTROL_TENANT = Tenant__Id=control Tenant__Hostnames__0=localhost Tenant__Hostnames__1=control.localhost
 CONTROL_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=control
@@ -86,6 +87,7 @@ seed-control: env ## Seed the control plane: system roles and the operator servi
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(CONTROL_TENANT) $(CONTROL_SECRETS) \
 	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
+	Seed__ServiceAccounts__1__ClientId=smoke-reader Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) Seed__ServiceAccounts__1__Role=service-default Seed__ServiceAccounts__1__DisplayName="Smoke reader (denial case)" \
 	dotnet run --project src/Iron.Host.ControlPlane -- seed
 
 run-control: env ## Run the control plane API on the laptop (http://localhost:5200)
@@ -126,6 +128,16 @@ shell-node:
 	  "") echo "npm is not installed in WSL. Install Node 26 here: nvm install 26 (https://github.com/nvm-sh/nvm)."; exit 1;; \
 	  /mnt/*|*.cmd|*.exe) echo "npm resolves to the Windows build ($$npm_path). Install Node 26 inside WSL (nvm install 26) and remove shell/node_modules."; exit 1;; \
 	esac
+
+smoke: env ## Run the smoke test against the local stack (control plane, fleet and telemetry profile up): provisions or reuses tenant smoke
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
+	dotnet run --project tools/Iron.Smoke --configuration Release
+
+e2e: shell-node env ## Run the Playwright tests against the smoke tenant (make smoke first; browsers: cd shell && npm run e2e:install)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	password=$$(python3 -c 'import json,sys,urllib.request; r=urllib.request.Request("http://localhost:8200/v1/secret/data/tenants/smoke/smoke", headers={"X-Vault-Token": sys.argv[1]}); print(json.load(urllib.request.urlopen(r))["data"]["data"]["administrator_password"])' "$$OPENBAO_ROOT_TOKEN"); \
+	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://smoke.localhost} E2E_LOGIN_ID=admin@smoke.localhost E2E_PASSWORD="$$password" npx playwright test
 
 shell-install: shell-node ## Install the shell's packages (shell/)
 	cd shell && npm ci --no-audit --no-fund

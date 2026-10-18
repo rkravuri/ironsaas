@@ -24,7 +24,7 @@ export function UsersPage() {
   return (
     <Stack style={{ height: "calc(100vh - 56px - 2 * var(--mantine-spacing-md))" }}>
       <Title order={2}>{t("users.title")}</Title>
-      <DataGrid<User> columns={columns} fetchPage={fetchPage} getRowId={(user) => user.id} defaultSort={defaultSort} label={t("users.title")} />
+      <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} />
     </Stack>
   );
 }

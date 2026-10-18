@@ -64,6 +64,23 @@ export function routesFor(manifests: ModuleManifest[], permissions: readonly str
   return routes;
 }
 
+/**
+ * Every declared route, whatever the permissions: the router is built from this once, and the permission is checked
+ * when the route renders. Filtering the router itself by permissions would make a deep link or a reload answer
+ * "not found" before /me has been read.
+ */
+export function declaredRoutes(manifests: ModuleManifest[], options: RegistryOptions): RegisteredRoute[] {
+  const routes: RegisteredRoute[] = [];
+  for (const manifest of manifests) {
+    for (const route of manifest.routes) {
+      if (declares(route, `route ${manifest.name}:${route.path}`, options)) {
+        routes.push({ ...route, module: manifest.name });
+      }
+    }
+  }
+  return routes;
+}
+
 export interface NavigationGroup {
   module: string;
   titleKey: string;

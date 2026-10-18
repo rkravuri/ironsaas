@@ -127,3 +127,10 @@ In a unit, the shell is the `shell` service: the ingress sends the API paths to 
 `https://` works on every hostname: the `websecure` entry point has TLS on, with mkcert's certificate after `make certs` (trust its root on Windows as the script explains) or Traefik's own self-signed one before that, which the browser warns about once. `http://` keeps working too; Chrome treats `*.localhost` as secure, so the session cookie is accepted there as well.
 
 For shell development run `make run-api` and `make shell-dev` (first `make shell-install`): Vite serves http://localhost:5173 and proxies the API paths to the API, so the session cookie is first-party. The seeded administrator of the dev tenant signs in there; `npm run check` in `shell/` runs lint, tests and the production build.
+
+
+## The smoke test and the browser tests (T17)
+
+`make smoke` needs the control plane and the fleet running (`make run-control`, `make run-fleet`) and the telemetry profile up (`make up`, not `up-slim`), and the control plane seeded with the `smoke-reader` account (`make seed-control` again if the control plane was seeded before T17). It provisions the `smoke` tenant on the first run and reuses it afterwards, prints every step with its duration, writes `smoke-report.json`, and exits 0 only when all eleven steps pass. The administrator's password it chose is kept in the store at `secret/tenants/smoke/smoke`.
+
+`make e2e` runs the Playwright tests in `shell/e2e/` against `https://smoke.localhost` with that administrator. Browsers once: `cd shell && npm run e2e:install` (it asks for sudo for the system libraries). Set `E2E_BASE_URL` to point them at another tenant.

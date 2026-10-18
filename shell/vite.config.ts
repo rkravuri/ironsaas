@@ -21,6 +21,7 @@ export default defineConfig({
     target: "es2022",
   },
   test: {
+    exclude: ["e2e/**", "node_modules/**", "dist/**"],
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],

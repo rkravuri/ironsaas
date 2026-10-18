@@ -26,7 +26,8 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T14 Iron.Fleet and the fleet worker | done |
 | T15 Shell foundation | done |
 | T16 DataGrid and the Users page | done |
-| T17 Smoke and end-to-end tests | next |
+| T17 Smoke and end-to-end tests | done |
+| T18 Pipeline | next |
 
 ## Prerequisites
 
@@ -68,6 +69,8 @@ make run-control             # the control plane API on http://localhost:5200
 make run-fleet               # the fleet worker with the Compose runtime (drives docker on this machine)
 make provision TENANT=acme   # register a tenant, provision it, follow the steps, print the invitation link
 make deprovision TENANT=acme # take the unit down; data is kept
+make smoke                   # the smoke test: provisions or reuses tenant smoke, token, cookie, denials, trace in Tempo
+make e2e                     # Playwright: login and the Users grid on the smoke tenant (browsers: cd shell && npm run e2e:install)
 make images    # build the four host images foundation/iron-*:dev
 make ef-add MODULE=Authorization NAME=Initial   # generate a migration for a module context (dotnet ef via the tool manifest)
 ```

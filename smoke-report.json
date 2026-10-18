@@ -1,0 +1,74 @@
+{
+  "tenant": "smoke",
+  "started_at": "2026-10-18T10:10:56.8790807+00:00",
+  "finished_at": "2026-10-18T10:11:35.1444364+00:00",
+  "passed": true,
+  "steps": [
+    {
+      "name": "control-token",
+      "status": "passed",
+      "duration_ms": 3698,
+      "detail": "operator token for the control plane (Bearer)"
+    },
+    {
+      "name": "tenant",
+      "status": "passed",
+      "duration_ms": 19269,
+      "detail": "tenant smoke provisioned by job 01a14e7e-4946-7e4b-8de1-21515d5ee5d7"
+    },
+    {
+      "name": "health",
+      "status": "passed",
+      "duration_ms": 25,
+      "detail": "smoke.localhost ready: healthy"
+    },
+    {
+      "name": "smoke-token",
+      "status": "passed",
+      "duration_ms": 4176,
+      "detail": "token for smoke-client, expires in 900 s"
+    },
+    {
+      "name": "token-call",
+      "status": "passed",
+      "duration_ms": 1088,
+      "detail": "smoke-client sees itself and lists 2 user(s) with its read permissions; correlation 85660769d1aafccfe3a04db3ecba5762"
+    },
+    {
+      "name": "administrator",
+      "status": "passed",
+      "duration_ms": 2085,
+      "detail": "invitation accepted for admin@smoke.localhost; password kept at tenants/smoke/smoke"
+    },
+    {
+      "name": "login",
+      "status": "passed",
+      "duration_ms": 3219,
+      "detail": "session cookie iron.session for admin@smoke.localhost"
+    },
+    {
+      "name": "cookie-call",
+      "status": "passed",
+      "duration_ms": 186,
+      "detail": "2 user(s) with the cookie; correlation 2b509eea3bb044a84428986156daabda"
+    },
+    {
+      "name": "denials",
+      "status": "passed",
+      "duration_ms": 4290,
+      "detail": "anonymous 401 auth.not_authenticated; other tenant\u0027s token 401 auth.token_invalid; reader creating a tenant 403 authz.permission_denied correlation 9651c759328c6a5d8bd4345bd75efb3a"
+    },
+    {
+      "name": "logout",
+      "status": "passed",
+      "duration_ms": 89,
+      "detail": "the session ended and the old cookie is refused"
+    },
+    {
+      "name": "trace",
+      "status": "passed",
+      "duration_ms": 123,
+      "detail": "trace 2b509eea3bb044a84428986156daabda found in Tempo with 5 span(s)"
+    }
+  ]
+}

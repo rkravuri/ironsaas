@@ -58,29 +58,71 @@ public sealed class LoginService(
             return await FailAsync(principal, normalised, "wrong_password", cancellationToken).ConfigureAwait(false);
         }
 
-        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
-        principal.RecordLogin(time.GetUtcNow());
-        var (session, token) = await sessions.StartAsync(principal, cancellationToken, created =>
+        // Another attempt on the same account may save its stamp between our read and our write (the version column
+        // is the concurrency token). That must never turn a correct login into an error: take the newer row and go again.
+        for (var attempt = 1; ; attempt++)
         {
-            // From here on the request acts as the user: the session row and the audit event carry it as created_by.
-            if (accessor.HttpContext is { } http)
+            try
             {
-                RequestPrincipal.Set(http, sessions.Describe(principal, created));
-            }
-        }).ConfigureAwait(false);
-        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginSucceeded, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "session", RecordId: session.Id), cancellationToken).ConfigureAwait(false);
-        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+                principal.RecordLogin(time.GetUtcNow());
+                var (session, token) = await sessions.StartAsync(principal, cancellationToken, created =>
+                {
+                    // From here on the request acts as the user: the session row and the audit event carry it as created_by.
+                    if (accessor.HttpContext is { } http)
+                    {
+                        RequestPrincipal.Set(http, sessions.Describe(principal, created));
+                    }
+                }).ConfigureAwait(false);
+                await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginSucceeded, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "session", RecordId: session.Id), cancellationToken).ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("Login succeeded for principal {PrincipalId}.", principal.Id);
-        return new LoginOutcome(principal, session, token);
+                logger.LogInformation("Login succeeded for principal {PrincipalId}.", principal.Id);
+                return new LoginOutcome(principal, session, token);
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < MaxAttempts)
+            {
+                logger.LogInformation("Login for principal {PrincipalId} raced another attempt; retrying ({Attempt}).", principal.Id, attempt);
+                await ReloadAsync(principal, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private const int MaxAttempts = 3;
+
+    /// <summary>Takes the row as it is now and forgets the session this attempt tried to add, so the next attempt starts clean.</summary>
+    private async Task ReloadAsync(Principal principal, CancellationToken cancellationToken)
+    {
+        await context.Entry(principal).ReloadAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var entry in context.ChangeTracker.Entries<Session>().Where(e => e.State == EntityState.Added).ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 
     private async Task<Result<LoginOutcome>> FailAsync(Principal? principal, string loginId, string reason, CancellationToken cancellationToken)
     {
         if (principal is not null)
         {
-            principal.RecordFailedLogin(time.GetUtcNow());
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    principal.RecordFailedLogin(time.GetUtcNow());
+                    await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    break;
+                }
+                catch (DbUpdateConcurrencyException) when (attempt < MaxAttempts)
+                {
+                    await ReloadAsync(principal, cancellationToken).ConfigureAwait(false);
+                }
+                catch (DbUpdateConcurrencyException exception)
+                {
+                    // The count is bookkeeping; the answer and the audit event matter more than the exact number.
+                    logger.LogWarning(exception, "The failed-login count of principal {PrincipalId} was not updated after {Attempts} attempts.", principal.Id, MaxAttempts);
+                    break;
+                }
+            }
         }
 
         await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginFailed, AuditOutcome.Denied, principal?.Id ?? Guid.Empty, loginId, Reason: reason), cancellationToken).ConfigureAwait(false);
