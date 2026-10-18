@@ -8,7 +8,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 |---|---|---|---|
 | D1 Design foundation | done | main (f145e5f) | accepted 2026-10-18; six commits plus the State column |
 | D2 The drawn world | done | main | merged 2026-10-18; six commits (800a1c8 to 560e9b8) plus the figure correction from the review |
-| D3 Templates, panels and forms | next | | |
+| D3 Templates, panels and forms | in progress | slice/s2-d3 | branched from fd56702 on 2026-10-18; the prompt was already on main, so no prompt commit |
 | A1 Organisation units | | | |
 | A2 Roles and scoped assignments | | | |
 | A3 Record policies | | | |

@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-/** RFC 9457 problem details as the API writes them (ADR-0009): error_code and correlation_id on every one. */
+/** One field of a validation problem, as ProblemFactory writes it: the snake_case JSON path, a short code, the message. */
+export const FieldProblemSchema = z.object({
+  field: z.string(),
+  code: z.string(),
+  message: z.string(),
+});
+export type FieldProblem = z.infer<typeof FieldProblemSchema>;
+
+/** RFC 9457 problem details as the API writes them (ADR-0009): error_code and correlation_id on every one, errors on validation. */
 export const ProblemSchema = z.object({
   type: z.string().optional(),
   title: z.string().optional(),
@@ -9,7 +17,7 @@ export const ProblemSchema = z.object({
   instance: z.string().optional(),
   error_code: z.string().optional(),
   correlation_id: z.string().optional(),
-  errors: z.record(z.string(), z.array(z.string())).optional(),
+  errors: z.array(FieldProblemSchema).optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
@@ -47,7 +55,7 @@ export class ApiError extends Error {
   readonly errorCode: string | undefined;
   readonly correlationId: string | undefined;
   readonly detail: string | undefined;
-  readonly errors: Record<string, string[]> | undefined;
+  readonly errors: readonly FieldProblem[] | undefined;
 
   constructor(status: number, problem: Problem, correlationId: string | undefined) {
     super(problem.detail ?? problem.title ?? `The request failed with status ${status}.`);
