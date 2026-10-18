@@ -1,3 +1,4 @@
+using Iron.Audit.Data;
 using Iron.Authorization.Contracts;
 using Iron.Data.Commands;
 using Iron.Data.Contexts;
@@ -102,5 +103,61 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         var administrator = await context.Principals.AsNoTracking().SingleAsync(p => p.LoginId == IdentityFixture.AdministratorLoginId, TestContext.Current.CancellationToken);
         Assert.Equal(PrincipalStatus.Invited, administrator.Status);
+    }
+
+    [Fact]
+    public async Task TheSeedGivesAnExistingServiceAccountTheNewSecretAndAuditsTheChange()
+    {
+        // What a healed unit sends (ADR-0028): the account exists with the secret the store lost, the seed brings a new one.
+        const string clientId = "rotation-client";
+        const string lost = "the secret the store lost, of some length";
+        const string fresh = "the secret the fleet made after the heal";
+        var account = await SeedServiceAccountAsync(clientId, lost);
+        var changesBefore = await SecretChangesOfAsync(account.Id);
+
+        var after = await SeedServiceAccountAsync(clientId, fresh);
+
+        await using var provider = fixture.BuildServices(new FakeTimeProvider());
+        var hasher = provider.GetRequiredService<IPasswordHasher>();
+        Assert.Equal(account.Id, after.Id);
+        Assert.True(hasher.Verify(fresh, after.PasswordHash!));
+        Assert.False(hasher.Verify(lost, after.PasswordHash!));
+        Assert.Equal(0, changesBefore);
+        Assert.Equal(1, await SecretChangesOfAsync(account.Id));
+    }
+
+    [Fact]
+    public async Task TheSeedWritesNothingWhenAnExistingServiceAccountKeepsItsSecret()
+    {
+        const string clientId = "steady-client";
+        const string secret = "a secret that stays the same, of some length";
+        var account = await SeedServiceAccountAsync(clientId, secret);
+
+        var again = await SeedServiceAccountAsync(clientId, secret);
+
+        Assert.Equal(account.PasswordHash, again.PasswordHash);
+        Assert.Equal(0, await SecretChangesOfAsync(account.Id));
+    }
+
+    /// <summary>Runs the seed with one service account in Seed:ServiceAccounts and returns the account as stored.</summary>
+    private async Task<Principal> SeedServiceAccountAsync(string clientId, string secret)
+    {
+        var settings = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["Seed:ServiceAccounts:0:ClientId"] = clientId,
+            ["Seed:ServiceAccounts:0:Secret"] = secret,
+        };
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(), settings: settings);
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        await using var scope = provider.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Principals.AsNoTracking().SingleAsync(p => p.LoginId == clientId, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<int> SecretChangesOfAsync(Guid accountId)
+    {
+        await using var provider = fixture.BuildServices(new FakeTimeProvider());
+        await using var scope = provider.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+            .CountAsync(e => e.ActorId == accountId && e.EventType == IdentityAuditEvents.ServiceAccountSecretChanged && e.RecordId == accountId, TestContext.Current.CancellationToken);
     }
 }

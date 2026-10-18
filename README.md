@@ -15,7 +15,7 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 
 ## The first hour: a fresh checkout to a provisioned tenant and a visible trace
 
-Timings are from a 32 GB WSL 2 laptop with a warm image cache; the first `make images` and `make up` download about 2 GB more.
+Timings are from the reference machine, a laptop with 16 GB of memory and WSL 2 limited to 12 GB with 8 GB of swap (`.wslconfig`, see the runbook's prerequisites), with a warm image cache; the first `make images` and `make up` download about 2 GB more.
 
 | Step | Command | Expect | Time |
 |---|---|---|---|
