@@ -35,3 +35,6 @@ infra/compose/traefik/dynamic/tls.yaml
 Thumbs.db
 infra/compose/.dev-signing-key.pem
 infra/compose/.control-signing-key.pem
+
+# Windows mark-of-the-web streams, created when files are unzipped through Windows
+*:Zone.Identifier
