@@ -6,6 +6,19 @@ import tseslint from "typescript-eslint";
 
 // The grid rule (S1 plan 3.10): nothing imports ag-grid except the DataGrid wrapper, so the Enterprise switch is one place.
 const gridWrapper = ["src/components/data-grid/**"];
+const gridImports = {
+  group: ["ag-grid-*", "@ag-grid-community/*", "@ag-grid-enterprise/*"],
+  message: "Import DataGrid from '@/components/data-grid' instead; only the wrapper talks to AG Grid.",
+};
+
+// The layer rule (ADR-0029): shell modules live in modules/kernel, modules/business and modules/products, and import
+// downward only, as the .NET projects reference. The pattern sees both "@/modules/business/x" and "../../business/x";
+// a module's own folder named business or products ("./business") is not a layer. modules/index.ts composes all three.
+const layerImports = (layer, above) => ({
+  regex: `(^|/)(modules|[.][.])/(${above.join("|")})(/|$)`,
+  caseSensitive: true,
+  message: `A ${layer} module must not import from ${above.map((name) => `modules/${name}`).join(" or ")}: dependencies go downward only (ADR-0029).`,
+});
 
 // The colour rule (ADR-0024 item 8, ADR-0025): a page names a meaning, never a hue or a value. The 148 CSS colour
 // keywords plus the two Mantine palette names that are not CSS keywords; a Mantine shade suffix (red.6) is refused
@@ -56,22 +69,21 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["ag-grid-*", "@ag-grid-community/*", "@ag-grid-enterprise/*"],
-              message: "Import DataGrid from '@/components/data-grid' instead; only the wrapper talks to AG Grid.",
-            },
-          ],
-        },
-      ],
+      "no-restricted-imports": ["error", { patterns: [gridImports] }],
     },
   },
   {
     files: gridWrapper,
     rules: { "no-restricted-imports": "off" },
+  },
+  {
+    // A later block replaces the rule's options, so the grid pattern is repeated with each layer's.
+    files: ["src/modules/kernel/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("kernel", ["business", "products"])] }] },
+  },
+  {
+    files: ["src/modules/business/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("business", ["products"])] }] },
   },
   {
     // Everything under src, except where the values are defined and where they are mapped into the grid.
