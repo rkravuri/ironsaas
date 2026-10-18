@@ -70,7 +70,8 @@
   "grid": {
     "columns": "Columns",
     "empty": "Nothing to show.",
-    "capped": "The page size was limited to {{max}} rows (asked for more than the API allows); showing {{size}} per page."
+    "capped": "The page size was limited to {{max}} rows (asked for more than the API allows); showing {{size}} per page.",
+    "emptyFiltered": "Nothing matches the filter."
   },
   "design": {
     "accents": {
@@ -221,5 +222,18 @@
       "loading": "Loading",
       "login": "The login form"
     }
+  },
+  "illustrations": {
+    "nothingYet": "An open, empty box: nothing here yet.",
+    "nothingFound": "A magnifier over a blank page: nothing matches.",
+    "noAccess": "A closed door and a key: no access.",
+    "allDone": "A tray of finished documents with a tick: all done.",
+    "lost": "Someone with a map at a signpost: this page does not exist.",
+    "broken": "A clock on its side with its spring out: something broke.",
+    "forbidden": "A closed gate with a padlock: access refused.",
+    "welcome": "An open door with someone waving: welcome.",
+    "home": "A small building with its flag up: home.",
+    "success": "Someone holding up a stamped document: success.",
+    "loading": "Documents drawing themselves in: loading."
   }
 }
