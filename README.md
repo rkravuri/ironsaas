@@ -1,42 +1,45 @@
 # Foundation
 
-Foundation is the technical base for a family of enterprise SaaS products by IronSaaS. Product teams build business modules on it and get multi-tenancy, identity, permissions, audit, telemetry, a UI shell and the operations tooling without writing any of it themselves.
+Foundation is the technical base for a family of enterprise SaaS products by IronSaaS. Product teams build business modules on it and get multi-tenancy, identity, permissions, audit, telemetry, a UI shell, provisioning and the operations tooling without writing any of it themselves.
 
 Code namespace: `Iron.*`. Database schemas carry the module names.
 
-The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7). Slice S1, the walking skeleton, is in progress: see `docs/slices/S1-walking-skeleton.md`.
+The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7). Slice S1, the walking skeleton, is complete: see `docs/slices/S1-walking-skeleton.md` for what it proves, how it was built and what it carries into S2.
 
-## Status
+## What works today
 
-| Task | State |
-|---|---|
-| T1 Repository skeleton and build checks | done |
-| T2 Platform stack with Compose | done |
-| T3 Iron.Core | done |
-| T4 Iron.Data | done |
-| T5 Iron.Api | done |
-| T6 Iron.Telemetry and Iron.Security | done |
-| T7 Hosts | done |
-| T8 Iron.Authorization | done |
-| T9 Iron.Audit | done |
-| T10 Iron.Identity part 1 | done |
-| T11 Iron.Identity part 2 | done |
-| T12 Iron.Files and secrets | done |
-| T13 Iron.Tenancy and the control plane | done |
-| T14 Iron.Fleet and the fleet worker | done |
-| T15 Shell foundation | done |
-| T16 DataGrid and the Users page | done |
-| T17 Smoke and end-to-end tests | done |
-| T18 Pipeline | done |
-| T19 Documentation pass | next |
+- A tenant is registered through the control plane API and provisioned by the fleet in about fifteen seconds: its own database roles and database, blob container, secrets path and token, migrations, seeds, a Compose unit of three containers (API, worker, shell) behind the ingress, and a readiness check through the ingress. A failed step resumes; an active unit takes new images with an update job; de-provisioning keeps the data.
+- A person follows the invitation link to the tenant's own hostname, sets a password, signs in with a server-side session, and sees the pages and navigation the permissions allow. A service account gets a 15-minute token with the client credentials grant.
+- Every request carries a correlation id that is its trace id in Tempo; every error shows it; every permission denial, login and provisioning step is in the append-only audit trail.
+- 386 .NET tests (architecture rules, unit, and integration on real PostgreSQL, Azurite and OpenBao containers), 18 shell tests, an eleven-step smoke test against the live stack, five browser tests, and a pipeline that builds the images and proves them on the runner.
+
+## The first hour: a fresh checkout to a provisioned tenant and a visible trace
+
+Timings are from a 32 GB WSL 2 laptop with a warm image cache; the first `make images` and `make up` download about 2 GB more.
+
+| Step | Command | Expect | Time |
+|---|---|---|---|
+| 1 | Prerequisites below | `dotnet --version` 10.0.x, `docker compose version` 2.x, `node --version` v26 from WSL | 10 min |
+| 2 | `git clone <repo> ~/foundation && cd ~/foundation` | | 1 min |
+| 3 | `make build && make test` | build clean, 386 passed | 5 min |
+| 4 | `make up` | platform healthy, endpoints printed | 3 min |
+| 5 | `make images` | five images `foundation/iron-*:dev` | 10 min |
+| 6 | `make secret-control && make migrate-control && make seed-control` | control database and operator | 1 min |
+| 7 | terminal 2: `make run-control`; terminal 3: `make run-fleet` | both listening | 1 min |
+| 8 | `make provision TENANT=acme` | eight steps, then the invitation link | 1 min |
+| 9 | `curl.exe -i http://acme.localhost/health/ready` (from Windows) or the browser | 200 with `X-Correlation-Id` | |
+| 10 | Open `http://grafana.localhost`, Explore, Tempo, paste that correlation id as the trace id | the request's spans | 1 min |
+| 11 | Open the invitation link, set a password, sign in, open Users | the grid lists the administrator and the smoke client | 2 min |
+
+`make smoke` then proves the whole path from the outside in about a minute. The runbook `docs/guides/local-stack.md` has every command, the map of the stack and the troubleshooting table.
 
 ## Prerequisites
 
 - Linux, or WSL 2 with Ubuntu. The runtime is Linux; nothing targets Windows. Clone inside the Linux file system (for example `~/foundation`), not under `/mnt/c`.
-- .NET SDK 10.0. Install inside WSL with Microsoft's script:
+- .NET SDK 10.0 inside WSL:
 
   ```bash
-  sudo apt update && sudo apt install -y libicu-dev make git
+  sudo apt update && sudo apt install -y libicu-dev make git python3 curl unzip
   curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
   chmod +x /tmp/dotnet-install.sh && /tmp/dotnet-install.sh --channel 10.0
   cat >> ~/.bashrc <<'EOT'
@@ -46,37 +49,27 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
   source ~/.bashrc && dotnet --version
   ```
 
-  `global.json` accepts any 10.0.1xx feature band. A system-wide install through `ppa:dotnet/backports` works too.
-- Docker with the Compose plugin: Docker Engine inside WSL, or Docker Desktop with WSL integration. `docker compose version` prints 2.x.
-- From T15: Node.js v26.12.0 (see `.node-version`).
+- Docker with the Compose plugin: Docker Engine inside WSL (`sudo apt install docker.io docker-compose-v2`, add your user to the `docker` group, log in again) or Docker Desktop with WSL integration. `docker compose version` prints 2.x.
+- Node.js 26 inside WSL, not the Windows one (`which npm` must not point under `/mnt/c`): `nvm install 26` with [nvm](https://github.com/nvm-sh/nvm).
+- Optional: `mkcert` for a trusted TLS certificate (`make certs`); Playwright browsers for `make e2e` (`cd shell && npm run e2e:install`).
 
-## Quick start
+## Commands
+
+`make` with no target lists every command with a line of help. The ones used daily:
 
 ```bash
-make build     # build every project; warnings are errors
-make test      # run every test project (the data tests start a PostgreSQL container, so Docker must be running)
-make check     # run only the architecture checks
-make up        # start the laptop platform (PostgreSQL, blob storage, OpenBao, Traefik, telemetry) and wait until healthy
-make down      # stop it; data is kept
-make run-api   # run the tenant API host on http://localhost:5100 against the platform
-make run-worker # run the tenant worker host on http://localhost:5101 (heartbeat every 15 s)
-make migrate   # run the migrate command against the laptop database
-make seed      # run the seed command: system roles, the first administrator (invitation token in the log) and the smoke client
-make token     # get an access token for the laptop smoke client from the running API host
-make secret-dev      # write the dev unit's secret to OpenBao, as the fleet does per tenant
-make run-api-secrets # run the API with only the store address, the unit token and the tenant in its environment
-make secret-control && make migrate-control && make seed-control   # the control plane's secret, database and operator
-make run-control             # the control plane API on http://localhost:5200
-make run-fleet               # the fleet worker with the Compose runtime (drives docker on this machine)
-make provision TENANT=acme   # register a tenant, provision it, follow the steps, print the invitation link
-make deprovision TENANT=acme # take the unit down; data is kept
-make smoke                   # the smoke test: provisions or reuses tenant smoke, token, cookie, denials, trace in Tempo
-make e2e                     # Playwright: login and the Users grid on the smoke tenant (browsers: cd shell && npm run e2e:install)
-make images    # build the four host images foundation/iron-*:dev
-make ef-add MODULE=Authorization NAME=Initial   # generate a migration for a module context (dotnet ef via the tool manifest)
+make build / make test / make check / make format        # the .NET side
+make shell-install / make shell-check / make shell-dev   # the shell (npm ci; lint, tests, build; Vite on :5173)
+make up / make up-slim / make down / make reset          # the platform
+make images                                              # the five images at tag dev
+make run-api / make run-worker                           # the dev tenant from source on :5100 and :5101
+make secret-control / migrate-control / seed-control     # the control plane's secret, database and operator
+make run-control / make run-fleet                        # the control plane from source on :5200
+make up-control / make down-control                      # the control plane as containers instead
+make provision TENANT=x / update-unit TENANT=x / deprovision TENANT=x
+make smoke / make e2e / make integration                 # the smoke test, the browser tests, the pipeline's stage
+make ef-add MODULE=Identity NAME=AddColumn               # a migration for a module context
 ```
-
-`make` with no target lists every command. The platform runbook is `docs/guides/local-stack.md`. After `make up`, Grafana is at http://grafana.localhost and the Traefik dashboard at http://traefik.localhost.
 
 ## Repository layout
 
@@ -91,38 +84,33 @@ src/
   Iron.Authorization/  Iron.Audit/  Iron.Identity/  Iron.Files/        tenant modules
   Iron.Tenancy/  Iron.Fleet/                                            control plane modules
     Api/  Services/  Data/  Contracts/  README.md                       inside every module
-  Iron.Host.Api/  Iron.Host.Worker/              tenant unit hosts
-  Iron.Host.ControlPlane/  Iron.Host.Fleet/      control plane hosts
-  Iron.Shell/                React shell and design system (T15)
-tests/                       Iron.Architecture.Tests holds the build checks
-infra/compose/               the laptop platform: compose.yaml, configs, scripts
-products/  tools/            products and developer tools (later tasks)
+  Iron.Host.Api/  Iron.Host.Worker/              tenant unit hosts (+ Dockerfiles)
+  Iron.Host.ControlPlane/  Iron.Host.Fleet/      control plane hosts (+ Dockerfiles)
+shell/                       the React shell: one build for every tenant (+ Dockerfile, e2e/)
+tests/                       test projects; Iron.Architecture.Tests holds the build checks
+tools/Iron.Smoke/            the smoke test
+infra/compose/               the laptop platform: compose.yaml, configs, scripts, rendered units/
+.github/workflows/           ci.yml and release.yml
 docs/                        prd/, adr/, guides/, slices/
 ```
 
-## What the build enforces today
+## What the build enforces
 
-- Warnings are errors in every project.
-- Every package version is declared once in `Directory.Packages.props`, with its licence.
-- Module boundaries: a module may reference shared libraries and `Contracts` projects only. The compiler enforces it through project references; `tests/Iron.Architecture.Tests` names any violation.
-- Another module's `Api`, `Services` and `Data` namespaces are private. The architecture tests read the compiled assemblies and fail on any type reference into them.
-- Every project sits in a folder with its own name; every module has a `Contracts` project inside it.
-- No Foundation assembly reads the system clock directly; time comes from an injected `TimeProvider` (ADR-0007).
-- Every module DbContext passes the model rules: entities derive from the Foundation base classes and business entities carry an owning organisation (ADR-0008).
-
-## Try the boundary check
-
-1. Open `src/Iron.Audit/Iron.Audit.csproj`.
-2. Add `<ProjectReference Include="../Iron.Identity/Iron.Identity.csproj" />` to the item group.
-3. Run `make check`. The test `EveryProjectReferenceFollowsTheModuleBoundaryRules` fails and names `src/Iron.Audit/Iron.Audit.csproj`.
-4. Remove the line again.
+- Warnings are errors in every project; `dotnet format` must make no change.
+- Every package version is declared once in `Directory.Packages.props`, with its licence; the shell's are in `shell/package.json`.
+- Module boundaries: a module may reference shared libraries and `Contracts` projects only. The compiler enforces it through project references; `tests/Iron.Architecture.Tests` names any violation, including type references into another module's `Api`, `Services` and `Data` namespaces.
+- No Foundation assembly reads the system clock directly; time comes from an injected `TimeProvider`.
+- Every module DbContext passes the model rules and its migrations match its model; the schema check runs over the migrated schema.
+- Every endpoint declares a permission, `RequireSignedIn` or `AllowAnonymous`; a host does not start otherwise, and the anonymous list is fixed by a test.
+- In the shell, nothing imports `ag-grid-*` outside the DataGrid wrapper, and every route declares its permission.
 
 ## Documentation
 
-- `docs/slices/` the slice plans; S1 is the current one and the brief for every build session
-- `docs/adr/` architecture decision records; every decision gets one as it is built
-- `docs/guides/developer-guide.md` how to work on the repository and add a module
+- `docs/slices/S1-walking-skeleton.md` the slice plan, its requirement coverage, the task table and the closing notes
+- `docs/adr/` twenty-two architecture decision records, one per decision, with an index
+- `docs/guides/developer-guide.md` how to work on the repository: add a module, an entity, an endpoint with a permission, a shell page, a provisioning step
 - `docs/guides/local-stack.md` the runbook of the laptop platform
+- `docs/guides/definition-of-done.md` what a change needs before it is merged
 - `docs/prd/` the Technical Foundation PRD and the Functional Foundation PRD
 
 ## Versions decided for Foundation
@@ -131,8 +119,9 @@ docs/                        prd/, adr/, guides/, slices/
 |---|---|
 | .NET | 10 (LTS) |
 | PostgreSQL | 19 (release candidate image until the GA planned for 2026-11-19) |
-| Node.js | v26.12.0 |
+| Node.js | 26 |
 | React | 19.3 |
 | Mantine | 9.7.3 |
-| AG Grid | Community edition; Enterprise later by decision |
+| AG Grid | Community 36; Enterprise later by decision, in one file |
 | Object storage on the laptop | Azurite (Azure Blob stand-in), see ADR-0006 |
+| Secrets on the laptop | OpenBao in development mode, see ADR-0016 |

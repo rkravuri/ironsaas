@@ -1,14 +1,14 @@
 # Developer guide
 
-This guide grows with each slice. Today it covers how to work on the repository, the rules the build enforces, and how to add a module. Later tasks add: the module pattern (T7), adding an entity with endpoints, permissions and migrations (T7 to T11), the local stack (T2), and the shell (T15).
+How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission, an audit event, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
 
 ## Working on the repository
 
 - Develop in WSL 2 (Ubuntu) or on Linux. Clone inside the Linux file system (for example `~/src/foundation`), not under `/mnt/c`; builds are many times faster there.
 - Install the .NET SDK 10.0. `dotnet --version` must print 10.0.x. `global.json` accepts any 10.0.1xx feature band.
-- Commands: `make build`, `make test`, `make check`, `make format`. `make` alone lists them.
-- Before you push: `make test` is green and `make format` made no change.
-- Every pull request follows the checklist in `.github/pull_request_template.md`.
+- Commands: `make build`, `make test`, `make check`, `make format` for the .NET side; `make shell-install`, `make shell-check`, `make shell-dev` for the shell. `make` alone lists them.
+- Before you push: `make test` and `make shell-check` are green and `make format` made no change; CI checks all three.
+- Every pull request follows `definition-of-done.md`, summarised in `.github/pull_request_template.md`.
 
 ## Layout
 
@@ -26,13 +26,14 @@ src/
     Data/                    entities, repositories, migrations for this module's schema
     Contracts/               public interfaces and DTOs; its own project Iron.<Module>.Contracts
     README.md                what the module is responsible for
-  Iron.Host.Api/  Iron.Host.Worker/              tenant unit hosts
-  Iron.Host.ControlPlane/  Iron.Host.Fleet/      control plane hosts
-  Iron.Shell/                React shell and design system (T15)
+  Iron.Host.Api/  Iron.Host.Worker/              tenant unit hosts, with their Dockerfiles
+  Iron.Host.ControlPlane/  Iron.Host.Fleet/      control plane hosts, with their Dockerfiles
+shell/                       the React shell: src/api, src/auth, src/modules/<module>, src/components/data-grid, e2e/
 products/                    business products, same layout as a module (after S2)
 tests/                       test projects; Iron.Architecture.Tests holds the build checks
-tools/                       scaffolding and developer tools (after S1)
-infra/                       Compose stack (T2), later Kubernetes and OpenTofu
+tools/Iron.Smoke/            the smoke test; scaffolding tools come after S1
+infra/compose/               the laptop platform and the unit template's rendered output
+.github/workflows/           ci.yml and release.yml
 docs/                        prd/, adr/, guides/, slices/
 ```
 
@@ -173,3 +174,43 @@ curl -s https://acme.localhost/api/v1/users -H "Authorization: Bearer <access_to
 ```
 
 Tokens live 15 minutes, carry the unit's tenant, and are checked on every request together with the principal behind them. `GET /.well-known/jwks.json` publishes the signing key. On the laptop, `make seed` creates `smoke-client` and `make token` fetches a token from the running API host. A token for another tenant, an expired token or a disabled service account answers 401 with `auth.token_invalid` or `auth.token_expired`.
+
+
+## A unit's configuration (T12, ADR-0016)
+
+A host reads its configuration from its unit secret in the store, loaded at start by `AddIronSecrets()` just below the environment variables. Inside a module, inject the bound options or `IConfiguration` as usual; never read the store directly. What a unit needs at runtime goes into the keys the fleet writes (`ConnectionStrings:Database`, `Database:AppRole`, `Storage:ContainerSasUrl`, `Tokens:SigningKeyPem`); a new runtime secret is a new key written by the fleet's secrets step and read through configuration, not a new way to fetch it.
+
+Files go through `IObjectStorage` (Iron.Files.Contracts): `PutAsync`, `GetAsync`, `DeleteAsync`, with the tenant's container behind it. The container's signature is all a unit holds; it cannot create containers or reach another tenant's.
+
+
+## The control plane and a provisioning step (T13, T14, ADR-0017 to ADR-0019)
+
+The control plane is a unit like the others, with `Iron.Tenancy` (the registry and the tenant API) and `Iron.Fleet` (jobs, steps, the worker). A new thing to do for every tenant is a new step:
+
+1. Add a class in `src/Iron.Fleet/Services/Steps/` implementing `IProvisioningStep`: a `Name`, an `Order`, the `Kinds` of job it belongs to (`Provision`, `Update`, `Deprovision`), and `RunAsync(ProvisioningContext, ...)` returning what it reports.
+2. Make it idempotent and resumable: read what an earlier run left in the store or the database before creating anything, and keep nothing generated only in memory (ADR-0018). A step that talks to the unit does it through `IUnitRuntime`, never through Docker directly.
+3. Register it in `FleetModule.AddServices` and extend the step list in `ProvisioningTests`; the tests run the steps against real PostgreSQL, Azurite and OpenBao containers with a recording runtime.
+
+The fleet worker needs nothing else: it runs the steps of the job's kind in order, records each with its duration, stops at the first failure, and continues from it on the next request.
+
+
+## A shell page with a grid (T15, T16, ADR-0020, ADR-0021)
+
+1. Add the API binding in `shell/src/api/<module>.ts`: a Zod schema for the response and a function that calls `request()` with it. For a list, use `listSchema(ItemSchema)` and take the ListQuery string as the parameter.
+2. Add the page under `shell/src/modules/<module>/pages/`. For a list, declare the columns (`field` is the API's field name; `sortable` and `filter` follow the API's field table) and render `<DataGrid columns={...} fetchPage={...} defaultSort={...} label={...} />`; paging, sorting and filtering are server round trips the wrapper builds.
+3. Add the route and the navigation entry to the module's manifest in `shell/src/modules/<module>/manifest.tsx`, each with its `permission` (`null` for any signed-in principal), and the manifest to `shell/src/modules/index.ts` if it is new. Every string goes through `src/i18n/en.json`.
+4. `make shell-check`: a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper fails lint.
+
+A page reads the signed-in principal with `useSession()`; it never checks a permission itself beyond what the manifest declares, since the API's answer is the one that counts. Errors from `request()` are `ApiError` with the correlation id; the error views show it.
+
+
+## Proving a change (T17, T18, ADR-0022)
+
+| Level | Command | What it proves |
+|---|---|---|
+| Unit and integration tests | `make test`, `make shell-check` | the code, on real platform services in containers |
+| Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace |
+| Browser | `make e2e` | login and the grid in a real browser |
+| Pipeline's stage | `make integration` | platform and control plane from images, then the smoke |
+
+Every pull request runs the first level in CI; every merge to main builds the images and runs the pipeline's stage on the runner. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.

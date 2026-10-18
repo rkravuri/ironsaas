@@ -21,12 +21,12 @@ The slice is done when this demo runs on a fresh WSL laptop:
 | ID | Requirement | What S1 builds | Continues in |
 |---|---|---|---|
 | TF-001 | Tenant registry | All fields, unique hostname rule, status values; the unit does not yet enforce Suspended | S6 |
-| TF-002 | Automated provisioning | All steps, resumable, re-run refused when Active; invitation shown as a link, no email yet | S4 (email) |
+| TF-002 | Automated provisioning | Eight steps, each recorded with its duration, resumable from the failed step, re-run refused when Active; update jobs (migrate, seed, unit, verify) for a running unit; thin de-provision; invitation shown as a link, no email yet | S3 (image upgrades by tag), S4 (email) |
 | TF-003 | Tenant resolution | Fixed tenant per unit from configuration, hostname check, token tenant claim check, one connection string | done |
 | TF-010 | Principals | User, ServiceAccount and ApiKey types with status; invitation acceptance; no profile screens | S3 |
 | TF-011 | Password login | Argon2id, fixed failure message, failed attempts counted | S3 (lockout) |
-| TF-020 | Sessions and tokens | Server-side session with secure cookie; 15-minute access tokens for API clients; signing keys from the secret store | S3 (refresh rotation, key rotation) |
-| TF-021 | Inactivity and limits | 60 minutes idle and 12 hours absolute from configuration; shell returns to login and warns before expiry | S2 (tenant setting), S3 (concurrent limit) |
+| TF-020 | Sessions and tokens | Server-side session with secure cookie; 15-minute access tokens with the client credentials grant, in-house (OpenIddict deferred to the authorization code flow, ADR-0015); signing keys from the secret store | S3 (refresh rotation, key rotation, OpenIddict) |
+| TF-021 | Inactivity and limits | 60 minutes idle and 12 hours absolute from configuration; the shell returns to login on a 401 from any call and shows the expiry on the profile page; it does not warn before expiry yet | S2 (warning before expiry, tenant setting), S3 (concurrent limit) |
 | TF-030 | Permission catalogue | Permissions declared in code, catalogue at start-up, start-up check, allow-list test | S2 (role editor) |
 | TF-031 | Enforcement | Check before business code, 403 with stable code, 60-second cache, fail closed, denial audited | S6 (alert) |
 | TF-060 | Append-only audit | Table, writer in the same transaction, database grants block update and delete; events for login, denial, invitation, provisioning | each slice adds its events |
@@ -36,12 +36,12 @@ The slice is done when this demo runs on a fresh WSL laptop:
 | TF-101 | Paging, filter, sort | Offset paging capped at 200, multi-field sort, filter grammar, sparse fields, whitelist per resource | done |
 | TF-130 | Tracing | One trace per request with API and database spans; correlation id returned and shown on errors; loss counter | S4 (job links) |
 | TF-160 | File storage | Storage interface (Azure Blob, against Azurite locally), one container per tenant with its own credentials, readiness probe | S4 (upload, versions, links) |
-| TF-170 | Application shell | Login, navigation from module manifests filtered by permission, error page with correlation id, session expiry, route registration with guard | S2 (entitlement and flag filters) |
+| TF-170 | Application shell | Login and invitation pages, navigation from module manifests filtered by the session's permissions, router built once from every declared route with the guard at render time, error pages with the correlation id, session end on 401; English catalogue through react-i18next | S2 (entitlement and flag filters, locales) |
 | TF-171 | Design system | Grid wrapper over AG Grid Community with server paging, sorting, filtering, column chooser, lint rule | S2 to S5 (forms, saved views, panels) |
-| TF-180 | Operator console | Control plane API and CLI for create, provision and list | S6 (screens) |
+| TF-180 | Operator console | Control plane API (create, list, get, provision, update, de-provision, job with steps) and the `provision.sh` command line that follows a job; the control plane runs from source or as containers | S6 (screens) |
 | TF-190 | Repository and conventions | Layout, build checks, one-command stack, one-command provisioning | S2 (scaffolding tool) |
-| TF-209 | Docs and ADRs | One ADR per S1 decision, developer guide v1, local stack runbook, API docs from code | ongoing |
-| TF-210 | Deployment units | One Compose project per tenant with own network, limits by size class, own roles, blob container, secrets path and routes; de-provision keeps data | S6 (network policies on Kubernetes, retention) |
+| TF-209 | Docs and ADRs | Twenty-two ADRs, the developer guide, the runbook, the definition of done, the README's first hour, API docs from code | ongoing |
+| TF-210 | Deployment units | One Compose project per tenant (API, worker, shell) with limits by size class, own database roles with PUBLIC revoked, blob container with its own signature, secrets path with its own policy and token, routes split between API and shell; isolation proven by tests; de-provision keeps data | S6 (network policies on Kubernetes, retention) |
 | TF-220 | Owning organisation | Base record type with owning organisation and sharing mode, plus the build check | S2 (visibility filters) |
 
 ## 3. Design
@@ -165,7 +165,7 @@ MFA, SSO, lockout, rate limits, role editor, entitlements, flags, settings, emai
 | T16 | DataGrid and the Users page | AG Grid Community wrapper with server paging, sorting and filtering mapped to the ListQuery grammar, column chooser, page size cap notice, keyboard navigation, loading and empty states, theming tokens; eslint rule; Users page | The grid lists users with server paging and sorting; a bad filter shows the problem message; a raw ag-grid import in a page fails lint | done (ADR-0021) |
 | T17 | Smoke and end-to-end tests | Iron.Smoke: provision or reuse, login, protected call with cookie and with token, denial case, trace lookup in Tempo by correlation id; Playwright: login and Users grid | `make smoke` passes against the local stack | done (tools/Iron.Smoke, shell/e2e with Playwright) |
 | T18 | Pipeline | ci.yml with build, checks, tests, shell checks, gitleaks and Trivy; release.yml with images to GHCR, integration stage on the runner with provisioning and smoke, image tagging | A pull request runs CI; a merge produces images and a green integration run with the smoke report | done (ADR-0022; control profile; Dependabot) |
-| T19 | Documentation and definition of done | Developer guide (add a module, an entity, an endpoint with permission), local stack runbook, ADRs complete, README quick start, definition of done checklist | A fresh checkout on a 32 GB WSL machine reaches a provisioned tenant and a visible trace in under one hour by following the README |next |
+| T19 | Documentation and definition of done | Developer guide (add a module, an entity, an endpoint with permission), local stack runbook, ADRs complete, README quick start, definition of done checklist | A fresh checkout on a 32 GB WSL machine reaches a provisioned tenant and a visible trace in under one hour by following the README | done |
 
 T10, T11 and T14 may each split into two sessions.
 
@@ -186,3 +186,29 @@ T10, T11 and T14 may each split into two sessions.
 ## 6. How we build
 
 Each task is one session. The files and commands are produced, run in WSL, and the task is done when its "Done when" line holds and its ADR is written. Update the State column of the task table when a task lands.
+
+## 7. Closing notes (2026-10-18)
+
+S1 closed with every task's "done when" met on the laptop: the build checks, the platform, the six modules, the four hosts, the fleet provisioning `acme` and `bravo` side by side, the shell with login, navigation and the grid, the smoke's eleven steps with the trace found in Tempo, five browser tests, and the pipeline's integration stage passing on the laptop from images. 386 .NET tests and 18 shell tests. Twenty-two ADRs.
+
+### What differed from the plan, and why
+
+- Provisioning step order: storage and secrets come before migrate and seed, because the image commands run with the unit's own environment and need the unit secret first (ADR-0018). The owner connection string is an environment override, so the secret source moved below the environment (ADR-0016).
+- OpenIddict is deferred to the authorization code flow; S1's client credentials grant is in-house (ADR-0015).
+- Update jobs exist (migrate, seed, unit, verify) and are the upgrade primitive; a running unit takes a new image that way.
+- The shell's router is built once from every declared route with the permission checked at render time; building it from the permissions in `/me` made a reload answer "not found" (ADR-0020).
+- The grid leaves row ids to AG Grid: in the infinite row model it asks for ids before the data exists (ADR-0021).
+- The control plane runs as containers too (the `control` profile), which the pipeline's stage needs (ADR-0022).
+- Azurite refuses to read container properties under a container signature, so readiness lists one page instead.
+- A login that races another attempt on the same account retries on the concurrency token instead of answering 500; the browser tests found it.
+- `BackgroundService.StartAsync` runs `ExecuteAsync` on the thread pool in .NET 10; a heartbeat test that assumed a synchronous first beat was flaky until it waited.
+
+### Open items carried into S2
+
+- Dependabot's first pull requests bump several actions to majors that need checking one by one; their CI runs are red until then. Pins in the workflows should move to the current majors.
+- The chiseled images print a Kerberos probe message from Npgsql at start; cosmetic, but a cleaner image is worth one try.
+- A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost; until then the smoke uses a tenant whose password it kept.
+- The shell does not warn before the session expires (TF-021).
+- OpenBao in development mode loses every secret when it restarts; a persistent local mode, or re-provisioning of an Active tenant's secrets, is worth deciding early in S2.
+- Tenant units share the platform network on the laptop; network isolation is a Kubernetes concern (S6).
+- The control plane has no screens; `provision.sh` and the API are the operator's tools (S6).
