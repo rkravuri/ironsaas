@@ -45,3 +45,38 @@ test.describe("the Users grid", () => {
     await expect(loginCell(grid, loginId)).toHaveCount(0);
   });
 });
+
+test.describe("the Users grid by keyboard", () => {
+  test("selects a row with Space and Enter, opens it with Ctrl+Enter, and the density switch changes the row height", async ({ page }) => {
+    await signIn(page);
+    await open(page, "/users");
+    const grid = page.getByRole("region", { name: "Users" });
+    const row = (index: number) => grid.locator(`.ag-row[row-index="${index}"]`).first();
+    await expect(loginCell(grid, "smoke-client")).toBeVisible();
+
+    await page.getByRole("radiogroup", { name: "Density" }).getByRole("radio", { name: "Compact" }).focus();
+    for (let presses = 0; presses < 8 && (await grid.locator(".ag-cell-focus").count()) === 0; presses += 1) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(grid.locator(".ag-cell-focus")).toHaveCount(1);
+
+    await page.keyboard.press("Space");
+    await expect(row(0)).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(row(1)).toHaveAttribute("aria-selected", "true");
+    await expect(row(0)).not.toHaveAttribute("aria-selected", "true");
+
+    await page.keyboard.press("Control+Enter");
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(/@smoke\.localhost|smoke-client/);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    const comfortable = await row(0).boundingBox();
+    await page.getByRole("radiogroup", { name: "Density" }).getByText("Compact").click();
+    await expect.poll(async () => (await row(0).boundingBox())?.height).toBe(32);
+    expect(comfortable?.height).toBe(40);
+  });
+});

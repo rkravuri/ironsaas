@@ -194,15 +194,16 @@ The control plane is a unit like the others, with `Iron.Tenancy` (the registry a
 The fleet worker needs nothing else: it runs the steps of the job's kind in order, records each with its duration, stops at the first failure, and continues from it on the next request.
 
 
-## A shell page with a grid (T15, T16, ADR-0020, ADR-0021)
+## A shell page (T15, T16, D3, ADR-0020, ADR-0021, ADR-0027)
 
 1. Add the API binding in `shell/src/api/<module>.ts`: a Zod schema for the response and a function that calls `request()` with it. For a list, use `listSchema(ItemSchema)` and take the ListQuery string as the parameter.
-2. Add the page under `shell/src/modules/<module>/pages/`. For a list, declare the columns (`field` is the API's field name; `sortable` and `filter` follow the API's field table) and render `<DataGrid columns={...} fetchPage={...} defaultSort={...} label={...} />`; paging, sorting and filtering are server round trips the wrapper builds.
-3. Add the route and the navigation entry to the module's manifest in `shell/src/modules/<module>/manifest.tsx`, each with its `permission` (`null` for any signed-in principal), and the manifest to `shell/src/modules/index.ts` if it is new. Every string goes through `src/i18n/en.json`.
-4. `make shell-check`: a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper fails lint.
+2. Put the page on a template from `shell/src/components/templates`: `ListPage` for a list (the title, one line, the actions, the filters, and the grid; the density switch comes with it), `RecordPage` for a record (the `RecordHeader` with its status as a word, then the panels behind tabs: `AttachmentPanel`, `HistoryPanel`, `ApprovalPanel`, `CommentPanel`), `WizardPage` for steps, `ConsolePage` for settings, `DashboardPage` for numbers. Nothing here is `EmptyState`; a wait is `LoadingState`; a question is `ConfirmDialog`; a form in a dialog is `FormDialog`. They live in `shell/src/components/panels`.
+3. For a list, declare the columns (`field` is the API's field name; `sortable` and `filter` follow the API's field table) and render `<DataGrid columns={...} fetchPage={...} defaultSort={...} label={...} onRowOpen={...} />`; paging, sorting and filtering are server round trips the wrapper builds. Space and Enter select the focused row, a double click or Ctrl+Enter runs `onRowOpen`, and `onSelectionChange` tells the page what is selected.
+4. For a form, `useZodForm({ schema, initialValues })` and `<Form form={form} onSubmit={save} submitLabel={...} secondary={...}>` with Mantine inputs bound through `form.getInputProps`. Field names are camelCase; when `save` rejects with an `ApiError`, the API's field problems land on their fields (`items[0].unit_price` becomes `items.0.unitPrice`) and the rest shows at the top with the correlation id. Never two primary actions.
+5. Add the route and the navigation entry to the module's manifest in `shell/src/modules/<module>/manifest.tsx`, each with its `permission` (`null` for any signed-in principal), and the manifest to `shell/src/modules/index.ts` if it is new. Every string goes through `src/i18n/en.json`.
+6. `make shell-check`: a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper and a colour by value fail lint. A new component gets its tile in the gallery, and `make shell-a11y` scans it.
 
 A page reads the signed-in principal with `useSession()`; it never checks a permission itself beyond what the manifest declares, since the API's answer is the one that counts. Errors from `request()` are `ApiError` with the correlation id; the error views show it.
-
 
 ## Styling a page (D1, ADR-0024, ADR-0025)
 
