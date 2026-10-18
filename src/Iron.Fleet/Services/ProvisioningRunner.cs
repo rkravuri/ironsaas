@@ -36,14 +36,14 @@ public sealed class ProvisioningRunner(
         var tenant = await tenants.FindAsync(job.TenantSlug, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Job {jobId} names tenant '{job.TenantSlug}', which is not in the registry.");
 
-        if (tenant.Status == TenantStatus.Active)
+        if (job.Kind == JobKind.Provision && tenant.Status == TenantStatus.Active)
         {
             job.Fail(time.GetUtcNow(), $"Tenant '{tenant.Slug}' is active already; provisioning does not run again.");
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return job.ToInfo(await StepsAsync(job.Id, cancellationToken).ConfigureAwait(false));
         }
 
-        var ordered = steps.OrderBy(s => s.Order).ToList();
+        var ordered = steps.Where(s => s.Kind == job.Kind).OrderBy(s => s.Order).ToList();
         var records = await EnsureStepRecordsAsync(job, ordered, cancellationToken).ConfigureAwait(false);
         job.Start(time.GetUtcNow());
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -86,10 +86,11 @@ public sealed class ProvisioningRunner(
             }
         }
 
-        var activated = await tenants.SetStatusAsync(tenant.Slug, TenantStatus.Active, cancellationToken).ConfigureAwait(false);
-        if (activated.IsFailure)
+        var finalStatus = job.Kind == JobKind.Provision ? TenantStatus.Active : TenantStatus.Decommissioned;
+        var moved = await tenants.SetStatusAsync(tenant.Slug, finalStatus, cancellationToken).ConfigureAwait(false);
+        if (moved.IsFailure)
         {
-            throw new InvalidOperationException($"The tenant could not be set Active: {activated.Error.Message}");
+            throw new InvalidOperationException($"The tenant could not be set {finalStatus}: {moved.Error.Message}");
         }
 
         job.Complete(time.GetUtcNow(), lastOutput);

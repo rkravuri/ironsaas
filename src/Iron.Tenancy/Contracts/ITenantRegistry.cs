@@ -71,5 +71,6 @@ public static class TenancyAuditEvents
 {
     public const string TenantCreated = "tenancy.tenant.created";
     public const string ProvisioningRequested = "tenancy.provisioning_requested";
+    public const string DeprovisioningRequested = "tenancy.deprovisioning_requested";
     public const string StatusChanged = "tenancy.tenant.status_changed";
 }

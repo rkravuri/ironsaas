@@ -8,7 +8,7 @@ namespace Iron.Fleet.Services;
 
 public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) : IProvisioningJobs
 {
-    public async Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, CancellationToken cancellationToken)
+    public async Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, CancellationToken cancellationToken)
     {
         if (!TenantId.TryParse(tenantSlug, out var tenant))
         {
@@ -25,14 +25,14 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) 
             return Error.Conflict(FleetErrors.JobInProgress, $"Provisioning job {latest.Id} for '{tenant.Value}' is {latest.Status.ToString().ToLowerInvariant()}.");
         }
 
-        if (latest is { Status: ProvisioningStatus.Failed })
+        if (latest is { Status: ProvisioningStatus.Failed } && latest.Kind == kind)
         {
             latest.Reopen(time.GetUtcNow());
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return latest.ToInfo(await StepsOfAsync(latest.Id, cancellationToken).ConfigureAwait(false));
         }
 
-        var job = new ProvisioningJob(tenant, time.GetUtcNow());
+        var job = new ProvisioningJob(tenant, kind, time.GetUtcNow());
         context.ProvisioningJobs.Add(job);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return job.ToInfo();

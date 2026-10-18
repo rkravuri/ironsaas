@@ -45,6 +45,7 @@ public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenan
 
 public sealed record ProvisioningResponse(
     Guid JobId,
+    JobKind Kind,
     ProvisioningStatus Status,
     string? CurrentStep,
     string? Error,
@@ -57,7 +58,7 @@ public sealed record ProvisioningResponse(
     public static ProvisioningResponse From(ProvisioningJobInfo job)
     {
         ArgumentNullException.ThrowIfNull(job);
-        return new ProvisioningResponse(job.Id, job.Status, job.CurrentStep, job.Error, job.Output, job.RequestedAt, job.StartedAt, job.FinishedAt, job.Steps);
+        return new ProvisioningResponse(job.Id, job.Kind, job.Status, job.CurrentStep, job.Error, job.Output, job.RequestedAt, job.StartedAt, job.FinishedAt, job.Steps);
     }
 }
 
@@ -87,7 +88,8 @@ internal static class TenantsEndpoints
         tenants.MapGet("/{slug}", GetAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("GetTenant").WithSummary("One tenant with its hostnames.");
         tenants.MapPost("/", CreateAsync).RequirePermission(TenancyPermissions.TenantsManage).Validate<CreateTenantRequest>().WithName("CreateTenant").WithSummary("Register a tenant in Provisioning status.");
         tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
-        tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("GetProvisioning").WithSummary("The latest provisioning job of the tenant.");
+        tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
+        tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("GetProvisioning").WithSummary("The latest job of the tenant.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, TenancyDbContext context, CancellationToken cancellationToken)
@@ -126,6 +128,12 @@ internal static class TenantsEndpoints
     private static async Task<IResult> ProvisionAsync(string slug, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
     {
         var result = await registry.RequestProvisioningAsync(slug, cancellationToken);
+        return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
+    }
+
+    private static async Task<IResult> DeprovisionAsync(string slug, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
+    {
+        var result = await registry.RequestDeprovisioningAsync(slug, cancellationToken);
         return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
     }
 

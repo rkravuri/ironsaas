@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Services/Compose/unit.compose.yaml" LogicalName="Iron.Fleet.Services.Compose.unit.compose.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" />
     <!-- Design-time only: lets "dotnet ef migrations add" run with this project as the start-up project. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">

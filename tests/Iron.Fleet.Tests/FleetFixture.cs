@@ -128,6 +128,8 @@ public sealed class RecordingRuntime : IUnitRuntime
 
     public List<UnitDefinition> Applied { get; } = [];
 
+    public List<UnitDefinition> Removed { get; } = [];
+
     public int ReadyChecks { get; private set; }
 
     /// <summary>The next command of this name fails once with this message.</summary>
@@ -159,5 +161,9 @@ public sealed class RecordingRuntime : IUnitRuntime
         return Task.FromResult<string?>(null);
     }
 
-    public Task RemoveAsync(UnitDefinition unit, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task RemoveAsync(UnitDefinition unit, CancellationToken cancellationToken)
+    {
+        Removed.Add(unit);
+        return Task.CompletedTask;
+    }
 }

@@ -103,3 +103,18 @@ Readiness (`/health/ready`) now reports `postgres`, `secret-store` (when configu
 ## The control plane (T13)
 
 The control plane is a unit of its own with its own database, `control`, in the laptop PostgreSQL. `make migrate-control` creates and migrates it, `make seed-control` seeds the system roles and the `operator` service account, and `make run-control` serves it on http://localhost:5200 (hostnames `localhost` and `control.localhost`). With it running, `make provision TENANT=acme` gets an operator token, registers `acme` with the hostname `acme.localhost` and the administrator `admin@acme.localhost`, and requests provisioning; until T14 the job stays Requested, and `GET /api/v1/tenants/acme/provisioning` shows it.
+
+
+## Provision a tenant (T14)
+
+Once, after `make up`: `make images` (the four host images at tag `dev`), then `make secret-control`, `make migrate-control` and `make seed-control`. Then, in two terminals, `make run-control` and `make run-fleet`. In a third:
+
+```bash
+make provision TENANT=acme
+```
+
+The script registers `acme` with the hostname `acme.localhost` and the administrator `admin@acme.localhost`, requests provisioning and follows the job: each step is printed with its duration as it completes, and the last line is the invitation link. `curl.exe -i http://acme.localhost/health/ready` (or the browser) answers from the new unit, `docker compose -p tenant-acme ps` shows its two containers, and `infra/compose/units/acme/` holds what the fleet rendered. `make provision TENANT=bravo` runs a second unit beside it.
+
+A failed step is printed with its error; fix the cause and run the same command again, and the job continues from that step. `make deprovision TENANT=acme` takes the unit down and keeps its database, container and secrets.
+
+The fleet worker runs from source here and drives the laptop's own Docker; `foundation/iron-fleet:dev` is the same program with the Docker CLI inside, for the pipeline (T18).

@@ -172,6 +172,46 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.Empty(runtime.Commands);
     }
 
+    [Fact]
+    public async Task DeprovisioningTakesTheUnitDownAndKeepsTheData()
+    {
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var slug = await RegisterAndRequestAsync(provider, "echo");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var registry = scope.ServiceProvider.GetRequiredService<TenantRegistry>();
+            var requested = await registry.RequestDeprovisioningAsync(slug, TestContext.Current.CancellationToken);
+            Assert.True(requested.IsSuccess, requested.IsFailure ? requested.Error.Message : null);
+            Assert.Equal(JobKind.Deprovision, requested.Value.Kind);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var job = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken))!;
+            Assert.Equal(JobKind.Deprovision, job.Kind);
+            Assert.Equal(ProvisioningStatus.Completed, job.Status);
+            Assert.Equal([StepNames.Remove], job.Steps.Select(s => s.Name));
+            Assert.Equal(slug, Assert.Single(runtime.Removed).Tenant.Slug);
+            Assert.Equal(TenantStatus.Decommissioned, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
+
+            // The data is still there: the tenant database answers its owner.
+            using var root = new OpenBaoSecretStore(fixture.StoreOptions());
+            var unit = await root.ReadAsync($"tenants/{slug}/unit", TestContext.Current.CancellationToken);
+            await using var connection = new NpgsqlConnection(unit!["ConnectionStrings:Database"]);
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+
+            // A tenant that is not Active cannot be de-provisioned again.
+            var again = await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestDeprovisioningAsync(slug, TestContext.Current.CancellationToken);
+            Assert.Equal(TenancyErrors.NotProvisionable, again.Error.Code);
+        }
+    }
+
     private static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix)
     {
         var slug = $"{prefix}-{Ids.New():N}"[..20];

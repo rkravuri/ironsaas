@@ -6,10 +6,14 @@ WORKDIR /src
 COPY . .
 RUN dotnet publish src/Iron.Host.Fleet/Iron.Host.Fleet.csproj --configuration Release --output /app /p:UseAppHost=false
 
-# Chiseled runtime: no shell, no package manager, runs as the non-root user "app" on port 8080.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS runtime
+# The fleet drives Docker on the laptop (ADR-0019), so its image carries the Docker CLI and the Compose plugin, taken
+# from the official docker image, and runs as root to use the mounted socket. Not chiseled, unlike the other hosts.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+COPY --from=docker:28-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:28-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
 WORKDIR /app
 COPY --from=build /app .
+RUN mkdir -p /var/lib/foundation/units
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 CMD ["dotnet", "Iron.Host.Fleet.dll", "health"]
 ENTRYPOINT ["dotnet", "Iron.Host.Fleet.dll"]

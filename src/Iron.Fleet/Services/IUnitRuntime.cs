@@ -37,7 +37,7 @@ public interface IUnitRuntime
 /// <summary>The runtime of a fleet without a configured runtime: every unit operation fails with a clear message.</summary>
 public sealed class NoUnitRuntime : IUnitRuntime
 {
-    private const string Message = "No unit runtime is configured (Fleet:Units:Runtime). The Compose runtime arrives in T14b.";
+    private const string Message = "No unit runtime is configured: set Fleet:Units:Runtime to compose (ADR-0019).";
 
     public Task<CommandResult> RunCommandAsync(UnitDefinition unit, IReadOnlyList<string> command, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
 

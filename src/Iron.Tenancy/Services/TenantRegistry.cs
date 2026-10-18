@@ -114,16 +114,38 @@ public sealed class TenantRegistry(
             return Error.Conflict(TenancyErrors.NotProvisionable, $"Tenant '{slug}' is {tenant.Status.ToString().ToLowerInvariant()} and cannot be provisioned.");
         }
 
+        return await RequestJobAsync(tenant, JobKind.Provision, TenancyAuditEvents.ProvisioningRequested, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>TF-210 (S1): the unit goes, the data stays. Only an Active tenant can be de-provisioned.</summary>
+    public async Task<Result<ProvisioningJobInfo>> RequestDeprovisioningAsync(string slug, CancellationToken cancellationToken)
+    {
+        var tenant = await context.Tenants.AsNoTracking().SingleOrDefaultAsync(t => t.Slug == slug, cancellationToken).ConfigureAwait(false);
+        if (tenant is null)
+        {
+            return Error.NotFound(TenancyErrors.TenantNotFound, $"There is no tenant '{slug}'.");
+        }
+
+        if (tenant.Status != TenantStatus.Active)
+        {
+            return Error.Conflict(TenancyErrors.NotProvisionable, $"Tenant '{slug}' is {tenant.Status.ToString().ToLowerInvariant()}; only an active tenant can be de-provisioned.");
+        }
+
+        return await RequestJobAsync(tenant, JobKind.Deprovision, TenancyAuditEvents.DeprovisioningRequested, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Result<ProvisioningJobInfo>> RequestJobAsync(Tenant tenant, JobKind kind, string auditEvent, CancellationToken cancellationToken)
+    {
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
-        var job = await jobs.RequestAsync(tenant.Slug, cancellationToken).ConfigureAwait(false);
+        var job = await jobs.RequestAsync(tenant.Slug, kind, cancellationToken).ConfigureAwait(false);
         if (job.IsFailure)
         {
             return job.Error;
         }
 
-        await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.ProvisioningRequested, AuditOutcome.Success, tenant.UpdatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["job_id"] = job.Value.Id.ToString("D") }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
+        await audit.WriteAsync(new AuditEvent(auditEvent, AuditOutcome.Success, tenant.UpdatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["job_id"] = job.Value.Id.ToString("D"), ["kind"] = kind.ToString().ToLowerInvariant() }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        logger.LogInformation("Provisioning requested for tenant {Slug}: job {JobId}.", tenant.Slug, job.Value.Id);
+        logger.LogInformation("{Kind} requested for tenant {Slug}: job {JobId}.", kind, tenant.Slug, job.Value.Id);
         return job.Value;
     }
 

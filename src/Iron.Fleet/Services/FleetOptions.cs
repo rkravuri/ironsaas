@@ -55,14 +55,37 @@ public sealed class FleetOptions
 
     public sealed class FleetUnitsOptions
     {
+        public const string ComposeRuntime = "compose";
+
+        /// <summary><c>compose</c> for the laptop runtime (ADR-0019); anything else means no runtime.</summary>
+        public string Runtime { get; set; } = "none";
+
         /// <summary>The image tag the units run: <c>dev</c> on the laptop, the build number in the pipeline.</summary>
         public string ImageTag { get; set; } = "dev";
+
+        /// <summary>The images' repository prefix: <c>foundation</c> for <c>foundation/iron-api</c>.</summary>
+        public string ImageRepository { get; set; } = "foundation";
+
+        /// <summary>The Compose network the platform services are on; units join it to reach them.</summary>
+        public string PlatformNetwork { get; set; } = "foundation";
+
+        /// <summary>Where the fleet writes one directory per unit with its compose.yaml and .env.</summary>
+        public string ComposeDirectory { get; set; } = "/var/lib/foundation/units";
+
+        /// <summary>The ingress as the fleet reaches it, for readiness checks with the tenant's Host header: <c>http://traefik</c> inside the network, <c>http://localhost</c> from the laptop.</summary>
+        public string IngressUrl { get; set; } = "http://traefik";
 
         /// <summary>The telemetry collector as the units see it.</summary>
         public string OtlpEndpoint { get; set; } = "http://otel-collector:4317";
 
         /// <summary>How long verify waits for a new unit to answer its readiness probe.</summary>
         public int ReadyTimeoutSeconds { get; set; } = 180;
+
+        /// <summary>How long an image command (migrate, seed) may take.</summary>
+        public int CommandTimeoutSeconds { get; set; } = 300;
+
+        /// <summary>How long <c>docker compose up --wait</c> or <c>down</c> may take.</summary>
+        public int ComposeTimeoutSeconds { get; set; } = 300;
     }
 }
 

@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets migrate-control seed-control run-control provision images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision deprovision images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -37,8 +37,10 @@ DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=
 DEV_SMOKE_SECRET = dev-smoke-client-secret-not-for-real-tenants
 DEV_OPERATOR_SECRET = dev-operator-secret-not-for-real-deployments
 CONTROL_URL ?= http://localhost:5200
-CONTROL_TENANT = Tenant__Id=control Tenant__Hostnames__0=localhost Tenant__Hostnames__1=control.localhost Tokens__SigningKeyPath=$(COMPOSE_DIR)/.control-signing-key.pem
-CONTROL_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=control;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
+CONTROL_TENANT = Tenant__Id=control Tenant__Hostnames__0=localhost Tenant__Hostnames__1=control.localhost
+CONTROL_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=control
+FLEET_LAPTOP = Fleet__Units__Runtime=compose Fleet__Units__ComposeDirectory=$(COMPOSE_DIR)/units Fleet__Units__IngressUrl=http://localhost Fleet__Units__ImageTag=$(TAG) \
+	Fleet__Database__UnitHost=postgres Fleet__Storage__UnitBlobEndpoint=http://blob:10000/$$BLOB_ACCOUNT_NAME Fleet__Secrets__UnitAddress=http://openbao:8200 Fleet__PollSeconds=3
 TAG ?= dev
 
 token: ## Get an access token for the laptop smoke client from the running API host
@@ -73,20 +75,32 @@ seed: env ## Run the tenant API image command "seed" against the laptop database
 	Seed__ServiceAccounts__0__ClientId=smoke-client Seed__ServiceAccounts__0__Secret=$(DEV_SMOKE_SECRET) \
 	dotnet run --project src/Iron.Host.Api -- seed
 
-migrate-control: env ## Migrate the control plane database (created on first run)
+secret-control: env ## Write the control plane's unit secret to OpenBao (control database, fleet admin connections, signing key)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-control-secret.sh
+
+migrate-control: env ## Migrate the control plane database (created on first run); needs make secret-control
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(CONTROL_TENANT) $(CONTROL_DATABASE) dotnet run --project src/Iron.Host.ControlPlane -- migrate
+	$(CONTROL_TENANT) $(CONTROL_SECRETS) dotnet run --project src/Iron.Host.ControlPlane -- migrate
 
 seed-control: env ## Seed the control plane: system roles and the operator service account
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(CONTROL_TENANT) $(CONTROL_DATABASE) \
+	$(CONTROL_TENANT) $(CONTROL_SECRETS) \
 	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
 	dotnet run --project src/Iron.Host.ControlPlane -- seed
 
 run-control: env ## Run the control plane API on the laptop (http://localhost:5200)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	ASPNETCORE_URLS=http://localhost:5200 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_DATABASE) \
+	ASPNETCORE_URLS=http://localhost:5200 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_SECRETS) \
 	dotnet run --project src/Iron.Host.ControlPlane
+
+run-fleet: env ## Run the fleet worker on the laptop with the Compose runtime (it drives docker on this machine)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	ASPNETCORE_URLS=http://localhost:5201 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_SECRETS) $(FLEET_LAPTOP) Heartbeat__Interval=00:01:00 \
+	dotnet run --project src/Iron.Host.Fleet
+
+deprovision: ## Ask the fleet to take a tenant's unit down (data is kept): make deprovision TENANT=acme
+	@test -n "$(TENANT)" || (echo "usage: make deprovision TENANT=acme" && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=deprovision $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
 provision: ## Register a tenant in the control plane and request its provisioning: make provision TENANT=acme [ADMIN=admin@acme.localhost]
 	@test -n "$(TENANT)" || (echo "usage: make provision TENANT=acme [ADMIN=admin@acme.localhost]" && exit 1)

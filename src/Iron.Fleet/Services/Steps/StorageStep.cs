@@ -1,6 +1,7 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using Iron.Security.Secrets;
+using Iron.Fleet.Contracts;
 
 namespace Iron.Fleet.Services.Steps;
 
@@ -15,6 +16,8 @@ public sealed class StorageStep(ISecretStore secrets, TimeProvider time) : IProv
     public string Name => StepNames.Storage;
 
     public int Order => 3;
+
+    public JobKind Kind => JobKind.Provision;
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

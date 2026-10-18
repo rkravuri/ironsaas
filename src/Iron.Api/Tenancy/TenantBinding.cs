@@ -13,6 +13,15 @@ public sealed class TenantOptions
     public string? Id { get; set; }
 
     public string[] Hostnames { get; set; } = [];
+
+    /// <summary>The same hostnames as one comma-separated value, for a rendered file that cannot carry an array (the fleet's Compose template).</summary>
+    public string? HostnameList { get; set; }
+
+    public IReadOnlyList<string> AllHostnames()
+    {
+        var list = (HostnameList ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return [.. Hostnames, .. list];
+    }
 }
 
 /// <summary>
@@ -35,12 +44,13 @@ public static class TenantBinding
                 $"Tenant:Id is missing or not a valid tenant identifier ('{options.Id}'). Every unit is bound to one tenant; the fleet sets Tenant__Id when it creates the unit.");
         }
 
-        if (options.Hostnames.Length == 0)
+        var hostnames = options.AllHostnames();
+        if (hostnames.Count == 0)
         {
-            throw new InvalidOperationException("Tenant:Hostnames is empty. List the hostnames this unit answers to (Tenant__Hostnames__0, Tenant__Hostnames__1, ...).");
+            throw new InvalidOperationException("Tenant:Hostnames is empty. List the hostnames this unit answers to (Tenant__Hostnames__0, Tenant__Hostnames__1, ... or Tenant__HostnameList=a,b).");
         }
 
-        return new TenantContext(id, options.Hostnames);
+        return new TenantContext(id, hostnames);
     }
 
     public static IServiceCollection AddIronTenant(this IServiceCollection services, TenantContext tenant)

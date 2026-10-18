@@ -17,6 +17,7 @@ public sealed class FleetDbContext(DbContextOptions<FleetDbContext> options) : M
         modelBuilder.Entity<ProvisioningJob>(job =>
         {
             job.Property(j => j.TenantSlug).HasMaxLength(63);
+            job.Property(j => j.Kind).HasConversion<string>().HasMaxLength(20);
             job.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
             job.Property(j => j.CurrentStep).HasMaxLength(50);
             job.Property(j => j.Error).HasMaxLength(2000);

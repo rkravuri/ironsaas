@@ -33,6 +33,16 @@ public class TenantBindingTests
     }
 
     [Fact]
+    public void AcceptsACommaSeparatedHostnameListAsWell()
+    {
+        var configuration = Build(("Tenant:Id", "acme"), ("Tenant:HostnameList", "acme.localhost, Acme.Example.COM"));
+
+        var tenant = TenantBinding.FromConfiguration(configuration);
+
+        Assert.Equal(["acme.localhost", "acme.example.com"], tenant.Hostnames);
+    }
+
+    [Fact]
     public void RefusesAnEmptyHostnameList()
     {
         var configuration = Build(("Tenant:Id", "acme"));

@@ -4,18 +4,20 @@ using Iron.Data;
 using Iron.Fleet.Contracts;
 using Iron.Fleet.Data;
 using Iron.Fleet.Services;
+using Iron.Fleet.Services.Compose;
 using Iron.Fleet.Services.Steps;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Iron.Fleet;
 
 /// <summary>
 /// The fleet (TF-002, TF-210): provisioning jobs, the eight steps and the runner. The control plane API lists it for
 /// the jobs; the fleet worker lists it and adds <see cref="ProvisioningWorker"/>. The unit runtime is Compose on the
-/// laptop (T14b); without one, the image and unit steps fail with a clear message.
+/// laptop (<c>Fleet:Units:Runtime=compose</c>); without one, the image and unit steps fail with a clear message.
 /// </summary>
 public sealed class FleetModule : IModule
 {
@@ -35,7 +37,19 @@ public sealed class FleetModule : IModule
         services.AddIronDbContext<FleetDbContext>();
         services.AddScoped<IProvisioningJobs, ProvisioningJobs>();
         services.AddScoped<ProvisioningRunner>();
-        services.TryAddSingleton<IUnitRuntime, NoUnitRuntime>();
+        services.TryAddSingleton<IProcessRunner, ProcessRunner>();
+        if (string.Equals(options.Units.Runtime, FleetOptions.FleetUnitsOptions.ComposeRuntime, StringComparison.OrdinalIgnoreCase))
+        {
+            services.TryAddSingleton<IUnitRuntime>(provider => new ComposeUnitRuntime(
+                provider.GetRequiredService<IProcessRunner>(),
+                new HttpClient { Timeout = TimeSpan.FromSeconds(10) },
+                options,
+                provider.GetRequiredService<ILogger<ComposeUnitRuntime>>()));
+        }
+        else
+        {
+            services.TryAddSingleton<IUnitRuntime, NoUnitRuntime>();
+        }
 
         services.AddScoped<IProvisioningStep, ReserveStep>();
         services.AddScoped<IProvisioningStep, DatabaseStep>();
@@ -45,6 +59,7 @@ public sealed class FleetModule : IModule
         services.AddScoped<IProvisioningStep, SeedStep>();
         services.AddScoped<IProvisioningStep, UnitStep>();
         services.AddScoped<IProvisioningStep, VerifyStep>();
+        services.AddScoped<IProvisioningStep, RemoveStep>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

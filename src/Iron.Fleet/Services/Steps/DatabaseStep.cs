@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Iron.Security.Secrets;
 using Npgsql;
+using Iron.Fleet.Contracts;
 
 namespace Iron.Fleet.Services.Steps;
 
@@ -17,6 +18,8 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
     public string Name => StepNames.Database;
 
     public int Order => 2;
+
+    public JobKind Kind => JobKind.Provision;
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

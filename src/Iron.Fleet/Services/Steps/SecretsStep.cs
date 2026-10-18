@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Iron.Security.Secrets;
+using Iron.Fleet.Contracts;
 
 namespace Iron.Fleet.Services.Steps;
 
@@ -15,6 +16,8 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin) :
     public string Name => StepNames.Secrets;
 
     public int Order => 4;
+
+    public JobKind Kind => JobKind.Provision;
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

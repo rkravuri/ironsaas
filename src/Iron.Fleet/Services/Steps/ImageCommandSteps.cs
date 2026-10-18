@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using Iron.Fleet.Contracts;
 using Iron.Security.Secrets;
 
 namespace Iron.Fleet.Services.Steps;
@@ -42,6 +43,8 @@ public sealed class MigrateStep(IUnitRuntime runtime, ISecretStore secrets, Secr
 
     public int Order => 5;
 
+    public JobKind Kind => JobKind.Provision;
+
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -75,6 +78,8 @@ public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets,
     public string Name => StepNames.Seed;
 
     public int Order => 6;
+
+    public JobKind Kind => JobKind.Provision;
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -128,6 +133,8 @@ public sealed class UnitStep(IUnitRuntime runtime, ISecretStore secrets, SecretS
 
     public int Order => 7;
 
+    public JobKind Kind => JobKind.Provision;
+
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -144,6 +151,8 @@ public sealed class VerifyStep(IUnitRuntime runtime, ISecretStore secrets, Secre
     public string Name => StepNames.Verify;
 
     public int Order => 8;
+
+    public JobKind Kind => JobKind.Provision;
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -180,5 +189,24 @@ public static class ProvisioningContextExtensions
     {
         ArgumentNullException.ThrowIfNull(context);
         return new UnitDefinition(context.Tenant, context.Options.Units.ImageTag, SizeClasses.LimitsOf(context.Tenant.SizeClass), environment);
+    }
+}
+
+/// <summary>The one step of a de-provisioning job (TF-210, S1): the unit's containers and routes go; database, container and secrets stay for retention (S6).</summary>
+public sealed class RemoveStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
+{
+    public string Name => StepNames.Remove;
+
+    public int Order => 1;
+
+    public JobKind Kind => JobKind.Deprovision;
+
+    public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var environment = await UnitEnvironment.ForUnitAsync(context, secrets, fleetStore, cancellationToken).ConfigureAwait(false);
+        UnitEnvironment.AddHostnames(environment, context.Tenant.Hostnames);
+        await runtime.RemoveAsync(context.ToUnit(environment), cancellationToken).ConfigureAwait(false);
+        return $"unit {context.Slug} removed; database {context.Tenant.DatabaseName}, container {context.Tenant.StorageContainer} and secrets kept";
     }
 }

@@ -51,6 +51,12 @@ namespace Iron.Fleet.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("finished_at");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
                     b.Property<string>("Output")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")

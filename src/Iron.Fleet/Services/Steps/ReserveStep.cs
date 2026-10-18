@@ -1,4 +1,5 @@
 using Iron.Tenancy.Contracts;
+using Iron.Fleet.Contracts;
 
 namespace Iron.Fleet.Services.Steps;
 
@@ -8,6 +9,8 @@ public sealed class ReserveStep : IProvisioningStep
     public string Name => StepNames.Reserve;
 
     public int Order => 1;
+
+    public JobKind Kind => JobKind.Provision;
 
     public Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

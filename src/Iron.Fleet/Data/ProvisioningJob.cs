@@ -12,7 +12,7 @@ public sealed class ProvisioningJob : AuditedEntity
         TenantSlug = string.Empty;
     }
 
-    public ProvisioningJob(TenantId tenant, DateTimeOffset now)
+    public ProvisioningJob(TenantId tenant, JobKind kind, DateTimeOffset now)
     {
         if (tenant.IsEmpty)
         {
@@ -20,11 +20,14 @@ public sealed class ProvisioningJob : AuditedEntity
         }
 
         TenantSlug = tenant.Value;
+        Kind = kind;
         Status = ProvisioningStatus.Requested;
         RequestedAt = now;
     }
 
     public string TenantSlug { get; private set; }
+
+    public JobKind Kind { get; private set; }
 
     public ProvisioningStatus Status { get; private set; }
 
@@ -86,6 +89,7 @@ public sealed class ProvisioningJob : AuditedEntity
     public ProvisioningJobInfo ToInfo(IReadOnlyList<ProvisioningStep>? steps = null) => new(
         Id,
         TenantSlug,
+        Kind,
         Status,
         CurrentStep,
         Error,

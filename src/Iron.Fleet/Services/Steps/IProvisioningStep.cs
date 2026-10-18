@@ -1,3 +1,4 @@
+using Iron.Fleet.Contracts;
 using Iron.Tenancy.Contracts;
 
 namespace Iron.Fleet.Services.Steps;
@@ -39,6 +40,9 @@ public interface IProvisioningStep
 
     int Order { get; }
 
+    /// <summary>The kind of job this step belongs to.</summary>
+    JobKind Kind { get; }
+
     /// <summary>Does the work and returns what the step reports (shown on the job), or null.</summary>
     Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken);
 }
@@ -53,4 +57,5 @@ public static class StepNames
     public const string Seed = "seed";
     public const string Unit = "unit";
     public const string Verify = "verify";
+    public const string Remove = "remove";
 }

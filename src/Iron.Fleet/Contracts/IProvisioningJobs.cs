@@ -12,11 +12,19 @@ public enum ProvisioningStatus
     Completed,
 }
 
+/// <summary>What a job does: bring a unit up, or take it down while keeping its data (TF-210, thin de-provision in S1).</summary>
+public enum JobKind
+{
+    Provision,
+    Deprovision,
+}
+
 public sealed record ProvisioningStepInfo(string Name, int Order, string Status, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, int? DurationMs, string? Output, string? Error);
 
 public sealed record ProvisioningJobInfo(
     Guid Id,
     string TenantSlug,
+    JobKind Kind,
     ProvisioningStatus Status,
     string? CurrentStep,
     string? Error,
@@ -36,7 +44,7 @@ public interface IProvisioningJobs
     /// Creates a Requested job, reopens the last one when it Failed (so the run continues from the failed step), or fails
     /// with <c>fleet.job.in_progress</c> while one is Requested or Running.
     /// </summary>
-    Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, CancellationToken cancellationToken);
+    Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, CancellationToken cancellationToken);
 
     Task<ProvisioningJobInfo?> LatestAsync(string tenantSlug, CancellationToken cancellationToken);
 }
