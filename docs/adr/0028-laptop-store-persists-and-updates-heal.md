@@ -1,0 +1,24 @@
+# ADR-0028: The laptop store persists, and an update heals a unit
+
+Date: 2026-10-19
+Status: Accepted
+
+## Context
+
+ADR-0005 ran OpenBao in development mode on the laptop: in memory, unsealed, one root token. On 2026-10-18 the WSL distro restarted during the D3 session, OpenBao lost every secret, and every tenant unit crash-looped with 403 from the store on `tenants/<slug>/unit`. An Active tenant cannot be provisioned again, and the update job (ADR-0020, decision 8) ran only migrate, seed, unit and verify, so nothing could put the secrets back short of `make reset`. The S1 closing notes had listed the risk. The units' way of reading their secret (ADR-0016) and the fleet's paths (ADR-0018) stay as they are.
+
+## Decision
+
+1. **Server mode with integrated storage.** OpenBao 2.7.1 (the pinned version, checked on 2026-10-19) no longer has the `file` storage backend; single-node integrated storage (`raft`) is its own recommendation for a store that keeps its data. `infra/compose/openbao/openbao.hcl` holds the configuration and no secret; the data lives on the named volume `openbao-data` at the image's own data directory, so it survives `make down`, a container restart and a WSL restart, and `make reset` deletes it.
+2. **The static seal.** 2.7.1 has `seal "static"`: a 32-byte key, base64 in `OPENBAO_UNSEAL_KEY` in `infra/compose/.env`, unseals the store at every start. `make env` generates the key, and adds it to an existing `.env` without touching the rest. A wrong key leaves the store sealed with a log line that says so; nothing is lost. The container's health check accepts the sealed and the uninitialised states (`bao status` exits 2) and fails only when the server does not answer, because the store must run before it can be initialised.
+3. **Initialised once by `make up`.** `infra/compose/scripts/init-store.sh` runs after the containers are healthy in `make up`, `make up-slim`, `make up-ci` and the pipeline's integration script. On a new store it initialises with one recovery share, writes `OPENBAO_ROOT_TOKEN` and `OPENBAO_RECOVERY_KEY` into `.env` before anything else (replacing the development placeholder), and enables KV version 2 at `secret`. On an initialised store it checks that the store is unsealed and that the token in `.env` opens it, and stops with a message that says what to do when either fails. The recovery key is kept because it is the only way to make a new root token if the token line is lost. `make reset` deletes the volume and the two lines together, since they belong to each other; the unseal key stays and seals the next store. Nothing about the store moves into git.
+4. **The update heals.** The database, storage and secrets steps join the update job; an update runs database, storage, secrets, migrate, seed, unit, verify. The three were idempotent already: with the secrets in place nothing changes; with them lost, the role passwords are new and the roles are altered to them, a new container signature is issued, and a new policy and unit token are made, which the unit step puts into the re-applied unit. This replaces the update's step list in ADR-0020, decision 8. A Fleet test deletes every `tenants/<slug>/*` secret and proves the heal.
+5. **The tests keep development mode.** The Security and Fleet fixtures start a throwaway OpenBao in development mode per run, which is right for a test.
+6. **The smoke and the browser tests take a tenant**: `make smoke TENANT=x` and `make e2e TENANT=x`, the smoke tenant by default.
+
+## Consequences
+
+- A restart of anything on the laptop keeps every secret; the recovery after a lost store is `make up-control` for the control plane's secret and `make update-unit TENANT=<slug>` per unit (the runbook's troubleshooting table).
+- A healed unit has new credentials: role passwords, the container signature, the unit token and the signing key, so access tokens issued before stop working. Two things a heal cannot bring back: the administrator's password, which only its owner and the smoke tool's `tenants/<slug>/smoke` held, and the smoke client's secret, because the seed creates the client only when it is missing and a new secret in the store does not reach the database. A healed tenant serves its users; the smoke and the browser tests run against a fresh tenant until the reset flow of S3.
+- The laptop's OpenBao now behaves like a real one: sealed and unsealed, initialised once, a root token to keep. The runbook says how to recover each case.
+- Options not taken: PostgreSQL as OpenBao's storage (the store would depend on the database whose passwords it holds); unsealing by script with one key share (more moving parts, and the static seal exists in 2.7.1); development mode with a re-provision after every restart (an Active tenant cannot be provisioned again, and every restart would cost every tenant); a store-wide backup and restore instead of healing (it would not help a unit whose secrets were lost some other way).

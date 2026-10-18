@@ -10,7 +10,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0002](0002-isolated-deployment-unit-per-tenant.md) | One isolated deployment unit per tenant on shared infrastructure | Accepted |
 | [0003](0003-open-source-first-and-decided-versions.md) | Open source first, every dependency listed once, decided platform versions | Accepted |
 | [0004](0004-build-and-test-conventions.md) | Build and test conventions | Accepted |
-| [0005](0005-laptop-platform-stack.md) | The laptop platform stack on Compose | Accepted |
+| [0005](0005-laptop-platform-stack.md) | The laptop platform stack on Compose | Accepted; OpenBao's mode superseded by 0028 |
 | [0006](0006-object-storage-stand-in.md) | Azurite replaces MinIO as the laptop object storage | Accepted |
 | [0007](0007-core-primitives.md) | Core primitives: results and errors, tenant identifier, ids, time, correlation | Accepted |
 | [0008](0008-data-conventions.md) | Data conventions | Accepted |
@@ -27,7 +27,7 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0017](0017-control-plane-tenant-registry.md) | The tenant registry and the control plane API | Accepted |
 | [0018](0018-provisioning-steps.md) | Provisioning as resumable steps | Accepted |
 | [0019](0019-compose-unit-runtime.md) | Compose as the laptop unit runtime | Accepted |
-| [0020](0020-shell.md) | The shell | Accepted |
+| [0020](0020-shell.md) | The shell | Accepted; the update's steps superseded by 0028 |
 | [0021](0021-data-grid.md) | DataGrid over AG Grid Community | Accepted |
 | [0022](0022-pipeline.md) | The pipeline | Accepted |
 | [0023](0023-build-method.md) | The build method from S2: instruction files for Claude Code | Accepted |
@@ -35,7 +35,8 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0025](0025-design-foundation.md) | The design foundation | Accepted |
 | [0026](0026-illustrations-and-patterns.md) | Illustrations and patterns: the generator, the hand and the review rule | Accepted |
 | [0027](0027-templates-panels-and-the-form.md) | Templates, panels and the form | Accepted |
+| [0028](0028-laptop-store-persists-and-updates-heal.md) | The laptop store persists, and an update heals a unit | Accepted |
 
 ## Reading order
 
-For a newcomer: 0001 (the shape of the code), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 (how a tenant comes to exist), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
+For a newcomer: 0001 (the shape of the code), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 and 0028 (how a tenant comes to exist, and how it heals), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.

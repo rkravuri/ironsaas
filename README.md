@@ -11,7 +11,7 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 - A tenant is registered through the control plane API and provisioned by the fleet in about fifteen seconds: its own database roles and database, blob container, secrets path and token, migrations, seeds, a Compose unit of three containers (API, worker, shell) behind the ingress, and a readiness check through the ingress. A failed step resumes; an active unit takes new images with an update job; de-provisioning keeps the data.
 - A person follows the invitation link to the tenant's own hostname, sets a password, signs in with a server-side session, and sees the pages and navigation the permissions allow. A service account gets a 15-minute token with the client credentials grant.
 - Every request carries a correlation id that is its trace id in Tempo; every error shows it; every permission denial, login and provisioning step is in the append-only audit trail.
-- 386 .NET tests (architecture rules, unit, and integration on real PostgreSQL, Azurite and OpenBao containers), 18 shell tests, an eleven-step smoke test against the live stack, five browser tests, and a pipeline that builds the images and proves them on the runner.
+- 387 .NET tests (architecture rules, unit, and integration on real PostgreSQL, Azurite and OpenBao containers), 91 shell tests, an eleven-step smoke test against the live stack, six browser tests against it and ten without it (the accessibility scan), and a pipeline that builds the images and proves them on the runner.
 
 ## The first hour: a fresh checkout to a provisioned tenant and a visible trace
 
@@ -21,8 +21,8 @@ Timings are from a 32 GB WSL 2 laptop with a warm image cache; the first `make i
 |---|---|---|---|
 | 1 | Prerequisites below | `dotnet --version` 10.0.x, `docker compose version` 2.x, `node --version` v26 from WSL | 10 min |
 | 2 | `git clone <repo> ~/foundation && cd ~/foundation` | | 1 min |
-| 3 | `make build && make test` | build clean, 386 passed | 5 min |
-| 4 | `make up` | platform healthy, endpoints printed | 3 min |
+| 3 | `make build && make test` | build clean, 387 passed | 5 min |
+| 4 | `make up` | platform healthy, the secret store initialised (its root token in `infra/compose/.env`), endpoints printed | 3 min |
 | 5 | `make images` | five images `foundation/iron-*:dev` | 10 min |
 | 6 | `make secret-control && make migrate-control && make seed-control` | control database and operator | 1 min |
 | 7 | terminal 2: `make run-control`; terminal 3: `make run-fleet` | both listening | 1 min |
@@ -67,7 +67,7 @@ make secret-control / migrate-control / seed-control     # the control plane's s
 make run-control / make run-fleet                        # the control plane from source on :5200
 make up-control / make down-control                      # the control plane as containers instead
 make provision TENANT=x / update-unit TENANT=x / deprovision TENANT=x
-make smoke / make e2e / make integration                 # the smoke test, the browser tests, the pipeline's stage
+make smoke / make e2e [TENANT=x] / make integration      # the smoke test, the browser tests, the pipeline's stage
 make ef-add MODULE=Identity NAME=AddColumn               # a migration for a module context
 ```
 
@@ -127,4 +127,4 @@ docs/                        prd/, adr/, guides/, slices/
 | Mantine | 9.7.3 |
 | AG Grid | Community 36; Enterprise later by decision, in one file |
 | Object storage on the laptop | Azurite (Azure Blob stand-in), see ADR-0006 |
-| Secrets on the laptop | OpenBao in development mode, see ADR-0016 |
+| Secrets on the laptop | OpenBao in server mode on a volume, unsealed by its key in `.env`; kept across restarts (ADR-0016, ADR-0028) |
