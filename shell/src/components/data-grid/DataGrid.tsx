@@ -10,6 +10,7 @@ import {
   ModuleRegistry,
   NumberFilterModule,
   PaginationModule,
+  RowSelectionModule,
   TextFilterModule,
   ValidationModule,
   type ColDef,
@@ -17,6 +18,9 @@ import {
   type GridReadyEvent,
   type IDatasource,
   type IGetRowsParams,
+  type CellKeyDownEvent,
+  type RowDoubleClickedEvent,
+  type SelectionChangedEvent,
 } from "ag-grid-community";
 import { ApiError } from "@/api/client";
 import type { ListMeta } from "@/api/client";
@@ -24,10 +28,11 @@ import { useDensity } from "@/design/density";
 import { tokens } from "@/design/tokens";
 import { buildListQuery, defaultPageSize, filtersFromGrid, maxPageSize, pageFromRows, sortFromGrid, type GridFilterModel, type SortTerm } from "./list-query";
 import { NoRowsOverlay } from "./NoRowsOverlay";
+import { rowKeyAction } from "./keys";
 import { dataGridTheme } from "./theme";
 
 // Only what the wrapper uses; the validation module explains a missing one in development and costs nothing in production.
-ModuleRegistry.registerModules([InfiniteRowModelModule, PaginationModule, TextFilterModule, NumberFilterModule, DateFilterModule, ColumnApiModule, ...(import.meta.env.DEV ? [ValidationModule] : [])]);
+ModuleRegistry.registerModules([InfiniteRowModelModule, PaginationModule, RowSelectionModule, TextFilterModule, NumberFilterModule, DateFilterModule, ColumnApiModule, ...(import.meta.env.DEV ? [ValidationModule] : [])]);
 
 export type DataGridFilter = "text" | "number" | "date" | false;
 
@@ -62,6 +67,10 @@ export interface DataGridProps<T> {
   refreshKey?: unknown;
   /** Called once the first rows are on screen; the gallery marks itself ready for the accessibility scan on it. */
   onReady?: () => void;
+  /** The action of a row: a double click, or Ctrl+Enter (Cmd+Enter on a Mac) on the focused row. */
+  onRowOpen?: (row: T) => void;
+  /** The selected row, or undefined once the selection is cleared; Enter and Space select the focused row. */
+  onSelectionChange?: (row: T | undefined) => void;
 }
 
 export interface DataGridProblem {
@@ -80,7 +89,7 @@ const dateFilterParams = { filterOptions: ["equals", "lessThan", "greaterThan"],
  * data-based id would throw. Nothing else imports ag-grid (ESLint); switching to Enterprise by licence is a
  * change to this file.
  */
-export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize, defaultSort = [], label, refreshKey, onReady }: DataGridProps<T>) {
+export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize, defaultSort = [], label, refreshKey, onReady, onRowOpen, onSelectionChange }: DataGridProps<T>) {
   const { t } = useTranslation();
   const density = useDensity();
   const apiRef = useRef<GridApi<T> | null>(null);
@@ -155,6 +164,40 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
     apiRef.current = event.api;
   }, []);
 
+  const onCellKeyDown = useCallback(
+    (event: CellKeyDownEvent<T>) => {
+      const keyboard = event.event;
+      if (!(keyboard instanceof KeyboardEvent) || event.data === undefined) {
+        return;
+      }
+      const action = rowKeyAction(keyboard);
+      if (action === "open") {
+        keyboard.preventDefault();
+        onRowOpen?.(event.data);
+      } else if (action === "select") {
+        keyboard.preventDefault();
+        event.node.setSelected(true, true);
+      }
+    },
+    [onRowOpen],
+  );
+
+  const onRowDoubleClicked = useCallback(
+    (event: RowDoubleClickedEvent<T>) => {
+      if (event.data !== undefined) {
+        onRowOpen?.(event.data);
+      }
+    },
+    [onRowOpen],
+  );
+
+  const onSelectionChanged = useCallback(
+    (event: SelectionChangedEvent<T>) => {
+      onSelectionChange?.(event.api.getSelectedRows()[0]);
+    },
+    [onSelectionChange],
+  );
+
   const retry = useCallback(() => {
     setProblem(undefined);
     apiRef.current?.purgeInfiniteCache();
@@ -226,6 +269,10 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
           paginationPageSizeSelector={[25, 50, 100, 200]}
           onGridReady={onGridReady}
           onFirstDataRendered={() => onReady?.()}
+          rowSelection={{ mode: "singleRow", checkboxes: false, enableClickSelection: true }}
+          onCellKeyDown={onCellKeyDown}
+          onRowDoubleClicked={onRowDoubleClicked}
+          onSelectionChanged={onSelectionChanged}
           rowHeight={tokens.density.rowHeight[density]}
           noRowsOverlayComponent={NoRowsOverlay}
           suppressCellFocus={false}

@@ -60,7 +60,14 @@
     "description": "Everyone who can sign in to this tenant: people and service accounts.",
     "open": "Open",
     "updated": "Updated",
-    "details": "Details"
+    "details": "Details",
+    "statuses": {
+      "active": "Active",
+      "invited": "Invited",
+      "locked": "Locked",
+      "inactive": "Inactive",
+      "disabled": "Disabled"
+    }
   },
   "profile": {
     "title": "My profile",
