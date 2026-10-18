@@ -38,7 +38,7 @@ export function ErrorView({ error, onRetry }: ErrorViewProps) {
     <Container size="sm" py="xl">
       <Stack>
         <Title order={2}>{title}</Title>
-        <Alert color="red" role="alert">
+        <Alert color="danger" role="alert">
           <Text>{message}</Text>
           {correlationId && (
             <Text size="sm" mt="xs">

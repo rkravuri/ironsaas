@@ -52,7 +52,7 @@ export function InvitationPage() {
       <Paper withBorder shadow="sm" p="lg" radius="md">
         {state.kind === "done" ? (
           <Stack>
-            <Alert color="green">{t("invitation.done")}</Alert>
+            <Alert color="success">{t("invitation.done")}</Alert>
             <Anchor component={Link} to="/login">
               {t("login.title")}
             </Anchor>
@@ -65,7 +65,7 @@ export function InvitationPage() {
               <PasswordInput label={t("invitation.password")} autoComplete="new-password" required {...form.getInputProps("password")} />
               <PasswordInput label={t("invitation.confirm")} autoComplete="new-password" required {...form.getInputProps("confirm")} />
               {state.kind === "error" && (
-                <Alert color="red" role="alert">
+                <Alert color="danger" role="alert">
                   {state.message}
                   {state.correlationId && (
                     <Text size="xs" c="dimmed" mt={4}>

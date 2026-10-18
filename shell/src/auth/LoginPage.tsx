@@ -62,7 +62,7 @@ export function LoginPage() {
             <TextInput label={t("login.loginId")} autoComplete="username" autoFocus required {...form.getInputProps("loginId")} />
             <PasswordInput label={t("login.password")} autoComplete="current-password" required {...form.getInputProps("password")} />
             {problem && (
-              <Alert color="red" role="alert">
+              <Alert color="danger" role="alert">
                 {problem.message}
                 {problem.correlationId && (
                   <Text size="xs" c="dimmed" mt={4}>

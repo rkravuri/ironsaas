@@ -189,7 +189,7 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
         </Menu>
       </Group>
       {problem && (
-        <Alert color="red" role="alert" withCloseButton onClose={() => setProblem(undefined)}>
+        <Alert color="danger" role="alert" withCloseButton onClose={() => setProblem(undefined)}>
           <Text size="sm">{problem.message}</Text>
           {problem.correlationId && (
             <Text size="xs" c="dimmed" mt={4}>
@@ -203,7 +203,7 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
         </Alert>
       )}
       {capped && (
-        <Alert color="yellow" role="status">
+        <Alert color="warning" role="status">
           {t("grid.capped", { size: capped.page_size, max: capped.max_page_size })}
         </Alert>
       )}
