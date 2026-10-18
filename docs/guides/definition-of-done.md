@@ -17,7 +17,8 @@ What a change needs before it is merged to main. The pull request template summa
 - [ ] An endpoint was added: it declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`; a new anonymous endpoint is a reviewed addition to the fixed list in `Iron.Host.Tests`.
 - [ ] A permission was added: it is in the module's Contracts, in the module's `Permissions`, and seeded into the system roles that should carry it.
 - [ ] Something a user does changed state: the audit event is written in the same transaction (ADR-0013) and its name is a constant in the module's Contracts.
-- [ ] A shell route or page was added: its permission is declared in the manifest, its strings are in the catalogue, `make shell-check` passes.
+- [ ] A shell route or page was added: its permission is declared in the manifest, its strings are in the catalogue, `make shell-check` passes, and the brief's six questions (`docs/design/design-language.md` section 9) are answered in the pull request.
+- [ ] A drawing or pattern was added: it passes the illustration checklist (original, one hand, accessible name or hidden, both schemes, reduced motion).
 - [ ] A host, an image, a provisioning step or the unit template changed: `make images`, `make update-unit TENANT=<slug>` and `make smoke` passed on the laptop before the push, and the pipeline's integration stage is green after the merge.
 - [ ] A version was bumped: the reason is in the pull request; Dependabot's own pull requests count once CI is green on them.
 

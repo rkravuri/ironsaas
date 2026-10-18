@@ -4,7 +4,7 @@ Foundation is the technical base for a family of enterprise SaaS products by Iro
 
 Code namespace: `Iron.*`. Database schemas carry the module names.
 
-The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7). Slice S1, the walking skeleton, is complete: see `docs/slices/S1-walking-skeleton.md` for what it proves, how it was built and what it carries into S2.
+The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7). Slice S1, the walking skeleton, is complete: see `docs/slices/S1-walking-skeleton.md` for what it proves, how it was built and what it carries into S2. Slice S2, access control, organisations and the design system, is next: `docs/slices/S2-access-control-organisations-and-design.md`, built with Claude Code from `docs/prompts/S2.md` (ADR-0023) in the design language of ADR-0024.
 
 ## What works today
 
@@ -111,6 +111,9 @@ docs/                        prd/, adr/, guides/, slices/
 - `docs/guides/developer-guide.md` how to work on the repository: add a module, an entity, an endpoint with a permission, a shell page, a provisioning step
 - `docs/guides/local-stack.md` the runbook of the laptop platform
 - `docs/guides/definition-of-done.md` what a change needs before it is merged
+- `docs/design/design-language.md` the brief every page is judged against
+- `docs/prompts/` the instruction files Claude Code builds from, one per slice
+- `CLAUDE.md` the standing rules Claude Code reads on every task
 - `docs/prd/` the Technical Foundation PRD and the Functional Foundation PRD
 
 ## Versions decided for Foundation

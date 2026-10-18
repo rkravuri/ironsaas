@@ -30,7 +30,9 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0020](0020-shell.md) | The shell | Accepted |
 | [0021](0021-data-grid.md) | DataGrid over AG Grid Community | Accepted |
 | [0022](0022-pipeline.md) | The pipeline | Accepted |
+| [0023](0023-build-method.md) | The build method from S2: instruction files for Claude Code | Accepted |
+| [0024](0024-design-language.md) | The design language | Accepted |
 
 ## Reading order
 
-For a newcomer: 0001 (the shape of the code), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 (how a tenant comes to exist), 0020 to 0022 (the shell and the pipeline). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
+For a newcomer: 0001 (the shape of the code), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 (how a tenant comes to exist), 0020 to 0022 (the shell and the pipeline), 0023 and 0024 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
