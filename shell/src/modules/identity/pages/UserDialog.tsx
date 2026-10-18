@@ -1,15 +1,8 @@
-import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Modal, Stack, Table } from "@mantine/core";
 import type { User } from "@/api/identity";
-import { RecordHeader, type RecordStatus, type StatusTone } from "@/components/panels";
-
-const tones: Record<string, StatusTone> = { active: "success", invited: "info", locked: "warning", inactive: "neutral", disabled: "neutral" };
-
-/** The API's status as a word with a tone; an unknown status stays a word in the neutral tone. */
-export function userStatus(status: string, t: TFunction): RecordStatus {
-  return { label: t(`users.statuses.${status}`, { defaultValue: status }), tone: tones[status] ?? "neutral" };
-}
+import { RecordHeader } from "@/components/panels";
+import { userStatus } from "./user-status";
 
 const when = (value: string | null): string => (value ? new Date(value).toLocaleString() : "");
 
