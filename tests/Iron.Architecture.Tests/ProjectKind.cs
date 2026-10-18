@@ -5,7 +5,7 @@ namespace Iron.Architecture.Tests;
 /// </summary>
 public enum ProjectKind
 {
-    /// <summary>Iron.Core, Iron.Data, Iron.Api, Iron.Telemetry, Iron.Security: libraries every module may use.</summary>
+    /// <summary>Iron.Kernel, Iron.Data, Iron.Api, Iron.Telemetry, Iron.Security: libraries every module may use.</summary>
     Shared,
 
     /// <summary>The public surface of a module: interfaces and DTOs other modules may use.</summary>

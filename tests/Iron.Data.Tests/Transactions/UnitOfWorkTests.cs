@@ -1,7 +1,6 @@
-using Iron.Core.Identifiers;
-using Iron.Core.Principals;
 using Iron.Data.Tests.Sample;
 using Iron.Data.Transactions;
+using Iron.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;

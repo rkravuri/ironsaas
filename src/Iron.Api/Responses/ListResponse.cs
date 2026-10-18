@@ -1,5 +1,5 @@
 using System.Globalization;
-using Iron.Core.Paging;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 

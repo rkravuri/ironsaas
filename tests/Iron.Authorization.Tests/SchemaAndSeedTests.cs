@@ -1,8 +1,8 @@
 using Iron.Authorization.Contracts;
 using Iron.Authorization.Data;
-using Iron.Core.Principals;
 using Iron.Data.Commands;
 using Iron.Data.Contexts;
+using Iron.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;

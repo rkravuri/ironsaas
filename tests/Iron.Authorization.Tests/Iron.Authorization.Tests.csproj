@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Iron.Core/Iron.Core.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
     <ProjectReference Include="../../src/Iron.Data/Iron.Data.csproj" />
     <ProjectReference Include="../../src/Iron.Api/Iron.Api.csproj" />
     <ProjectReference Include="../../src/Iron.Telemetry/Iron.Telemetry.csproj" />

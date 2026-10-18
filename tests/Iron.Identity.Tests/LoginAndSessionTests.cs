@@ -1,8 +1,8 @@
 using Iron.Audit.Data;
-using Iron.Core.Identifiers;
 using Iron.Identity.Contracts;
 using Iron.Identity.Data;
 using Iron.Identity.Services;
+using Iron.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;

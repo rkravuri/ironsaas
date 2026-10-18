@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The public surface of Iron.Fleet: interfaces and DTOs other modules may use. References Iron.Core only. -->
+  <!-- The public surface of Iron.Fleet: interfaces and DTOs other modules may use. References Iron.Kernel only. -->
   <ItemGroup>
-    <ProjectReference Include="../../Iron.Core/Iron.Core.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel/Iron.Kernel.csproj" />
   </ItemGroup>
 
 </Project>

@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Iron.Core/Iron.Core.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
     <ProjectReference Include="../../src/Iron.Security/Iron.Security.csproj" />
   </ItemGroup>
 

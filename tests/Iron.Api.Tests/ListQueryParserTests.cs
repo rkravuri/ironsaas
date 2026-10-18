@@ -1,6 +1,6 @@
 using Iron.Api.Lists;
 using Iron.Api.Tests.Sample;
-using Iron.Core.Paging;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 

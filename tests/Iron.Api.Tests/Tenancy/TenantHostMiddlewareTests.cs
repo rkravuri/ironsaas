@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Iron.Api.Tenancy;
-using Iron.Core.Tenancy;
+using Iron.Kernel;
 using Iron.Telemetry;
 using Iron.Telemetry.Health;
 using Microsoft.AspNetCore.Builder;

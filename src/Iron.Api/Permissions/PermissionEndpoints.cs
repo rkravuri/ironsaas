@@ -1,8 +1,6 @@
 using Iron.Api.Problems;
 using Iron.Api.Responses;
-using Iron.Core.Permissions;
-using Iron.Core.Principals;
-using Iron.Core.Results;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;

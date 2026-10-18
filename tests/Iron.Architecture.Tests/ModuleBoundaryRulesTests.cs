@@ -7,11 +7,11 @@ public class ModuleBoundaryRulesTests
     {
         var projects = new[]
         {
-            Project("src/Iron.Core/Iron.Core.csproj"),
-            Project("src/Iron.Data/Iron.Data.csproj", "Iron.Core"),
-            Project("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", "Iron.Core"),
-            Project("src/Iron.Audit/Contracts/Iron.Audit.Contracts.csproj", "Iron.Core"),
-            Project("src/Iron.Audit/Iron.Audit.csproj", "Iron.Core", "Iron.Data", "Iron.Audit.Contracts", "Iron.Identity.Contracts"),
+            Project("src/Kernel/Iron.Kernel/Iron.Kernel.csproj"),
+            Project("src/Iron.Data/Iron.Data.csproj", "Iron.Kernel"),
+            Project("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", "Iron.Kernel"),
+            Project("src/Iron.Audit/Contracts/Iron.Audit.Contracts.csproj", "Iron.Kernel"),
+            Project("src/Iron.Audit/Iron.Audit.csproj", "Iron.Kernel", "Iron.Data", "Iron.Audit.Contracts", "Iron.Identity.Contracts"),
         };
 
         Assert.Empty(ModuleBoundaryRules.Check(projects));
@@ -37,9 +37,9 @@ public class ModuleBoundaryRulesTests
     {
         var projects = new[]
         {
-            Project("src/Iron.Core/Iron.Core.csproj"),
-            Project("src/Iron.Data/Iron.Data.csproj", "Iron.Core"),
-            Project("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", "Iron.Core", "Iron.Data"),
+            Project("src/Kernel/Iron.Kernel/Iron.Kernel.csproj"),
+            Project("src/Iron.Data/Iron.Data.csproj", "Iron.Kernel"),
+            Project("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", "Iron.Kernel", "Iron.Data"),
         };
 
         var violation = Assert.Single(ModuleBoundaryRules.Check(projects));
@@ -67,10 +67,10 @@ public class ModuleBoundaryRulesTests
     {
         var projects = new[]
         {
-            Project("src/Iron.Core/Iron.Core.csproj"),
-            Project("src/Iron.Identity/Iron.Identity.csproj", "Iron.Core"),
-            Project("src/Iron.Host.Worker/Iron.Host.Worker.csproj", "Iron.Core"),
-            Project("src/Iron.Host.Api/Iron.Host.Api.csproj", "Iron.Core", "Iron.Identity", "Iron.Host.Worker"),
+            Project("src/Kernel/Iron.Kernel/Iron.Kernel.csproj"),
+            Project("src/Iron.Identity/Iron.Identity.csproj", "Iron.Kernel"),
+            Project("src/Iron.Host.Worker/Iron.Host.Worker.csproj", "Iron.Kernel"),
+            Project("src/Iron.Host.Api/Iron.Host.Api.csproj", "Iron.Kernel", "Iron.Identity", "Iron.Host.Worker"),
         };
 
         var violation = Assert.Single(ModuleBoundaryRules.Check(projects));
@@ -84,11 +84,11 @@ public class ModuleBoundaryRulesTests
     {
         var projects = new[]
         {
-            Project("src/Iron.Core/Iron.Core.csproj"),
-            Project("src/Iron.Identity/Iron.Identity.csproj", "Iron.Core"),
-            Project("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", "Iron.Core"),
-            Project("products/Procurement/Contracts/Procurement.Contracts.csproj", "Iron.Core"),
-            Project("products/Procurement/Procurement.csproj", "Iron.Core", "Procurement.Contracts", "Iron.Identity.Contracts", "Iron.Identity"),
+            Project("src/Kernel/Iron.Kernel/Iron.Kernel.csproj"),
+            Project("src/Iron.Identity/Iron.Identity.csproj", "Iron.Kernel"),
+            Project("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", "Iron.Kernel"),
+            Project("products/Procurement/Contracts/Procurement.Contracts.csproj", "Iron.Kernel"),
+            Project("products/Procurement/Procurement.csproj", "Iron.Kernel", "Procurement.Contracts", "Iron.Identity.Contracts", "Iron.Identity"),
         };
 
         var violation = Assert.Single(ModuleBoundaryRules.Check(projects));

@@ -1,7 +1,7 @@
 using FluentValidation;
 using Iron.Api.Modules;
-using Iron.Core.Permissions;
 using Iron.Data;
+using Iron.Kernel;
 using Iron.Tenancy.Api;
 using Iron.Tenancy.Contracts;
 using Iron.Tenancy.Data;

@@ -1,7 +1,7 @@
-using Iron.Core.Principals;
 using Iron.Data.Commands;
 using Iron.Data.Contexts;
 using Iron.Data.Tests.Sample;
+using Iron.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;

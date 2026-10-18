@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Iron.Core.Correlation;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Http;
 
 namespace Iron.Telemetry.Correlation;

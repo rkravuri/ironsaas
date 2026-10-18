@@ -8,7 +8,7 @@
     <File Path=".editorconfig" />
   </Folder>
   <Folder Name="/src/shared/">
-    <Project Path="src/Iron.Core/Iron.Core.csproj" />
+    <Project Path="src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
     <Project Path="src/Iron.Data/Iron.Data.csproj" />
     <Project Path="src/Iron.Api/Iron.Api.csproj" />
     <Project Path="src/Iron.Telemetry/Iron.Telemetry.csproj" />
@@ -46,7 +46,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj" />
-    <Project Path="tests/Iron.Core.Tests/Iron.Core.Tests.csproj" />
+    <Project Path="tests/Kernel/Iron.Kernel.Tests/Iron.Kernel.Tests.csproj" />
     <Project Path="tests/Iron.Api.Tests/Iron.Api.Tests.csproj" />
     <Project Path="tests/Iron.Data.Tests/Iron.Data.Tests.csproj" />
     <Project Path="tests/Iron.Security.Tests/Iron.Security.Tests.csproj" />

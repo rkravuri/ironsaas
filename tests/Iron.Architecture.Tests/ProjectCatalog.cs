@@ -11,7 +11,7 @@ public static class ProjectCatalog
     /// <summary>The shared libraries. Every module may reference them; they reference each other and nothing else.</summary>
     public static readonly string[] SharedLibraries =
     [
-        "Iron.Core",
+        "Iron.Kernel",
         "Iron.Data",
         "Iron.Api",
         "Iron.Telemetry",

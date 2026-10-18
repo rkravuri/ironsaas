@@ -1,11 +1,10 @@
 using Iron.Api.Permissions;
 using Iron.Api.Responses;
 using Iron.Api.Routing;
-using Iron.Core.Principals;
-using Iron.Core.Results;
 using Iron.Files.Contracts;
 using Iron.Files.Data;
 using Iron.Files.Services;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;

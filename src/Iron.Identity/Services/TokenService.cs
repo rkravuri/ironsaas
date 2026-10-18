@@ -1,6 +1,5 @@
-using Iron.Core.Identifiers;
-using Iron.Core.Tenancy;
 using Iron.Identity.Data;
+using Iron.Kernel;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using FluentValidation.Results;
 using Iron.Api.Problems;
-using Iron.Core.Results;
+using Iron.Kernel;
 
 namespace Iron.Api.Validation;
 

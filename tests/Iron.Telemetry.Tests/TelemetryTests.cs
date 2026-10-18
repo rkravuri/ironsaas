@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
-using Iron.Core.Correlation;
+using Iron.Kernel;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 

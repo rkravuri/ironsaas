@@ -1,6 +1,6 @@
-using Iron.Core.Principals;
 using Iron.Data.Commands;
 using Iron.Data.Seeding;
+using Iron.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;

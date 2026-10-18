@@ -1,11 +1,11 @@
 using Iron.Api.Modules;
-using Iron.Core.Permissions;
 using Iron.Data;
 using Iron.Data.Seeding;
 using Iron.Files.Api;
 using Iron.Files.Contracts;
 using Iron.Files.Data;
 using Iron.Files.Services;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

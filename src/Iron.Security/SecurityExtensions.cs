@@ -1,4 +1,4 @@
-using Iron.Core.Correlation;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Http;

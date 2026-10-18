@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using Iron.Core.Tenancy;
 using Iron.Data.Entities;
+using Iron.Kernel;
 using Iron.Tenancy.Contracts;
 
 namespace Iron.Tenancy.Data;

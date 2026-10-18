@@ -1,5 +1,5 @@
-using Iron.Core.Text;
 using Iron.Data.Conventions;
+using Iron.Kernel;
 using Npgsql;
 
 namespace Iron.Data.Checks;

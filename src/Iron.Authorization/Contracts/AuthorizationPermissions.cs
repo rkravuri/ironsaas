@@ -1,4 +1,4 @@
-using Iron.Core.Permissions;
+using Iron.Kernel;
 
 namespace Iron.Authorization.Contracts;
 

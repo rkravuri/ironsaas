@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Iron.Core/Iron.Core.csproj" />
+    <ProjectReference Include="../Kernel/Iron.Kernel/Iron.Kernel.csproj" />
     <ProjectReference Include="../Iron.Data/Iron.Data.csproj" />
     <ProjectReference Include="../Iron.Api/Iron.Api.csproj" />
     <ProjectReference Include="../Iron.Telemetry/Iron.Telemetry.csproj" />

@@ -1,7 +1,6 @@
-using Iron.Core.Identifiers;
-using Iron.Core.Tenancy;
 using Iron.Identity.Data;
 using Iron.Identity.Services;
+using Iron.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;

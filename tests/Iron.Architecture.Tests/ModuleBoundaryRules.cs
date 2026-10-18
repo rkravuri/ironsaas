@@ -48,9 +48,9 @@ public static class ModuleBoundaryRules
                     : "A shared library may reference shared libraries only.";
 
             case ProjectKind.Contracts:
-                return target.Name == "Iron.Core"
+                return target.Name == "Iron.Kernel"
                     ? null
-                    : "A Contracts project may reference Iron.Core only. Other modules are referenced by identifier, not by type.";
+                    : "A Contracts project may reference Iron.Kernel only. Other modules are referenced by identifier, not by type.";
 
             case ProjectKind.Module:
             case ProjectKind.Product:

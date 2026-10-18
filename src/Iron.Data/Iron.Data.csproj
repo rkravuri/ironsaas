@@ -2,7 +2,7 @@
 
   <!-- Iron.Data: database conventions for every module (ADR-0008). -->
   <ItemGroup>
-    <ProjectReference Include="../Iron.Core/Iron.Core.csproj" />
+    <ProjectReference Include="../Kernel/Iron.Kernel/Iron.Kernel.csproj" />
   </ItemGroup>
 
   <ItemGroup>

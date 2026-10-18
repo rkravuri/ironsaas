@@ -1,5 +1,5 @@
 using FluentValidation;
-using Iron.Core.Paging;
+using Iron.Kernel;
 
 namespace Iron.Api.Tests.Sample;
 

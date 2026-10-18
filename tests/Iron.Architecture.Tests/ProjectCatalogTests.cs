@@ -5,7 +5,7 @@ public class ProjectCatalogTests
     private const string EmptyProject = "<Project Sdk=\"Microsoft.NET.Sdk\"></Project>";
 
     [Theory]
-    [InlineData("src/Iron.Core/Iron.Core.csproj", ProjectKind.Shared, null)]
+    [InlineData("src/Kernel/Iron.Kernel/Iron.Kernel.csproj", ProjectKind.Shared, null)]
     [InlineData("src/Iron.Data/Iron.Data.csproj", ProjectKind.Shared, null)]
     [InlineData("src/Iron.Identity/Iron.Identity.csproj", ProjectKind.Module, "Iron.Identity")]
     [InlineData("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", ProjectKind.Contracts, "Iron.Identity")]
@@ -28,7 +28,7 @@ public class ProjectCatalogTests
         const string xml = """
             <Project Sdk="Microsoft.NET.Sdk">
               <ItemGroup>
-                <ProjectReference Include="../Iron.Core/Iron.Core.csproj" />
+                <ProjectReference Include="../Iron.Kernel/Iron.Kernel.csproj" />
                 <ProjectReference Include="..\Iron.Data\Iron.Data.csproj" />
                 <ProjectReference Include="Contracts/Iron.Audit.Contracts.csproj" />
               </ItemGroup>
@@ -37,7 +37,7 @@ public class ProjectCatalogTests
 
         var project = ProjectCatalog.Describe("src/Iron.Audit/Iron.Audit.csproj", xml);
 
-        string[] expected = ["Iron.Core", "Iron.Data", "Iron.Audit.Contracts"];
+        string[] expected = ["Iron.Kernel", "Iron.Data", "Iron.Audit.Contracts"];
         Assert.Equal(expected, project.References);
     }
 
@@ -46,7 +46,7 @@ public class ProjectCatalogTests
     {
         var projects = ProjectCatalog.Load(Repository.Root);
 
-        Assert.Contains(projects, p => p.Name == "Iron.Core" && p.Kind == ProjectKind.Shared);
+        Assert.Contains(projects, p => p.Name == "Iron.Kernel" && p.Kind == ProjectKind.Shared);
         Assert.Contains(projects, p => p.Name == "Iron.Identity" && p.Kind == ProjectKind.Module);
         Assert.Contains(projects, p => p.Name == "Iron.Identity.Contracts" && p.Kind == ProjectKind.Contracts);
         Assert.Contains(projects, p => p.Name == "Iron.Host.Api" && p.Kind == ProjectKind.Host);

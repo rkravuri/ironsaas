@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Iron.Kernel: shared primitives. It depends on nothing else in this repository. -->
+
+</Project>

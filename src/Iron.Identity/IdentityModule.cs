@@ -1,13 +1,12 @@
 using FluentValidation;
 using Iron.Api.Modules;
-using Iron.Core.Permissions;
-using Iron.Core.Principals;
 using Iron.Data;
 using Iron.Data.Seeding;
 using Iron.Identity.Api;
 using Iron.Identity.Contracts;
 using Iron.Identity.Data;
 using Iron.Identity.Services;
+using Iron.Kernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;

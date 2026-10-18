@@ -1,5 +1,5 @@
-using Iron.Core.Principals;
 using Iron.Data.Tests.Sample;
+using Iron.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;

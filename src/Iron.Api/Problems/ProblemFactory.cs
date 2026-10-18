@@ -1,5 +1,4 @@
-using Iron.Core.Correlation;
-using Iron.Core.Results;
+using Iron.Kernel;
 using Iron.Telemetry.Correlation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

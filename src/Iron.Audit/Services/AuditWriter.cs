@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Iron.Audit.Contracts;
 using Iron.Audit.Data;
-using Iron.Core.Correlation;
+using Iron.Kernel;
 using Iron.Telemetry.Correlation;
 using Microsoft.AspNetCore.Http;
 

@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using Iron.Core.Paging;
+using Iron.Kernel;
 
 namespace Iron.Data.Lists;
 
