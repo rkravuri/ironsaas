@@ -87,5 +87,138 @@
       "gray": "The light scheme greys: hovers at 0, borders at 4, dimmed text at 6.",
       "dark": "The dark scheme greys: the ink at 0, dimmed text at 2, borders at 4, the paper at 7."
     }
+  },
+  "gallery": {
+    "title": "Design gallery",
+    "intro": "Every token and every themed component, in both schemes and both densities. Development builds only; the accessibility scan reads this page.",
+    "scheme": {
+      "label": "Colour scheme",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "density": {
+      "label": "Density",
+      "comfortable": "Comfortable",
+      "compact": "Compact"
+    },
+    "sections": {
+      "colour": "Colour",
+      "type": "Type",
+      "space": "Space and motion",
+      "components": "Components",
+      "grid": "The grid",
+      "views": "Views"
+    },
+    "colour": {
+      "scales": "Scales",
+      "scalesIntro": "Ten shades per colour, lightest first, generated from one hue and one chroma on one lightness table.",
+      "pairs": "Contrast pairs",
+      "pairsIntro": "The pairs Mantine renders from the tokens, measured as the browser paints them. Text needs 4.5:1; a border or a focus ring needs 3:1 and is shown as a box.",
+      "foreground": "Foreground",
+      "background": "Background",
+      "scheme": "Scheme",
+      "sample": "Sample",
+      "ratio": "Ratio",
+      "minimum": "Minimum",
+      "result": "Result",
+      "pass": "pass",
+      "fail": "fail",
+      "sampleText": "Aa",
+      "swatch": "A box drawn in the foreground colour on the background colour"
+    },
+    "type": {
+      "sizes": "The six sizes",
+      "sample": "The quick brown fox jumps over the lazy dog.",
+      "headings": "Headings",
+      "heading": "Heading level {{order}}",
+      "display": "Display titles, for the moments only",
+      "displaySample": "A well-made object",
+      "tabular": "Tabular figures",
+      "tabularSample": "0123456789 and 1,234.56 under 9,876.00"
+    },
+    "space": {
+      "spacing": "Spacing",
+      "radius": "Radii",
+      "motion": "Motion",
+      "durations": "Quick, {{quick}} ms, for a change under the pointer; calm, {{calm}} ms, for something that arrives or leaves.",
+      "move": "Move the box",
+      "moveBack": "Move it back",
+      "reduced": "Reduced motion: {{state}}",
+      "on": "on",
+      "off": "off"
+    },
+    "components": {
+      "buttons": "Buttons",
+      "primary": "Save",
+      "default": "Cancel",
+      "light": "Filter",
+      "subtle": "More",
+      "disabled": "Disabled",
+      "loading": "Saving",
+      "inputs": "Inputs",
+      "textLabel": "Display name",
+      "textDescription": "Shown to other people in your tenant.",
+      "textError": "Enter a display name.",
+      "passwordLabel": "Password",
+      "checkbox": "Send me a copy",
+      "alerts": "Alerts",
+      "alertInfo": "Information",
+      "alertSuccess": "Success",
+      "alertWarning": "Warning",
+      "alertDanger": "Danger",
+      "alertText": "Status is never colour alone: a title and an icon say what it is.",
+      "menu": "Menu",
+      "open": "Open the menu",
+      "menuItem": "Rename",
+      "menuItemTwo": "Move",
+      "navigation": "Navigation",
+      "navPlain": "Users",
+      "navActive": "Organisation units",
+      "navNested": "Settings",
+      "navChild": "General",
+      "paper": "Paper",
+      "paperText": "A bordered surface for a record or a form.",
+      "text": "Text",
+      "textBody": "Body text in the reading family, at the size of the work.",
+      "textDimmed": "Dimmed text for hints and secondary lines, still at 4.5:1.",
+      "code": "Code",
+      "codeSample": "01a14e12-f3a8-7155-b5b6-17c3abceae77",
+      "loader": "Loading",
+      "burger": "Burger",
+      "anchor": "Link",
+      "anchorLead": "A link is underlined, not only coloured:",
+      "anchorText": "read the design language",
+      "notification": "Notification",
+      "notify": "Show a notification",
+      "notifyTitle": "Saved",
+      "notifyText": "The record was saved."
+    },
+    "grid": {
+      "label": "Sample records",
+      "intro": "Twenty rows from memory, paged by the grid as the API would; the density switch changes the row height.",
+      "name": "Name",
+      "kind": "Kind",
+      "status": "Status",
+      "amount": "Amount",
+      "updated": "Updated",
+      "rowName": "Record {{n}}",
+      "kinds": {
+        "order": "Order",
+        "invoice": "Invoice",
+        "delivery": "Delivery"
+      },
+      "statuses": {
+        "open": "Open",
+        "closed": "Closed"
+      }
+    },
+    "views": {
+      "forbidden": "No access",
+      "notFound": "Not found",
+      "unexpected": "Unexpected error",
+      "brokenMessage": "The gallery asked for an error on purpose.",
+      "loading": "Loading",
+      "login": "The login form"
+    }
   }
 }

@@ -7,6 +7,8 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
+  // The accessibility scan has its own config (playwright.a11y.config.ts) and needs no stack.
+  testIgnore: ["**/a11y/**"],
   timeout: 60_000,
   expect: { timeout: 15_000 },
   // One browser at a time: the tests share one tenant and one administrator account, and a wrong-password test

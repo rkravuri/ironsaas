@@ -1,8 +1,8 @@
 name: CI
 
 # Every pull request and every push to main (ADR-0022): the code builds with warnings as errors, the architecture and
-# integration tests pass against Testcontainers, the shell lints, type-checks, tests and builds, no secret is in the
-# history, and no known critical or high vulnerability is in the dependencies.
+# integration tests pass against Testcontainers, the shell lints, type-checks, tests and builds, its gallery passes the
+# accessibility scan, no secret is in the history, and no known critical or high vulnerability is in the dependencies.
 
 on:
   pull_request:
@@ -67,6 +67,44 @@ jobs:
       - name: Lint, type check, tests and build
         run: npm run check
 
+  shell-accessibility:
+    name: Shell accessibility scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shell
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: shell/package-lock.json
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # The gallery build (development mode, so the route exists), vite preview, then axe in both schemes and densities.
+      - name: Build the gallery and scan it
+        run: npm run a11y
+
+      # The four screenshots and the report on every run: the review looks at the pictures, not only at failures.
+      - name: Upload the screenshots and the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shell-accessibility
+          path: |
+            shell/test-results
+            shell/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
   platform-config:
     name: Compose files
     runs-on: ubuntu-latest

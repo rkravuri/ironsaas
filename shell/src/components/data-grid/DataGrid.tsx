@@ -59,6 +59,8 @@ export interface DataGridProps<T> {
   label: string;
   /** Re-fetches everything when it changes: a filter box outside the grid, a "refresh" button. */
   refreshKey?: unknown;
+  /** Called once the first rows are on screen; the gallery marks itself ready for the accessibility scan on it. */
+  onReady?: () => void;
 }
 
 export interface DataGridProblem {
@@ -77,7 +79,7 @@ const dateFilterParams = { filterOptions: ["equals", "lessThan", "greaterThan"],
  * data-based id would throw. Nothing else imports ag-grid (ESLint); switching to Enterprise by licence is a
  * change to this file.
  */
-export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize, defaultSort = [], label, refreshKey }: DataGridProps<T>) {
+export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize, defaultSort = [], label, refreshKey, onReady }: DataGridProps<T>) {
   const { t } = useTranslation();
   const density = useDensity();
   const apiRef = useRef<GridApi<T> | null>(null);
@@ -221,6 +223,7 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
           paginationPageSize={initialPageSize}
           paginationPageSizeSelector={[25, 50, 100, 200]}
           onGridReady={onGridReady}
+          onFirstDataRendered={() => onReady?.()}
           rowHeight={tokens.density.rowHeight[density]}
           overlayNoRowsTemplate={`<span>${t("grid.empty")}</span>`}
           suppressCellFocus={false}

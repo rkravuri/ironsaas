@@ -12,8 +12,13 @@ interface LoginFormValues {
   password: string;
 }
 
+interface LoginPageProps {
+  /** Off in the gallery, where a focused field would steal the page. */
+  autoFocus?: boolean;
+}
+
 /** The fixed message on failure is the API's (TF-030): the page never says which of the two was wrong. */
-export function LoginPage() {
+export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -59,7 +64,7 @@ export function LoginPage() {
       <Paper withBorder shadow="sm" p="lg" radius="md">
         <form onSubmit={submit} noValidate>
           <Stack>
-            <TextInput label={t("login.loginId")} autoComplete="username" autoFocus required {...form.getInputProps("loginId")} />
+            <TextInput label={t("login.loginId")} autoComplete="username" autoFocus={autoFocus} required {...form.getInputProps("loginId")} />
             <PasswordInput label={t("login.password")} autoComplete="current-password" required {...form.getInputProps("password")} />
             {problem && (
               <Alert color="danger" role="alert">

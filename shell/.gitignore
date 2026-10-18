@@ -4,3 +4,6 @@ coverage
 *.local
 test-results
 playwright-report
+dist-gallery
+# The root ignores every .env.* as a credential file; this one only switches the gallery build to development mode.
+!.env.gallery

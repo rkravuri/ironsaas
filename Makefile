@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -147,6 +147,9 @@ shell-dev: shell-node ## Run the shell with Vite on http://localhost:5173, proxy
 
 shell-check: shell-node ## Lint, test and build the shell
 	cd shell && npm run check
+
+shell-a11y: shell-node ## Build the gallery and run the accessibility scan on it (browsers once: cd shell && npm run e2e:install)
+	cd shell && npm run a11y
 
 images: ## Build the four host images and the shell image (foundation/iron-*:$(TAG))
 	docker build -f src/Iron.Host.Api/Dockerfile -t foundation/iron-api:$(TAG) .

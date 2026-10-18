@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { createBrowserRouter, Navigate, RouterProvider, type RouteObject } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { LoginPage } from "@/auth/LoginPage";
@@ -6,12 +7,15 @@ import { manifests } from "@/modules";
 import { declaredRoutes, navigationFor, validateManifests } from "@/modules/registry";
 import { Layout } from "@/shell/Layout";
 import { RouteErrorPage } from "@/shell/ErrorBoundary";
-import { RedirectIfSignedIn, RequirePermission, RequireSession } from "@/shell/Guards";
+import { LoadingView, RedirectIfSignedIn, RequirePermission, RequireSession } from "@/shell/Guards";
 
 const strict = import.meta.env.DEV;
 
 // Checked once at start: a manifest mistake fails the development build loudly and is hidden in production.
 validateManifests(manifests, { strict });
+
+// The gallery lives in development builds only (ADR-0025): the production bundle has neither the route nor the chunk.
+const GalleryPage = import.meta.env.DEV ? lazy(() => import("@/gallery/GalleryPage")) : null;
 
 /** The first page the signed-in principal may see, by the navigation its permissions leave visible. */
 function Home() {
@@ -24,6 +28,20 @@ const children: RouteObject[] = declaredRoutes(manifests, { strict }).map((route
   path: route.path.replace(/^\//, ""),
   element: <RequirePermission permission={route.permission ?? null}>{route.element}</RequirePermission>,
 }));
+
+const galleryRoutes: RouteObject[] = GalleryPage
+  ? [
+      {
+        path: "/gallery",
+        element: (
+          <Suspense fallback={<LoadingView />}>
+            <GalleryPage />
+          </Suspense>
+        ),
+        errorElement: <RouteErrorPage />,
+      },
+    ]
+  : [];
 
 /**
  * The router, built once with every declared route: public pages, then the shell with the pages the signed-in
@@ -41,6 +59,7 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
   },
   { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
+  ...galleryRoutes,
   {
     path: "/",
     element: (

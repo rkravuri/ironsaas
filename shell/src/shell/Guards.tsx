@@ -6,22 +6,27 @@ import { useSession } from "@/auth/session-context";
 import { ErrorView } from "./ErrorBoundary";
 import { ApiError } from "@/api/client";
 
+/** The wait before the session is known; the gallery shows it too. D2 gives it a drawing. */
+export function LoadingView({ height = "100vh" }: { height?: string | number } = {}) {
+  const { t } = useTranslation();
+  return (
+    <Center h={height}>
+      <Stack align="center" gap="xs">
+        <Loader />
+        <Text c="dimmed" size="sm">
+          {t("app.loading")}
+        </Text>
+      </Stack>
+    </Center>
+  );
+}
+
 /** Signed-in principals only; others go to the login page and come back afterwards. */
 export function RequireSession({ children }: { children: ReactNode }) {
   const session = useSession();
   const location = useLocation();
-  const { t } = useTranslation();
   if (session.status === "loading") {
-    return (
-      <Center h="100vh">
-        <Stack align="center" gap="xs">
-          <Loader />
-          <Text c="dimmed" size="sm">
-            {t("app.loading")}
-          </Text>
-        </Stack>
-      </Center>
-    );
+    return <LoadingView />;
   }
   if (session.status === "signed-out") {
     return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
