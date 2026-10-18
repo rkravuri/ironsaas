@@ -23,6 +23,7 @@ import type { ListMeta } from "@/api/client";
 import { useDensity } from "@/design/density";
 import { tokens } from "@/design/tokens";
 import { buildListQuery, defaultPageSize, filtersFromGrid, maxPageSize, pageFromRows, sortFromGrid, type GridFilterModel, type SortTerm } from "./list-query";
+import { NoRowsOverlay } from "./NoRowsOverlay";
 import { dataGridTheme } from "./theme";
 
 // Only what the wrapper uses; the validation module explains a missing one in development and costs nothing in production.
@@ -226,7 +227,7 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
           onGridReady={onGridReady}
           onFirstDataRendered={() => onReady?.()}
           rowHeight={tokens.density.rowHeight[density]}
-          overlayNoRowsTemplate={`<span>${t("grid.empty")}</span>`}
+          noRowsOverlayComponent={NoRowsOverlay}
           suppressCellFocus={false}
           ensureDomOrder
           animateRows={false}

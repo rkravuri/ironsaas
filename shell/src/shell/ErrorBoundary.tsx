@@ -3,18 +3,23 @@ import { useTranslation } from "react-i18next";
 import { isRouteErrorResponse, useRouteError } from "react-router";
 import { Alert, Button, Code, Container, Stack, Text, Title } from "@mantine/core";
 import { ApiError } from "@/api/client";
+import { Broken, Forbidden, Lost } from "@/design/illustrations";
 
 interface ErrorViewProps {
   error: unknown;
   onRetry?: () => void;
 }
 
-/** Every error page shows the correlation id when there is one (TF-071): the same id is in the API's logs and traces. */
+/**
+ * Every error page shows the correlation id when there is one (TF-071): the same id is in the API's logs and traces.
+ * The drawing is decoration beside the title that says the same, so it is hidden from assistive technology.
+ */
 export function ErrorView({ error, onRetry }: ErrorViewProps) {
   const { t } = useTranslation();
   let title = t("errors.title");
   let message = t("errors.unexpected");
   let correlationId: string | undefined;
+  let drawing = <Broken decorative size="md" />;
 
   if (error instanceof ApiError) {
     message = error.message;
@@ -22,11 +27,13 @@ export function ErrorView({ error, onRetry }: ErrorViewProps) {
     if (error.isForbidden) {
       title = t("errors.forbiddenTitle");
       message = t("errors.forbidden");
+      drawing = <Forbidden decorative size="md" />;
     }
   } else if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
       title = t("errors.notFoundTitle");
       message = t("errors.notFound");
+      drawing = <Lost decorative size="md" />;
     } else {
       message = error.statusText || message;
     }
@@ -37,6 +44,7 @@ export function ErrorView({ error, onRetry }: ErrorViewProps) {
   return (
     <Container size="sm" py="xl">
       <Stack>
+        {drawing}
         <Title order={2}>{title}</Title>
         <Alert color="danger" role="alert">
           <Text>{message}</Text>

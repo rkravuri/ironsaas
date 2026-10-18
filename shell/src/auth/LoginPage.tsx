@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
-import { Alert, Button, Container, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Box, Button, Container, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { ApiError } from "@/api/client";
 import { login } from "@/api/identity";
+import { Welcome } from "@/design/illustrations";
+import { TenantMark } from "@/design/patterns";
 import { useSession } from "./session-context";
 
 interface LoginFormValues {
@@ -32,6 +34,7 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
       password: (value) => (value.length === 0 ? t("login.required") : null),
     },
   });
+  const hostname = window.location.hostname;
 
   const returnTo = (location.state as { from?: string } | null)?.from ?? "/";
 
@@ -55,33 +58,43 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
 
   return (
     <Container size={420} py="xl">
-      <Title order={2} variant="display" ta="center" mb="lg">
-        {t("login.title")}
-      </Title>
-      <Text c="dimmed" size="sm" ta="center" mb="md">
-        {t("app.tenant", { hostname: window.location.hostname })}
-      </Text>
-      <Paper withBorder shadow="sm" p="lg">
-        <form onSubmit={submit} noValidate>
-          <Stack>
-            <TextInput label={t("login.loginId")} autoComplete="username" autoFocus={autoFocus} required {...form.getInputProps("loginId")} />
-            <PasswordInput label={t("login.password")} autoComplete="current-password" required {...form.getInputProps("password")} />
-            {problem && (
-              <Alert color="danger" role="alert">
-                {problem.message}
-                {problem.correlationId && (
-                  <Text size="xs" c="dimmed" mt={4}>
-                    {t("errors.correlation", { id: problem.correlationId })}
-                  </Text>
-                )}
-              </Alert>
-            )}
-            <Button type="submit" loading={submitting} fullWidth>
-              {t("login.submit")}
-            </Button>
-          </Stack>
-        </form>
-      </Paper>
+      <Stack align="center" gap="xs" mb="md">
+        <Welcome decorative size="md" />
+        <Group gap="sm" justify="center" wrap="nowrap">
+          <TenantMark hostname={hostname} size={32} />
+          <Title order={2} variant="display">
+            {t("login.title")}
+          </Title>
+        </Group>
+        <Text c="dimmed" size="sm" ta="center">
+          {t("app.tenant", { hostname })}
+        </Text>
+      </Stack>
+      {/* The mark as a texture: behind the opaque card at 7 percent, so it never sits under text (brief section 4). */}
+      <Box pos="relative">
+        <TenantMark hostname={hostname} size={400} opacity={0.07} style={{ position: "absolute", left: "50%", top: 0, transform: "translateX(-50%)", pointerEvents: "none" }} />
+        <Paper withBorder shadow="sm" p="lg" pos="relative">
+          <form onSubmit={submit} noValidate>
+            <Stack>
+              <TextInput label={t("login.loginId")} autoComplete="username" autoFocus={autoFocus} required {...form.getInputProps("loginId")} />
+              <PasswordInput label={t("login.password")} autoComplete="current-password" required {...form.getInputProps("password")} />
+              {problem && (
+                <Alert color="danger" role="alert">
+                  {problem.message}
+                  {problem.correlationId && (
+                    <Text size="xs" c="dimmed" mt={4}>
+                      {t("errors.correlation", { id: problem.correlationId })}
+                    </Text>
+                  )}
+                </Alert>
+              )}
+              <Button type="submit" loading={submitting} fullWidth>
+                {t("login.submit")}
+              </Button>
+            </Stack>
+          </form>
+        </Paper>
+      </Box>
     </Container>
   );
 }
