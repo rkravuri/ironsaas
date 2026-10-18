@@ -10,7 +10,7 @@ public sealed class ReserveStep : IProvisioningStep
 
     public int Order => 1;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
 
     public Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

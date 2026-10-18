@@ -1,0 +1,136 @@
+import { z } from "zod";
+
+/** RFC 9457 problem details as the API writes them (ADR-0009): error_code and correlation_id on every one. */
+export const ProblemSchema = z.object({
+  type: z.string().optional(),
+  title: z.string().optional(),
+  status: z.number().optional(),
+  detail: z.string().optional(),
+  instance: z.string().optional(),
+  error_code: z.string().optional(),
+  correlation_id: z.string().optional(),
+  errors: z.record(z.string(), z.array(z.string())).optional(),
+});
+export type Problem = z.infer<typeof ProblemSchema>;
+
+/** The list envelope (TF-101) as Iron.Api writes it (ListResponse.cs): data, paging meta and links. */
+export const ListMetaSchema = z.object({
+  page_number: z.number(),
+  page_size: z.number(),
+  total_count: z.number(),
+  total_pages: z.number(),
+  has_previous: z.boolean(),
+  has_next: z.boolean(),
+  page_size_capped: z.boolean(),
+  max_page_size: z.number(),
+});
+export type ListMeta = z.infer<typeof ListMetaSchema>;
+
+export const ListLinksSchema = z.object({
+  self: z.string(),
+  first: z.string(),
+  previous: z.string().nullable(),
+  next: z.string().nullable(),
+  last: z.string(),
+});
+
+export const listSchema = <T extends z.ZodType>(item: T) =>
+  z.object({
+    data: z.array(item),
+    meta: ListMetaSchema,
+    links: ListLinksSchema,
+  });
+
+/** What a failed call throws: the problem's fields and the correlation id, which the error boundary shows. */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly errorCode: string | undefined;
+  readonly correlationId: string | undefined;
+  readonly detail: string | undefined;
+  readonly errors: Record<string, string[]> | undefined;
+
+  constructor(status: number, problem: Problem, correlationId: string | undefined) {
+    super(problem.detail ?? problem.title ?? `The request failed with status ${status}.`);
+    this.name = "ApiError";
+    this.status = status;
+    this.errorCode = problem.error_code;
+    this.correlationId = problem.correlation_id ?? correlationId;
+    this.detail = problem.detail;
+    this.errors = problem.errors;
+  }
+
+  get isUnauthenticated(): boolean {
+    return this.status === 401;
+  }
+
+  get isForbidden(): boolean {
+    return this.status === 403;
+  }
+}
+
+export interface RequestOptions<T> {
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  body?: unknown;
+  schema?: z.ZodType<T>;
+  signal?: AbortSignal;
+}
+
+type UnauthenticatedListener = () => void;
+const unauthenticatedListeners = new Set<UnauthenticatedListener>();
+
+/** The session provider subscribes to learn that a session ended (401) from any call. */
+export function onUnauthenticated(listener: UnauthenticatedListener): () => void {
+  unauthenticatedListeners.add(listener);
+  return () => unauthenticatedListeners.delete(listener);
+}
+
+/**
+ * One way to call the API: same origin, the session cookie, JSON in and out, a problem turned into an ApiError.
+ * Paths are absolute (`/api/v1/users`); the ingress routes them to the tenant's API (ADR-0020).
+ */
+export async function request<T = unknown>(path: string, options: RequestOptions<T> = {}): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  const init: RequestInit = {
+    method: options.method ?? "GET",
+    credentials: "same-origin",
+    headers,
+  };
+  if (options.signal) {
+    init.signal = options.signal;
+  }
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(options.body);
+  }
+
+  const response = await fetch(path, init);
+  const correlationId = response.headers.get("X-Correlation-Id") ?? undefined;
+
+  if (!response.ok) {
+    const problem = await readProblem(response);
+    const error = new ApiError(response.status, problem, correlationId);
+    if (error.isUnauthenticated) {
+      for (const listener of unauthenticatedListeners) {
+        listener();
+      }
+    }
+    throw error;
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const json: unknown = await response.json();
+  return options.schema ? options.schema.parse(json) : (json as T);
+}
+
+async function readProblem(response: Response): Promise<Problem> {
+  try {
+    const json: unknown = await response.json();
+    const parsed = ProblemSchema.safeParse(json);
+    return parsed.success ? parsed.data : {};
+  } catch {
+    return {};
+  }
+}

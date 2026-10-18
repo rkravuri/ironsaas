@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision deprovision images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -98,6 +98,10 @@ run-fleet: env ## Run the fleet worker on the laptop with the Compose runtime (i
 	ASPNETCORE_URLS=http://localhost:5201 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_SECRETS) $(FLEET_LAPTOP) Heartbeat__Interval=00:01:00 \
 	dotnet run --project src/Iron.Host.Fleet
 
+update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit (new images, new template): make update-unit TENANT=acme
+	@test -n "$(TENANT)" || (echo "usage: make update-unit TENANT=acme" && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=update $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
+
 deprovision: ## Ask the fleet to take a tenant's unit down (data is kept): make deprovision TENANT=acme
 	@test -n "$(TENANT)" || (echo "usage: make deprovision TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=deprovision $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
@@ -116,11 +120,28 @@ run-api-secrets: env ## Run the tenant API host with only the store address, the
 	Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=tenants/dev \
 	dotnet run --project src/Iron.Host.Api
 
-images: ## Build the four host images (foundation/iron-*:$(TAG))
+# The shell needs a Linux Node: from WSL, a Windows npm on the PATH runs through cmd.exe, which cannot use a WSL path.
+shell-node:
+	@npm_path="$$(command -v npm || true)"; case "$$npm_path" in \
+	  "") echo "npm is not installed in WSL. Install Node 26 here: nvm install 26 (https://github.com/nvm-sh/nvm)."; exit 1;; \
+	  /mnt/*|*.cmd|*.exe) echo "npm resolves to the Windows build ($$npm_path). Install Node 26 inside WSL (nvm install 26) and remove shell/node_modules."; exit 1;; \
+	esac
+
+shell-install: shell-node ## Install the shell's packages (shell/)
+	cd shell && npm ci --no-audit --no-fund
+
+shell-dev: shell-node ## Run the shell with Vite on http://localhost:5173, proxying the API paths to make run-api
+	cd shell && npm run dev
+
+shell-check: shell-node ## Lint, test and build the shell
+	cd shell && npm run check
+
+images: ## Build the four host images and the shell image (foundation/iron-*:$(TAG))
 	docker build -f src/Iron.Host.Api/Dockerfile -t foundation/iron-api:$(TAG) .
 	docker build -f src/Iron.Host.Worker/Dockerfile -t foundation/iron-worker:$(TAG) .
 	docker build -f src/Iron.Host.ControlPlane/Dockerfile -t foundation/iron-control-plane:$(TAG) .
 	docker build -f src/Iron.Host.Fleet/Dockerfile -t foundation/iron-fleet:$(TAG) .
+	docker build -t foundation/iron-shell:$(TAG) shell
 
 # ---------------------------------------------------------------- laptop platform (infra/compose)
 env: ## Create infra/compose/.env with random local credentials (runs once)

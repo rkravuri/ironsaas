@@ -17,7 +17,7 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin) :
 
     public int Order => 4;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

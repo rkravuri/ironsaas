@@ -12,6 +12,8 @@ entryPoints:
     address: ":80"
   websecure:
     address: ":443"
+    http:
+      tls: {} # every router on this entry point serves TLS: mkcert's certificate from the dynamic folder (make certs), else Traefik's own
   traefik:
     address: ":8080" # dashboard API and ping; reached through the traefik.localhost router, never published
   metrics:

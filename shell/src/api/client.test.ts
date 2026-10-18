@@ -1,0 +1,63 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { ApiError, listSchema, onUnauthenticated, request } from "./client";
+import { json, problem, stubFetch } from "@/test/render";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("the API client", () => {
+  it("sends JSON with the session cookie and validates the answer", async () => {
+    const { calls } = stubFetch({ "POST /auth/login": () => json({ ok: true }) });
+
+    const result = await request("/auth/login", { method: "POST", body: { login_id: "a", password: "b" }, schema: z.object({ ok: z.boolean() }) });
+
+    expect(result).toEqual({ ok: true });
+    expect(calls[0]?.init?.credentials).toBe("same-origin");
+    expect(calls[0]?.init?.body).toBe(JSON.stringify({ login_id: "a", password: "b" }));
+  });
+
+  it("turns a problem into an ApiError with the error code and the correlation id", async () => {
+    stubFetch({ "GET /api/v1/users": () => problem(400, { title: "Bad Request", detail: "Unknown field 'nope'.", error_code: "list.unknown_field" }, "abc123") });
+
+    const error = await request("/api/v1/users").catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    const apiError = error as ApiError;
+    expect(apiError.status).toBe(400);
+    expect(apiError.errorCode).toBe("list.unknown_field");
+    expect(apiError.correlationId).toBe("abc123");
+    expect(apiError.message).toBe("Unknown field 'nope'.");
+  });
+
+  it("reads the list envelope as Iron.Api writes it", async () => {
+    stubFetch({
+      "GET /api/v1/things": () =>
+        json({
+          data: [{ id: "1" }],
+          meta: { page_number: 1, page_size: 50, total_count: 1, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 },
+          links: { self: "/api/v1/things?page_number=1", first: "/api/v1/things?page_number=1", previous: null, next: null, last: "/api/v1/things?page_number=1" },
+        }),
+    });
+
+    const list = await request("/api/v1/things", { schema: listSchema(z.object({ id: z.string() })) });
+
+    expect(list.data).toEqual([{ id: "1" }]);
+    expect(list.meta.total_count).toBe(1);
+    expect(list.links.next).toBeNull();
+  });
+
+  it("takes the correlation id from the header when the body has none, and tells listeners about a 401", async () => {
+    stubFetch({ "GET /api/v1/me": () => new Response("", { status: 401, headers: { "X-Correlation-Id": "from-header" } }) });
+    const listener = vi.fn();
+    const stop = onUnauthenticated(listener);
+
+    const error = (await request("/api/v1/me").catch((e: unknown) => e)) as ApiError;
+    stop();
+
+    expect(error.isUnauthenticated).toBe(true);
+    expect(error.correlationId).toBe("from-header");
+    expect(listener).toHaveBeenCalledOnce();
+  });
+});

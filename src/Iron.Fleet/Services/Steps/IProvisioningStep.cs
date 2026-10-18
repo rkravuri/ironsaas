@@ -40,8 +40,8 @@ public interface IProvisioningStep
 
     int Order { get; }
 
-    /// <summary>The kind of job this step belongs to.</summary>
-    JobKind Kind { get; }
+    /// <summary>The kinds of job this step belongs to.</summary>
+    IReadOnlyCollection<JobKind> Kinds { get; }
 
     /// <summary>Does the work and returns what the step reports (shown on the job), or null.</summary>
     Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken);

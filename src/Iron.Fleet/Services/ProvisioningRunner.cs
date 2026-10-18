@@ -43,7 +43,7 @@ public sealed class ProvisioningRunner(
             return job.ToInfo(await StepsAsync(job.Id, cancellationToken).ConfigureAwait(false));
         }
 
-        var ordered = steps.Where(s => s.Kind == job.Kind).OrderBy(s => s.Order).ToList();
+        var ordered = steps.Where(s => s.Kinds.Contains(job.Kind)).OrderBy(s => s.Order).ToList();
         var records = await EnsureStepRecordsAsync(job, ordered, cancellationToken).ConfigureAwait(false);
         job.Start(time.GetUtcNow());
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -87,7 +87,7 @@ public sealed class ProvisioningRunner(
             }
         }
 
-        var finalStatus = job.Kind == JobKind.Provision ? TenantStatus.Active : TenantStatus.Decommissioned;
+        var finalStatus = job.Kind == JobKind.Deprovision ? TenantStatus.Decommissioned : TenantStatus.Active;
         var moved = await tenants.SetStatusAsync(tenant.Slug, finalStatus, cancellationToken).ConfigureAwait(false);
         if (moved.IsFailure)
         {

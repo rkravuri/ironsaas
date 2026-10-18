@@ -19,7 +19,7 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 
     public int Order => 2;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

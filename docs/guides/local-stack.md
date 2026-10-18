@@ -118,3 +118,12 @@ The script registers `acme` with the hostname `acme.localhost` and the administr
 A failed step is printed with its error; fix the cause and run the same command again, and the job continues from that step. `make deprovision TENANT=acme` takes the unit down and keeps its database, container and secrets.
 
 The fleet worker runs from source here and drives the laptop's own Docker; `foundation/iron-fleet:dev` is the same program with the Docker CLI inside, for the pipeline (T18).
+
+
+## The shell (T15)
+
+In a unit, the shell is the `shell` service: the ingress sends the API paths to the API and everything else to it, so `https://acme.localhost/` is the login page and `https://acme.localhost/invitations/<token>` is the page behind the link the fleet prints. Units provisioned before T15 take the new service with `make update-unit TENANT=acme` after `make images`.
+
+`https://` works on every hostname: the `websecure` entry point has TLS on, with mkcert's certificate after `make certs` (trust its root on Windows as the script explains) or Traefik's own self-signed one before that, which the browser warns about once. `http://` keeps working too; Chrome treats `*.localhost` as secure, so the session cookie is accepted there as well.
+
+For shell development run `make run-api` and `make shell-dev` (first `make shell-install`): Vite serves http://localhost:5173 and proxies the API paths to the API, so the session cookie is first-party. The seeded administrator of the dev tenant signs in there; `npm run check` in `shell/` runs lint, tests and the production build.

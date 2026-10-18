@@ -43,7 +43,7 @@ public sealed class MigrateStep(IUnitRuntime runtime, ISecretStore secrets, Secr
 
     public int Order => 5;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -79,7 +79,7 @@ public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets,
 
     public int Order => 6;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -133,7 +133,7 @@ public sealed class UnitStep(IUnitRuntime runtime, ISecretStore secrets, SecretS
 
     public int Order => 7;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision, JobKind.Update];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -152,7 +152,7 @@ public sealed class VerifyStep(IUnitRuntime runtime, ISecretStore secrets, Secre
 
     public int Order => 8;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision, JobKind.Update];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -199,7 +199,7 @@ public sealed class RemoveStep(IUnitRuntime runtime, ISecretStore secrets, Secre
 
     public int Order => 1;
 
-    public JobKind Kind => JobKind.Deprovision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Deprovision];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

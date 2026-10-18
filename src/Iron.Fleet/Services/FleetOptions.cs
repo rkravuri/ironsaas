@@ -90,15 +90,15 @@ public sealed class FleetOptions
 }
 
 /// <summary>The container limits of a size class (TF-210, TF-007): the same image, different room.</summary>
-public sealed record UnitLimits(double ApiCpus, int ApiMemoryMb, double WorkerCpus, int WorkerMemoryMb);
+public sealed record UnitLimits(double ApiCpus, int ApiMemoryMb, double WorkerCpus, int WorkerMemoryMb, double ShellCpus = 0.25, int ShellMemoryMb = 64);
 
 public static class SizeClasses
 {
     public static UnitLimits LimitsOf(SizeClass sizeClass) => sizeClass switch
     {
         SizeClass.Small => new UnitLimits(0.5, 512, 0.5, 512),
-        SizeClass.Medium => new UnitLimits(1.0, 1024, 1.0, 1024),
-        SizeClass.Large => new UnitLimits(2.0, 2048, 2.0, 2048),
+        SizeClass.Medium => new UnitLimits(1.0, 1024, 1.0, 1024, 0.5, 128),
+        SizeClass.Large => new UnitLimits(2.0, 2048, 2.0, 2048, 0.5, 128),
         _ => throw new ArgumentOutOfRangeException(nameof(sizeClass), sizeClass, "Unknown size class."),
     };
 }

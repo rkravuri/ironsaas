@@ -27,3 +27,4 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0017](0017-control-plane-tenant-registry.md) | The tenant registry and the control plane API | Accepted |
 | [0018](0018-provisioning-steps.md) | Provisioning as resumable steps | Accepted |
 | [0019](0019-compose-unit-runtime.md) | Compose as the laptop unit runtime | Accepted |
+| [0020](0020-shell.md) | The shell | Accepted |

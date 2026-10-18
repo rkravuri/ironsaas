@@ -116,6 +116,8 @@ public sealed class ComposeUnitRuntime(IProcessRunner processes, HttpClient http
             ["API_MEMORY_MB"] = unit.Limits.ApiMemoryMb.ToString(CultureInfo.InvariantCulture),
             ["WORKER_CPUS"] = unit.Limits.WorkerCpus.ToString("0.##", CultureInfo.InvariantCulture),
             ["WORKER_MEMORY_MB"] = unit.Limits.WorkerMemoryMb.ToString(CultureInfo.InvariantCulture),
+            ["SHELL_CPUS"] = unit.Limits.ShellCpus.ToString("0.##", CultureInfo.InvariantCulture),
+            ["SHELL_MEMORY_MB"] = unit.Limits.ShellMemoryMb.ToString(CultureInfo.InvariantCulture),
             ["SECRETS_ADDRESS"] = unit.Environment.GetValueOrDefault("Secrets__Address", string.Empty),
             ["SECRETS_TOKEN"] = unit.Environment.GetValueOrDefault("Secrets__Token", string.Empty),
             ["SECRETS_MOUNT"] = unit.Environment.GetValueOrDefault("Secrets__Mount", "secret"),

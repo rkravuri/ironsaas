@@ -88,6 +88,7 @@ internal static class TenantsEndpoints
         tenants.MapGet("/{slug}", GetAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("GetTenant").WithSummary("One tenant with its hostnames.");
         tenants.MapPost("/", CreateAsync).RequirePermission(TenancyPermissions.TenantsManage).Validate<CreateTenantRequest>().WithName("CreateTenant").WithSummary("Register a tenant in Provisioning status.");
         tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
+        tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
         tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
         tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("GetProvisioning").WithSummary("The latest job of the tenant.");
     }
@@ -128,6 +129,12 @@ internal static class TenantsEndpoints
     private static async Task<IResult> ProvisionAsync(string slug, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
     {
         var result = await registry.RequestProvisioningAsync(slug, cancellationToken);
+        return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
+    }
+
+    private static async Task<IResult> UpdateAsync(string slug, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
+    {
+        var result = await registry.RequestUpdateAsync(slug, cancellationToken);
         return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
     }
 

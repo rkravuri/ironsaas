@@ -212,6 +212,36 @@ public class ProvisioningTests(FleetFixture fixture)
         }
     }
 
+    [Fact]
+    public async Task AnUpdateReappliesTheUnitOfAnActiveTenantAndNothingElse()
+    {
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var slug = await RegisterAndRequestAsync(provider, "foxtrot");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        var commandsBefore = runtime.Commands.Count;
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var requested = await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestUpdateAsync(slug, TestContext.Current.CancellationToken);
+            Assert.True(requested.IsSuccess, requested.IsFailure ? requested.Error.Message : null);
+            Assert.Equal(JobKind.Update, requested.Value.Kind);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var job = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken))!;
+            Assert.Equal(ProvisioningStatus.Completed, job.Status);
+            Assert.Equal([StepNames.Unit, StepNames.Verify], job.Steps.Select(s => s.Name));
+            Assert.Equal(2, runtime.Applied.Count);
+            Assert.Equal(commandsBefore, runtime.Commands.Count);
+            Assert.Equal(TenantStatus.Active, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
+        }
+    }
+
     private static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix)
     {
         var slug = $"{prefix}-{Ids.New():N}"[..20];

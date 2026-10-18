@@ -134,6 +134,23 @@ public sealed class TenantRegistry(
         return await RequestJobAsync(tenant, JobKind.Deprovision, TenancyAuditEvents.DeprovisioningRequested, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Re-render and re-apply an Active tenant's unit (TF-210): a new image tag or template reaches it this way.</summary>
+    public async Task<Result<ProvisioningJobInfo>> RequestUpdateAsync(string slug, CancellationToken cancellationToken)
+    {
+        var tenant = await context.Tenants.AsNoTracking().SingleOrDefaultAsync(t => t.Slug == slug, cancellationToken).ConfigureAwait(false);
+        if (tenant is null)
+        {
+            return Error.NotFound(TenancyErrors.TenantNotFound, $"There is no tenant '{slug}'.");
+        }
+
+        if (tenant.Status != TenantStatus.Active)
+        {
+            return Error.Conflict(TenancyErrors.NotProvisionable, $"Tenant '{slug}' is {tenant.Status.ToString().ToLowerInvariant()}; only an active tenant's unit can be updated.");
+        }
+
+        return await RequestJobAsync(tenant, JobKind.Update, TenancyAuditEvents.UpdateRequested, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<Result<ProvisioningJobInfo>> RequestJobAsync(Tenant tenant, JobKind kind, string auditEvent, CancellationToken cancellationToken)
     {
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);

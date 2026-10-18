@@ -17,7 +17,7 @@ public sealed class StorageStep(ISecretStore secrets, TimeProvider time) : IProv
 
     public int Order => 3;
 
-    public JobKind Kind => JobKind.Provision;
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

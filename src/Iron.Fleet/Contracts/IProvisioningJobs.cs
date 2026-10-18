@@ -17,6 +17,8 @@ public enum JobKind
 {
     Provision,
     Deprovision,
+    /// <summary>Re-render and re-apply the unit of an Active tenant: a new image tag, a new template, a new hostname.</summary>
+    Update,
 }
 
 public sealed record ProvisioningStepInfo(string Name, int Order, string Status, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, int? DurationMs, string? Output, string? Error);

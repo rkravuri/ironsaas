@@ -1,0 +1,67 @@
+{
+  "app": {
+    "name": "Foundation",
+    "loading": "Loading…",
+    "signOut": "Sign out",
+    "signedInAs": "Signed in as {{name}}",
+    "tenant": "Tenant {{hostname}}"
+  },
+  "login": {
+    "title": "Sign in",
+    "loginId": "Login identifier",
+    "password": "Password",
+    "submit": "Sign in",
+    "failed": "The login identifier or the password is wrong, or the account is not active.",
+    "required": "Required"
+  },
+  "invitation": {
+    "title": "Set your password",
+    "intro": "You were invited to {{hostname}}. Choose a password to activate your account.",
+    "displayName": "Display name",
+    "password": "Password",
+    "confirm": "Repeat the password",
+    "submit": "Activate the account",
+    "mismatch": "The passwords differ.",
+    "tooShort": "Use at least {{min}} characters.",
+    "done": "Your account is active. Sign in with your login identifier and the password you chose.",
+    "invalid": "This invitation is not valid any more. Ask your administrator for a new one."
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "unexpected": "An unexpected error happened.",
+    "correlation": "Correlation id: {{id}}",
+    "retry": "Try again",
+    "forbiddenTitle": "No access",
+    "forbidden": "Your account does not have permission to see this page.",
+    "notFoundTitle": "Not found",
+    "notFound": "There is no page at this address.",
+    "sessionEnded": "Your session has ended. Sign in again."
+  },
+  "modules": {
+    "identity": {
+      "title": "Identity",
+      "users": "Users",
+      "profile": "My profile"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "loginId": "Login identifier",
+    "displayName": "Display name",
+    "type": "Type",
+    "status": "Status",
+    "lastLogin": "Last sign-in",
+    "never": "Never",
+    "empty": "No users yet.",
+    "count": "{{count}} of {{total}} shown"
+  },
+  "profile": {
+    "title": "My profile",
+    "loginId": "Login identifier",
+    "displayName": "Display name",
+    "type": "Type",
+    "permissions": "Permissions",
+    "sessionEnds": "Session ends {{when}}",
+    "none": "None"
+  }
+}

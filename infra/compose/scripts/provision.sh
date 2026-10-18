@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Registers a tenant in the control plane and asks the fleet to provision it (or to de-provision it with ACTION=deprovision),
+# Registers a tenant in the control plane and asks the fleet to provision it (ACTION=deprovision takes the unit down, ACTION=update re-applies it),
 # as an operator (client credentials), then follows the job until it ends and prints every step with its duration.
 # Usage: provision.sh <tenant> <administrator email>   with CONTROL_URL and OPERATOR_SECRET in the environment.
 set -euo pipefail

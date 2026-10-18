@@ -1,4 +1,4 @@
-# One tenant unit (ADR-0002, ADR-0019): the API and the worker of one tenant, from the same images as every other tenant,
+# One tenant unit (ADR-0002, ADR-0019, ADR-0020): the API, the worker and the shell of one tenant, from the same images as every other tenant,
 # with the limits of the tenant's size class. The fleet renders only the .env file next to this file; the file itself is
 # the same for every tenant. Platform services (postgres, blob, openbao, otel-collector, traefik) are reached on the
 # platform network; the unit has a network of its own for anything tenant-local later.
@@ -23,11 +23,32 @@ services:
           cpus: "${API_CPUS}"
           memory: ${API_MEMORY_MB}M
     labels:
+      # The API answers its own paths; everything else on the tenant's hostnames is the shell (ADR-0020).
       - "traefik.enable=true"
       - "traefik.docker.network=${PLATFORM_NETWORK}"
-      - "traefik.http.routers.tenant-${TENANT}.rule=${HOST_RULE}"
-      - "traefik.http.routers.tenant-${TENANT}.entrypoints=web,websecure"
-      - "traefik.http.services.tenant-${TENANT}.loadbalancer.server.port=8080"
+      - "traefik.http.routers.tenant-${TENANT}-api.rule=(${HOST_RULE}) && (PathPrefix(`/api`) || PathPrefix(`/auth`) || PathPrefix(`/connect`) || PathPrefix(`/health`) || PathPrefix(`/.well-known`))"
+      - "traefik.http.routers.tenant-${TENANT}-api.priority=20"
+      - "traefik.http.routers.tenant-${TENANT}-api.entrypoints=web,websecure"
+      - "traefik.http.routers.tenant-${TENANT}-api.service=tenant-${TENANT}-api"
+      - "traefik.http.services.tenant-${TENANT}-api.loadbalancer.server.port=8080"
+    restart: unless-stopped
+
+  shell:
+    image: ${IMAGE_REPOSITORY}/iron-shell:${IMAGE_TAG}
+    networks: [platform]
+    deploy:
+      resources:
+        limits:
+          cpus: "${SHELL_CPUS}"
+          memory: ${SHELL_MEMORY_MB}M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=${PLATFORM_NETWORK}"
+      - "traefik.http.routers.tenant-${TENANT}-shell.rule=${HOST_RULE}"
+      - "traefik.http.routers.tenant-${TENANT}-shell.priority=10"
+      - "traefik.http.routers.tenant-${TENANT}-shell.entrypoints=web,websecure"
+      - "traefik.http.routers.tenant-${TENANT}-shell.service=tenant-${TENANT}-shell"
+      - "traefik.http.services.tenant-${TENANT}-shell.loadbalancer.server.port=8080"
     restart: unless-stopped
 
   worker:
