@@ -1,38 +1,40 @@
 # Foundation: standing rules for Claude Code
 
-Foundation is the IronSaaS enterprise SaaS platform (namespace `Iron.*`). Read this file first on every task; the task itself is in `docs/prompts/<slice>.md`, one section per task, and the section's prompt is what you were given.
+Foundation is the IronSaaS enterprise SaaS platform (namespace `Iron.*`). Read this file first, then `.claude/rules/backend.md` and `.claude/rules/frontend.md` for the side you touch, then `docs/STATUS.md`. The task is a section of `docs/prompts/<slice>.md`; its opening message is what you were given.
+
+## How a task runs
+
+1. Create the branch named in the opening message (`slice/<task>`) from `main`, and commit the prompt file alone first (`docs/prompts/<slice>.md` as it stands), so the intent is in history before the work.
+2. Read what the opening message lists, then the section fully, then the code you will touch.
+3. Write a short plan into the session (ten lines at most: order of work, decisions you take, what you will leave out) and build. Do not wait for approval unless the "When to stop" rule applies.
+4. Commit as you go, in steps that build and test, with messages that say why.
+5. Keep `docs/STATUS.md` current: what is done, what is next, open questions, later items.
+6. Finish with the checks the section names, `make format`, and a report: what you built, what you left out and why, the test counts, the answers to the brief's six questions for every page you touched (ADR-0024, `docs/design/design-language.md` section 9), and screenshots of every page in both colour schemes (Playwright, saved under `shell/test-results/`). Then stop. Never merge; the design session answers with the merge or with corrections.
+
+## When to stop
+
+Stop and ask, in the session, only when: a decision with real alternatives has no ADR; an action would destroy data, a branch or a secret; a test does not pass after two honest attempts; you need access you do not have; the work needed is outside the section's scope. Otherwise decide, record the decision (an ADR if it is one, a line in STATUS if it is small), and go on.
 
 ## Commands
 
-- `.NET`: `make build`, `make test` (386+ tests; the data tests start PostgreSQL, Azurite and OpenBao with Testcontainers, so Docker must run), `make check` (architecture tests only), `make format` (run it before you finish; CI verifies).
+- `.NET`: `make build`, `make test` (the data tests start PostgreSQL, Azurite and OpenBao with Testcontainers, so Docker must run), `make check`, `make format` (CI verifies).
 - Shell: `make shell-install` once, `make shell-check` (lint, type check, tests, build), `make shell-a11y` (the gallery scan), `make shell-dev`.
 - Migrations: `make ef-add MODULE=<Module> NAME=<WhatChanged>` after an entity change; commit the generated files; never edit a committed migration.
 - The stack: `make up`, `make images`, `make provision TENANT=x`, `make update-unit TENANT=x`, `make smoke`, `make e2e`, `make integration`. The runbook is `docs/guides/local-stack.md`.
+- Work in WSL: every git, dotnet, npm and docker command runs inside the Linux file system, never through a Windows path.
 
 ## Rules the build enforces (do not fight them)
 
-- Warnings are errors. Do not suppress a warning without a comment that says why.
-- Package versions live once in `Directory.Packages.props` (.NET) and `shell/package.json`.
-- Module boundaries (ADR-0001): a module references shared libraries and `Contracts` projects only; another module's `Api`, `Services`, `Data` are private. Expose through `Contracts`.
-- Time through `TimeProvider`, ids through `Ids.New()`, failures through `Result`/`Error` with dotted error codes (ADR-0007).
-- Every endpoint declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`; the anonymous list is fixed by a test.
-- State changes write their audit event in the same transaction (ADR-0013).
-- In the shell: no `ag-grid-*` import outside `src/components/data-grid`; every route declares its permission; every string goes through `src/i18n/en.json`; no colour by value in a page (tokens only, ADR-0024).
-
-## How to work
-
-- Read the task's section fully, then the ADRs it names (`docs/adr/`), then the code you will touch. Follow the existing patterns; the S1 modules are the templates.
-- Tests at the level that proves the change: unit for rules, integration on the container fixtures for anything with the database, store or storage, shell tests for pages and mappings, a browser test for a user path. Run them; finish with `make test`, `make shell-check` and `make format`.
-- A decision not already in an ADR gets one: copy `docs/adr/0000-template.md`, add it to the index.
-- Documentation where behaviour changed: the developer guide, the runbook, the module README, the README's first hour.
-- The definition of done is `docs/guides/definition-of-done.md`. Report what you did, what you did not do and why, and the test counts.
+- Warnings are errors; no suppression without a comment that says why.
+- Package versions live once: `Directory.Packages.props` and `shell/package.json`. Exact pins, at least two weeks old (ADR-0003).
+- Module boundaries (ADR-0001); time through `TimeProvider`, ids through `Ids.New()`, failures through `Result` (ADR-0007); every endpoint declares its permission; state changes write their audit event in the same transaction (ADR-0013); in the shell, no `ag-grid-*` outside the wrapper, every route declares its permission, every string in the catalogue, no colour by value (ADR-0024).
 
 ## Writing rules
 
-- Plain English, short sentences. No em dash character anywhere, in code comments, docs or UI text; use a comma, a colon or a full stop.
+- Plain English, short sentences. No em dash character anywhere, in code comments, docs, commit messages or UI text; use a comma, a colon or a full stop.
 - Comments say why, not what. Names are words, not abbreviations.
 - UI text: second person, no exclamation marks, errors say what happened and what to do.
 
-## Design (ADR-0024, `docs/design/design-language.md`)
+## Documentation
 
-Calm centre, living edges. The work area is dense and consistent; the art is in the moments. One drawn hand, original SVG only, never a known character, mascot or brand. Colour with a meaning, status never colour alone, WCAG 2.1 AA, keyboard first, reduced motion honoured. Judge every page with the six questions in section 9 of the brief and answer them in the pull request.
+A decision not already in an ADR gets one (`docs/adr/0000-template.md`, then the index). Behaviour that changed is in the developer guide, the runbook or the module README. Every font, image or dataset has its licence in `docs/licences.md`. The definition of done is `docs/guides/definition-of-done.md`.
