@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets migrate-control seed-control run-control provision images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -35,6 +35,10 @@ DEV_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=po
 DEV_STORAGE = Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=$$BLOB_ACCOUNT_NAME;AccountKey=$$BLOB_ACCOUNT_KEY;BlobEndpoint=http://localhost:10000/$$BLOB_ACCOUNT_NAME;" Storage__Container=dev
 DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost Tokens__SigningKeyPath=$(COMPOSE_DIR)/.dev-signing-key.pem
 DEV_SMOKE_SECRET = dev-smoke-client-secret-not-for-real-tenants
+DEV_OPERATOR_SECRET = dev-operator-secret-not-for-real-deployments
+CONTROL_URL ?= http://localhost:5200
+CONTROL_TENANT = Tenant__Id=control Tenant__Hostnames__0=localhost Tenant__Hostnames__1=control.localhost Tokens__SigningKeyPath=$(COMPOSE_DIR)/.control-signing-key.pem
+CONTROL_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=control;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
 TAG ?= dev
 
 token: ## Get an access token for the laptop smoke client from the running API host
@@ -66,8 +70,27 @@ ef-script: ## Print the SQL of a module's migrations: make ef-script MODULE=Auth
 seed: env ## Run the tenant API image command "seed" against the laptop database (first administrator admin@dev.localhost)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) Seed__Administrator__LoginId=admin@dev.localhost Seed__Administrator__DisplayName="Dev Administrator" \
-	Seed__SmokeClient__ClientId=smoke-client Seed__SmokeClient__Secret=$(DEV_SMOKE_SECRET) \
+	Seed__ServiceAccounts__0__ClientId=smoke-client Seed__ServiceAccounts__0__Secret=$(DEV_SMOKE_SECRET) \
 	dotnet run --project src/Iron.Host.Api -- seed
+
+migrate-control: env ## Migrate the control plane database (created on first run)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	$(CONTROL_TENANT) $(CONTROL_DATABASE) dotnet run --project src/Iron.Host.ControlPlane -- migrate
+
+seed-control: env ## Seed the control plane: system roles and the operator service account
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	$(CONTROL_TENANT) $(CONTROL_DATABASE) \
+	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
+	dotnet run --project src/Iron.Host.ControlPlane -- seed
+
+run-control: env ## Run the control plane API on the laptop (http://localhost:5200)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	ASPNETCORE_URLS=http://localhost:5200 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_DATABASE) \
+	dotnet run --project src/Iron.Host.ControlPlane
+
+provision: ## Register a tenant in the control plane and request its provisioning: make provision TENANT=acme [ADMIN=admin@acme.localhost]
+	@test -n "$(TENANT)" || (echo "usage: make provision TENANT=acme [ADMIN=admin@acme.localhost]" && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) $(or $(ADMIN),admin@$(TENANT).localhost)
 
 secret-dev: env ## Write the dev unit's secret to OpenBao (connection string, storage, signing key) as the fleet will per tenant
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-dev-secret.sh

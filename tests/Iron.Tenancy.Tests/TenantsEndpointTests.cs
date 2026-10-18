@@ -1,0 +1,143 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Iron.Api;
+using Iron.Api.Modules;
+using Iron.Api.Permissions;
+using Iron.Audit;
+using Iron.Authorization;
+using Iron.Authorization.Contracts;
+using Iron.Core.Identifiers;
+using Iron.Core.Principals;
+using Iron.Data;
+using Iron.Fleet;
+using Iron.Telemetry;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Iron.Tenancy.Tests;
+
+/// <summary>The control plane's tenant API as the operator and as a reader.</summary>
+[Collection(TenancyCollection.Name)]
+public class TenantsEndpointTests(TenancyFixture fixture) : IAsyncLifetime
+{
+    private WebApplication? _app;
+    private HttpClient _client = null!;
+
+    public async ValueTask InitializeAsync()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<ICurrentPrincipal, HeaderPrincipal>();
+        builder.Services.AddIronApi();
+        builder.Services.AddIronDatabase(fixture.ConnectionString);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
+
+        _app = builder.Build();
+        _app.UseIronTelemetry();
+        _app.UseIronApi();
+        _app.MapModules();
+        await _app.StartAsync(TestContext.Current.CancellationToken);
+        _client = _app.GetTestClient();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        if (_app is not null)
+        {
+            await _app.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task TheOperatorRegistersATenantAndRequestsProvisioning()
+    {
+        var operatorId = await Grant(SystemRoles.TenantAdministrator);
+        var slug = $"echo-{Ids.New():N}"[..20];
+
+        using var created = await Send(HttpMethod.Post, "/api/v1/tenants", operatorId, new { slug, display_name = "Echo GmbH", administrator_login_id = "admin@echo.test", size_class = "medium" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var body = JsonDocument.Parse(await created.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("provisioning", body.RootElement.GetProperty("status").GetString());
+        Assert.Equal($"{slug}.localhost", Assert.Single(body.RootElement.GetProperty("hostnames").EnumerateArray()).GetString());
+        Assert.Equal("medium", body.RootElement.GetProperty("size_class").GetString());
+
+        using var duplicate = await Send(HttpMethod.Post, "/api/v1/tenants", operatorId, new { slug = $"{slug}-2", display_name = "Echo 2", hostnames = new[] { $"{slug}.localhost" }, administrator_login_id = "admin@echo.test" });
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        Assert.Equal("tenancy.hostname.taken", await ErrorCode(duplicate));
+
+        using var invalid = await Send(HttpMethod.Post, "/api/v1/tenants", operatorId, new { slug = "Not A Slug", display_name = "x", administrator_login_id = "not-an-email" });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        using var provision = await Send(HttpMethod.Post, $"/api/v1/tenants/{slug}/provision", operatorId);
+        Assert.Equal(HttpStatusCode.Accepted, provision.StatusCode);
+        using var job = JsonDocument.Parse(await provision.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("requested", job.RootElement.GetProperty("status").GetString());
+        var jobId = job.RootElement.GetProperty("job_id").GetGuid();
+
+        using var latest = await Send(HttpMethod.Get, $"/api/v1/tenants/{slug}/provisioning", operatorId);
+        Assert.Equal(HttpStatusCode.OK, latest.StatusCode);
+        using var latestBody = JsonDocument.Parse(await latest.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(jobId, latestBody.RootElement.GetProperty("job_id").GetGuid());
+
+        // hostnames are joined in, not a column, so they are not in the field whitelist; every row carries them.
+        using var list = await Send(HttpMethod.Get, $"/api/v1/tenants?filter=slug:eq:{slug}", operatorId);
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        using var listBody = JsonDocument.Parse(await list.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var row = Assert.Single(listBody.RootElement.GetProperty("data").EnumerateArray());
+        Assert.Equal(slug, row.GetProperty("slug").GetString());
+        Assert.Equal("provisioning", row.GetProperty("status").GetString());
+        Assert.Equal($"{slug}.localhost", Assert.Single(row.GetProperty("hostnames").EnumerateArray()).GetString());
+
+        using var unknownField = await Send(HttpMethod.Get, "/api/v1/tenants?fields=hostnames", operatorId);
+        Assert.Equal(HttpStatusCode.BadRequest, unknownField.StatusCode);
+    }
+
+    [Fact]
+    public async Task AReaderSeesTenantsButCannotCreateOrProvision()
+    {
+        var reader = await Grant(SystemRoles.ReadOnly);
+
+        using var list = await Send(HttpMethod.Get, "/api/v1/tenants", reader);
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+
+        using var create = await Send(HttpMethod.Post, "/api/v1/tenants", reader, new { slug = "foxtrot", display_name = "Foxtrot", administrator_login_id = "a@foxtrot.test" });
+        Assert.Equal(HttpStatusCode.Forbidden, create.StatusCode);
+        Assert.Equal(PermissionErrors.PermissionDenied, await ErrorCode(create));
+
+        using var provision = await Send(HttpMethod.Post, "/api/v1/tenants/foxtrot/provision", reader);
+        Assert.Equal(HttpStatusCode.Forbidden, provision.StatusCode);
+    }
+
+    private async Task<Guid> Grant(string role)
+    {
+        var principal = Ids.New();
+        await using var scope = _app!.Services.CreateAsyncScope();
+        Assert.True((await scope.ServiceProvider.GetRequiredService<IRoleAssignments>().AssignAsync(principal, role, TestContext.Current.CancellationToken)).IsSuccess);
+        return principal;
+    }
+
+    private async Task<HttpResponseMessage> Send(HttpMethod method, string path, Guid principal, object? body = null)
+    {
+        using var request = new HttpRequestMessage(method, new Uri(path, UriKind.Relative));
+        request.Headers.Add(HeaderPrincipal.HeaderName, principal.ToString());
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private static async Task<string?> ErrorCode(HttpResponseMessage response)
+    {
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        return problem.RootElement.GetProperty("error_code").GetString();
+    }
+}

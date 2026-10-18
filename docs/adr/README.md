@@ -24,3 +24,4 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0014](0014-identity-sessions-and-passwords.md) | Principals, passwords and sessions | Accepted |
 | [0015](0015-access-tokens.md) | Access tokens for API clients | Accepted |
 | [0016](0016-secrets-and-object-storage.md) | Secrets at start and object storage | Accepted |
+| [0017](0017-control-plane-tenant-registry.md) | The tenant registry and the control plane API | Accepted |

@@ -38,8 +38,8 @@ public sealed class IdentityFixture : IAsyncLifetime
         ["Identity:Argon2:Parallelism"] = "1",
         ["Seed:Administrator:LoginId"] = AdministratorLoginId,
         ["Seed:Administrator:DisplayName"] = AdministratorDisplayName,
-        ["Seed:SmokeClient:ClientId"] = SmokeClientId,
-        ["Seed:SmokeClient:Secret"] = SmokeClientSecret,
+        ["Seed:ServiceAccounts:0:ClientId"] = SmokeClientId,
+        ["Seed:ServiceAccounts:0:Secret"] = SmokeClientSecret,
         ["Tokens:SigningKeyPem"] = SigningKeyPem,
     };
 

@@ -1,6 +1,8 @@
 using Iron.Data.Checks;
 using Iron.Data.Seeding;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -91,7 +93,10 @@ public sealed class MigrationRunner(IServiceProvider provider, IEnumerable<Regis
         foreach (var registration in registered)
         {
             var context = (DbContext)provider.GetRequiredService(registration.ContextType);
-            var pending = (await context.Database.GetPendingMigrationsAsync(cancellationToken).ConfigureAwait(false)).ToList();
+            var history = context.GetService<IHistoryRepository>();
+            var pending = await history.ExistsAsync(cancellationToken).ConfigureAwait(false)
+                ? (await context.Database.GetPendingMigrationsAsync(cancellationToken).ConfigureAwait(false)).ToList()
+                : context.Database.GetMigrations().ToList(); // a new schema: nothing to compare against yet
             await context.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
             applied.AddRange(pending.Select(migration => $"{registration.Schema}: {migration}"));
             logger.LogInformation("Schema {Schema}: {Count} migration(s) applied by {Context}.", registration.Schema, pending.Count, registration.ContextType.Name);

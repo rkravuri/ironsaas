@@ -39,9 +39,8 @@ public sealed class IdentityModule : IModule
         configuration.GetSection(AdministratorSeedOptions.SectionName).Bind(seed);
         services.AddSingleton(seed);
 
-        var smokeClient = new SmokeClientSeedOptions();
-        configuration.GetSection(SmokeClientSeedOptions.SectionName).Bind(smokeClient);
-        services.AddSingleton(smokeClient);
+        var serviceAccounts = configuration.GetSection(ServiceAccountSeedOptions.SectionName).Get<List<ServiceAccountSeedOptions>>() ?? [];
+        services.AddSingleton(new ServiceAccountSeeds(serviceAccounts));
 
         var tokens = new TokenOptions();
         configuration.GetSection(TokenOptions.SectionName).Bind(tokens);

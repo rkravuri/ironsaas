@@ -12,4 +12,12 @@
     <ProjectReference Include="Contracts/Iron.Fleet.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Design-time only: lets "dotnet ef migrations add" run with this project as the start-up project. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
 </Project>

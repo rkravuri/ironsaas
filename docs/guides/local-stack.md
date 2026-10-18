@@ -98,3 +98,8 @@ T14 generates these settings per tenant unit; nobody types them by hand after th
 A real unit gets its configuration from OpenBao: `make secret-dev` writes `secret/tenants/dev/unit` with the connection string, the storage settings and a signing key (generated once into `infra/compose/.dev-signing-key.pem`, git-ignored), and `make run-api-secrets` starts the API host with only the store address, the root token (the fleet gives each unit its own token, T14), the path and the tenant in its environment. OpenBao runs in development mode, in memory: after `make down` and `make up`, run `make secret-dev` again.
 
 Readiness (`/health/ready`) now reports `postgres`, `secret-store` (when configured) and `object-storage`; the storage check says "The blob container 'dev' does not exist." until `make seed` has created it.
+
+
+## The control plane (T13)
+
+The control plane is a unit of its own with its own database, `control`, in the laptop PostgreSQL. `make migrate-control` creates and migrates it, `make seed-control` seeds the system roles and the `operator` service account, and `make run-control` serves it on http://localhost:5200 (hostnames `localhost` and `control.localhost`). With it running, `make provision TENANT=acme` gets an operator token, registers `acme` with the hostname `acme.localhost` and the administrator `admin@acme.localhost`, and requests provisioning; until T14 the job stays Requested, and `GET /api/v1/tenants/acme/provisioning` shows it.
