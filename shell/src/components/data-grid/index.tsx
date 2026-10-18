@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
-import { Center, Loader } from "@mantine/core";
+import { Center } from "@mantine/core";
+import { Loading } from "@/design/illustrations";
 import type { DataGridProps } from "./DataGrid";
 
 export type { DataGridColumn, DataGridFilter, DataGridProblem, DataGridProps, ListResult } from "./DataGrid";
@@ -13,7 +14,7 @@ export function DataGrid<T>(props: DataGridProps<T>) {
     <Suspense
       fallback={
         <Center h={200}>
-          <Loader />
+          <Loading decorative size="sm" />
         </Center>
       }
     >

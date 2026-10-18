@@ -33,7 +33,8 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0023](0023-build-method.md) | The build method from S2: instruction files for Claude Code | Accepted |
 | [0024](0024-design-language.md) | The design language | Accepted |
 | [0025](0025-design-foundation.md) | The design foundation | Accepted |
+| [0026](0026-illustrations-and-patterns.md) | Illustrations and patterns: the generator, the hand and the review rule | Accepted |
 
 ## Reading order
 
-For a newcomer: 0001 (the shape of the code), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 (how a tenant comes to exist), 0020 to 0022 (the shell and the pipeline), 0023 to 0025 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
+For a newcomer: 0001 (the shape of the code), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 (how a tenant comes to exist), 0020 to 0022 (the shell and the pipeline), 0023 to 0026 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.

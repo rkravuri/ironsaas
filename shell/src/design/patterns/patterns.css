@@ -1,0 +1,21 @@
+/*
+ * The draw-in of a pattern (brief section 4): the stroke appears along its length. Every path carries pathLength 1,
+ * so one dash offset fits every ring. The global reduced-motion rule makes it a cut, and the components skip it too.
+ */
+.iron-draw-in {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: iron-draw-in var(--iron-duration-draw) var(--iron-ease-enter) forwards;
+}
+
+.iron-draw-loop {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: iron-draw-in var(--iron-duration-draw) var(--iron-ease-enter) infinite alternate;
+}
+
+@keyframes iron-draw-in {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

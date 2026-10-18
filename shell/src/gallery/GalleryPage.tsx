@@ -5,6 +5,7 @@ import { Container, Stack, Text, Title, useMantineColorScheme } from "@mantine/c
 import { readDensity, setDensity } from "@/design/density";
 import { ColourSection } from "./ColourSection";
 import { ComponentsSection } from "./ComponentsSection";
+import { DrawingsSection } from "./DrawingsSection";
 import { GalleryControls } from "./GalleryControls";
 import { galleryStateFrom } from "./gallery-state";
 import { GridSection } from "./GridSection";
@@ -54,6 +55,7 @@ export default function GalleryPage() {
         <TypeSection />
         <SpaceAndMotionSection />
         <ComponentsSection />
+        <DrawingsSection />
         <GridSection onReady={() => setGridReady(true)} />
         <ViewsSection />
       </Stack>

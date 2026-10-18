@@ -58,8 +58,8 @@ export const tokens = {
   spacing: { xs: 8, sm: 12, md: 16, lg: 24, xl: 32 },
   radius: { xs: 2, sm: 4, md: 8, lg: 16, xl: 32 },
   motion: {
-    /** Quick for a state change under the pointer, calm for something that arrives or leaves. */
-    duration: { quick: 150, calm: 250 },
+    /** Quick for a state change under the pointer, calm for something that arrives or leaves, draw for a pattern drawing itself in. */
+    duration: { quick: 150, calm: 250, draw: 900 },
     easing: { enter: "cubic-bezier(0, 0, 0.2, 1)", exit: "cubic-bezier(0.4, 0, 1, 1)" },
   },
   density: { rowHeight: { comfortable: 40, compact: 32 } },

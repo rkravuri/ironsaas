@@ -86,6 +86,7 @@ Before a page is done, answer these in the pull request:
 | Tokens (colour, type, space, radius, motion) | `shell/src/design/tokens.ts`, the Mantine theme | the design system |
 | Illustrations | `shell/src/design/illustrations/` | the design system; products add their own in the same hand |
 | Patterns and the tenant mark | `shell/src/design/patterns/` | the design system |
+| The illustration checklist | `docs/design/illustration-checklist.md`, answered in every pull request with a drawing | the design system |
 | Icons | Tabler icons, one weight, plus the module marks drawn in-house | the design system |
 | Page templates | `shell/src/components/templates/`: list, record with tabs, wizard, dashboard, console | the design system |
 | Panels | `shell/src/components/`: record header, approval, attachments, history, comments, dialogs, empty and loading states | the design system |

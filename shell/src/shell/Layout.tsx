@@ -5,6 +5,7 @@ import { AppShell, Burger, Group, Menu, NavLink, ScrollArea, Text, Title, Unstyl
 import { useDisclosure } from "@mantine/hooks";
 import { IconChevronDown, IconLogout, IconUser } from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
+import { TenantMark } from "@/design/patterns";
 import { manifests } from "@/modules";
 import { navigationFor } from "@/modules/registry";
 
@@ -22,6 +23,7 @@ export function Layout() {
         <Group h="100%" px="md" justify="space-between">
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label={t("app.toggleNavigation")} />
+            <TenantMark hostname={window.location.hostname} size={24} />
             <Title order={4}>{t("app.name")}</Title>
             <Text c="dimmed" size="sm" visibleFrom="sm">
               {window.location.hostname}

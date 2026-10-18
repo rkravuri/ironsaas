@@ -6,8 +6,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
-| D1 Design foundation | in progress | slice/s2-d1 | plan agreed on 2026-10-18 with three additions (scheme script, screenshots, findings list) |
-| D2 The drawn world | next | | |
+| D1 Design foundation | done | main (f145e5f) | accepted 2026-10-18; six commits plus the State column |
+| D2 The drawn world | done, pending merge | slice/s2-d2 | built 2026-10-18 in five commits; the report, the diff summary and the pictures in shell/test-results go to the design session |
 | D3 Templates, panels and forms | | | |
 | A1 Organisation units | | | |
 | A2 Roles and scoped assignments | | | |
@@ -27,6 +27,9 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Later items
 
+- Tenant colours (TF-173) replace the primary accent in the mark and in the drawings' tints; the generator and the Drawing frame already take an accent.
+- Dividers and section markers from the generator (brief section 4) land with the templates (D3); the home page uses the Home drawing (D4).
+- A drawing a product adds follows docs/design/illustration-checklist.md; the gallery tile and the illustrations test are the proof.
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
