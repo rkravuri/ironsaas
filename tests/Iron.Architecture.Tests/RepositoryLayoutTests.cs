@@ -92,12 +92,36 @@ public class RepositoryLayoutTests
     [Theory]
     [InlineData("src")]
     [InlineData("tests")]
-    [InlineData("products")]
     [InlineData("tools")]
+    [InlineData("shell")]
     [InlineData("infra")]
     [InlineData("docs")]
     public void TheRepositoryHasTheExpectedTopLevelFolders(string folder)
     {
         Assert.True(Directory.Exists(Path.Combine(Repository.Root, folder)), $"Folder '{folder}' is missing at the repository root.");
+    }
+
+    [Theory]
+    [InlineData("src/Kernel")]
+    [InlineData("src/Business")]
+    [InlineData("src/Products")]
+    [InlineData("src/Hosts")]
+    public void SourceHasAFolderPerLayerAndOneForTheHosts(string folder)
+    {
+        Assert.True(Directory.Exists(Path.Combine(Repository.Root, folder)), $"Folder '{folder}' is missing (ADR-0029).");
+    }
+
+    [Fact]
+    public void NothingButTheLayerFoldersSitsInSource()
+    {
+        string[] expected = ["Business", "Hosts", "Kernel", "Products"];
+        var others = Directory.EnumerateDirectories(Path.Combine(Repository.Root, "src"))
+            .Select(directory => Path.GetFileName(directory))
+            .Where(name => !expected.Contains(name, StringComparer.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        // A checkout of a branch from before ADR-0029 leaves build output in folders such as src/Iron.Identity.
+        Assert.True(others.Count == 0, $"src/ holds the layer folders and src/Hosts only (ADR-0029). Move or delete: {string.Join(", ", others.Select(name => "src/" + name))}.");
     }
 }
