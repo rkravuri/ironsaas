@@ -6,10 +6,10 @@ public class ProjectCatalogTests
 
     [Theory]
     [InlineData("src/Kernel/Iron.Kernel/Iron.Kernel.csproj", ProjectKind.Shared, null)]
-    [InlineData("src/Iron.Data/Iron.Data.csproj", ProjectKind.Shared, null)]
-    [InlineData("src/Iron.Identity/Iron.Identity.csproj", ProjectKind.Module, "Iron.Identity")]
-    [InlineData("src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj", ProjectKind.Contracts, "Iron.Identity")]
-    [InlineData("src/Iron.Host.Api/Iron.Host.Api.csproj", ProjectKind.Host, null)]
+    [InlineData("src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj", ProjectKind.Shared, null)]
+    [InlineData("src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj", ProjectKind.Module, "Iron.Kernel.Identity")]
+    [InlineData("src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj", ProjectKind.Contracts, "Iron.Kernel.Identity")]
+    [InlineData("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", ProjectKind.Host, null)]
     [InlineData("products/Procurement/Procurement.csproj", ProjectKind.Product, "Procurement")]
     [InlineData("products/Procurement/Contracts/Procurement.Contracts.csproj", ProjectKind.Contracts, "Procurement")]
     [InlineData("tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj", ProjectKind.Test, null)]
@@ -29,15 +29,15 @@ public class ProjectCatalogTests
             <Project Sdk="Microsoft.NET.Sdk">
               <ItemGroup>
                 <ProjectReference Include="../Iron.Kernel/Iron.Kernel.csproj" />
-                <ProjectReference Include="..\Iron.Data\Iron.Data.csproj" />
-                <ProjectReference Include="Contracts/Iron.Audit.Contracts.csproj" />
+                <ProjectReference Include="..\Iron.Kernel.Data\Iron.Kernel.Data.csproj" />
+                <ProjectReference Include="Contracts/Iron.Kernel.Audit.Contracts.csproj" />
               </ItemGroup>
             </Project>
             """;
 
-        var project = ProjectCatalog.Describe("src/Iron.Audit/Iron.Audit.csproj", xml);
+        var project = ProjectCatalog.Describe("src/Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj", xml);
 
-        string[] expected = ["Iron.Kernel", "Iron.Data", "Iron.Audit.Contracts"];
+        string[] expected = ["Iron.Kernel", "Iron.Kernel.Data", "Iron.Kernel.Audit.Contracts"];
         Assert.Equal(expected, project.References);
     }
 
@@ -47,8 +47,8 @@ public class ProjectCatalogTests
         var projects = ProjectCatalog.Load(Repository.Root);
 
         Assert.Contains(projects, p => p.Name == "Iron.Kernel" && p.Kind == ProjectKind.Shared);
-        Assert.Contains(projects, p => p.Name == "Iron.Identity" && p.Kind == ProjectKind.Module);
-        Assert.Contains(projects, p => p.Name == "Iron.Identity.Contracts" && p.Kind == ProjectKind.Contracts);
+        Assert.Contains(projects, p => p.Name == "Iron.Kernel.Identity" && p.Kind == ProjectKind.Module);
+        Assert.Contains(projects, p => p.Name == "Iron.Kernel.Identity.Contracts" && p.Kind == ProjectKind.Contracts);
         Assert.Contains(projects, p => p.Name == "Iron.Host.Api" && p.Kind == ProjectKind.Host);
         Assert.Contains(projects, p => p.Name == "Iron.Architecture.Tests" && p.Kind == ProjectKind.Test);
     }

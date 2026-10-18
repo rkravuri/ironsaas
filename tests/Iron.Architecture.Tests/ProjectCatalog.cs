@@ -12,10 +12,10 @@ public static class ProjectCatalog
     public static readonly string[] SharedLibraries =
     [
         "Iron.Kernel",
-        "Iron.Data",
-        "Iron.Api",
-        "Iron.Telemetry",
-        "Iron.Security",
+        "Iron.Kernel.Data",
+        "Iron.Kernel.Api",
+        "Iron.Kernel.Telemetry",
+        "Iron.Kernel.Security",
     ];
 
     /// <summary>Top-level folders that may contain projects.</summary>
@@ -66,7 +66,7 @@ public static class ProjectCatalog
             return (ProjectKind.Tool, null);
         }
 
-        // src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj belongs to module Iron.Identity.
+        // src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj belongs to module Iron.Kernel.Identity.
         // products/Procurement/Contracts/Procurement.Contracts.csproj belongs to product Procurement.
         if (name.EndsWith(ContractsSuffix, StringComparison.Ordinal))
         {

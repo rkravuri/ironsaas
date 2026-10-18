@@ -1,0 +1,32 @@
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Iron.Kernel.Fleet.Data.Migrations
+{
+    /// <inheritdoc />
+    public partial class JobKind : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<string>(
+                name: "kind",
+                schema: "fleet",
+                table: "provisioning_jobs",
+                type: "character varying(20)",
+                maxLength: 20,
+                nullable: false,
+                defaultValue: "");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "kind",
+                schema: "fleet",
+                table: "provisioning_jobs");
+        }
+    }
+}

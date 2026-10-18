@@ -5,13 +5,13 @@ namespace Iron.Architecture.Tests;
 /// </summary>
 public enum ProjectKind
 {
-    /// <summary>Iron.Kernel, Iron.Data, Iron.Api, Iron.Telemetry, Iron.Security: libraries every module may use.</summary>
+    /// <summary>Iron.Kernel, Iron.Kernel.Data, Iron.Kernel.Api, Iron.Kernel.Telemetry, Iron.Kernel.Security: libraries every module may use.</summary>
     Shared,
 
     /// <summary>The public surface of a module: interfaces and DTOs other modules may use.</summary>
     Contracts,
 
-    /// <summary>A Foundation module (Iron.Identity, Iron.Audit, ...) with Api, Services and Data folders.</summary>
+    /// <summary>A Foundation module (Iron.Kernel.Identity, Iron.Kernel.Audit, ...) with Api, Services and Data folders.</summary>
     Module,
 
     /// <summary>A business product module under products/. Same rules as a Foundation module.</summary>

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- The Contracts folder is its own project (ADR-0001). Keep its files out of this project. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Contracts/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
+    <ProjectReference Include="Contracts/Iron.Kernel.Fleet.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Tenancy/Contracts/Iron.Kernel.Tenancy.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Services/Compose/unit.compose.yaml" LogicalName="Iron.Kernel.Fleet.Services.Compose.unit.compose.yaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <!-- Design-time only: lets "dotnet ef migrations add" run with this project as the start-up project. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

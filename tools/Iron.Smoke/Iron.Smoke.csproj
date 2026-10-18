@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Iron.Security/Iron.Security.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
   </ItemGroup>
 
 </Project>

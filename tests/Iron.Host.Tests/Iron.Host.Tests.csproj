@@ -20,11 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Iron.Api/Iron.Api.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.Api/Iron.Host.Api.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.Worker/Iron.Host.Worker.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.ControlPlane/Iron.Host.ControlPlane.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.Fleet/Iron.Host.Fleet.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.ControlPlane/Iron.Host.ControlPlane.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.Fleet/Iron.Host.Fleet.csproj" />
   </ItemGroup>
 
 </Project>

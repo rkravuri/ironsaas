@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../../Kernel/Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Telemetry/Iron.Kernel.Telemetry.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Authorization/Iron.Kernel.Authorization.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Files/Iron.Kernel.Files.csproj" />
+  </ItemGroup>
+
+</Project>

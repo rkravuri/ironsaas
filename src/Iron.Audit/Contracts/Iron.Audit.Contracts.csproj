@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <!-- The public surface of Iron.Audit: interfaces and DTOs other modules may use. References Iron.Kernel only. -->
-  <ItemGroup>
-    <ProjectReference Include="../../Kernel/Iron.Kernel/Iron.Kernel.csproj" />
-  </ItemGroup>
-
-</Project>

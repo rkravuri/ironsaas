@@ -28,26 +28,26 @@
   -->
   <ItemGroup>
     <ProjectReference Include="../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
-    <ProjectReference Include="../../src/Iron.Data/Iron.Data.csproj" />
-    <ProjectReference Include="../../src/Iron.Api/Iron.Api.csproj" />
-    <ProjectReference Include="../../src/Iron.Telemetry/Iron.Telemetry.csproj" />
-    <ProjectReference Include="../../src/Iron.Security/Iron.Security.csproj" />
-    <ProjectReference Include="../../src/Iron.Authorization/Iron.Authorization.csproj" />
-    <ProjectReference Include="../../src/Iron.Authorization/Contracts/Iron.Authorization.Contracts.csproj" />
-    <ProjectReference Include="../../src/Iron.Audit/Iron.Audit.csproj" />
-    <ProjectReference Include="../../src/Iron.Audit/Contracts/Iron.Audit.Contracts.csproj" />
-    <ProjectReference Include="../../src/Iron.Identity/Iron.Identity.csproj" />
-    <ProjectReference Include="../../src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj" />
-    <ProjectReference Include="../../src/Iron.Files/Iron.Files.csproj" />
-    <ProjectReference Include="../../src/Iron.Files/Contracts/Iron.Files.Contracts.csproj" />
-    <ProjectReference Include="../../src/Iron.Tenancy/Iron.Tenancy.csproj" />
-    <ProjectReference Include="../../src/Iron.Tenancy/Contracts/Iron.Tenancy.Contracts.csproj" />
-    <ProjectReference Include="../../src/Iron.Fleet/Iron.Fleet.csproj" />
-    <ProjectReference Include="../../src/Iron.Fleet/Contracts/Iron.Fleet.Contracts.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.Api/Iron.Host.Api.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.Worker/Iron.Host.Worker.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.ControlPlane/Iron.Host.ControlPlane.csproj" />
-    <ProjectReference Include="../../src/Iron.Host.Fleet/Iron.Host.Fleet.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Telemetry/Iron.Kernel.Telemetry.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Authorization/Iron.Kernel.Authorization.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Files/Iron.Kernel.Files.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Files/Contracts/Iron.Kernel.Files.Contracts.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Tenancy/Iron.Kernel.Tenancy.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Tenancy/Contracts/Iron.Kernel.Tenancy.Contracts.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Fleet/Iron.Kernel.Fleet.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Fleet/Contracts/Iron.Kernel.Fleet.Contracts.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.ControlPlane/Iron.Host.ControlPlane.csproj" />
+    <ProjectReference Include="../../src/Hosts/Iron.Host.Fleet/Iron.Host.Fleet.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 using System.Reflection;
-using Iron.Data.Checks;
-using Iron.Data.Contexts;
+using Iron.Kernel.Data.Checks;
+using Iron.Kernel.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Architecture.Tests;

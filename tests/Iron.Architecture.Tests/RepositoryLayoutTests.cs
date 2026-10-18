@@ -26,7 +26,7 @@ public class RepositoryLayoutTests
     [Fact]
     public void EveryProjectLivesInAFolderWithItsOwnName()
     {
-        // src/Iron.Identity/Iron.Identity.csproj and src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj
+        // src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj and src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj
         var violations = new List<string>();
         foreach (var project in Projects)
         {
