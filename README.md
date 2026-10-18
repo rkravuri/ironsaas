@@ -11,7 +11,7 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 - A tenant is registered through the control plane API and provisioned by the fleet in about fifteen seconds: its own database roles and database, blob container, secrets path and token, migrations, seeds, a Compose unit of three containers (API, worker, shell) behind the ingress, and a readiness check through the ingress. A failed step resumes; an active unit takes new images with an update job; de-provisioning keeps the data.
 - A person follows the invitation link to the tenant's own hostname, sets a password, signs in with a server-side session, and sees the pages and navigation the permissions allow. A service account gets a 15-minute token with the client credentials grant.
 - Every request carries a correlation id that is its trace id in Tempo; every error shows it; every permission denial, login and provisioning step is in the append-only audit trail.
-- 440 .NET tests (architecture rules, unit, and integration on real PostgreSQL, Azurite and OpenBao containers), 94 shell tests, an eleven-step smoke test against the live stack, six browser tests against it and ten without it (the accessibility scan), and a pipeline that builds the images and proves them on the runner.
+- 445 .NET tests (architecture rules, unit, and integration on real PostgreSQL, Azurite and OpenBao containers), 94 shell tests, an eleven-step smoke test against the live stack, six browser tests against it and ten without it (the accessibility scan), and a pipeline that builds the images and proves them on the runner.
 
 ## The first hour: a fresh checkout to a provisioned tenant and a visible trace
 
@@ -21,7 +21,7 @@ Timings are from the reference machine, a laptop with 16 GB of memory and WSL 2 
 |---|---|---|---|
 | 1 | Prerequisites below | `dotnet --version` 10.0.x, `docker compose version` 2.x, `node --version` v26 from WSL | 10 min |
 | 2 | `git clone <repo> ~/foundation && cd ~/foundation` | | 1 min |
-| 3 | `make build && make test` | build clean, 440 passed | 5 min |
+| 3 | `make build && make test` | build clean, 445 passed | 5 min |
 | 4 | `make up` | platform healthy, the secret store initialised (its root token in `infra/compose/.env`), endpoints printed | 3 min |
 | 5 | `make images` | five images `foundation/iron-*:dev` | 10 min |
 | 6 | `make secret-control && make migrate-control && make seed-control` | control database and operator | 1 min |
