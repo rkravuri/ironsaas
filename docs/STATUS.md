@@ -7,8 +7,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 | Task | State | Branch | Notes |
 |---|---|---|---|
 | D1 Design foundation | done | main (f145e5f) | accepted 2026-10-18; six commits plus the State column |
-| D2 The drawn world | done, pending merge | slice/s2-d2 | built 2026-10-18 in five commits; the report, the diff summary and the pictures in shell/test-results go to the design session |
-| D3 Templates, panels and forms | | | |
+| D2 The drawn world | done | main | merged 2026-10-18; six commits (800a1c8 to 560e9b8) plus the figure correction from the review |
+| D3 Templates, panels and forms | next | | |
 | A1 Organisation units | | | |
 | A2 Roles and scoped assignments | | | |
 | A3 Record policies | | | |
@@ -27,6 +27,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Later items
 
+- The grid-import lint test (src/lint.test.ts, the first case) failed once in a full make shell-check on main run straight after make test, and passed alone and in the next full run; its first case takes 5 to 9 seconds of type-checked linting under a 60-second limit. If it recurs, give the lint tests their own worker or a longer limit.
 - Tenant colours (TF-173) replace the primary accent in the mark and in the drawings' tints; the generator and the Drawing frame already take an accent.
 - Dividers and section markers from the generator (brief section 4) land with the templates (D3); the home page uses the Home drawing (D4).
 - A drawing a product adds follows docs/design/illustration-checklist.md; the gallery tile and the illustrations test are the proof.
