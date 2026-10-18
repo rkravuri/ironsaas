@@ -2,6 +2,7 @@
 
   <!-- Unit tests of the pure rules, and integration tests against a throw-away PostgreSQL container (needs Docker). -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

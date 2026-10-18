@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <IronLayer>Host</IronLayer>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../Kernel/Iron.Kernel/Iron.Kernel.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />

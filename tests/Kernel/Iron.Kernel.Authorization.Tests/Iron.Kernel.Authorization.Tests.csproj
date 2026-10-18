@@ -2,6 +2,7 @@
 
   <!-- The Authorization module against a throw-away PostgreSQL container (needs Docker): migrations, seeding, evaluation, the roles endpoint. -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

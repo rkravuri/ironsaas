@@ -2,6 +2,7 @@
 
   <!-- The Identity module against a throw-away PostgreSQL container (needs Docker): hashing, seeding, invitations, login, sessions and the auth endpoints. -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

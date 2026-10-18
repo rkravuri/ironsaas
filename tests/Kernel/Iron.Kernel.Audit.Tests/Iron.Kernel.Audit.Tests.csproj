@@ -2,6 +2,7 @@
 
   <!-- The Audit module against a throw-away PostgreSQL container (needs Docker): the append-only table, the app role, the writer in a transaction, the search endpoint. -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

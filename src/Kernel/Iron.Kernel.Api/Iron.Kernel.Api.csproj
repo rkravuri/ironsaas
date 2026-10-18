@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Iron.Kernel.Api: REST conventions for every endpoint (ADR-0009). -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

@@ -8,13 +8,13 @@ public class AssemblyReferenceTests
     {
         var projects = ProjectCatalog.Load(Repository.Root);
         var modules = projects
-            .Where(p => p.Kind is ProjectKind.Module or ProjectKind.Product)
+            .Where(p => p.Kind == ProjectKind.Module)
             .Select(p => p.Name)
             .ToList();
 
         var violations = new List<string>();
         var missing = new List<string>();
-        foreach (var project in projects.Where(p => p.Kind is ProjectKind.Module or ProjectKind.Product or ProjectKind.Contracts or ProjectKind.Host))
+        foreach (var project in projects.Where(p => p.Kind is ProjectKind.Module or ProjectKind.Contracts or ProjectKind.Host))
         {
             var assemblyPath = Path.Combine(AppContext.BaseDirectory, project.Name + ".dll");
             if (!File.Exists(assemblyPath))

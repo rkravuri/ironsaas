@@ -24,4 +24,18 @@
     <Product>Foundation</Product>
   </PropertyGroup>
 
+  <!--
+    Every project names its layer in its own file (ADR-0029): <IronLayer>Kernel</IronLayer>, or Business, Products,
+    Host, Test or Tool. The architecture tests read it to refuse a reference that points up; this target stops the
+    compile of a project that leaves it out or misspells it. The match is case-sensitive, as the tests' is.
+  -->
+  <Target Name="IronCheckLayer" BeforeTargets="CoreCompile">
+    <Error Code="IRON0001"
+           Condition="'$(IronLayer)' == ''"
+           Text="$(MSBuildProjectFile) declares no IronLayer. Add &lt;IronLayer&gt; to its first PropertyGroup: Kernel, Business, Products, Host, Test or Tool (ADR-0029)." />
+    <Error Code="IRON0002"
+           Condition="'$(IronLayer)' != '' and !$([System.Text.RegularExpressions.Regex]::IsMatch('$(IronLayer)', '^(Kernel|Business|Products|Host|Test|Tool)$'))"
+           Text="$(MSBuildProjectFile) declares IronLayer '$(IronLayer)', which is not a layer. Use Kernel, Business, Products, Host, Test or Tool (ADR-0029)." />
+  </Target>
+
 </Project>

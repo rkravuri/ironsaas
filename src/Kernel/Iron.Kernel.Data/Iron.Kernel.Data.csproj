@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Iron.Kernel.Data: database conventions for every module (ADR-0008). -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Iron.Kernel/Iron.Kernel.csproj" />
   </ItemGroup>

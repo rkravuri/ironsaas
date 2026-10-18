@@ -2,6 +2,7 @@
 
   <!-- Provisioning against PostgreSQL, Azurite and OpenBao containers (needs Docker), with a recording unit runtime in place of Compose. -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

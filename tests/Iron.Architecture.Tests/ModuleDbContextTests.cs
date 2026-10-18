@@ -6,8 +6,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Iron.Architecture.Tests;
 
 /// <summary>
-/// Finds every ModuleDbContext in the module and product assemblies, builds its model without a database, and
-/// applies the model rules (TF-220: a business entity without an owning organisation fails the build).
+/// Finds every ModuleDbContext in the module assemblies of the three layers, builds its model without a database, and
+/// applies the model rules (TF-220: a business entity without an owning organisation fails the build). The rule for
+/// business records applies to the Business and Products layers (ADR-0029).
 /// </summary>
 public class ModuleDbContextTests
 {
@@ -15,7 +16,7 @@ public class ModuleDbContextTests
     public void EveryModuleDbContextPassesTheModelCheck()
     {
         var projects = ProjectCatalog.Load(Repository.Root)
-            .Where(p => p.Kind is ProjectKind.Module or ProjectKind.Product)
+            .Where(p => p.Kind == ProjectKind.Module)
             .ToList();
 
         var violations = new List<string>();
@@ -32,7 +33,7 @@ public class ModuleDbContextTests
             foreach (var contextType in ModuleDbContextTypes(assembly))
             {
                 contextsFound++;
-                violations.AddRange(CheckContext(contextType, isBusinessModule: project.Kind == ProjectKind.Product));
+                violations.AddRange(CheckContext(contextType, isBusinessModule: project.Layer is ProjectLayer.Business or ProjectLayer.Products));
             }
         }
 

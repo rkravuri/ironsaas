@@ -1,5 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Iron.Kernel: shared primitives. It depends on nothing else in this repository. -->
+  <!-- Iron.Kernel: the kernel vocabulary, one namespace (ADR-0029). It depends on nothing else in this repository. -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
 
 </Project>

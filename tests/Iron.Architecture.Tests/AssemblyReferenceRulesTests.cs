@@ -50,6 +50,29 @@ public class AssemblyReferenceRulesTests
     }
 
     [Fact]
+    public void AModuleOfALowerLayerIsPrivateToo()
+    {
+        var referencedTypes = new List<(string Namespace, string Name)>
+        {
+            ("Iron.Business.Organisations.Contracts", "IOrganisationDirectory"),
+            ("Iron.Business.Organisations.Services", "OrganisationService"),
+            ("Iron.Kernel.Authorization.Contracts", "IOrganisationKinds"),
+            ("Iron.Kernel.Authorization.Data", "OrganisationUnit"),
+        };
+
+        var violations = AssemblyReferenceRules.FindForbidden(
+            "Iron.Products.Procurement.dll",
+            referencedTypes,
+            ownModule: "Iron.Products.Procurement",
+            allModules: ["Iron.Kernel.Authorization", "Iron.Business.Organisations", "Iron.Products.Procurement"]);
+
+        Assert.Collection(
+            violations,
+            first => Assert.Contains("Iron.Business.Organisations.Services.OrganisationService", first, StringComparison.Ordinal),
+            second => Assert.Contains("Iron.Kernel.Authorization.Data.OrganisationUnit", second, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void TheSharedDataLibraryIsNotMistakenForAModuleDataNamespace()
     {
         var referencedTypes = new List<(string Namespace, string Name)>

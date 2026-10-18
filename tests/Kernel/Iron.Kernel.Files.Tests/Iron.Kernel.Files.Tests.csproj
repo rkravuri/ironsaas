@@ -2,6 +2,7 @@
 
   <!-- The Files module against Azurite and PostgreSQL containers (needs Docker): storage, hashes, the endpoints, readiness. -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

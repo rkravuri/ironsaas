@@ -3,42 +3,36 @@ using System.Xml.Linq;
 namespace Iron.Architecture.Tests;
 
 /// <summary>
-/// Finds every project file in the repository and classifies it by its location.
-/// The classification is pure (path and XML in, description out), so it is unit tested with made-up paths.
+/// Finds every project file in the repository and describes it by its declared layer and its name.
+/// The description is pure (path and XML in, description out), so it is unit tested with made-up paths.
 /// </summary>
 public static class ProjectCatalog
 {
-    /// <summary>The shared libraries. Every module may reference them; they reference each other and nothing else.</summary>
-    public static readonly string[] SharedLibraries =
+    /// <summary>The kernel vocabulary. It references nothing; every other layered project may reference it.</summary>
+    public const string Vocabulary = "Iron.Kernel";
+
+    /// <summary>The kernel libraries. Every module may reference them; they reference the vocabulary and each other.</summary>
+    public static readonly string[] KernelLibraries =
     [
-        "Iron.Kernel",
         "Iron.Kernel.Data",
         "Iron.Kernel.Api",
         "Iron.Kernel.Telemetry",
         "Iron.Kernel.Security",
     ];
 
-    /// <summary>Top-level folders that may contain projects.</summary>
-    public static readonly string[] ScannedFolders = ["src", "products", "tests", "tools"];
+    /// <summary>Folders never searched for projects: build output, packages and anything hidden.</summary>
+    public static readonly string[] SkippedFolders = ["bin", "obj", "node_modules"];
 
     private const string ContractsSuffix = ".Contracts";
 
+    /// <summary>Every project file under the repository root, wherever it is, so that a project in an unexpected folder is still checked.</summary>
     public static IReadOnlyList<ProjectInfo> Load(string repositoryRoot)
     {
         var projects = new List<ProjectInfo>();
-        foreach (var folder in ScannedFolders)
+        foreach (var file in ProjectFiles(repositoryRoot))
         {
-            var folderPath = Path.Combine(repositoryRoot, folder);
-            if (!Directory.Exists(folderPath))
-            {
-                continue;
-            }
-
-            foreach (var file in Directory.EnumerateFiles(folderPath, "*.csproj", SearchOption.AllDirectories))
-            {
-                var relativePath = Path.GetRelativePath(repositoryRoot, file).Replace('\\', '/');
-                projects.Add(Describe(relativePath, File.ReadAllText(file)));
-            }
+            var relativePath = Path.GetRelativePath(repositoryRoot, file).Replace('\\', '/');
+            projects.Add(Describe(relativePath, File.ReadAllText(file)));
         }
 
         return projects.OrderBy(p => p.RelativePath, StringComparer.Ordinal).ToList();
@@ -48,52 +42,55 @@ public static class ProjectCatalog
     public static ProjectInfo Describe(string relativePath, string projectXml)
     {
         var name = Path.GetFileNameWithoutExtension(relativePath);
-        var segments = relativePath.Split('/');
-        var (kind, moduleName) = Classify(name, segments);
-        return new ProjectInfo(name, relativePath, kind, moduleName, ReadProjectReferences(projectXml));
+        var document = XDocument.Parse(projectXml);
+        var declaredLayer = ReadLayer(document);
+        ProjectLayer? layer = ProjectLayers.TryParse(declaredLayer, out var parsed) ? parsed : null;
+        var (kind, moduleName) = Classify(name, layer);
+        return new ProjectInfo(name, relativePath, declaredLayer, layer, kind, moduleName, ReadProjectReferences(document));
     }
 
-    private static (ProjectKind Kind, string? ModuleName) Classify(string name, string[] segments)
+    private static (ProjectKind Kind, string? ModuleName) Classify(string name, ProjectLayer? layer)
     {
-        var topFolder = segments[0];
-        if (topFolder == "tests")
+        switch (layer)
         {
-            return (ProjectKind.Test, null);
-        }
-
-        if (topFolder == "tools")
-        {
-            return (ProjectKind.Tool, null);
+            case null:
+                return (ProjectKind.Unknown, null);
+            case ProjectLayer.Host:
+                return (ProjectKind.Host, null);
+            case ProjectLayer.Test:
+                return (ProjectKind.Test, null);
+            case ProjectLayer.Tool:
+                return (ProjectKind.Tool, null);
         }
 
         // src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj belongs to module Iron.Kernel.Identity.
-        // products/Procurement/Contracts/Procurement.Contracts.csproj belongs to product Procurement.
         if (name.EndsWith(ContractsSuffix, StringComparison.Ordinal))
         {
             return (ProjectKind.Contracts, name[..^ContractsSuffix.Length]);
         }
 
-        if (topFolder == "products")
+        if (layer == ProjectLayer.Kernel && name == Vocabulary)
         {
-            return (ProjectKind.Product, name);
+            return (ProjectKind.Vocabulary, null);
         }
 
-        if (name.StartsWith("Iron.Host.", StringComparison.Ordinal))
+        if (layer == ProjectLayer.Kernel && KernelLibraries.Contains(name, StringComparer.Ordinal))
         {
-            return (ProjectKind.Host, null);
-        }
-
-        if (SharedLibraries.Contains(name, StringComparer.Ordinal))
-        {
-            return (ProjectKind.Shared, null);
+            return (ProjectKind.Library, null);
         }
 
         return (ProjectKind.Module, name);
     }
 
-    private static IReadOnlyList<string> ReadProjectReferences(string projectXml)
+    private static string? ReadLayer(XDocument document)
     {
-        var document = XDocument.Parse(projectXml);
+        // An empty element is no layer, as the build's own check sees it; the value is not trimmed, so " Kernel " is refused by both.
+        var element = document.Descendants().FirstOrDefault(e => e.Name.LocalName == "IronLayer");
+        return element is null || element.Value.Length == 0 ? null : element.Value;
+    }
+
+    private static IReadOnlyList<string> ReadProjectReferences(XDocument document)
+    {
         var references = new List<string>();
         foreach (var element in document.Descendants())
         {
@@ -112,5 +109,27 @@ public static class ProjectCatalog
         }
 
         return references;
+    }
+
+    private static IEnumerable<string> ProjectFiles(string folder)
+    {
+        foreach (var file in Directory.EnumerateFiles(folder, "*.csproj"))
+        {
+            yield return file;
+        }
+
+        foreach (var child in Directory.EnumerateDirectories(folder))
+        {
+            var childName = Path.GetFileName(child);
+            if (childName.StartsWith('.') || SkippedFolders.Contains(childName, StringComparer.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (var file in ProjectFiles(child))
+            {
+                yield return file;
+            }
+        }
     }
 }

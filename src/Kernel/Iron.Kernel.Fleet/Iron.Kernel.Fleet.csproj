@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
     <!-- The Contracts folder is its own project (ADR-0001). Keep its files out of this project. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);Contracts/**</DefaultItemExcludes>
   </PropertyGroup>

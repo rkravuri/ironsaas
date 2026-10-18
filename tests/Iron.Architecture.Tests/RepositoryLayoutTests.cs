@@ -6,9 +6,15 @@ public class RepositoryLayoutTests
     private static readonly IReadOnlyList<ProjectInfo> Projects = ProjectCatalog.Load(Repository.Root);
 
     [Fact]
+    public void EveryProjectDeclaresTheLayerItLivesIn()
+    {
+        ArchitectureAssert.NoViolations("Layers (ADR-0029)", LayerRules.Check(Projects));
+    }
+
+    [Fact]
     public void EveryProjectReferenceFollowsTheModuleBoundaryRules()
     {
-        ArchitectureAssert.NoViolations("Module boundary rules (ADR-0001)", ModuleBoundaryRules.Check(Projects));
+        ArchitectureAssert.NoViolations("Module boundary rules (ADR-0001, ADR-0029)", ModuleBoundaryRules.Check(Projects));
     }
 
     [Fact]
@@ -63,7 +69,7 @@ public class RepositoryLayoutTests
     {
         var contracts = Projects.Where(p => p.Kind == ProjectKind.Contracts).Select(p => p.ModuleName).ToHashSet(StringComparer.Ordinal);
         var violations = Projects
-            .Where(p => p.Kind is ProjectKind.Module or ProjectKind.Product)
+            .Where(p => p.Kind == ProjectKind.Module)
             .Where(p => !contracts.Contains(p.Name))
             .Select(p => $"{p.RelativePath}: no Contracts project found ({p.Name}.Contracts).")
             .ToList();

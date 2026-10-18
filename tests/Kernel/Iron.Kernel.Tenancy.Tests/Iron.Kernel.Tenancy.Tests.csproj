@@ -2,6 +2,7 @@
 
   <!-- The tenant registry and the control plane's tenant API against a PostgreSQL container (needs Docker). -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

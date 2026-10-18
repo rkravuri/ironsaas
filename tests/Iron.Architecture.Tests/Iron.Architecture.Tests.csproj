@@ -6,6 +6,7 @@
     `make check` and in CI. xUnit.net v3 test projects are executables: `dotnet run` also works here.
   -->
   <PropertyGroup>
+    <IronLayer>Test</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

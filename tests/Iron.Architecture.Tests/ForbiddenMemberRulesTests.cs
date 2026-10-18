@@ -33,7 +33,7 @@ public class ForbiddenMemberRulesTests
     [Fact]
     public void NoFoundationAssemblyReadsTheSystemClockDirectly()
     {
-        var projects = ProjectCatalog.Load(Repository.Root).Where(p => p.Kind != ProjectKind.Test && p.Kind != ProjectKind.Tool);
+        var projects = ProjectCatalog.Load(Repository.Root).Where(p => p.Kind is not (ProjectKind.Test or ProjectKind.Tool or ProjectKind.Unknown));
 
         var violations = new List<string>();
         var missing = new List<string>();
