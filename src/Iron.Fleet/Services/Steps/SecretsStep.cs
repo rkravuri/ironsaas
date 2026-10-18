@@ -8,6 +8,8 @@ namespace Iron.Fleet.Services.Steps;
 /// Step 4: the unit's secret (<c>tenants/&lt;slug&gt;/unit</c>): the app connection string, the app role, the signed container
 /// URL and a signing key, generated once. Then a policy that reads that path and nothing else, and one unit token with
 /// it, kept at <c>tenants/&lt;slug&gt;/fleet</c> for the unit's environment (TF-073, TF-210).
+/// An update runs it too (ADR-0028): the unit secret is written from what the two steps before it hold now, and a lost
+/// unit token means a new policy and a new token, which the unit step then puts into the unit's environment.
 /// </summary>
 public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin) : IProvisioningStep
 {
@@ -17,7 +19,7 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin) :
 
     public int Order => 4;
 
-    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision, JobKind.Update];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -41,7 +43,10 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin) :
         {
             await admin.CreateReadPolicyAsync(context.UnitPolicy, [context.UnitSecretPath], cancellationToken).ConfigureAwait(false);
             var token = await admin.CreateTokenAsync([context.UnitPolicy], $"unit-{context.Slug}", TimeSpan.FromDays(context.Options.Secrets.UnitTokenValidDays), cancellationToken).ConfigureAwait(false);
-            await secrets.WriteAsync(context.FleetSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { [UnitTokenKey] = token }, cancellationToken).ConfigureAwait(false);
+            // The smoke client's secret and the invitation link, if the fleet secret still has them, stay beside the new token.
+            var updated = fleet is null ? new Dictionary<string, string>(StringComparer.Ordinal) : new Dictionary<string, string>(fleet, StringComparer.Ordinal);
+            updated[UnitTokenKey] = token;
+            await secrets.WriteAsync(context.FleetSecretPath, updated, cancellationToken).ConfigureAwait(false);
             tokenCreated = true;
         }
 

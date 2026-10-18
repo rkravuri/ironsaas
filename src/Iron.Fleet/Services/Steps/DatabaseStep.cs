@@ -9,6 +9,8 @@ namespace Iron.Fleet.Services.Steps;
 /// Step 2: the owner role (migrations, seeds), the app role (runtime) and the database, as the platform superuser.
 /// Passwords are generated once and kept in the store at <c>tenants/&lt;slug&gt;/database</c>; a re-run reuses them.
 /// PUBLIC loses CONNECT on the database, so no other tenant's role can reach it (TF-005).
+/// An update runs it too (ADR-0028): with the secret in place nothing changes; with the secret lost, new passwords are
+/// kept and the roles altered to them, which heals a unit whose store forgot its credentials.
 /// </summary>
 public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 {
@@ -19,7 +21,7 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 
     public int Order => 2;
 
-    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision, JobKind.Update];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
