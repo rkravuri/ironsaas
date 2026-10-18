@@ -10,6 +10,18 @@
     <ProjectReference Include="../Iron.Data/Iron.Data.csproj" />
     <ProjectReference Include="../Iron.Api/Iron.Api.csproj" />
     <ProjectReference Include="Contracts/Iron.Identity.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Audit/Contracts/Iron.Audit.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Authorization/Contracts/Iron.Authorization.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
+    <!-- Design-time only: lets "dotnet ef migrations add" run with this project as the start-up project. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

@@ -27,7 +27,7 @@ public class HostTests
     }
 
     [Fact]
-    public async Task TheApiHostStartsBoundToItsTenantAndFailsClosedWithoutADatabase()
+    public async Task TheApiHostStartsBoundToItsTenantAndServesNothingProtectedToNobody()
     {
         await using var factory = Production<Iron.Host.Api.ApiHost>();
         using var client = factory.CreateClient();
@@ -38,10 +38,11 @@ public class HostTests
         using var foreign = await Send(client, "/api/v1/roles", "bravo.localhost");
         Assert.Equal(HttpStatusCode.MisdirectedRequest, foreign.StatusCode);
 
+        // No cookie: the request runs as nobody, and the permission filter answers before any module code runs.
         using var roles = await Send(client, "/api/v1/roles", "acme.localhost");
-        Assert.Equal(HttpStatusCode.Forbidden, roles.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, roles.StatusCode);
         using var problem = JsonDocument.Parse(await roles.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(PermissionErrors.PermissionDenied, problem.RootElement.GetProperty("error_code").GetString());
+        Assert.Equal(PermissionErrors.NotAuthenticated, problem.RootElement.GetProperty("error_code").GetString());
     }
 
     [Fact]
@@ -54,7 +55,7 @@ public class HostTests
         Assert.Equal(HttpStatusCode.OK, live.StatusCode);
 
         using var roles = await Send(client, "/api/v1/roles", "acme.localhost");
-        Assert.Equal(HttpStatusCode.Forbidden, roles.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, roles.StatusCode);
     }
 
     [Fact]
@@ -74,19 +75,21 @@ public class HostTests
         Assert.Equal(HttpStatusCode.NotFound, noRoles.StatusCode);
     }
 
+    /// <summary>TF-030 AC3: the anonymous list is health, login and invitation acceptance, and nothing else. Adding to it is a reviewed change.</summary>
     [Fact]
-    public async Task TheAnonymousAllowListIsHealthOnlyOutsideDevelopment()
+    public async Task TheAnonymousAllowListIsFixedOutsideDevelopment()
     {
         await using var api = Production<Iron.Host.Api.ApiHost>();
         await using var controlPlane = Production<Iron.Host.ControlPlane.ControlPlaneHost>();
         await using var worker = Production<Iron.Host.Worker.WorkerHost>();
         await using var fleet = Production<Iron.Host.Fleet.FleetHost>();
 
-        string[] expected = ["ANY /health/live", "ANY /health/ready"];
-        Assert.Equal(expected, Anonymous(api.Services));
-        Assert.Equal(expected, Anonymous(controlPlane.Services));
-        Assert.Equal(expected, Anonymous(worker.Services));
-        Assert.Equal(expected, Anonymous(fleet.Services));
+        string[] health = ["ANY /health/live", "ANY /health/ready"];
+        string[] serving = ["ANY /health/live", "ANY /health/ready", "POST /auth/invitations/{token}/accept", "POST /auth/login"];
+        Assert.Equal(serving, Anonymous(api.Services));
+        Assert.Equal(serving, Anonymous(controlPlane.Services));
+        Assert.Equal(health, Anonymous(worker.Services));
+        Assert.Equal(health, Anonymous(fleet.Services));
     }
 
     [Fact]
@@ -99,7 +102,9 @@ public class HostTests
 
         Assert.Contains("ANY /health/live", anonymous);
         Assert.Contains("ANY /health/ready", anonymous);
-        Assert.All(anonymous.Where(e => !e.Contains("/health/", StringComparison.Ordinal)), e => Assert.True(e.Contains("/openapi", StringComparison.Ordinal) || e.Contains("/scalar", StringComparison.Ordinal), e));
+        Assert.All(
+            anonymous.Where(e => !e.Contains("/health/", StringComparison.Ordinal) && !e.StartsWith("POST /auth/", StringComparison.Ordinal)),
+            e => Assert.True(e.Contains("/openapi", StringComparison.Ordinal) || e.Contains("/scalar", StringComparison.Ordinal), e));
     }
 
     private static WebApplicationFactory<TEntryPoint> Production<TEntryPoint>()

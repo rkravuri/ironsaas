@@ -5,6 +5,7 @@ using Iron.Api.OpenApi;
 using Iron.Api.Tenancy;
 using Iron.Audit;
 using Iron.Authorization;
+using Iron.Identity;
 using Iron.Data;
 using Iron.Data.Commands;
 using Iron.Data.Health;
@@ -21,9 +22,9 @@ if (HealthProbe.IsCommand(args))
 var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
-// The modules this host runs, in order: Audit first, because Authorization writes denial events through its contract.
-// Identity (T10) and Files (T12) join the list with their tasks.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule()];
+// The modules this host runs, in order: Audit first (the others write events through its contract), then
+// Authorization, then Identity (it replaces the default principal). Files (T12) joins the list with its task.
+IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule()];
 
 builder.AddIronTelemetry("iron-control-plane", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);
@@ -51,6 +52,7 @@ app.UseIronTelemetry();
 app.UseIronApi();
 app.UseIronSecurity();
 app.UseIronTenant();
+app.UseIronIdentity();
 app.MapIronHealth();
 app.MapIronOpenApi();
 app.MapModules();

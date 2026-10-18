@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Iron.Api.Permissions;
 
 /// <summary>
-/// The start-up check of TF-030: every endpoint carries RequirePermission or an explicit AllowAnonymous marker, every
+/// The start-up check of TF-030: every endpoint carries RequirePermission, RequireSignedIn or an explicit AllowAnonymous marker, every
 /// declared permission is in the catalogue, and an evaluator is registered when anything is protected. The host does
 /// not start otherwise; the message names the offending operations. Registered by AddIronApi, so no host can forget it.
 /// It is a startup filter, not a hosted service: WebApplication starts hosted services before it builds the pipeline,
@@ -42,8 +42,9 @@ public sealed class EndpointPermissionCheck(ILogger<EndpointPermissionCheck> log
 
         var routes = endpoints.OfType<RouteEndpoint>().ToList();
         logger.LogInformation(
-            "Permission check passed: {Protected} protected and {Anonymous} anonymous endpoint(s).",
+            "Permission check passed: {Protected} protected, {SignedIn} signed-in and {Anonymous} anonymous endpoint(s).",
             routes.Count(e => e.Metadata.GetMetadata<PermissionMetadata>() is not null),
+            routes.Count(e => e.Metadata.GetMetadata<SignedInMetadata>() is not null),
             routes.Count(e => e.Metadata.GetMetadata<IAllowAnonymous>() is not null));
     }
 
@@ -57,18 +58,19 @@ public sealed class EndpointPermissionCheck(ILogger<EndpointPermissionCheck> log
         foreach (var endpoint in endpoints.OfType<RouteEndpoint>())
         {
             var permission = endpoint.Metadata.GetMetadata<PermissionMetadata>();
+            var signedIn = endpoint.Metadata.GetMetadata<SignedInMetadata>();
             var anonymous = endpoint.Metadata.GetMetadata<IAllowAnonymous>();
             var name = Describe(endpoint);
 
-            if (permission is null && anonymous is null)
+            if (permission is null && signedIn is null && anonymous is null)
             {
-                violations.Add($"{name}: no permission and no anonymous marker. Add .RequirePermission(...) or .AllowAnonymous().");
+                violations.Add($"{name}: no permission and no anonymous marker. Add .RequirePermission(...), .RequireSignedIn() or .AllowAnonymous().");
                 continue;
             }
 
-            if (permission is not null && anonymous is not null)
+            if (anonymous is not null && (permission is not null || signedIn is not null))
             {
-                violations.Add($"{name}: has both a permission and the anonymous marker. Keep one.");
+                violations.Add($"{name}: has both a permission or sign-in requirement and the anonymous marker. Keep one.");
             }
 
             if (permission is not null)

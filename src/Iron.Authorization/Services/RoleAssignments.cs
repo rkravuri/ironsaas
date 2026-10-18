@@ -34,6 +34,16 @@ public sealed class RoleAssignments(AuthorizationDbContext context, IMemoryCache
         return Result.Success();
     }
 
+    public async Task<IReadOnlyList<string>> PermissionsOfAsync(Guid principalId, CancellationToken cancellationToken)
+    {
+        var lists = await context.RoleAssignments.AsNoTracking()
+            .Where(a => a.PrincipalId == principalId && a.ScopeKind == Scopes.Tenant)
+            .Join(context.Roles.AsNoTracking(), a => a.RoleId, r => r.Id, (a, r) => r.Permissions)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return lists.SelectMany(list => list).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+    }
+
     public async Task<IReadOnlyList<string>> RoleNamesOfAsync(Guid principalId, CancellationToken cancellationToken)
     {
         return await context.RoleAssignments.AsNoTracking()

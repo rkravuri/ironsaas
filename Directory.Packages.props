@@ -26,6 +26,8 @@
   <ItemGroup Label="Api">
     <!-- Request validation with a fluent interface (Apache-2.0). -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <!-- Argon2id for password hashing (MIT, managed code). -->
+    <PackageVersion Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
     <!-- OpenAPI document generation (MIT), same version train as the runtime. -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <!-- Interactive API reference on top of the OpenAPI document (MIT). Development only. -->

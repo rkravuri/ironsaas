@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean run-api run-worker migrate images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -57,6 +57,11 @@ ef-add: ## Add a migration for a module context: make ef-add MODULE=Authorizatio
 ef-script: ## Print the SQL of a module's migrations: make ef-script MODULE=Authorization
 	dotnet tool restore
 	dotnet ef migrations script --project src/Iron.$(MODULE) --startup-project src/Iron.$(MODULE) --context $(MODULE)DbContext --idempotent
+
+seed: env ## Run the tenant API image command "seed" against the laptop database (first administrator admin@dev.localhost)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	$(DEV_TENANT) $(DEV_DATABASE) Seed__Administrator__LoginId=admin@dev.localhost Seed__Administrator__DisplayName="Dev Administrator" \
+	dotnet run --project src/Iron.Host.Api -- seed
 
 images: ## Build the four host images (foundation/iron-*:$(TAG))
 	docker build -f src/Iron.Host.Api/Dockerfile -t foundation/iron-api:$(TAG) .

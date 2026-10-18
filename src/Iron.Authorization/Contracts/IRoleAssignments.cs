@@ -10,4 +10,7 @@ public interface IRoleAssignments
 
     /// <summary>The names of the roles a principal holds for the whole tenant, in name order.</summary>
     Task<IReadOnlyList<string>> RoleNamesOfAsync(Guid principalId, CancellationToken cancellationToken);
+
+    /// <summary>Every permission the principal holds through its tenant-wide roles, in name order. The shell builds its navigation from it.</summary>
+    Task<IReadOnlyList<string>> PermissionsOfAsync(Guid principalId, CancellationToken cancellationToken);
 }

@@ -19,7 +19,8 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T7 Hosts | done |
 | T8 Iron.Authorization | done |
 | T9 Iron.Audit | done |
-| T10 Iron.Identity part 1 | next |
+| T10 Iron.Identity part 1 | done |
+| T11 Iron.Identity part 2 | next |
 
 ## Prerequisites
 
@@ -52,6 +53,7 @@ make down      # stop it; data is kept
 make run-api   # run the tenant API host on http://localhost:5100 against the platform
 make run-worker # run the tenant worker host on http://localhost:5101 (heartbeat every 15 s)
 make migrate   # run the migrate command against the laptop database
+make seed      # run the seed command: system roles and the first administrator (invitation token in the log)
 make images    # build the four host images foundation/iron-*:dev
 make ef-add MODULE=Authorization NAME=Initial   # generate a migration for a module context (dotnet ef via the tool manifest)
 ```
