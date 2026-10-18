@@ -14,7 +14,7 @@ PRD section 6 chose MinIO (S3 API, AGPL) for the laptop and Azure Blob Storage f
 - `Iron.Files` gets one storage implementation in S1: the Azure Blob SDK. It runs against Azurite on the laptop and against Azure Blob Storage in Azure with a change of connection settings only. The `IObjectStorage` interface stays, so a second implementation (S3 or another API) can be added if a deployment outside Azure ever needs it.
 - "A storage bucket with its own credentials" per tenant (TF-210) becomes a blob container per tenant with a container-scoped shared access signature issued by the fleet; in Azure the same, or a managed identity with role assignment on the container.
 - File versions (TF-160) are kept by `Iron.Files` itself (version rows and a new blob name per version), not by storage-level versioning, so behaviour is identical on the laptop and in Azure.
-- Integration tests use the Testcontainers Azurite module.
+- Integration tests use the Testcontainers Azurite module, with `--skipApiVersionCheck` and `--loose` as on the laptop: the Azure SDK's newest API version runs ahead of the emulator's list, and the operations Iron.Files uses are old and stable.
 
 ## Options considered
 

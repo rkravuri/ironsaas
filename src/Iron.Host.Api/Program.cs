@@ -5,11 +5,13 @@ using Iron.Api.OpenApi;
 using Iron.Api.Tenancy;
 using Iron.Audit;
 using Iron.Authorization;
+using Iron.Files;
 using Iron.Identity;
 using Iron.Data;
 using Iron.Data.Commands;
 using Iron.Data.Health;
 using Iron.Security;
+using Iron.Security.Secrets;
 using Iron.Telemetry;
 using Iron.Telemetry.Health;
 
@@ -20,16 +22,21 @@ if (HealthProbe.IsCommand(args))
 }
 
 var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
+
+// With Secrets:Address, Secrets:Token and Secrets:Path in the environment, the unit's secret supplies the rest of the
+// configuration (connection string, storage, signing key); without them, the environment does (laptop, tests).
+builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this host runs, in order: Audit first (the others write events through its contract), then
-// Authorization, then Identity (it replaces the default principal). Files (T12) joins the list with its task.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule()];
+// Authorization, then Identity (it replaces the default principal), then Files.
+IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule()];
 
 builder.AddIronTelemetry("iron-api", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);
 builder.Services.AddIronApi();
 builder.Services.AddIronSecurity(builder.Configuration);
+builder.Services.AddIronSecretStore(builder.Configuration);
 builder.Services.AddIronHealth();
 builder.Services.AddIronOpenApi("Foundation tenant API");
 

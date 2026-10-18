@@ -21,7 +21,8 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T9 Iron.Audit | done |
 | T10 Iron.Identity part 1 | done |
 | T11 Iron.Identity part 2 | done |
-| T12 Iron.Files and secrets | next |
+| T12 Iron.Files and secrets | done |
+| T13 Iron.Tenancy and the control plane | next |
 
 ## Prerequisites
 
@@ -56,6 +57,8 @@ make run-worker # run the tenant worker host on http://localhost:5101 (heartbeat
 make migrate   # run the migrate command against the laptop database
 make seed      # run the seed command: system roles, the first administrator (invitation token in the log) and the smoke client
 make token     # get an access token for the laptop smoke client from the running API host
+make secret-dev      # write the dev unit's secret to OpenBao, as the fleet does per tenant
+make run-api-secrets # run the API with only the store address, the unit token and the tenant in its environment
 make images    # build the four host images foundation/iron-*:dev
 make ef-add MODULE=Authorization NAME=Initial   # generate a migration for a module context (dotnet ef via the tool manifest)
 ```

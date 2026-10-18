@@ -23,3 +23,4 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0013](0013-audit-trail-and-unit-of-work.md) | Audit trail, unit of work and the app role | Accepted |
 | [0014](0014-identity-sessions-and-passwords.md) | Principals, passwords and sessions | Accepted |
 | [0015](0015-access-tokens.md) | Access tokens for API clients | Accepted |
+| [0016](0016-secrets-and-object-storage.md) | Secrets at start and object storage | Accepted |

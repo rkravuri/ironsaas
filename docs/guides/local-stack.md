@@ -91,3 +91,10 @@ docker run --rm -p 5100:8080 --network foundation \
 ```
 
 T14 generates these settings per tenant unit; nobody types them by hand after that.
+
+
+## The unit secret (T12)
+
+A real unit gets its configuration from OpenBao: `make secret-dev` writes `secret/tenants/dev/unit` with the connection string, the storage settings and a signing key (generated once into `infra/compose/.dev-signing-key.pem`, git-ignored), and `make run-api-secrets` starts the API host with only the store address, the root token (the fleet gives each unit its own token, T14), the path and the tenant in its environment. OpenBao runs in development mode, in memory: after `make down` and `make up`, run `make secret-dev` again.
+
+Readiness (`/health/ready`) now reports `postgres`, `secret-store` (when configured) and `object-storage`; the storage check says "The blob container 'dev' does not exist." until `make seed` has created it.

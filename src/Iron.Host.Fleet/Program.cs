@@ -9,6 +9,7 @@ using Iron.Data;
 using Iron.Data.Commands;
 using Iron.Data.Health;
 using Iron.Security;
+using Iron.Security.Secrets;
 using Iron.Telemetry;
 using Iron.Telemetry.Health;
 using Iron.Telemetry.Heartbeat;
@@ -19,6 +20,10 @@ if (HealthProbe.IsCommand(args))
 }
 
 var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
+
+// With Secrets:Address, Secrets:Token and Secrets:Path in the environment, the unit's secret supplies the rest of the
+// configuration (connection string, storage, signing key); without them, the environment does (laptop, tests).
+builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this worker runs, in order: the same list as the API host, without endpoints.
@@ -28,6 +33,7 @@ builder.AddIronTelemetry("iron-fleet", telemetry => telemetry.TenantId = tenant.
 builder.Services.AddIronTenant(tenant);
 builder.Services.AddIronApi();
 builder.Services.AddIronSecurity(builder.Configuration);
+builder.Services.AddIronSecretStore(builder.Configuration);
 builder.Services.AddIronHealth();
 builder.Services.AddIronHeartbeat(builder.Configuration);
 

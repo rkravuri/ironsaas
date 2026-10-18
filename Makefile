@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -32,6 +32,7 @@ clean: ## Remove build output
 	find . -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
 
 DEV_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=postgres;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
+DEV_STORAGE = Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=$$BLOB_ACCOUNT_NAME;AccountKey=$$BLOB_ACCOUNT_KEY;BlobEndpoint=http://localhost:10000/$$BLOB_ACCOUNT_NAME;" Storage__Container=dev
 DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost Tokens__SigningKeyPath=$(COMPOSE_DIR)/.dev-signing-key.pem
 DEV_SMOKE_SECRET = dev-smoke-client-secret-not-for-real-tenants
 TAG ?= dev
@@ -41,17 +42,17 @@ token: ## Get an access token for the laptop smoke client from the running API h
 
 run-api: env ## Run the tenant API host on the laptop against the platform (http://localhost:5100)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	ASPNETCORE_URLS=http://localhost:5100 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) \
+	ASPNETCORE_URLS=http://localhost:5100 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) \
 	dotnet run --project src/Iron.Host.Api
 
 run-worker: env ## Run the tenant worker host on the laptop against the platform (http://localhost:5101)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	ASPNETCORE_URLS=http://localhost:5101 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) \
+	ASPNETCORE_URLS=http://localhost:5101 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) \
 	Heartbeat__Interval=00:00:15 dotnet run --project src/Iron.Host.Worker
 
 migrate: env ## Run the tenant API image command "migrate" against the laptop database (dotnet run)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(DEV_TENANT) $(DEV_DATABASE) dotnet run --project src/Iron.Host.Api -- migrate
+	$(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) dotnet run --project src/Iron.Host.Api -- migrate
 
 ef-add: ## Add a migration for a module context: make ef-add MODULE=Authorization NAME=Initial
 	@test -n "$(MODULE)" && test -n "$(NAME)" || (echo "usage: make ef-add MODULE=Authorization NAME=Initial" && exit 1)
@@ -64,9 +65,19 @@ ef-script: ## Print the SQL of a module's migrations: make ef-script MODULE=Auth
 
 seed: env ## Run the tenant API image command "seed" against the laptop database (first administrator admin@dev.localhost)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(DEV_TENANT) $(DEV_DATABASE) Seed__Administrator__LoginId=admin@dev.localhost Seed__Administrator__DisplayName="Dev Administrator" \
+	$(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) Seed__Administrator__LoginId=admin@dev.localhost Seed__Administrator__DisplayName="Dev Administrator" \
 	Seed__SmokeClient__ClientId=smoke-client Seed__SmokeClient__Secret=$(DEV_SMOKE_SECRET) \
 	dotnet run --project src/Iron.Host.Api -- seed
+
+secret-dev: env ## Write the dev unit's secret to OpenBao (connection string, storage, signing key) as the fleet will per tenant
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-dev-secret.sh
+
+run-api-secrets: env ## Run the tenant API host with only the store address, the unit token and the tenant in its environment
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	ASPNETCORE_URLS=http://localhost:5100 ASPNETCORE_ENVIRONMENT=Development \
+	Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost \
+	Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=tenants/dev \
+	dotnet run --project src/Iron.Host.Api
 
 images: ## Build the four host images (foundation/iron-*:$(TAG))
 	docker build -f src/Iron.Host.Api/Dockerfile -t foundation/iron-api:$(TAG) .

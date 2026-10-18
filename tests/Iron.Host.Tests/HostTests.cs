@@ -24,6 +24,8 @@ public class HostTests
         Environment.SetEnvironmentVariable("ConnectionStrings__Database", "Host=localhost;Port=1;Database=nowhere;Username=nobody;Password=nothing;Timeout=1");
         Environment.SetEnvironmentVariable("Telemetry__ExportToCollector", "false");
         Environment.SetEnvironmentVariable("Heartbeat__Interval", "01:00:00");
+        Environment.SetEnvironmentVariable("Storage__ConnectionString", "UseDevelopmentStorage=true");
+        Environment.SetEnvironmentVariable("Storage__Container", "acme");
     }
 
     [Fact]

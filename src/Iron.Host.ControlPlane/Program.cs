@@ -10,6 +10,7 @@ using Iron.Data;
 using Iron.Data.Commands;
 using Iron.Data.Health;
 using Iron.Security;
+using Iron.Security.Secrets;
 using Iron.Telemetry;
 using Iron.Telemetry.Health;
 
@@ -20,16 +21,21 @@ if (HealthProbe.IsCommand(args))
 }
 
 var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
+
+// With Secrets:Address, Secrets:Token and Secrets:Path in the environment, the unit's secret supplies the rest of the
+// configuration (connection string, storage, signing key); without them, the environment does (laptop, tests).
+builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this host runs, in order: Audit first (the others write events through its contract), then
-// Authorization, then Identity (it replaces the default principal). Files (T12) joins the list with its task.
+// Authorization, then Identity (it replaces the default principal). Tenancy and Fleet join in T13 and T14; the control plane stores no tenant files.
 IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule()];
 
 builder.AddIronTelemetry("iron-control-plane", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);
 builder.Services.AddIronApi();
 builder.Services.AddIronSecurity(builder.Configuration);
+builder.Services.AddIronSecretStore(builder.Configuration);
 builder.Services.AddIronHealth();
 builder.Services.AddIronOpenApi("Foundation control plane API");
 
