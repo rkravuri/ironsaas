@@ -65,6 +65,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--iron-font-mono": tokens.type.mono.family,
     "--iron-duration-quick": `${tokens.motion.duration.quick}ms`,
     "--iron-duration-calm": `${tokens.motion.duration.calm}ms`,
+    "--iron-duration-draw": `${tokens.motion.duration.draw}ms`,
     "--iron-ease-enter": tokens.motion.easing.enter,
     "--iron-ease-exit": tokens.motion.easing.exit,
     ...Object.fromEntries(accentNames.map((name) => [`--iron-accent-${name}`, `var(--mantine-color-${name}-text)`])),

@@ -6,8 +6,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
-| D1 Design foundation | in progress | slice/s2-d1 | plan agreed on 2026-10-18 with three additions (scheme script, screenshots, findings list) |
-| D2 The drawn world | next | | |
+| D1 Design foundation | done | main (f145e5f) | accepted 2026-10-18; six commits plus the State column |
+| D2 The drawn world | in progress | slice/s2-d2 | branched from e1c52db on 2026-10-18 |
 | D3 Templates, panels and forms | | | |
 | A1 Organisation units | | | |
 | A2 Roles and scoped assignments | | | |
