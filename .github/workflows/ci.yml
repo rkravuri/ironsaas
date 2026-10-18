@@ -97,7 +97,7 @@ jobs:
       # The four screenshots and the report on every run: the review looks at the pictures, not only at failures.
       - name: Upload the screenshots and the report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shell-accessibility
           path: |
