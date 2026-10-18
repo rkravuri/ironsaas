@@ -27,5 +27,6 @@ describe("the gallery", () => {
     expect(await screen.findByRole("region", { name: en.gallery.grid.label })).toBeInTheDocument();
     expect(screen.queryAllByText(en.gallery.colour.fail)).toHaveLength(0);
     expect(screen.getAllByText(en.gallery.colour.pass).length).toBeGreaterThan(50);
-  });
+    // The whole gallery renders here, templates and grid included; under load it needs more than the default 5 s.
+  }, 20_000);
 });
