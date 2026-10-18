@@ -70,5 +70,22 @@
     "columns": "Columns",
     "empty": "Nothing to show.",
     "capped": "The page size was limited to {{max}} rows (asked for more than the API allows); showing {{size}} per page."
+  },
+  "design": {
+    "accents": {
+      "primary": "The platform accent: the main action on a page, links and the focus ring.",
+      "identity": "The Identity module: its opener, its navigation mark and its pattern.",
+      "console": "The tenant console: organisation units, roles, entitlements, flags and settings.",
+      "success": "Something worked: a saved record, an activated account. Always with a word or an icon.",
+      "warning": "Something needs attention before it goes wrong. Always with a word or an icon.",
+      "danger": "Something failed, or will destroy data if confirmed. Always with a word or an icon.",
+      "info": "Something worth knowing that needs no action. Always with a word or an icon."
+    },
+    "neutral": {
+      "ink": "Text and strokes: a near-black with a hint of blue, and its light counterpart on dark paper.",
+      "paper": "Surfaces: a warm off-white, and a cool near-black. Pure black and pure white are not used.",
+      "gray": "The light scheme greys: hovers at 0, borders at 4, dimmed text at 6.",
+      "dark": "The dark scheme greys: the ink at 0, dimmed text at 2, borders at 4, the paper at 7."
+    }
   }
 }

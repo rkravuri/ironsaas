@@ -4,12 +4,13 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { SessionProvider } from "@/auth/session";
+import { cssVariablesResolver, theme } from "@/theme";
 
 /** The providers a page needs, minus the real router: tests mount pages under a memory router. */
 export function renderWithProviders(ui: ReactNode, { route = "/" }: { route?: string } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MantineProvider>
+    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
