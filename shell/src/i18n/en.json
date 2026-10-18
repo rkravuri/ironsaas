@@ -109,7 +109,8 @@
       "space": "Space and motion",
       "components": "Components",
       "grid": "The grid",
-      "views": "Views"
+      "views": "Views",
+      "drawings": "Patterns and drawings"
     },
     "colour": {
       "scales": "Scales",
@@ -221,6 +222,16 @@
       "brokenMessage": "The gallery asked for an error on purpose.",
       "loading": "Loading",
       "login": "The login form"
+    },
+    "drawings": {
+      "marks": "Tenant marks",
+      "marksIntro": "Seeded from the hostname, so every tenant has something of its own with no configuration: acme and bravo, side by side.",
+      "patterns": "The generator",
+      "patternsIntro": "Symmetry 6, 8 and 12 at four rings, and the hatch that shades a drawing.",
+      "symmetry": "Symmetry {{count}}",
+      "hatch": "Hatch",
+      "illustrations": "The drawings",
+      "illustrationsIntro": "Eleven drawings in one hand (brief section 3), each with its accessible name; the loader draws itself in unless motion is reduced."
     }
   },
   "illustrations": {
