@@ -27,6 +27,14 @@ echo "== platform (core + ci profile) from $IMAGE_REPOSITORY/*:$IMAGE_TAG"
 compose --profile ci up --detach --wait
 sh "$here/scripts/wait-ready.sh" tempo
 
+echo "== the store: initialised on a new runner, unsealed by its key (ADR-0028)"
+bash "$here/scripts/init-store.sh"
+# The root token was written into .env just now; exported variables win over --env-file, so read the file again.
+set -a
+# shellcheck disable=SC1091
+. "$here/.env"
+set +a
+
 echo "== control plane secret, migrations and seed"
 CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob "$here/scripts/write-control-secret.sh"
 compose --profile control run --rm --no-deps control-api migrate

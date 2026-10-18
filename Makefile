@@ -129,15 +129,20 @@ shell-node:
 	  /mnt/*|*.cmd|*.exe) echo "npm resolves to the Windows build ($$npm_path). Install Node 26 inside WSL (nvm install 26) and remove shell/node_modules."; exit 1;; \
 	esac
 
-smoke: env ## Run the smoke test against the local stack (control plane, fleet and telemetry profile up): provisions or reuses tenant smoke
+# The tenant the smoke and the browser tests run against: TENANT=x, else the smoke tenant. Not a global default, so
+# provision, update-unit and deprovision still refuse to run without a TENANT.
+TEST_TENANT = $(or $(TENANT),smoke)
+
+smoke: env ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions or reuses tenant smoke, or TENANT=x
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
-	dotnet run --project tools/Iron.Smoke --configuration Release
+	SMOKE_TENANT=$(TEST_TENANT) dotnet run --project tools/Iron.Smoke --configuration Release
 
-e2e: shell-node env ## Run the Playwright tests against the smoke tenant (make smoke first; browsers: cd shell && npm run e2e:install)
+e2e: shell-node env ## Run the Playwright tests against the smoke tenant, or TENANT=x (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	password=$$(python3 -c 'import json,sys,urllib.request; r=urllib.request.Request("http://localhost:8200/v1/secret/data/tenants/smoke/smoke", headers={"X-Vault-Token": sys.argv[1]}); print(json.load(urllib.request.urlopen(r))["data"]["data"]["administrator_password"])' "$$OPENBAO_ROOT_TOKEN"); \
-	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://smoke.localhost} E2E_LOGIN_ID=admin@smoke.localhost E2E_PASSWORD="$$password" npx playwright test
+	password=$$(python3 -c 'import json,sys,urllib.request; r=urllib.request.Request("http://localhost:8200/v1/secret/data/tenants/" + sys.argv[2] + "/smoke", headers={"X-Vault-Token": sys.argv[1]}); print(json.load(urllib.request.urlopen(r))["data"]["data"]["administrator_password"])' "$$OPENBAO_ROOT_TOKEN" "$(TEST_TENANT)" 2>/dev/null) \
+	  || { echo "No administrator password at secret/tenants/$(TEST_TENANT)/smoke: run make smoke TENANT=$(TEST_TENANT) first."; exit 1; }; \
+	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" npx playwright test
 
 shell-install: shell-node ## Install the shell's packages (shell/)
 	cd shell && npm ci --no-audit --no-fund
@@ -162,17 +167,20 @@ images: ## Build the four host images and the shell image (foundation/iron-*:$(T
 env: ## Create infra/compose/.env with random local credentials (runs once)
 	@sh $(COMPOSE_DIR)/scripts/init-env.sh
 
-up: env ## Start the platform with the telemetry stack and wait until everything is healthy
+up: env ## Start the platform with the telemetry stack, initialise the store on first use, and wait until everything is healthy
 	$(COMPOSE) --profile telemetry up --detach --wait
+	@bash $(COMPOSE_DIR)/scripts/init-store.sh
 	@sh $(COMPOSE_DIR)/scripts/wait-ready.sh tempo loki
 	@sh $(COMPOSE_DIR)/scripts/print-endpoints.sh full
 
-up-slim: env ## Start the platform without the telemetry stack
+up-slim: env ## Start the platform without the telemetry stack (the store is initialised on first use)
 	$(COMPOSE) up --detach --wait
+	@bash $(COMPOSE_DIR)/scripts/init-store.sh
 	@sh $(COMPOSE_DIR)/scripts/print-endpoints.sh slim
 
 up-ci: env ## Start the slim platform plus the collector and Tempo (what the pipeline uses)
 	$(COMPOSE) --profile ci up --detach --wait
+	@bash $(COMPOSE_DIR)/scripts/init-store.sh
 	@sh $(COMPOSE_DIR)/scripts/wait-ready.sh tempo
 
 up-control: env ## Run the control plane API and the fleet worker as containers from the images (make images first; secret with container hosts)
@@ -189,8 +197,10 @@ integration: ## The pipeline's integration stage on this machine: platform and c
 down: env ## Stop and remove the platform containers; data volumes are kept
 	$(COMPOSE) $(ALL_PROFILES) down
 
-reset: env ## Stop the platform and delete all its data volumes
+reset: env ## Stop the platform and delete all its data volumes (the store's root token and recovery key go with its volume)
 	$(COMPOSE) $(ALL_PROFILES) down --volumes
+	@sed -i '/^OPENBAO_ROOT_TOKEN=/d;/^OPENBAO_RECOVERY_KEY=/d' $(COMPOSE_DIR)/.env
+	@echo "Removed the store's root token and recovery key from $(COMPOSE_DIR)/.env; the next make up initialises a new store."
 
 ps: env ## Show the platform containers
 	$(COMPOSE) $(ALL_PROFILES) ps
