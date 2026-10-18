@@ -1,5 +1,8 @@
+using Iron.Audit.Contracts;
 using Iron.Authorization.Contracts;
 using Iron.Data.Seeding;
+using Iron.Data.Transactions;
+using Iron.Identity.Contracts;
 using Iron.Identity.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -44,7 +47,8 @@ public sealed class ServiceAccountSeeds(IReadOnlyList<ServiceAccountSeedOptions>
 /// Creates the first administrator in Invited status with an invitation token and the tenant-administrator role, and
 /// the configured service accounts, Active, each with its role. Runs after the Authorization seeder (order 100).
 /// Without the configuration, each part does nothing. The invitation token is written to the log once, at creation,
-/// because no email leaves a unit in S1; the fleet prints the link (T14). Running again changes nothing.
+/// because no email leaves a unit in S1; the fleet prints the link (T14). Running again changes nothing, except that an
+/// existing service account takes the secret the seed was given when it differs (ADR-0028).
 /// </summary>
 public sealed class IdentitySeeder(
     IdentityDbContext context,
@@ -53,6 +57,8 @@ public sealed class IdentitySeeder(
     InvitationService invitations,
     IPasswordHasher hasher,
     IRoleAssignments roleAssignments,
+    IUnitOfWork unitOfWork,
+    IAuditWriter audit,
     ILogger<IdentitySeeder> logger) : ISeeder
 {
     public int Order => 200;
@@ -75,9 +81,10 @@ public sealed class IdentitySeeder(
             return;
         }
 
-        if (await context.Principals.AnyAsync(p => p.LoginId == clientId, cancellationToken).ConfigureAwait(false))
+        var existing = await context.Principals.SingleOrDefaultAsync(p => p.LoginId == clientId, cancellationToken).ConfigureAwait(false);
+        if (existing is not null)
         {
-            logger.LogInformation("The service account {ClientId} exists already; nothing to seed.", clientId);
+            await MatchTheGivenSecretAsync(existing, account.Secret, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -97,6 +104,33 @@ public sealed class IdentitySeeder(
         }
 
         logger.LogInformation("Created the service account {ClientId} ({PrincipalId}) with the {Role} role.", clientId, client.Id, account.Role);
+    }
+
+    /// <summary>
+    /// The fleet hands the seed the secret it keeps in the store. When the store lost it and the fleet made a new one,
+    /// the account takes the new secret, so the store and the database agree again (ADR-0028); the change and its audit
+    /// event are one transaction (ADR-0013). A secret the stored hash verifies changes nothing and writes nothing.
+    /// </summary>
+    private async Task MatchTheGivenSecretAsync(Principal existing, string? secret, CancellationToken cancellationToken)
+    {
+        if (existing.Type != PrincipalType.ServiceAccount)
+        {
+            logger.LogWarning("{LoginId} is a {Type}, not a service account; the seed leaves its credential alone.", existing.LoginId, existing.Type);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(secret) || (existing.PasswordHash is not null && hasher.Verify(secret, existing.PasswordHash)))
+        {
+            logger.LogInformation("The service account {ClientId} exists already with this secret; nothing to seed.", existing.LoginId);
+            return;
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        existing.SetPassword(hasher.Hash(secret));
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.ServiceAccountSecretChanged, AuditOutcome.Success, existing.Id, existing.LoginId, RecordType: "principal", RecordId: existing.Id, Reason: "seed"), cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("The service account {ClientId} ({PrincipalId}) had another secret; the seed set the one it was given.", existing.LoginId, existing.Id);
     }
 
     private async Task SeedAdministratorAsync(CancellationToken cancellationToken)

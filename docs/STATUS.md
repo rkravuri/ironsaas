@@ -6,10 +6,10 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
-| D1 Design foundation | in progress | slice/s2-d1 | plan agreed on 2026-10-18 with three additions (scheme script, screenshots, findings list) |
-| D2 The drawn world | next | | |
-| D3 Templates, panels and forms | merged on main, not pushed | slice/s2-d3 (merged) | a11y, format, e2e on the stack, the tables, the push remain |
-| P1 The laptop store survives a restart, and an update heals a unit | next | slice/s2-p1 | added after D3: OpenBao dev mode lost the secrets on a WSL restart |
+| D1 Design foundation | done | main (f145e5f) | accepted 2026-10-18; six commits plus the State column |
+| D2 The drawn world | done | main (fd56702) | merged 2026-10-18; six commits plus the figure correction from the review |
+| D3 Templates, panels and forms | merged on main, not pushed | slice/s2-d3 (merged) | the scan, format and the keyboard test on the stack passed in the P1 session (2026-10-19, tenant echo); the tables and the push remain |
+| P1 The laptop store survives a restart, and an update heals a unit | done, pending merge | slice/s2-p1 | built 2026-10-19; the store initialised and proven across two down/up rounds, acme, bravo and smoke healed, echo provisioned fresh and passing smoke and e2e |
 | A1 Organisation units | | | |
 | A2 Roles and scoped assignments | | | |
 | A3 Record policies | | | |
@@ -32,3 +32,4 @@ The running state of the current slice, kept current by Claude Code at the end o
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
 - The shell does not warn before the session expires (TF-021, D4).
+- The administrators' passwords of acme, bravo and smoke went with the old store: those tenants serve their users and their smoke clients (the seed sets a healed account's new secret since P1), but the smoke's administrator steps and the browser tests need echo until the reset flow of S3.

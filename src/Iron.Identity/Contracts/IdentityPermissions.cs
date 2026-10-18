@@ -36,4 +36,7 @@ public static class IdentityAuditEvents
     public const string InvitationAccepted = "identity.invitation_accepted";
     public const string TokenIssued = "identity.token_issued";
     public const string TokenRefused = "identity.token_refused";
+
+    /// <summary>The seed was given a different secret for an existing service account and set it (ADR-0028: a healed unit).</summary>
+    public const string ServiceAccountSecretChanged = "identity.service_account_secret_changed";
 }

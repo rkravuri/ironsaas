@@ -1,3 +1,5 @@
+using System.Net.Http.Json;
+using System.Text.Json;
 using Azure.Storage.Blobs;
 using Iron.Core.Identifiers;
 using Iron.Files.Services;
@@ -235,11 +237,99 @@ public class ProvisioningTests(FleetFixture fixture)
         {
             var job = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken))!;
             Assert.Equal(ProvisioningStatus.Completed, job.Status);
-            Assert.Equal([StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify], job.Steps.Select(s => s.Name));
+            Assert.Equal(UpdateSteps, job.Steps.Select(s => s.Name));
             Assert.Equal(2, runtime.Applied.Count);
             Assert.Equal(commandsBefore + 2, runtime.Commands.Count); // migrate and seed ran again, idempotently
             Assert.Equal(TenantStatus.Active, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
         }
+    }
+
+    [Fact]
+    public async Task AnUpdateHealsAUnitWhoseSecretsWereDeletedFromTheStore()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var slug = await RegisterAndRequestAsync(provider, "golf");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+
+        using var root = new OpenBaoSecretStore(fixture.StoreOptions());
+        var before = (await root.ReadAsync($"tenants/{slug}/unit", ct))!;
+        var tokenBefore = (await root.ReadAsync($"tenants/{slug}/fleet", ct))![SecretsStep.UnitTokenKey];
+
+        // What a store that lost its data looks like to one tenant: every secret under tenants/<slug> is gone.
+        var forgotten = await DeleteEverySecretOfAsync(slug, ct);
+        Assert.Equal(["database", "fleet", "storage", "unit"], forgotten.Order(StringComparer.Ordinal));
+        Assert.Null(await root.ReadAsync($"tenants/{slug}/unit", ct));
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var requested = await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestUpdateAsync(slug, ct);
+            Assert.True(requested.IsSuccess, requested.IsFailure ? requested.Error.Message : null);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var job = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, ct))!;
+            Assert.Equal(ProvisioningStatus.Completed, job.Status);
+            Assert.Equal(UpdateSteps, job.Steps.Select(s => s.Name));
+        }
+
+        // The unit secret is back, with a new app password that opens the tenant's database; the old one does not.
+        var after = await root.ReadAsync($"tenants/{slug}/unit", ct);
+        Assert.NotNull(after);
+        Assert.NotEqual(before["ConnectionStrings:Database"], after["ConnectionStrings:Database"]);
+        Assert.StartsWith("-----BEGIN EC PRIVATE KEY-----", after["Tokens:SigningKeyPem"], StringComparison.Ordinal);
+        await using (var healed = new NpgsqlConnection(after["ConnectionStrings:Database"]))
+        {
+            await healed.OpenAsync(ct);
+            await using var command = new NpgsqlCommand("select current_database()", healed);
+            Assert.Equal(slug, await command.ExecuteScalarAsync(ct));
+        }
+
+        await using (var stale = new NpgsqlConnection(before["ConnectionStrings:Database"]))
+        {
+            var refused = await Assert.ThrowsAsync<PostgresException>(() => stale.OpenAsync(ct));
+            Assert.Equal("28P01", refused.SqlState);
+        }
+
+        // A new unit token reads the unit secret and nothing else, and the re-applied unit carries it.
+        var tokenAfter = (await root.ReadAsync($"tenants/{slug}/fleet", ct))![SecretsStep.UnitTokenKey];
+        Assert.NotEqual(tokenBefore, tokenAfter);
+        using var unitStore = new OpenBaoSecretStore(fixture.StoreOptions(tokenAfter));
+        Assert.NotNull(await unitStore.ReadAsync($"tenants/{slug}/unit", ct));
+        await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{slug}/database", ct));
+        await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{slug}/fleet", ct));
+        Assert.Equal(tokenAfter, runtime.Applied[^1].Environment["Secrets__Token"]);
+
+        // The container signature was issued again and opens the tenant's container.
+        var storage = new BlobObjectStorage(new StorageOptions { ContainerSasUrl = after["Storage:ContainerSasUrl"] });
+        Assert.Null(await storage.CheckAsync(ct));
+    }
+
+    /// <summary>The steps of an update, in order (ADR-0028): the three in-process steps heal, the rest re-apply the unit.</summary>
+    private static readonly string[] UpdateSteps = [StepNames.Database, StepNames.Storage, StepNames.Secrets, StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify];
+
+    /// <summary>Deletes every secret under <c>tenants/&lt;slug&gt;</c>, every version, through OpenBao's metadata endpoint; returns their names.</summary>
+    private async Task<List<string>> DeleteEverySecretOfAsync(string slug, CancellationToken cancellationToken)
+    {
+        using var http = new HttpClient { BaseAddress = new Uri(fixture.OpenBaoAddress + "/") };
+        http.DefaultRequestHeaders.Add("X-Vault-Token", FleetFixture.RootToken);
+        using var list = new HttpRequestMessage(new HttpMethod("LIST"), new Uri($"v1/secret/metadata/tenants/{slug}", UriKind.Relative));
+        using var listed = await http.SendAsync(list, cancellationToken);
+        listed.EnsureSuccessStatusCode();
+        var body = await listed.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+        var names = body.GetProperty("data").GetProperty("keys").EnumerateArray().Select(key => key.GetString()!).ToList();
+        foreach (var name in names)
+        {
+            using var deleted = await http.DeleteAsync(new Uri($"v1/secret/metadata/tenants/{slug}/{name}", UriKind.Relative), cancellationToken);
+            deleted.EnsureSuccessStatusCode();
+        }
+
+        return names;
     }
 
     private static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix)

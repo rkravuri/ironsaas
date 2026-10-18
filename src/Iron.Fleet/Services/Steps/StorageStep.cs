@@ -8,6 +8,7 @@ namespace Iron.Fleet.Services.Steps;
 /// <summary>
 /// Step 3: the tenant's blob container and a container-scoped signature (ADR-0006), kept in the store at
 /// <c>tenants/&lt;slug&gt;/storage</c>. The signature is built for the endpoint the units see, not the fleet's.
+/// An update runs it too (ADR-0028): a lost signature is issued again; one in place is kept.
 /// </summary>
 public sealed class StorageStep(ISecretStore secrets, TimeProvider time) : IProvisioningStep
 {
@@ -17,7 +18,7 @@ public sealed class StorageStep(ISecretStore secrets, TimeProvider time) : IProv
 
     public int Order => 3;
 
-    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision, JobKind.Update];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

@@ -13,6 +13,7 @@ networks:
 volumes:
   postgres-data:
   blob-data:
+  openbao-data:
   prometheus-data:
   loki-data:
   fleet-units:
@@ -116,16 +117,16 @@ services:
 
   # ---------------------------------------------------------------- secrets
   openbao:
-    # MPL-2.0. Development mode: in memory, unsealed, one root token. Data is lost when the container stops (see the runbook).
+    # MPL-2.0. Server mode with integrated storage on a named volume, unsealed at every start by the static seal
+    # (ADR-0028). `make up` initialises it once (scripts/init-store.sh) and keeps the root token in .env.
     image: openbao/openbao:2.7.1
-    command:
-      - server
-      - -dev
-      - -dev-root-token-id=${OPENBAO_ROOT_TOKEN}
-      - -dev-listen-address=0.0.0.0:8200
+    command: ["server"] # the image's entrypoint adds -config=/openbao/config
     environment:
       BAO_ADDR: http://127.0.0.1:8200
-    cap_add: [IPC_LOCK]
+      OPENBAO_UNSEAL_KEY: ${OPENBAO_UNSEAL_KEY:?OPENBAO_UNSEAL_KEY is missing from infra/compose/.env; run make env}
+    volumes:
+      - ./openbao/openbao.hcl:/openbao/config/openbao.hcl:ro
+      - openbao-data:/openbao/file
     ports:
       - "8200:8200"
     networks: [foundation]
@@ -135,7 +136,9 @@ services:
       - "traefik.http.routers.openbao.entrypoints=web,websecure"
       - "traefik.http.services.openbao.loadbalancer.server.port=8200"
     healthcheck:
-      test: ["CMD", "bao", "status"]
+      # `bao status` exits 0 unsealed, 2 sealed or not yet initialised, 1 when the server does not answer. Before the
+      # first `make up` the store is uninitialised and that is healthy: init-store.sh needs it running to initialise it.
+      test: ["CMD-SHELL", "bao status >/dev/null 2>&1; test $$? -ne 1"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -154,7 +157,7 @@ services:
       Tenant__Id: control
       Tenant__HostnameList: control.localhost,localhost
       Secrets__Address: http://openbao:8200
-      Secrets__Token: ${OPENBAO_ROOT_TOKEN}
+      Secrets__Token: ${OPENBAO_ROOT_TOKEN:-} # written into .env by scripts/init-store.sh on the first make up
       Secrets__Path: control
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports:
