@@ -20,3 +20,4 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 Coming with their tasks in S1: permission catalogue and audit protection (T8, T9), identity and sessions (T10), secrets and storage interfaces (T12), the unit runtime (T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).
 | [0011](0011-hosts-and-unit-commands.md) | Hosts, tenant binding and unit commands | Accepted |
 | [0012](0012-authorization-thin.md) | Permissions, roles and the migration workflow | Accepted |
+| [0013](0013-audit-trail-and-unit-of-work.md) | Audit trail, unit of work and the app role | Accepted |

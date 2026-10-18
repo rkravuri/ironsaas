@@ -9,7 +9,8 @@ Database conventions for every module (TF-080, TF-220, ADR-0008). No schema of i
 | `Iron.Data.Conventions` | `ModelConventions` (applied to every model) and `AuditStampInterceptor` (fills the audit columns on save) |
 | `Iron.Data.Checks` | `SchemaCheck` (a live database against the conventions) and `ModelCheck` (an EF model against the entity rules) |
 | `Iron.Data.Lists` | `ApplyListQuery`, `ApplyFilters`, `ApplySorts` and `ToPageAsync`: a parsed `ListQuery` applied to an `IQueryable` with the resource's `ListFields` (TF-101) |
-| `Iron.Data.Commands` | `DatabaseCommands`: the `migrate`, `seed` and `schema-check` commands of a host image, with `MigrationRunner`, `SeedRunner` and `SchemaCheckRunner` over every registered module context |
+| `Iron.Data.Transactions` | `SharedConnection` (one connection per scope) and `IUnitOfWork` (one transaction for every module context of the scope; ADR-0013) |
+| `Iron.Data.Commands` | `DatabaseCommands`: the `migrate`, `seed`, `schema-check` and `grant` commands of a host image, with `MigrationRunner`, `SeedRunner`, `SchemaCheckRunner` and `GrantsRunner` (the app role's privileges, derived from the models) over every registered module context |
 | `Iron.Data.Seeding` | `ISeeder`: reference data a module needs, run by the `seed` command in order |
 | `Iron.Data.Health` | `AddIronDatabaseHealthCheck()`: the database in the readiness probe |
 | `Iron.Data` | `AddIronDatabase(connectionString)` and `AddIronDbContext<TContext>()` for hosts |

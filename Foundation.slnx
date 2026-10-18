@@ -51,6 +51,7 @@
     <Project Path="tests/Iron.Data.Tests/Iron.Data.Tests.csproj" />
     <Project Path="tests/Iron.Security.Tests/Iron.Security.Tests.csproj" />
     <Project Path="tests/Iron.Telemetry.Tests/Iron.Telemetry.Tests.csproj" />
+    <Project Path="tests/Iron.Audit.Tests/Iron.Audit.Tests.csproj" />
     <Project Path="tests/Iron.Authorization.Tests/Iron.Authorization.Tests.csproj" />
     <Project Path="tests/Iron.Host.Tests/Iron.Host.Tests.csproj" />
   </Folder>

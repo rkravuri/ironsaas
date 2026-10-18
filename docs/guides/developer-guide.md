@@ -139,3 +139,18 @@ Anonymous endpoints are the short list of TF-030: health, login, recovery, invit
 4. Apply it: `make migrate` on the laptop; the fleet runs the image's `migrate` command for every tenant unit.
 
 Migrations are never written by hand and never edited after they are committed; a correction is a new migration.
+
+
+## A change and its audit event in one transaction (T9)
+
+```csharp
+await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
+order.Approve(reason);
+await orders.SaveChangesAsync(cancellationToken);
+await audit.WriteAsync(new AuditEvent("procurement.order.approved", AuditOutcome.Success, principal.Id, order.Number, RecordType: "order", RecordId: order.Id, Reason: reason), cancellationToken);
+await transaction.CommitAsync(cancellationToken);
+```
+
+`IUnitOfWork` (Iron.Data) puts every module context of the request in one transaction; disposing without `CommitAsync` rolls everything back. Without a unit of work, each `SaveChangesAsync` is its own transaction and the audit event is written at once, which is right for a denial or a failed login.
+
+The app role cannot change or delete audit rows; PostgreSQL refuses it. `make migrate` grants the role's privileges when `Database:AppRole` is set (`Database__AppRole=acme_app`); the fleet sets it for every unit.

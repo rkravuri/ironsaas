@@ -35,7 +35,7 @@ builder.Services.AddIronOpenApi("Foundation control plane API");
 // T12 reads the connection string from the unit's secrets path; until then it comes from configuration.
 var connectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException("ConnectionStrings:Database is required. Set ConnectionStrings__Database for this unit.");
-builder.Services.AddIronDatabase(connectionString);
+builder.Services.AddIronDatabase(connectionString, builder.Configuration["Database:AppRole"]);
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 

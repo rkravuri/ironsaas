@@ -2,6 +2,7 @@ using Iron.Core.Principals;
 using Iron.Data.Commands;
 using Iron.Data.Contexts;
 using Iron.Data.Conventions;
+using Iron.Data.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,9 +17,10 @@ public static class DataServiceCollectionExtensions
     /// <summary>
     /// Registers the one database connection of this unit (TF-003: a unit holds credentials for its own database only)
     /// and the shared data services. Call once per host. A host that serves people registers its request
-    /// <c>ICurrentPrincipal</c> as well; without one, the system principal acts.
+    /// <c>ICurrentPrincipal</c> as well; without one, the system principal acts. <paramref name="appRole"/> is the
+    /// runtime database role whose privileges <c>migrate</c> grants (TF-060 AC2); the fleet configures it per unit.
     /// </summary>
-    public static IServiceCollection AddIronDatabase(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddIronDatabase(this IServiceCollection services, string connectionString, string? appRole = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
@@ -31,10 +33,15 @@ public static class DataServiceCollectionExtensions
         // Until a host registers the request principal (Identity, T10), the system principal acts. Workers keep it.
         services.TryAddSingleton<ICurrentPrincipal>(SystemPrincipal.Instance);
 
+        services.AddSingleton(new DatabaseOptions { AppRole = appRole });
+        services.AddScoped<SharedConnection>();
+        services.AddScoped<UnitOfWork>();
+        services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<UnitOfWork>());
         services.AddScoped<AuditStampInterceptor>();
         services.AddScoped<MigrationRunner>();
         services.AddScoped<SeedRunner>();
         services.AddScoped<SchemaCheckRunner>();
+        services.AddScoped<GrantsRunner>();
         return services;
     }
 
@@ -51,7 +58,7 @@ public static class DataServiceCollectionExtensions
         services.AddSingleton(new RegisteredContext(typeof(TContext), schema));
         services.AddDbContext<TContext>((provider, options) =>
         {
-            DesignTime.Configure<TContext>(options, provider.GetRequiredService<NpgsqlDataSource>());
+            DesignTime.Configure<TContext>(options, provider.GetRequiredService<SharedConnection>().Connection);
             options.AddInterceptors(provider.GetRequiredService<AuditStampInterceptor>());
             configure?.Invoke(options);
         });

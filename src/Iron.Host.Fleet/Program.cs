@@ -32,7 +32,7 @@ builder.Services.AddIronHeartbeat(builder.Configuration);
 
 var connectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException("ConnectionStrings:Database is required. Set ConnectionStrings__Database for this unit.");
-builder.Services.AddIronDatabase(connectionString);
+builder.Services.AddIronDatabase(connectionString, builder.Configuration["Database:AppRole"]);
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 

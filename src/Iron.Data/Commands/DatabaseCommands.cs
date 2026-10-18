@@ -8,20 +8,22 @@ using Npgsql;
 namespace Iron.Data.Commands;
 
 /// <summary>
-/// The commands a host image answers besides serving: <c>migrate</c> applies every module's migrations,
-/// <c>seed</c> runs every seeder, <c>schema-check</c> checks the unit's schemas against TF-080. The fleet runs them
-/// against a new tenant database (T14); the pipeline runs <c>schema-check</c> after migrating (T18).
+/// The commands a host image answers besides serving: <c>migrate</c> applies every module's migrations and grants the
+/// app role its privileges, <c>seed</c> runs every seeder, <c>schema-check</c> checks the unit's schemas against TF-080,
+/// <c>grant [role]</c> grants the privileges again. The fleet runs them against a new tenant database (T14); the
+/// pipeline runs <c>schema-check</c> after migrating (T18).
 /// </summary>
 public static class DatabaseCommands
 {
     public const string Migrate = "migrate";
     public const string Seed = "seed";
     public const string SchemaCheck = "schema-check";
+    public const string Grant = "grant";
 
     public static bool IsCommand(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck;
+        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant;
     }
 
     /// <summary>The arguments without the command, for the web host builder.</summary>
@@ -35,10 +37,31 @@ public static class DatabaseCommands
 
         await using var scope = services.CreateAsyncScope();
         var provider = scope.ServiceProvider;
+        var options = provider.GetRequiredService<DatabaseOptions>();
+        var logger = provider.GetRequiredService<ILogger<GrantsRunner>>();
         switch (args[0])
         {
             case Migrate:
                 await provider.GetRequiredService<MigrationRunner>().RunAsync(cancellationToken).ConfigureAwait(false);
+                if (options.AppRole is not null)
+                {
+                    await provider.GetRequiredService<GrantsRunner>().RunAsync(options.AppRole, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    logger.LogWarning("No app role is configured (Database:AppRole); the runtime privileges were not granted.");
+                }
+
+                return 0;
+            case Grant:
+                var role = args.Length > 1 ? args[1] : options.AppRole;
+                if (role is null)
+                {
+                    logger.LogError("The grant command needs a role: 'grant <role>' or Database:AppRole.");
+                    return 1;
+                }
+
+                await provider.GetRequiredService<GrantsRunner>().RunAsync(role, cancellationToken).ConfigureAwait(false);
                 return 0;
             case Seed:
                 await provider.GetRequiredService<SeedRunner>().RunAsync(cancellationToken).ConfigureAwait(false);
@@ -47,7 +70,7 @@ public static class DatabaseCommands
                 var violations = await provider.GetRequiredService<SchemaCheckRunner>().RunAsync(cancellationToken).ConfigureAwait(false);
                 return violations.Count == 0 ? 0 : 1;
             default:
-                throw new ArgumentException($"'{args[0]}' is not a command. Use {Migrate}, {Seed} or {SchemaCheck}.", nameof(args));
+                throw new ArgumentException($"'{args[0]}' is not a command. Use {Migrate}, {Seed}, {SchemaCheck} or {Grant}.", nameof(args));
         }
     }
 }

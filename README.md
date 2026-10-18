@@ -18,7 +18,8 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T6 Iron.Telemetry and Iron.Security | done |
 | T7 Hosts | done |
 | T8 Iron.Authorization | done |
-| T9 Iron.Audit | next |
+| T9 Iron.Audit | done |
+| T10 Iron.Identity part 1 | next |
 
 ## Prerequisites
 
