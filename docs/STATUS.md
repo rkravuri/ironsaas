@@ -8,9 +8,9 @@ The running state of the current slice, kept current by Claude Code at the end o
 |---|---|---|---|
 | D1 Design foundation | done | main (f145e5f) | accepted 2026-10-18; six commits plus the State column |
 | D2 The drawn world | done | main (fd56702) | merged 2026-10-18; six commits plus the figure correction from the review |
-| D3 Templates, panels and forms | merged on main, not pushed | slice/s2-d3 (merged) | the scan, format and the keyboard test on the stack passed in the P1 session (2026-10-19, tenant echo); the tables and the push remain |
-| P1 The laptop store survives a restart, and an update heals a unit | done, pending merge | slice/s2-p1 | built 2026-10-19; the store initialised and proven across two down/up rounds, acme, bravo and smoke healed, echo provisioned fresh and passing smoke and e2e |
-| A1 Organisation units | | | |
+| D3 Templates, panels and forms | done | main | merged 2026-10-18 (110c6ef); the scan, format and the keyboard test on the stack passed on 2026-10-19 |
+| P1 The laptop store survives a restart, and an update heals a unit | done | main | merged 2026-10-19; five commits (5c24448 to b044602) |
+| A1 Organisation units | next | | |
 | A2 Roles and scoped assignments | | | |
 | A3 Record policies | | | |
 | D4 Home and the header | | | |
