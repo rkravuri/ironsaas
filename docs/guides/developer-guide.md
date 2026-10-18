@@ -161,3 +161,15 @@ The app role cannot change or delete audit rows; PostgreSQL refuses it. `make mi
 `ICurrentPrincipal` is the signed-in principal of the request (from the `iron.session` cookie), nobody when there is no valid session, and the system principal in jobs and commands. Endpoints declare one of three things: `.RequirePermission(x)`, `.RequireSignedIn()` (any signed-in principal: me, logout) or `.AllowAnonymous()` (health, login, invitation acceptance). The filter answers 401 `auth.not_authenticated` for nobody, 401 `auth.session_expired` for a cookie whose session ran out, and 403 `authz.permission_denied` for the wrong somebody.
 
 On the laptop: `make migrate`, then `make seed` creates the system roles and the first administrator `admin@dev.localhost` in Invited status; the invitation token is in the seed output. Accept it with `POST /auth/invitations/<token>/accept` and a password of at least 12 characters, then `POST /auth/login`; the response sets the cookie and `GET /api/v1/me` shows the permissions and the session expiry.
+
+
+## An API client (T11)
+
+A service account gets a token with the client credentials grant and sends it as a bearer:
+
+```bash
+curl -s -X POST https://acme.localhost/connect/token -u smoke-client:<secret> -d grant_type=client_credentials
+curl -s https://acme.localhost/api/v1/users -H "Authorization: Bearer <access_token>"
+```
+
+Tokens live 15 minutes, carry the unit's tenant, and are checked on every request together with the principal behind them. `GET /.well-known/jwks.json` publishes the signing key. On the laptop, `make seed` creates `smoke-client` and `make token` fetches a token from the running API host. A token for another tenant, an expired token or a disabled service account answers 401 with `auth.token_invalid` or `auth.token_expired`.

@@ -33,3 +33,4 @@ infra/compose/traefik/dynamic/tls.yaml
 # OS
 .DS_Store
 Thumbs.db
+infra/compose/.dev-signing-key.pem

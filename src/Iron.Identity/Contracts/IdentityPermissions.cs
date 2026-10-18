@@ -22,6 +22,7 @@ public static class IdentityErrors
     public const string PasswordTooShort = "identity.password.too_short";
     public const string PasswordIsLoginId = "identity.password.is_login_id";
     public const string LoginIdTaken = "identity.login_id.taken";
+    public const string ClientInvalid = "identity.client.invalid";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -33,4 +34,6 @@ public static class IdentityAuditEvents
     public const string SessionExpired = "identity.session_expired";
     public const string InvitationCreated = "identity.invitation_created";
     public const string InvitationAccepted = "identity.invitation_accepted";
+    public const string TokenIssued = "identity.token_issued";
+    public const string TokenRefused = "identity.token_refused";
 }

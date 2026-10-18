@@ -16,7 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Iron.Identity;
 
 /// <summary>
-/// Principals, passwords, sessions and invitations (TF-010, TF-011, TF-018, TF-020, TF-021, TF-029; part 1 in S1).
+/// Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029).
 /// Replaces the default system principal with the request principal, so hosts list it after Audit and Authorization
 /// and call <c>UseIronIdentity</c> after UseIronTenant.
 /// </summary>
@@ -38,6 +38,16 @@ public sealed class IdentityModule : IModule
         var seed = new AdministratorSeedOptions();
         configuration.GetSection(AdministratorSeedOptions.SectionName).Bind(seed);
         services.AddSingleton(seed);
+
+        var smokeClient = new SmokeClientSeedOptions();
+        configuration.GetSection(SmokeClientSeedOptions.SectionName).Bind(smokeClient);
+        services.AddSingleton(smokeClient);
+
+        var tokens = new TokenOptions();
+        configuration.GetSection(TokenOptions.SectionName).Bind(tokens);
+        services.AddSingleton(tokens);
+        services.AddSingleton<SigningKeys>();
+        services.AddScoped<TokenService>();
 
         services.AddHttpContextAccessor();
         services.AddIronDbContext<IdentityDbContext>();
@@ -62,10 +72,10 @@ public sealed class IdentityModule : IModule
 
 public static class IdentityApplicationBuilderExtensions
 {
-    /// <summary>The session middleware: cookie to principal. Call after UseIronTenant and before the endpoints.</summary>
+    /// <summary>The session and bearer middleware: cookie or token to principal. Call after UseIronTenant and before the endpoints.</summary>
     public static IApplicationBuilder UseIronIdentity(this IApplicationBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);
-        return app.UseMiddleware<SessionMiddleware>();
+        return app.UseMiddleware<SessionMiddleware>().UseMiddleware<BearerTokenMiddleware>();
     }
 }

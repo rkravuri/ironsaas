@@ -11,6 +11,9 @@ public interface IPasswordHasher
     string Hash(string password);
 
     bool Verify(string password, string encodedHash);
+
+    /// <summary>Verifies against the stored hash, or against a decoy when there is none, so a missing account costs the same time as a wrong password.</summary>
+    bool VerifyOrDecoy(string password, string? encodedHash);
 }
 
 /// <summary>
@@ -21,6 +24,9 @@ public sealed class Argon2PasswordHasher(IdentityOptions options) : IPasswordHas
 {
     private const int SaltLength = 16;
     private const int HashLength = 32;
+
+    private readonly object _decoyLock = new();
+    private string? _decoy;
 
     public string Hash(string password)
     {
@@ -33,6 +39,17 @@ public sealed class Argon2PasswordHasher(IdentityOptions options) : IPasswordHas
             $"$argon2id$v=19$m={argon2.MemoryKb},t={argon2.Iterations},p={argon2.Parallelism}${Convert.ToBase64String(salt).TrimEnd('=')}${Convert.ToBase64String(hash).TrimEnd('=')}");
     }
 
+    public bool VerifyOrDecoy(string password, string? encodedHash)
+    {
+        if (encodedHash is not null)
+        {
+            return Verify(password, encodedHash);
+        }
+
+        Verify(password, Decoy());
+        return false;
+    }
+
     public bool Verify(string password, string encodedHash)
     {
         ArgumentNullException.ThrowIfNull(password);
@@ -43,6 +60,19 @@ public sealed class Argon2PasswordHasher(IdentityOptions options) : IPasswordHas
 
         var computed = Compute(password, parameters.Salt, parameters.MemoryKb, parameters.Iterations, parameters.Parallelism);
         return CryptographicOperations.FixedTimeEquals(computed, parameters.Hash);
+    }
+
+    private string Decoy()
+    {
+        if (_decoy is null)
+        {
+            lock (_decoyLock)
+            {
+                _decoy ??= Hash("decoy-" + Guid.NewGuid().ToString("N"));
+            }
+        }
+
+        return _decoy;
     }
 
     public static bool IsArgon2id(string? encodedHash) => encodedHash is not null && encodedHash.StartsWith("$argon2id$", StringComparison.Ordinal);

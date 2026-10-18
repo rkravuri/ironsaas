@@ -1,6 +1,8 @@
+using System.Security.Cryptography;
 using Iron.Api.Modules;
 using Iron.Audit;
 using Iron.Authorization;
+using Iron.Core.Tenancy;
 using Iron.Data;
 using Iron.Data.Commands;
 using Iron.Identity.Data;
@@ -22,19 +24,35 @@ public sealed class IdentityFixture : IAsyncLifetime
 {
     public const string AdministratorLoginId = "admin@acme.test";
     public const string AdministratorDisplayName = "Acme Administrator";
+    public const string SmokeClientId = "smoke-client";
+    public const string SmokeClientSecret = "a smoke client secret of some length";
 
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19rc1").Build();
 
     public string ConnectionString => _container.GetConnectionString();
 
-    public static IReadOnlyDictionary<string, string?> Configuration { get; } = new Dictionary<string, string?>(StringComparer.Ordinal)
+    public static IReadOnlyDictionary<string, string?> Configuration => new Dictionary<string, string?>(StringComparer.Ordinal)
     {
         ["Identity:Argon2:MemoryKb"] = "8192",
         ["Identity:Argon2:Iterations"] = "1",
         ["Identity:Argon2:Parallelism"] = "1",
         ["Seed:Administrator:LoginId"] = AdministratorLoginId,
         ["Seed:Administrator:DisplayName"] = AdministratorDisplayName,
+        ["Seed:SmokeClient:ClientId"] = SmokeClientId,
+        ["Seed:SmokeClient:Secret"] = SmokeClientSecret,
+        ["Tokens:SigningKeyPem"] = SigningKeyPem,
     };
+
+    /// <summary>One key for the whole run, so tokens issued by one service provider validate in another.</summary>
+    public static string SigningKeyPem { get; } = CreateSigningKeyPem();
+
+    public static readonly TenantContext Tenant = new(TenantId.Parse("acme"), ["acme.localhost"]);
+
+    private static string CreateSigningKeyPem()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        return key.ExportECPrivateKeyPem();
+    }
 
     public async ValueTask InitializeAsync()
     {
@@ -57,6 +75,7 @@ public sealed class IdentityFixture : IAsyncLifetime
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(time);
+        services.AddSingleton(Tenant);
         services.AddLogging();
         services.AddIronDatabase(ConnectionString);
         services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule()]);

@@ -66,6 +66,8 @@ internal static class AuthEndpoints
         auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account.");
 
         endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
+        TokenEndpoints.Map(endpoints);
+        UsersEndpoints.Map(endpoints);
     }
 
     private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken)
@@ -84,6 +86,11 @@ internal static class AuthEndpoints
     private static async Task<IResult> LogoutAsync(HttpContext http, RequestPrincipal principal, SessionService sessions, IdentityOptions options, IAuditWriter audit, CancellationToken cancellationToken)
     {
         var current = principal.Current!;
+        if (current.Kind == AuthenticationKind.Token)
+        {
+            return TypedResults.NoContent(); // a token ends with its expiry; revocation is at the principal (TF-029)
+        }
+
         await sessions.EndAsync(current.SessionId, SessionEndReasons.Logout, cancellationToken);
         await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.Logout, AuditOutcome.Success, current.Id, current.LoginId, RecordType: "session", RecordId: current.SessionId), cancellationToken);
         SessionCookie.Clear(http, options);

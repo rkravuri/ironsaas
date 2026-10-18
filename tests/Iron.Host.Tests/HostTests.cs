@@ -75,7 +75,7 @@ public class HostTests
         Assert.Equal(HttpStatusCode.NotFound, noRoles.StatusCode);
     }
 
-    /// <summary>TF-030 AC3: the anonymous list is health, login and invitation acceptance, and nothing else. Adding to it is a reviewed change.</summary>
+    /// <summary>TF-030 AC3: the anonymous list is health, login, invitation acceptance, the token endpoint and the public keys, and nothing else. Adding to it is a reviewed change.</summary>
     [Fact]
     public async Task TheAnonymousAllowListIsFixedOutsideDevelopment()
     {
@@ -85,7 +85,7 @@ public class HostTests
         await using var fleet = Production<Iron.Host.Fleet.FleetHost>();
 
         string[] health = ["ANY /health/live", "ANY /health/ready"];
-        string[] serving = ["ANY /health/live", "ANY /health/ready", "POST /auth/invitations/{token}/accept", "POST /auth/login"];
+        string[] serving = ["ANY /health/live", "ANY /health/ready", "GET /.well-known/jwks.json", "POST /auth/invitations/{token}/accept", "POST /auth/login", "POST /connect/token"];
         Assert.Equal(serving, Anonymous(api.Services));
         Assert.Equal(serving, Anonymous(controlPlane.Services));
         Assert.Equal(health, Anonymous(worker.Services));
@@ -103,7 +103,7 @@ public class HostTests
         Assert.Contains("ANY /health/live", anonymous);
         Assert.Contains("ANY /health/ready", anonymous);
         Assert.All(
-            anonymous.Where(e => !e.Contains("/health/", StringComparison.Ordinal) && !e.StartsWith("POST /auth/", StringComparison.Ordinal)),
+            anonymous.Where(e => !e.Contains("/health/", StringComparison.Ordinal) && !e.StartsWith("POST /auth/", StringComparison.Ordinal) && !e.Contains("/connect/", StringComparison.Ordinal) && !e.Contains("/.well-known/", StringComparison.Ordinal)),
             e => Assert.True(e.Contains("/openapi", StringComparison.Ordinal) || e.Contains("/scalar", StringComparison.Ordinal), e));
     }
 

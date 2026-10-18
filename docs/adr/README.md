@@ -22,3 +22,4 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0012](0012-authorization-thin.md) | Permissions, roles and the migration workflow | Accepted |
 | [0013](0013-audit-trail-and-unit-of-work.md) | Audit trail, unit of work and the app role | Accepted |
 | [0014](0014-identity-sessions-and-passwords.md) | Principals, passwords and sessions | Accepted |
+| [0015](0015-access-tokens.md) | Access tokens for API clients | Accepted |

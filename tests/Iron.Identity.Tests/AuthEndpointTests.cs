@@ -40,6 +40,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         builder.Logging.ClearProviders();
         builder.Configuration.AddInMemoryCollection(IdentityFixture.Configuration);
         builder.Services.AddSingleton<TimeProvider>(_time);
+        builder.Services.AddSingleton(IdentityFixture.Tenant);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule()]);

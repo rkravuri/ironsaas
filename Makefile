@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci
 
-.PHONY: help build test check format clean run-api run-worker migrate seed images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -32,8 +32,12 @@ clean: ## Remove build output
 	find . -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
 
 DEV_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=postgres;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
-DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost
+DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost Tokens__SigningKeyPath=$(COMPOSE_DIR)/.dev-signing-key.pem
+DEV_SMOKE_SECRET = dev-smoke-client-secret-not-for-real-tenants
 TAG ?= dev
+
+token: ## Get an access token for the laptop smoke client from the running API host
+	@curl -s -X POST http://localhost:5100/connect/token -u smoke-client:$(DEV_SMOKE_SECRET) -d grant_type=client_credentials
 
 run-api: env ## Run the tenant API host on the laptop against the platform (http://localhost:5100)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
@@ -61,6 +65,7 @@ ef-script: ## Print the SQL of a module's migrations: make ef-script MODULE=Auth
 seed: env ## Run the tenant API image command "seed" against the laptop database (first administrator admin@dev.localhost)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(DEV_TENANT) $(DEV_DATABASE) Seed__Administrator__LoginId=admin@dev.localhost Seed__Administrator__DisplayName="Dev Administrator" \
+	Seed__SmokeClient__ClientId=smoke-client Seed__SmokeClient__Secret=$(DEV_SMOKE_SECRET) \
 	dotnet run --project src/Iron.Host.Api -- seed
 
 images: ## Build the four host images (foundation/iron-*:$(TAG))

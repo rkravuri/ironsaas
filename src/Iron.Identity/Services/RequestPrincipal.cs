@@ -4,8 +4,23 @@ using Microsoft.AspNetCore.Http;
 
 namespace Iron.Identity.Services;
 
-/// <summary>What the session middleware found for this request.</summary>
-public sealed record SignedInPrincipal(Guid Id, string LoginId, string DisplayName, PrincipalType Type, Guid SessionId, DateTimeOffset SessionExpiresAt, DateTimeOffset IdleExpiresAt);
+/// <summary>How the request was authenticated: the session cookie of the shell, or a bearer token of an API client.</summary>
+public enum AuthenticationKind
+{
+    Session,
+    Token,
+}
+
+/// <summary>What the session or bearer middleware found for this request. For a token, SessionId is the token id and both expiries are its expiry.</summary>
+public sealed record SignedInPrincipal(
+    Guid Id,
+    string LoginId,
+    string DisplayName,
+    PrincipalType Type,
+    Guid SessionId,
+    DateTimeOffset SessionExpiresAt,
+    DateTimeOffset IdleExpiresAt,
+    AuthenticationKind Kind = AuthenticationKind.Session);
 
 /// <summary>
 /// The current principal (TF-010): the signed-in principal of the request, nobody when the request has no valid session,

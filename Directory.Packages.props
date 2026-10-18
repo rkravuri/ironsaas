@@ -28,6 +28,8 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <!-- Argon2id for password hashing (MIT, managed code). -->
     <PackageVersion Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
+    <!-- JWT creation and validation (MIT). OpenIddict (7.7.2 today) joins when the authorization code flow arrives. -->
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <!-- OpenAPI document generation (MIT), same version train as the runtime. -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <!-- Interactive API reference on top of the OpenAPI document (MIT). Development only. -->

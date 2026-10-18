@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Iron.Audit.Contracts;
 using Iron.Core.Results;
 using Iron.Data.Transactions;
@@ -20,7 +19,6 @@ public sealed record LoginOutcome(Principal Principal, Session Session, string T
 public sealed class LoginService(
     IdentityDbContext context,
     IPasswordHasher hasher,
-    IdentityOptions options,
     SessionService sessions,
     IUnitOfWork unitOfWork,
     TimeProvider time,
@@ -30,8 +28,6 @@ public sealed class LoginService(
 {
     public const string FailureMessage = "The login details are not correct.";
 
-    // Verified when the login identifier is unknown or has no credential, so a failed login takes the same time either way.
-    private static readonly ConcurrentDictionary<(int, int, int), string> DecoyHashes = new();
 
     public async Task<Result<LoginOutcome>> LoginAsync(string loginId, string password, CancellationToken cancellationToken)
     {
@@ -41,13 +37,19 @@ public sealed class LoginService(
 
         if (principal is null)
         {
-            hasher.Verify(password, DecoyHash());
+            hasher.VerifyOrDecoy(password, null);
             return await FailAsync(null, normalised, "unknown_login", cancellationToken).ConfigureAwait(false);
+        }
+
+        if (principal.Type != PrincipalType.User)
+        {
+            hasher.VerifyOrDecoy(password, principal.PasswordHash);
+            return await FailAsync(principal, normalised, "not_a_user", cancellationToken).ConfigureAwait(false);
         }
 
         if (!principal.CanLogIn)
         {
-            hasher.Verify(password, principal.PasswordHash ?? DecoyHash());
+            hasher.VerifyOrDecoy(password, principal.PasswordHash);
             return await FailAsync(principal, normalised, principal.Status.ToString().ToLowerInvariant(), cancellationToken).ConfigureAwait(false);
         }
 
@@ -71,12 +73,6 @@ public sealed class LoginService(
 
         logger.LogInformation("Login succeeded for principal {PrincipalId}.", principal.Id);
         return new LoginOutcome(principal, session, token);
-    }
-
-    private string DecoyHash()
-    {
-        var argon2 = options.Argon2;
-        return DecoyHashes.GetOrAdd((argon2.MemoryKb, argon2.Iterations, argon2.Parallelism), _ => hasher.Hash("decoy-" + Guid.NewGuid()));
     }
 
     private async Task<Result<LoginOutcome>> FailAsync(Principal? principal, string loginId, string reason, CancellationToken cancellationToken)

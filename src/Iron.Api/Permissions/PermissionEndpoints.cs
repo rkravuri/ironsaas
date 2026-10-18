@@ -23,6 +23,8 @@ public static class PermissionErrors
 {
     public const string NotAuthenticated = "auth.not_authenticated";
     public const string SessionExpired = "auth.session_expired";
+    public const string TokenInvalid = "auth.token_invalid";
+    public const string TokenExpired = "auth.token_expired";
     public const string PermissionDenied = "authz.permission_denied";
 }
 
@@ -50,7 +52,16 @@ public static class AuthenticationFailure
     {
         ArgumentNullException.ThrowIfNull(context);
         var code = Get(context) ?? PermissionErrors.NotAuthenticated;
-        var message = code == PermissionErrors.SessionExpired ? "Your session has ended. Sign in again." : "Sign in to continue.";
+        var message = code switch
+        {
+            PermissionErrors.SessionExpired => "Your session has ended. Sign in again.",
+            PermissionErrors.TokenExpired => "The access token has expired. Request a new one.",
+            PermissionErrors.TokenInvalid => "The access token is not valid.",
+            _ => "Sign in to continue.",
+        };
+        context.Response.Headers.WWWAuthenticate = code is PermissionErrors.TokenExpired or PermissionErrors.TokenInvalid
+            ? "Bearer error=\"invalid_token\""
+            : "Bearer";
         return ApiResults.Problem(Error.Unauthorized(code, message), context);
     }
 }

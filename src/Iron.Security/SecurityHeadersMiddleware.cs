@@ -31,7 +31,7 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next, SecurityOpti
                 headers["Strict-Transport-Security"] = HstsValue;
             }
 
-            if (context.Request.Path.StartsWithSegments("/api") || context.Request.Path.StartsWithSegments("/auth"))
+            if (context.Request.Path.StartsWithSegments("/api") || context.Request.Path.StartsWithSegments("/auth") || context.Request.Path.StartsWithSegments("/connect"))
             {
                 headers["Cache-Control"] = "no-store";
             }
