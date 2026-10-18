@@ -18,7 +18,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     {
         _options = new FleetOptions();
         _options.Units.Runtime = "compose";
-        _options.Units.ComposeDirectory = _directory;
+        _options.Units.ComposeDirectory = Path.GetRelativePath(Directory.GetCurrentDirectory(), _directory);
         _options.Units.IngressUrl = "http://ingress.test";
         _options.Units.ImageTag = "1.2.3";
     }
@@ -55,6 +55,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
         await runtime.ApplyAsync(Unit(), TestContext.Current.CancellationToken);
 
         var directory = Path.Combine(_directory, "acme");
+        Assert.True(Path.IsPathRooted(directory));
         Assert.True(File.Exists(Path.Combine(directory, "compose.yaml")));
         var env = await File.ReadAllTextAsync(Path.Combine(directory, ".env"), TestContext.Current.CancellationToken);
         Assert.Contains("TENANT=acme\n", env, StringComparison.Ordinal);

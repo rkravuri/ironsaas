@@ -36,17 +36,26 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
-    public async Task TheSeedCreatesTheFirstAdministratorInvitedWithTheAdministratorRoleAndRunsAgainWithoutDuplicates()
+    public async Task TheSeedCreatesTheFirstAdministratorInvitedWithTheAdministratorRoleAndASecondRunReissuesTheInvitation()
     {
         const string loginId = "seed-check@acme.test";
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), loginId);
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        string? firstTokenHash;
+        await using (var first = provider.CreateAsyncScope())
+        {
+            firstTokenHash = (await first.ServiceProvider.GetRequiredService<IdentityDbContext>().Principals.AsNoTracking().SingleAsync(p => p.LoginId == loginId, TestContext.Current.CancellationToken)).InvitationTokenHash;
+        }
+
+        // A seed that runs again (a resumed provisioning step) keeps one administrator and issues a fresh invitation.
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
 
         await using var scope = provider.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         var administrator = await context.Principals.AsNoTracking().SingleAsync(p => p.LoginId == loginId, TestContext.Current.CancellationToken);
 
+        Assert.NotNull(firstTokenHash);
+        Assert.NotEqual(firstTokenHash, administrator.InvitationTokenHash);
         Assert.Equal(PrincipalStatus.Invited, administrator.Status);
         Assert.Equal(PrincipalType.User, administrator.Type);
         Assert.Equal(IdentityFixture.AdministratorDisplayName, administrator.DisplayName);

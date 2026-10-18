@@ -96,4 +96,21 @@ public class AuditTableTests(AuditFixture fixture)
         command.CommandText = sql;
         await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
+
+    [Fact]
+    public async Task AReasonLongerThanTheColumnIsTrimmedNotRefused()
+    {
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var writer = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
+            await writer.WriteAsync(new AuditEvent("tests.long_reason", AuditOutcome.Failure, Ids.New(), new string('t', 900), null, null, null, new string('x', 5000)), TestContext.Current.CancellationToken);
+        }
+
+        await using var readScope = provider.CreateAsyncScope();
+        var context = readScope.ServiceProvider.GetRequiredService<AuditDbContext>();
+        var stored = await context.Events.AsNoTracking().SingleAsync(e => e.EventType == "tests.long_reason", TestContext.Current.CancellationToken);
+        Assert.Equal(AuditEventRecord.ReasonMaxLength, stored.Reason!.Length);
+        Assert.Equal(AuditEventRecord.TargetMaxLength, stored.Target!.Length);
+    }
 }

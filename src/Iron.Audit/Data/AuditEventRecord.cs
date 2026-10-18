@@ -35,10 +35,10 @@ public sealed class AuditEventRecord : AppendOnlyEntity
         Outcome = outcome;
         ActorId = actorId;
         Source = source;
-        Target = target;
+        Target = Trim(target, TargetMaxLength);
         RecordType = recordType;
         RecordId = recordId;
-        Reason = reason;
+        Reason = Trim(reason, ReasonMaxLength);
         Details = details;
         CorrelationId = correlationId;
     }
@@ -68,4 +68,6 @@ public sealed class AuditEventRecord : AppendOnlyEntity
 
     /// <summary>The trace id of the request or job that raised the event.</summary>
     public string? CorrelationId { get; private set; }
+
+    private static string? Trim(string? value, int max) => value is null || value.Length <= max ? value : value[..(max - 1)] + "\u2026";
 }

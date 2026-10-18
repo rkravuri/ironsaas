@@ -91,7 +91,8 @@ public sealed class ComposeUnitRuntime(IProcessRunner processes, HttpClient http
     public string Render(UnitDefinition unit)
     {
         ArgumentNullException.ThrowIfNull(unit);
-        var directory = Path.Combine(options.Units.ComposeDirectory, unit.Tenant.Slug);
+        // Absolute, whatever the working directory of the fleet process is: docker resolves the file paths itself.
+        var directory = Path.GetFullPath(Path.Combine(options.Units.ComposeDirectory, unit.Tenant.Slug));
         Directory.CreateDirectory(directory);
         File.WriteAllText(Path.Combine(directory, "compose.yaml"), Template());
         File.WriteAllText(Path.Combine(directory, ".env"), EnvFile(Variables(unit)));

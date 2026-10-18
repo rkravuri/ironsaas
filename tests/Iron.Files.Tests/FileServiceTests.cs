@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using Azure.Storage.Blobs;
+using Azure.Storage.Sas;
 using Iron.Audit.Data;
 using Iron.Core.Identifiers;
 using Iron.Core.Principals;
@@ -160,5 +162,21 @@ public class FileServiceTests(FilesFixture fixture)
         var exception = Assert.Throws<InvalidOperationException>(() => new BlobObjectStorage(new StorageOptions()));
 
         Assert.Contains("Storage:ConnectionString", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ASignedStorageChecksItsContainerInsteadOfCreatingIt()
+    {
+        var account = new BlobContainerClient(fixture.StorageConnectionString, "signed-" + Guid.NewGuid().ToString("N")[..8]);
+        var sas = account.GenerateSasUri(BlobContainerSasPermissions.All, TimeProvider.System.GetUtcNow().AddHours(1));
+        var signed = new BlobObjectStorage(new StorageOptions { ContainerSasUrl = sas.ToString() });
+
+        // Not created yet: the check fails instead of trying to create with a signature that cannot.
+        var missing = await Assert.ThrowsAsync<InvalidOperationException>(() => signed.EnsureContainerAsync(TestContext.Current.CancellationToken));
+        Assert.Contains("does not exist", missing.Message, StringComparison.Ordinal);
+
+        await account.CreateAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await signed.EnsureContainerAsync(TestContext.Current.CancellationToken);
+        Assert.Null(await signed.CheckAsync(TestContext.Current.CancellationToken));
     }
 }

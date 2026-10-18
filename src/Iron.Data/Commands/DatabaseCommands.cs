@@ -41,6 +41,19 @@ public static class DatabaseCommands
         var provider = scope.ServiceProvider;
         var options = provider.GetRequiredService<DatabaseOptions>();
         var logger = provider.GetRequiredService<ILogger<GrantsRunner>>();
+        try
+        {
+            return await RunCommandAsync(args, provider, options, logger, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not (OperationCanceledException or ArgumentException))
+        {
+            logger.LogError(exception, "The {Command} command failed: {Message}", args[0], exception.Message);
+            return 1;
+        }
+    }
+
+    private static async Task<int> RunCommandAsync(string[] args, IServiceProvider provider, DatabaseOptions options, ILogger logger, CancellationToken cancellationToken)
+    {
         switch (args[0])
         {
             case Migrate:

@@ -80,7 +80,8 @@ public sealed class ProvisioningRunner(
                 record.Fail(time.GetUtcNow(), error);
                 job.Fail(time.GetUtcNow(), $"step {step.Name} failed: {exception.Message}");
                 await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                await audit.WriteAsync(new AuditEvent(JobFailedEvent, AuditOutcome.Failure, principal.Id, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["step"] = step.Name }, "provisioning_job", job.Id, exception.Message), cancellationToken).ConfigureAwait(false);
+                var reason = exception.Message.Length > 500 ? exception.Message[..500] : exception.Message;
+                await audit.WriteAsync(new AuditEvent(JobFailedEvent, AuditOutcome.Failure, principal.Id, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["step"] = step.Name }, "provisioning_job", job.Id, reason), cancellationToken).ConfigureAwait(false);
                 logger.LogError(exception, "Job {JobId}: step {Step} failed after {Elapsed} ms.", job.Id, step.Name, stopwatch.ElapsedMilliseconds);
                 return job.ToInfo(await StepsAsync(job.Id, cancellationToken).ConfigureAwait(false));
             }

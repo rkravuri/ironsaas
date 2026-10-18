@@ -9,6 +9,7 @@ namespace Iron.Files.Services;
 public sealed class BlobObjectStorage : IObjectStorage
 {
     private readonly BlobContainerClient _container;
+    private readonly bool _signed;
 
     public BlobObjectStorage(StorageOptions options)
     {
@@ -18,8 +19,9 @@ public sealed class BlobObjectStorage : IObjectStorage
             throw new InvalidOperationException("Object storage needs Storage:ConnectionString and Storage:Container, or Storage:ContainerSasUrl. A unit reads them from its secret.");
         }
 
-        _container = !string.IsNullOrWhiteSpace(options.ContainerSasUrl)
-            ? new BlobContainerClient(new Uri(options.ContainerSasUrl))
+        _signed = !string.IsNullOrWhiteSpace(options.ContainerSasUrl);
+        _container = _signed
+            ? new BlobContainerClient(new Uri(options.ContainerSasUrl!))
             : new BlobContainerClient(options.ConnectionString, options.Container);
     }
 
@@ -57,6 +59,18 @@ public sealed class BlobObjectStorage : IObjectStorage
 
     public async Task EnsureContainerAsync(CancellationToken cancellationToken)
     {
+        if (_signed)
+        {
+            // A container signature cannot create containers; the fleet did that with the account key (ADR-0018).
+            var problem = await CheckAsync(cancellationToken).ConfigureAwait(false);
+            if (problem is not null)
+            {
+                throw new InvalidOperationException($"The unit's container is not usable: {problem}");
+            }
+
+            return;
+        }
+
         await _container.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 

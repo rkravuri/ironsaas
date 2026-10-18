@@ -111,6 +111,14 @@ public sealed class IdentitySeeder(
         var existing = await context.Principals.SingleOrDefaultAsync(p => p.LoginId == loginId, cancellationToken).ConfigureAwait(false);
         if (existing is not null)
         {
+            if (existing.Status == PrincipalStatus.Invited)
+            {
+                // A seed that runs again (a provisioning step resumed) issues a fresh invitation; the earlier link is void.
+                var fresh = await invitations.InviteAsync(existing, cancellationToken).ConfigureAwait(false);
+                logger.LogInformation("The administrator {LoginId} ({PrincipalId}) is still Invited; a new invitation was issued. Invitation token: {Token}", loginId, existing.Id, fresh);
+                return;
+            }
+
             logger.LogInformation("The administrator {LoginId} exists already; nothing to seed.", loginId);
             return;
         }
