@@ -45,6 +45,7 @@ for (const scheme of schemes) {
       await page.screenshot({ path: `test-results/gallery-${scheme}-${density}.png`, fullPage: true });
       if (density === "comfortable") {
         await page.locator("section[aria-labelledby='gallery-drawings']").screenshot({ path: `test-results/gallery-drawings-${scheme}.png` });
+        await page.locator("#gallery-record-page").screenshot({ path: `test-results/record-page-${scheme}.png` });
       }
       expect(await scan(page)).toEqual([]);
     });

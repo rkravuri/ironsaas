@@ -56,7 +56,18 @@
     "empty": "No users yet.",
     "count": "{{count}} of {{total}} shown",
     "email": "Email",
-    "created": "Created"
+    "created": "Created",
+    "description": "Everyone who can sign in to this tenant: people and service accounts.",
+    "open": "Open",
+    "updated": "Updated",
+    "details": "Details",
+    "statuses": {
+      "active": "Active",
+      "invited": "Invited",
+      "locked": "Locked",
+      "inactive": "Inactive",
+      "disabled": "Disabled"
+    }
   },
   "profile": {
     "title": "My profile",
@@ -110,7 +121,10 @@
       "components": "Components",
       "grid": "The grid",
       "views": "Views",
-      "drawings": "Patterns and drawings"
+      "drawings": "Patterns and drawings",
+      "templates": "Templates",
+      "form": "The form",
+      "dialogs": "Dialogs"
     },
     "colour": {
       "scales": "Scales",
@@ -232,6 +246,95 @@
       "hatch": "Hatch",
       "illustrations": "The drawings",
       "illustrationsIntro": "Eleven drawings in one hand (brief section 3), each with its accessible name; the loader draws itself in unless motion is reduced."
+    },
+    "templates": {
+      "list": "List page",
+      "listDescription": "A list: the opener, the filters, the density switch, the grid.",
+      "listGrid": "Sample records on the list template",
+      "newRecord": "New record",
+      "record": "Record page, with every panel",
+      "wizard": "Wizard page",
+      "console": "Console page",
+      "dashboard": "Dashboard page"
+    },
+    "record": {
+      "title": "Order 1042",
+      "status": "Awaiting approval",
+      "owner": "Owner",
+      "unit": "Unit",
+      "edit": "Edit",
+      "submit": "Submit for approval",
+      "customer": "Customer",
+      "total": "Total",
+      "due": "Due",
+      "tabs": {
+        "details": "Details",
+        "attachments": "Attachments",
+        "history": "History",
+        "approval": "Approval",
+        "comments": "Comments"
+      },
+      "events": {
+        "submitted": "Submitted for approval",
+        "changed": "Changed",
+        "changedSummary": "The due date moved by a week.",
+        "created": "Created"
+      },
+      "steps": {
+        "manager": "Manager",
+        "finance": "Finance",
+        "director": "Director"
+      },
+      "comment": "The customer asked for delivery before the end of the month."
+    },
+    "wizard": {
+      "title": "New organisation unit",
+      "description": "Three steps, with what you have entered beside them.",
+      "steps": {
+        "name": "Name",
+        "parent": "Parent",
+        "confirm": "Confirm"
+      },
+      "summary": "You are on step {{step}} of 3."
+    },
+    "console": {
+      "title": "Tenant settings",
+      "description": "Each section explains what it governs.",
+      "general": "General",
+      "generalDescription": "The name people see in the shell and in emails.",
+      "tenantName": "Tenant name",
+      "mail": "Mail",
+      "mailDescription": "Where the tenant sends from.",
+      "sender": "Sender address"
+    },
+    "dashboard": {
+      "title": "Today",
+      "description": "Big numbers in the display family; the cards are the moment.",
+      "open": "Open orders",
+      "openHint": "12 since yesterday",
+      "late": "Late",
+      "lateHint": "Need a call today",
+      "done": "Done this month",
+      "value": "Order value"
+    },
+    "form": {
+      "intro": "Labels above, one column, validation after the first blur, one primary action at the end. Tick the box to get the answer the server would give: the email error lands on its field, the unknown one at the top with the correlation id.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "displayName": "Display name",
+      "displayNameHint": "Shown to other people in your tenant.",
+      "email": "Email",
+      "likeTheServer": "Answer like the server would for a taken email"
+    },
+    "dialogs": {
+      "intro": "A question with one primary answer and a way out; a form in a frame that keeps its one primary action.",
+      "openConfirm": "Open a confirmation",
+      "openForm": "Open a form dialog",
+      "confirmTitle": "Delete the unit?",
+      "confirmMessage": "Its records move to the parent unit. This cannot be undone.",
+      "confirmLabel": "Delete",
+      "formTitle": "Rename the unit",
+      "name": "Name"
     }
   },
   "illustrations": {
@@ -246,5 +349,57 @@
     "home": "A small building with its flag up: home.",
     "success": "Someone holding up a stamped document: success.",
     "loading": "Documents drawing themselves in: loading."
+  },
+  "density": {
+    "label": "Density",
+    "comfortable": "Comfortable",
+    "compact": "Compact"
+  },
+  "dialog": {
+    "cancel": "Cancel"
+  },
+  "wizard": {
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "summary": "What you have entered"
+  },
+  "console": {
+    "contents": "On this page"
+  },
+  "attachments": {
+    "title": "Attachments",
+    "upload": "Upload a file",
+    "name": "Name",
+    "size": "Size",
+    "uploaded": "Uploaded",
+    "by": "By",
+    "download": "Download {{name}}",
+    "remove": "Remove {{name}}",
+    "empty": "No attachments yet.",
+    "kilobytes": "{{count}} KB"
+  },
+  "history": {
+    "title": "History",
+    "empty": "Nothing has happened yet."
+  },
+  "approval": {
+    "title": "Approval",
+    "approve": "Approve",
+    "reject": "Reject",
+    "placeholder": "Approving and rejecting arrive with the workflow slice; the shape is here so pages can plan for it.",
+    "states": {
+      "waiting": "Waiting",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    }
+  },
+  "comments": {
+    "title": "Comments",
+    "label": "Your comment",
+    "add": "Add the comment",
+    "empty": "No comments yet.",
+    "later": "Comments arrive with a later slice; the shape is here so pages can plan for it."
   }
 }

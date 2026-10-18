@@ -1,8 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Stack, Title } from "@mantine/core";
 import { fetchUsers, type User } from "@/api/identity";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
+import { ListPage } from "@/components/templates";
+import { UserDialog } from "./UserDialog";
 
 const columns: DataGridColumn<User>[] = [
   { field: "login_id", headerKey: "users.loginId", sortable: true, filter: "text", flex: 2 },
@@ -16,15 +17,18 @@ const columns: DataGridColumn<User>[] = [
 
 const defaultSort = [{ field: "login_id", direction: "asc" as const }];
 
-/** The users of this tenant (TF-101 through the grid): server paging, sorting and filtering, from the API's fields. */
+/** The users of this tenant (TF-101 through the grid) on the list template; a row opens the user's details. */
 export function UsersPage() {
   const { t } = useTranslation();
+  const [open, setOpen] = useState<User | undefined>();
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchUsers(query, signal), []);
 
   return (
-    <Stack style={{ height: "calc(100dvh - var(--app-shell-header-height) - 2 * var(--app-shell-padding))" }}>
-      <Title order={2}>{t("users.title")}</Title>
-      <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} />
-    </Stack>
+    <>
+      <ListPage title={t("users.title")} description={t("users.description")}>
+        <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} onRowOpen={setOpen} />
+      </ListPage>
+      <UserDialog user={open} onClose={() => setOpen(undefined)} />
+    </>
   );
 }
