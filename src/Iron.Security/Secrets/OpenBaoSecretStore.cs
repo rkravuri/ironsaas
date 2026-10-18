@@ -9,7 +9,7 @@ namespace Iron.Security.Secrets;
 /// OpenBao (and Vault) KV version 2 over its HTTP API: two endpoints, one header. No client library is needed for that,
 /// and the API has been stable for years. Key Vault gets its own implementation of the same interface.
 /// </summary>
-public sealed class OpenBaoSecretStore : ISecretStore, IDisposable
+public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDisposable
 {
     private readonly HttpClient _http;
     private readonly string _mount;
@@ -75,6 +75,25 @@ public sealed class OpenBaoSecretStore : ISecretStore, IDisposable
         }
     }
 
+    public async Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
+        ArgumentNullException.ThrowIfNull(paths);
+        var rules = string.Join("\n", paths.Select(path => $"path \"{_mount}/data/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}\npath \"{_mount}/metadata/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}"));
+        using var response = await _http.PutAsJsonAsync(new Uri($"v1/sys/policies/acl/{policyName}", UriKind.Relative), new PolicyEnvelope(rules), cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, "write the policy for", policyName, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(policies);
+        var request = new TokenRequest(policies, displayName, $"{(long)timeToLive.TotalSeconds}s", true, true);
+        using var response = await _http.PostAsJsonAsync(new Uri("v1/auth/token/create", UriKind.Relative), request, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, "create a token for", displayName, cancellationToken).ConfigureAwait(false);
+        var envelope = await response.Content.ReadFromJsonAsync<TokenEnvelope>(cancellationToken).ConfigureAwait(false);
+        return envelope?.Auth?.ClientToken ?? throw new SecretStoreException("The store created a token but did not return it.");
+    }
+
     public void Dispose() => _http.Dispose();
 
     private Uri DataUri(string path)
@@ -103,6 +122,19 @@ internal sealed record ReadEnvelope([property: JsonPropertyName("data")] ReadDat
 internal sealed record ReadData([property: JsonPropertyName("data")] Dictionary<string, JsonElement>? Data);
 
 internal sealed record WriteEnvelope([property: JsonPropertyName("data")] IReadOnlyDictionary<string, string> Data);
+
+internal sealed record PolicyEnvelope([property: JsonPropertyName("policy")] string Policy);
+
+internal sealed record TokenRequest(
+    [property: JsonPropertyName("policies")] IReadOnlyList<string> Policies,
+    [property: JsonPropertyName("display_name")] string DisplayName,
+    [property: JsonPropertyName("ttl")] string TimeToLive,
+    [property: JsonPropertyName("renewable")] bool Renewable,
+    [property: JsonPropertyName("no_parent")] bool NoParent);
+
+internal sealed record TokenEnvelope([property: JsonPropertyName("auth")] TokenAuth? Auth);
+
+internal sealed record TokenAuth([property: JsonPropertyName("client_token")] string? ClientToken);
 
 public sealed class SecretStoreException : Exception
 {

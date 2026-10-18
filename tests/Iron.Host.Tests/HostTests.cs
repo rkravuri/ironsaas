@@ -26,6 +26,7 @@ public class HostTests
         Environment.SetEnvironmentVariable("Heartbeat__Interval", "01:00:00");
         Environment.SetEnvironmentVariable("Storage__ConnectionString", "UseDevelopmentStorage=true");
         Environment.SetEnvironmentVariable("Storage__Container", "acme");
+        Environment.SetEnvironmentVariable("Fleet__PollSeconds", "3600");
     }
 
     [Fact]

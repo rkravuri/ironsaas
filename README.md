@@ -23,7 +23,8 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T11 Iron.Identity part 2 | done |
 | T12 Iron.Files and secrets | done |
 | T13 Iron.Tenancy and the control plane | done |
-| T14 Iron.Fleet and the fleet worker | next |
+| T14a Fleet: runner, steps, resume | done |
+| T14b Fleet: Compose runtime and the end-to-end run | next |
 
 ## Prerequisites
 

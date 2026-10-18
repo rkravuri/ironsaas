@@ -43,12 +43,21 @@ public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenan
     }
 }
 
-public sealed record ProvisioningResponse(Guid JobId, ProvisioningStatus Status, string? CurrentStep, string? Error, DateTimeOffset RequestedAt, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt)
+public sealed record ProvisioningResponse(
+    Guid JobId,
+    ProvisioningStatus Status,
+    string? CurrentStep,
+    string? Error,
+    string? Output,
+    DateTimeOffset RequestedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? FinishedAt,
+    IReadOnlyList<ProvisioningStepInfo> Steps)
 {
     public static ProvisioningResponse From(ProvisioningJobInfo job)
     {
         ArgumentNullException.ThrowIfNull(job);
-        return new ProvisioningResponse(job.Id, job.Status, job.CurrentStep, job.Error, job.RequestedAt, job.StartedAt, job.FinishedAt);
+        return new ProvisioningResponse(job.Id, job.Status, job.CurrentStep, job.Error, job.Output, job.RequestedAt, job.StartedAt, job.FinishedAt, job.Steps);
     }
 }
 

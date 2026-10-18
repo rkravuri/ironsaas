@@ -4,7 +4,7 @@ using Iron.Fleet.Contracts;
 
 namespace Iron.Fleet.Data;
 
-/// <summary>One provisioning run for one tenant (TF-002). Steps and their durations join in T14.</summary>
+/// <summary>One provisioning run for one tenant (TF-002), with its steps.</summary>
 public sealed class ProvisioningJob : AuditedEntity
 {
     private ProvisioningJob()
@@ -39,7 +39,19 @@ public sealed class ProvisioningJob : AuditedEntity
 
     public DateTimeOffset? FinishedAt { get; private set; }
 
+    /// <summary>What the operator needs when the job is done: the invitation link of the first administrator.</summary>
+    public string? Output { get; private set; }
+
     public bool IsOpen => Status is ProvisioningStatus.Requested or ProvisioningStatus.Running;
+
+    /// <summary>A Failed job is asked to run again: it continues from the failed step (TF-002 AC2).</summary>
+    public void Reopen(DateTimeOffset now)
+    {
+        Status = ProvisioningStatus.Requested;
+        RequestedAt = now;
+        FinishedAt = null;
+        Error = null;
+    }
 
     public void Start(DateTimeOffset now)
     {
@@ -62,13 +74,24 @@ public sealed class ProvisioningJob : AuditedEntity
         FinishedAt = now;
     }
 
-    public void Complete(DateTimeOffset now)
+    public void Complete(DateTimeOffset now, string? output)
     {
         Status = ProvisioningStatus.Completed;
         CurrentStep = null;
         Error = null;
+        Output = output is { Length: > 2000 } ? output[..2000] : output;
         FinishedAt = now;
     }
 
-    public ProvisioningJobInfo ToInfo() => new(Id, TenantSlug, Status, CurrentStep, Error, RequestedAt, StartedAt, FinishedAt);
+    public ProvisioningJobInfo ToInfo(IReadOnlyList<ProvisioningStep>? steps = null) => new(
+        Id,
+        TenantSlug,
+        Status,
+        CurrentStep,
+        Error,
+        Output,
+        RequestedAt,
+        StartedAt,
+        FinishedAt,
+        (steps ?? []).Select(s => new ProvisioningStepInfo(s.Name, s.Order, s.Status.ToString().ToLowerInvariant(), s.StartedAt, s.FinishedAt, s.DurationMs, s.Output, s.Error)).ToList());
 }

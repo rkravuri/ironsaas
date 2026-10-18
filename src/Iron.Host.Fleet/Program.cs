@@ -44,6 +44,7 @@ var connectionString = builder.Configuration.GetConnectionString("Database")
 builder.Services.AddIronDatabase(connectionString, builder.Configuration["Database:AppRole"]);
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
+builder.Services.AddIronFleetWorker();
 
 var app = builder.Build();
 

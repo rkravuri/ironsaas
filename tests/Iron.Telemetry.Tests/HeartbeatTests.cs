@@ -18,8 +18,19 @@ public class HeartbeatTests(TelemetryFixture fixture)
         time.Advance(TimeSpan.FromSeconds(10));
         await service.StopAsync(TestContext.Current.CancellationToken);
 
-        var beats = fixture.ExportedSpans.Where(s => s.OperationName == HeartbeatService.ActivityName).ToList();
+        // Export happens when the activity stops; give it a moment, as the request test does.
+        List<System.Diagnostics.Activity> beats = [];
+        for (var attempt = 0; attempt < 40 && beats.Count == 0; attempt++)
+        {
+            beats = fixture.ExportedSpans.Where(s => s.OperationName == HeartbeatService.ActivityName).ToList();
+            if (beats.Count == 0)
+            {
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+            }
+        }
+
         Assert.NotEmpty(beats);
         Assert.All(beats, beat => Assert.Equal("acme", beat.GetTagItem("tenant.id")));
+        Assert.All(beats, beat => Assert.Null(beat.Parent));
     }
 }

@@ -12,7 +12,19 @@ public enum ProvisioningStatus
     Completed,
 }
 
-public sealed record ProvisioningJobInfo(Guid Id, string TenantSlug, ProvisioningStatus Status, string? CurrentStep, string? Error, DateTimeOffset RequestedAt, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt);
+public sealed record ProvisioningStepInfo(string Name, int Order, string Status, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, int? DurationMs, string? Output, string? Error);
+
+public sealed record ProvisioningJobInfo(
+    Guid Id,
+    string TenantSlug,
+    ProvisioningStatus Status,
+    string? CurrentStep,
+    string? Error,
+    string? Output,
+    DateTimeOffset RequestedAt,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? FinishedAt,
+    IReadOnlyList<ProvisioningStepInfo> Steps);
 
 /// <summary>
 /// Provisioning jobs as the control plane uses them: one request per tenant at a time; the fleet worker picks up
@@ -20,7 +32,10 @@ public sealed record ProvisioningJobInfo(Guid Id, string TenantSlug, Provisionin
 /// </summary>
 public interface IProvisioningJobs
 {
-    /// <summary>Creates a Requested job, or fails with <c>fleet.job.in_progress</c> while one is Requested or Running.</summary>
+    /// <summary>
+    /// Creates a Requested job, reopens the last one when it Failed (so the run continues from the failed step), or fails
+    /// with <c>fleet.job.in_progress</c> while one is Requested or Running.
+    /// </summary>
     Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, CancellationToken cancellationToken);
 
     Task<ProvisioningJobInfo?> LatestAsync(string tenantSlug, CancellationToken cancellationToken);

@@ -15,14 +15,21 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) 
             return Error.Validation("fleet.tenant.invalid", $"'{tenantSlug}' is not a tenant identifier.");
         }
 
-        var open = await context.ProvisioningJobs
-            .Where(j => j.TenantSlug == tenant.Value && (j.Status == ProvisioningStatus.Requested || j.Status == ProvisioningStatus.Running))
+        var latest = await context.ProvisioningJobs
+            .Where(j => j.TenantSlug == tenant.Value)
             .OrderByDescending(j => j.RequestedAt)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (open is not null)
+        if (latest is { IsOpen: true })
         {
-            return Error.Conflict(FleetErrors.JobInProgress, $"Provisioning job {open.Id} for '{tenant.Value}' is {open.Status.ToString().ToLowerInvariant()}.");
+            return Error.Conflict(FleetErrors.JobInProgress, $"Provisioning job {latest.Id} for '{tenant.Value}' is {latest.Status.ToString().ToLowerInvariant()}.");
+        }
+
+        if (latest is { Status: ProvisioningStatus.Failed })
+        {
+            latest.Reopen(time.GetUtcNow());
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return latest.ToInfo(await StepsOfAsync(latest.Id, cancellationToken).ConfigureAwait(false));
         }
 
         var job = new ProvisioningJob(tenant, time.GetUtcNow());
@@ -39,6 +46,9 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) 
             .OrderByDescending(j => j.RequestedAt)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        return job?.ToInfo();
+        return job is null ? null : job.ToInfo(await StepsOfAsync(job.Id, cancellationToken).ConfigureAwait(false));
     }
+
+    public async Task<IReadOnlyList<ProvisioningStep>> StepsOfAsync(Guid jobId, CancellationToken cancellationToken) =>
+        await context.ProvisioningSteps.AsNoTracking().Where(s => s.JobId == jobId).OrderBy(s => s.Order).ToListAsync(cancellationToken).ConfigureAwait(false);
 }

@@ -16,6 +16,19 @@ public interface ISecretStore
     Task<bool> IsReachableAsync(CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// What the fleet needs beyond reading and writing: a policy per tenant and a unit token limited to it (TF-073, TF-210).
+/// OpenBao implements it; Key Vault has access policies and managed identities instead and gets its own fleet step.
+/// </summary>
+public interface ISecretStoreAdmin
+{
+    /// <summary>Creates or replaces a policy that allows reading the given paths (relative to the mount) and nothing else.</summary>
+    Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken);
+
+    /// <summary>Creates a token that carries only the given policies. The caller stores it; the store cannot show it again.</summary>
+    Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken);
+}
+
 /// <summary>Bound from the <c>Secrets</c> configuration section: the only secret-related settings a unit's environment holds.</summary>
 public sealed class SecretStoreOptions
 {

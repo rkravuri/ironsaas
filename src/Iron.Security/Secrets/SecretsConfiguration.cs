@@ -1,11 +1,13 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 
 namespace Iron.Security.Secrets;
 
 /// <summary>
 /// Loads the unit's secret into configuration at start (TF-073): the secret's keys are configuration keys
-/// (<c>ConnectionStrings:Database</c>, <c>Storage:ConnectionString</c>, <c>Tokens:SigningKeyPem</c>, ...), so the rest of the
+/// (<c>ConnectionStrings:Database</c>, <c>Storage:ContainerSasUrl</c>, <c>Tokens:SigningKeyPem</c>, ...), so the rest of the
 /// host reads configuration as before and the environment holds only the store address, the unit token and the path.
+/// It sits below the environment variables, so an explicit environment value still wins.
 /// A configured store that cannot be read stops the host with a clear message; a missing configuration means no store.
 /// </summary>
 public sealed class SecretsConfigurationSource(SecretStoreOptions options, Func<SecretStoreOptions, ISecretStore>? factory = null) : IConfigurationSource
@@ -67,7 +69,18 @@ public static class SecretsConfigurationExtensions
         builder.Build().GetSection(SecretStoreOptions.SectionName).Bind(options);
         if (options.IsConfigured)
         {
-            builder.Add(new SecretsConfigurationSource(options, factory));
+            // Below the environment variables: an explicit environment value wins over the unit secret. The fleet uses
+            // that to run the image's migrate and seed commands as the owner role while the unit runs as the app role.
+            var environment = builder.Sources.ToList().FindIndex(source => source is EnvironmentVariablesConfigurationSource);
+            var source = new SecretsConfigurationSource(options, factory);
+            if (environment >= 0)
+            {
+                builder.Sources.Insert(environment, source);
+            }
+            else
+            {
+                builder.Add(source);
+            }
         }
 
         return builder;

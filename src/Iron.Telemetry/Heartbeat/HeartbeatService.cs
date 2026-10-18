@@ -48,9 +48,21 @@ public sealed class HeartbeatService(ILogger<HeartbeatService> logger, Telemetry
     private void Beat()
     {
         var tenant = telemetry.TenantId ?? "unbound";
-        using var activity = IronActivitySources.Worker.StartActivity(ActivityName);
-        activity?.SetTag("tenant.id", tenant);
-        logger.LogInformation("Heartbeat from {Service} for tenant {TenantId}.", telemetry.ServiceName, tenant);
+
+        // A heartbeat is its own trace: it must not hang off whatever activity is current on this thread, and it must
+        // not inherit that activity's sampling decision.
+        var ambient = Activity.Current;
+        Activity.Current = null;
+        try
+        {
+            using var activity = IronActivitySources.Worker.StartActivity(ActivityName);
+            activity?.SetTag("tenant.id", tenant);
+            logger.LogInformation("Heartbeat from {Service} for tenant {TenantId}.", telemetry.ServiceName, tenant);
+        }
+        finally
+        {
+            Activity.Current = ambient;
+        }
     }
 }
 

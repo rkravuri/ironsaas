@@ -64,8 +64,18 @@ public sealed class BlobObjectStorage : IObjectStorage
     {
         try
         {
-            var exists = await _container.ExistsAsync(cancellationToken).ConfigureAwait(false);
-            return exists.Value ? null : $"The blob container '{_container.Name}' does not exist.";
+            // One page of one blob: works with the account key and with a container signature (reading container
+            // properties does not under a signature), and a missing container answers 404.
+            await foreach (var page in _container.GetBlobsAsync(cancellationToken: cancellationToken).AsPages(pageSizeHint: 1).ConfigureAwait(false))
+            {
+                break;
+            }
+
+            return null;
+        }
+        catch (RequestFailedException exception) when (exception.Status == 404)
+        {
+            return $"The blob container '{_container.Name}' does not exist.";
         }
         catch (RequestFailedException exception)
         {

@@ -9,10 +9,14 @@
     <ProjectReference Include="../Iron.Core/Iron.Core.csproj" />
     <ProjectReference Include="../Iron.Data/Iron.Data.csproj" />
     <ProjectReference Include="../Iron.Api/Iron.Api.csproj" />
+    <ProjectReference Include="../Iron.Security/Iron.Security.csproj" />
     <ProjectReference Include="Contracts/Iron.Fleet.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Audit/Contracts/Iron.Audit.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Tenancy/Contracts/Iron.Tenancy.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
     <!-- Design-time only: lets "dotnet ef migrations add" run with this project as the start-up project. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
