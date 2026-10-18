@@ -24,7 +24,8 @@ describe("the gallery", () => {
     expect(marks("acme.localhost")).not.toEqual(marks("bravo.localhost"));
     expect(document.documentElement.getAttribute("data-mantine-color-scheme")).toBe("dark");
     expect(document.documentElement.dataset.density).toBe("compact");
-    expect(await screen.findByRole("region", { name: en.gallery.grid.label })).toBeInTheDocument();
+    // The grid is a lazy chunk (AG Grid); on a loaded laptop it arrives after the query's default one second.
+    expect(await screen.findByRole("region", { name: en.gallery.grid.label }, { timeout: 10_000 })).toBeInTheDocument();
     expect(screen.queryAllByText(en.gallery.colour.fail)).toHaveLength(0);
     expect(screen.getAllByText(en.gallery.colour.pass).length).toBeGreaterThan(50);
     // The whole gallery renders here, templates and grid included; under load it needs more than the default 5 s.
