@@ -1,5 +1,9 @@
 name: CI
 
+# Every pull request and every push to main (ADR-0022): the code builds with warnings as errors, the architecture and
+# integration tests pass against Testcontainers, the shell lints, type-checks, tests and builds, no secret is in the
+# history, and no known critical or high vulnerability is in the dependencies.
+
 on:
   pull_request:
   push:
@@ -14,8 +18,8 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
 
 jobs:
-  build-and-test:
-    name: Build and test
+  dotnet:
+    name: .NET build and tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -24,7 +28,7 @@ jobs:
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
 
       - name: Restore
         run: dotnet restore Foundation.slnx
@@ -32,21 +36,79 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build Foundation.slnx --configuration Release --no-restore
 
-      # Microsoft Testing Platform mode (global.json): the solution is passed with --solution.
+      - name: Format check
+        run: dotnet format Foundation.slnx --verify-no-changes --no-restore
+
+      # Architecture, unit and integration tests; the integration tests start PostgreSQL, Azurite and OpenBao with
+      # Testcontainers on the runner's Docker. Microsoft Testing Platform mode: the solution is passed with --solution.
       - name: Test
         run: dotnet test --solution Foundation.slnx --configuration Release --no-build
 
+  shell:
+    name: Shell lint, tests and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: shell
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: shell/package-lock.json
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint, type check, tests and build
+        run: npm run check
+
   platform-config:
-    name: Platform compose file
+    name: Compose files
     runs-on: ubuntu-latest
     steps:
       - name: Check out
         uses: actions/checkout@v7
 
-      # Validates infra/compose/compose.yaml and its variable references with throw-away credentials.
-      # Starting the platform in CI comes with T18.
-      - name: Validate the compose file
+      # Validates infra/compose/compose.yaml with every profile and throw-away credentials.
+      - name: Validate the platform compose file
         run: |
           sh infra/compose/scripts/init-env.sh
           docker compose --file infra/compose/compose.yaml --env-file infra/compose/.env \
-            --profile telemetry --profile ci config --quiet
+            --profile telemetry --profile ci --profile control config --quiet
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out with history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  vulnerabilities:
+    name: Dependency scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      # Lock files of the .NET and the shell dependencies; images are scanned in the release workflow.
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"

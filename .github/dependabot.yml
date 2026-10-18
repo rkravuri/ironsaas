@@ -1,0 +1,31 @@
+# Version updates for everything the build pins (ADR-0003, ADR-0022): the actions, the .NET packages, the shell's
+# packages and the base images. One pull request per ecosystem per week; CI tells whether the bump is safe.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      dotnet:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /shell
+    schedule:
+      interval: weekly
+    groups:
+      shell:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directories:
+      - /src/Iron.Host.Api
+      - /src/Iron.Host.Worker
+      - /src/Iron.Host.ControlPlane
+      - /src/Iron.Host.Fleet
+      - /shell
+    schedule:
+      interval: weekly

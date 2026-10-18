@@ -1,0 +1,135 @@
+name: Release
+
+# A push to main (ADR-0022): the five images are built and pushed to GitHub Container Registry tagged with the commit,
+# scanned, and then proven on the runner: the platform and the control plane start from those images, the fleet
+# provisions a tenant, and the smoke test runs against it. Green runs tag the images "integration".
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  images:
+    name: Image ${{ matrix.image.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: iron-api, file: src/Iron.Host.Api/Dockerfile, context: . }
+          - { name: iron-worker, file: src/Iron.Host.Worker/Dockerfile, context: . }
+          - { name: iron-control-plane, file: src/Iron.Host.ControlPlane/Dockerfile, context: . }
+          - { name: iron-fleet, file: src/Iron.Host.Fleet/Dockerfile, context: . }
+          - { name: iron-shell, file: shell/Dockerfile, context: shell }
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Image repository (lower case, as the registry wants it)
+        id: repo
+        run: echo "repository=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.file }}
+          push: true
+          tags: |
+            ${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:${{ github.sha }}
+            ${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:main
+          cache-from: type=gha,scope=${{ matrix.image.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
+          provenance: false
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:${{ github.sha }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  integration:
+    name: Integration on the runner
+    runs-on: ubuntu-latest
+    needs: images
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK (for the smoke tool)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Image repository
+        id: repo
+        run: echo "repository=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Pulled here so that the fleet, which has no registry credentials, finds them locally when it starts units.
+      - name: Pull the images
+        run: |
+          for image in iron-api iron-worker iron-control-plane iron-fleet iron-shell; do
+            docker pull "${{ steps.repo.outputs.repository }}/$image:${{ github.sha }}"
+          done
+
+      - name: Platform, control plane, provisioning and smoke
+        env:
+          IMAGE_REPOSITORY: ${{ steps.repo.outputs.repository }}
+          IMAGE_TAG: ${{ github.sha }}
+          SMOKE_REPORT: ${{ github.workspace }}/smoke-report.json
+        run: infra/compose/scripts/ci-integration.sh acme
+
+      - name: Upload the smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: smoke-report.json
+          if-no-files-found: ignore
+
+      - name: Logs on failure
+        if: failure()
+        run: |
+          echo "== platform and control plane"
+          docker compose --file infra/compose/compose.yaml --env-file infra/compose/.env --profile ci --profile control logs --tail 200 || true
+          echo "== tenant units"
+          for project in $(docker compose ls --quiet | grep '^tenant-' || true); do
+            echo "--- $project"
+            docker compose --project-name "$project" logs --tail 200 || true
+          done
+
+      - name: Tag the images integration
+        run: |
+          for image in iron-api iron-worker iron-control-plane iron-fleet iron-shell; do
+            docker buildx imagetools create \
+              --tag "${{ steps.repo.outputs.repository }}/$image:integration" \
+              "${{ steps.repo.outputs.repository }}/$image:${{ github.sha }}"
+          done

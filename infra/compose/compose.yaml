@@ -15,6 +15,7 @@ volumes:
   blob-data:
   prometheus-data:
   loki-data:
+  fleet-units:
   tempo-data:
   grafana-data:
 
@@ -138,6 +139,66 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ---------------------------------------------------------------- control plane (profile: control)
+  # The control plane API and the fleet worker from the Foundation images (ADR-0022). On the laptop the two usually run
+  # from source (make run-control, make run-fleet); the pipeline runs them this way. Both read their configuration from
+  # the control unit's secret, written by scripts/write-control-secret.sh with CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob.
+  control-api:
+    image: ${IMAGE_REPOSITORY:-foundation}/iron-control-plane:${IMAGE_TAG:-dev}
+    profiles: [control]
+    environment: &control-environment
+      ASPNETCORE_ENVIRONMENT: Production
+      Tenant__Id: control
+      Tenant__HostnameList: control.localhost,localhost
+      Secrets__Address: http://openbao:8200
+      Secrets__Token: ${OPENBAO_ROOT_TOKEN}
+      Secrets__Path: control
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    ports:
+      - "5200:8080" # the operator's address, the same as make run-control
+    networks: [foundation]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.control.rule=Host(`control.localhost`)"
+      - "traefik.http.routers.control.entrypoints=web,websecure"
+      - "traefik.http.services.control.loadbalancer.server.port=8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      openbao:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+
+  fleet:
+    image: ${IMAGE_REPOSITORY:-foundation}/iron-fleet:${IMAGE_TAG:-dev}
+    profiles: [control]
+    environment:
+      <<: *control-environment
+      Fleet__Units__Runtime: compose
+      Fleet__Units__ComposeDirectory: /var/lib/foundation/units
+      Fleet__Units__IngressUrl: http://traefik
+      Fleet__Units__ImageRepository: ${IMAGE_REPOSITORY:-foundation}
+      Fleet__Units__ImageTag: ${IMAGE_TAG:-dev}
+      Fleet__Units__PlatformNetwork: foundation
+      Fleet__Units__OtlpEndpoint: http://otel-collector:4317
+      Fleet__Database__UnitHost: postgres
+      Fleet__Storage__UnitBlobEndpoint: http://blob:10000/${BLOB_ACCOUNT_NAME}
+      Fleet__Secrets__UnitAddress: http://openbao:8200
+      Fleet__PollSeconds: "3"
+      Heartbeat__Interval: "00:01:00"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # the fleet drives the host's Docker (ADR-0019)
+      - fleet-units:/var/lib/foundation/units
+    networks: [foundation]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      openbao:
+        condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
 

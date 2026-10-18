@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
+using Iron.Fleet.Contracts;
 using Iron.Security.Secrets;
 using Npgsql;
-using Iron.Fleet.Contracts;
 
 namespace Iron.Fleet.Services.Steps;
 

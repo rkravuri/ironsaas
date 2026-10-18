@@ -29,3 +29,4 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0019](0019-compose-unit-runtime.md) | Compose as the laptop unit runtime | Accepted |
 | [0020](0020-shell.md) | The shell | Accepted |
 | [0021](0021-data-grid.md) | DataGrid over AG Grid Community | Accepted |
+| [0022](0022-pipeline.md) | The pipeline | Accepted |

@@ -213,7 +213,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
-    public async Task AnUpdateReappliesTheUnitOfAnActiveTenantAndNothingElse()
+    public async Task AnUpdateMigratesSeedsAndReappliesTheUnitOfAnActiveTenant()
     {
         var runtime = new RecordingRuntime();
         await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
@@ -235,9 +235,9 @@ public class ProvisioningTests(FleetFixture fixture)
         {
             var job = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken))!;
             Assert.Equal(ProvisioningStatus.Completed, job.Status);
-            Assert.Equal([StepNames.Unit, StepNames.Verify], job.Steps.Select(s => s.Name));
+            Assert.Equal([StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify], job.Steps.Select(s => s.Name));
             Assert.Equal(2, runtime.Applied.Count);
-            Assert.Equal(commandsBefore, runtime.Commands.Count);
+            Assert.Equal(commandsBefore + 2, runtime.Commands.Count); // migrate and seed ran again, idempotently
             Assert.Equal(TenantStatus.Active, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
         }
     }

@@ -16,7 +16,7 @@ The S1 plan (3.10): one React build serves every tenant hostname; modules regist
 5. **Session.** `/me` is the one source: the signed-in principal, its permissions and the session expiry, read with TanStack Query and shared through a provider. Login re-reads it; logout and a 401 forget it.
 6. **Strings go through react-i18next** from the start, English only in S1, so locales (TF-170) are a catalogue away.
 7. **The grid rule is in place before the grid** (T16): ESLint refuses `ag-grid-*` imports outside `src/components/data-grid`, so the Enterprise switch stays in one file.
-8. **Update jobs.** A running unit takes a new template or image through a fleet job of kind Update (unit and verify steps only), which is also the rolling-upgrade primitive of S3.
+8. **Update jobs.** A running unit takes a new template or image through a fleet job of kind Update: migrate, seed, unit and verify. Migrations and seeds run again because a new image brings new migrations and new permissions for the system roles, and both are idempotent. This is also the rolling-upgrade primitive of S3.
 
 ## Consequences
 

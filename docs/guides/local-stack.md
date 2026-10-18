@@ -122,7 +122,7 @@ The fleet worker runs from source here and drives the laptop's own Docker; `foun
 
 ## The shell (T15)
 
-In a unit, the shell is the `shell` service: the ingress sends the API paths to the API and everything else to it, so `https://acme.localhost/` is the login page and `https://acme.localhost/invitations/<token>` is the page behind the link the fleet prints. Units provisioned before T15 take the new service with `make update-unit TENANT=acme` after `make images`.
+In a unit, the shell is the `shell` service: the ingress sends the API paths to the API and everything else to it, so `https://acme.localhost/` is the login page and `https://acme.localhost/invitations/<token>` is the page behind the link the fleet prints. Units provisioned before T15 take the new service with `make update-unit TENANT=acme` after `make images`; an update runs the image's migrate and seed again and then re-applies the unit.
 
 `https://` works on every hostname: the `websecure` entry point has TLS on, with mkcert's certificate after `make certs` (trust its root on Windows as the script explains) or Traefik's own self-signed one before that, which the browser warns about once. `http://` keeps working too; Chrome treats `*.localhost` as secure, so the session cookie is accepted there as well.
 
@@ -134,3 +134,8 @@ For shell development run `make run-api` and `make shell-dev` (first `make shell
 `make smoke` needs the control plane and the fleet running (`make run-control`, `make run-fleet`) and the telemetry profile up (`make up`, not `up-slim`), and the control plane seeded with the `smoke-reader` account (`make seed-control` again if the control plane was seeded before T17). It provisions the `smoke` tenant on the first run and reuses it afterwards, prints every step with its duration, writes `smoke-report.json`, and exits 0 only when all eleven steps pass. The administrator's password it chose is kept in the store at `secret/tenants/smoke/smoke`.
 
 `make e2e` runs the Playwright tests in `shell/e2e/` against `https://smoke.localhost` with that administrator. Browsers once: `cd shell && npm run e2e:install` (it asks for sudo for the system libraries). Set `E2E_BASE_URL` to point them at another tenant.
+
+
+## The control plane as containers (T18)
+
+`make up-control` runs the control plane API and the fleet worker from the images (`make images` first) beside the platform, the API on port 5200 like `make run-control`, the fleet with this machine's Docker socket. It writes the control secret with the hosts the containers see, so to go back to running them from source, run `make secret-control` again. `make integration` runs the pipeline's whole integration stage here: platform and control plane from images, the control database migrated and seeded, then the smoke against tenant `acme`.

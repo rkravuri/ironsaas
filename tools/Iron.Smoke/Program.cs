@@ -114,6 +114,12 @@ await report.StepAsync("token-call", async () =>
 string? administratorPassword = null;
 await report.StepAsync("administrator", async () =>
 {
+    administratorPassword = options.AdministratorPassword;
+    if (administratorPassword is not null)
+    {
+        return "administrator password from SMOKE_ADMIN_PASSWORD";
+    }
+
     var smoke = await store.ReadAsync(smokeSecretPath, ct);
     administratorPassword = smoke?.GetValueOrDefault("administrator_password");
     if (administratorPassword is not null)
@@ -122,13 +128,21 @@ await report.StepAsync("administrator", async () =>
     }
 
     var fleet = await store.ReadAsync(fleetSecretPath, ct) ?? throw new SmokeException($"no secret at {fleetSecretPath}");
-    var link = fleet.GetValueOrDefault("invitation_link") ?? throw new SmokeException("the fleet secret has no invitation_link; delete the tenant's secrets and provision again");
+    var link = fleet.GetValueOrDefault("invitation_link") ?? throw new SmokeException("the fleet secret has no invitation_link: run an update of the unit (make update-unit), which re-issues it while the administrator is still invited");
     var token = link[(link.LastIndexOf('/') + 1)..];
     var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
-    (await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth/invitations/{Uri.EscapeDataString(token)}/accept", host: host, json: new { password, display_name = "Smoke Administrator" }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "accept the invitation");
+
+    // The password is kept before the accept: if the answer is lost on the way (a resent request meets a spent
+    // invitation), the login step still has what the accept used.
     await store.WriteAsync(smokeSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator_password"] = password }, ct);
     administratorPassword = password;
-    return $"invitation accepted for {options.AdministratorLoginId}; password kept at {smokeSecretPath}";
+    var accepted = await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth/invitations/{Uri.EscapeDataString(token)}/accept", host: host, json: new { password, display_name = "Smoke Administrator" }, cancellationToken: ct);
+    if (accepted.Status == HttpStatusCode.OK)
+    {
+        return $"invitation accepted for {options.AdministratorLoginId}; password kept at {smokeSecretPath}";
+    }
+
+    return $"accept answered {(int)accepted.Status} ({accepted.Text("error_code") ?? "no code"}); the login step decides";
 });
 
 string? cookie = null;

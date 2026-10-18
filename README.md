@@ -27,7 +27,8 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 | T15 Shell foundation | done |
 | T16 DataGrid and the Users page | done |
 | T17 Smoke and end-to-end tests | done |
-| T18 Pipeline | next |
+| T18 Pipeline | done |
+| T19 Documentation pass | next |
 
 ## Prerequisites
 

@@ -36,14 +36,14 @@ public static class UnitEnvironment
     }
 }
 
-/// <summary>Step 5: the image's <c>migrate</c> command as the owner role; migrations and the app role's grants.</summary>
+/// <summary>Step 5: the image's <c>migrate</c> command as the owner role; migrations and the app role's grants. Runs again on an update: a new image brings new migrations.</summary>
 public sealed class MigrateStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
 {
     public string Name => StepNames.Migrate;
 
     public int Order => 5;
 
-    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision, JobKind.Update];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
@@ -67,7 +67,8 @@ public sealed class MigrateStep(IUnitRuntime runtime, ISecretStore secrets, Secr
 
 /// <summary>
 /// Step 6: the image's <c>seed</c> command as the owner role: system roles, the first administrator (Invited, with an
-/// invitation token), the smoke client, the container. The invitation link is read from the output and reported.
+/// invitation token), the smoke client, the container. The invitation link is read from the output and reported. Runs
+/// again on an update: seeds are idempotent, and a new image may bring new permissions for the system roles.
 /// </summary>
 public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
 {
@@ -79,7 +80,7 @@ public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets,
 
     public int Order => 6;
 
-    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision];
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Provision, JobKind.Update];
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {

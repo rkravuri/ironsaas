@@ -7,9 +7,9 @@ SERVICE ?=
 
 COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
-ALL_PROFILES := --profile telemetry --profile ci
+ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
+.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -171,6 +171,17 @@ up-slim: env ## Start the platform without the telemetry stack
 up-ci: env ## Start the slim platform plus the collector and Tempo (what the pipeline uses)
 	$(COMPOSE) --profile ci up --detach --wait
 	@sh $(COMPOSE_DIR)/scripts/wait-ready.sh tempo
+
+up-control: env ## Run the control plane API and the fleet worker as containers from the images (make images first; secret with container hosts)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob $(COMPOSE_DIR)/scripts/write-control-secret.sh
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control up --detach --wait --force-recreate control-api fleet
+
+down-control: env ## Stop the containerised control plane (make secret-control again before make run-control)
+	$(COMPOSE) --profile control stop control-api fleet
+
+integration: ## The pipeline's integration stage on this machine: platform and control plane from images, then the smoke (stop make run-control first)
+	@OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) \
+	IMAGE_REPOSITORY=$${IMAGE_REPOSITORY:-foundation} IMAGE_TAG=$${IMAGE_TAG:-$(TAG)} $(COMPOSE_DIR)/scripts/ci-integration.sh $${TENANT:-acme}
 
 down: env ## Stop and remove the platform containers; data volumes are kept
 	$(COMPOSE) $(ALL_PROFILES) down
