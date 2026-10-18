@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Iron.Kernel.Fleet.Data;
 
 /// <summary>The <c>fleet</c> schema: provisioning jobs and their steps (TF-002).</summary>
-[Schema("fleet")]
+[Schema("kernel_fleet")]
 public sealed class FleetDbContext(DbContextOptions<FleetDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<ProvisioningJob> ProvisioningJobs => Set<ProvisioningJob>();

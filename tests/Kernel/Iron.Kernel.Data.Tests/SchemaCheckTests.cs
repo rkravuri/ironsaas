@@ -20,7 +20,7 @@ public class SchemaCheckRuleTests
     [Fact]
     public void AWellFormedTableHasNoViolations()
     {
-        var table = new TableInfo("identity", "principals", null, [.. AuditedColumns, new("login_id", "text", false)], ["id"]);
+        var table = new TableInfo("kernel_identity", "principals", null, [.. AuditedColumns, new("login_id", "text", false)], ["id"]);
 
         Assert.Empty(SchemaCheck.Evaluate([table], []));
     }
@@ -29,7 +29,7 @@ public class SchemaCheckRuleTests
     public void AnAppendOnlyTableNeedsOnlyTheCreatedColumns()
     {
         var table = new TableInfo(
-            "audit",
+            "kernel_audit",
             "events",
             "append-only",
             [new("id", SchemaCheck.Uuid, false), new("created_at", SchemaCheck.Timestamp, false), new("created_by", SchemaCheck.Uuid, false)],
@@ -41,7 +41,7 @@ public class SchemaCheckRuleTests
     [Fact]
     public void MissingStandardColumnsAreNamed()
     {
-        var table = new TableInfo("identity", "sessions", null, [new("id", SchemaCheck.Uuid, false)], ["id"]);
+        var table = new TableInfo("kernel_identity", "sessions", null, [new("id", SchemaCheck.Uuid, false)], ["id"]);
 
         var violations = SchemaCheck.Evaluate([table], []);
 
@@ -55,7 +55,7 @@ public class SchemaCheckRuleTests
         var columns = new List<ColumnInfo>(AuditedColumns);
         columns[0] = new ColumnInfo("id", "bigint", false);
         columns[1] = new ColumnInfo("created_at", SchemaCheck.Timestamp, true);
-        var table = new TableInfo("identity", "principals", null, columns, ["id", "login_id"]);
+        var table = new TableInfo("kernel_identity", "principals", null, columns, ["id", "login_id"]);
 
         var violations = SchemaCheck.Evaluate([table], []);
 
@@ -67,18 +67,18 @@ public class SchemaCheckRuleTests
     [Fact]
     public void NamesThatAreNotSnakeCaseAreNamed()
     {
-        var table = new TableInfo("identity", "Principals", null, [.. AuditedColumns, new("LoginId", "text", false)], ["id"]);
+        var table = new TableInfo("kernel_identity", "Principals", null, [.. AuditedColumns, new("LoginId", "text", false)], ["id"]);
 
         var violations = SchemaCheck.Evaluate([table], []);
 
-        Assert.Contains(violations, v => v.Contains("identity.Principals: table names are snake_case", StringComparison.Ordinal));
-        Assert.Contains(violations, v => v.Contains("identity.Principals.LoginId: column names are snake_case", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("kernel_identity.Principals: table names are snake_case", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("kernel_identity.Principals.LoginId: column names are snake_case", StringComparison.Ordinal));
     }
 
     [Fact]
     public void SoftDeleteColumnsMustComeTogether()
     {
-        var table = new TableInfo("identity", "principals", null, [.. AuditedColumns, new("is_deleted", SchemaCheck.Boolean, false)], ["id"]);
+        var table = new TableInfo("kernel_identity", "principals", null, [.. AuditedColumns, new("is_deleted", SchemaCheck.Boolean, false)], ["id"]);
 
         var violations = SchemaCheck.Evaluate([table], []);
 
@@ -89,19 +89,42 @@ public class SchemaCheckRuleTests
     [Fact]
     public void AForeignKeyIntoAnotherSchemaIsNamed()
     {
-        var foreignKey = new ForeignKeyInfo("fk_orders_supplier", "procurement", "orders", "identity", "principals");
+        var foreignKey = new ForeignKeyInfo("fk_orders_supplier", "products_procurement", "orders", "kernel_identity", "principals");
 
         var violation = Assert.Single(SchemaCheck.Evaluate([], [foreignKey]));
 
-        Assert.Contains("procurement.orders: foreign key fk_orders_supplier points into schema identity", violation, StringComparison.Ordinal);
+        Assert.Contains("products_procurement.orders: foreign key fk_orders_supplier points into schema kernel_identity", violation, StringComparison.Ordinal);
     }
 
     [Fact]
     public void TheMigrationsHistoryTableIsIgnored()
     {
-        var table = new TableInfo("identity", "__ef_migrations_history", null, [new("migration_id", "text", false)], ["migration_id"]);
+        var table = new TableInfo("kernel_identity", "__ef_migrations_history", null, [new("migration_id", "text", false)], ["migration_id"]);
 
         Assert.Empty(SchemaCheck.Evaluate([table], []));
+    }
+
+    [Theory]
+    [InlineData("kernel_identity", true)]
+    [InlineData("business_items", true)]
+    [InlineData("products_procurement", true)]
+    [InlineData("identity", false)]
+    [InlineData("kernel_", false)]
+    [InlineData("Kernel_identity", false)]
+    [InlineData("core_identity", false)]
+    public void AModuleSchemaCarriesItsLayerPrefix(string schema, bool accepted)
+    {
+        var violations = SchemaCheck.CheckSchemaNames([schema]);
+
+        if (accepted)
+        {
+            Assert.Empty(violations);
+        }
+        else
+        {
+            var violation = Assert.Single(violations);
+            Assert.StartsWith($"{schema}: a module schema starts with its layer's prefix", violation, StringComparison.Ordinal);
+        }
     }
 
     [Theory]
@@ -140,7 +163,7 @@ public class SchemaCheckDatabaseTests(PostgresFixture fixture)
                 updated_at timestamp with time zone not null,
                 updated_by uuid not null,
                 version integer not null,
-                widget_id uuid not null references sample.widgets (id)
+                widget_id uuid not null references kernel_sample.widgets (id)
             );
             """,
             connection))
@@ -150,9 +173,10 @@ public class SchemaCheckDatabaseTests(PostgresFixture fixture)
 
         var violations = await SchemaCheck.RunAsync(connection, ["bad"], TestContext.Current.CancellationToken);
 
+        Assert.Contains(violations, v => v.StartsWith("bad: a module schema starts with its layer's prefix", StringComparison.Ordinal));
         Assert.Contains(violations, v => v.Contains("bad.notes: missing column 'updated_at'", StringComparison.Ordinal));
         Assert.Contains(violations, v => v.Contains("bad.notes.Title: column names are snake_case", StringComparison.Ordinal));
-        Assert.Contains(violations, v => v.Contains("bad.links: foreign key", StringComparison.Ordinal) && v.Contains("points into schema sample", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("bad.links: foreign key", StringComparison.Ordinal) && v.Contains("points into schema kernel_sample", StringComparison.Ordinal));
     }
 
     [Fact]

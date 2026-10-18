@@ -115,7 +115,7 @@ public class ProvisioningTests(FleetFixture fixture)
     public async Task AFailedStepStopsTheJobAndARerunContinuesFromIt()
     {
         var time = FleetFixture.Clock();
-        var runtime = new RecordingRuntime { FailNext = ("migrate", "relation \"authz.roles\" does not exist") };
+        var runtime = new RecordingRuntime { FailNext = ("migrate", "relation \"kernel_authz.roles\" does not exist") };
         await using var provider = fixture.BuildServices(time, runtime);
         var slug = await RegisterAndRequestAsync(provider, "charlie");
         var harness = new ProvisioningWorkerHarness(provider);
@@ -127,7 +127,7 @@ public class ProvisioningTests(FleetFixture fixture)
             var job = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken))!;
             Assert.Equal(ProvisioningStatus.Failed, job.Status);
             Assert.Equal(StepNames.Migrate, job.CurrentStep);
-            Assert.Contains("authz.roles", job.Error, StringComparison.Ordinal);
+            Assert.Contains("kernel_authz.roles", job.Error, StringComparison.Ordinal);
             Assert.Equal(["completed", "completed", "completed", "completed", "failed", "pending", "pending", "pending"], job.Steps.Select(s => s.Status));
             Assert.Equal(TenantStatus.Provisioning, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
 

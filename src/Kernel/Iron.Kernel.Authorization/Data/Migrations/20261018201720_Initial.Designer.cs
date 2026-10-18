@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Iron.Kernel.Authorization.Data.Migrations
 {
     [DbContext(typeof(AuthorizationDbContext))]
-    [Migration("20261018045846_Initial")]
+    [Migration("20261018201720_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -21,7 +21,7 @@ namespace Iron.Kernel.Authorization.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("authz")
+                .HasDefaultSchema("kernel_authz")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -88,7 +88,7 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_roles_name");
 
-                    b.ToTable("roles", "authz");
+                    b.ToTable("roles", "kernel_authz");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.RoleAssignment", b =>
@@ -151,7 +151,7 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PrincipalId", "RoleId", "ScopeKind", "ScopeId"), false);
 
-                    b.ToTable("role_assignments", "authz");
+                    b.ToTable("role_assignments", "kernel_authz");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.RoleAssignment", b =>

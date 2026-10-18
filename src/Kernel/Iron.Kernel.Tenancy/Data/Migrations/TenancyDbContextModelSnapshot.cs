@@ -17,7 +17,7 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("tenancy")
+                .HasDefaultSchema("kernel_tenancy")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -123,7 +123,7 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_tenants_status");
 
-                    b.ToTable("tenants", "tenancy");
+                    b.ToTable("tenants", "kernel_tenancy");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Tenancy.Data.TenantHostname", b =>
@@ -173,7 +173,7 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_hostnames_tenant_id");
 
-                    b.ToTable("hostnames", "tenancy");
+                    b.ToTable("hostnames", "kernel_tenancy");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Tenancy.Data.TenantHostname", b =>

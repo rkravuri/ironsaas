@@ -1,3 +1,4 @@
+using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Conventions;
 using Npgsql;
 
@@ -36,7 +37,17 @@ public static class SchemaCheck
 
         var tables = await LoadTablesAsync(connection, schemas, cancellationToken).ConfigureAwait(false);
         var foreignKeys = await LoadForeignKeysAsync(connection, schemas, cancellationToken).ConfigureAwait(false);
-        return Evaluate(tables, foreignKeys);
+        return [.. CheckSchemaNames(schemas), .. Evaluate(tables, foreignKeys)];
+    }
+
+    /// <summary>Every schema checked is a module schema, and a module schema carries its layer's prefix (ADR-0029).</summary>
+    public static IReadOnlyList<string> CheckSchemaNames(IEnumerable<string> schemas)
+    {
+        ArgumentNullException.ThrowIfNull(schemas);
+        return schemas
+            .Where(schema => !SchemaAttribute.HasLayerPrefix(schema))
+            .Select(schema => $"{schema}: a module schema starts with its layer's prefix ({string.Join(", ", SchemaAttribute.LayerPrefixes)}) and the module's name, as in kernel_identity (ADR-0029).")
+            .ToList();
     }
 
     /// <summary>The pure rules, so they can be unit tested without a database.</summary>

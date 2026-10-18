@@ -31,7 +31,7 @@ public class DatabaseCommandsTests(PostgresFixture fixture)
         Assert.Equal(0, exitCode);
         await using var connection = await fixture.DataSource.OpenConnectionAsync(TestContext.Current.CancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "select count(*) from information_schema.tables where table_schema = 'sample' and table_name = '__ef_migrations_history'";
+        command.CommandText = "select count(*) from information_schema.tables where table_schema = 'kernel_sample' and table_name = '__ef_migrations_history'";
         Assert.Equal(1L, await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
     }
 

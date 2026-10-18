@@ -12,11 +12,11 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "tenancy");
+                name: "kernel_tenancy");
 
             migrationBuilder.CreateTable(
                 name: "tenants",
-                schema: "tenancy",
+                schema: "kernel_tenancy",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -44,7 +44,7 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
 
             migrationBuilder.CreateTable(
                 name: "hostnames",
-                schema: "tenancy",
+                schema: "kernel_tenancy",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -62,7 +62,7 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                     table.ForeignKey(
                         name: "fk_hostnames_tenants_tenant_id",
                         column: x => x.tenant_id,
-                        principalSchema: "tenancy",
+                        principalSchema: "kernel_tenancy",
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -70,27 +70,27 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_hostnames_hostname",
-                schema: "tenancy",
+                schema: "kernel_tenancy",
                 table: "hostnames",
                 column: "hostname",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_hostnames_tenant_id",
-                schema: "tenancy",
+                schema: "kernel_tenancy",
                 table: "hostnames",
                 column: "tenant_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_tenants_slug",
-                schema: "tenancy",
+                schema: "kernel_tenancy",
                 table: "tenants",
                 column: "slug",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_tenants_status",
-                schema: "tenancy",
+                schema: "kernel_tenancy",
                 table: "tenants",
                 column: "status");
         }
@@ -100,11 +100,11 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "hostnames",
-                schema: "tenancy");
+                schema: "kernel_tenancy");
 
             migrationBuilder.DropTable(
                 name: "tenants",
-                schema: "tenancy");
+                schema: "kernel_tenancy");
         }
     }
 }

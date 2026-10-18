@@ -17,7 +17,7 @@ namespace Iron.Kernel.Audit.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("audit")
+                .HasDefaultSchema("kernel_audit")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -109,7 +109,7 @@ namespace Iron.Kernel.Audit.Data.Migrations
                     b.HasIndex("RecordType", "RecordId")
                         .HasDatabaseName("ix_events_record_type_record_id");
 
-                    b.ToTable("events", "audit", t =>
+                    b.ToTable("events", "kernel_audit", t =>
                         {
                             t.HasComment("append-only");
                         });

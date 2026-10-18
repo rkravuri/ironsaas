@@ -19,14 +19,14 @@ public class GrantsRunnerTests(PostgresFixture fixture)
     {
         using var context = new SampleDbContext(DesignTime.OptionsFor<SampleDbContext>());
 
-        var statements = GrantsRunner.Statements("sample_db", Role, [("sample", context.Model)]);
+        var statements = GrantsRunner.Statements("sample_db", Role, [("kernel_sample", context.Model)]);
 
         Assert.Contains("GRANT CONNECT ON DATABASE \"sample_db\" TO \"sample_app\"", statements);
-        Assert.Contains("GRANT USAGE ON SCHEMA \"sample\" TO \"sample_app\"", statements);
-        Assert.Contains("REVOKE ALL ON ALL TABLES IN SCHEMA \"sample\" FROM \"sample_app\"", statements);
-        Assert.Contains("GRANT SELECT, INSERT, UPDATE, DELETE ON \"sample\".\"widgets\" TO \"sample_app\"", statements);
-        Assert.Contains("GRANT SELECT, INSERT ON \"sample\".\"widget_events\" TO \"sample_app\"", statements);
-        Assert.DoesNotContain(statements, s => s.Contains("UPDATE, DELETE ON \"sample\".\"widget_events\"", StringComparison.Ordinal));
+        Assert.Contains("GRANT USAGE ON SCHEMA \"kernel_sample\" TO \"sample_app\"", statements);
+        Assert.Contains("REVOKE ALL ON ALL TABLES IN SCHEMA \"kernel_sample\" FROM \"sample_app\"", statements);
+        Assert.Contains("GRANT SELECT, INSERT, UPDATE, DELETE ON \"kernel_sample\".\"widgets\" TO \"sample_app\"", statements);
+        Assert.Contains("GRANT SELECT, INSERT ON \"kernel_sample\".\"widget_events\" TO \"sample_app\"", statements);
+        Assert.DoesNotContain(statements, s => s.Contains("UPDATE, DELETE ON \"kernel_sample\".\"widget_events\"", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -51,10 +51,10 @@ public class GrantsRunnerTests(PostgresFixture fixture)
         await using var appDataSource = new NpgsqlDataSourceBuilder(new NpgsqlConnectionStringBuilder(fixture.ConnectionString) { Username = Role, Password = Password }.ToString()).Build();
         await using var connection = await appDataSource.OpenConnectionAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "update sample.widget_events set created_by = created_by"))).SqlState);
-        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "delete from sample.widget_events"))).SqlState);
-        await Run(connection, "select count(*) from sample.widget_events");
-        await Run(connection, "update sample.widgets set name = name where false");
+        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "update kernel_sample.widget_events set created_by = created_by"))).SqlState);
+        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "delete from kernel_sample.widget_events"))).SqlState);
+        await Run(connection, "select count(*) from kernel_sample.widget_events");
+        await Run(connection, "update kernel_sample.widgets set name = name where false");
     }
 
     private async Task CreateRoleAsync()

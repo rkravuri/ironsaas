@@ -17,7 +17,7 @@ namespace Iron.Kernel.Files.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("files")
+                .HasDefaultSchema("kernel_files")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -109,7 +109,7 @@ namespace Iron.Kernel.Files.Data.Migrations
                     b.HasIndex("RecordType", "RecordId")
                         .HasDatabaseName("ix_files_record_type_record_id");
 
-                    b.ToTable("files", "files");
+                    b.ToTable("files", "kernel_files");
                 });
 #pragma warning restore 612, 618
         }

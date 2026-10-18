@@ -17,7 +17,7 @@ namespace Iron.Kernel.Identity.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("identity")
+                .HasDefaultSchema("kernel_identity")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -128,7 +128,7 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_principals_status");
 
-                    b.ToTable("principals", "identity");
+                    b.ToTable("principals", "kernel_identity");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Identity.Data.Session", b =>
@@ -198,7 +198,7 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.HasIndex("EndedAt", "LastActivityAt")
                         .HasDatabaseName("ix_sessions_ended_at_last_activity_at");
 
-                    b.ToTable("sessions", "identity");
+                    b.ToTable("sessions", "kernel_identity");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Identity.Data.Session", b =>

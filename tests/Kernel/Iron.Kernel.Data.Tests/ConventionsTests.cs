@@ -10,7 +10,7 @@ public class ConventionsTests(PostgresFixture fixture)
     [Fact]
     public async Task TablesMadeFromTheConventionsPassTheSchemaCheck()
     {
-        var violations = await SchemaCheck.RunAsync(fixture.DataSource, ["sample"], TestContext.Current.CancellationToken);
+        var violations = await SchemaCheck.RunAsync(fixture.DataSource, ["kernel_sample"], TestContext.Current.CancellationToken);
 
         Assert.Empty(violations);
     }
@@ -23,7 +23,7 @@ public class ConventionsTests(PostgresFixture fixture)
             """
             select table_name::text || '.' || column_name::text
             from information_schema.columns
-            where table_schema = 'sample'
+            where table_schema = 'kernel_sample'
             order by table_name, column_name
             """,
             connection);

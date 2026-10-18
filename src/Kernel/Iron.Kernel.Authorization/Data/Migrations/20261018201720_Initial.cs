@@ -13,11 +13,11 @@ namespace Iron.Kernel.Authorization.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "authz");
+                name: "kernel_authz");
 
             migrationBuilder.CreateTable(
                 name: "roles",
-                schema: "authz",
+                schema: "kernel_authz",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -39,7 +39,7 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
             migrationBuilder.CreateTable(
                 name: "role_assignments",
-                schema: "authz",
+                schema: "kernel_authz",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -59,7 +59,7 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                     table.ForeignKey(
                         name: "fk_role_assignments_roles_role_id",
                         column: x => x.role_id,
-                        principalSchema: "authz",
+                        principalSchema: "kernel_authz",
                         principalTable: "roles",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -67,13 +67,13 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_role_assignments_principal_id",
-                schema: "authz",
+                schema: "kernel_authz",
                 table: "role_assignments",
                 column: "principal_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_role_assignments_principal_id_role_id_scope_kind_scope_id",
-                schema: "authz",
+                schema: "kernel_authz",
                 table: "role_assignments",
                 columns: new[] { "principal_id", "role_id", "scope_kind", "scope_id" },
                 unique: true)
@@ -81,13 +81,13 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_role_assignments_role_id",
-                schema: "authz",
+                schema: "kernel_authz",
                 table: "role_assignments",
                 column: "role_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_roles_name",
-                schema: "authz",
+                schema: "kernel_authz",
                 table: "roles",
                 column: "name",
                 unique: true);
@@ -98,11 +98,11 @@ namespace Iron.Kernel.Authorization.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "role_assignments",
-                schema: "authz");
+                schema: "kernel_authz");
 
             migrationBuilder.DropTable(
                 name: "roles",
-                schema: "authz");
+                schema: "kernel_authz");
         }
     }
 }

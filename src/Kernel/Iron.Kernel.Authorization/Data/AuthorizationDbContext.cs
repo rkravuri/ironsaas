@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Iron.Kernel.Authorization.Data;
 
 /// <summary>The <c>authz</c> schema: roles and role assignments (TF-032, TF-033).</summary>
-[Schema("authz")]
+[Schema("kernel_authz")]
 public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<Role> Roles => Set<Role>();

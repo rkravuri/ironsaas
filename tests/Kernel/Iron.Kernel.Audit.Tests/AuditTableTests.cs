@@ -49,10 +49,10 @@ public class AuditTableTests(AuditFixture fixture)
 
         await using var dataSource = new NpgsqlDataSourceBuilder(fixture.AppConnectionString).Build();
         await using var connection = await dataSource.OpenConnectionAsync(TestContext.Current.CancellationToken);
-        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "update audit.events set outcome = 'changed'"))).SqlState);
-        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "delete from audit.events"))).SqlState);
+        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "update kernel_audit.events set outcome = 'changed'"))).SqlState);
+        Assert.Equal("42501", (await Assert.ThrowsAsync<PostgresException>(() => Run(connection, "delete from kernel_audit.events"))).SqlState);
         await using var count = connection.CreateCommand();
-        count.CommandText = "select count(*) from audit.events where actor_id = @actor";
+        count.CommandText = "select count(*) from kernel_audit.events where actor_id = @actor";
         count.Parameters.AddWithValue("actor", actor);
         Assert.Equal(1L, await count.ExecuteScalarAsync(TestContext.Current.CancellationToken));
     }

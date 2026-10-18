@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Iron.Kernel.Data.Tests.Sample;
 
 /// <summary>A module context as a real module would write it (see the Iron.Kernel.Data README).</summary>
-[Schema("sample")]
+[Schema("kernel_sample")]
 public sealed class SampleDbContext(DbContextOptions<SampleDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<Widget> Widgets => Set<Widget>();

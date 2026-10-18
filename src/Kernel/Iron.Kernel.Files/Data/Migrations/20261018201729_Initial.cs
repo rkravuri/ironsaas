@@ -12,11 +12,11 @@ namespace Iron.Kernel.Files.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "files");
+                name: "kernel_files");
 
             migrationBuilder.CreateTable(
                 name: "files",
-                schema: "files",
+                schema: "kernel_files",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -43,13 +43,13 @@ namespace Iron.Kernel.Files.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_files_record_type_record_id",
-                schema: "files",
+                schema: "kernel_files",
                 table: "files",
                 columns: new[] { "record_type", "record_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_files_storage_key",
-                schema: "files",
+                schema: "kernel_files",
                 table: "files",
                 column: "storage_key",
                 unique: true);
@@ -60,7 +60,7 @@ namespace Iron.Kernel.Files.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "files",
-                schema: "files");
+                schema: "kernel_files");
         }
     }
 }

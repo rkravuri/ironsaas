@@ -12,15 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Iron.Kernel.Fleet.Data.Migrations
 {
     [DbContext(typeof(FleetDbContext))]
-    [Migration("20261018075617_JobKind")]
-    partial class JobKind
+    [Migration("20261018201759_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasDefaultSchema("fleet")
+                .HasDefaultSchema("kernel_fleet")
                 .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -104,7 +104,7 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                     b.HasIndex("TenantSlug", "RequestedAt")
                         .HasDatabaseName("ix_provisioning_jobs_tenant_slug_requested_at");
 
-                    b.ToTable("provisioning_jobs", "fleet");
+                    b.ToTable("provisioning_jobs", "kernel_fleet");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Fleet.Data.ProvisioningStep", b =>
@@ -183,7 +183,7 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_provisioning_steps_job_id_order");
 
-                    b.ToTable("provisioning_steps", "fleet");
+                    b.ToTable("provisioning_steps", "kernel_fleet");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Fleet.Data.ProvisioningStep", b =>

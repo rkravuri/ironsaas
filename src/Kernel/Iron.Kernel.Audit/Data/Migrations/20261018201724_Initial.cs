@@ -12,11 +12,11 @@ namespace Iron.Kernel.Audit.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "audit");
+                name: "kernel_audit");
 
             migrationBuilder.CreateTable(
                 name: "events",
-                schema: "audit",
+                schema: "kernel_audit",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -42,31 +42,31 @@ namespace Iron.Kernel.Audit.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_events_actor_id",
-                schema: "audit",
+                schema: "kernel_audit",
                 table: "events",
                 column: "actor_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_events_correlation_id",
-                schema: "audit",
+                schema: "kernel_audit",
                 table: "events",
                 column: "correlation_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_events_created_at",
-                schema: "audit",
+                schema: "kernel_audit",
                 table: "events",
                 column: "created_at");
 
             migrationBuilder.CreateIndex(
                 name: "ix_events_event_type",
-                schema: "audit",
+                schema: "kernel_audit",
                 table: "events",
                 column: "event_type");
 
             migrationBuilder.CreateIndex(
                 name: "ix_events_record_type_record_id",
-                schema: "audit",
+                schema: "kernel_audit",
                 table: "events",
                 columns: new[] { "record_type", "record_id" });
         }
@@ -76,7 +76,7 @@ namespace Iron.Kernel.Audit.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "events",
-                schema: "audit");
+                schema: "kernel_audit");
         }
     }
 }

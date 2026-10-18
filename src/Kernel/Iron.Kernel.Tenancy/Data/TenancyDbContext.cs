@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Iron.Kernel.Tenancy.Data;
 
 /// <summary>The <c>tenancy</c> schema: the tenant registry and its hostnames (TF-001).</summary>
-[Schema("tenancy")]
+[Schema("kernel_tenancy")]
 public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<Tenant> Tenants => Set<Tenant>();

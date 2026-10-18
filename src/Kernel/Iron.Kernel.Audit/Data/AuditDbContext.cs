@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Iron.Kernel.Audit.Data;
 
 /// <summary>The <c>audit</c> schema: the append-only event table (TF-060).</summary>
-[Schema("audit")]
+[Schema("kernel_audit")]
 public sealed class AuditDbContext(DbContextOptions<AuditDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<AuditEventRecord> Events => Set<AuditEventRecord>();

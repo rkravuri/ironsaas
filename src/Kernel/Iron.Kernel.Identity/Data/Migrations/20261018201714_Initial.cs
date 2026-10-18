@@ -12,11 +12,11 @@ namespace Iron.Kernel.Identity.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
-                name: "identity");
+                name: "kernel_identity");
 
             migrationBuilder.CreateTable(
                 name: "principals",
-                schema: "identity",
+                schema: "kernel_identity",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -46,7 +46,7 @@ namespace Iron.Kernel.Identity.Data.Migrations
 
             migrationBuilder.CreateTable(
                 name: "sessions",
-                schema: "identity",
+                schema: "kernel_identity",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -68,7 +68,7 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     table.ForeignKey(
                         name: "fk_sessions_principals_principal_id",
                         column: x => x.principal_id,
-                        principalSchema: "identity",
+                        principalSchema: "kernel_identity",
                         principalTable: "principals",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
@@ -76,39 +76,39 @@ namespace Iron.Kernel.Identity.Data.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "ix_principals_invitation_token_hash",
-                schema: "identity",
+                schema: "kernel_identity",
                 table: "principals",
                 column: "invitation_token_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_principals_login_id",
-                schema: "identity",
+                schema: "kernel_identity",
                 table: "principals",
                 column: "login_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_principals_status",
-                schema: "identity",
+                schema: "kernel_identity",
                 table: "principals",
                 column: "status");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sessions_ended_at_last_activity_at",
-                schema: "identity",
+                schema: "kernel_identity",
                 table: "sessions",
                 columns: new[] { "ended_at", "last_activity_at" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_sessions_principal_id",
-                schema: "identity",
+                schema: "kernel_identity",
                 table: "sessions",
                 column: "principal_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_sessions_token_hash",
-                schema: "identity",
+                schema: "kernel_identity",
                 table: "sessions",
                 column: "token_hash",
                 unique: true);
@@ -119,11 +119,11 @@ namespace Iron.Kernel.Identity.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "sessions",
-                schema: "identity");
+                schema: "kernel_identity");
 
             migrationBuilder.DropTable(
                 name: "principals",
-                schema: "identity");
+                schema: "kernel_identity");
         }
     }
 }

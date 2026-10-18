@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Iron.Kernel.Identity.Data;
 
 /// <summary>The <c>identity</c> schema: principals and sessions (TF-010, TF-020).</summary>
-[Schema("identity")]
+[Schema("kernel_identity")]
 public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<Principal> Principals => Set<Principal>();

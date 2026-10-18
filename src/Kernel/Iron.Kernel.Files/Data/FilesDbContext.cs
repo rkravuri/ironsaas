@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Design;
 namespace Iron.Kernel.Files.Data;
 
 /// <summary>The <c>files</c> schema: file metadata (TF-160).</summary>
-[Schema("files")]
+[Schema("kernel_files")]
 public sealed class FilesDbContext(DbContextOptions<FilesDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<StoredFile> Files => Set<StoredFile>();
