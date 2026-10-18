@@ -1,6 +1,6 @@
-# Iron.Fleet
+# Iron.Kernel.Fleet
 
-Schema `fleet`. Provisioning (TF-002, TF-210; ADR-0018). The control plane API lists the module for jobs; the fleet worker lists it and runs them.
+Kernel module (ADR-0029). Schema `kernel_fleet`. Provisioning (TF-002, TF-210; ADR-0018). The control plane API lists the module for jobs; the fleet worker lists it and runs them.
 
 | Folder | Holds |
 |---|---|

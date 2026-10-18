@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ApiError, ProblemSchema } from "@/api/client";
 import { applyProblem, fieldPath } from "./problems";
 
-// A problem exactly as ValidationFilter and ProblemFactory write it (tests/Iron.Api.Tests/ProblemTests.cs).
+// A problem exactly as ValidationFilter and ProblemFactory write it (tests/Kernel/Iron.Kernel.Api.Tests/ProblemTests.cs).
 const body = {
   type: "urn:iron:error:api.validation.failed",
   title: "The request is not valid.",

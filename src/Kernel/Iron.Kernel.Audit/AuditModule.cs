@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Audit;
 
-/// <summary>The audit trail (TF-060, thin in S1): the append-only <c>audit.events</c> table, the writer, and the search endpoint. Hosts list it first.</summary>
+/// <summary>The audit trail (TF-060, thin in S1): the append-only <c>kernel_audit.events</c> table, the writer, and the search endpoint. Hosts list it first.</summary>
 public sealed class AuditModule : IModule
 {
     public string Name => "audit";

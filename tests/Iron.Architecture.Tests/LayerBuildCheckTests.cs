@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Iron.Kernel;
 
 namespace Iron.Architecture.Tests;
 
@@ -18,7 +19,7 @@ public class LayerBuildCheckTests
     [InlineData("Kernel", null)]
     public async Task TheBuildStopsAProjectWithoutAValidLayer(string? layer, string? expectedError)
     {
-        var folder = Path.Combine(AppContext.BaseDirectory, "layer-fixtures", Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(AppContext.BaseDirectory, "layer-fixtures", Ids.New().ToString("N"));
         Directory.CreateDirectory(folder);
         try
         {

@@ -1,6 +1,6 @@
-# Iron.Files
+# Iron.Kernel.Files
 
-Schema `files`. File storage (TF-160; thin in S1, ADR-0016). Bytes live in the tenant's blob container (Azure Blob Storage, Azurite on the laptop; ADR-0006); the row in `files.files` is the truth about them: name, type, size, SHA-256, random storage key, record link.
+Kernel module (ADR-0029). Schema `kernel_files`. File storage (TF-160; thin in S1, ADR-0016). Bytes live in the tenant's blob container (Azure Blob Storage, Azurite on the laptop; ADR-0006); the row in `kernel_files.files` is the truth about them: name, type, size, SHA-256, random storage key, record link.
 
 | Folder | Holds |
 |---|---|

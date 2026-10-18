@@ -1,6 +1,6 @@
-# Iron.Tenancy
+# Iron.Kernel.Tenancy
 
-Schema `tenancy`. The tenant registry and the control plane's tenant API (TF-001, TF-002; ADR-0017). Runs in the control plane only.
+Kernel module (ADR-0029). Schema `kernel_tenancy`. The tenant registry and the control plane's tenant API (TF-001, TF-002; ADR-0017). Runs in the control plane only.
 
 | Folder | Holds |
 |---|---|

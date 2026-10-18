@@ -1,6 +1,6 @@
-# Iron.Authorization
+# Iron.Kernel.Authorization
 
-Schema `authz`. Permissions, roles and role assignments (TF-030 to TF-033; thin in S1, ADR-0012).
+Kernel module (ADR-0029). Schema `kernel_authz`. Permissions, roles and role assignments (TF-030 to TF-033; thin in S1, ADR-0012).
 
 | Folder | Holds |
 |---|---|

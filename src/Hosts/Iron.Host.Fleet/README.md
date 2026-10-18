@@ -11,7 +11,7 @@ A host composes modules; it holds no business logic of its own. Modules are list
 | `Tenant:Id` | The tenant slug this unit is bound to. Required. |
 | `Tenant:Hostnames` | The hostnames this unit answers to. Required, at least one. Other hostnames get 421. |
 | `ConnectionStrings:Database` | The unit's database. Required (T12 moves it to the secret store). |
-| `Security:*` | See Iron.Security. |
+| `Security:*` | See Iron.Kernel.Security. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | The collector; default `http://localhost:4317`. |
 | `Heartbeat:Interval` | Heartbeat interval, default `00:01:00`. |
 
@@ -30,4 +30,4 @@ Example: `docker run --rm --env-file unit.env foundation/iron-fleet:dev migrate`
 
 ## Image
 
-`docker build -f src/Iron.Host.Fleet/Dockerfile -t foundation/iron-fleet:dev .` from the repository root, or `make images` for all four. Runtime image `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled`: no shell, non-root, port 8080.
+`docker build -f src/Hosts/Iron.Host.Fleet/Dockerfile -t foundation/iron-fleet:dev .` from the repository root, or `make images` for all four. Runtime image `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled`: no shell, non-root, port 8080.

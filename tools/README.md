@@ -6,4 +6,4 @@
 
 The scaffolding tool that creates a module or an entity from templates (TF-190) arrives after slice S1; the S1 modules are the templates it will copy.
 
-Tools are console programs. They may reference the libraries they need and are outside the module boundary rules; they are not part of any image.
+Tools are console programs with `<IronLayer>Tool</IronLayer>` (ADR-0029). They may reference the libraries they need and are outside the module boundary rules; they are not part of any image.

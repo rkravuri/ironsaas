@@ -21,7 +21,7 @@ export const ProblemSchema = z.object({
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
-/** The list envelope (TF-101) as Iron.Api writes it (ListResponse.cs): data, paging meta and links. */
+/** The list envelope (TF-101) as Iron.Kernel.Api writes it (ListResponse.cs): data, paging meta and links. */
 export const ListMetaSchema = z.object({
   page_number: z.number(),
   page_size: z.number(),

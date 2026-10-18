@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Files;
 
-/// <summary>Files (TF-160, thin in S1): metadata in <c>files.files</c>, bytes in the tenant's blob container, the hash checked on download.</summary>
+/// <summary>Files (TF-160, thin in S1): metadata in <c>kernel_files.files</c>, bytes in the tenant's blob container, the hash checked on download.</summary>
 public sealed class FilesModule : IModule
 {
     public string Name => "files";

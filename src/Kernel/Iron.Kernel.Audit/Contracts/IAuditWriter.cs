@@ -38,7 +38,7 @@ public static class AuditPermissions
 }
 
 /// <summary>
-/// Records an audit event as a row in <c>audit.events</c> on the scope's connection: inside the caller's unit of work
+/// Records an audit event as a row in <c>kernel_audit.events</c> on the scope's connection: inside the caller's unit of work
 /// when one is open, so the event is committed with the change (TF-060 AC1), otherwise at once. Callers never swallow
 /// a failure silently: they log it.
 /// </summary>

@@ -19,18 +19,22 @@ Directory.Packages.props     every package version, once, with its licence
 global.json                  SDK band and the test runner
 Makefile                     the developer commands
 src/
-  Iron.Core/  Iron.Data/  Iron.Api/  Iron.Telemetry/  Iron.Security/    shared libraries (no schema)
-  Iron.<Module>/             one folder per module
-    Api/                     endpoints (thin)
-    Services/                business logic (plain classes)
-    Data/                    entities, repositories, migrations for this module's schema
-    Contracts/               public interfaces and DTOs; its own project Iron.<Module>.Contracts
-    README.md                what the module is responsible for
-  Iron.Host.Api/  Iron.Host.Worker/              tenant unit hosts, with their Dockerfiles
-  Iron.Host.ControlPlane/  Iron.Host.Fleet/      control plane hosts, with their Dockerfiles
-shell/                       the React shell: src/api, src/auth, src/modules/<module>, src/components/data-grid, e2e/
-products/                    business products, same layout as a module (after S2)
-tests/                       test projects; Iron.Architecture.Tests holds the build checks
+  Kernel/                    technical mechanisms with no business meaning (ADR-0029)
+    Iron.Kernel/             the vocabulary, one namespace (no schema)
+    Iron.Kernel.Data/  .Api/  .Telemetry/  .Security/                kernel libraries (no schema)
+    Iron.Kernel.<Module>/    one folder per kernel module, schema kernel_<module>
+      Api/                   endpoints (thin)
+      Services/              business logic (plain classes)
+      Data/                  entities, repositories, migrations for this module's schema
+      Contracts/             public interfaces and DTOs; its own project Iron.Kernel.<Module>.Contracts
+      README.md              what the module is responsible for
+  Business/                  Iron.Business.<Module>: shared business masters, schema business_<module> (README; empty)
+  Products/                  Iron.Products.<Product>: one product each, schema products_<product> (README; empty)
+  Hosts/
+    Iron.Host.Api/  Iron.Host.Worker/            tenant unit hosts, with their Dockerfiles
+    Iron.Host.ControlPlane/  Iron.Host.Fleet/    control plane hosts, with their Dockerfiles
+shell/                       the React shell: src/api, src/auth, src/modules/<layer>/<module>, src/components/data-grid, e2e/
+tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, and <Layer>/<Project>.Tests
 tools/Iron.Smoke/            the smoke test; scaffolding tools come after S1
 infra/compose/               the laptop platform and the unit template's rendered output
 .github/workflows/           ci.yml and release.yml
@@ -43,13 +47,14 @@ docs/                        prd/, adr/, guides/, slices/
 |---|---|---|
 | Warnings are errors | Any compiler or analyzer warning | Fix the warning. Do not suppress it without a comment that says why. |
 | One version per package, in `Directory.Packages.props` | A project has a `Version` attribute on a `PackageReference`, or a package is missing from the props file | Add the package to `Directory.Packages.props` with its licence; reference it by name only. |
-| Module boundaries (ADR-0001) | A module references another module's implementation project; a Contracts project references anything but `Iron.Core`; a shared library references a module; a host references another host | Move the shared type into the other module's `Contracts` project and reference that. |
+| Layers (ADR-0029) | A project declares no `<IronLayer>` or one that is not `Kernel`, `Business`, `Products`, `Host`, `Test` or `Tool` (the build stops with `IRON0001` or `IRON0002`); the layer does not match the project's name and folder; a project references a higher layer (Kernel to Business or Products, Business to Products), even its Contracts | Declare the layer. For an upward need, invert it: the lower layer declares an interface in its Contracts, the higher one implements it. |
+| Module boundaries (ADR-0001) | A module references another module's implementation project; a Contracts project references anything but `Iron.Kernel`; a kernel library references a module; a host references another host | Move the shared type into the other module's `Contracts` project and reference that. |
 | Private namespaces (ADR-0001) | An assembly uses a type from another module's `Api`, `Services` or `Data` namespace | Expose what you need through the other module's `Contracts` project. |
-| Layout | A project is not in a folder with its own name; a Contracts project is outside its module; a module has no Contracts project; a project under `src/` does not start with `Iron.` | Move or rename the project; add the missing Contracts project. |
+| Layout | A project is not in a folder with its own name; a Contracts project is outside its module; a module has no Contracts project; a project under `src/` does not start with `Iron.`; `src/` holds something other than `Kernel/`, `Business/`, `Products/` and `Hosts/` | Move or rename the project; add the missing Contracts project. |
 
 The messages name the project file or the assembly and the forbidden reference.
 
-## Writing code: the Core conventions (ADR-0007)
+## Writing code: the kernel vocabulary's conventions (ADR-0007)
 
 - A service returns `Result` or `Result<T>` for expected failures and never throws for them. `return Error.NotFound("identity.user.not_found", "The user does not exist.");` reads as plain code. Exceptions are for programmer errors and infrastructure failures.
 - Error codes are lowercase dotted segments, at least two: `module.resource.reason`. The constructor rejects other shapes.
@@ -67,7 +72,7 @@ The messages name the project file or the assembly and the forbidden reference.
 - The module's context derives from `ModuleDbContext`, carries `[Schema("module")]`, exposes a `DbSet<T>` per entity and maps module-internal relations and indexes in `ConfigureModule`. Snake_case names, the key, the version token, the soft-delete filter and the append-only comment come from the conventions.
 - Never add a foreign key to a table of another module. Store the other record's id as a `Guid`.
 - Register the context in the host with `services.AddIronDbContext<MyDbContext>()` after `services.AddIronDatabase(connectionString)`.
-- Tests that touch the database use the `PostgresFixture` pattern from `tests/Iron.Data.Tests`: a throw-away container, `EnsureCreated` from the context, `FakeTimeProvider` and a fixed principal.
+- Tests that touch the database use the `PostgresFixture` pattern from `tests/Kernel/Iron.Kernel.Data.Tests`: a throw-away container, `EnsureCreated` from the context, `FakeTimeProvider` and a fixed principal.
 
 ## Writing an endpoint (ADR-0009)
 
@@ -87,21 +92,27 @@ The messages name the project file or the assembly and the forbidden reference.
 
 ## Add a module
 
-Example: a new module `Iron.Settings`.
+Start with the placement test (ADR-0029). It has no business meaning: Kernel. Two or more products would need to own it: Business. One product owns it: Products. Write the answer and the reason in the module's README; a reviewer reads it first.
 
-1. Create `src/Iron.Settings/` with the folders `Api/`, `Services/`, `Data/` and `Contracts/`.
-2. Copy `src/Iron.Audit/Iron.Audit.csproj` to `src/Iron.Settings/Iron.Settings.csproj`. Change the Contracts reference to `Contracts/Iron.Settings.Contracts.csproj`. Keep the `DefaultItemExcludes` line; it keeps the Contracts sources out of this project.
-3. Copy `src/Iron.Audit/Contracts/Iron.Audit.Contracts.csproj` to `src/Iron.Settings/Contracts/Iron.Settings.Contracts.csproj`.
-4. Add both projects to `Foundation.slnx` under a new folder `/src/modules/Iron.Settings/`.
+Example: a new kernel module `Iron.Kernel.Settings` (typed settings know nothing about any business domain).
+
+1. Create `src/Kernel/Iron.Kernel.Settings/` with the folders `Api/`, `Services/`, `Data/` and `Contracts/`.
+2. Copy `src/Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj` to `src/Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj`. Change the Contracts reference to `Contracts/Iron.Kernel.Settings.Contracts.csproj`. Keep `<IronLayer>Kernel</IronLayer>` and the `DefaultItemExcludes` line; the second keeps the Contracts sources out of this project.
+3. Copy `src/Kernel/Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj` to `src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj`.
+4. Add both projects to `Foundation.slnx` under a new folder `/src/Kernel/Iron.Kernel.Settings/`.
 5. Add both projects to the references of `tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj`, so the private-namespace check can read their assemblies. The test tells you when you forget.
-6. Reference the module from the hosts that run it (`src/Iron.Host.*`).
-7. Write `src/Iron.Settings/README.md`: one paragraph on the module's responsibility, taken from PRD section 2.1, and its schema name.
-8. Run `make check`. It confirms the layout and the references.
-9. Then follow the module pattern (from T7): the module class, its permissions, its DbContext and migrations, its endpoints, its tests.
+6. Reference the module from the hosts that run it (`src/Hosts/Iron.Host.*`).
+7. Write `src/Kernel/Iron.Kernel.Settings/README.md`: its layer and why, one paragraph on the module's responsibility, taken from PRD section 2.1, and its schema name (`kernel_settings`).
+8. Run `make check`. It confirms the layers, the layout and the references.
+9. Then follow the module pattern (from T7): the module class, its permissions, its DbContext with `[Schema("kernel_settings")]` and migrations, its endpoints, its tests in `tests/Kernel/Iron.Kernel.Settings.Tests/`.
 
-## Add a product
+Permission names, audit events, error codes, routes and configuration sections name the module, not the layer: `settings.values.manage`, never `kernel.settings.values.manage`.
 
-Same steps under `products/<Name>/`, with namespace `<Name>` (for example `Procurement`) and schema `procurement`. The same rules apply; the architecture tests treat a product like a module.
+When a kernel module needs something only a business module can supply (the organisation kinds, for one), the kernel declares an interface in its Contracts with a kernel default, and the business module implements it; the host registers the business implementation. The kernel never references Business.
+
+## Add a business module or a product
+
+The same steps under `src/Business/Iron.Business.<Module>/` (layer `Business`, schema `business_<module>`) or `src/Products/Iron.Products.<Product>/` (layer `Products`, schema `products_<product>`), with tests in `tests/Business/` or `tests/Products/`. Every entity is a `BusinessRecord` or marked `ITenantWide` (TF-220). A business module may use the kernel; a product may use Business and the kernel; both only through Contracts projects. The two layer READMEs (`src/Business/README.md`, `src/Products/README.md`) have the naming table.
 
 ## Write an ADR
 
@@ -135,7 +146,7 @@ Anonymous endpoints are the short list of TF-030: health, login, recovery, invit
 ## A table and its migration (T8)
 
 1. Add or change the entity in the module's `Data/` folder (derive from `AuditedEntity`, `AppendOnlyEntity` or `BusinessRecord`) and map it in `ConfigureModule`.
-2. Generate the migration: `make ef-add MODULE=Authorization NAME=AddRoleColour`. The first time, `dotnet tool restore` installs `dotnet-ef` from `.config/dotnet-tools.json`. The generated files land in `src/Iron.<Module>/Data/Migrations`; read the `Up` method once, then commit them with the entity change.
+2. Generate the migration: `make ef-add MODULE=Authorization NAME=AddRoleColour`. The first time, `dotnet tool restore` installs `dotnet-ef` from `.config/dotnet-tools.json`. `MODULE` is the last segment of the module's name, whatever its layer. The generated files land in the module's `Data/Migrations` (for example `src/Kernel/Iron.Kernel.Authorization/Data/Migrations`); read the `Up` method once, run `make format` (Entity Framework writes a byte-order mark that the format check refuses), then commit them with the entity change.
 3. `make test`: the module's `ModelTests` passes only when the migration matches the model; the schema check runs over the migrated schema.
 4. Apply it: `make migrate` on the laptop; the fleet runs the image's `migrate` command for every tenant unit.
 
@@ -152,7 +163,7 @@ await audit.WriteAsync(new AuditEvent("procurement.order.approved", AuditOutcome
 await transaction.CommitAsync(cancellationToken);
 ```
 
-`IUnitOfWork` (Iron.Data) puts every module context of the request in one transaction; disposing without `CommitAsync` rolls everything back. Without a unit of work, each `SaveChangesAsync` is its own transaction and the audit event is written at once, which is right for a denial or a failed login.
+`IUnitOfWork` (Iron.Kernel.Data) puts every module context of the request in one transaction; disposing without `CommitAsync` rolls everything back. Without a unit of work, each `SaveChangesAsync` is its own transaction and the audit event is written at once, which is right for a denial or a failed login.
 
 The app role cannot change or delete audit rows; PostgreSQL refuses it. `make migrate` grants the role's privileges when `Database:AppRole` is set (`Database__AppRole=acme_app`); the fleet sets it for every unit.
 
@@ -180,14 +191,14 @@ Tokens live 15 minutes, carry the unit's tenant, and are checked on every reques
 
 A host reads its configuration from its unit secret in the store, loaded at start by `AddIronSecrets()` just below the environment variables. Inside a module, inject the bound options or `IConfiguration` as usual; never read the store directly. What a unit needs at runtime goes into the keys the fleet writes (`ConnectionStrings:Database`, `Database:AppRole`, `Storage:ContainerSasUrl`, `Tokens:SigningKeyPem`); a new runtime secret is a new key written by the fleet's secrets step and read through configuration, not a new way to fetch it.
 
-Files go through `IObjectStorage` (Iron.Files.Contracts): `PutAsync`, `GetAsync`, `DeleteAsync`, with the tenant's container behind it. The container's signature is all a unit holds; it cannot create containers or reach another tenant's.
+Files go through `IObjectStorage` (Iron.Kernel.Files.Contracts): `PutAsync`, `GetAsync`, `DeleteAsync`, with the tenant's container behind it. The container's signature is all a unit holds; it cannot create containers or reach another tenant's.
 
 
 ## The control plane and a provisioning step (T13, T14, ADR-0017 to ADR-0019)
 
-The control plane is a unit like the others, with `Iron.Tenancy` (the registry and the tenant API) and `Iron.Fleet` (jobs, steps, the worker). A new thing to do for every tenant is a new step:
+The control plane is a unit like the others, with `Iron.Kernel.Tenancy` (the registry and the tenant API) and `Iron.Kernel.Fleet` (jobs, steps, the worker). A new thing to do for every tenant is a new step:
 
-1. Add a class in `src/Iron.Fleet/Services/Steps/` implementing `IProvisioningStep`: a `Name`, an `Order`, the `Kinds` of job it belongs to (`Provision`, `Update`, `Deprovision`), and `RunAsync(ProvisioningContext, ...)` returning what it reports.
+1. Add a class in `src/Kernel/Iron.Kernel.Fleet/Services/Steps/` implementing `IProvisioningStep`: a `Name`, an `Order`, the `Kinds` of job it belongs to (`Provision`, `Update`, `Deprovision`), and `RunAsync(ProvisioningContext, ...)` returning what it reports.
 2. Make it idempotent and resumable: read what an earlier run left in the store or the database before creating anything, and keep nothing generated only in memory (ADR-0018). A step that talks to the unit does it through `IUnitRuntime`, never through Docker directly.
 3. Register it in `FleetModule.AddServices` and extend the step list in `ProvisioningTests`; the tests run the steps against real PostgreSQL, Azurite and OpenBao containers with a recording runtime.
 
@@ -200,7 +211,7 @@ The fleet worker needs nothing else: it runs the steps of the job's kind in orde
 2. Put the page on a template from `shell/src/components/templates`: `ListPage` for a list (the title, one line, the actions, the filters, and the grid; the density switch comes with it), `RecordPage` for a record (the `RecordHeader` with its status as a word, then the panels behind tabs: `AttachmentPanel`, `HistoryPanel`, `ApprovalPanel`, `CommentPanel`), `WizardPage` for steps, `ConsolePage` for settings, `DashboardPage` for numbers. Nothing here is `EmptyState`; a wait is `LoadingState`; a question is `ConfirmDialog`; a form in a dialog is `FormDialog`. They live in `shell/src/components/panels`.
 3. For a list, declare the columns (`field` is the API's field name; `sortable` and `filter` follow the API's field table) and render `<DataGrid columns={...} fetchPage={...} defaultSort={...} label={...} onRowOpen={...} />`; paging, sorting and filtering are server round trips the wrapper builds. Space and Enter select the focused row, a double click or Ctrl+Enter runs `onRowOpen`, and `onSelectionChange` tells the page what is selected.
 4. For a form, `useZodForm({ schema, initialValues })` and `<Form form={form} onSubmit={save} submitLabel={...} secondary={...}>` with Mantine inputs bound through `form.getInputProps`. Field names are camelCase; when `save` rejects with an `ApiError`, the API's field problems land on their fields (`items[0].unit_price` becomes `items.0.unitPrice`) and the rest shows at the top with the correlation id. Never two primary actions.
-5. Add the route and the navigation entry to the module's manifest in `shell/src/modules/<module>/manifest.tsx`, each with its `permission` (`null` for any signed-in principal), and the manifest to `shell/src/modules/index.ts` if it is new. Every string goes through `src/i18n/en.json`.
+5. Add the route and the navigation entry to the module's manifest in `shell/src/modules/<layer>/<module>/manifest.tsx`, each with its `permission` (`null` for any signed-in principal), and the manifest to `shell/src/modules/index.ts` if it is new. Every string goes through `src/i18n/en.json`.
 6. `make shell-check`: a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper and a colour by value fail lint. A new component gets its tile in the gallery, and `make shell-a11y` scans it.
 
 A page reads the signed-in principal with `useSession()`; it never checks a permission itself beyond what the manifest declares, since the API's answer is the one that counts. Errors from `request()` are `ApiError` with the correlation id; the error views show it.

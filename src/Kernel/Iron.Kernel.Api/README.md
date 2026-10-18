@@ -1,19 +1,19 @@
-# Iron.Api
+# Iron.Kernel.Api
 
 REST conventions for every endpoint of every host (TF-100, TF-101, ADR-0009). No schema.
 
 | Namespace | What is in it |
 |---|---|
-| `Iron.Api` | `AddIronApi()` and `UseIronApi()`: JSON shape, problem details, the last-line exception handler |
-| `Iron.Api.Modules` | `IModule` and `AddModules` / `MapModules`: how a host composes modules |
-| `Iron.Api.Permissions` | `RequirePermission` and `RequireSignedIn` on endpoints and groups, `PermissionFilter` and `SignedInFilter` (401 with `auth.not_authenticated` or `auth.session_expired`, 403), `AuthenticationFailure` for authentication middleware, `IPermissionEvaluator` for the Authorization module, `PermissionCatalogue`, `EndpointPermissionCheck` at start-up (TF-030, TF-031) |
-| `Iron.Api.Tenancy` | `TenantBinding.FromConfiguration`, `AddIronTenant`, `UseIronTenant`: the unit's one tenant from configuration and the hostname check (TF-003) |
-| `Iron.Api.Routing` | `MapApiGroup("users")`: a route group under `/api/v1/users`, tagged for OpenAPI |
-| `Iron.Api.Responses` | `ApiResults` (problem, result mapping, list envelope) and `ListResponse`, `ListMeta`, `ListLinks` |
-| `Iron.Api.Problems` | `ProblemFactory` (Error to problem details), `ApiErrors` (the API's own codes), `UnexpectedExceptionHandler` |
-| `Iron.Api.Lists` | `ListQueryParser` (query string to `ListQuery` against a resource's `ListFields`) and `FieldShaper` (sparse fields) |
-| `Iron.Api.Validation` | `Validate<TRequest>()` endpoint filter on FluentValidation and `FieldErrorMapper` |
-| `Iron.Api.OpenApi` | `AddIronOpenApi(title)` and `MapIronOpenApi()`: OpenAPI document and Scalar browser, Development only |
+| `Iron.Kernel.Api` | `AddIronApi()` and `UseIronApi()`: JSON shape, problem details, the last-line exception handler |
+| `Iron.Kernel.Api.Modules` | `IModule` and `AddModules` / `MapModules`: how a host composes modules |
+| `Iron.Kernel.Api.Permissions` | `RequirePermission` and `RequireSignedIn` on endpoints and groups, `PermissionFilter` and `SignedInFilter` (401 with `auth.not_authenticated` or `auth.session_expired`, 403), `AuthenticationFailure` for authentication middleware, `IPermissionEvaluator` for the Authorization module, `PermissionCatalogue`, `EndpointPermissionCheck` at start-up (TF-030, TF-031) |
+| `Iron.Kernel.Api.Tenancy` | `TenantBinding.FromConfiguration`, `AddIronTenant`, `UseIronTenant`: the unit's one tenant from configuration and the hostname check (TF-003) |
+| `Iron.Kernel.Api.Routing` | `MapApiGroup("users")`: a route group under `/api/v1/users`, tagged for OpenAPI |
+| `Iron.Kernel.Api.Responses` | `ApiResults` (problem, result mapping, list envelope) and `ListResponse`, `ListMeta`, `ListLinks` |
+| `Iron.Kernel.Api.Problems` | `ProblemFactory` (Error to problem details), `ApiErrors` (the API's own codes), `UnexpectedExceptionHandler` |
+| `Iron.Kernel.Api.Lists` | `ListQueryParser` (query string to `ListQuery` against a resource's `ListFields`) and `FieldShaper` (sparse fields) |
+| `Iron.Kernel.Api.Validation` | `Validate<TRequest>()` endpoint filter on FluentValidation and `FieldErrorMapper` |
+| `Iron.Kernel.Api.OpenApi` | `AddIronOpenApi(title)` and `MapIronOpenApi()`: OpenAPI document and Scalar browser, Development only |
 
 The conventions in one view:
 
@@ -55,4 +55,4 @@ users.MapPost("/", async (CreateUser request, HttpContext http, UserService serv
 
 Permissions on endpoints and the start-up check arrive with T8 (`RequirePermission`).
 
-Tests: `tests/Iron.Api.Tests` (an in-memory ASP.NET Core server; no Docker).
+Tests: `tests/Kernel/Iron.Kernel.Api.Tests` (an in-memory ASP.NET Core server; no Docker).

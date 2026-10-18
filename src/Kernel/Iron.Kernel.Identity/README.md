@@ -1,6 +1,6 @@
-# Iron.Identity
+# Iron.Kernel.Identity
 
-Schema `identity`. Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029; ADR-0014, ADR-0015).
+Kernel module (ADR-0029). Schema `kernel_identity`. Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029; ADR-0014, ADR-0015).
 
 | Folder | Holds |
 |---|---|
