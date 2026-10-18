@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode, SVGProps } from "react";
 import { useTranslation } from "react-i18next";
-import { drawingSizes, hand, type DrawingSize } from "./hand";
+import { drawingSizes, figure, hand, type DrawingSize, type FigurePose } from "./hand";
 import type { IllustrationName } from "./names";
 
 export interface IllustrationProps {
@@ -62,4 +62,26 @@ export function Fine(props: SVGProps<SVGPathElement>) {
 /** The ground every drawing stands on: one thin line, so the set reads as one world. */
 export function Ground() {
   return <Fine d="M28 108 H132" strokeOpacity={0.5} />;
+}
+
+/** A person, always through the hand's one figure: the posture says what the drawing means. */
+export function Figure({ x, y, pose }: { x: number; y: number; pose: FigurePose }) {
+  const parts = figure(x, y, pose);
+  return (
+    <g data-figure={pose}>
+      <circle cx={parts.head.cx} cy={parts.head.cy} r={parts.head.r} />
+      <path d={parts.cap} />
+      <path d={parts.neck} />
+      <path d={parts.torso} fill="var(--drawing-accent)" fillOpacity={hand.fillOpacity} />
+      {parts.arms.map((d) => (
+        <path key={d} d={d} />
+      ))}
+      {parts.legs.map((d) => (
+        <path key={d} d={d} />
+      ))}
+      {parts.feet.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </g>
+  );
 }

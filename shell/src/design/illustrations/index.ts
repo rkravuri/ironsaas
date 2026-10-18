@@ -1,7 +1,7 @@
-export { Drawing, Fine, Ground, Tint } from "./Drawing";
+export { Drawing, Figure, Fine, Ground, Tint } from "./Drawing";
 export type { IllustrationProps } from "./Drawing";
-export { drawingSizes, hand } from "./hand";
-export type { DrawingSize } from "./hand";
+export { drawingSizes, figure, hand } from "./hand";
+export type { DrawingSize, FigureParts, FigurePose } from "./hand";
 export { illustrationNames } from "./names";
 export type { IllustrationName } from "./names";
 export { illustrations } from "./catalogue";

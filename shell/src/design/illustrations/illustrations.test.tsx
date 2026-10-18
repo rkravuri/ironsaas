@@ -72,3 +72,33 @@ describe("the illustrations", () => {
     }
   });
 });
+
+describe("the figure", () => {
+  const people: Record<string, "reading" | "waving" | "holding"> = { lost: "reading", welcome: "waving", success: "holding" };
+
+  it("draws every person the same way: a head with a cap line and no face, a tinted torso, limbs that bend, feet", () => {
+    for (const [name, pose] of Object.entries(people)) {
+      const { svg, unmount } = mount(name as (typeof illustrationNames)[number]);
+      const group = svg.querySelector(`[data-figure='${pose}']`);
+      expect(group).not.toBeNull();
+      expect(group?.querySelectorAll("circle")).toHaveLength(1);
+      const paths = [...(group?.querySelectorAll("path") ?? [])];
+      expect(paths).toHaveLength(9);
+      expect(paths.filter((path) => path.getAttribute("fill-opacity") === String(hand.fillOpacity))).toHaveLength(1);
+      const limbs = paths.map((path) => path.getAttribute("d") ?? "").filter((d) => d.split("L").length === 3);
+      expect(limbs).toHaveLength(4);
+      unmount();
+    }
+  });
+
+  it("changes the posture, not the person, between the three drawings", () => {
+    const limbsOf = (name: (typeof illustrationNames)[number], pose: string) => {
+      const { svg, unmount } = mount(name);
+      const limbs = [...(svg.querySelector(`[data-figure='${pose}']`)?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("d"));
+      unmount();
+      return limbs;
+    };
+    expect(limbsOf("lost", "reading")).not.toEqual(limbsOf("welcome", "waving"));
+    expect(limbsOf("welcome", "waving")).not.toEqual(limbsOf("success", "holding"));
+  });
+});
