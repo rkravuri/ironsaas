@@ -80,7 +80,7 @@ For work on a module without a provisioned tenant: `make migrate`, `make seed` (
 
 - `make test` and `make shell-check`: the unit and integration tests; the data tests start PostgreSQL, Azurite and OpenBao with Testcontainers, so Docker must be running.
 - `make smoke [TENANT=x]`: eleven steps against the live stack with the control plane and the fleet running and the telemetry profile up; provisions the `smoke` tenant (or `TENANT`) once and reuses it; writes `smoke-report.json`; keeps the administrator's password it chose at `secret/tenants/<tenant>/smoke`. It needs a tenant whose administrator it can still sign in as: a fresh one, or one it set up itself. After a heal, `make provision TENANT=<new>` and `make smoke TENANT=<new>`.
-- `make e2e [TENANT=x]`: the Playwright tests against `https://<tenant>.localhost` with that administrator, read from `secret/tenants/<tenant>/smoke` (browsers once with `cd shell && npm run e2e:install`; `E2E_BASE_URL` points them elsewhere). Run `make smoke` with the same `TENANT` first.
+- `make e2e [TENANT=x]`: the Playwright tests against `https://<tenant>.localhost` with that administrator, read from `secret/tenants/<tenant>/smoke` (browsers once with `cd shell && npm run e2e:install`; `E2E_BASE_URL` points them elsewhere). Run `make smoke` with the same `TENANT` first. Each run invites one person into the child unit (`E2E branch`) to prove the invitation link; those accounts stay Invited.
 - `make integration`: the pipeline's stage on this machine: platform and control plane from images, the control database migrated and seeded through the control-plane image, then the smoke (`TENANT=smoke` on a laptop whose `acme` administrator has been accepted by hand).
 
 ## 9. Known limits of the laptop stack
