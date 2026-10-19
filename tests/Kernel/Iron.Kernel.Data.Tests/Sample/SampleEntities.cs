@@ -29,8 +29,8 @@ public sealed class Widget : BusinessRecord, ISoftDeletable
     }
 }
 
-/// <summary>Platform data that changes but belongs to no organisation.</summary>
-public sealed class Preference : AuditedEntity
+/// <summary>Platform data that changes but belongs to no organisation: tenant-wide, so its lists page without a policy.</summary>
+public sealed class Preference : AuditedEntity, ITenantWide
 {
     private Preference()
     {

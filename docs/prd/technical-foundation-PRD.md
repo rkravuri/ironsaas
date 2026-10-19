@@ -14,7 +14,7 @@
 | Companion document | Functional Foundation PRD for procure-to-pay (same folder). It assumes everything in this document exists. |
 | Tags | `[Core]` must exist before the first business product ships. `[Extended]` can follow in a later slice. `[Decision]` a choice you must confirm. `[Carried]` behaviour carried over from the current product. `[Gap]` a gap or defect found in the current product that Foundation must close. |
 
-Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped.
+Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped. 2026-10-19 (task A3): TF-035 AC1 follows ADR-0032: another supplier's order by identifier answers not found, so a link reveals nothing.
 
 ## 1. Vision and principles
 
@@ -804,7 +804,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given a supplier user requesting another supplier's order by identifier, When evaluated, Then it is forbidden. (error case)
+- AC1 Given a supplier user requesting another supplier's order by identifier, When evaluated, Then it answers not found (ADR-0032). (error case)
 - AC2 Given a list request, When executed, Then the policy filter is part of the query so paging counts are correct.
 - AC3 Given a record with no policy declared, When accessed, Then the build check fails for that module.
 

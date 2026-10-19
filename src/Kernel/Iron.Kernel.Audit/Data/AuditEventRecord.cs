@@ -3,7 +3,7 @@ using Iron.Kernel.Data.Entities;
 namespace Iron.Kernel.Audit.Data;
 
 /// <summary>One row of <c>kernel_audit.events</c> (TF-060): written once, never changed. The app role cannot update or delete it.</summary>
-public sealed class AuditEventRecord : AppendOnlyEntity
+public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
 {
     public const int EventTypeMaxLength = 100;
     public const int TargetMaxLength = 500;

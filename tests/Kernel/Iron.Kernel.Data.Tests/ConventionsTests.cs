@@ -40,6 +40,8 @@ public class ConventionsTests(PostgresFixture fixture)
         Assert.Contains("widgets.version", columns);
         Assert.Contains("preferences.updated_by", columns);
         Assert.Contains("widget_events.created_at", columns);
+        Assert.Contains("proposals.status", columns);
+        Assert.Contains("proposals.created_by", columns);
         Assert.DoesNotContain("widget_events.updated_at", columns);
         Assert.DoesNotContain(columns, c => c.Any(char.IsUpper));
     }
@@ -61,9 +63,22 @@ public class ConventionsTests(PostgresFixture fixture)
 
         var violations = ModelCheck.Check(context.Model, nameof(SampleDbContext), isBusinessModule: true);
 
-        // Preference is an AuditedEntity, not a BusinessRecord; WidgetEvent is append-only and also not a BusinessRecord.
+        // Preference is marked ITenantWide on purpose; WidgetEvent is append-only and neither a BusinessRecord nor marked.
+        Assert.Equal(nameof(WidgetEvent), Assert.Single(violations).Split(' ')[1]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TheModelCheckRefusesABusinessRecordCarryingEitherMarkerInEveryModule(bool isBusinessModule)
+    {
+        var options = new DbContextOptionsBuilder<ContextWithAMarkedRecord>().UseNpgsql(fixture.ConnectionString).Options;
+        using var context = new ContextWithAMarkedRecord(options);
+
+        var violations = ModelCheck.Check(context.Model, nameof(ContextWithAMarkedRecord), isBusinessModule);
+
         Assert.Equal(2, violations.Count);
-        Assert.Contains(violations, v => v.Contains(nameof(Preference), StringComparison.Ordinal));
-        Assert.Contains(violations, v => v.Contains(nameof(WidgetEvent), StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("MarkedRecord is a BusinessRecord marked ITenantWide", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("OwnRuleRecord is a BusinessRecord marked IOwnAccessRule", StringComparison.Ordinal));
     }
 }

@@ -57,6 +57,9 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <!-- xUnit.net v3 (Apache-2.0). Runs on Microsoft Testing Platform v2; the runner is selected in global.json. -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <!-- The C# compiler as a library (MIT), so a test proves that paging a raw business record query does not compile
+         (ADR-0032). The version Entity Framework's design package already brings, so the graph keeps one Roslyn. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <!-- Throw-away PostgreSQL containers for integration tests (MIT). -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.14.0" />
     <PackageVersion Include="Testcontainers" Version="4.14.0" />

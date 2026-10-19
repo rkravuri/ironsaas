@@ -98,15 +98,16 @@ public class ListQueryExtensionsRuleTests
 [Collection(PostgresCollection.Name)]
 public class ListQueryExtensionsDatabaseTests(PostgresFixture fixture)
 {
-    private static readonly ListFields<Widget> Fields = new ListFields<Widget>()
-        .Add("name", w => w.Name)
-        .Add("owning_organisation_id", w => w.OwningOrganisationId)
-        .SortByDefault("name");
+    private static readonly ListFields<Preference> Fields = new ListFields<Preference>()
+        .Add("key", p => p.Key)
+        .Add("value", p => p.Value)
+        .SortByDefault("key");
 
+    /// <summary>Tenant-wide data pages directly; a business record pages through its policy (RecordPolicyTests).</summary>
     [Fact]
     public async Task ToPageAsyncReturnsOnePageWithTheTotal()
     {
-        var organisation = Ids.New();
+        var run = Ids.New().ToString("N")[..8];
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(Ids.New()));
 
         await using (var scope = provider.CreateAsyncScope())
@@ -114,7 +115,7 @@ public class ListQueryExtensionsDatabaseTests(PostgresFixture fixture)
             var context = scope.ServiceProvider.GetRequiredService<SampleDbContext>();
             for (var i = 0; i < 7; i++)
             {
-                context.Widgets.Add(new Widget(organisation, $"page-{i}"));
+                context.Preferences.Add(new Preference($"page-{run}-{i}", "on"));
             }
 
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -123,19 +124,15 @@ public class ListQueryExtensionsDatabaseTests(PostgresFixture fixture)
         await using (var scope = provider.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<SampleDbContext>();
-            var query = new ListQuery(
-                new PageRequest(2, 3),
-                [],
-                [new FilterTerm("owning_organisation_id", FilterOperator.Equals, organisation.ToString()), new FilterTerm("name", FilterOperator.StartsWith, "PAGE-")],
-                []);
+            var query = new ListQuery(new PageRequest(2, 3), [], [new FilterTerm("key", FilterOperator.StartsWith, $"PAGE-{run}-")], []);
 
-            var page = await context.Widgets.ApplyListQuery(query, Fields).ToPageAsync(query.Page, TestContext.Current.CancellationToken);
+            var page = await context.Preferences.ApplyListQuery(query, Fields).ToPageAsync(query.Page, TestContext.Current.CancellationToken);
 
             Assert.Equal(7, page.TotalCount);
             Assert.Equal(3, page.TotalPages);
             Assert.Equal(2, page.PageNumber);
-            string[] expected = ["page-3", "page-4", "page-5"];
-            Assert.Equal(expected, page.Items.Select(w => w.Name));
+            string[] expected = [$"page-{run}-3", $"page-{run}-4", $"page-{run}-5"];
+            Assert.Equal(expected, page.Items.Select(p => p.Key));
         }
     }
 }

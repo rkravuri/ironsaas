@@ -2,6 +2,7 @@ using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Data.Entities;
+using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Transactions;
 using Microsoft.EntityFrameworkCore;
 
@@ -106,7 +107,7 @@ public sealed class RoleAssignments(
     }
 }
 
-/// <summary>What one permission reaches in a list (ADR-0030), for the modules that list business records.</summary>
+/// <summary>What one permission reaches in a list (ADR-0030): the scope rule the record policies apply first (ADR-0032).</summary>
 public sealed class RecordAccessService(AccessGrants grants) : IRecordAccess
 {
     public Task<RecordAccess> AccessibleAsync(Guid principalId, Permission permission, string recordType, CancellationToken cancellationToken) =>

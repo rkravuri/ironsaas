@@ -15,14 +15,22 @@ public static class RecordAccessExtensions
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(access);
+        return access.IsEverything ? query : query.Where(Predicate<TRecord>(access));
+    }
+
+    /// <summary>The same rule as a predicate, for a record policy to join with its own (ADR-0032).</summary>
+    public static Expression<Func<TRecord, bool>> Predicate<TRecord>(RecordAccess access)
+        where TRecord : BusinessRecord
+    {
+        ArgumentNullException.ThrowIfNull(access);
         if (access.IsEverything)
         {
-            return query;
+            return _ => true;
         }
 
         var units = access.Units.ToArray();
         var records = access.Records.ToArray();
-        return query.Where(record => units.Contains(record.OwningOrganisationId) || records.Contains(record.Id));
+        return record => units.Contains(record.OwningOrganisationId) || records.Contains(record.Id);
     }
 
     /// <summary>

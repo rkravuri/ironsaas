@@ -8,7 +8,7 @@ namespace Iron.Kernel.Authorization.Data;
 /// A named set of permissions (TF-032). The code identifies the role in assignments, export and import; the name is for
 /// people (ADR-0031). System roles are seeded and cannot be edited; tenant roles belong to the administrators.
 /// </summary>
-public sealed partial class Role : AuditedEntity
+public sealed partial class Role : AuditedEntity, ITenantWide
 {
     public const int CodeMaxLength = 100;
     public const int NameMaxLength = 200;

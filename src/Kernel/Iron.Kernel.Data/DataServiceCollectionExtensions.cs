@@ -1,6 +1,7 @@
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Conventions;
+using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,9 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<SeedRunner>();
         services.AddScoped<SchemaCheckRunner>();
         services.AddScoped<GrantsRunner>();
+
+        // Lists and reads by id of business records go through their policies (ADR-0032); Authorization supplies IRecordAccess.
+        services.TryAddScoped<IRecordPolicies, RecordPolicies>();
         return services;
     }
 
