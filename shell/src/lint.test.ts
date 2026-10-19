@@ -5,7 +5,7 @@ import { ESLint, type Linter } from "eslint";
 // Every stylesheet under src, read at transform time; src/design is where values are allowed to live.
 const stylesheets = import.meta.glob<string>(["/src/**/*.css", "!/src/design/**"], { query: "?raw", import: "default", eager: true });
 // A real page path: type-checked linting wants a file that belongs to the project.
-const pagePath = "src/modules/identity/pages/UsersPage.tsx";
+const pagePath = "src/modules/kernel/identity/pages/UsersPage.tsx";
 const colourRule = "no-restricted-syntax";
 
 const findings = (result: ESLint.LintResult | undefined, ruleId: string): Linter.LintMessage[] => (result?.messages ?? []).filter((message) => message.ruleId === ruleId);
@@ -35,6 +35,57 @@ describe("the lint rules", () => {
     const [inWrapper] = await eslint.lintText(source, { filePath: "src/components/data-grid/DataGrid.tsx" });
     expect(findings(inWrapper, "no-restricted-imports")).toEqual([]);
   }, 60_000);
+
+  /** The layer rule (ADR-0029): a shell module imports downward only, from kernel to business to products. */
+  describe("the layer rule", () => {
+    const importRule = "no-restricted-imports";
+    const probe = (sources: string[]): string =>
+      `${sources.map((source, index) => `import { value${index} } from "${source}";`).join("\n")}\nexport const probe = [${sources.map((_, index) => `value${index}`).join(", ")}];\n`;
+
+    /** The layer patterns the configuration gives a file, applied to an import source as ESLint applies them. */
+    const refusedBy = async (eslint: ESLint, filePath: string, source: string): Promise<boolean> => {
+      const config = (await eslint.calculateConfigForFile(filePath)) as { rules?: Record<string, unknown> };
+      const [, options] = (config.rules?.[importRule] ?? []) as [unknown, { patterns?: { regex?: string; caseSensitive?: boolean }[] }?];
+      return (options?.patterns ?? []).some((pattern) => pattern.regex !== undefined && new RegExp(pattern.regex, pattern.caseSensitive ? "u" : "iu").test(source));
+    };
+
+    it("refuses business and products imports in a kernel module, by alias and by relative path", async () => {
+      const eslint = new ESLint();
+      const refused = ["@/modules/business/organisations/manifest", "../../products/procurement/manifest", "@/modules/products"];
+      const allowed = ["@/modules/kernel/identity/pages/UsersPage", "./products/local", "@/components/data-grid", "@/modules/registry"];
+
+      const [result] = await eslint.lintText(probe([...refused, ...allowed]), { filePath: pagePath });
+      const messages = findings(result, importRule);
+
+      expect(messages.map((message) => message.line)).toEqual([1, 2, 3]);
+      expect(messages.every((message) => message.message.includes("dependencies go downward only (ADR-0029)"))).toBe(true);
+    }, 60_000);
+
+    it("refuses products imports in a business module and allows the kernel", async () => {
+      const eslint = new ESLint();
+      const businessPage = "src/modules/business/organisations/pages/UnitsPage.tsx";
+
+      expect(await refusedBy(eslint, businessPage, "@/modules/products/procurement/manifest")).toBe(true);
+      expect(await refusedBy(eslint, businessPage, "../../../products/procurement/manifest")).toBe(true);
+      expect(await refusedBy(eslint, businessPage, "@/modules/kernel/identity/manifest")).toBe(false);
+      expect(await refusedBy(eslint, businessPage, "@/modules/business/items/manifest")).toBe(false);
+    }, 60_000);
+
+    it("keeps the grid rule inside the layers and leaves the products layer and the module list free of layer patterns", async () => {
+      const eslint = new ESLint();
+      const ruleFor = async (path: string): Promise<{ group?: string[]; regex?: string }[]> => {
+        const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
+        const [, options] = (config.rules?.[importRule] ?? []) as [unknown, { patterns?: { group?: string[]; regex?: string }[] }?];
+        return options?.patterns ?? [];
+      };
+
+      for (const path of [pagePath, "src/modules/business/organisations/manifest.tsx", "src/modules/products/procurement/manifest.tsx"]) {
+        expect((await ruleFor(path)).some((pattern) => pattern.group?.includes("ag-grid-*")), path).toBe(true);
+      }
+      expect(await refusedBy(eslint, "src/modules/products/procurement/manifest.tsx", "@/modules/business/organisations/manifest")).toBe(false);
+      expect(await refusedBy(eslint, "src/modules/index.ts", "@/modules/products/procurement/manifest")).toBe(false);
+    }, 60_000);
+  });
 
   /** The colour rule (ADR-0024 item 8): a page names a meaning, never a hue or a value. */
   describe("the colour rule", () => {

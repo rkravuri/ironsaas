@@ -1,5 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <!-- Iron.Core: shared primitives. It depends on nothing else in this repository. -->
-
-</Project>

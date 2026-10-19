@@ -27,9 +27,9 @@ check: ## Run only the architecture checks (module boundaries, layout)
 format: ## Apply the code style from .editorconfig
 	dotnet format Foundation.slnx
 
-clean: ## Remove build output
+clean: ## Remove build output (the .NET folders only; shell/node_modules has bin folders of its own)
 	dotnet clean Foundation.slnx
-	find . -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+	find src tests tools -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
 
 DEV_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=postgres;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
 DEV_STORAGE = Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=$$BLOB_ACCOUNT_NAME;AccountKey=$$BLOB_ACCOUNT_KEY;BlobEndpoint=http://localhost:10000/$$BLOB_ACCOUNT_NAME;" Storage__Container=dev
@@ -50,55 +50,62 @@ token: ## Get an access token for the laptop smoke client from the running API h
 run-api: env ## Run the tenant API host on the laptop against the platform (http://localhost:5100)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	ASPNETCORE_URLS=http://localhost:5100 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) \
-	dotnet run --project src/Iron.Host.Api
+	dotnet run --project src/Hosts/Iron.Host.Api
 
 run-worker: env ## Run the tenant worker host on the laptop against the platform (http://localhost:5101)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	ASPNETCORE_URLS=http://localhost:5101 ASPNETCORE_ENVIRONMENT=Development $(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) \
-	Heartbeat__Interval=00:00:15 dotnet run --project src/Iron.Host.Worker
+	Heartbeat__Interval=00:00:15 dotnet run --project src/Hosts/Iron.Host.Worker
 
 migrate: env ## Run the tenant API image command "migrate" against the laptop database (dotnet run)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) dotnet run --project src/Iron.Host.Api -- migrate
+	$(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) dotnet run --project src/Hosts/Iron.Host.Api -- migrate
+
+# A module is named by the last segment of its project name, whatever its layer (ADR-0029):
+# MODULE=Identity is src/Kernel/Iron.Kernel.Identity. Hosts are not modules. A segment that names no module, or more than one, is refused.
+MODULE_DIR = $(patsubst %/,%,$(dir $(wildcard $(foreach layer,Kernel Business Products,src/$(layer)/Iron.$(layer).$(MODULE)/Iron.$(layer).$(MODULE).csproj))))
+MODULE_CHECK = test -n "$(MODULE)" && test $(words $(MODULE_DIR)) -eq 1 || (echo "MODULE=$(MODULE) must be the last segment of exactly one module's name (Identity for Iron.Kernel.Identity); found: $(or $(MODULE_DIR),none)" && exit 1)
 
 ef-add: ## Add a migration for a module context: make ef-add MODULE=Authorization NAME=Initial
 	@test -n "$(MODULE)" && test -n "$(NAME)" || (echo "usage: make ef-add MODULE=Authorization NAME=Initial" && exit 1)
+	@$(MODULE_CHECK)
 	dotnet tool restore
-	dotnet ef migrations add $(NAME) --project src/Iron.$(MODULE) --startup-project src/Iron.$(MODULE) --context $(MODULE)DbContext --output-dir Data/Migrations
+	dotnet ef migrations add $(NAME) --project $(MODULE_DIR) --startup-project $(MODULE_DIR) --context $(MODULE)DbContext --output-dir Data/Migrations
 
 ef-script: ## Print the SQL of a module's migrations: make ef-script MODULE=Authorization
+	@$(MODULE_CHECK)
 	dotnet tool restore
-	dotnet ef migrations script --project src/Iron.$(MODULE) --startup-project src/Iron.$(MODULE) --context $(MODULE)DbContext --idempotent
+	dotnet ef migrations script --project $(MODULE_DIR) --startup-project $(MODULE_DIR) --context $(MODULE)DbContext --idempotent
 
 seed: env ## Run the tenant API image command "seed" against the laptop database (first administrator admin@dev.localhost)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) Seed__Administrator__LoginId=admin@dev.localhost Seed__Administrator__DisplayName="Dev Administrator" \
 	Seed__ServiceAccounts__0__ClientId=smoke-client Seed__ServiceAccounts__0__Secret=$(DEV_SMOKE_SECRET) \
-	dotnet run --project src/Iron.Host.Api -- seed
+	dotnet run --project src/Hosts/Iron.Host.Api -- seed
 
 secret-control: env ## Write the control plane's unit secret to OpenBao (control database, fleet admin connections, signing key)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-control-secret.sh
 
 migrate-control: env ## Migrate the control plane database (created on first run); needs make secret-control
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(CONTROL_TENANT) $(CONTROL_SECRETS) dotnet run --project src/Iron.Host.ControlPlane -- migrate
+	$(CONTROL_TENANT) $(CONTROL_SECRETS) dotnet run --project src/Hosts/Iron.Host.ControlPlane -- migrate
 
 seed-control: env ## Seed the control plane: system roles and the operator service account
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(CONTROL_TENANT) $(CONTROL_SECRETS) \
 	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
 	Seed__ServiceAccounts__1__ClientId=smoke-reader Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) Seed__ServiceAccounts__1__Role=service-default Seed__ServiceAccounts__1__DisplayName="Smoke reader (denial case)" \
-	dotnet run --project src/Iron.Host.ControlPlane -- seed
+	dotnet run --project src/Hosts/Iron.Host.ControlPlane -- seed
 
 run-control: env ## Run the control plane API on the laptop (http://localhost:5200)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	ASPNETCORE_URLS=http://localhost:5200 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_SECRETS) \
-	dotnet run --project src/Iron.Host.ControlPlane
+	dotnet run --project src/Hosts/Iron.Host.ControlPlane
 
 run-fleet: env ## Run the fleet worker on the laptop with the Compose runtime (it drives docker on this machine)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	ASPNETCORE_URLS=http://localhost:5201 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_SECRETS) $(FLEET_LAPTOP) Heartbeat__Interval=00:01:00 \
-	dotnet run --project src/Iron.Host.Fleet
+	dotnet run --project src/Hosts/Iron.Host.Fleet
 
 update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit (new images, new template): make update-unit TENANT=acme
 	@test -n "$(TENANT)" || (echo "usage: make update-unit TENANT=acme" && exit 1)
@@ -120,7 +127,7 @@ run-api-secrets: env ## Run the tenant API host with only the store address, the
 	ASPNETCORE_URLS=http://localhost:5100 ASPNETCORE_ENVIRONMENT=Development \
 	Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost \
 	Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=tenants/dev \
-	dotnet run --project src/Iron.Host.Api
+	dotnet run --project src/Hosts/Iron.Host.Api
 
 # The shell needs a Linux Node: from WSL, a Windows npm on the PATH runs through cmd.exe, which cannot use a WSL path.
 shell-node:
@@ -157,10 +164,10 @@ shell-a11y: shell-node ## Build the gallery and run the accessibility scan on it
 	cd shell && npm run a11y
 
 images: ## Build the four host images and the shell image (foundation/iron-*:$(TAG))
-	docker build -f src/Iron.Host.Api/Dockerfile -t foundation/iron-api:$(TAG) .
-	docker build -f src/Iron.Host.Worker/Dockerfile -t foundation/iron-worker:$(TAG) .
-	docker build -f src/Iron.Host.ControlPlane/Dockerfile -t foundation/iron-control-plane:$(TAG) .
-	docker build -f src/Iron.Host.Fleet/Dockerfile -t foundation/iron-fleet:$(TAG) .
+	docker build -f src/Hosts/Iron.Host.Api/Dockerfile -t foundation/iron-api:$(TAG) .
+	docker build -f src/Hosts/Iron.Host.Worker/Dockerfile -t foundation/iron-worker:$(TAG) .
+	docker build -f src/Hosts/Iron.Host.ControlPlane/Dockerfile -t foundation/iron-control-plane:$(TAG) .
+	docker build -f src/Hosts/Iron.Host.Fleet/Dockerfile -t foundation/iron-fleet:$(TAG) .
 	docker build -t foundation/iron-shell:$(TAG) shell
 
 # ---------------------------------------------------------------- laptop platform (infra/compose)

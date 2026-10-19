@@ -24,10 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: iron-api, file: src/Iron.Host.Api/Dockerfile, context: . }
-          - { name: iron-worker, file: src/Iron.Host.Worker/Dockerfile, context: . }
-          - { name: iron-control-plane, file: src/Iron.Host.ControlPlane/Dockerfile, context: . }
-          - { name: iron-fleet, file: src/Iron.Host.Fleet/Dockerfile, context: . }
+          - { name: iron-api, file: src/Hosts/Iron.Host.Api/Dockerfile, context: . }
+          - { name: iron-worker, file: src/Hosts/Iron.Host.Worker/Dockerfile, context: . }
+          - { name: iron-control-plane, file: src/Hosts/Iron.Host.ControlPlane/Dockerfile, context: . }
+          - { name: iron-fleet, file: src/Hosts/Iron.Host.Fleet/Dockerfile, context: . }
           - { name: iron-shell, file: shell/Dockerfile, context: shell }
     steps:
       - name: Check out

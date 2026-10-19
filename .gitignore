@@ -19,11 +19,13 @@ artifacts/
 node_modules/
 dist/
 .pnpm-store/
+*.tsbuildinfo
 
 # Local stack: credentials, generated per-tenant unit files, certificates and the generated TLS file
 infra/compose/.env
-infra/compose/units/*/
-!infra/compose/units/README.md
+# Rendered units at any depth: a fleet run from another folder once rendered one under its host (T14).
+**/infra/compose/units/*/
+!**/infra/compose/units/README.md
 infra/compose/certs/*
 !infra/compose/certs/.gitkeep
 infra/compose/traefik/dynamic/tls.yaml

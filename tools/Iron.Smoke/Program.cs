@@ -1,7 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Iron.Security.Secrets;
+using Iron.Kernel.Security.Secrets;
 using Iron.Smoke;
 
 // The smoke test (TF-240): the stack as an operator and a user meet it. Every step is a real call through the ingress

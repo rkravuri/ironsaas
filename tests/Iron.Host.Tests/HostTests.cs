@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using Iron.Api.Permissions;
+using Iron.Kernel.Api.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

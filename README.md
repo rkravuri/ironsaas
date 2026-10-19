@@ -2,7 +2,7 @@
 
 Foundation is the technical base for a family of enterprise SaaS products by IronSaaS. Product teams build business modules on it and get multi-tenancy, identity, permissions, audit, telemetry, a UI shell, provisioning and the operations tooling without writing any of it themselves.
 
-Code namespace: `Iron.*`. Database schemas carry the module names.
+Code lives in three layers (ADR-0029): Kernel, the technical mechanisms (`Iron.Kernel`, `Iron.Kernel.*`); Business, the shared business masters (`Iron.Business.*`); Products, the documents and processes with their own life cycles (`Iron.Products.*`). Database schemas carry the layer prefix and the module name: `kernel_identity`.
 
 The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7). Slice S1, the walking skeleton, is complete: see `docs/slices/S1-walking-skeleton.md` for what it proves, how it was built and what it carries into S2. Slice S2, access control, organisations and the design system, is next: `docs/slices/S2-access-control-organisations-and-design.md`, built with Claude Code from `docs/prompts/S2.md` (ADR-0023) in the design language of ADR-0024.
 
@@ -11,7 +11,7 @@ The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7
 - A tenant is registered through the control plane API and provisioned by the fleet in about fifteen seconds: its own database roles and database, blob container, secrets path and token, migrations, seeds, a Compose unit of three containers (API, worker, shell) behind the ingress, and a readiness check through the ingress. A failed step resumes; an active unit takes new images with an update job; de-provisioning keeps the data.
 - A person follows the invitation link to the tenant's own hostname, sets a password, signs in with a server-side session, and sees the pages and navigation the permissions allow. A service account gets a 15-minute token with the client credentials grant.
 - Every request carries a correlation id that is its trace id in Tempo; every error shows it; every permission denial, login and provisioning step is in the append-only audit trail.
-- 387 .NET tests (architecture rules, unit, and integration on real PostgreSQL, Azurite and OpenBao containers), 91 shell tests, an eleven-step smoke test against the live stack, six browser tests against it and ten without it (the accessibility scan), and a pipeline that builds the images and proves them on the runner.
+- 445 .NET tests (architecture rules, unit, and integration on real PostgreSQL, Azurite and OpenBao containers), 94 shell tests, an eleven-step smoke test against the live stack, six browser tests against it and ten without it (the accessibility scan), and a pipeline that builds the images and proves them on the runner.
 
 ## The first hour: a fresh checkout to a provisioned tenant and a visible trace
 
@@ -21,7 +21,7 @@ Timings are from the reference machine, a laptop with 16 GB of memory and WSL 2 
 |---|---|---|---|
 | 1 | Prerequisites below | `dotnet --version` 10.0.x, `docker compose version` 2.x, `node --version` v26 from WSL | 10 min |
 | 2 | `git clone <repo> ~/foundation && cd ~/foundation` | | 1 min |
-| 3 | `make build && make test` | build clean, 387 passed | 5 min |
+| 3 | `make build && make test` | build clean, 445 passed | 5 min |
 | 4 | `make up` | platform healthy, the secret store initialised (its root token in `infra/compose/.env`), endpoints printed | 3 min |
 | 5 | `make images` | five images `foundation/iron-*:dev` | 10 min |
 | 6 | `make secret-control && make migrate-control && make seed-control` | control database and operator | 1 min |
@@ -68,7 +68,7 @@ make run-control / make run-fleet                        # the control plane fro
 make up-control / make down-control                      # the control plane as containers instead
 make provision TENANT=x / update-unit TENANT=x / deprovision TENANT=x
 make smoke / make e2e [TENANT=x] / make integration      # the smoke test, the browser tests, the pipeline's stage
-make ef-add MODULE=Identity NAME=AddColumn               # a migration for a module context
+make ef-add MODULE=Identity NAME=AddColumn               # a migration for a module context (the last segment of its name)
 ```
 
 ## Repository layout
@@ -80,14 +80,21 @@ Directory.Packages.props     every package version, once, with its licence
 global.json                  SDK band and the test runner
 Makefile                     the developer commands
 src/
-  Iron.Core/  Iron.Data/  Iron.Api/  Iron.Telemetry/  Iron.Security/    shared libraries
-  Iron.Authorization/  Iron.Audit/  Iron.Identity/  Iron.Files/        tenant modules
-  Iron.Tenancy/  Iron.Fleet/                                            control plane modules
-    Api/  Services/  Data/  Contracts/  README.md                       inside every module
-  Iron.Host.Api/  Iron.Host.Worker/              tenant unit hosts (+ Dockerfiles)
-  Iron.Host.ControlPlane/  Iron.Host.Fleet/      control plane hosts (+ Dockerfiles)
-shell/                       the React shell: one build for every tenant (+ Dockerfile, e2e/)
-tests/                       test projects; Iron.Architecture.Tests holds the build checks
+  Kernel/                    technical mechanisms, no business meaning (ADR-0029)
+    Iron.Kernel/             the vocabulary: results, errors, ids, tenant, money, paging, principals, permissions
+    Iron.Kernel.Data/  .Api/  .Telemetry/  .Security/                 kernel libraries
+    Iron.Kernel.Identity/  .Authorization/  .Audit/  .Files/          tenant modules
+    Iron.Kernel.Tenancy/  .Fleet/                                     control plane modules
+      Api/  Services/  Data/  Contracts/  README.md                   inside every module
+  Business/                  shared business masters (empty until the Business PRD; README)
+  Products/                  products with their own documents and life cycles (empty; README)
+  Hosts/
+    Iron.Host.Api/  Iron.Host.Worker/            tenant unit hosts (+ Dockerfiles)
+    Iron.Host.ControlPlane/  Iron.Host.Fleet/    control plane hosts (+ Dockerfiles)
+shell/                       the React shell: one build for every tenant (+ Dockerfile, e2e/);
+                             modules in src/modules/kernel, business and products
+tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, and Kernel/ with a test
+                             project per kernel project
 tools/Iron.Smoke/            the smoke test
 infra/compose/               the laptop platform: compose.yaml, configs, scripts, rendered units/
 .github/workflows/           ci.yml and release.yml
@@ -98,16 +105,17 @@ docs/                        prd/, adr/, guides/, slices/
 
 - Warnings are errors in every project; `dotnet format` must make no change.
 - Every package version is declared once in `Directory.Packages.props`, with its licence; the shell's are in `shell/package.json`.
-- Module boundaries: a module may reference shared libraries and `Contracts` projects only. The compiler enforces it through project references; `tests/Iron.Architecture.Tests` names any violation, including type references into another module's `Api`, `Services` and `Data` namespaces.
+- Layers: every project declares `<IronLayer>` (the build stops without one), and references go downward only: Products may use Business and Kernel, Business may use Kernel, Kernel uses only Kernel (ADR-0029).
+- Module boundaries: a module may reference the kernel vocabulary, the kernel libraries and `Contracts` projects only. The compiler enforces it through project references; `tests/Iron.Architecture.Tests` names any violation, including type references into another module's `Api`, `Services` and `Data` namespaces.
 - No Foundation assembly reads the system clock directly; time comes from an injected `TimeProvider`.
-- Every module DbContext passes the model rules and its migrations match its model; the schema check runs over the migrated schema.
+- Every module DbContext passes the model rules, its schema carries its layer's prefix, and its migrations match its model; the schema check runs over the migrated schema.
 - Every endpoint declares a permission, `RequireSignedIn` or `AllowAnonymous`; a host does not start otherwise, and the anonymous list is fixed by a test.
-- In the shell, nothing imports `ag-grid-*` outside the DataGrid wrapper, and every route declares its permission.
+- In the shell, nothing imports `ag-grid-*` outside the DataGrid wrapper, a module imports from its own layer or a lower one only, and every route declares its permission.
 
 ## Documentation
 
 - `docs/slices/S1-walking-skeleton.md` the slice plan, its requirement coverage, the task table and the closing notes
-- `docs/adr/` twenty-two architecture decision records, one per decision, with an index
+- `docs/adr/` twenty-nine architecture decision records, one per decision, with an index
 - `docs/guides/developer-guide.md` how to work on the repository: add a module, an entity, an endpoint with a permission, a shell page, a provisioning step
 - `docs/guides/local-stack.md` the runbook of the laptop platform
 - `docs/guides/definition-of-done.md` what a change needs before it is merged

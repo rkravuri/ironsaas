@@ -13,7 +13,8 @@ What a change needs before it is merged to main. The pull request template summa
 ## When it applies
 
 - [ ] A decision was made (a library, a pattern, a boundary, a trade-off): its ADR is in `docs/adr/`, listed in the index, and named from the code or the guide that applies it.
-- [ ] An entity changed: the migration is generated with `make ef-add`, read once, committed with the entity, and the module's model test passes.
+- [ ] A module was added: the placement test is answered in its README, its projects declare `<IronLayer>` and live in their layer's folder, and its schema carries the layer prefix (ADR-0029).
+- [ ] An entity changed: the migration is generated with `make ef-add`, read once, formatted with `make format`, committed with the entity, and the module's model test passes.
 - [ ] An endpoint was added: it declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`; a new anonymous endpoint is a reviewed addition to the fixed list in `Iron.Host.Tests`.
 - [ ] A permission was added: it is in the module's Contracts, in the module's `Permissions`, and seeded into the system roles that should carry it.
 - [ ] Something a user does changed state: the audit event is written in the same transaction (ADR-0013) and its name is a constant in the module's Contracts.

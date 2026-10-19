@@ -31,7 +31,7 @@ describe("the API client", () => {
     expect(apiError.message).toBe("Unknown field 'nope'.");
   });
 
-  it("reads the list envelope as Iron.Api writes it", async () => {
+  it("reads the list envelope as Iron.Kernel.Api writes it", async () => {
     stubFetch({
       "GET /api/v1/things": () =>
         json({

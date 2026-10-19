@@ -1,12 +1,13 @@
 # Backend rules (.NET)
 
-The S1 modules are the templates: `src/Iron.Identity` for a module with entities, services and endpoints; `src/Iron.Fleet` for jobs and steps; `src/Iron.Tenancy` for a control plane module.
+The S1 modules are the templates: `src/Kernel/Iron.Kernel.Identity` for a module with entities, services and endpoints; `src/Kernel/Iron.Kernel.Fleet` for jobs and steps; `src/Kernel/Iron.Kernel.Tenancy` for a control plane module.
 
+- A new module starts with the placement test and its layer (ADR-0029): no business meaning is Kernel (`src/Kernel/Iron.Kernel.<Module>`), needed by two or more products is Business (`src/Business/Iron.Business.<Module>`), owned by one product is Products (`src/Products/Iron.Products.<Product>`). Both project files declare `<IronLayer>`; references go downward only, and to another module only through its Contracts; the kernel never references Business, it declares an interface in its Contracts for Business to implement.
 - A module has `Api/`, `Services/`, `Data/`, `Contracts/` (its own project) and a `README.md`. Another module's `Api`, `Services` and `Data` are private; expose through `Contracts` (ADR-0001).
-- Entities derive from `AuditedEntity`, `AppendOnlyEntity` or `BusinessRecord`; snake_case tables in the module's schema; conventions in `Iron.Data` (ADR-0008). A migration is generated, read once, committed with the entity.
+- Entities derive from `AuditedEntity`, `AppendOnlyEntity` or `BusinessRecord` (in Business and Products, `BusinessRecord` or `ITenantWide`); snake_case tables in the module's schema, named with the layer prefix (`kernel_identity`, `business_<module>`, `products_<product>`); conventions in `Iron.Kernel.Data` (ADR-0008, ADR-0029). A migration is generated, read once, committed with the entity.
 - Services return `Result`/`Result<T>`; error codes are `module.resource.reason`; exceptions are for programmer errors and infrastructure (ADR-0007).
 - Endpoints are minimal APIs on `MapApiGroup`, with `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`; lists take `ListQuery` and answer the envelope; problems carry `error_code` and `correlation_id` (ADR-0009, ADR-0012).
 - A state change writes its audit event in the same unit of work (ADR-0013); event names are constants in the module's Contracts.
 - Permissions are declared in Contracts and listed in the module's `Permissions`; seeds put them into the system roles that should carry them.
-- Tests: unit tests for rules; integration tests on the fixtures that start PostgreSQL, Azurite and OpenBao (see `tests/Iron.Fleet.Tests/FleetFixture.cs`); endpoint tests through the in-memory host (`tests/Iron.Api.Tests`). Every behaviour the section names has a test.
+- Tests: unit tests for rules; integration tests on the fixtures that start PostgreSQL, Azurite and OpenBao (see `tests/Kernel/Iron.Kernel.Fleet.Tests/FleetFixture.cs`); endpoint tests through the in-memory host (`tests/Kernel/Iron.Kernel.Api.Tests`). Tests live in `tests/<Layer>/<Project>.Tests/`. Every behaviour the section names has a test.
 - Configuration comes from the unit secret through `IConfiguration` (ADR-0016); never read the store directly in a module.

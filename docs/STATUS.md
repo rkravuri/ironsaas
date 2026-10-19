@@ -10,7 +10,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 | D2 The drawn world | done | main (fd56702) | merged 2026-10-18; six commits plus the figure correction from the review |
 | D3 Templates, panels and forms | done | main | merged 2026-10-18 (110c6ef); the scan, format and the keyboard test on the stack passed on 2026-10-19 |
 | P1 The laptop store survives a restart, and an update heals a unit | done | main | merged 2026-10-19; five commits (5c24448 to b044602) |
-| A1 Organisation units | next | | |
+| L1 Three layers: kernel, business, products | review | slice/s2-l1 | eleven commits (a304e52 to the status); ADR-0029; on 2026-10-19 the laptop was reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
+| A1 Organisation units | next | | after L1's merge; amended for the kernel, tree storage in ADR-0030 |
 | A2 Roles and scoped assignments | | | |
 | A3 Record policies | | | |
 | D4 Home and the header | | | |
@@ -32,4 +33,6 @@ The running state of the current slice, kept current by Claude Code at the end o
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
 - The shell does not warn before the session expires (TF-021, D4).
-- The administrators' passwords of acme, bravo and smoke went with the old store: those tenants serve their users and their smoke clients (the seed sets a healed account's new secret since P1), but the smoke's administrator steps and the browser tests need echo until the reset flow of S3.
+- My profile moves onto the record template (D4).
+- Since the L1 reset (2026-10-19) acme, bravo and echo are fresh tenants and their administrators' invitations are in `secret/tenants/<slug>/fleet`; the smoke tenant was not provisioned again (`make smoke` without `TENANT` provisions it).
+- PRD section 2.1 and the requirement texts keep the S1 module names, pointed to ADR-0029 from the document control; the PRD split in the design session renames them and divides `Iron.Organisations` between the kernel tree and `Iron.Business.Organisations`.

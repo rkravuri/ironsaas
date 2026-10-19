@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Authorization module against a throw-away PostgreSQL container (needs Docker): migrations, seeding, evaluation, the roles endpoint. -->
+  <PropertyGroup>
+    <IronLayer>Test</IronLayer>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Telemetry/Iron.Kernel.Telemetry.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Authorization/Iron.Kernel.Authorization.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

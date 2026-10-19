@@ -19,7 +19,7 @@ Stop and ask, in the session, only when: a decision with real alternatives has n
 
 - `.NET`: `make build`, `make test` (the data tests start PostgreSQL, Azurite and OpenBao with Testcontainers, so Docker must run), `make check`, `make format` (CI verifies).
 - Shell: `make shell-install` once, `make shell-check` (lint, type check, tests, build), `make shell-a11y` (the gallery scan), `make shell-dev`.
-- Migrations: `make ef-add MODULE=<Module> NAME=<WhatChanged>` after an entity change; commit the generated files; never edit a committed migration.
+- Migrations: `make ef-add MODULE=<Module> NAME=<WhatChanged>` after an entity change (`MODULE` is the last segment of the module's name: `Identity` for `Iron.Kernel.Identity`); commit the generated files; never edit a committed migration.
 - The stack: `make up`, `make images`, `make provision TENANT=x`, `make update-unit TENANT=x`, `make smoke`, `make e2e`, `make integration`. The runbook is `docs/guides/local-stack.md`.
 - Work in WSL: every git, dotnet, npm and docker command runs inside the Linux file system, never through a Windows path.
 
@@ -28,6 +28,10 @@ Stop and ask, in the session, only when: a decision with real alternatives has n
 - Warnings are errors; no suppression without a comment that says why.
 - Package versions live once: `Directory.Packages.props` and `shell/package.json`. Exact pins, at least two weeks old (ADR-0003).
 - Module boundaries (ADR-0001); time through `TimeProvider`, ids through `Ids.New()`, failures through `Result` (ADR-0007); every endpoint declares its permission; state changes write their audit event in the same transaction (ADR-0013); in the shell, no `ag-grid-*` outside the wrapper, every route declares its permission, every string in the catalogue, no colour by value (ADR-0024).
+
+## Layers (ADR-0029)
+
+Code lives in one of three layers: Kernel (`Iron.Kernel`, `Iron.Kernel.*`), Business (`Iron.Business.*`), Products (`Iron.Products.*`). Before creating a module, apply the placement test: no business meaning is Kernel; needed by two or more products is Business; owned by one product is Products. Every project declares `<IronLayer>`. Dependencies go downward only, and between modules only through a Contracts project. When the kernel needs something only Business can supply, the kernel declares an interface in its Contracts and Business implements it. Schemas carry the layer prefix: `kernel_`, `business_`, `products_`. Permission names, audit events, error codes, routes and configuration sections name the module, not the layer.
 
 ## Writing rules
 

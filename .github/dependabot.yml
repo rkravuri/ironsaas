@@ -22,10 +22,10 @@ updates:
         patterns: ["*"]
   - package-ecosystem: docker
     directories:
-      - /src/Iron.Host.Api
-      - /src/Iron.Host.Worker
-      - /src/Iron.Host.ControlPlane
-      - /src/Iron.Host.Fleet
+      - /src/Hosts/Iron.Host.Api
+      - /src/Hosts/Iron.Host.Worker
+      - /src/Hosts/Iron.Host.ControlPlane
+      - /src/Hosts/Iron.Host.Fleet
       - /shell
     schedule:
       interval: weekly

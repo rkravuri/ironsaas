@@ -111,6 +111,7 @@ For work on a module without a provisioned tenant: `make migrate`, `make seed` (
 | The invitation link says the invitation does not exist | It was accepted already, or the seed ran again and re-issued it: the current link is `invitation_link` in `secret/tenants/<slug>/fleet` |
 | The smoke fails at `administrator` for a tenant whose administrator is Active | The password is not in `secret/tenants/<slug>/smoke` (accepted by hand, or the first smoke run before T18): run the smoke against another tenant (`SMOKE_TENANT`, `make integration TENANT=smoke`) or pass `SMOKE_ADMIN_PASSWORD`; a reset flow is S3 |
 | The grid shows "Not found" on reload or on a pasted link | The shell image predates T17; `make images` and `make update-unit` |
+| After `make images` and `make update-unit` on a laptop from before ADR-0029, a tenant answers but its users, roles and audit trail are gone; `\dn` in its database lists both `identity` and `kernel_identity` | The schemas carry their layer prefix since ADR-0029 and start from a new `Initial` migration, so the new images create empty `kernel_*` schemas beside the old ones and never read the old. There is no bridge: start over once (section 11) and provision the tenants again |
 | Old credentials after recreating `.env` | The volumes still hold the old values: `make reset`, then `make up` |
 | `curl` in WSL cannot reach `acme.localhost` | Add the `/etc/hosts` line from `make hosts`, or use `http://localhost` with `-H 'Host: acme.localhost'` |
 

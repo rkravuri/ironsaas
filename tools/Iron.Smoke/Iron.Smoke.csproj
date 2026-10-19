@@ -2,6 +2,7 @@
 
   <!-- The smoke test (TF-240, S1 plan 3.11): drives the running stack from the outside, like an operator and a user would. -->
   <PropertyGroup>
+    <IronLayer>Tool</IronLayer>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <RootNamespace>Iron.Smoke</RootNamespace>
@@ -9,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Iron.Security/Iron.Security.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
   </ItemGroup>
 
 </Project>

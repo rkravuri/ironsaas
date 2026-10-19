@@ -5,7 +5,7 @@
 | Item | Value |
 |---|---|
 | Document title | Foundation, the IronSaaS enterprise SaaS platform: Technical Foundation Product Requirements Document |
-| Code namespace | `Iron.*` (for example `Iron.Identity`, `Iron.Tenancy`, `Iron.Audit`). Database schemas carry the same module names (for example `identity`, `tenancy`, `audit`). |
+| Code namespace | `Iron.*` in three layers (ADR-0029): Kernel (`Iron.Kernel`, `Iron.Kernel.*`, for example `Iron.Kernel.Identity`), Business (`Iron.Business.*`), Products (`Iron.Products.*`). Database schemas carry the layer prefix and the module name (for example `kernel_identity`, `kernel_tenancy`, `kernel_audit`). Module names elsewhere in this document (section 2.1 and the requirements) are the S1 names; ADR-0029 maps them to today's, and section 3.5 shows the structure. |
 | Version | 1.2 DRAFT for review (decisions of 2026-10-17, second round, applied) |
 | Date | 2026-10-17 |
 | Status | Draft. Written for joint development. Decisions confirmed on 2026-10-17 are listed in section 8.1; remaining open points are in section 8.2. |
@@ -14,7 +14,7 @@
 | Companion document | Functional Foundation PRD for procure-to-pay (same folder). It assumes everything in this document exists. |
 | Tags | `[Core]` must exist before the first business product ships. `[Extended]` can follow in a later slice. `[Decision]` a choice you must confirm. `[Carried]` behaviour carried over from the current product. `[Gap]` a gap or defect found in the current product that Foundation must close. |
 
-Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness.
+Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products.
 
 ## 1. Vision and principles
 
@@ -194,27 +194,36 @@ Chosen model, stated plainly:
 
 ### 3.5 Code structure (for a fresh graduate)
 
+Code lives in three layers (ADR-0029). **Kernel**: technical mechanisms that know nothing about any business domain. **Business**: the shared business masters and the business configuration of kernel mechanisms. **Products**: documents and processes with their own life cycles. The placement test decides where a module goes: it has no business meaning, Kernel; two or more products would need to own it, Business; one product owns it, Products.
+
 ```
 src/
-  Iron.Core/                 shared primitives
-  Iron.Tenancy/  Iron.Identity/  Iron.Authorization/  Iron.Organisations/  ...   one folder per module
-    Api/        endpoints (thin)
-    Services/   business logic (plain classes)
-    Data/       entities, repositories, migrations for this module's schema
-    Contracts/  public interfaces and DTOs other modules may use
-  Iron.Host.Api/             web host that composes modules
-  Iron.Host.Worker/          worker host
-  Iron.Host.ControlPlane/    control plane host
-  Iron.Host.Fleet/           fleet orchestrator host (provisioning, releases, migrations, backups)
-  Iron.Shell/                React shell and design system
-  products/
-    Procurement/             same layout as an Iron module
-tools/   migrations CLI, scaffolding, seed data
+  Kernel/
+    Iron.Kernel/                         the vocabulary, one namespace: results, errors, ids, tenant context,
+                                         money, paging, principals, permissions
+    Iron.Kernel.Data/  .Api/  .Telemetry/  .Security/      kernel libraries
+    Iron.Kernel.Identity/  .Authorization/  .Audit/  .Files/  .Tenancy/  .Fleet/  ...   one folder per kernel module
+      Api/        endpoints (thin)
+      Services/   business logic (plain classes)
+      Data/       entities, repositories, migrations for this module's schema (kernel_<module>)
+      Contracts/  public interfaces and DTOs other modules may use (its own project)
+  Business/
+    Iron.Business.<Module>/              shared masters, same layout, schema business_<module>
+  Products/
+    Iron.Products.<Product>/             one product, same layout, schema products_<product>
+  Hosts/
+    Iron.Host.Api/                       web host that composes modules
+    Iron.Host.Worker/                    worker host
+    Iron.Host.ControlPlane/              control plane host
+    Iron.Host.Fleet/                     fleet orchestrator host (provisioning, releases, migrations, backups)
+shell/                                   React shell and design system; modules in src/modules/{kernel,business,products}/
+tests/                                   tests/<Layer>/<Project>.Tests; the architecture and host tests at tests/
+tools/   the smoke test, scaffolding, seed data
 infra/   compose and kubernetes manifests, infrastructure as code
 docs/    ADRs, runbooks, this PRD
 ```
 
-A module never references another module's `Data/` folder. Only `Contracts/` is public. This rule is enforced by a build check.
+Dependencies go downward only: Products may use Business and Kernel, Business may use Kernel, Kernel uses only Kernel. A module never references another module's `Data/` folder; between modules only `Contracts/` is public, in every layer. When the kernel needs something only Business can supply, the kernel declares an interface in its Contracts and Business implements it. Every project declares its layer (`<IronLayer>`), and the build refuses an upward reference, a reference past a Contracts project and a schema without its layer prefix. Permission names, audit events, error codes, routes and configuration sections name the module, not the layer.
 
 ### 3.6 Supplier Network plane
 

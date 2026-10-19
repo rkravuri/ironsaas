@@ -6,9 +6,15 @@ public class RepositoryLayoutTests
     private static readonly IReadOnlyList<ProjectInfo> Projects = ProjectCatalog.Load(Repository.Root);
 
     [Fact]
+    public void EveryProjectDeclaresTheLayerItLivesIn()
+    {
+        ArchitectureAssert.NoViolations("Layers (ADR-0029)", LayerRules.Check(Projects));
+    }
+
+    [Fact]
     public void EveryProjectReferenceFollowsTheModuleBoundaryRules()
     {
-        ArchitectureAssert.NoViolations("Module boundary rules (ADR-0001)", ModuleBoundaryRules.Check(Projects));
+        ArchitectureAssert.NoViolations("Module boundary rules (ADR-0001, ADR-0029)", ModuleBoundaryRules.Check(Projects));
     }
 
     [Fact]
@@ -26,7 +32,7 @@ public class RepositoryLayoutTests
     [Fact]
     public void EveryProjectLivesInAFolderWithItsOwnName()
     {
-        // src/Iron.Identity/Iron.Identity.csproj and src/Iron.Identity/Contracts/Iron.Identity.Contracts.csproj
+        // src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj and src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj
         var violations = new List<string>();
         foreach (var project in Projects)
         {
@@ -63,7 +69,7 @@ public class RepositoryLayoutTests
     {
         var contracts = Projects.Where(p => p.Kind == ProjectKind.Contracts).Select(p => p.ModuleName).ToHashSet(StringComparer.Ordinal);
         var violations = Projects
-            .Where(p => p.Kind is ProjectKind.Module or ProjectKind.Product)
+            .Where(p => p.Kind == ProjectKind.Module)
             .Where(p => !contracts.Contains(p.Name))
             .Select(p => $"{p.RelativePath}: no Contracts project found ({p.Name}.Contracts).")
             .ToList();
@@ -86,12 +92,36 @@ public class RepositoryLayoutTests
     [Theory]
     [InlineData("src")]
     [InlineData("tests")]
-    [InlineData("products")]
     [InlineData("tools")]
+    [InlineData("shell")]
     [InlineData("infra")]
     [InlineData("docs")]
     public void TheRepositoryHasTheExpectedTopLevelFolders(string folder)
     {
         Assert.True(Directory.Exists(Path.Combine(Repository.Root, folder)), $"Folder '{folder}' is missing at the repository root.");
+    }
+
+    [Theory]
+    [InlineData("src/Kernel")]
+    [InlineData("src/Business")]
+    [InlineData("src/Products")]
+    [InlineData("src/Hosts")]
+    public void SourceHasAFolderPerLayerAndOneForTheHosts(string folder)
+    {
+        Assert.True(Directory.Exists(Path.Combine(Repository.Root, folder)), $"Folder '{folder}' is missing (ADR-0029).");
+    }
+
+    [Fact]
+    public void NothingButTheLayerFoldersSitsInSource()
+    {
+        string[] expected = ["Business", "Hosts", "Kernel", "Products"];
+        var others = Directory.EnumerateDirectories(Path.Combine(Repository.Root, "src"))
+            .Select(directory => Path.GetFileName(directory))
+            .Where(name => !expected.Contains(name, StringComparer.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        // A checkout of a branch from before ADR-0029 leaves build output in folders such as src/Iron.Identity.
+        Assert.True(others.Count == 0, $"src/ holds the layer folders and src/Hosts only (ADR-0029). Move or delete: {string.Join(", ", others.Select(name => "src/" + name))}.");
     }
 }

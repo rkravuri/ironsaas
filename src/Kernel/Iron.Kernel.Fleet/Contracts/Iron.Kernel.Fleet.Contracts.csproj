@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Kernel.Fleet: interfaces and DTOs other modules may use. References Iron.Kernel only. -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

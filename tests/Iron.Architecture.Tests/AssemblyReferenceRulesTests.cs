@@ -7,25 +7,25 @@ public class AssemblyReferenceRulesTests
     {
         var referencedTypes = new List<(string Namespace, string Name)>
         {
-            ("Iron.Identity.Data", "UserRow"),
-            ("Iron.Identity.Data.Migrations", "InitialSchema"),
-            ("Iron.Identity.Contracts", "IUserDirectory"),
-            ("Iron.Identity", "IdentityModule"),
-            ("Iron.Audit.Data", "AuditEventRow"),
-            ("Iron.Data", "Entity"),
+            ("Iron.Kernel.Identity.Data", "UserRow"),
+            ("Iron.Kernel.Identity.Data.Migrations", "InitialSchema"),
+            ("Iron.Kernel.Identity.Contracts", "IUserDirectory"),
+            ("Iron.Kernel.Identity", "IdentityModule"),
+            ("Iron.Kernel.Audit.Data", "AuditEventRow"),
+            ("Iron.Kernel.Data", "Entity"),
             ("System", "Object"),
         };
 
         var violations = AssemblyReferenceRules.FindForbidden(
-            "Iron.Audit.dll",
+            "Iron.Kernel.Audit.dll",
             referencedTypes,
-            ownModule: "Iron.Audit",
-            allModules: ["Iron.Identity", "Iron.Audit"]);
+            ownModule: "Iron.Kernel.Audit",
+            allModules: ["Iron.Kernel.Identity", "Iron.Kernel.Audit"]);
 
         Assert.Collection(
             violations,
-            first => Assert.Contains("Iron.Identity.Data.UserRow", first, StringComparison.Ordinal),
-            second => Assert.Contains("Iron.Identity.Data.Migrations.InitialSchema", second, StringComparison.Ordinal));
+            first => Assert.Contains("Iron.Kernel.Identity.Data.UserRow", first, StringComparison.Ordinal),
+            second => Assert.Contains("Iron.Kernel.Identity.Data.Migrations.InitialSchema", second, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -33,20 +33,43 @@ public class AssemblyReferenceRulesTests
     {
         var referencedTypes = new List<(string Namespace, string Name)>
         {
-            ("Iron.Identity", "IdentityModule"),
-            ("Iron.Identity.Contracts", "IUserDirectory"),
-            ("Iron.Identity.Services", "UserService"),
+            ("Iron.Kernel.Identity", "IdentityModule"),
+            ("Iron.Kernel.Identity.Contracts", "IUserDirectory"),
+            ("Iron.Kernel.Identity.Services", "UserService"),
         };
 
         var violations = AssemblyReferenceRules.FindForbidden(
             "Iron.Host.Api.dll",
             referencedTypes,
             ownModule: null,
-            allModules: ["Iron.Identity"]);
+            allModules: ["Iron.Kernel.Identity"]);
 
         var violation = Assert.Single(violations);
 
-        Assert.Contains("Iron.Identity.Services.UserService", violation, StringComparison.Ordinal);
+        Assert.Contains("Iron.Kernel.Identity.Services.UserService", violation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AModuleOfALowerLayerIsPrivateToo()
+    {
+        var referencedTypes = new List<(string Namespace, string Name)>
+        {
+            ("Iron.Business.Organisations.Contracts", "IOrganisationDirectory"),
+            ("Iron.Business.Organisations.Services", "OrganisationService"),
+            ("Iron.Kernel.Authorization.Contracts", "IOrganisationKinds"),
+            ("Iron.Kernel.Authorization.Data", "OrganisationUnit"),
+        };
+
+        var violations = AssemblyReferenceRules.FindForbidden(
+            "Iron.Products.Procurement.dll",
+            referencedTypes,
+            ownModule: "Iron.Products.Procurement",
+            allModules: ["Iron.Kernel.Authorization", "Iron.Business.Organisations", "Iron.Products.Procurement"]);
+
+        Assert.Collection(
+            violations,
+            first => Assert.Contains("Iron.Business.Organisations.Services.OrganisationService", first, StringComparison.Ordinal),
+            second => Assert.Contains("Iron.Kernel.Authorization.Data.OrganisationUnit", second, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -54,15 +77,15 @@ public class AssemblyReferenceRulesTests
     {
         var referencedTypes = new List<(string Namespace, string Name)>
         {
-            ("Iron.Data", "Entity"),
-            ("Iron.Data.Conventions", "SnakeCaseNames"),
+            ("Iron.Kernel.Data", "Entity"),
+            ("Iron.Kernel.Data.Conventions", "SnakeCaseNames"),
         };
 
         var violations = AssemblyReferenceRules.FindForbidden(
-            "Iron.Audit.dll",
+            "Iron.Kernel.Audit.dll",
             referencedTypes,
-            ownModule: "Iron.Audit",
-            allModules: ["Iron.Identity", "Iron.Audit"]);
+            ownModule: "Iron.Kernel.Audit",
+            allModules: ["Iron.Kernel.Identity", "Iron.Kernel.Audit"]);
 
         Assert.Empty(violations);
     }

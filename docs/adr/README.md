@@ -1,23 +1,23 @@
 # Architecture decision records
 
+Names in ADRs before 0029 are the names of their time; ADR-0029 maps them to today's.
+
 Every `[Decision]` in the PRD, and every decision made while building, gets one record here (TF-209). A pull request that introduces a decision without its ADR is not merged.
 
 Copy `0000-template.md` to the next free number. Keep the record short. Never edit an accepted decision; write a new one that supersedes it.
 
 | ADR | Title | Status |
 |---|---|---|
-| [0001](0001-modular-monolith-with-contracts-projects.md) | Modular monolith with one Contracts project per module | Accepted |
+| [0001](0001-modular-monolith-with-contracts-projects.md) | Modular monolith with one Contracts project per module | Accepted; names and layers extended by 0029 |
 | [0002](0002-isolated-deployment-unit-per-tenant.md) | One isolated deployment unit per tenant on shared infrastructure | Accepted |
 | [0003](0003-open-source-first-and-decided-versions.md) | Open source first, every dependency listed once, decided platform versions | Accepted |
 | [0004](0004-build-and-test-conventions.md) | Build and test conventions | Accepted |
 | [0005](0005-laptop-platform-stack.md) | The laptop platform stack on Compose | Accepted; OpenBao's mode superseded by 0028 |
 | [0006](0006-object-storage-stand-in.md) | Azurite replaces MinIO as the laptop object storage | Accepted |
 | [0007](0007-core-primitives.md) | Core primitives: results and errors, tenant identifier, ids, time, correlation | Accepted |
-| [0008](0008-data-conventions.md) | Data conventions | Accepted |
+| [0008](0008-data-conventions.md) | Data conventions | Accepted; schema prefixes and a one-time baseline by 0029 |
 | [0009](0009-api-conventions.md) | API conventions | Accepted |
 | [0010](0010-telemetry-and-security-baseline.md) | Telemetry and security baseline | Accepted |
-
-Coming with their tasks in S1: permission catalogue and audit protection (T8, T9), identity and sessions (T10), secrets and storage interfaces (T12), the unit runtime (T14), the shell and the grid wrapper (T15, T16), the pipeline (T18).
 | [0011](0011-hosts-and-unit-commands.md) | Hosts, tenant binding and unit commands | Accepted |
 | [0012](0012-authorization-thin.md) | Permissions, roles and the migration workflow | Accepted |
 | [0013](0013-audit-trail-and-unit-of-work.md) | Audit trail, unit of work and the app role | Accepted |
@@ -36,7 +36,8 @@ Coming with their tasks in S1: permission catalogue and audit protection (T8, T9
 | [0026](0026-illustrations-and-patterns.md) | Illustrations and patterns: the generator, the hand and the review rule | Accepted |
 | [0027](0027-templates-panels-and-the-form.md) | Templates, panels and the form | Accepted |
 | [0028](0028-laptop-store-persists-and-updates-heal.md) | The laptop store persists, and an update heals a unit | Accepted |
+| [0029](0029-three-layers-kernel-business-products.md) | Three layers: kernel, business, products | Accepted |
 
 ## Reading order
 
-For a newcomer: 0001 (the shape of the code), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 and 0028 (how a tenant comes to exist, and how it heals), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
+For a newcomer: 0001 and 0029 (the shape of the code and its three layers), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 and 0028 (how a tenant comes to exist, and how it heals), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
