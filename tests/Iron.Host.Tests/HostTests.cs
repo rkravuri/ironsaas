@@ -17,6 +17,8 @@ namespace Iron.Host.Tests;
 /// </summary>
 public class HostTests
 {
+    private const string CatalogueFile = "src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json";
+
     static HostTests()
     {
         Environment.SetEnvironmentVariable("Tenant__Id", "acme");
@@ -79,6 +81,17 @@ public class HostTests
     }
 
     /// <summary>TF-030 AC3: the anonymous list is health, login, invitation acceptance, the token endpoint and the public keys, and nothing else. Adding to it is a reviewed change.</summary>
+    [Fact]
+    public void TheControlPlaneCarriesTheLicensingCatalogueOfTheUnitsModules()
+    {
+        // ADR-0034: one source. The control plane checks plans against the file make catalogue writes from these modules.
+        var expected = Iron.Kernel.Api.Modules.LicensingCatalogue.From(Iron.Host.Api.UnitModules.All()).ToJson();
+        var carried = Iron.Kernel.Tenancy.Services.UnitCatalogue.Load().Catalogue.ToJson();
+
+        Assert.True(string.Equals(expected, carried, StringComparison.Ordinal), $"The control plane's licensing catalogue is not the units' one. Run make catalogue and commit {CatalogueFile}.");
+        Assert.Contains("authorization.role_transfer", carried, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task TheAnonymousAllowListIsFixedOutsideDevelopment()
     {

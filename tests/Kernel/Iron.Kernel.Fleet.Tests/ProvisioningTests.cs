@@ -262,7 +262,7 @@ public class ProvisioningTests(FleetFixture fixture)
 
         // What a store that lost its data looks like to one tenant: every secret under tenants/<slug> is gone.
         var forgotten = await DeleteEverySecretOfAsync(slug, ct);
-        Assert.Equal(["database", "fleet", "storage", "unit"], forgotten.Order(StringComparer.Ordinal));
+        Assert.Equal(["database", "entitlements", "fleet", "storage", "unit"], forgotten.Order(StringComparer.Ordinal));
         Assert.Null(await root.ReadAsync($"tenants/{slug}/unit", ct));
 
         await using (var scope = provider.CreateAsyncScope())
@@ -298,11 +298,12 @@ public class ProvisioningTests(FleetFixture fixture)
             Assert.Equal("28P01", refused.SqlState);
         }
 
-        // A new unit token reads the unit secret and nothing else, and the re-applied unit carries it.
+        // A new unit token reads the unit secret and the entitlements, written again (ADR-0034), and nothing else; the re-applied unit carries it.
         var tokenAfter = (await root.ReadAsync($"tenants/{slug}/fleet", ct))![SecretsStep.UnitTokenKey];
         Assert.NotEqual(tokenBefore, tokenAfter);
         using var unitStore = new OpenBaoSecretStore(fixture.StoreOptions(tokenAfter));
         Assert.NotNull(await unitStore.ReadAsync($"tenants/{slug}/unit", ct));
+        Assert.NotNull(await unitStore.ReadAsync($"tenants/{slug}/entitlements", ct));
         await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{slug}/database", ct));
         await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{slug}/fleet", ct));
         Assert.Equal(tokenAfter, runtime.Applied[^1].Environment["Secrets__Token"]);

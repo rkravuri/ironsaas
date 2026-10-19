@@ -23,16 +23,19 @@ public sealed class LicensingCatalogue
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         WriteIndented = true,
+        // The file is read by people in a diff and by the control plane, never put into a page: no HTML escaping.
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
     };
 
     private readonly Dictionary<string, LicensedModuleEntry> _modules;
     private readonly Dictionary<string, FeatureEntry> _features;
 
-    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features)
+    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
         ArgumentNullException.ThrowIfNull(features);
+        Platform = [.. (platform ?? []).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
         _modules = new Dictionary<string, LicensedModuleEntry>(StringComparer.Ordinal);
         foreach (var module in modules.OrderBy(m => m.Code, StringComparer.Ordinal))
         {
@@ -57,6 +60,9 @@ public sealed class LicensingCatalogue
 
     public static LicensingCatalogue Empty { get; } = new([], []);
 
+    /// <summary>The names of the modules that are the platform: always on, never in a plan (ADR-0034).</summary>
+    public IReadOnlyList<string> Platform { get; }
+
     /// <summary>Licensed modules by code.</summary>
     public IReadOnlyList<LicensedModuleEntry> Modules { get; }
 
@@ -73,21 +79,26 @@ public sealed class LicensingCatalogue
         ArgumentNullException.ThrowIfNull(modules);
         var licensed = new List<LicensedModuleEntry>();
         var features = new List<FeatureEntry>();
+        var platform = new List<string>();
         foreach (var module in modules)
         {
             if (module.Licence is { } licence)
             {
                 licensed.Add(new LicensedModuleEntry(licence.Code, module.Name, licence.SubscriptionType, [.. module.Features.Select(f => f.Code).Order(StringComparer.Ordinal)]));
             }
+            else
+            {
+                platform.Add(module.Name);
+            }
 
             features.AddRange(module.Features.Select(feature => new FeatureEntry(feature.Code, module.Name, module.Licence?.Code, feature.Description)));
         }
 
-        return new LicensingCatalogue(licensed, features);
+        return new LicensingCatalogue(licensed, features, platform);
     }
 
     /// <summary>The file form: indented JSON with a format version, ending in a newline, so a diff shows what a build adds.</summary>
-    public string ToJson() => JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Modules, Features), Json) + "\n";
+    public string ToJson() => JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, Modules, Features), Json) + "\n";
 
     public static LicensingCatalogue Parse(string json)
     {
@@ -98,8 +109,8 @@ public sealed class LicensingCatalogue
             throw new InvalidOperationException($"The licensing catalogue has format version {document.FormatVersion}; this build reads version {FormatVersion}.");
         }
 
-        return new LicensingCatalogue(document.Modules ?? [], document.Features ?? []);
+        return new LicensingCatalogue(document.Modules ?? [], document.Features ?? [], document.Platform);
     }
 
-    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features);
+    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features);
 }

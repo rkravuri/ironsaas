@@ -16,6 +16,7 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) 
         var latest = await context.ProvisioningJobs
             .Where(j => j.TenantSlug == tenant.Value)
             .OrderByDescending(j => j.RequestedAt)
+            .ThenByDescending(j => j.Id) // ids are UUID version 7: two jobs requested in the same instant keep their order
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         if (latest is { IsOpen: true })
@@ -42,6 +43,7 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) 
         var job = await context.ProvisioningJobs.AsNoTracking()
             .Where(j => j.TenantSlug == slug)
             .OrderByDescending(j => j.RequestedAt)
+            .ThenByDescending(j => j.Id) // ids are UUID version 7: two jobs requested in the same instant keep their order
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return job is null ? null : job.ToInfo(await StepsOfAsync(job.Id, cancellationToken).ConfigureAwait(false));

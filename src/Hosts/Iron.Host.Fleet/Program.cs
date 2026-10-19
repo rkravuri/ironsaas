@@ -46,6 +46,7 @@ builder.Services.AddIronDatabase(connectionString, builder.Configuration["Databa
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 builder.Services.AddIronFleetWorker();
+builder.Services.AddIronEntitlementReconciler();
 
 var app = builder.Build();
 

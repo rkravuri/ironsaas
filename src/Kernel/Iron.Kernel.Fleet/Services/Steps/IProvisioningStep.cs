@@ -27,6 +27,9 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
 
     public string UnitSecretPath => $"tenants/{Slug}/unit";
 
+    /// <summary>Where the control plane keeps the tenant's effective entitlements for its unit (ADR-0034).</summary>
+    public string EntitlementsSecretPath => $"tenants/{Slug}/entitlements";
+
     public string UnitPolicy => $"tenant-{Slug}";
 
     public string ConnectionString(string role, string password) =>

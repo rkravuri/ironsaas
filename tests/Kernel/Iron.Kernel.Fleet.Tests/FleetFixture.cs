@@ -80,7 +80,7 @@ public sealed class FleetFixture : IAsyncLifetime
     }
 
     /// <summary>The control plane's services as the fleet host has them, with the store configured and the runtime replaced.</summary>
-    public ServiceProvider BuildServices(FakeTimeProvider time, IUnitRuntime runtime)
+    public ServiceProvider BuildServices(FakeTimeProvider time, IUnitRuntime runtime, Action<IServiceCollection>? configure = null)
     {
         var options = FleetOptions;
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -108,6 +108,7 @@ public sealed class FleetFixture : IAsyncLifetime
         services.AddIronDatabase(ControlConnectionString);
         services.AddIronSecretStore(configuration);
         services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
+        configure?.Invoke(services);
         return services.BuildServiceProvider();
     }
 }
