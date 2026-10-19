@@ -13,8 +13,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 | L1 Three layers: kernel, business, products | done | main | merged 2026-10-19 (7af58bf); twelve commits (a304e52 to 0ff8305); ADR-0029; the laptop reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
 | A1 Organisation units | done | main | merged 2026-10-19 (4004aa3); seven commits (ba5be84 to 077aca4); ADR-0030; acme, bravo and echo updated with their root units, smoke 11 of 11 and e2e 6 of 6 on echo |
 | A2 Roles and scoped assignments | done | main | merged 2026-10-19 (05a34eb); nine commits (0457c7f to 1d9f7b5); ADR-0031; acme, bravo and echo updated, smoke 11 of 11 and e2e 8 of 8 on echo, with a child-unit administrator |
-| A3 Record policies | review | slice/s2-a3 | six commits after the prompt (c813656 to the status commit); ADR-0032; acme, bravo and echo carry A2 and A3, smoke 11 of 11 on echo |
-| D4 Home and the header | | | |
+| A3 Record policies | done | main | merged 2026-10-19 (1af5b18); seven commits (c813656 to 49e3f70); ADR-0032; acme, bravo and echo carry A2 and A3, smoke 11 of 11 on echo |
+| D4 Home and the header | next | | docs/prompts/S2.md section D4 |
 | A4 Entitlements | | | |
 | A5 Feature flags | | | |
 | A6 Settings | | | |
