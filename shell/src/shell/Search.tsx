@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { Button, Kbd, Text, VisuallyHidden } from "@mantine/core";
@@ -46,7 +46,7 @@ export function Search() {
       actions={groups}
       // Spotlight dims the chosen action's module to 70 percent, under 4.5:1 on the primary fill; the white in full keeps
       // the pair the contrast test holds (ADR-0025).
-      styles={{ action: { "--action-description-opacity": "1" } as CSSProperties }}
+      styles={{ action: { "--action-description-opacity": "1" } }}
       shortcut={["mod + K"]}
       highlightQuery
       nothingFound={t("search.nothingFound")}

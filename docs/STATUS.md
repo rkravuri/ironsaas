@@ -14,7 +14,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A1 Organisation units | done | main | merged 2026-10-19 (4004aa3); seven commits (ba5be84 to 077aca4); ADR-0030; acme, bravo and echo updated with their root units, smoke 11 of 11 and e2e 6 of 6 on echo |
 | A2 Roles and scoped assignments | done | main | merged 2026-10-19 (05a34eb); nine commits (0457c7f to 1d9f7b5); ADR-0031; acme, bravo and echo updated, smoke 11 of 11 and e2e 8 of 8 on echo, with a child-unit administrator |
 | A3 Record policies | done | main | merged 2026-10-19 (1af5b18); seven commits (c813656 to 49e3f70); ADR-0032; acme, bravo and echo carry A2 and A3, smoke 11 of 11 on echo |
-| D4 Home and the header | next | | docs/prompts/S2.md section D4 |
+| D4 Home and the header | review | slice/s2-d4 | six commits after the prompt (the API reads to the status commit); ADR-0033; acme, bravo and echo carry D4, smoke 11 of 11 and e2e 11 of 11 on echo |
 | A4 Entitlements | | | |
 | A5 Feature flags | | | |
 | A6 Settings | | | |
@@ -32,18 +32,21 @@ The running state of the current slice, kept current by Claude Code at the end o
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
-- The shell does not warn before the session expires (TF-021, D4).
-- My profile moves onto the record template (D4).
 - Units cannot be reactivated, merged or split yet (TF-223, A8).
-- The shell has no form to create a user yet: `POST /api/v1/users` answers the invitation link, and the browser test's data uses it; the form belongs with the invitation email (S4) or D4's header.
 - The Users grid shows type and status in words and has no filter on them; a filter that offers the words (a choice filter in `DataGrid`) is a later item.
 - The last-administrator guard counts tenant-wide assignments, not active principals (ADR-0031): a disabled last administrator still counts.
 - No kernel module declares a business record (A3 step 6), so no module registers a record policy yet; the first business or products module brings the first, and the architecture test then reads its `AddServices`.
 - Record policies guard paging and reads by id (ADR-0032). A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response.
 - A record-level refusal (403 or 404 from a policy) is logged, not audited; the audit of reads arrives with A8.
-- The control plane still runs the image from A2 (8 of 9): A3 changes nothing it serves, and the next `make up-control` brings it up to date.
+- The control plane still runs the image from A2 (8 of 9): A3 and D4 change nothing it serves, and the next `make up-control` brings it up to date.
 - `make e2e` makes a new child administrator only when the store has lost the one it made (a password cannot be set again before S3's reset), so a reset store leaves an unused account in the tenant.
 - A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units.
 - Testing Library names a tree item from all its content, the items below it included (Mantine's Tree gives the item no label of its own); the scan passes, but check a parent item with a screen reader before the tree pattern spreads.
 - Since the L1 reset (2026-10-19) acme, bravo and echo are fresh tenants and their administrators' invitations are in `secret/tenants/<slug>/fleet`; the smoke tenant was not provisioned again (`make smoke` without `TENANT` provisions it).
+- "Sign out everywhere" waits for the session console (TF-022); My profile offers Sign out, which ends the session in every tab of this browser (ADR-0033).
+- The search palette is Mantine's Spotlight: its actions are buttons the input does not point at (no `aria-activedescendant`), so a screen reader hears the query and not which action Enter will open. The scan passes; check it with a screen reader, and build a combobox of our own if it falls short.
+- After an answer the shell estimates the idle end from the span `/me` showed, up to the server's touch interval (one minute) late (ADR-0033). A response header with the session's idle end would make it exact if a tenant shortens the limits (A6).
+- No module has a spot drawing of its own yet: the opener's slot stays empty until a module brings one through the illustration checklist.
+- Each `make e2e` invites one person into echo's `E2E branch` to prove the invitation link; those accounts stay Invited.
+- jsdom lays nothing out, so Mantine hides a menu's dropdown in unit tests; those tests query the items hidden or not, and the browser specs prove what is visible.
 - PRD section 2.1 and the requirement texts keep the S1 module names, pointed to ADR-0029 from the document control; the PRD split in the design session renames them and divides `Iron.Organisations` between the kernel tree and `Iron.Business.Organisations`.
