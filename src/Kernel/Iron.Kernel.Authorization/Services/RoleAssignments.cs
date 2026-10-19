@@ -88,6 +88,13 @@ public sealed class RoleAssignments(
         return permissions.Order(StringComparer.Ordinal).ToList();
     }
 
+    public async Task<IReadOnlyList<string>> PermissionsOverAsync(Guid principalId, RoleScope scope, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        var permissions = await grants.PermissionsCoveringAsync(principalId, scope, cancellationToken).ConfigureAwait(false);
+        return permissions.Order(StringComparer.Ordinal).ToList();
+    }
+
     public async Task<IReadOnlyList<string>> RoleCodesOfAsync(Guid principalId, CancellationToken cancellationToken)
     {
         return await context.RoleAssignments.AsNoTracking()

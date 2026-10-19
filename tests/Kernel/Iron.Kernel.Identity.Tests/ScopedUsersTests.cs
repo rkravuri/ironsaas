@@ -122,6 +122,36 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task MeAccessWithTheUnitsBelowAnswersOnlyWhatIsHeldOverTheWholeSubtree()
+    {
+        var (sales, east, _) = await TreeAsync();
+        var oneUnit = await UserAsync(sales);
+        var withChildren = await UserAsync(sales);
+        await GrantAsync(oneUnit.Id, [IdentityPermissions.UsersRead.Name], RoleScope.Unit(sales));
+        await GrantAsync(withChildren.Id, [IdentityPermissions.UsersRead.Name], RoleScope.Unit(sales, includeChildren: true));
+        var oneUnitCookie = await LoginAsync(oneUnit.LoginId);
+        var withChildrenCookie = await LoginAsync(withChildren.LoginId);
+
+        using var atTheUnit = await GetAsync($"/api/v1/me/access?unit={sales}", oneUnitCookie);
+        using var overOneUnit = await GetAsync($"/api/v1/me/access?unit={sales}&include_children=true", oneUnitCookie);
+        using var overTheSubtree = await GetAsync($"/api/v1/me/access?unit={sales}&include_children=true", withChildrenCookie);
+        using var overALowerUnit = await GetAsync($"/api/v1/me/access?unit={east}&include_children=true", withChildrenCookie);
+        using var onARecord = await GetAsync($"/api/v1/me/access?record_type=principal&record_id={withChildren.Id}&include_children=true", withChildrenCookie);
+
+        // A grant to the unit alone holds at the unit, not over the units below it (ADR-0031).
+        Assert.Equal([IdentityPermissions.UsersRead.Name], await PermissionsAsync(atTheUnit));
+        Assert.Empty(await PermissionsAsync(overOneUnit));
+        using (var body = await JsonAsync(overTheSubtree))
+        {
+            Assert.Equal($"unit_with_children:{sales:N}", body.RootElement.GetProperty("scope").GetString());
+            Assert.Equal([IdentityPermissions.UsersRead.Name], body.RootElement.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()));
+        }
+
+        Assert.Equal([IdentityPermissions.UsersRead.Name], await PermissionsAsync(overALowerUnit));
+        Assert.Equal(ApiErrors.Validation, await ProblemAsync(onARecord, HttpStatusCode.BadRequest));
+    }
+
+    [Fact]
     public async Task ARoleWithoutTheUsersReadPermissionAnswers403()
     {
         var (sales, _, _) = await TreeAsync();

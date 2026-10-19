@@ -76,7 +76,7 @@ internal static class AuthEndpoints
         auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account.");
 
         endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
-        endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=) or a record (?record_type=&record_id=, with &unit= for the record's unit).");
+        endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=), over a unit and the units below it (&include_children=true), or at a record (?record_type=&record_id=, with &unit= for the record's unit).");
         TokenEndpoints.Map(endpoints);
         UsersEndpoints.Map(endpoints);
     }
@@ -125,20 +125,25 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// What the signed-in principal may do at one unit or one record (ADR-0031). For a record the shell passes the
-    /// record's unit too, as it shows it; the answer only decides which actions the shell offers, and every action is
-    /// checked again by its endpoint.
+    /// What the signed-in principal may do at one unit or one record, or over a unit and every unit below it (ADR-0031).
+    /// For a record the shell passes the record's unit too, as it shows it; the answer only decides which actions the
+    /// shell offers, and every action is checked again by its endpoint.
     /// </summary>
     private static async Task<IResult> AccessAsync(HttpContext http, RequestPrincipal principal, IRoleAssignments roleAssignments, CancellationToken cancellationToken)
     {
-        var scope = AccessQuery.Parse(http.Request.Query);
-        if (scope.IsFailure)
+        var target = AccessQuery.Parse(http.Request.Query);
+        if (target.IsFailure)
         {
-            return ApiResults.Problem(scope.Error, http);
+            return ApiResults.Problem(target.Error, http);
         }
 
-        var permissions = await roleAssignments.PermissionsOfAsync(principal.Current!.Id, scope.Value, cancellationToken);
-        return TypedResults.Ok(new AccessResponse(scope.Value.ToString(), permissions));
+        var current = principal.Current!.Id;
+        if (target.Value.Over is { } over)
+        {
+            return TypedResults.Ok(new AccessResponse(over.ToString(), await roleAssignments.PermissionsOverAsync(current, over, cancellationToken)));
+        }
+
+        return TypedResults.Ok(new AccessResponse(target.Value.Scope.ToString(), await roleAssignments.PermissionsOfAsync(current, target.Value.Scope, cancellationToken)));
     }
 
     private static SessionResponse Session(Guid id, DateTimeOffset expiresAt, DateTimeOffset idleExpiresAt) => new(id, expiresAt, idleExpiresAt);

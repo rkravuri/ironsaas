@@ -177,7 +177,7 @@ const access = useAccessAt(unit ? { unit: unit.id } : undefined, ["authz.units.m
 {access.can("authz.units.manage") && <Button onClick={rename}>{t("units.actions.rename")}</Button>}
 ```
 
-The hook asks only when the principal holds the permission somewhere, and caches the answer for 30 seconds. An action for a record passes `{ recordType, recordId, unit }`; an action whose scope is the tenant, such as changing a role, reads `session.tenantPermissions`. Show nothing while the answer is on its way, and let the endpoint's refusal (403 with the missing permissions named) land in the page's alert.
+The hook asks only when the principal holds the permission somewhere, and caches the answer for 30 seconds. An action on something that reaches a unit and every unit below it, such as removing an assignment with children, passes `{ unit, includeChildren: true }` and gets only what is held over the whole subtree. An action for a record passes `{ recordType, recordId, unit }`; an action whose scope is the tenant, such as changing a role, reads `session.tenantPermissions`. Show nothing while the answer is on its way, and let the endpoint's refusal (403 with the missing permissions named) land in the page's alert.
 
 **Testing it.** Each rule has an integration test with its error code (`AssignmentServiceTests`, `RoleServiceTests`, `RoleImportTests` in the Authorization tests); a scoped list has a test with a reader at a child unit and a principal outside (`ScopedUsersTests` in the Identity tests); `make e2e` sets up a child unit on the tenant and signs in as its administrator (`shell/e2e/scoped.spec.ts`).
 

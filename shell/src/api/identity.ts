@@ -51,8 +51,11 @@ export type UserRecord = z.infer<typeof UserRecordSchema>;
 export const AccessSchema = z.object({ scope: z.string(), permissions: z.array(z.string()) });
 export type Access = z.infer<typeof AccessSchema>;
 
-/** Where to ask about access: a unit, or a record with the unit it belongs to when the page knows it. */
-export type AccessTarget = { unit: string } | { recordType: string; recordId: string; unit?: string };
+/**
+ * Where to ask about access: a unit, or a unit with every unit below it (what changing an assignment to a unit and
+ * below needs, ADR-0031), or a record with the unit it belongs to when the page knows it.
+ */
+export type AccessTarget = { unit: string; includeChildren?: boolean } | { recordType: string; recordId: string; unit?: string };
 
 export const fetchMe = (signal?: AbortSignal) => request("/api/v1/me", { schema: MeSchema, ...(signal ? { signal } : {}) });
 
@@ -64,6 +67,9 @@ export function accessQuery(target: AccessTarget): string {
   }
   if (target.unit !== undefined) {
     params.set("unit", target.unit);
+  }
+  if ("includeChildren" in target && target.includeChildren === true) {
+    params.set("include_children", "true");
   }
   return params.toString();
 }

@@ -26,6 +26,12 @@ public interface IRoleAssignments
     /// (or to an ancestor with its children), and those assigned to the record.
     /// </summary>
     Task<IReadOnlyList<string>> PermissionsOfAsync(Guid principalId, AccessScope scope, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Every permission the principal holds over the whole of a scope, in name order (ADR-0031): for a unit with its
+    /// children, only the grants that reach every unit below it. A grant or a removal there is checked against this.
+    /// </summary>
+    Task<IReadOnlyList<string>> PermissionsOverAsync(Guid principalId, RoleScope scope, CancellationToken cancellationToken);
 }
 
 /// <summary>

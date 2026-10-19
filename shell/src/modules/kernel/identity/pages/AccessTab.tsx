@@ -139,11 +139,15 @@ export function AccessTab({ user }: { user: UserRecord }) {
 const where = (assignment: Assignment, t: TFunction) =>
   assignment.unit_path.length > 0 ? `${t(`access.scopes.${assignment.scope_kind}`)}: ${unitPathLabel(assignment)}` : t(`access.scopes.${assignment.scope_kind}`);
 
-/** One assignment; Remove shows where the reader may manage assignments at its unit, or for the whole tenant. */
+/**
+ * One assignment. Remove shows only where it will work: the reader manages assignments at its unit, over the unit and
+ * every unit below it for a "unit and below" assignment, or for the whole tenant (ADR-0031).
+ */
 function AssignmentRow({ assignment, onRemove }: { assignment: Assignment; onRemove: () => void }) {
   const { t } = useTranslation();
   const session = useSession();
-  const access = useAccessAt(assignment.unit_id !== null ? { unit: assignment.unit_id } : undefined, [manage]);
+  const target = assignment.unit_id !== null ? { unit: assignment.unit_id, includeChildren: assignment.scope_kind === "unit_with_children" } : undefined;
+  const access = useAccessAt(target, [manage]);
   const canRemove = assignment.unit_id !== null ? access.can(manage) : session.tenantPermissions.includes(manage);
   return (
     <Table.Tr>

@@ -93,7 +93,7 @@ describe("the user record page", () => {
       "GET /api/v1/me": () => json(me([], granter)),
       "GET /api/v1/users/u1": () => json(user),
       [assignments]: () => json(list([assignment("a1", "unit_with_children", { id: "sales", path: ["Acme", "Sales"] }), assignment("a2", "tenant", null)])),
-      "GET /api/v1/me/access?unit=sales": () => json({ scope: "unit:sales", permissions: granter }),
+      "GET /api/v1/me/access?unit=sales&include_children=true": () => json({ scope: "unit_with_children:sales", permissions: granter }),
       "DELETE /api/v1/role-assignments/a1": () => new Response(null, { status: 204 }),
     });
     page();
@@ -113,6 +113,25 @@ describe("the user record page", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove role" }));
 
     await waitFor(() => expect(calls.some((call) => call.key === "DELETE /api/v1/role-assignments/a1")).toBe(true));
+  });
+
+  it("shows no Remove on a unit-and-below row to a manager of that unit alone, and Remove on a one-unit row", async () => {
+    // Assignments are managed at Sales and at North alone: nothing reaches every unit below Sales (ADR-0031).
+    const atOneUnit = granter.filter((permission) => permission !== "authz.assignments.manage");
+    stubFetch({
+      "GET /api/v1/me": () => json(me([], granter)),
+      "GET /api/v1/users/u1": () => json(user),
+      [assignments]: () => json(list([assignment("a1", "unit_with_children", { id: "sales", path: ["Acme", "Sales"] }), assignment("a2", "unit", { id: "north", path: ["Acme", "Sales", "North"] })])),
+      "GET /api/v1/me/access?unit=sales&include_children=true": () => json({ scope: "unit_with_children:sales", permissions: atOneUnit }),
+      "GET /api/v1/me/access?unit=north": () => json({ scope: "unit:north", permissions: granter }),
+    });
+    page();
+
+    const table = await openAccess();
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("This unit and the units below it");
+    expect(await within(rows[2]!).findByRole("button", { name: "Remove User reader" })).toBeInTheDocument();
+    expect(within(rows[1]!).queryByRole("button")).toBeNull();
   });
 
   it("grants a role at a unit chosen on the tree, with the units below it", async () => {
