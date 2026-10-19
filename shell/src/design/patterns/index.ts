@@ -2,6 +2,9 @@ export { mandala, mandalaViewBox, seedFrom, stream, symmetries } from "./mandala
 export type { MandalaDrawing, MandalaParameters, MandalaRing, Symmetry } from "./mandala";
 export { Mandala } from "./Mandala";
 export type { MandalaProps } from "./Mandala";
+export { ModuleMark } from "./ModuleMark";
+export { moduleMarkParameters } from "./module-mark";
+export type { ModuleMarkProps } from "./ModuleMark";
 export { TenantMark } from "./TenantMark";
 export { tenantMarkParameters } from "./tenant-mark";
 export type { TenantMarkProps } from "./TenantMark";

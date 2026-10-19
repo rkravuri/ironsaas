@@ -5,7 +5,8 @@
     "signOut": "Sign out",
     "signedInAs": "Signed in as {{name}}",
     "tenant": "Tenant {{hostname}}",
-    "toggleNavigation": "Toggle navigation"
+    "toggleNavigation": "Toggle navigation",
+    "navigation": "Main navigation"
   },
   "login": {
     "title": "Sign in",
@@ -13,7 +14,14 @@
     "password": "Password",
     "submit": "Sign in",
     "failed": "The login identifier or the password is wrong, or the account is not active.",
-    "required": "Required"
+    "required": "Required",
+    "ended": {
+      "idle": "You were signed out because nothing happened for a while. Sign in again to carry on.",
+      "absolute": "Your session reached its time limit. Sign in again to carry on.",
+      "signed-out": "You have signed out.",
+      "signed-out-elsewhere": "You signed out in another tab.",
+      "expired": "Your session has ended. Sign in again to carry on."
+    }
   },
   "invitation": {
     "title": "Set your password",
@@ -42,12 +50,14 @@
     "identity": {
       "title": "Identity",
       "users": "Users",
-      "profile": "My profile"
+      "profile": "My profile",
+      "line": "The people and service accounts of this tenant, and how they sign in."
     },
     "console": {
       "title": "Console",
       "units": "Organisation units",
-      "roles": "Roles"
+      "roles": "Roles",
+      "line": "The organisation's units and its roles: who may do what, and where."
     }
   },
   "users": {
@@ -87,18 +97,60 @@
       "noHomeUnit": "None",
       "details": "Details",
       "access": "Access"
+    },
+    "invite": {
+      "open": "Invite a person",
+      "title": "Invite a person",
+      "submit": "Invite",
+      "nameRequired": "Enter the person's name.",
+      "nameTooLong": "Use at most 200 characters.",
+      "loginRequired": "Enter the login identifier.",
+      "loginTooLong": "Use at most 254 characters.",
+      "loginHint": "What they will sign in with, usually their work email address.",
+      "unitRequired": "Choose the person's home unit.",
+      "unitRefused": "You cannot invite people into this unit. Choose a unit where you manage people.",
+      "ownUnit": "People you invite join your home unit.",
+      "doneTitle": "{{name}} is invited",
+      "created": "The account for {{name}} is ready. They choose a password when they open this link.",
+      "link": "Invitation link",
+      "copy": "Copy the link",
+      "copied": "Copied",
+      "byHand": "Email delivery comes later: send this link to them yourself. It works once, expires on {{when}}, and is shown only now.",
+      "openRecord": "Open their record"
     }
   },
   "profile": {
-    "title": "My profile",
     "loginId": "Login identifier",
     "displayName": "Display name",
     "type": "Type",
-    "permissions": "Permissions",
-    "sessionEnds": "Session ends {{when}}",
-    "none": "None",
     "homeUnit": "Home unit",
-    "noHomeUnit": "None yet"
+    "noHomeUnit": "None yet",
+    "tabs": {
+      "details": "Details",
+      "access": "Access",
+      "session": "Session"
+    },
+    "access": {
+      "failed": "Your access could not be loaded.",
+      "none": "You hold no roles yet",
+      "noneText": "An administrator gives roles. Until then, My profile is the one page you can open.",
+      "intro": "The roles you hold, and where each applies. An administrator changes them.",
+      "label": "Your roles",
+      "since": "Since {{date}}",
+      "scopes": {
+        "tenant": "for the whole tenant",
+        "unit": "at {{unit}} only",
+        "unit_with_children": "at {{unit}} and every unit below it",
+        "record": "for one record"
+      }
+    },
+    "session": {
+      "started": "Started",
+      "idle": "Ends without activity at",
+      "absolute": "Ends at the latest at",
+      "unknown": "Not known",
+      "explain": "Every request you make keeps the session alive, up to its latest end. Two minutes before it ends you are asked whether to stay signed in. Signing out here signs you out in every tab of this browser."
+    }
   },
   "grid": {
     "columns": "Columns",
@@ -356,7 +408,8 @@
       "confirmMessage": "Its records move to the parent unit. This cannot be undone.",
       "confirmLabel": "Delete",
       "formTitle": "Rename the unit",
-      "name": "Name"
+      "name": "Name",
+      "openAlert": "Open the alert dialog"
     }
   },
   "illustrations": {
@@ -482,6 +535,9 @@
     "empty": {
       "title": "No organisation units yet",
       "text": "The root unit appears when the tenant is provisioned."
+    },
+    "quick": {
+      "add": "Add a unit"
     }
   },
   "roles": {
@@ -631,6 +687,92 @@
       "title": "Remove {{role}}?",
       "message": "{{name}} loses {{role}} ({{scope}}) at once.",
       "confirm": "Remove role"
+    }
+  },
+  "home": {
+    "title": "Home",
+    "greeting": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}"
+    },
+    "intro": "Start where you left off, or open a part of the platform.",
+    "introWithUnit": "Your home unit is {{unit}}. Start where you left off, or open a part of the platform.",
+    "modules": "Where to go",
+    "quickActions": "Quick actions",
+    "recent": {
+      "title": "Recently opened",
+      "empty": "The last five pages you open in this browser will appear here, so you can go back to them in one step."
+    }
+  },
+  "search": {
+    "open": "Search",
+    "label": "Search pages and actions",
+    "placeholder": "Search pages and actions by name or module",
+    "pages": "Pages",
+    "actions": "Quick actions",
+    "shell": "Foundation",
+    "nothingFound": "Nothing matches. Try the name of a page or of a module."
+  },
+  "help": {
+    "open": "Help and keyboard shortcuts",
+    "title": "Help",
+    "shell": "Keys on every page",
+    "page": "Keys on {{page}}",
+    "documentation": "The guide to each page will open from here once it is written. Until then, your administrator can help."
+  },
+  "shortcuts": {
+    "keys": {
+      "up": "↑",
+      "down": "↓",
+      "left": "←",
+      "right": "→",
+      "space": "Space",
+      "enter": "Enter",
+      "escape": "Esc",
+      "tab": "Tab",
+      "shift": "Shift"
+    },
+    "shell": {
+      "search": "Open the search",
+      "close": "Close the search, a dialog or this panel",
+      "next": "Move to the next control",
+      "previous": "Move to the previous control"
+    },
+    "grid": {
+      "move": "Move between rows",
+      "select": "Select the row; Enter does too",
+      "open": "Open the selected row"
+    },
+    "tree": {
+      "move": "Move through the tree; the record beside it follows",
+      "expand": "Open or close a branch"
+    },
+    "tabs": {
+      "move": "Move between tabs"
+    }
+  },
+  "header": {
+    "homeUnit": "Home unit: {{unit}}",
+    "noHomeUnit": "No home unit yet",
+    "scheme": {
+      "label": "Colour scheme",
+      "light": "Light",
+      "dark": "Dark",
+      "auto": "Same as the device",
+      "current": ", chosen"
+    }
+  },
+  "session": {
+    "warning": {
+      "title": "Your session is about to end",
+      "message": "For your security, a session ends after a while without activity. This one ends at {{time}}. Stay signed in to carry on where you are.",
+      "stay": "Stay signed in"
+    },
+    "final": {
+      "title": "This session cannot be extended",
+      "message": "Every session has a time limit, and this one reaches it at {{time}}. It cannot be extended any further: save your work, then sign in again.",
+      "keepWorking": "Back to my work"
     }
   }
 }

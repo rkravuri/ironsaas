@@ -83,13 +83,32 @@ export interface RequestOptions<T> {
   signal?: AbortSignal;
 }
 
-type UnauthenticatedListener = () => void;
+type UnauthenticatedListener = (error: ApiError) => void;
 const unauthenticatedListeners = new Set<UnauthenticatedListener>();
 
-/** The session provider subscribes to learn that a session ended (401) from any call. */
+/** The session provider subscribes to learn that a session ended (401) from any call, and why. */
 export function onUnauthenticated(listener: UnauthenticatedListener): () => void {
   unauthenticatedListeners.add(listener);
   return () => unauthenticatedListeners.delete(listener);
+}
+
+/** What one answer tells the session clock (ADR-0033): its status, and the server's clock from the `Date` header. */
+export interface ResponseInfo {
+  path: string;
+  status: number;
+  /** The server's time when it answered, in milliseconds; undefined when the answer had no `Date` header. */
+  serverDate: number | undefined;
+  /** This browser's time when the answer arrived. */
+  receivedAt: number;
+}
+
+type ResponseListener = (info: ResponseInfo) => void;
+const responseListeners = new Set<ResponseListener>();
+
+/** Every answer, before it is read: an answer other than 401 means the session was alive and the server counted it. */
+export function onResponse(listener: ResponseListener): () => void {
+  responseListeners.add(listener);
+  return () => responseListeners.delete(listener);
 }
 
 /**
@@ -113,13 +132,18 @@ export async function request<T = unknown>(path: string, options: RequestOptions
 
   const response = await fetch(path, init);
   const correlationId = response.headers.get("X-Correlation-Id") ?? undefined;
+  const date = Date.parse(response.headers.get("Date") ?? "");
+  const info: ResponseInfo = { path, status: response.status, serverDate: Number.isNaN(date) ? undefined : date, receivedAt: Date.now() };
+  for (const listener of responseListeners) {
+    listener(info);
+  }
 
   if (!response.ok) {
     const problem = await readProblem(response);
     const error = new ApiError(response.status, problem, correlationId);
     if (error.isUnauthenticated) {
       for (const listener of unauthenticatedListeners) {
-        listener();
+        listener(error);
       }
     }
     throw error;

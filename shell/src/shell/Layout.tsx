@@ -1,59 +1,55 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink as RouterNavLink, Outlet, useLocation } from "react-router";
-import { AppShell, Burger, Group, Menu, NavLink, ScrollArea, Text, Title, UnstyledButton } from "@mantine/core";
+import { AppShell, Burger, Group, NavLink, ScrollArea, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconChevronDown, IconLogout, IconUser } from "@tabler/icons-react";
+import { IconHome } from "@tabler/icons-react";
+import { SessionWarning } from "@/auth/SessionWarning";
 import { useSession } from "@/auth/session-context";
 import { TenantMark } from "@/design/patterns";
+import { useRememberPages } from "./remember-pages";
 import { manifests } from "@/modules";
 import { navigationFor } from "@/modules/registry";
+import { HelpButton } from "./HelpPanel";
+import { ProfileMenu } from "./ProfileMenu";
+import { Search, SearchButton } from "./Search";
 
-/** Header, navigation from the manifests filtered by the session's permissions, the signed-in principal and sign out (S1 plan 3.10). */
+/**
+ * The frame of every signed-in page (S1 plan 3.10, ADR-0033): the header with the tenant's mark, search, help and the
+ * profile menu, and nothing that does not work yet; the navigation from the manifests with Home first; the session
+ * warning. A notifications bell and an organisation switcher join when S4 and A8 give them something to do.
+ */
 export function Layout() {
   const { t } = useTranslation();
   const session = useSession();
   const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }), [session.permissions]);
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure();
+  useRememberPages();
 
   return (
     <AppShell header={{ height: 56 }} navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !opened } }} padding="md">
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group>
+        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group wrap="nowrap" gap="sm">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label={t("app.toggleNavigation")} />
             <TenantMark hostname={window.location.hostname} size={24} />
             <Title order={4}>{t("app.name")}</Title>
-            <Text c="dimmed" size="sm" visibleFrom="sm">
+            <Text c="dimmed" size="sm" visibleFrom="md">
               {window.location.hostname}
             </Text>
           </Group>
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <UnstyledButton aria-label={t("app.signedInAs", { name: session.me?.display_name ?? "" })}>
-                <Group gap={6}>
-                  <IconUser size={18} />
-                  <Text size="sm">{session.me?.display_name}</Text>
-                  <IconChevronDown size={14} />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>{session.me?.login_id}</Menu.Label>
-              <Menu.Item component={RouterNavLink} to="/me" leftSection={<IconUser size={16} />}>
-                {t("modules.identity.profile")}
-              </Menu.Item>
-              <Menu.Item leftSection={<IconLogout size={16} />} onClick={() => void session.signOut()}>
-                {t("app.signOut")}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <Group wrap="nowrap" gap="sm">
+            <SearchButton />
+            <HelpButton />
+            <ProfileMenu />
+          </Group>
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="xs">
+      <AppShell.Navbar p="xs" aria-label={t("app.navigation")}>
         <ScrollArea type="auto">
+          <NavLink component={RouterNavLink} to="/" end label={t("home.title")} leftSection={<IconHome size={16} />} active={location.pathname === "/"} onClick={close} />
           {navigation.map((group) => (
             <NavLink key={group.module} label={t(group.titleKey)} defaultOpened childrenOffset={12}>
               {group.entries.map((entry) => (
@@ -75,6 +71,8 @@ export function Layout() {
       <AppShell.Main>
         <Outlet />
       </AppShell.Main>
+      <Search />
+      <SessionWarning />
     </AppShell>
   );
 }

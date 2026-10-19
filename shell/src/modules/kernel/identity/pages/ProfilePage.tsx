@@ -1,8 +1,26 @@
+import { useSyncExternalStore } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
-import { Badge, Group, Stack, Table, Text, Title } from "@mantine/core";
+import { useQuery } from "@tanstack/react-query";
+import { Alert, Button, Stack, Table, Text } from "@mantine/core";
+import { IconLogout } from "@tabler/icons-react";
+import { ApiError } from "@/api/client";
+import { fetchMyAssignments, type Assignment } from "@/api/authorization";
+import type { Me } from "@/api/identity";
 import { useSession } from "@/auth/session-context";
+import { useSessionWatch } from "@/auth/session-watch";
+import { EmptyState, LoadingState } from "@/components/panels";
+import { RecordPage } from "@/components/templates";
+import { unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
+import { userStatus } from "./user-status";
 
-/** What /me says about the signed-in principal: handy for support and for seeing one's own permissions. */
+const when = (value: string | number) => new Date(value).toLocaleString();
+
+/**
+ * My profile (D4) on the record template: the person's name, login identifier, home unit and status, then their
+ * details, their own access in words, and their session. A signed-in principal is active by construction: the API ends
+ * the sessions of anyone who is not (SessionService), so the status needs no request of its own.
+ */
 export function ProfilePage() {
   const { t } = useTranslation();
   const { me } = useSession();
@@ -10,47 +28,129 @@ export function ProfilePage() {
     return null;
   }
   return (
-    <Stack>
-      <Title order={2}>{t("profile.title")}</Title>
-      <Table variant="vertical" withTableBorder>
-        <Table.Tbody>
-          <Table.Tr>
-            <Table.Th>{t("profile.loginId")}</Table.Th>
-            <Table.Td>{me.login_id}</Table.Td>
+    <RecordPage
+      header={{
+        title: me.display_name,
+        code: me.login_id,
+        status: userStatus("active", t),
+        meta: [
+          { label: t("users.homeUnit"), value: me.home_unit?.name ?? t("profile.noHomeUnit") },
+          { label: t("users.type"), value: t(`users.types.${me.type}`, { defaultValue: me.type }) },
+        ],
+      }}
+      tabs={[
+        { value: "details", label: t("profile.tabs.details"), panel: <Details me={me} /> },
+        { value: "access", label: t("profile.tabs.access"), panel: <MyAccess /> },
+        { value: "session", label: t("profile.tabs.session"), panel: <MySession me={me} /> },
+      ]}
+    />
+  );
+}
+
+function Facts({ rows }: { rows: [string, string][] }) {
+  return (
+    <Table variant="vertical" withTableBorder>
+      <Table.Tbody>
+        {rows.map(([label, value]) => (
+          <Table.Tr key={label}>
+            <Table.Th w={220}>{label}</Table.Th>
+            <Table.Td>{value}</Table.Td>
           </Table.Tr>
-          <Table.Tr>
-            <Table.Th>{t("profile.displayName")}</Table.Th>
-            <Table.Td>{me.display_name}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>{t("profile.type")}</Table.Th>
-            <Table.Td>{me.type}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>{t("profile.homeUnit")}</Table.Th>
-            <Table.Td>{me.home_unit ? me.home_unit.name : <Text c="dimmed">{t("profile.noHomeUnit")}</Text>}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Th>{t("profile.permissions")}</Table.Th>
-            <Table.Td>
-              {me.permissions.length === 0 ? (
-                <Text c="dimmed">{t("profile.none")}</Text>
-              ) : (
-                <Group gap="xs">
-                  {me.permissions.map((permission) => (
-                    <Badge key={permission} variant="light">
-                      {permission}
-                    </Badge>
-                  ))}
-                </Group>
-              )}
-            </Table.Td>
-          </Table.Tr>
-        </Table.Tbody>
-      </Table>
-      <Text size="sm" c="dimmed">
-        {t("profile.sessionEnds", { when: new Date(me.session.expires_at).toLocaleString() })}
+        ))}
+      </Table.Tbody>
+    </Table>
+  );
+}
+
+function Details({ me }: { me: Me }) {
+  const { t } = useTranslation();
+  return (
+    <Facts
+      rows={[
+        [t("profile.displayName"), me.display_name],
+        [t("profile.loginId"), me.login_id],
+        [t("profile.type"), t(`users.types.${me.type}`, { defaultValue: me.type })],
+        [t("profile.homeUnit"), me.home_unit?.name ?? t("profile.noHomeUnit")],
+      ]}
+    />
+  );
+}
+
+/** The person's own assignments, read-only, each a sentence: the role, then where it applies (TF-033, ADR-0031). */
+function MyAccess() {
+  const { t } = useTranslation();
+  const mine = useQuery({ queryKey: ["authz", "role-assignments", "mine"], queryFn: ({ signal }) => fetchMyAssignments(signal) });
+  if (mine.isPending) {
+    return <LoadingState height={120} />;
+  }
+  if (mine.isError) {
+    return (
+      <Alert color="danger" role="alert" title={t("profile.access.failed")}>
+        {mine.error instanceof ApiError ? mine.error.message : t("errors.unexpected")}
+        {mine.error instanceof ApiError && mine.error.correlationId !== undefined && (
+          <Text size="xs" c="dimmed" mt={4}>
+            {t("errors.correlation", { id: mine.error.correlationId })}
+          </Text>
+        )}
+      </Alert>
+    );
+  }
+  if (mine.data.data.length === 0) {
+    return <EmptyState drawing="nothingYet" size="sm" title={t("profile.access.none")} text={t("profile.access.noneText")} />;
+  }
+  return (
+    <Stack gap="sm">
+      <Text size="sm" c="dimmed" maw={640}>
+        {t("profile.access.intro")}
       </Text>
+      <Stack gap="xs" component="ul" m={0} pl={0} style={{ listStyle: "none" }} aria-label={t("profile.access.label")}>
+        {mine.data.data.map((assignment) => (
+          <li key={assignment.id}>
+            <Text size="sm">
+              <Text span fw={600}>
+                {assignment.role_name}
+              </Text>
+              {", "}
+              {where(assignment, t)}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {t("profile.access.since", { date: new Date(assignment.created_at).toLocaleDateString() })}
+            </Text>
+          </li>
+        ))}
+      </Stack>
+    </Stack>
+  );
+}
+
+const where = (assignment: Assignment, t: TFunction): string =>
+  t(`profile.access.scopes.${assignment.scope_kind}`, { unit: unitPathLabel(assignment) });
+
+/**
+ * The session (TF-021): when it started, when it ends without activity (as this tab knows it, moved by every answer)
+ * and its absolute limit. The API has no "sign out everywhere" yet (TF-022), so the one action is Sign out, which ends
+ * the session in every tab of this browser.
+ */
+function MySession({ me }: { me: Me }) {
+  const { t } = useTranslation();
+  const session = useSession();
+  const watch = useSessionWatch();
+  const times = useSyncExternalStore(watch.subscribe, watch.getTimes);
+  return (
+    <Stack gap="md" align="flex-start">
+      <Facts
+        rows={[
+          [t("profile.session.started"), me.session.started_at ? when(me.session.started_at) : t("profile.session.unknown")],
+          [t("profile.session.idle"), when(times?.idleEndsAt ?? me.session.idle_expires_at)],
+          [t("profile.session.absolute"), when(me.session.expires_at)],
+        ]}
+      />
+      <Text size="sm" c="dimmed" maw={640}>
+        {t("profile.session.explain")}
+      </Text>
+      <Button variant="default" leftSection={<IconLogout size={16} aria-hidden="true" />} onClick={() => void session.signOut()}>
+        {t("app.signOut")}
+      </Button>
     </Stack>
   );
 }

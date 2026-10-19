@@ -4,13 +4,14 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { SessionProvider } from "@/auth/session";
+import { colorSchemeManager } from "@/design/scheme";
 import { cssVariablesResolver, theme } from "@/theme";
 
 /** The providers a page needs, minus the real router: tests mount pages under a memory router. */
 export function renderWithProviders(ui: ReactNode, { route = "/" }: { route?: string } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MantineProvider theme={theme} cssVariablesResolver={cssVariablesResolver}>
+    <MantineProvider theme={theme} colorSchemeManager={colorSchemeManager} cssVariablesResolver={cssVariablesResolver}>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
@@ -51,6 +52,14 @@ export const problem = (status: number, body: Record<string, unknown>, correlati
     headers: { "Content-Type": "application/problem+json", "X-Correlation-Id": correlationId },
   });
 
+/** A session as /me shows it: started a minute ago, idle in an hour, absolute in twelve, unless a test moves them. */
+export const sessionTimes = ({ idleIn = 60 * 60_000, endsIn = 12 * 60 * 60_000 }: { idleIn?: number; endsIn?: number } = {}) => ({
+  id: "01a14e12-0000-7000-8000-000000000001",
+  started_at: new Date(Date.now() - 60_000).toISOString(),
+  expires_at: new Date(Date.now() + endsIn).toISOString(),
+  idle_expires_at: new Date(Date.now() + Math.min(idleIn, endsIn)).toISOString(),
+});
+
 /** A /me answer: tenant-wide permissions, and those held anywhere (the tenant-wide ones unless a test says otherwise). */
 export const me = (permissions: string[] = [], anywhere: string[] = permissions) => ({
   id: "01a14e12-f3a8-7155-b5b6-17c3abceae77",
@@ -59,5 +68,5 @@ export const me = (permissions: string[] = [], anywhere: string[] = permissions)
   type: "user",
   permissions,
   permissions_anywhere: anywhere,
-  session: { id: "01a14e12-0000-7000-8000-000000000001", expires_at: "2026-10-19T08:00:00Z", idle_expires_at: "2026-10-18T09:00:00Z" },
+  session: sessionTimes(),
 });

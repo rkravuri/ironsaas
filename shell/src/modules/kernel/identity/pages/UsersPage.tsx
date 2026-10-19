@@ -1,16 +1,37 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
+import { Button } from "@mantine/core";
+import { IconUserPlus } from "@tabler/icons-react";
 import { fetchUsers, type User } from "@/api/identity";
+import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ListPage } from "@/components/templates";
+import { InviteDialog } from "./InviteDialog";
 
 const defaultSort = [{ field: "login_id", direction: "asc" as const }];
 
-/** The users the reader may see (TF-101 through the grid, ADR-0031) on the list template; a row opens the user's record. */
+/**
+ * The users the reader may see (TF-101 through the grid, ADR-0031) on the list template; a row opens the user's record.
+ * "Invite a person" shows where the reader manages users somewhere; the dialog asks /me/access at the unit it picks.
+ * The quick action of the home page and the search arrives as ?invite, which opens the dialog once.
+ */
 export function UsersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const session = useSession();
+  const [params, setParams] = useSearchParams();
+  const canInvite = session.permissions.includes("identity.users.manage");
+  // Asked for by the button or by ?invite; shown while the person may invite at all.
+  const [requested, setRequested] = useState(() => params.has("invite"));
+  const inviting = requested && canInvite;
+  useEffect(() => {
+    if (params.has("invite")) {
+      const rest = new URLSearchParams(params);
+      rest.delete("invite");
+      setParams(rest, { replace: true });
+    }
+  }, [params, setParams]);
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchUsers(query, signal), []);
   // Type and status in the catalogue's words, as the record page shows them; a filter that offers those words is a later item.
   const columns: DataGridColumn<User>[] = [
@@ -24,8 +45,19 @@ export function UsersPage() {
   ];
 
   return (
-    <ListPage title={t("users.title")} description={t("users.description")}>
+    <ListPage
+      title={t("users.title")}
+      description={t("users.description")}
+      actions={
+        canInvite ? (
+          <Button leftSection={<IconUserPlus size={16} aria-hidden="true" />} onClick={() => setRequested(true)}>
+            {t("users.invite.open")}
+          </Button>
+        ) : undefined
+      }
+    >
       <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} onRowOpen={(user) => void navigate(`/users/${user.id}`)} />
+      {inviting && <InviteDialog onClose={() => setRequested(false)} />}
     </ListPage>
   );
 }

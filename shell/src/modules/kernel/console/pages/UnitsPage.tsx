@@ -1,14 +1,16 @@
-import { useMemo, useState, type FocusEvent } from "react";
+import { useEffect, useMemo, useState, type FocusEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Box, Button, Flex, Group, Paper, Stack, Table, Text, Tree, getTreeExpandedState, useTree } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
 import { deactivateUnit, fetchKinds, fetchUnits, type Kinds, type Unit } from "@/api/authorization";
 import { useAccessAt } from "@/auth/access";
+import { useSession } from "@/auth/session-context";
 import { ConfirmDialog, EmptyState, LoadingState, RecordHeader } from "@/components/panels";
 import { ListPage } from "@/components/templates";
-import { Mandala } from "@/design/patterns";
+import { ModuleMark } from "@/design/patterns";
 import { CreateUnitDialog, MoveUnitDialog, RenameUnitDialog } from "./UnitDialogs";
 import { childKinds, kindOf, pathLabel, toTreeData } from "./unit-tree";
 
@@ -34,7 +36,7 @@ export function UnitsPage() {
   const opener = {
     title: t("units.title"),
     description: t("units.description"),
-    drawing: <Mandala symmetry={8} rings={4} stroke={2} density={0.6} seed="console" size={56} accent="console" />,
+    drawing: <ModuleMark name="console" accent="console" size={56} />,
     density: false,
   };
 
@@ -80,11 +82,26 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
   const queryClient = useQueryClient();
   const data = useMemo(() => toTreeData(units), [units]);
   const byId = useMemo(() => new Map(units.map((unit) => [unit.id, unit])), [units]);
+  // The quick action "Add a unit" (D4) arrives as ?add: the person's home unit is chosen, and its dialog opens once the
+  // answers say a unit may be added there.
+  const [params, setParams] = useSearchParams();
+  const home = useSession().me?.home_unit?.id;
+  const [adding, setAdding] = useState(() => params.has("add"));
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogName | undefined>();
+  useEffect(() => {
+    if (params.has("add")) {
+      const rest = new URLSearchParams(params);
+      rest.delete("add");
+      setParams(rest, { replace: true });
+    }
+  }, [params, setParams]);
   const [failure, setFailure] = useState<Failure | undefined>();
   const [busy, setBusy] = useState(false);
-  const selected = (selectedId !== undefined ? byId.get(selectedId) : undefined) ?? units[0];
+  // Until the person picks a unit, the quick action's home unit is the choice; otherwise the root.
+  const preferred = adding && home !== undefined && byId.has(home) ? home : undefined;
+  const chosen = selectedId ?? preferred;
+  const selected = (chosen !== undefined ? byId.get(chosen) : undefined) ?? units[0];
   // The actions follow what the principal may do at the chosen unit, not tenant-wide (ADR-0031); the API checks again.
   const access = useAccessAt(selected ? { unit: selected.id } : undefined, [manage]);
   const canManage = access.can(manage);
@@ -94,9 +111,15 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
     onSelectedStateChange: (state) => setSelectedId(state[0]),
   });
 
-  const close = () => setDialog(undefined);
+  const canHoldHere = selected !== undefined && selected.status === "active" && childKinds(kinds, selected.kind).length > 0;
+  const shown = dialog ?? (adding && canManage && canHoldHere ? "create" : undefined);
+  const close = () => {
+    setDialog(undefined);
+    setAdding(false);
+  };
   const done = async (unit: Unit, expand?: string | null) => {
     setDialog(undefined);
+    setAdding(false);
     setFailure(undefined);
     await queryClient.invalidateQueries({ queryKey: unitsQueryKey });
     if (expand) {
@@ -173,7 +196,7 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
           <EmptyState drawing="nothingFound" size="sm" title={t("units.select")} />
         )}
       </Paper>
-      {selected && dialog === "create" && <CreateUnitDialog unit={selected} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />}
+      {selected && shown === "create" && <CreateUnitDialog unit={selected} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />}
       {selected && dialog === "rename" && <RenameUnitDialog unit={selected} onClose={close} onDone={(unit) => done(unit)} />}
       {selected && dialog === "move" && <MoveUnitDialog unit={selected} units={units} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />}
       {selected && (

@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { listSchema, request } from "./client";
 
+/** The session's times (TF-021): when it started, its absolute limit, and when it ends without activity. */
 export const SessionSchema = z.object({
   id: z.string(),
+  started_at: z.string().nullable().optional(),
   expires_at: z.string(),
   idle_expires_at: z.string(),
 });
@@ -93,3 +95,15 @@ export const fetchUsers = (query: string, signal?: AbortSignal) =>
 
 export const fetchUser = (id: string, signal?: AbortSignal) =>
   request(`/api/v1/users/${encodeURIComponent(id)}`, { schema: UserRecordSchema, ...(signal ? { signal } : {}) });
+
+/** POST /api/v1/users: the user created and the invitation link to pass on by hand until email delivery (S4). */
+export const CreatedUserSchema = z.object({ user: UserSchema, invitation_link: z.string(), invitation_expires_at: z.string() });
+export type CreatedUser = z.infer<typeof CreatedUserSchema>;
+
+export interface NewUser {
+  login_id: string;
+  display_name: string;
+  home_unit_id: string;
+}
+
+export const createUser = (body: NewUser) => request("/api/v1/users", { method: "POST", body, schema: CreatedUserSchema });
