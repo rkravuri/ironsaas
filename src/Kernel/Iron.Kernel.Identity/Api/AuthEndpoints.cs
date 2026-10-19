@@ -31,7 +31,10 @@ public sealed record SessionResponse(Guid Id, DateTimeOffset ExpiresAt, DateTime
 public sealed record LoginResponse(PrincipalResponse Principal, SessionResponse Session);
 
 /// <summary>What the shell needs after login: who, what they may do, and when the session ends (TF-021: the expiry warning).</summary>
-public sealed record MeResponse(Guid Id, string LoginId, string DisplayName, PrincipalType Type, IReadOnlyList<string> Permissions, SessionResponse Session);
+/// <summary>The home unit as <c>/me</c> shows it: enough to name it; the tree has the rest.</summary>
+public sealed record HomeUnitResponse(Guid Id, string Name, string Code);
+
+public sealed record MeResponse(Guid Id, string LoginId, string DisplayName, PrincipalType Type, IReadOnlyList<string> Permissions, SessionResponse Session, HomeUnitResponse? HomeUnit);
 
 public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
@@ -103,11 +106,13 @@ internal static class AuthEndpoints
         return ApiResults.From(result, http, principal => TypedResults.Ok(PrincipalResponse.From(principal)));
     }
 
-    private static async Task<IResult> MeAsync(RequestPrincipal principal, IRoleAssignments roleAssignments, CancellationToken cancellationToken)
+    private static async Task<IResult> MeAsync(RequestPrincipal principal, IRoleAssignments roleAssignments, IOrganisationUnits units, CancellationToken cancellationToken)
     {
         var current = principal.Current!;
         var permissions = await roleAssignments.PermissionsOfAsync(current.Id, cancellationToken);
-        return TypedResults.Ok(new MeResponse(current.Id, current.LoginId, current.DisplayName, current.Type, permissions, Session(current.SessionId, current.SessionExpiresAt, current.IdleExpiresAt)));
+        var home = current.HomeUnitId is { } unitId ? await units.FindAsync(unitId, cancellationToken) : null;
+        var homeUnit = home is null ? null : new HomeUnitResponse(home.Id, home.Name, home.Code);
+        return TypedResults.Ok(new MeResponse(current.Id, current.LoginId, current.DisplayName, current.Type, permissions, Session(current.SessionId, current.SessionExpiresAt, current.IdleExpiresAt), homeUnit));
     }
 
     private static SessionResponse Session(Guid id, DateTimeOffset expiresAt, DateTimeOffset idleExpiresAt) => new(id, expiresAt, idleExpiresAt);

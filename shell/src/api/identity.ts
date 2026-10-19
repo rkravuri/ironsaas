@@ -7,7 +7,10 @@ export const SessionSchema = z.object({
   idle_expires_at: z.string(),
 });
 
-/** GET /api/v1/me: who is signed in, what they may do, and when the session ends. */
+/** The home unit as /me names it (TF-034); the tree has the rest. */
+export const HomeUnitSchema = z.object({ id: z.string(), name: z.string(), code: z.string() });
+
+/** GET /api/v1/me: who is signed in, what they may do, their home unit, and when the session ends. */
 export const MeSchema = z.object({
   id: z.string(),
   login_id: z.string(),
@@ -15,6 +18,7 @@ export const MeSchema = z.object({
   type: z.string(),
   permissions: z.array(z.string()),
   session: SessionSchema,
+  home_unit: HomeUnitSchema.nullable().optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 

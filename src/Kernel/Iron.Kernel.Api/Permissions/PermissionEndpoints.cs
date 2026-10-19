@@ -103,7 +103,10 @@ public sealed class SignedInFilter : IEndpointFilter
     }
 }
 
-/// <summary>Runs before the handler of every endpoint that carries RequirePermission.</summary>
+/// <summary>
+/// Runs before the handler of every endpoint that carries RequirePermission. The check is tenant-wide unless the
+/// endpoint declares its scope with <c>ScopedToUnit</c> or <c>ScopedToRecord</c> (ADR-0030).
+/// </summary>
 public sealed class PermissionFilter(Permission permission) : IEndpointFilter
 {
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
@@ -119,7 +122,10 @@ public sealed class PermissionFilter(Permission permission) : IEndpointFilter
         }
 
         var evaluator = http.RequestServices.GetService<IPermissionEvaluator>();
-        var request = new AccessRequest(principal.Id, permission, Operation(http), http.Request.Path.Value ?? "/");
+        var scope = http.GetEndpoint()?.Metadata.GetMetadata<ScopeMetadata>() is { } scoped
+            ? await scoped.ResolveAsync(http, http.RequestAborted).ConfigureAwait(false)
+            : AccessScope.Tenant;
+        var request = new AccessRequest(principal.Id, permission, Operation(http), http.Request.Path.Value ?? "/") { Scope = scope };
         var decision = evaluator is null
             ? AccessDecision.Deny(AccessDecision.NoEvaluator)
             : await evaluator.EvaluateAsync(request, http.RequestAborted).ConfigureAwait(false);

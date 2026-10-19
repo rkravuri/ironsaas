@@ -27,6 +27,10 @@ export function ProfilePage() {
             <Table.Td>{me.type}</Table.Td>
           </Table.Tr>
           <Table.Tr>
+            <Table.Th>{t("profile.homeUnit")}</Table.Th>
+            <Table.Td>{me.home_unit ? me.home_unit.name : <Text c="dimmed">{t("profile.noHomeUnit")}</Text>}</Table.Td>
+          </Table.Tr>
+          <Table.Tr>
             <Table.Th>{t("profile.permissions")}</Table.Th>
             <Table.Td>
               {me.permissions.length === 0 ? (

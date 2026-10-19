@@ -1,7 +1,13 @@
 namespace Iron.Kernel.Api.Permissions;
 
-/// <summary>One permission check: who, what, and the operation and path for the audit trail.</summary>
-public sealed record AccessRequest(Guid PrincipalId, Permission Permission, string Operation, string Path);
+/// <summary>
+/// One permission check: who, what, where (the scope, tenant-wide unless the endpoint declares one), and the operation
+/// and path for the audit trail.
+/// </summary>
+public sealed record AccessRequest(Guid PrincipalId, Permission Permission, string Operation, string Path)
+{
+    public AccessScope Scope { get; init; } = AccessScope.Tenant;
+}
 
 /// <summary>The answer of a permission check. Every denial has a reason for the log and the audit event.</summary>
 public sealed record AccessDecision(bool Allowed, string Reason)

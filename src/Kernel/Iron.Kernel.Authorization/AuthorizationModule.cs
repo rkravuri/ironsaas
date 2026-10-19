@@ -1,3 +1,4 @@
+using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Authorization.Api;
@@ -5,16 +6,18 @@ using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Data;
+using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Seeding;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Iron.Kernel.Authorization;
 
 /// <summary>
-/// Permissions, roles and assignments (TF-030 to TF-033, thin in S1). Needs Iron.Kernel.Audit's writer for denial events,
-/// so hosts list the Audit module before this one.
+/// Permissions, roles, scoped assignments and the organisation tree (TF-030 to TF-034). Needs Iron.Kernel.Audit's writer
+/// for denial and change events, so hosts list the Audit module before this one.
 /// </summary>
 public sealed class AuthorizationModule : IModule
 {
@@ -31,16 +34,33 @@ public sealed class AuthorizationModule : IModule
         configuration.GetSection(PermissionCacheOptions.SectionName).Bind(cacheOptions);
         services.AddSingleton(cacheOptions);
 
+        var rootUnit = new RootUnitSeedOptions();
+        configuration.GetSection(RootUnitSeedOptions.SectionName).Bind(rootUnit);
+        services.AddSingleton(rootUnit);
+
         services.AddMemoryCache();
         services.AddIronDbContext<AuthorizationDbContext>();
+
+        // The kinds are an extension point (ADR-0029): a business module replaces this default.
+        services.TryAddSingleton<IOrganisationKinds, DefaultOrganisationKinds>();
+
+        services.AddScoped<AccessGrants>();
         services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
         services.AddScoped<IRoleAssignments, RoleAssignments>();
+        services.AddScoped<IRecordAccess, RecordAccessService>();
+        services.AddScoped<OrganisationUnitService>();
+        services.AddScoped<IOrganisationUnits>(provider => provider.GetRequiredService<OrganisationUnitService>());
+        services.AddScoped<IOrganisationUnitCheck, OrganisationUnitCheck>();
         services.AddScoped<ISeeder, AuthorizationSeeder>();
+        services.AddScoped<IValidator<CreateUnitRequest>, CreateUnitRequestValidator>();
+        services.AddScoped<IValidator<RenameUnitRequest>, RenameUnitRequestValidator>();
+        services.AddScoped<IValidator<MoveUnitRequest>, MoveUnitRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         RolesEndpoints.Map(endpoints);
+        OrganisationUnitsEndpoints.Map(endpoints);
     }
 }

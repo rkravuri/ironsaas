@@ -143,6 +143,27 @@ On the laptop: `make run-api` serves http://localhost:5100 bound to tenant `dev`
 
 Anonymous endpoints are the short list of TF-030: health, login, recovery, invitation acceptance, public branding. `Iron.Host.Tests` keeps the list fixed; adding to it is a reviewed change.
 
+## Scoping an endpoint to a record (A1, ADR-0030)
+
+A permission is checked tenant-wide unless the endpoint says where the access happens. Once it does, a role assigned to an organisation unit applies to that unit's records and not to others, and a role assigned with children applies to the whole subtree, wherever it moves later.
+
+1. **One record by its id.** Name the record type (a short snake_case word, the same one record-scoped assignments use) and give the lookup that finds the unit that owns the record, one query by key:
+
+   ```csharp
+   orders.MapPost("/{id:guid}/approve", ApproveAsync)
+       .RequirePermission(OrdersPermissions.Approve)
+       .ScopedToRecord("purchase_order", (services, id, ct) => services.GetRequiredService<OrdersDbContext>().Orders
+           .Where(o => o.Id == id).Select(o => (Guid?)o.OwningOrganisationId).SingleOrDefaultAsync(ct));
+   ```
+
+   A record the lookup does not find is checked tenant-wide, so only a tenant-wide grant reaches the handler, which answers 404.
+2. **An operation on a unit itself:** `.ScopedToUnit("id")`, as the organisation unit endpoints do.
+3. **A second place the route cannot carry** (a target in the body): check it in the handler with `IPermissionEvaluator` and `new AccessRequest(...) { Scope = AccessScope.Unit(target) }`, as the unit move does for its new parent.
+4. **A list:** ask once, then filter once. `var access = await recordAccess.AccessibleAsync(principal.Id, OrdersPermissions.Read, "purchase_order", ct);` then `query.WhereAccessible(access)` before `ApplyListQuery`. The answer costs one query over the units whatever the list's length (or none for a tenant-wide grant), and the list stays one query. Never check row by row.
+5. **Test it** with an assignment scoped to a unit: a record of that unit is allowed, a record of a sibling is denied, and a record of a child is allowed only with children (see `ScopeEvaluationTests` in the Authorization tests).
+
+Saving a business record also checks its owner: `OwningOrganisationId` must name an active unit, or the save throws `OwningOrganisationException`. Check the unit in the service first and answer with an error; the interceptor is the guarantee behind it.
+
 ## A table and its migration (T8)
 
 1. Add or change the entity in the module's `Data/` folder (derive from `AuditedEntity`, `AppendOnlyEntity` or `BusinessRecord`) and map it in `ConfigureModule`.

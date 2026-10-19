@@ -6,9 +6,9 @@ Database conventions for every module (TF-080, TF-220, ADR-0008). No schema of i
 |---|---|
 | `Iron.Kernel.Data.Entities` | `Entity` (uuid v7 key), `AuditedEntity` (created, updated, version), `AppendOnlyEntity` (written once), `BusinessRecord` (owning organisation and sharing mode), `ISoftDeletable`, `ITenantWide`, `SharingMode` |
 | `Iron.Kernel.Data.Contexts` | `ModuleDbContext`, the base of every module's DbContext, and `[Schema("kernel_<module>")]` (the prefix is the layer's: `kernel_`, `business_` or `products_`, ADR-0029) |
-| `Iron.Kernel.Data.Conventions` | `ModelConventions` (applied to every model) and `AuditStampInterceptor` (fills the audit columns on save) |
+| `Iron.Kernel.Data.Conventions` | `ModelConventions` (applied to every model), `AuditStampInterceptor` (fills the audit columns on save) and `OwningOrganisationInterceptor` (a business record added, or moved to another owner, must name an active organisation unit; it asks `IOrganisationUnitCheck`, which Authorization implements, and throws `OwningOrganisationException` otherwise) |
 | `Iron.Kernel.Data.Checks` | `SchemaCheck` (a live database against the conventions, and every module schema against the layer prefixes) and `ModelCheck` (an EF model against the entity rules) |
-| `Iron.Kernel.Data.Lists` | `ApplyListQuery`, `ApplyFilters`, `ApplySorts` and `ToPageAsync`: a parsed `ListQuery` applied to an `IQueryable` with the resource's `ListFields` (TF-101) |
+| `Iron.Kernel.Data.Lists` | `ApplyListQuery`, `ApplyFilters`, `ApplySorts` and `ToPageAsync`: a parsed `ListQuery` applied to an `IQueryable` with the resource's `ListFields` (TF-101); `WhereAccessible(RecordAccess)`: a list of business records kept to what one permission reaches, in one `= any(...)` predicate (ADR-0030) |
 | `Iron.Kernel.Data.Transactions` | `SharedConnection` (one connection per scope) and `IUnitOfWork` (one transaction for every module context of the scope; ADR-0013) |
 | `Iron.Kernel.Data.Commands` | `DatabaseCommands`: the `migrate`, `seed`, `schema-check` and `grant` commands of a host image, with `MigrationRunner`, `SeedRunner`, `SchemaCheckRunner` and `GrantsRunner` (the app role's privileges, derived from the models) over every registered module context |
 | `Iron.Kernel.Data.Seeding` | `ISeeder`: reference data a module needs, run by the `seed` command in order |

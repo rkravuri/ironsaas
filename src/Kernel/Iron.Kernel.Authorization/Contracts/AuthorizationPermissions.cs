@@ -9,7 +9,11 @@ public static class AuthorizationPermissions
 
     public static readonly Permission AssignmentsManage = new("authz.assignments.manage", "Assign roles to principals and remove assignments", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsManage];
+    public static readonly Permission UnitsRead = new("authz.units.read", "View the organisation units of this tenant", Risk.Low);
+
+    public static readonly Permission UnitsManage = new("authz.units.manage", "Create, rename, move and deactivate organisation units", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsManage, UnitsRead, UnitsManage];
 }
 
 /// <summary>The system roles every tenant has (TF-032). They cannot be edited; the seeder keeps them in step with the catalogue.</summary>
@@ -25,4 +29,26 @@ public static class SystemRoles
 public static class AuthorizationErrors
 {
     public const string RoleNotFound = "authz.role.not_found";
+    public const string PrincipalRequired = "authz.principal.required";
+    public const string ScopeInvalid = "authz.scope.invalid";
+    public const string UnitNotFound = "authz.unit.not_found";
+    public const string UnitInactive = "authz.unit.inactive";
+    public const string UnitCodeTaken = "authz.unit.code_taken";
+    public const string UnitKindUnknown = "authz.unit.kind_unknown";
+    public const string UnitKindNotAllowed = "authz.unit.kind_not_allowed";
+    public const string UnitCycle = "authz.unit.cycle";
+    public const string UnitIsRoot = "authz.unit.is_root";
+    public const string UnitTooDeep = "authz.unit.too_deep";
+    public const string UnitHasActiveChildren = "authz.unit.has_active_children";
+}
+
+/// <summary>Audit event types raised by Authorization (TF-060).</summary>
+public static class AuthorizationAuditEvents
+{
+    public const string PermissionDenied = "authz.permission_denied";
+    public const string RoleAssigned = "authz.role_assigned";
+    public const string UnitCreated = "authz.unit_created";
+    public const string UnitRenamed = "authz.unit_renamed";
+    public const string UnitMoved = "authz.unit_moved";
+    public const string UnitDeactivated = "authz.unit_deactivated";
 }

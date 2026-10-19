@@ -67,6 +67,29 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
+    public async Task TheSeedGivesTheAdministratorAndTheServiceAccountsTheRootUnitOfKindRootAsHomeUnit()
+    {
+        await using var provider = fixture.BuildServices(new FakeTimeProvider());
+        await using var scope = provider.CreateAsyncScope();
+        var root = await scope.ServiceProvider.GetRequiredService<IOrganisationUnits>().RootAsync(TestContext.Current.CancellationToken);
+        var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var seeded = await context.Principals.AsNoTracking()
+            .Where(p => p.LoginId == IdentityFixture.AdministratorLoginId || p.LoginId == IdentityFixture.SmokeClientId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.NotNull(root);
+        Assert.Equal(KernelOrganisationKinds.Root, root.Kind);
+        Assert.Equal(IdentityFixture.Tenant.Id.Value, root.Code);
+        Assert.Equal(2, seeded.Count);
+        Assert.All(seeded, principal => Assert.Equal(root.Id, principal.HomeUnitId));
+        var administrator = seeded.Single(p => p.LoginId == IdentityFixture.AdministratorLoginId);
+        var homeUnitSet = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+            .Where(e => e.EventType == IdentityAuditEvents.HomeUnitSet && e.RecordId == administrator.Id)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("seed", Assert.Single(homeUnitSet).Reason);
+    }
+
+    [Fact]
     public async Task AcceptingTheInvitationActivatesTheAccountWithAnArgon2idHashAndSpendsTheToken()
     {
         var time = new FakeTimeProvider();

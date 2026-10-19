@@ -73,6 +73,9 @@ public sealed class Principal : AuditedEntity
 
     public DateTimeOffset? InvitationExpiresAt { get; private set; }
 
+    /// <summary>The organisation unit the principal belongs to (TF-034), an id in Authorization's tree; null until the seed or an administrator sets it.</summary>
+    public Guid? HomeUnitId { get; private set; }
+
     public bool CanLogIn => Status == PrincipalStatus.Active && PasswordHash is not null;
 
     public static string NormaliseLoginId(string? loginId) => (loginId ?? string.Empty).Trim().ToLowerInvariant();
@@ -122,6 +125,16 @@ public sealed class Principal : AuditedEntity
     }
 
     public void Disable() => Status = PrincipalStatus.Disabled;
+
+    public void SetHomeUnit(Guid unitId)
+    {
+        if (unitId == Guid.Empty)
+        {
+            throw new ArgumentException("The unit id is empty.", nameof(unitId));
+        }
+
+        HomeUnitId = unitId;
+    }
 
     public void Activate() => Status = PrincipalStatus.Active;
 }

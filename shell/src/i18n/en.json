@@ -43,6 +43,10 @@
       "title": "Identity",
       "users": "Users",
       "profile": "My profile"
+    },
+    "console": {
+      "title": "Console",
+      "units": "Organisation units"
     }
   },
   "users": {
@@ -76,7 +80,9 @@
     "type": "Type",
     "permissions": "Permissions",
     "sessionEnds": "Session ends {{when}}",
-    "none": "None"
+    "none": "None",
+    "homeUnit": "Home unit",
+    "noHomeUnit": "None yet"
   },
   "grid": {
     "columns": "Columns",
@@ -401,5 +407,64 @@
     "add": "Add the comment",
     "empty": "No comments yet.",
     "later": "Comments arrive with a later slice; the shape is here so pages can plan for it."
+  },
+  "units": {
+    "title": "Organisation units",
+    "description": "The tree that roles, settings and records are scoped to.",
+    "treeLabel": "Organisation units",
+    "name": "Name",
+    "code": "Code",
+    "kind": "Kind",
+    "path": "Path",
+    "below": "Units below",
+    "created": "Created",
+    "updated": "Updated",
+    "rootNote": "The root stands for the whole tenant. It cannot move or be deactivated.",
+    "select": "Choose a unit in the tree to see it here.",
+    "failed": "The organisation units could not be loaded.",
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "actions": {
+      "add": "Add a unit here",
+      "rename": "Rename",
+      "move": "Move",
+      "deactivate": "Deactivate"
+    },
+    "create": {
+      "title": "A new unit under {{parent}}",
+      "submit": "Create the unit"
+    },
+    "rename": {
+      "title": "Rename {{name}}",
+      "submit": "Save the name"
+    },
+    "move": {
+      "title": "Move {{name}}",
+      "parent": "New place",
+      "hint": "The unit moves with everything below it.",
+      "submit": "Move the unit",
+      "nothingFound": "No unit matches."
+    },
+    "deactivate": {
+      "title": "Deactivate {{name}}?",
+      "message": "{{name}} stays in the tree as inactive. No new units, records or role assignments can be placed in it.",
+      "confirm": "Deactivate"
+    },
+    "form": {
+      "nameRequired": "Enter a name.",
+      "nameTooLong": "Use at most 200 characters.",
+      "codeRequired": "Enter a code.",
+      "codeTooLong": "Use at most 50 characters.",
+      "codeShape": "Use lowercase letters, digits and hyphens, starting with a letter or a digit.",
+      "codeHint": "Lowercase letters, digits and hyphens; unique in this tenant.",
+      "kindRequired": "Choose a kind.",
+      "parentRequired": "Choose where the unit goes."
+    },
+    "empty": {
+      "title": "No organisation units yet",
+      "text": "The root unit appears when the tenant is provisioned."
+    }
   }
 }
