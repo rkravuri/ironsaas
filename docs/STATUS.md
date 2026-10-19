@@ -12,8 +12,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 | P1 The laptop store survives a restart, and an update heals a unit | done | main | merged 2026-10-19; five commits (5c24448 to b044602) |
 | L1 Three layers: kernel, business, products | done | main | merged 2026-10-19 (7af58bf); twelve commits (a304e52 to 0ff8305); ADR-0029; the laptop reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
 | A1 Organisation units | done | main | merged 2026-10-19 (4004aa3); seven commits (ba5be84 to 077aca4); ADR-0030; acme, bravo and echo updated with their root units, smoke 11 of 11 and e2e 6 of 6 on echo |
-| A2 Roles and scoped assignments | review | slice/s2-a2 | nine commits after the prompt (0457c7f to the review's changes); ADR-0031; acme, bravo and echo updated, smoke 11 of 11 and e2e 8 of 8 on echo, with a child-unit administrator |
-| A3 Record policies | | | |
+| A2 Roles and scoped assignments | done | main | merged 2026-10-19 (05a34eb); nine commits (0457c7f to 1d9f7b5); ADR-0031; acme, bravo and echo updated, smoke 11 of 11 and e2e 8 of 8 on echo, with a child-unit administrator |
+| A3 Record policies | next | | docs/prompts/S2.md section A3 |
 | D4 Home and the header | | | |
 | A4 Entitlements | | | |
 | A5 Feature flags | | | |
