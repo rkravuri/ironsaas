@@ -47,3 +47,47 @@ export async function stubSignedIn(target: Page): Promise<void> {
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: me }));
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
 }
+
+const unitRow = (n: number, name: string, code: string, kind: string, parent: string | null, depth: number, status: "active" | "inactive" = "active") => ({
+  id: `01a15100-0000-7000-8000-${String(n).padStart(12, "0")}`,
+  name,
+  code,
+  kind,
+  parent_id: parent === null ? null : `01a15100-0000-7000-8000-${parent.padStart(12, "0")}`,
+  depth,
+  status,
+  created_at: "2026-10-19T09:00:00Z",
+  updated_at: "2026-10-19T09:30:00Z",
+  version: 1,
+});
+
+/** An organisation tree as the Authorization API lists it: depth first from the root, siblings by name. */
+export const units = [
+  unitRow(1, "Acme Corporation", "acme", "root", null, 0),
+  unitRow(6, "Closed office", "closed-office", "unit", "1", 1, "inactive"),
+  unitRow(2, "Finance", "finance", "unit", "1", 1),
+  unitRow(3, "Operations", "operations", "unit", "1", 1),
+  unitRow(4, "North", "operations-north", "unit", "3", 2),
+  unitRow(5, "South", "operations-south", "unit", "3", 2),
+  unitRow(7, "Sales", "sales", "unit", "1", 1),
+  unitRow(8, "Enterprise", "sales-enterprise", "unit", "7", 2),
+  unitRow(9, "Partners", "sales-partners", "unit", "7", 2),
+];
+
+export const kinds = {
+  root_kind: "root",
+  data: [
+    { code: "root", name: "Root", child_kinds: ["unit"] },
+    { code: "unit", name: "Unit", child_kinds: ["unit"] },
+  ],
+};
+
+/** A signed-in administrator who may read and shape the organisation tree, with the tree and its kinds from memory. */
+export async function stubConsole(target: Page): Promise<void> {
+  await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
+  await target.route("**/api/v1/me", (route) =>
+    route.fulfill({ json: { ...me, permissions: ["identity.users.read", "authz.units.read", "authz.units.manage"], home_unit: { id: units[0]!.id, name: units[0]!.name, code: units[0]!.code } } }),
+  );
+  await target.route("**/api/v1/organisation-units", (route) => route.fulfill({ json: { data: units } }));
+  await target.route("**/api/v1/organisation-kinds", (route) => route.fulfill({ json: kinds }));
+}
