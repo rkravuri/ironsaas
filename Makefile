@@ -27,9 +27,9 @@ check: ## Run only the architecture checks (module boundaries, layout)
 format: ## Apply the code style from .editorconfig
 	dotnet format Foundation.slnx
 
-clean: ## Remove build output
+clean: ## Remove build output (the .NET folders only; shell/node_modules has bin folders of its own)
 	dotnet clean Foundation.slnx
-	find . -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+	find src tests tools -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
 
 DEV_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=postgres;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
 DEV_STORAGE = Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=$$BLOB_ACCOUNT_NAME;AccountKey=$$BLOB_ACCOUNT_KEY;BlobEndpoint=http://localhost:10000/$$BLOB_ACCOUNT_NAME;" Storage__Container=dev

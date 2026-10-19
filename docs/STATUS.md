@@ -33,8 +33,6 @@ The running state of the current slice, kept current by Claude Code at the end o
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
 - The shell does not warn before the session expires (TF-021, D4).
+- My profile moves onto the record template (D4).
 - Since the L1 reset (2026-10-19) acme, bravo and echo are fresh tenants and their administrators' invitations are in `secret/tenants/<slug>/fleet`; the smoke tenant was not provisioned again (`make smoke` without `TENANT` provisions it).
 - PRD section 2.1 and the requirement texts keep the S1 module names, pointed to ADR-0029 from the document control; the PRD split in the design session renames them and divides `Iron.Organisations` between the kernel tree and `Iron.Business.Organisations`.
-- `shell/tsconfig.app.tsbuildinfo` and `shell/tsconfig.node.tsbuildinfo` are tracked build output that every shell build changes; untrack them and ignore `*.tsbuildinfo`.
-- `src/Hosts/Iron.Host.Fleet/infra/compose/units/acme/compose.yaml` is a rendered unit file committed by mistake in T14 (it moved with the host in L1); delete it.
-- `make clean` deletes every `bin` and `obj` folder in the tree, `shell/node_modules/*/bin` included, which breaks the shell's packages; scope it to `src`, `tests` and `tools`.
