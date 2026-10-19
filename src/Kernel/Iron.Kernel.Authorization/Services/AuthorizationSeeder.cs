@@ -8,11 +8,31 @@ using Microsoft.Extensions.Logging;
 namespace Iron.Kernel.Authorization.Services;
 
 /// <summary>
-/// Creates the system roles and keeps them in step with the permission catalogue (TF-032): the tenant administrator
-/// holds every permission of the host, read-only and service-default hold every <c>*.read</c> permission.
-/// Safe to run again; it never touches tenant roles.
+/// Bound from the <c>Seed:RootUnit</c> section: the name and code of the tenant's root unit. The fleet passes the
+/// tenant's display name and slug; without them the unit's tenant identifier serves for both.
 /// </summary>
-public sealed class AuthorizationSeeder(AuthorizationDbContext context, PermissionCatalogue catalogue, ILogger<AuthorizationSeeder> logger) : ISeeder
+public sealed class RootUnitSeedOptions
+{
+    public const string SectionName = "Seed:RootUnit";
+
+    public string? Name { get; set; }
+
+    public string? Code { get; set; }
+}
+
+/// <summary>
+/// Creates the system roles and keeps them in step with the permission catalogue (TF-032): the tenant administrator
+/// holds every permission of the host, read-only and service-default hold every <c>*.read</c> permission. Then creates
+/// the root organisation unit with the provider's root kind, once (TF-034, ADR-0030). Safe to run again; it never
+/// touches tenant roles or a root that exists.
+/// </summary>
+public sealed class AuthorizationSeeder(
+    AuthorizationDbContext context,
+    PermissionCatalogue catalogue,
+    OrganisationUnitService units,
+    RootUnitSeedOptions rootUnit,
+    ILogger<AuthorizationSeeder> logger,
+    TenantContext? tenant = null) : ISeeder
 {
     public int Order => 100;
 
@@ -25,6 +45,11 @@ public sealed class AuthorizationSeeder(AuthorizationDbContext context, Permissi
         await UpsertAsync(SystemRoles.ReadOnly, "Read permissions only.", PrincipalType.User, reads, cancellationToken).ConfigureAwait(false);
         await UpsertAsync(SystemRoles.ServiceDefault, "The default for service accounts: read permissions.", PrincipalType.Service, reads, cancellationToken).ConfigureAwait(false);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var fallback = tenant?.Id.Value;
+        var name = string.IsNullOrWhiteSpace(rootUnit.Name) ? fallback ?? "Organisation" : rootUnit.Name;
+        var code = string.IsNullOrWhiteSpace(rootUnit.Code) ? fallback ?? "root" : rootUnit.Code;
+        await units.EnsureRootAsync(name, code, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task UpsertAsync(string name, string description, PrincipalType principalType, List<string> permissions, CancellationToken cancellationToken)

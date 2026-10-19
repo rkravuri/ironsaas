@@ -56,7 +56,10 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
             Assert.True(decision.Allowed, permission.Name);
         }
 
-        Assert.Empty(audit.Events);
+        Assert.DoesNotContain(audit.Events, e => e.Action == PermissionEvaluator.DenialAction);
+        var assigned = Assert.Single(audit.Events, e => e.Action == AuthorizationAuditEvents.RoleAssigned);
+        Assert.Equal(SystemRoles.TenantAdministrator, assigned.Target);
+        Assert.Equal("tenant", assigned.Details?["scope"]);
     }
 
     [Fact]

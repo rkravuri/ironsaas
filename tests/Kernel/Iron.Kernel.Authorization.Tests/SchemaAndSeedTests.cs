@@ -34,8 +34,26 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
         var administrator = roles.Single(r => r.Name == SystemRoles.TenantAdministrator);
         Assert.Equal(AuthorizationPermissions.All.Select(p => p.Name).Order(StringComparer.Ordinal), administrator.Permissions);
         var readOnly = roles.Single(r => r.Name == SystemRoles.ReadOnly);
-        Assert.Equal([AuthorizationPermissions.RolesRead.Name], readOnly.Permissions);
+        Assert.Equal([AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.UnitsRead.Name], readOnly.Permissions);
         Assert.Equal(PrincipalType.Service, roles.Single(r => r.Name == SystemRoles.ServiceDefault).PrincipalType);
+    }
+
+    [Fact]
+    public async Task SeedCreatesOneRootUnitOfTheRootKindAndRunsAgainWithoutASecond()
+    {
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+
+        await using var scope = provider.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>();
+        var root = await context.OrganisationUnits.AsNoTracking().SingleAsync(u => u.ParentId == null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(KernelOrganisationKinds.Root, root.Kind);
+        Assert.Equal(0, root.Depth);
+        Assert.Equal($"/{root.Id:N}/", root.Path);
+        Assert.Equal(UnitStatus.Active, root.Status);
+        var info = await scope.ServiceProvider.GetRequiredService<IOrganisationUnits>().RootAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(root.Id, info?.Id);
     }
 }
 

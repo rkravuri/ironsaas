@@ -24,6 +24,95 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.OrganisationUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Depth")
+                        .HasColumnType("integer")
+                        .HasColumnName("depth");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_id");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(562)
+                        .HasColumnType("character varying(562)")
+                        .HasColumnName("path");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organisation_units");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organisation_units_code");
+
+                    b.HasIndex("Depth")
+                        .IsUnique()
+                        .HasDatabaseName("ux_organisation_units_root")
+                        .HasFilter("depth = 0");
+
+                    b.HasIndex("ParentId")
+                        .HasDatabaseName("ix_organisation_units_parent_id");
+
+                    b.HasIndex("Path")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organisation_units_path");
+
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Path"), new[] { "varchar_pattern_ops" });
+
+                    b.ToTable("organisation_units", "kernel_authz");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -120,6 +209,11 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("scope_kind");
 
+                    b.Property<string>("ScopeRecordType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("scope_record_type");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -142,13 +236,22 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_role_assignments_role_id");
 
-                    b.HasIndex("PrincipalId", "RoleId", "ScopeKind", "ScopeId")
+                    b.HasIndex("PrincipalId", "RoleId", "ScopeKind", "ScopeId", "ScopeRecordType")
                         .IsUnique()
-                        .HasDatabaseName("ix_role_assignments_principal_id_role_id_scope_kind_scope_id");
+                        .HasDatabaseName("ix_role_assignments_principal_id_role_id_scope_kind_scope_id_s");
 
-                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PrincipalId", "RoleId", "ScopeKind", "ScopeId"), false);
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PrincipalId", "RoleId", "ScopeKind", "ScopeId", "ScopeRecordType"), false);
 
                     b.ToTable("role_assignments", "kernel_authz");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.OrganisationUnit", b =>
+                {
+                    b.HasOne("Iron.Kernel.Authorization.Data.OrganisationUnit", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organisation_units_organisation_units_parent_id");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.RoleAssignment", b =>
