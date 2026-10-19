@@ -66,8 +66,9 @@ public sealed class MigrateStep(IUnitRuntime runtime, ISecretStore secrets, Secr
 }
 
 /// <summary>
-/// Step 6: the image's <c>seed</c> command as the owner role: system roles, the first administrator (Invited, with an
-/// invitation token), the smoke client, the container. The invitation link is read from the output and reported. Runs
+/// Step 6: the image's <c>seed</c> command as the owner role: system roles, the root organisation unit (named after the
+/// tenant, coded with its slug), the first administrator (Invited, with an invitation token), the smoke client, the
+/// container. The invitation link is read from the output and reported. Runs
 /// again on an update: seeds are idempotent, and a new image may bring new permissions for the system roles.
 /// </summary>
 public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
@@ -100,6 +101,8 @@ public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets,
 
         environment["Seed__Administrator__LoginId"] = context.Tenant.AdministratorLoginId;
         environment["Seed__Administrator__DisplayName"] = context.Tenant.AdministratorDisplayName ?? "Administrator";
+        environment["Seed__RootUnit__Name"] = context.Tenant.DisplayName;
+        environment["Seed__RootUnit__Code"] = context.Slug;
         environment["Seed__ServiceAccounts__0__ClientId"] = SmokeClientId;
         environment["Seed__ServiceAccounts__0__Secret"] = smokeSecret;
         environment["Seed__ServiceAccounts__0__Role"] = "service-default";

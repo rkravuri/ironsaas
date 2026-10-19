@@ -153,6 +153,9 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         var permissions = meBody.RootElement.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()).ToList();
         Assert.Contains(IdentityPermissions.UsersManage.Name, permissions);
         Assert.Contains(AuthorizationPermissions.RolesManage.Name, permissions);
+        var homeUnit = meBody.RootElement.GetProperty("home_unit");
+        Assert.Equal(IdentityFixture.Tenant.Id.Value, homeUnit.GetProperty("code").GetString());
+        Assert.Equal(JsonValueKind.String, homeUnit.GetProperty("name").ValueKind);
 
         using var unknown = await _client.PostAsJsonAsync($"/auth/invitations/{SecureTokens.New()}/accept", new { password = Password }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);

@@ -48,6 +48,9 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.Equal(["migrate", "seed"], runtime.Commands.Select(c => c.Command));
         Assert.All(runtime.Commands, c => Assert.Contains("_owner;", c.Unit.Environment["ConnectionStrings__Database"], StringComparison.Ordinal));
         Assert.All(runtime.Commands, c => Assert.Equal($"tenants/{slug}", c.Unit.Environment["Secrets__Path"]));
+        var seed = runtime.Commands.Single(c => c.Command == "seed").Unit.Environment;
+        Assert.Equal(tenant.DisplayName, seed["Seed__RootUnit__Name"]);
+        Assert.Equal(slug, seed["Seed__RootUnit__Code"]);
         Assert.Equal("test", Assert.Single(runtime.Applied).ImageTag);
         Assert.Equal(SizeClasses.LimitsOf(SizeClass.Small), Assert.Single(runtime.Applied).Limits);
         Assert.True(runtime.ReadyChecks >= 1);

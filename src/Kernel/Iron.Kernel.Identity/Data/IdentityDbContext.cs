@@ -27,6 +27,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             principal.Property(p => p.TimeZone).HasMaxLength(64);
             principal.Property(p => p.InvitationTokenHash).HasMaxLength(64);
             principal.HasIndex(p => p.InvitationTokenHash).IsUnique();
+            principal.HasIndex(p => p.HomeUnitId);
         });
 
         modelBuilder.Entity<Session>(session =>

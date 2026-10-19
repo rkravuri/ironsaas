@@ -52,6 +52,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("failed_login_attempts");
 
+                    b.Property<Guid?>("HomeUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("home_unit_id");
+
                     b.Property<DateTimeOffset?>("InvitationExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("invitation_expires_at");
@@ -116,6 +120,9 @@ namespace Iron.Kernel.Identity.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_principals");
+
+                    b.HasIndex("HomeUnitId")
+                        .HasDatabaseName("ix_principals_home_unit_id");
 
                     b.HasIndex("InvitationTokenHash")
                         .IsUnique()

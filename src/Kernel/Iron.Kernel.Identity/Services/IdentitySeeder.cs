@@ -47,8 +47,9 @@ public sealed class ServiceAccountSeeds(IReadOnlyList<ServiceAccountSeedOptions>
 /// Creates the first administrator in Invited status with an invitation token and the tenant-administrator role, and
 /// the configured service accounts, Active, each with its role. Runs after the Authorization seeder (order 100).
 /// Without the configuration, each part does nothing. The invitation token is written to the log once, at creation,
-/// because no email leaves a unit in S1; the fleet prints the link (T14). Running again changes nothing, except that an
-/// existing service account takes the secret the seed was given when it differs (ADR-0028).
+/// because no email leaves a unit in S1; the fleet prints the link (T14). Then every principal without a home unit gets
+/// the root unit the Authorization seeder created (TF-034). Running again changes nothing, except that an existing
+/// service account takes the secret the seed was given when it differs (ADR-0028).
 /// </summary>
 public sealed class IdentitySeeder(
     IdentityDbContext context,
@@ -57,6 +58,7 @@ public sealed class IdentitySeeder(
     InvitationService invitations,
     IPasswordHasher hasher,
     IRoleAssignments roleAssignments,
+    IOrganisationUnits units,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ILogger<IdentitySeeder> logger) : ISeeder
@@ -70,6 +72,44 @@ public sealed class IdentitySeeder(
         {
             await SeedServiceAccountAsync(account, cancellationToken).ConfigureAwait(false);
         }
+
+        await GiveHomeUnitsAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The root unit becomes the home unit of every principal that has none: the first administrator, the service
+    /// accounts, and on an existing tenant everyone created before A1. Each change is audited in one transaction.
+    /// </summary>
+    private async Task GiveHomeUnitsAsync(CancellationToken cancellationToken)
+    {
+        var root = await units.RootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null)
+        {
+            logger.LogWarning("There is no root organisation unit; principals keep no home unit until the Authorization seeder creates it.");
+            return;
+        }
+
+        var homeless = await context.Principals.Where(p => p.HomeUnitId == null).ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (homeless.Count == 0)
+        {
+            return;
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var principal in homeless)
+        {
+            principal.SetHomeUnit(root.Id);
+        }
+
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var principal in homeless)
+        {
+            var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["home_unit_id"] = root.Id.ToString(), ["home_unit_code"] = root.Code };
+            await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.HomeUnitSet, AuditOutcome.Success, SystemPrincipal.SystemId, principal.LoginId, details, "principal", principal.Id, "seed"), cancellationToken).ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("Gave {Count} principal(s) the root unit {Code} as their home unit.", homeless.Count, root.Code);
     }
 
     private async Task SeedServiceAccountAsync(ServiceAccountSeedOptions account, CancellationToken cancellationToken)

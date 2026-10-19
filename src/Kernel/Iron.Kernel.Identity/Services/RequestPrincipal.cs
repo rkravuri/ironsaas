@@ -19,7 +19,8 @@ public sealed record SignedInPrincipal(
     Guid SessionId,
     DateTimeOffset SessionExpiresAt,
     DateTimeOffset IdleExpiresAt,
-    AuthenticationKind Kind = AuthenticationKind.Session);
+    AuthenticationKind Kind = AuthenticationKind.Session,
+    Guid? HomeUnitId = null);
 
 /// <summary>
 /// The current principal (TF-010): the signed-in principal of the request, nobody when the request has no valid session,
