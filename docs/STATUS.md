@@ -10,8 +10,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 | D2 The drawn world | done | main (fd56702) | merged 2026-10-18; six commits plus the figure correction from the review |
 | D3 Templates, panels and forms | done | main | merged 2026-10-18 (110c6ef); the scan, format and the keyboard test on the stack passed on 2026-10-19 |
 | P1 The laptop store survives a restart, and an update heals a unit | done | main | merged 2026-10-19; five commits (5c24448 to b044602) |
-| L1 Three layers: kernel, business, products | review | slice/s2-l1 | eleven commits (a304e52 to the status); ADR-0029; on 2026-10-19 the laptop was reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
-| A1 Organisation units | next | | after L1's merge; amended for the kernel, tree storage in ADR-0030 |
+| L1 Three layers: kernel, business, products | done | main | merged 2026-10-19 (7af58bf); twelve commits (a304e52 to 0ff8305); ADR-0029; the laptop reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
+| A1 Organisation units | next | | amended for the kernel (ADR-0029); the tree storage goes in ADR-0030 |
 | A2 Roles and scoped assignments | | | |
 | A3 Record policies | | | |
 | D4 Home and the header | | | |
