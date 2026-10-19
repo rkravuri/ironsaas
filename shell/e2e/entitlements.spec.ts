@@ -31,14 +31,19 @@ async function applyPlan(plan: "standard" | "enterprise"): Promise<number> {
   }
 }
 
-/** What the unit's API answers for role export, with the browser's session cookie. */
+/**
+ * What the unit's API answers for role export, asked from the page: the browser's session cookie and its name
+ * resolution (a .localhost name is the laptop to the browser, not to Node).
+ */
 async function exportAnswer(page: Page): Promise<string> {
-  const response = await page.request.get("/api/v1/roles/export");
-  if (response.ok()) {
-    return "ok";
-  }
-  const problem = (await response.json()) as { error_code?: string };
-  return `${response.status()} ${problem.error_code ?? ""}`;
+  return page.evaluate(async () => {
+    const response = await fetch("/api/v1/roles/export", { credentials: "same-origin", headers: { Accept: "application/json" } });
+    if (response.ok) {
+      return "ok";
+    }
+    const problem = (await response.json()) as { error_code?: string };
+    return `${response.status} ${problem.error_code ?? ""}`;
+  });
 }
 
 test.describe("a plan changed in the control plane reaches the shell and the API within a minute", () => {
@@ -73,8 +78,29 @@ test.describe("a plan changed in the control plane reaches the shell and the API
     const shownAfter = Date.now() - toEnterprise;
     await expect.poll(() => exportAnswer(page), { timeout: minute, intervals: [2_000] }).toBe("ok");
 
-    test.info().annotations.push({ type: "latency", description: `hidden after ${Math.round(hiddenAfter / 1000)} s, shown again after ${Math.round(shownAfter / 1000)} s` });
+    const latency = `hidden after ${Math.round(hiddenAfter / 1000)} s, shown again after ${Math.round(shownAfter / 1000)} s`;
+    test.info().annotations.push({ type: "latency", description: latency });
+    console.log(`Role transfer in the shell: ${latency}.`);
     expect(hiddenAfter).toBeLessThanOrEqual(minute);
     expect(shownAfter).toBeLessThanOrEqual(minute);
   });
+});
+
+test.describe("the console's Subscription page on a unit", () => {
+  for (const scheme of ["light", "dark"] as const) {
+    test(`shows the tenant's plan and role transfer included, in the ${scheme} scheme`, async ({ page }) => {
+      await signIn(page);
+      await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+      await page.goto("/console/subscription");
+
+      await expect(page.getByRole("heading", { level: 2, name: "Subscription" })).toBeVisible();
+      await expect(page.getByText("Enterprise", { exact: true })).toBeVisible();
+      await expect(page.getByText("No licensed modules yet")).toBeVisible();
+      const transfer = page.getByRole("table", { name: "Features" }).getByRole("row", { name: /Export the tenant's roles/ });
+      await expect(transfer).toContainText("Included");
+      await expect(transfer).toContainText("In your plan");
+      // Beside the browser tests' own output, which each run empties: the page as the unit serves it.
+      await page.screenshot({ path: `test-results/subscription-${tenant}-${scheme}.png`, fullPage: true });
+    });
+  }
 });
