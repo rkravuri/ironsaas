@@ -146,6 +146,42 @@ Kernel modules are the platform: always on, never in a plan, and they declare no
 
 Tests: a module's tests prove its own rules with an allow-all gate in the test host (`AllEntitled`, as the module test projects have); `tests/Kernel/Iron.Kernel.Entitlements.Tests` proves the check with a fixture module licensed per person.
 
+## Feature flags and kill switches (A5, ADR-0035)
+
+A flag changes behaviour without a deploy: a release turned on for some tenants first, an experiment, an operational switch. It is not an entitlement: what a tenant has paid for is licensed (the section above), never flagged.
+
+1. **Declare it in the module's own code**, in its Contracts, and list it in its `IModule`:
+
+   ```csharp
+   public static class SourcingFlags
+   {
+       public const string Owner = "Sourcing team";
+
+       public static readonly Flag NewAwardScreen = Flag.Boolean(
+           "sourcing.new_award_screen", FlagKind.Release, "Shows the new award screen while it is proven.", Owner,
+           removeBy: new DateOnly(2027, 3, 31), defaultValue: false);
+
+       public static IReadOnlyList<Flag> All => [NewAwardScreen];
+   }
+
+   // in SourcingModule
+   public IReadOnlyList<Flag> Flags => SourcingFlags.All;
+   ```
+
+   A key is `area.flag` in lowercase with underscores. The type is boolean, string, number or JSON (`Flag.String`, `Flag.Number`, `Flag.Json`). An owner and a purpose are required; release and experiment flags need the date they are to be removed by. The default is what the flag answers when no rule matches, and the only answer while the unit has never known any rules.
+2. **Write the catalogue:** `make catalogue`, and commit `licensing-catalogue.json`. The control plane refuses rules for a flag it does not have.
+3. **Ask it in code** through OpenFeature: inject `IFlagClients` from `Iron.Kernel.Flags.Contracts`, then `var flags = await clients.CurrentAsync(ct);` (the signed-in principal) or `ForAsync(principalId, ct)` (a job acting for someone), and `await flags.GetBooleanValueAsync(SourcingFlags.NewAwardScreen.Key, false)`. The caller's default answers an undeclared flag or a wrong type.
+4. **Or on an endpoint:** `.RequireFlag(SourcingFlags.NewAwardScreen.Key)` answers 404 `flags.disabled` while the flag is off for the caller. A risky path gets its kill switch with `.RequireFlagOff(KillSwitches.Imports.Key)`, which answers 503 `flags.killed` with the operator's reason while it is on. Both run after the entitlement check and before the permission, and are audited.
+5. **In the shell:** `useFlag("sourcing.new_award_screen", false)` from `@/auth/flags`. The value comes from `/me/context`, evaluated by the API for this person, and is read again every 30 seconds; the default answers until it comes, and whenever it fails. The type of the default is the type of the answer.
+6. **Set its rules** in the control plane: `make flag KEY=sourcing.new_award_screen VALUE=true TENANT=echo` for one tenant, or `PUT /api/v1/flags/{key}/rules` for scopes, percentages and attributes. Units learn a change within 30 seconds, the shell within a minute.
+7. **Retire it:** remove the declaration and the code that asks it, and mark the flag `"status": "retired"` in `licensing-catalogue.json` in the same change. `make catalogue` and the host test refuse, naming the flag and its owner, a flag that left the code while the catalogue marks it active, and a retired flag still declared. The control plane's flag report lists flags past their removal date with their owner.
+
+**The shell never decides security by a flag.** A flag in the shell shows or hides; it never stands in for a permission, an entitlement or a check the API makes. The values reach the browser, and a person can change what their browser does. Every action a flag hides is checked again by the API: the permission, the entitlement and, for a kill switch, `RequireFlagOff`.
+
+**Kill switches** are a reserved family, `kill.<path>`, declared by the kernel only: email, webhooks, sms, ai, push and imports. A module never declares one; the path that needs a switch names it on its endpoints or asks it in its jobs. Only an operator turns one on or off, with a reason (`make kill-switch`, runbook section 5). While one is on, administrators see a banner with the path, since when and the reason.
+
+Tests: test hosts register an allow-all gate beside the entitlements one (`AllEntitled` implements `IFlagGate` too); `tests/Kernel/Iron.Kernel.Flags.Tests` proves the evaluation order, the refresh and the kill switch on a real store.
+
 ## Write an ADR
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).

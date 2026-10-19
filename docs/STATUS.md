@@ -16,7 +16,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A3 Record policies | done | main | merged 2026-10-19 (1af5b18); seven commits (c813656 to 49e3f70); ADR-0032; acme, bravo and echo carry A2 and A3, smoke 11 of 11 on echo |
 | D4 Home and the header | done | main | merged 2026-10-19 (179fbfa); seven commits (79cb00f to 096dff9); ADR-0033; acme, bravo and echo carry D4, smoke 11 of 11 and e2e 11 of 11 on echo |
 | A4 Entitlements | review | slice/s2-a4 | six commits after the prompt (8879856), 33bcea1 to the status commit; ADR-0034; the control plane and acme, bravo and echo carry A4, all three on the Enterprise plan; smoke 11 of 11 and e2e 14 of 14 on echo, where Export and Import went 28 s after the move to Standard and came back 27 s after the move back |
-| A5 Feature flags | | | |
+| A5 Feature flags | in progress | slice/s2-a5 | stacked on slice/s2-a4, which is not merged yet; the prompt (adccccb) and four steps so far (67031f7 to the documents): the unit side, the control plane, the shell, the documents; ADR-0035. Next: the laptop (images, control plane, acme, bravo and echo), the kill switch on echo both ways, smoke and e2e |
 | A6 Settings | | | |
 | A7 Delegation and access reviews | | | |
 | A8 Cross-organisation access and lifecycle | | | |
@@ -25,6 +25,9 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Open questions
 
+- A5 names its permissions `tenancy.flags.read`, `tenancy.flags.manage` and `tenancy.kill_switches.manage`, not `flags.read`, `flags.manage` and `flags.kill_switches.manage` as section A5 says: a permission names the module that checks it, in three parts (CLAUDE.md), and the rules live in Tenancy (ADR-0035, decision 3). The kill switch permission is critical, one step above the section's high. Confirm, or say which names to use.
+- A5 is stacked on `slice/s2-a4`: A4 was not merged when A5 began, and A5 builds on its channel. Merge A4 first; A5's own commits start after A4's status commit.
+- The most specific scope wins for kill switches too (ADR-0035, decision 7), so an operator with `tenancy.kill_switches.manage` can exempt a tenant from a global kill switch with a tenant rule set to false through `PUT /api/v1/flags/kill.<path>/rules`. `make kill-switch ... ON=false` never does: it removes the rule at its scope. Confirm the exemption is wanted, or the rules endpoint refuses a false kill switch rule.
 - A4 reads the entitlements every 30 seconds at the unit and in the shell, not every 60 as section A4 says: the two caches are in series, and at 60 each a change could take two minutes to reach the shell, against TF-043's minute (ADR-0034, decision 4). Each is still within TF-043's "at most 60 seconds", and the unit's is a setting (`Entitlements:RefreshSeconds`). Confirm 30, or say 60 and accept two minutes in the worst case.
 
 ## Later items
@@ -56,3 +59,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 - Each unit reads the store twice a minute (the API and the worker both run the Entitlements module and keep the same last-known row). Fine for the fleets in sight; revisit with many hundreds of units (ADR-0034).
 - Every refused request writes `entitlements.access_denied`; a client that keeps calling a refused endpoint fills the audit trail. The shell hides those calls; rate limits (S3) bound the rest.
 - The browser test that moves echo between Standard and Enterprise takes about a minute and a quarter; it leaves echo on Enterprise, also when it fails.
+- Kill switches for email, webhooks, SMS, AI and push are declared and can be flipped, but nothing checks them until the slices that build those paths (S4 for email). Only `kill.imports` is wired, on role import.
+- Flag rules have no console page: the operator sets them with `make flag`, `make kill-switch` or the control plane's API. Exposure events for experiments (TF-053 AC2) and tenant-visible flags (TF-055) are not part of S2.
+- `/me/context` evaluates every active flag of the build for the person, every 30 seconds. Fine for the handful of flags today; with hundreds, evaluate only the flags the shell asks for (ADR-0035).
+- Each unit now reads three store paths twice a minute (entitlements, `platform/flags`, `tenants/<slug>/flags`), in the API and in the worker. The same review as the entitlements' with many hundreds of units.
+- The control plane and the fleet are no tenant: their flags come from `Flags:Rules` in configuration, global rules only.

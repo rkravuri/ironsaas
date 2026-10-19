@@ -2,14 +2,15 @@ using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Flags.Contracts;
 using Microsoft.Extensions.Logging;
 using OpenFeature;
+using OpenFeature.Constant;
 using OpenFeature.Model;
 
 namespace Iron.Kernel.Flags.Services;
 
 /// <summary>
 /// The configured provider bound to OpenFeature (TF-056). Each host gets a domain of its own, so the hosts of a test run do
-/// not share a provider through OpenFeature's process-wide API. A provider that fails to bind stops the host at start;
-/// a misconfigured one never gets this far (FlagsModule refuses it).
+/// not share a provider through OpenFeature's process-wide API. A provider that does not start stops the host at start
+/// (TF-056 AC2); a misconfigured one never gets this far (FlagsModule refuses it).
 /// </summary>
 public sealed class OpenFeatureBinding
 {
@@ -20,6 +21,15 @@ public sealed class OpenFeatureBinding
         Domain = $"iron-{Guid.NewGuid():N}";
         Provider = provider;
         OpenFeature.Api.Instance.SetProviderAsync(Domain, provider).GetAwaiter().GetResult();
+
+        // OpenFeature records a failed initialisation as the provider's status instead of throwing, so the status is the
+        // only sign; a unit that served with it would answer every flag with the caller's default and nobody would know.
+        var status = OpenFeature.Api.Instance.GetClient(Domain).ProviderStatus;
+        if (status != ProviderStatus.Ready)
+        {
+            throw new InvalidOperationException(
+                $"The flag provider '{provider.GetMetadata()?.Name}' did not start: OpenFeature reports it {status}. Check Flags:Provider and the provider's own settings, then start the host again.");
+        }
 
         logger.LogInformation("Flags are evaluated through OpenFeature with the provider {Provider}.", provider.GetMetadata()?.Name);
     }

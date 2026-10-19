@@ -30,7 +30,7 @@ The evaluation context (`FlagSubjects`) carries the tenant, its region and plan,
 
 ## OpenFeature
 
-The provider is chosen by `Flags:Provider`; `iron` (`IronFlagProvider`, over the rules) is the only one today. An unknown provider, a `Flags:Source` that is neither `store` nor `configuration`, or `store` without a configured store, stops the host at start with a message that says which. Each host binds its provider under a domain of its own in OpenFeature's API. Product code injects `IFlagClients` and asks OpenFeature's client: `GetBooleanValueAsync`, `GetStringValueAsync`, `GetDoubleValueAsync`, `GetObjectValueAsync`. An undeclared flag answers FLAG_NOT_FOUND with the caller's default; a wrong type TYPE_MISMATCH.
+The provider is chosen by `Flags:Provider`; `iron` (`IronFlagProvider`, over the rules) is the only one today. An unknown provider, a `Flags:Source` that is neither `store` nor `configuration`, or `store` without a configured store, stops the host at start with a message that says which; so does a provider that OpenFeature reports as not ready after binding (`OpenFeatureBinding`). Each host binds its provider under a domain of its own in OpenFeature's API. Product code injects `IFlagClients` and asks OpenFeature's client: `GetBooleanValueAsync`, `GetStringValueAsync`, `GetDoubleValueAsync`, `GetObjectValueAsync`. An undeclared flag answers FLAG_NOT_FOUND with the caller's default; a wrong type TYPE_MISMATCH.
 
 ## In the API
 
@@ -38,6 +38,6 @@ The provider is chosen by `Flags:Provider`; `iron` (`IronFlagProvider`, over the
 
 ## For the shell
 
-`GET /api/v1/me/context` has a `flags` part: `known` (false while on the code defaults), `confirmed_at`, every flag of this build evaluated for the person (`key`, `type`, `value`, `reason`), and, for an administrator only (a principal who holds a `.manage` permission for the whole tenant), the kill switches that are on with their path, since when and the operator's reason. The shell evaluates through `@openfeature/web-sdk` over these values; it never decides security by a flag.
+`GET /api/v1/me/context` has a `flags` part: `known` (false while on the code defaults), `confirmed_at`, every flag of this build evaluated for the person (`key`, `type`, `value`, `reason`), and, for an administrator only (a principal who holds a `.manage` permission for the whole tenant), the kill switches that are on with their path, since when and the operator's reason. The shell evaluates through `@openfeature/web-sdk` over these values with one hook, `useFlag(key, default)` (`shell/src/auth/flags.ts`), and shows the kill switches in a banner above the page; it never decides security by a flag.
 
 Model change: edit the entity, then `make ef-add MODULE=Flags NAME=<WhatChanged>`, `make format`, and commit `Data/Migrations`.

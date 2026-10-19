@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using OpenFeature.Constant;
 
@@ -150,6 +151,14 @@ public class FlagRefreshTests(FlagsFixture fixture)
         Assert.StartsWith(message, refused.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AProviderThatDoesNotStartStopsTheHostAtStartWithAClearMessage()
+    {
+        var refused = Assert.Throws<InvalidOperationException>(() => new OpenFeatureBinding(new UnstartableProvider(), NullLogger<OpenFeatureBinding>.Instance));
+
+        Assert.Equal("The flag provider 'unstartable' did not start: OpenFeature reports it Error. Check Flags:Provider and the provider's own settings, then start the host again.", refused.Message);
+    }
+
     private async Task ForgetAsync()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new ControlledSource(), SystemPrincipal.Instance);
@@ -213,5 +222,24 @@ public class FlagRefreshTests(FlagsFixture fixture)
         }
 
         public void Dispose() => _listener.Dispose();
+    }
+
+    /// <summary>A provider whose start fails, as one whose service is unreachable or whose settings are wrong would.</summary>
+    private sealed class UnstartableProvider : OpenFeature.FeatureProvider
+    {
+        public override OpenFeature.Model.Metadata GetMetadata() => new("unstartable");
+
+        public override Task InitializeAsync(OpenFeature.Model.EvaluationContext context, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The flag service did not answer.");
+
+        public override Task<OpenFeature.Model.ResolutionDetails<bool>> ResolveBooleanValueAsync(string flagKey, bool defaultValue, OpenFeature.Model.EvaluationContext? context = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public override Task<OpenFeature.Model.ResolutionDetails<string>> ResolveStringValueAsync(string flagKey, string defaultValue, OpenFeature.Model.EvaluationContext? context = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public override Task<OpenFeature.Model.ResolutionDetails<int>> ResolveIntegerValueAsync(string flagKey, int defaultValue, OpenFeature.Model.EvaluationContext? context = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public override Task<OpenFeature.Model.ResolutionDetails<double>> ResolveDoubleValueAsync(string flagKey, double defaultValue, OpenFeature.Model.EvaluationContext? context = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public override Task<OpenFeature.Model.ResolutionDetails<OpenFeature.Model.Value>> ResolveStructureValueAsync(string flagKey, OpenFeature.Model.Value defaultValue, OpenFeature.Model.EvaluationContext? context = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }
