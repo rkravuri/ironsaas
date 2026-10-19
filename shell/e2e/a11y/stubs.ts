@@ -8,7 +8,7 @@ export const users = Array.from({ length: 20 }, (_, index) => {
     id: `01a14e12-0000-7000-8000-${String(n).padStart(12, "0")}`,
     login_id: `user${String(n).padStart(2, "0")}@acme.localhost`,
     display_name: `${names[index % names.length] ?? "Someone"} ${n}`,
-    type: n % 7 === 0 ? "service" : "user",
+    type: n % 7 === 0 ? "service_account" : "user",
     status: n % 5 === 0 ? "invited" : "active",
     email: `user${n}@example.com`,
     last_login_at: n % 3 === 0 ? null : "2026-10-17T08:15:00Z",

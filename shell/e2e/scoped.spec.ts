@@ -37,9 +37,13 @@ test.describe("a child-unit administrator", () => {
       // The tenant administrator lives at the root, outside: not found, in the page and in the API.
       await open(page, `/users/${outsideUserId}`);
       await expect(page.getByRole("heading", { name: "This user is not here" })).toBeVisible();
-      const answer = await page.request.get(`/api/v1/users/${outsideUserId}`);
-      expect(answer.status()).toBe(404);
-      expect(((await answer.json()) as { error_code?: string }).error_code).toBe("identity.user.not_found");
+      // Asked from the page, with its cookie: Node's resolver behind page.request does not know *.localhost, Chromium does.
+      const answer = await page.evaluate(async (id) => {
+        const response = await fetch(`/api/v1/users/${id}`, { headers: { Accept: "application/json" } });
+        return { status: response.status, body: (await response.json()) as { error_code?: string } };
+      }, outsideUserId);
+      expect(answer.status).toBe(404);
+      expect(answer.body.error_code).toBe("identity.user.not_found");
       await page.screenshot({ path: `test-results/e2e/user-outside-child-${scheme}.png` });
     });
   }

@@ -159,10 +159,27 @@ A permission is checked tenant-wide unless the endpoint says where the access ha
    A record the lookup does not find is checked tenant-wide, so only a tenant-wide grant reaches the handler, which answers 404.
 2. **An operation on a unit itself:** `.ScopedToUnit("id")`, as the organisation unit endpoints do.
 3. **A second place the route cannot carry** (a target in the body): check it in the handler with `IPermissionEvaluator` and `new AccessRequest(...) { Scope = AccessScope.Unit(target) }`, as the unit move does for its new parent.
-4. **A list:** ask once, then filter once. `var access = await recordAccess.AccessibleAsync(principal.Id, OrdersPermissions.Read, "purchase_order", ct);` then `query.WhereAccessible(access)` before `ApplyListQuery`. The answer costs one query over the units whatever the list's length (or none for a tenant-wide grant), and the list stays one query. Never check row by row.
+4. **A list:** declare `.ScopedByRow()` on the endpoint, so the filter lets in a principal who holds the permission at any scope; then ask once and filter once. `var access = await recordAccess.AccessibleAsync(principal.Id, OrdersPermissions.Read, "purchase_order", ct);` then `query.WhereAccessible(access)` before `ApplyListQuery`. Rows that are not business records name their unit another way: `query.WhereAccessible(access, p => p.HomeUnitId, p => p.Id)`. The same filtered query answers a read by id, with 404 outside. The answer costs one query over the units whatever the list's length (or none for a tenant-wide grant), and the list stays one query. Never check row by row.
 5. **Test it** with an assignment scoped to a unit: a record of that unit is allowed, a record of a sibling is denied, and a record of a child is allowed only with children (see `ScopeEvaluationTests` in the Authorization tests).
 
 Saving a business record also checks its owner: `OwningOrganisationId` must name an active unit, or the save throws `OwningOrganisationException`. Check the unit in the service first and answer with an error; the interceptor is the guarantee behind it.
+
+## Granting access (A2, ADR-0031)
+
+**Roles and scopes.** A role is a set of permissions with a code, a name and the kind of principal it is for. An assignment gives a role to a principal at a scope: the whole tenant, one unit, a unit with the units below it, or one record. Declare new permissions in the module's Contracts and list them in its `Permissions`; the catalogue (`GET /api/v1/permissions`) and the role editor pick them up, grouped by module, with their risk. The seed keeps the system roles in step with the catalogue: `tenant-administrator` holds everything, `read-only` and `service-default` every `*.read`.
+
+**Nobody grants more than they hold.** Through the API, a grant needs `authz.assignments.manage` and every permission of the role over the whole scope; a unit-only assignment does not count for a unit with its children. A tenant role holds only permissions its editor holds tenant-wide, and an import is held to the same rule. The last tenant-wide tenant administrator stays. `IRoleAssignments.AssignAsync` is the seed's trusted path and checks none of this: never expose it to a request. A grant or a removal clears the principal's cached grants on that node at once; elsewhere they expire within the 60-second window (ADR-0012).
+
+**A page that asks for access at a unit.** Navigation and route guards use `session.permissions`, which holds what the principal holds anywhere; the API keeps deciding per row. An action whose scope is a unit asks `/me/access` for that unit through the hook:
+
+```tsx
+const access = useAccessAt(unit ? { unit: unit.id } : undefined, ["authz.units.manage"]);
+{access.can("authz.units.manage") && <Button onClick={rename}>{t("units.actions.rename")}</Button>}
+```
+
+The hook asks only when the principal holds the permission somewhere, and caches the answer for 30 seconds. An action for a record passes `{ recordType, recordId, unit }`; an action whose scope is the tenant, such as changing a role, reads `session.tenantPermissions`. Show nothing while the answer is on its way, and let the endpoint's refusal (403 with the missing permissions named) land in the page's alert.
+
+**Testing it.** Each rule has an integration test with its error code (`AssignmentServiceTests`, `RoleServiceTests`, `RoleImportTests` in the Authorization tests); a scoped list has a test with a reader at a child unit and a principal outside (`ScopedUsersTests` in the Identity tests); `make e2e` sets up a child unit on the tenant and signs in as its administrator (`shell/e2e/scoped.spec.ts`).
 
 ## A table and its migration (T8)
 
@@ -171,7 +188,7 @@ Saving a business record also checks its owner: `OwningOrganisationId` must name
 3. `make test`: the module's `ModelTests` passes only when the migration matches the model; the schema check runs over the migrated schema.
 4. Apply it: `make migrate` on the laptop; the fleet runs the image's `migrate` command for every tenant unit.
 
-Migrations are never written by hand and never edited after they are committed; a correction is a new migration.
+Migrations are never written by hand and never edited after they are committed; a correction is a new migration. The one change made by hand is a rename, before the first commit: `make ef-add` cannot tell a rename from a drop and an add, so turn its drop and add into `RenameColumn` and say so in the migration's comment (ADR-0031 records the first, `RoleCodeAndName`).
 
 
 ## A change and its audit event in one transaction (T9)

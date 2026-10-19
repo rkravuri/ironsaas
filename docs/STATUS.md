@@ -12,7 +12,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | P1 The laptop store survives a restart, and an update heals a unit | done | main | merged 2026-10-19; five commits (5c24448 to b044602) |
 | L1 Three layers: kernel, business, products | done | main | merged 2026-10-19 (7af58bf); twelve commits (a304e52 to 0ff8305); ADR-0029; the laptop reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
 | A1 Organisation units | done | main | merged 2026-10-19 (4004aa3); seven commits (ba5be84 to 077aca4); ADR-0030; acme, bravo and echo updated with their root units, smoke 11 of 11 and e2e 6 of 6 on echo |
-| A2 Roles and scoped assignments | next | | sharpened after A1 (docs/prompts/S2.md) |
+| A2 Roles and scoped assignments | review | slice/s2-a2 | eight commits after the prompt (0457c7f to the status commit); ADR-0031; acme, bravo and echo updated, smoke 11 of 11 and e2e 8 of 8 on echo, with a child-unit administrator |
 | A3 Record policies | | | |
 | D4 Home and the header | | | |
 | A4 Entitlements | | | |
@@ -34,8 +34,12 @@ The running state of the current slice, kept current by Claude Code at the end o
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
 - The shell does not warn before the session expires (TF-021, D4).
 - My profile moves onto the record template (D4).
-- A holder of `authz.units.read` scoped to a unit cannot list the tree (the list is checked tenant-wide), and `/me` lists tenant-wide permissions only, so the units page offers its actions to tenant-wide managers only; A2's scoped view (`/me/access?unit=`) lifts both.
 - Units cannot be reactivated, merged or split yet (TF-223, A8).
+- The shell has no form to create a user yet: `POST /api/v1/users` answers the invitation link, and the browser test's data uses it; the form belongs with the invitation email (S4) or D4's header.
+- The Users grid shows type and status in words and has no filter on them; a filter that offers the words (a choice filter in `DataGrid`) is a later item.
+- `/me/access` answers the permissions at a unit; removing an assignment to a unit with its children needs them over the whole subtree. A manager of a unit alone sees Remove on such a row and the API refuses it with the reason; the Access tab could ask for the covering permissions instead.
+- The last-administrator guard counts tenant-wide assignments, not active principals (ADR-0031): a disabled last administrator still counts.
+- `make e2e` makes a new child administrator only when the store has lost the one it made (a password cannot be set again before S3's reset), so a reset store leaves an unused account in the tenant.
 - A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units.
 - Testing Library names a tree item from all its content, the items below it included (Mantine's Tree gives the item no label of its own); the scan passes, but check a parent item with a screen reader before the tree pattern spreads.
 - Since the L1 reset (2026-10-19) acme, bravo and echo are fresh tenants and their administrators' invitations are in `secret/tenants/<slug>/fleet`; the smoke tenant was not provisioned again (`make smoke` without `TENANT` provisions it).
