@@ -1,9 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import { illustrationNames, illustrations } from "@/design/illustrations";
-import { Hatch, Mandala, symmetries, TenantMark } from "@/design/patterns";
+import { Hatch, Mandala, ModuleMark, symmetries, TenantMark } from "@/design/patterns";
+import type { AccentName } from "@/design/tokens";
 
 const tenants = ["acme.localhost", "bravo.localhost"];
+/** The modules of the shell today, by name and accent, as their manifests declare them. */
+const modules: { name: string; accent: AccentName; titleKey: string }[] = [
+  { name: "identity", accent: "identity", titleKey: "modules.identity.title" },
+  { name: "console", accent: "console", titleKey: "modules.console.title" },
+];
 
 /** The patterns and the drawings: two tenant marks side by side, the generator's symmetries, the hatch, every drawing with its name. */
 export function DrawingsSection() {
@@ -24,6 +30,16 @@ export function DrawingsSection() {
               <Text size="sm" ff="monospace">
                 {hostname}
               </Text>
+            </Stack>
+          ))}
+        </Group>
+        <Title order={3}>{t("gallery.drawings.moduleMarks")}</Title>
+        <Text>{t("gallery.drawings.moduleMarksIntro")}</Text>
+        <Group gap="xl" align="flex-start">
+          {modules.map((module) => (
+            <Stack key={module.name} gap="xs" align="center">
+              <ModuleMark name={module.name} accent={module.accent} size={96} animate />
+              <Text size="sm">{t(module.titleKey)}</Text>
             </Stack>
           ))}
         </Group>

@@ -7,6 +7,7 @@ import { ApiError } from "@/api/client";
 import { login } from "@/api/identity";
 import { Welcome } from "@/design/illustrations";
 import { TenantMark } from "@/design/patterns";
+import type { LoginState } from "@/shell/Guards";
 import { useSession } from "./session-context";
 
 interface LoginFormValues {
@@ -36,14 +37,16 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
   });
   const hostname = window.location.hostname;
 
-  const returnTo = (location.state as { from?: string } | null)?.from ?? "/";
+  const state = location.state as LoginState | null;
+  const returnTo = state?.from ?? "/";
+  const reason = state?.reason;
 
   const submit = form.onSubmit(async (values) => {
     setSubmitting(true);
     setProblem(undefined);
     try {
       await login(values.loginId.trim(), values.password);
-      await session.refresh();
+      await session.signedIn();
       void navigate(returnTo, { replace: true });
     } catch (error) {
       if (error instanceof ApiError) {
@@ -70,6 +73,11 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
           {t("app.tenant", { hostname })}
         </Text>
       </Stack>
+      {reason !== undefined && (
+        <Alert color="info" role="status" mb="md" data-reason={reason}>
+          {t(`login.ended.${reason}`)}
+        </Alert>
+      )}
       {/* The mark as a texture: behind the opaque card at 7 percent, so it never sits under text (brief section 4). */}
       <Box pos="relative">
         <TenantMark hostname={hostname} size={400} opacity={0.07} style={{ position: "absolute", left: "50%", top: 0, transform: "translateX(-50%)", pointerEvents: "none" }} />

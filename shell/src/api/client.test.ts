@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { ApiError, listSchema, onUnauthenticated, request } from "./client";
+import { ApiError, listSchema, onResponse, onUnauthenticated, request, type ResponseInfo } from "./client";
 import { json, problem, stubFetch } from "@/test/render";
 
 afterEach(() => {
@@ -59,5 +59,27 @@ describe("the API client", () => {
     expect(error.isUnauthenticated).toBe(true);
     expect(error.correlationId).toBe("from-header");
     expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledWith(error);
+  });
+
+  it("tells the session clock about every answer, with the server's clock from the Date header", async () => {
+    stubFetch({
+      "GET /api/v1/users": () => json({}, 200, { Date: "Mon, 19 Oct 2026 08:00:00 GMT" }),
+      "GET /api/v1/roles": () => problem(403, { title: "Forbidden", error_code: "authz.forbidden" }),
+    });
+    const seen: ResponseInfo[] = [];
+    const stop = onResponse((info) => seen.push(info));
+
+    await request("/api/v1/users");
+    await request("/api/v1/roles").catch(() => undefined);
+    stop();
+
+    expect(seen.map((info) => [info.path, info.status])).toEqual([
+      ["/api/v1/users", 200],
+      ["/api/v1/roles", 403],
+    ]);
+    expect(seen[0]?.serverDate).toBe(Date.parse("2026-10-19T08:00:00Z"));
+    expect(seen[1]?.serverDate).toBeUndefined();
+    expect(seen[0]?.receivedAt).toBeGreaterThan(0);
   });
 });

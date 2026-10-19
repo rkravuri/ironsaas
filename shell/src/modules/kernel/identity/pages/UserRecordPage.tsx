@@ -6,6 +6,7 @@ import { ApiError } from "@/api/client";
 import { fetchUser, type UserRecord } from "@/api/identity";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
+import { useRecentName } from "@/home/recent";
 import { AccessTab } from "./AccessTab";
 import { userStatus } from "./user-status";
 
@@ -54,6 +55,7 @@ export function UserRecordPage() {
 
 function UserRecordView({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
+  useRecentName(user.display_name);
   const rows: [string, string][] = [
     [t("users.email"), user.email ?? ""],
     [t("users.homeUnit"), user.home_unit?.name ?? t("users.record.noHomeUnit")],

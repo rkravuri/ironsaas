@@ -7,7 +7,7 @@ const loginCell = (grid: Locator, value: string) => grid.locator('[role="gridcel
 test.describe("the Users grid", () => {
   test("lists the tenant's users from the API with server paging and sorting", async ({ page }) => {
     await signIn(page);
-    // After login the shell lands on /users by itself, so the first request may already be gone: register the wait, then load the page.
+    // Register the wait before loading the page, so the first request cannot be missed.
     const firstPage = page.waitForRequest((request) => request.url().includes("/api/v1/users?") && request.url().includes("page_number=1"));
     await page.goto("/users");
     const request = await firstPage;

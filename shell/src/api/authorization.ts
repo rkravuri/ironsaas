@@ -145,6 +145,11 @@ export const AssignmentListSchema = listSchema(AssignmentSchema);
 
 const assignments = "/api/v1/role-assignments";
 
+/** GET /api/v1/role-assignments/mine: the signed-in principal's own assignments, whatever it may read of others' (D4). */
+export const MyAssignmentsSchema = z.object({ data: z.array(AssignmentSchema) });
+
+export const fetchMyAssignments = (signal?: AbortSignal) => request(`${assignments}/mine`, { schema: MyAssignmentsSchema, ...(signal ? { signal } : {}) });
+
 export const fetchAssignments = (query: string, signal?: AbortSignal) =>
   request(`${assignments}?${query}`, { schema: AssignmentListSchema, ...(signal ? { signal } : {}) });
 

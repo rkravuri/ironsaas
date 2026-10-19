@@ -20,17 +20,25 @@ test.describe("a child-unit administrator", () => {
       await signIn(page, child);
 
       // The navigation follows the permissions held anywhere: Users, and nothing of the console.
-      await expect(page.getByRole("link", { name: "Users" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Roles" })).toHaveCount(0);
-      await expect(page.getByRole("link", { name: "Organisation units" })).toHaveCount(0);
+      const navigation = page.getByRole("navigation", { name: "Main navigation" });
+      await expect(navigation.getByRole("link", { name: "Users" })).toBeVisible();
+      await expect(navigation.getByRole("link", { name: "Roles" })).toHaveCount(0);
+      await expect(navigation.getByRole("link", { name: "Organisation units" })).toHaveCount(0);
+
+      // So does the home page (D4): the Identity opener alone, and no quick action the child cannot perform.
+      await expect(page.getByRole("article", { name: "Identity" })).toBeVisible();
+      await expect(page.getByRole("article", { name: "Console" })).toHaveCount(0);
+      await expect(page.getByRole("region", { name: "Quick actions" })).toHaveCount(0);
+      await page.screenshot({ path: `test-results/e2e/home-child-${scheme}.png`, fullPage: true });
 
       await open(page, "/users");
       const grid = page.getByRole("region", { name: "Users" });
       await expect(loginCells(grid).filter({ hasText: child.loginId })).toBeVisible();
       await expect(loginCells(grid).filter({ hasText: loginId })).toHaveCount(0);
-      // Everyone listed lives in the child unit: the administrator made there, and the colleague beside them.
+      // Everyone listed lives in the child unit: the administrator made there, the colleague beside them, and the
+      // people the invitation test (home.spec.ts) invites into it.
       for (const cell of await loginCells(grid).all()) {
-        await expect(cell).toHaveText(/^(child-admin|colleague)-[0-9a-f]+@/);
+        await expect(cell).toHaveText(/^(child-admin|colleague|invited)-[0-9a-z]+@/);
       }
       await page.screenshot({ path: `test-results/e2e/users-child-${scheme}.png` });
 

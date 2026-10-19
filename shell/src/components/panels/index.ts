@@ -3,6 +3,8 @@ export type { RecordHeaderProps, RecordMeta, RecordStatus, StatusTone } from "./
 export { EmptyState } from "./EmptyState";
 export type { EmptyStateDrawing, EmptyStateProps } from "./EmptyState";
 export { LoadingState } from "./LoadingState";
+export { AlertDialog } from "./AlertDialog";
+export type { AlertDialogProps } from "./AlertDialog";
 export { ConfirmDialog } from "./ConfirmDialog";
 export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { FormDialog } from "./FormDialog";

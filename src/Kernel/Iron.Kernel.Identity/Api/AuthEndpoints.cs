@@ -26,7 +26,11 @@ public sealed record PrincipalResponse(Guid Id, string LoginId, string DisplayNa
     }
 }
 
-public sealed record SessionResponse(Guid Id, DateTimeOffset ExpiresAt, DateTimeOffset IdleExpiresAt);
+/// <summary>
+/// A session's times (TF-021): when it started (null for a bearer token), its absolute limit, and when it ends without
+/// further activity. My profile shows all three; the shell's warning follows the last two.
+/// </summary>
+public sealed record SessionResponse(Guid Id, DateTimeOffset? StartedAt, DateTimeOffset ExpiresAt, DateTimeOffset IdleExpiresAt);
 
 public sealed record LoginResponse(PrincipalResponse Principal, SessionResponse Session);
 
@@ -91,7 +95,7 @@ internal static class AuthEndpoints
 
         var outcome = result.Value;
         SessionCookie.Set(http, options, outcome.Token);
-        return TypedResults.Ok(new LoginResponse(PrincipalResponse.From(outcome.Principal), Session(outcome.Session.Id, outcome.Session.ExpiresAt, outcome.Session.IdleExpiresAt(options.Session.Idle))));
+        return TypedResults.Ok(new LoginResponse(PrincipalResponse.From(outcome.Principal), Session(outcome.Session.Id, outcome.Session.CreatedAt, outcome.Session.ExpiresAt, outcome.Session.IdleExpiresAt(options.Session.Idle))));
     }
 
     private static async Task<IResult> LogoutAsync(HttpContext http, RequestPrincipal principal, SessionService sessions, IdentityOptions options, IAuditWriter audit, CancellationToken cancellationToken)
@@ -121,7 +125,7 @@ internal static class AuthEndpoints
         var anywhere = await roleAssignments.PermissionsOfAsync(current.Id, AccessScope.Anywhere, cancellationToken);
         var home = current.HomeUnitId is { } unitId ? await units.FindAsync(unitId, cancellationToken) : null;
         var homeUnit = home is null ? null : new HomeUnitResponse(home.Id, home.Name, home.Code);
-        return TypedResults.Ok(new MeResponse(current.Id, current.LoginId, current.DisplayName, current.Type, permissions, anywhere, Session(current.SessionId, current.SessionExpiresAt, current.IdleExpiresAt), homeUnit));
+        return TypedResults.Ok(new MeResponse(current.Id, current.LoginId, current.DisplayName, current.Type, permissions, anywhere, Session(current.SessionId, current.SessionStartedAt, current.SessionExpiresAt, current.IdleExpiresAt), homeUnit));
     }
 
     /// <summary>
@@ -146,5 +150,5 @@ internal static class AuthEndpoints
         return TypedResults.Ok(new AccessResponse(target.Value.Scope.ToString(), await roleAssignments.PermissionsOfAsync(current, target.Value.Scope, cancellationToken)));
     }
 
-    private static SessionResponse Session(Guid id, DateTimeOffset expiresAt, DateTimeOffset idleExpiresAt) => new(id, expiresAt, idleExpiresAt);
+    private static SessionResponse Session(Guid id, DateTimeOffset? startedAt, DateTimeOffset expiresAt, DateTimeOffset idleExpiresAt) => new(id, startedAt, expiresAt, idleExpiresAt);
 }

@@ -289,6 +289,16 @@ A page reads the signed-in principal with `useSession()`; it never checks a perm
 
 A page uses the components as the theme styles them and names colours by meaning: `color="danger"` on an alert, `c="dimmed"` on a hint, a `var(--iron-...)` variable from `shell/src/design/tokens.ts` when a style needs a value. A hex, `rgb()`, `hsl()`, a CSS colour name or a Mantine palette name (`red`, `gray.6`) in a `style`, `styles`, `vars` or `gradient` object or in `c`, `bg`, `bd`, `color`, `fill` or `stroke` fails lint, and the message says what to use. The title of a moment (the login page, a home page, an opener) says `<Title order={2} variant="display">` to take the display family; the work area keeps the reading family. The gallery (`make shell-dev`, then http://localhost:5173/gallery, with `?scheme=dark` and `?density=compact` to switch) shows every token and every themed component in both schemes and both densities; a new component or token gets its example there, and `make shell-a11y` runs the WCAG 2.1 AA scan on it and leaves a screenshot of each run in `shell/test-results/`. The density setting (`useDensity`) and the reduced-motion hook (`usePrefersReducedMotion`) live in `shell/src/design/`. A drawing is a component from `shell/src/design/illustrations/` (`<Welcome decorative size="md" />`): `sm` in a grid or a loader, `md` on a page, `lg` in the gallery; it is hidden from assistive technology when the text beside it says the same, labelled otherwise. The tenant's mark is `<TenantMark hostname={window.location.hostname} size={24} />` from `shell/src/design/patterns/`. A new drawing follows `docs/design/illustration-checklist.md` and gets its tile in the gallery.
 
+## A module on the home page and in the header (D4, ADR-0033)
+
+The home page, the search and the help panel read the manifests, so a module appears in them without a change to the shell.
+
+1. **The opener.** `opener: { accent: "identity", lineKey: "modules.identity.line" }` in the manifest. The accent is one of the accents in `shell/src/design/tokens.ts` (a new module gets its own there, with its meaning in the catalogue); the line says in one sentence what the module is for. The mark is drawn for the module: the mandala generator with the module's name as the seed and one set of parameters for every module (`<ModuleMark name="identity" accent="identity" size={56} />`, the same mark beside the title of its first page). A spot drawing of the module's own goes in `drawing`: a component in `shell/src/design/illustrations/` in the brief's hand, through `docs/design/illustration-checklist.md`. `entries` says how many of its navigation entries the opener lists, three by default. The principal sees the openers of the modules it may open and, in each, only the entries it may open.
+2. **Quick actions.** `quickActions: [{ id: "invite", labelKey: "users.invite.open", permission: "identity.users.manage", path: "/users?invite=1", icon }]`. The home page and the search offer the action when `/me/access` answers the permission at the principal's home unit. The page at `path` opens its dialog from the query and then removes the query, as `UsersPage` and `UnitsPage` do, so the home page, the search and a link start it the same way. A quick action without a permission fails the strict validation, as a route without one does.
+3. **Help keys.** A route's `shortcuts` list its keys in the help panel on that page: `gridShortcuts`, `treeShortcuts` and `tabShortcuts` from `shell/src/components/shortcuts.ts`, or keys of its own with their words in the catalogue.
+4. **Recently opened** names a page by its route's title; a record page names itself with `useRecentName(record.name)` once the record has loaded.
+5. **The session warning** needs nothing from a page: every answer through `request()` counts as activity and moves the idle end in every tab. A page that holds unsaved work should still save as it goes; the warning gives two minutes.
+
 ## Proving a change (T17, T18, ADR-0022)
 
 | Level | Command | What it proves |
@@ -296,7 +306,7 @@ A page uses the components as the theme styles them and names colours by meaning
 | Unit and integration tests | `make test`, `make shell-check` | the code, on real platform services in containers |
 | Accessibility | `make shell-a11y` | the gallery against WCAG 2.1 AA with axe in a real browser; no stack needed |
 | Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace |
-| Browser | `make e2e` | login and the grid in a real browser |
+| Browser | `make e2e` | login, home, the search, the grid, inviting a person and a child-unit administrator's view in a real browser |
 | Pipeline's stage | `make integration` | platform and control plane from images, then the smoke |
 
 Every pull request runs the first two levels in CI; every merge to main builds the images and runs the pipeline's stage on the runner. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.

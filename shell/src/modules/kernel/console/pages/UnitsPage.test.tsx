@@ -47,6 +47,20 @@ const record = () => screen.getByText("Path").closest("table")!.parentElement!;
 /** A tree item by its own label: an item's accessible name also holds the names of the items below it. */
 const item = (label: string) => within(screen.getByRole("tree")).getByText(label).closest<HTMLElement>("[role=treeitem]")!;
 
+describe("the quick action Add a unit", () => {
+  it("chooses the person's home unit and opens its dialog for a new unit there", async () => {
+    stubFetch({
+      "GET /api/v1/me": () => json({ ...me(["authz.units.read", "authz.units.manage"]), home_unit: { id: "finance", name: "Finance", code: "finance" } }),
+      "GET /api/v1/organisation-units": () => json(tree),
+      "GET /api/v1/organisation-kinds": () => json(kinds),
+      ...access(["authz.units.read", "authz.units.manage"]),
+    });
+    renderWithProviders(<UnitsPage />, { route: "/console/units?add=1" });
+
+    expect(await screen.findByRole("dialog", { name: "A new unit under Finance" })).toBeInTheDocument();
+  });
+});
+
 describe("the organisation units page", () => {
   it("shows the tree with the root chosen, and an inactive unit says so in words", async () => {
     stub(["authz.units.read", "authz.units.manage"]);

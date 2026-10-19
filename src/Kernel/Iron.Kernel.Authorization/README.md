@@ -55,6 +55,7 @@ Each change writes `authz.role_created`, `authz.role_changed` or `authz.role_del
 |---|---|---|
 | List, for a principal or a unit | `GET /api/v1/role-assignments?filter=principal_id:eq:<id>` or `filter=unit_id:eq:<id>` | `authz.assignments.read`, any scope; each row where the reader holds it at the assignment's unit (a tenant or record assignment needs a tenant-wide reader) |
 | One | `GET /api/v1/role-assignments/{id}` | as the list; outside, 404 |
+| My own | `GET /api/v1/role-assignments/mine` | any signed-in principal: it answers only the reader's own assignments, for My profile (ADR-0033) |
 | Grant | `POST /api/v1/role-assignments` with `principal_id`, `role_id`, `scope_kind` (`tenant`, `unit`, `unit_with_children`, `record`) and `unit_id` or `record_type` and `record_id` | `authz.assignments.manage` over the whole scope, checked by the service |
 | Remove | `DELETE /api/v1/role-assignments/{id}` | `authz.assignments.manage` over the assignment's scope |
 

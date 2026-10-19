@@ -98,6 +98,8 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         Assert.Equal(loginId, meBody.RootElement.GetProperty("login_id").GetString());
         Assert.Contains(AuthorizationPermissions.RolesRead.Name, meBody.RootElement.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()));
         Assert.Equal(_time.GetUtcNow() + TimeSpan.FromMinutes(60), meBody.RootElement.GetProperty("session").GetProperty("idle_expires_at").GetDateTimeOffset());
+        // My profile shows when the session started (D4): the login's moment, on the fake clock.
+        Assert.Equal(_time.GetUtcNow(), meBody.RootElement.GetProperty("session").GetProperty("started_at").GetDateTimeOffset());
 
         // The cookie principal passes the permission filter of another module.
         using var roles = await Get("/api/v1/roles", cookie);

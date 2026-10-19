@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
+import { matchPath } from "react-router";
+import type { Shortcut } from "@/components/shortcuts";
+import type { IllustrationProps } from "@/design/illustrations";
+import type { AccentName } from "@/design/tokens";
+
+export type { Shortcut } from "@/components/shortcuts";
 
 /**
  * What a module tells the shell (S1 plan 3.10): its routes with the permission each needs, and its navigation
@@ -15,6 +21,8 @@ export interface ModuleRoute {
   element: ReactNode;
   /** i18n key of the page title. */
   titleKey: string;
+  /** The page's own keys, for the help panel; the shell's keys are there for every page. */
+  shortcuts?: Shortcut[];
 }
 
 export interface NavigationEntry {
@@ -25,12 +33,39 @@ export interface NavigationEntry {
   icon?: ReactNode;
 }
 
+/**
+ * How a module opens on the home page (ADR-0033): in its accent, with its mark (the generator seeded by the module's
+ * name), one line on what it is for, a spot drawing if it has one, and its first navigation entries as links.
+ */
+export interface ModuleOpener {
+  accent: AccentName;
+  /** i18n key of the one line. */
+  lineKey: string;
+  /** A spot drawing of the module's own, in the brief's hand (ADR-0026); none is fine. */
+  drawing?: ComponentType<IllustrationProps>;
+  /** How many of its visible navigation entries the opener lists; three unless it says otherwise. */
+  entries?: number;
+}
+
+/** Something a person may want to start from anywhere: the home page and the search offer it (ADR-0033). */
+export interface QuickAction {
+  id: string;
+  labelKey: string;
+  /** The permission it needs, asked of /me/access at the principal's home unit; it cannot be left out. */
+  permission: string;
+  /** Where it happens: the page that owns the action opens it from this address. */
+  path: string;
+  icon?: ReactNode;
+}
+
 export interface ModuleManifest {
   name: string;
   /** i18n key of the module's title, shown as the navigation group. */
   titleKey: string;
   routes: ModuleRoute[];
   navigation: NavigationEntry[];
+  opener?: ModuleOpener;
+  quickActions?: QuickAction[];
 }
 
 export class ManifestError extends Error {
@@ -104,6 +139,42 @@ export function navigationFor(manifests: ModuleManifest[], permissions: readonly
   return groups;
 }
 
+/** A module's opener on the home page, for a principal who may open at least one of its entries. */
+export interface ModuleOpening {
+  module: string;
+  titleKey: string;
+  opener: ModuleOpener | undefined;
+  /** The first visible entries, as many as the opener asks for. */
+  entries: NavigationEntry[];
+}
+
+/** The openers a principal with these permissions sees: one per module of the navigation, in its order. */
+export function openersFor(manifests: ModuleManifest[], permissions: readonly string[], options: RegistryOptions): ModuleOpening[] {
+  const byName = new Map(manifests.map((manifest) => [manifest.name, manifest]));
+  return navigationFor(manifests, permissions, options).map((group) => {
+    const opener = byName.get(group.module)?.opener;
+    return { module: group.module, titleKey: group.titleKey, opener, entries: group.entries.slice(0, opener?.entries ?? 3) };
+  });
+}
+
+/** The quick actions whose permission the principal holds somewhere; /me/access then says whether at its home unit. */
+export function quickActionsFor(manifests: ModuleManifest[], permissions: readonly string[]): (QuickAction & { module: string })[] {
+  const granted = new Set(permissions);
+  return manifests.flatMap((manifest) => (manifest.quickActions ?? []).filter((action) => granted.has(action.permission)).map((action) => ({ ...action, module: manifest.name })));
+}
+
+/** The declared route a path belongs to, for the help panel's keys and the name of a page opened recently. */
+export function routeAt(manifests: ModuleManifest[], pathname: string): RegisteredRoute | undefined {
+  for (const manifest of manifests) {
+    for (const route of manifest.routes) {
+      if (matchPath({ path: route.path, end: true }, pathname)) {
+        return { ...route, module: manifest.name };
+      }
+    }
+  }
+  return undefined;
+}
+
 /** Every route and entry declares its permission (null counts); a path declared twice is a mistake too. */
 export function validateManifests(manifests: ModuleManifest[], options: RegistryOptions): string[] {
   const problems: string[] = [];
@@ -121,6 +192,11 @@ export function validateManifests(manifests: ModuleManifest[], options: Registry
     for (const entry of manifest.navigation) {
       if (entry.permission === undefined) {
         problems.push(`navigation ${manifest.name}:${entry.path} declares no permission`);
+      }
+    }
+    for (const action of manifest.quickActions ?? []) {
+      if (!action.permission) {
+        problems.push(`quick action ${manifest.name}:${action.id} declares no permission`);
       }
     }
   }

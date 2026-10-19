@@ -10,7 +10,10 @@ public enum AuthenticationKind
     Token,
 }
 
-/// <summary>What the session or bearer middleware found for this request. For a token, SessionId is the token id and both expiries are its expiry.</summary>
+/// <summary>
+/// What the session or bearer middleware found for this request. For a token, SessionId is the token id, both expiries
+/// are its expiry, and there is no session start.
+/// </summary>
 public sealed record SignedInPrincipal(
     Guid Id,
     string LoginId,
@@ -20,7 +23,8 @@ public sealed record SignedInPrincipal(
     DateTimeOffset SessionExpiresAt,
     DateTimeOffset IdleExpiresAt,
     AuthenticationKind Kind = AuthenticationKind.Session,
-    Guid? HomeUnitId = null);
+    Guid? HomeUnitId = null,
+    DateTimeOffset? SessionStartedAt = null);
 
 /// <summary>
 /// The current principal (TF-010): the signed-in principal of the request, nobody when the request has no valid session,

@@ -60,6 +60,20 @@ public sealed class AssignmentService(
             assignment => assignment.Id);
     }
 
+    /// <summary>
+    /// The reader's own assignments, oldest first, for My profile (D4, ADR-0033). Open to every signed-in principal
+    /// without <c>authz.assignments.read</c>: it answers only what the reader holds, which /me already implies.
+    /// </summary>
+    public async Task<IReadOnlyList<AssignmentView>> MineAsync(CancellationToken cancellationToken)
+    {
+        var rows = await context.RoleAssignments.AsNoTracking()
+            .Where(assignment => assignment.PrincipalId == actor.Id)
+            .OrderBy(assignment => assignment.CreatedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return await DescribeAsync(rows, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>The assignments with their role, principal and unit path: a few queries for the whole page, whatever its length.</summary>
     public async Task<IReadOnlyList<AssignmentView>> DescribeAsync(IReadOnlyList<RoleAssignment> rows, CancellationToken cancellationToken)
     {
