@@ -18,6 +18,7 @@ A master that a second product turns out to need moves down to Business; a produ
 
 - Products may use Business and Kernel, always through their Contracts projects. A product never references another product's implementation.
 - Every entity is a `BusinessRecord` (owning organisation and sharing mode) or marked `ITenantWide` (TF-220); the architecture tests check it.
+- A product is licensed per module, in its own code (ADR-0034): its `IModule` declares its licence code and subscription type, and its features; the architecture test refuses one without a licence. A plan then includes it, and until a tenant's plan does, its endpoints answer `entitlements.module_disabled` and the shell hides it (the developer guide's "Licensing a module or feature").
 - Permission names, audit events, error codes, routes and configuration sections name the product, not the layer: `<product>.<resource>.<action>`, never `products.<product>...`.
 
 ## Names
@@ -39,3 +40,4 @@ A master that a second product turns out to need moves down to Business; a produ
 3. Name the context's schema `[Schema("products_<product>")]` and generate its first migration with `make ef-add MODULE=<Product> NAME=Initial`.
 4. Add both projects to `Foundation.slnx` and to `tests/Iron.Architecture.Tests`, and the product to the hosts that serve it.
 5. Run `make check`.
+6. Declare its licence and features, add it to `Iron.Host.Api.UnitModules`, run `make catalogue` and commit the catalogue; add `licence` to its shell manifest.
