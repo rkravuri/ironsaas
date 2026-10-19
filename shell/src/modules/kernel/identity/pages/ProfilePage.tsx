@@ -2,23 +2,28 @@ import { useSyncExternalStore } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Stack, Table, Text } from "@mantine/core";
+import { Alert, Button, SegmentedControl, Stack, Table, Text, useMantineColorScheme } from "@mantine/core";
 import { IconLogout } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
 import { fetchMyAssignments, type Assignment } from "@/api/authorization";
 import type { Me } from "@/api/identity";
 import { useSession } from "@/auth/session-context";
+import { useSetting } from "@/auth/settings";
 import { useSessionWatch } from "@/auth/session-watch";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
+import { densities, setDensity, useDensity, type Density } from "@/design/density";
+import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 import { unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
 import { userStatus } from "./user-status";
 
 const when = (value: string | number) => new Date(value).toLocaleString();
+const isScheme = (value: string): value is SchemeChoice => (schemeChoices as readonly string[]).includes(value);
+const isDensity = (value: string): value is Density => (densities as readonly string[]).includes(value);
 
 /**
  * My profile (D4) on the record template: the person's name, login identifier, home unit and status, then their
- * details, their own access in words, and their session. A signed-in principal is active by construction: the API ends
+ * details, their own access in words, their preferences (A6), and their session. A signed-in principal is active by construction: the API ends
  * the sessions of anyone who is not (SessionService), so the status needs no request of its own.
  */
 export function ProfilePage() {
@@ -41,6 +46,7 @@ export function ProfilePage() {
       tabs={[
         { value: "details", label: t("profile.tabs.details"), panel: <Details me={me} /> },
         { value: "access", label: t("profile.tabs.access"), panel: <MyAccess /> },
+        { value: "preferences", label: t("profile.tabs.preferences"), panel: <MyPreferences /> },
         { value: "session", label: t("profile.tabs.session"), panel: <MySession me={me} /> },
       ]}
     />
@@ -127,13 +133,65 @@ const where = (assignment: Assignment, t: TFunction): string =>
   t(`profile.access.scopes.${assignment.scope_kind}`, { unit: unitPathLabel(assignment) });
 
 /**
+ * The person's preferences (ADR-0036): the colour scheme and the density, saved with the person, so they follow them to
+ * every browser they sign in on. The choice applies at once; the layout's sync saves it.
+ */
+function MyPreferences() {
+  const { t } = useTranslation();
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const density = useDensity();
+  return (
+    <Stack gap="lg" align="flex-start">
+      <Text size="sm" c="dimmed" maw={640}>
+        {t("profile.preferences.intro")}
+      </Text>
+      <Stack gap={6}>
+        <Text size="sm" fw={600}>
+          {t("header.scheme.label")}
+        </Text>
+        <SegmentedControl
+          aria-label={t("header.scheme.label")}
+          value={colorScheme}
+          onChange={(value) => {
+            if (isScheme(value)) {
+              setColorScheme(value);
+            }
+          }}
+          data={schemeChoices.map((value) => ({ value, label: t(`header.scheme.${value}`) }))}
+        />
+      </Stack>
+      <Stack gap={6}>
+        <Text size="sm" fw={600}>
+          {t("density.label")}
+        </Text>
+        <SegmentedControl
+          aria-label={t("density.label")}
+          value={density}
+          onChange={(value) => {
+            if (isDensity(value)) {
+              setDensity(value);
+            }
+          }}
+          data={densities.map((value) => ({ value, label: t(`density.${value}`) }))}
+        />
+        <Text size="xs" c="dimmed" maw={640}>
+          {t("profile.preferences.densityExplain")}
+        </Text>
+      </Stack>
+    </Stack>
+  );
+}
+
+/**
  * The session (TF-021): when it started, when it ends without activity (as this tab knows it, moved by every answer)
  * and its absolute limit. The API has no "sign out everywhere" yet (TF-022), so the one action is Sign out, which ends
- * the session in every tab of this browser.
+ * the session in every tab of this browser. The tenant's limits for new sessions are its settings (ADR-0036).
  */
 function MySession({ me }: { me: Me }) {
   const { t } = useTranslation();
   const session = useSession();
+  const idleMinutes = useSetting("identity.session.idle_minutes");
+  const absoluteHours = useSetting("identity.session.absolute_hours");
   const watch = useSessionWatch();
   const times = useSyncExternalStore(watch.subscribe, watch.getTimes);
   return (
@@ -146,7 +204,7 @@ function MySession({ me }: { me: Me }) {
         ]}
       />
       <Text size="sm" c="dimmed" maw={640}>
-        {t("profile.session.explain")}
+        {t("profile.session.limits", { idle: idleMinutes, hours: absoluteHours })} {t("profile.session.explain")}
       </Text>
       <Button variant="default" leftSection={<IconLogout size={16} aria-hidden="true" />} onClick={() => void session.signOut()}>
         {t("app.signOut")}

@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 import type { KillSwitch } from "@/api/flags";
 import type { Me } from "@/api/identity";
 import type { Entitlements } from "./entitlements";
+import type { EffectiveSettings } from "./settings";
 import type { SessionEnd } from "./session-channel";
 import type { EndReason } from "./session-clock";
 
@@ -18,6 +19,10 @@ export interface Session {
   entitlements: Entitlements;
   /** The kill switches that are on, from /me/context: the API sends them to administrators only (ADR-0035). */
   killSwitches: readonly KillSwitch[];
+  /** The settings the shell may see, for this person, from /me/context (ADR-0036); read them with useSetting. */
+  settings: EffectiveSettings;
+  /** False until /me/context has answered with its settings: a preference is not synced before the server's is known. */
+  settingsKnown: boolean;
   /** Why the last session ended, for the sentence on the login page; undefined when nothing ended it here. */
   ended: SessionEnd | undefined;
   /** Re-reads /me. */

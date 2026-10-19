@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { request } from "./client";
 import { FlagsContextSchema } from "./flags";
+import { ContextSettingsSchema } from "./settings";
 
 /** What applies to a module or a feature now (TF-040): the status after dates, grace, seats and the governing module. */
 export const EntitlementStatusSchema = z.enum(["enabled", "read_only", "disabled"]);
@@ -11,9 +12,9 @@ export const ContextEntrySchema = z.object({ code: z.string(), status: Entitleme
 export type ContextEntry = z.infer<typeof ContextEntrySchema>;
 
 /**
- * GET /api/v1/me/context (ADR-0034): what the shell reads with the session and every 30 seconds. The entitlements and
- * the flags (ADR-0035); A6 adds the settings, so the shell keeps one call. A flags part that is missing or does not
- * parse leaves the flags on their defaults and the entitlements as they came (TF-054 AC3).
+ * GET /api/v1/me/context (ADR-0034): what the shell reads with the session and every 30 seconds, in one call: the
+ * entitlements, the flags (ADR-0035) and the settings the shell may see (ADR-0036). A flags or settings part that is
+ * missing or does not parse leaves those on their defaults and the entitlements as they came (TF-054 AC3).
  */
 export const ContextSchema = z.object({
   entitlements: z.object({
@@ -25,6 +26,7 @@ export const ContextSchema = z.object({
     features: z.array(ContextEntrySchema),
   }),
   flags: FlagsContextSchema.optional().catch(undefined),
+  settings: ContextSettingsSchema.optional().catch(undefined),
 });
 export type Context = z.infer<typeof ContextSchema>;
 

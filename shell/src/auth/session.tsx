@@ -6,6 +6,7 @@ import { fetchMe, logout as logoutCall, type Me } from "@/api/identity";
 import type { KillSwitch } from "@/api/flags";
 import { contextQueryKey, contextRefreshMs, entitlementsFrom } from "./entitlements";
 import { flagProvider } from "./flags";
+import { settingsFrom } from "./settings";
 import { openSessionChannel, type SessionChannel, type SessionEnd } from "./session-channel";
 import type { EndReason } from "./session-clock";
 import { meQueryKey, SessionContext, type Session, type SessionStatus } from "./session-context";
@@ -105,6 +106,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const entitlements = useMemo(() => entitlementsFrom(contextData, me !== undefined && context.isPending), [contextData, me, context.isPending]);
   const flags = contextData?.flags;
   const killSwitches = useMemo<readonly KillSwitch[]>(() => flags?.kill_switches ?? [], [flags]);
+  const contextSettings = contextData?.settings;
+  const settings = useMemo(() => settingsFrom(contextSettings), [contextSettings]);
+  const settingsKnown = contextSettings !== undefined;
   // Without an answer (signed out, still loading, or the call failed) the provider knows nothing and every flag has its
   // default. A layout effect, so the page re-renders with the new values before it paints: no flash of a hidden control.
   useLayoutEffect(() => flagProvider.update(flags?.values ?? []), [flags]);
@@ -154,8 +158,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A failure that is not "not signed in" still shows the login page, with the error noted by the boundary later.
       status = query.isPending ? "loading" : "signed-out";
     }
-    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], entitlements, killSwitches, ended, refresh, signedIn, extend, signOut, expire, forget };
-  }, [me, query.error, query.isPending, entitlements, killSwitches, ended, refresh, signedIn, extend, signOut, expire, forget]);
+    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], entitlements, killSwitches, settings, settingsKnown, ended, refresh, signedIn, extend, signOut, expire, forget };
+  }, [me, query.error, query.isPending, entitlements, killSwitches, settings, settingsKnown, ended, refresh, signedIn, extend, signOut, expire, forget]);
 
   return (
     <SessionWatchContext.Provider value={watch}>
