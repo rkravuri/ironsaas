@@ -5,7 +5,7 @@ using Iron.Kernel.Tenancy.Contracts;
 namespace Iron.Kernel.Tenancy.Data;
 
 /// <summary>A tenant of the platform (TF-001). The slug is the identifier used everywhere (ADR-0007); the row id is the key.</summary>
-public sealed class Tenant : AuditedEntity
+public sealed class Tenant : AuditedEntity, ITenantWide
 {
     public const int DisplayNameMaxLength = 200;
 

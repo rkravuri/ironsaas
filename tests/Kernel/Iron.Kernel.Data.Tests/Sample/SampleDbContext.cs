@@ -13,6 +13,8 @@ public sealed class SampleDbContext(DbContextOptions<SampleDbContext> options) :
 
     public DbSet<WidgetEvent> WidgetEvents => Set<WidgetEvent>();
 
+    public DbSet<Proposal> Proposals => Set<Proposal>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Preference>().HasIndex(p => p.Key).IsUnique();

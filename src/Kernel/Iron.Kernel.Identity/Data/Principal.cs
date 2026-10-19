@@ -19,7 +19,7 @@ public enum PrincipalStatus
 }
 
 /// <summary>A principal of this tenant (TF-010). The login identifier is unique and stored in lowercase.</summary>
-public sealed class Principal : AuditedEntity
+public sealed class Principal : AuditedEntity, ITenantWide
 {
     public const int LoginIdMaxLength = 254;
     public const int DisplayNameMaxLength = 200;

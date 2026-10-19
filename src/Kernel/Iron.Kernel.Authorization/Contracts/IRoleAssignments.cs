@@ -33,12 +33,3 @@ public interface IRoleAssignments
     /// </summary>
     Task<IReadOnlyList<string>> PermissionsOverAsync(Guid principalId, RoleScope scope, CancellationToken cancellationToken);
 }
-
-/// <summary>
-/// What one permission reaches in a list (TF-033, ADR-0030), computed once per list: every record, or the records of a
-/// set of units plus the records granted one by one. Apply it with <c>WhereAccessible</c> in the list's own query.
-/// </summary>
-public interface IRecordAccess
-{
-    Task<RecordAccess> AccessibleAsync(Guid principalId, Permission permission, string recordType, CancellationToken cancellationToken);
-}
