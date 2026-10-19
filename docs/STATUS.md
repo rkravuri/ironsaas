@@ -17,7 +17,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | D4 Home and the header | done | main | merged 2026-10-19 (179fbfa); seven commits (79cb00f to 096dff9); ADR-0033; acme, bravo and echo carry D4, smoke 11 of 11 and e2e 11 of 11 on echo |
 | A4 Entitlements | review | slice/s2-a4 | six commits after the prompt (8879856), 33bcea1 to the status commit; ADR-0034; the control plane and acme, bravo and echo carry A4, all three on the Enterprise plan; smoke 11 of 11 and e2e 14 of 14 on echo, where Export and Import went 28 s after the move to Standard and came back 27 s after the move back |
 | A5 Feature flags | review | slice/s2-a5 | stacked on slice/s2-a4, which is not merged yet; five commits after the prompt (adccccb), 67031f7 to the status commit; ADR-0035; the control plane and acme, bravo and echo carry A5; `make kill-switch PATH=imports` on echo stopped role import (503 `flags.killed`) and showed the banner in 24 s, and turned off, both returned in 27 s; smoke 11 of 11 and e2e 15 of 15 on echo, where the browser test saw the banner, the hidden Import and the refusal 30 s after the switch went on and all three return 30 s after it went off |
-| A6 Settings | | | |
+| A6 Settings | in progress | slice/s2-a6 | stacked on slice/s2-a5 (on slice/s2-a4), neither merged yet; the prompt (ce511f5), then the unit side (891a27a), the shell (278ab66) and the documents; ADR-0036. Next: the laptop (images, control plane, acme, bravo and echo), smoke and e2e on echo |
 | A7 Delegation and access reviews | | | |
 | A8 Cross-organisation access and lifecycle | | | |
 | A9 Explanation and segregation of duties | | | |
@@ -25,6 +25,9 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Open questions
 
+- A6 is stacked on `slice/s2-a5`, which is stacked on `slice/s2-a4`: neither was merged when A6 began, and A6 builds on both (`/me/context`'s parts, the catalogue). Merge A4, then A5, then A6.
+- A6 names its permissions `settings.values.read` and `settings.values.manage`, not `settings.read` and `settings.manage` as section A6 says: a permission name has three parts, `module.resource.action`, and the build refuses two (ADR-0036, decision 6). `settings.values.manage` is high risk, since the session limits are among the values. Confirm, or say which names to use.
+- An invitation is valid for 7 days by default, as section A6 says (`identity.invitation.valid_days`), where TF-018 says 72 hours. The PRD is not amended. Confirm 7 days and amend TF-018, or say 3.
 - A5 names its permissions `tenancy.flags.read`, `tenancy.flags.manage` and `tenancy.kill_switches.manage`, not `flags.read`, `flags.manage` and `flags.kill_switches.manage` as section A5 says: a permission names the module that checks it, in three parts (CLAUDE.md), and the rules live in Tenancy (ADR-0035, decision 3). The kill switch permission is critical, one step above the section's high. Confirm, or say which names to use.
 - A5 is stacked on `slice/s2-a4`: A4 was not merged when A5 began, and A5 builds on its channel. Merge A4 first; A5's own commits start after A4's status commit.
 - The most specific scope wins for kill switches too (ADR-0035, decision 7), so an operator with `tenancy.kill_switches.manage` can exempt a tenant from a global kill switch with a tenant rule set to false through `PUT /api/v1/flags/kill.<path>/rules`. `make kill-switch ... ON=false` never does: it removes the rule at its scope. Confirm the exemption is wanted, or the rules endpoint refuses a false kill switch rule.
@@ -65,3 +68,6 @@ The running state of the current slice, kept current by Claude Code at the end o
 - Each unit now reads three store paths twice a minute (entitlements, `platform/flags`, `tenants/<slug>/flags`), in the API and in the worker. The same review as the entitlements' with many hundreds of units.
 - The control plane and the fleet are no tenant: their flags come from `Flags:Rules` in configuration, global rules only.
 - On a unit's first start with A5, its API and its worker both insert the one row of `kernel_flags.last_known` and one of them loses (a duplicate key, logged by Entity Framework as an error and by the refresher as a warning; seen once on bravo). Harmless: the row is there, and the loser updates it on its next read 30 seconds later. The entitlements' row has the same race (A4). An insert that does nothing on conflict would remove the noise from both.
+- Settings have no operator-wide override of a default (the system level is the code's default; ADR-0036), no way to write a secret into the store from the console (a secret reference's path is set, the secret is put in the store by hand), and no record scope (a record takes its owning unit's value).
+- Each unit process reads all of the tenant's settings twice a minute. Fine for the handful of settings today; with many thousands of values, read only what changed since the last read (ADR-0036).
+- A setting's name on the console comes from the shell's catalogue (`settings.names`); a setting a module declares without one shows its key until it is named.
