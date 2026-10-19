@@ -49,7 +49,7 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
 
         Assert.True(first.IsSuccess);
         Assert.True(second.IsSuccess);
-        Assert.Equal([SystemRoles.TenantAdministrator], await assignments.RoleNamesOfAsync(alice, TestContext.Current.CancellationToken));
+        Assert.Equal([SystemRoles.TenantAdministrator], await assignments.RoleCodesOfAsync(alice, TestContext.Current.CancellationToken));
         foreach (var permission in AuthorizationPermissions.All)
         {
             var decision = await evaluator.EvaluateAsync(new AccessRequest(alice, permission, "GET /x", "/x"), TestContext.Current.CancellationToken);
@@ -89,7 +89,7 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
 
             // A grant written directly to the table, as another unit process or an operator would.
             var context = scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>();
-            var readOnly = await context.Roles.SingleAsync(r => r.Name == SystemRoles.ReadOnly, TestContext.Current.CancellationToken);
+            var readOnly = await context.Roles.SingleAsync(r => r.Code == SystemRoles.ReadOnly, TestContext.Current.CancellationToken);
             context.RoleAssignments.Add(new RoleAssignment(readOnly.Id, bob));
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         }

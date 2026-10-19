@@ -27,15 +27,17 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
 
         await using var scope = provider.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>();
-        var roles = await context.Roles.AsNoTracking().OrderBy(r => r.Name).ToListAsync(TestContext.Current.CancellationToken);
+        var roles = await context.Roles.AsNoTracking().Where(r => r.IsSystem).ToListAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(SystemRoles.All.Order(StringComparer.Ordinal), roles.Select(r => r.Name));
+        Assert.Equal(SystemRoles.All.Order(StringComparer.Ordinal), roles.OrderBy(r => r.Code).Select(r => r.Code));
         Assert.All(roles, role => Assert.True(role.IsSystem));
-        var administrator = roles.Single(r => r.Name == SystemRoles.TenantAdministrator);
+        var administrator = roles.Single(r => r.Code == SystemRoles.TenantAdministrator);
+        Assert.Equal("Tenant administrator", administrator.Name);
+        Assert.Equal(PrincipalType.Any, administrator.PrincipalType);
         Assert.Equal(AuthorizationPermissions.All.Select(p => p.Name).Order(StringComparer.Ordinal), administrator.Permissions);
-        var readOnly = roles.Single(r => r.Name == SystemRoles.ReadOnly);
+        var readOnly = roles.Single(r => r.Code == SystemRoles.ReadOnly);
         Assert.Equal([AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.UnitsRead.Name], readOnly.Permissions);
-        Assert.Equal(PrincipalType.Service, roles.Single(r => r.Name == SystemRoles.ServiceDefault).PrincipalType);
+        Assert.Equal(PrincipalType.Service, roles.Single(r => r.Code == SystemRoles.ServiceDefault).PrincipalType);
     }
 
     [Fact]

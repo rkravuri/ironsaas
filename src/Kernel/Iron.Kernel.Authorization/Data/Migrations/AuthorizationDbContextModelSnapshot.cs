@@ -119,6 +119,12 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("code");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -139,8 +145,8 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.PrimitiveCollection<List<string>>("Permissions")
@@ -170,9 +176,9 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_roles");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("Code")
                         .IsUnique()
-                        .HasDatabaseName("ix_roles_name");
+                        .HasDatabaseName("ix_roles_code");
 
                     b.ToTable("roles", "kernel_authz");
                 });

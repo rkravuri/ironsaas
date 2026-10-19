@@ -19,8 +19,9 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
     {
         modelBuilder.Entity<Role>(role =>
         {
+            role.Property(r => r.Code).HasMaxLength(Role.CodeMaxLength);
+            role.HasIndex(r => r.Code).IsUnique();
             role.Property(r => r.Name).HasMaxLength(Role.NameMaxLength);
-            role.HasIndex(r => r.Name).IsUnique();
             role.Property(r => r.Description).HasMaxLength(Role.DescriptionMaxLength);
             role.Property(r => r.PrincipalType).HasConversion<string>().HasMaxLength(20);
         });

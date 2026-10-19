@@ -29,6 +29,19 @@ public static class SystemRoles
 public static class AuthorizationErrors
 {
     public const string RoleNotFound = "authz.role.not_found";
+    public const string RoleSystem = "authz.role.system";
+    public const string RoleInUse = "authz.role.in_use";
+    public const string RoleCodeTaken = "authz.role.code_taken";
+    public const string RoleEscalation = "authz.role.escalation";
+    public const string RolePermissionUnknown = "authz.role.permission_unknown";
+    public const string RolePrincipalType = "authz.role.principal_type";
+    public const string ImportFormat = "authz.import.format";
+    public const string ImportUnknownPermissions = "authz.import.unknown_permissions";
+    public const string AssignmentNotFound = "authz.assignment.not_found";
+    public const string AssignmentEscalation = "authz.assignment.escalation";
+    public const string AssignmentLastAdministrator = "authz.assignment.last_administrator";
+    public const string AssignmentPrincipalType = "authz.assignment.principal_type";
+    public const string PrincipalNotFound = "authz.principal.not_found";
     public const string PrincipalRequired = "authz.principal.required";
     public const string ScopeInvalid = "authz.scope.invalid";
     public const string UnitNotFound = "authz.unit.not_found";
@@ -47,6 +60,10 @@ public static class AuthorizationAuditEvents
 {
     public const string PermissionDenied = "authz.permission_denied";
     public const string RoleAssigned = "authz.role_assigned";
+    public const string RoleUnassigned = "authz.role_unassigned";
+    public const string RoleCreated = "authz.role_created";
+    public const string RoleChanged = "authz.role_changed";
+    public const string RoleDeleted = "authz.role_deleted";
     public const string UnitCreated = "authz.unit_created";
     public const string UnitRenamed = "authz.unit_renamed";
     public const string UnitMoved = "authz.unit_moved";

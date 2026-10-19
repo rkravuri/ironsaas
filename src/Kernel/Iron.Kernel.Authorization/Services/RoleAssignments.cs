@@ -14,10 +14,10 @@ public sealed class RoleAssignments(
     IAuditWriter audit,
     ICurrentPrincipal actor) : IRoleAssignments
 {
-    public Task<Result> AssignAsync(Guid principalId, string roleName, CancellationToken cancellationToken) =>
-        AssignAsync(principalId, roleName, RoleScope.Tenant, cancellationToken);
+    public Task<Result> AssignAsync(Guid principalId, string roleCode, CancellationToken cancellationToken) =>
+        AssignAsync(principalId, roleCode, RoleScope.Tenant, cancellationToken);
 
-    public async Task<Result> AssignAsync(Guid principalId, string roleName, RoleScope scope, CancellationToken cancellationToken)
+    public async Task<Result> AssignAsync(Guid principalId, string roleCode, RoleScope scope, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
         if (principalId == Guid.Empty)
@@ -25,10 +25,10 @@ public sealed class RoleAssignments(
             return Error.Validation(AuthorizationErrors.PrincipalRequired, "A principal is required.");
         }
 
-        var role = await context.Roles.SingleOrDefaultAsync(r => r.Name == roleName, cancellationToken).ConfigureAwait(false);
+        var role = await context.Roles.SingleOrDefaultAsync(r => r.Code == roleCode, cancellationToken).ConfigureAwait(false);
         if (role is null)
         {
-            return Error.NotFound(AuthorizationErrors.RoleNotFound, $"There is no role named '{roleName}'.");
+            return Error.NotFound(AuthorizationErrors.RoleNotFound, $"There is no role with the code '{roleCode}'.");
         }
 
         if (scope.UnitId is { } unitId)
@@ -56,8 +56,8 @@ public sealed class RoleAssignments(
             await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
             context.RoleAssignments.Add(assignment);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["role"] = role.Name, ["principal_id"] = principalId.ToString(), ["scope"] = scope.ToString() };
-            await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleAssigned, AuditOutcome.Success, actor.Id, role.Name, details, "role_assignment", assignment.Id), cancellationToken).ConfigureAwait(false);
+            var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["role"] = role.Code, ["principal_id"] = principalId.ToString(), ["scope"] = scope.ToString() };
+            await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleAssigned, AuditOutcome.Success, actor.Id, role.Code, details, "role_assignment", assignment.Id), cancellationToken).ConfigureAwait(false);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -77,12 +77,12 @@ public sealed class RoleAssignments(
         return permissions.Order(StringComparer.Ordinal).ToList();
     }
 
-    public async Task<IReadOnlyList<string>> RoleNamesOfAsync(Guid principalId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<string>> RoleCodesOfAsync(Guid principalId, CancellationToken cancellationToken)
     {
         return await context.RoleAssignments.AsNoTracking()
             .Where(a => a.PrincipalId == principalId && a.ScopeKind == Scopes.Tenant)
-            .Join(context.Roles.AsNoTracking(), a => a.RoleId, r => r.Id, (a, r) => r.Name)
-            .OrderBy(name => name)
+            .Join(context.Roles.AsNoTracking(), a => a.RoleId, r => r.Id, (a, r) => r.Code)
+            .OrderBy(code => code)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

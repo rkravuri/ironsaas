@@ -86,12 +86,12 @@ public class RolesEndpointTests(AuthorizationFixture fixture) : IAsyncLifetime
             Assert.True((await assignments.AssignAsync(alice, SystemRoles.TenantAdministrator, TestContext.Current.CancellationToken)).IsSuccess);
         }
 
-        using var response = await Send(alice, "?sort=name&fields=name,is_system,permissions");
+        using var response = await Send(alice, "?sort=code&filter=is_system:eq:true&fields=code,name,is_system,permissions");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var data = body.RootElement.GetProperty("data");
-        Assert.Equal(SystemRoles.All.Order(StringComparer.Ordinal), data.EnumerateArray().Select(r => r.GetProperty("name").GetString()));
+        Assert.Equal(SystemRoles.All.Order(StringComparer.Ordinal), data.EnumerateArray().Select(r => r.GetProperty("code").GetString()));
         Assert.All(data.EnumerateArray(), role => Assert.True(role.GetProperty("is_system").GetBoolean()));
         Assert.Equal(3, body.RootElement.GetProperty("meta").GetProperty("total_count").GetInt32());
     }

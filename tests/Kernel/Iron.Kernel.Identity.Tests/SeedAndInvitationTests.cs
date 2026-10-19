@@ -62,7 +62,7 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
         Assert.Equal(IdentityFixture.AdministratorDisplayName, administrator.DisplayName);
         Assert.Null(administrator.PasswordHash);
         Assert.NotNull(administrator.InvitationTokenHash);
-        var roles = await scope.ServiceProvider.GetRequiredService<IRoleAssignments>().RoleNamesOfAsync(administrator.Id, TestContext.Current.CancellationToken);
+        var roles = await scope.ServiceProvider.GetRequiredService<IRoleAssignments>().RoleCodesOfAsync(administrator.Id, TestContext.Current.CancellationToken);
         Assert.Equal([SystemRoles.TenantAdministrator], roles);
     }
 

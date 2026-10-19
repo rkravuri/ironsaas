@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Authorization.Tests;
@@ -27,6 +28,23 @@ public sealed class AuthorizationFixture : IAsyncLifetime
     }
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+
+    /// <summary>A second tenant's database in the same container, migrated and seeded: export and import cross tenants (TF-032).</summary>
+    public async Task<string> CreateTenantDatabaseAsync(string name)
+    {
+        await using (var connection = new NpgsqlConnection(ConnectionString))
+        {
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+            await using var create = new NpgsqlCommand($"create database \"{name}\"", connection);
+            await create.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = name }.ConnectionString;
+        await using var provider = BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter(), connectionString);
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        return connectionString;
+    }
 
     /// <summary>The services a host would have for this module, with a controllable clock, principal and audit writer.</summary>
     public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null)

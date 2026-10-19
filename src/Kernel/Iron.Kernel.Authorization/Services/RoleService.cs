@@ -1,0 +1,367 @@
+using Iron.Kernel.Api.Permissions;
+using Iron.Kernel.Api.Problems;
+using Iron.Kernel.Audit.Contracts;
+using Iron.Kernel.Authorization.Contracts;
+using Iron.Kernel.Authorization.Data;
+using Iron.Kernel.Data.Transactions;
+using Microsoft.EntityFrameworkCore;
+
+namespace Iron.Kernel.Authorization.Services;
+
+/// <summary>What a tenant role is made of when it is created or changed; the code is fixed at creation.</summary>
+public sealed record RoleInput(string Name, string Description, PrincipalType PrincipalType, IReadOnlyList<string> Permissions);
+
+/// <summary>The export of a tenant's roles (TF-032): a format version and, per role, what another tenant needs to recreate it.</summary>
+public sealed record RoleExport(int FormatVersion, IReadOnlyList<RoleDocument> Roles)
+{
+    public const int CurrentFormat = 1;
+}
+
+public sealed record RoleDocument(string Code, string Name, string Description, PrincipalType PrincipalType, IReadOnlyList<string> Permissions);
+
+public sealed record RoleChange(string Code, IReadOnlyList<string> Added, IReadOnlyList<string> Removed, IReadOnlyList<string> Fields);
+
+public sealed record UnknownPermissions(string Code, IReadOnlyList<string> Permissions);
+
+/// <summary>What an import does or would do: the roles it creates, changes (with the permissions added and removed), leaves as they are, and cannot take.</summary>
+public sealed record ImportDiff(
+    bool DryRun,
+    bool Applied,
+    IReadOnlyList<string> Created,
+    IReadOnlyList<RoleChange> Changed,
+    IReadOnlyList<string> Unchanged,
+    IReadOnlyList<UnknownPermissions> Unknown,
+    IReadOnlyList<string> SkippedSystem);
+
+/// <summary>
+/// Tenant roles (TF-032, ADR-0031): create, change and delete, export and import. System roles are read-only; a role
+/// still assigned is not deleted; a role is saved only with permissions its editor holds tenant-wide, and only with
+/// permissions the catalogue knows. Every change writes its audit event, with the permissions before and after, in the
+/// same transaction.
+/// </summary>
+public sealed class RoleService(
+    AuthorizationDbContext context,
+    AccessGrants grants,
+    PermissionCatalogue catalogue,
+    IUnitOfWork unitOfWork,
+    IAuditWriter audit,
+    ICurrentPrincipal actor)
+{
+    public const string RecordType = "role";
+
+    public async Task<Role?> FindAsync(Guid id, CancellationToken cancellationToken) =>
+        await context.Roles.AsNoTracking().SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
+
+    public async Task<Result<Role>> CreateAsync(string code, RoleInput input, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        var normalised = (code ?? string.Empty).Trim().ToLowerInvariant();
+        if (!Role.IsValidCode(normalised))
+        {
+            return Error.Validation(ApiErrors.Validation, "The code is not valid.", new FieldError("code", "invalid", "Use lowercase letters, digits and hyphens, starting with a letter."));
+        }
+
+        var invalid = Check(input) ?? await EscalationAsync(input.Permissions, cancellationToken).ConfigureAwait(false);
+        if (invalid is not null)
+        {
+            return invalid;
+        }
+
+        if (await context.Roles.AnyAsync(r => r.Code == normalised, cancellationToken).ConfigureAwait(false))
+        {
+            return new Error(ErrorKind.Conflict, AuthorizationErrors.RoleCodeTaken, $"A role with the code '{normalised}' exists already.", [new FieldError("code", "taken", "Another role has this code. Choose another.")]);
+        }
+
+        var role = new Role(normalised, input.Name, input.Description, isSystem: false, input.PrincipalType, input.Permissions);
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        context.Roles.Add(role);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await WriteAsync(AuthorizationAuditEvents.RoleCreated, role, [], [], cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return role;
+    }
+
+    public async Task<Result<Role>> UpdateAsync(Guid id, RoleInput input, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        var role = await context.Roles.SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
+        if (role is null)
+        {
+            return NotFound();
+        }
+
+        if (role.IsSystem)
+        {
+            return SystemRole(role);
+        }
+
+        var invalid = Check(input) ?? await EscalationAsync(input.Permissions, cancellationToken).ConfigureAwait(false);
+        if (invalid is not null)
+        {
+            return invalid;
+        }
+
+        if (input.PrincipalType != role.PrincipalType && await InUseAsync(role.Id, cancellationToken).ConfigureAwait(false))
+        {
+            return Error.Conflict(AuthorizationErrors.RoleInUse, $"'{role.Name}' is assigned; its principal type cannot change while it is. Remove its assignments first.");
+        }
+
+        var before = role.Permissions.ToList();
+        var fields = ChangedFields(role, input.Name, input.Description, input.PrincipalType);
+        role.Change(input.Name, input.Description, input.PrincipalType, input.Permissions);
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await WriteAsync(AuthorizationAuditEvents.RoleChanged, role, before, fields, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await ForgetHoldersAsync(role.Id, cancellationToken).ConfigureAwait(false);
+        return role;
+    }
+
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var role = await context.Roles.SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
+        if (role is null)
+        {
+            return NotFound();
+        }
+
+        if (role.IsSystem)
+        {
+            return SystemRole(role);
+        }
+
+        if (await InUseAsync(role.Id, cancellationToken).ConfigureAwait(false))
+        {
+            return Error.Conflict(AuthorizationErrors.RoleInUse, $"'{role.Name}' is still assigned. Remove its assignments before you delete it.");
+        }
+
+        var before = role.Permissions.ToList();
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        context.Roles.Remove(role);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["name"] = role.Name, ["permissions_before"] = string.Join(',', before), ["permissions_after"] = string.Empty };
+        await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleDeleted, AuditOutcome.Success, actor.Id, role.Code, details, RecordType, role.Id), cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
+    }
+
+    /// <summary>The tenant roles as a document another tenant can import; system roles are every tenant's already.</summary>
+    public async Task<RoleExport> ExportAsync(CancellationToken cancellationToken)
+    {
+        var roles = await context.Roles.AsNoTracking().Where(r => !r.IsSystem).OrderBy(r => r.Code).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return new RoleExport(RoleExport.CurrentFormat, roles.Select(r => new RoleDocument(r.Code, r.Name, r.Description, r.PrincipalType, r.Permissions)).ToList());
+    }
+
+    /// <summary>
+    /// Compares a document with this tenant's roles and, unless it is a dry run, applies it (TF-032 AC3, ADR-0031): roles
+    /// are created or changed by code, system role codes are skipped, an apply with unknown permissions or with
+    /// permissions the importer lacks tenant-wide is refused, and each role applied writes its own audit event.
+    /// </summary>
+    public async Task<Result<ImportDiff>> ImportAsync(RoleExport document, bool dryRun, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var shape = CheckDocument(document);
+        if (shape is not null)
+        {
+            return shape;
+        }
+
+        var existing = await context.Roles.ToDictionaryAsync(r => r.Code, StringComparer.Ordinal, cancellationToken).ConfigureAwait(false);
+        var created = new List<RoleDocument>();
+        var changed = new List<(RoleDocument Document, Role Role, RoleChange Change)>();
+        var unchanged = new List<string>();
+        var unknown = new List<UnknownPermissions>();
+        var skipped = new List<string>();
+        foreach (var item in document.Roles.OrderBy(r => r.Code, StringComparer.Ordinal))
+        {
+            if (SystemRoles.All.Contains(item.Code, StringComparer.Ordinal) || (existing.TryGetValue(item.Code, out var system) && system.IsSystem))
+            {
+                skipped.Add(item.Code);
+                continue;
+            }
+
+            var permissions = Role.Normalise(item.Permissions);
+            var notKnown = permissions.Where(p => !catalogue.Contains(p)).ToList();
+            if (notKnown.Count > 0)
+            {
+                unknown.Add(new UnknownPermissions(item.Code, notKnown));
+            }
+
+            if (!existing.TryGetValue(item.Code, out var role))
+            {
+                created.Add(item);
+                continue;
+            }
+
+            var added = permissions.Except(role.Permissions, StringComparer.Ordinal).ToList();
+            var removed = role.Permissions.Except(permissions, StringComparer.Ordinal).ToList();
+            var fields = ChangedFields(role, item.Name, item.Description, item.PrincipalType);
+            if (added.Count == 0 && removed.Count == 0 && fields.Count == 0)
+            {
+                unchanged.Add(item.Code);
+            }
+            else
+            {
+                changed.Add((item, role, new RoleChange(item.Code, added, removed, fields)));
+            }
+        }
+
+        var diff = new ImportDiff(dryRun, Applied: false, created.Select(r => r.Code).ToList(), changed.Select(c => c.Change).ToList(), unchanged, unknown, skipped);
+        if (dryRun)
+        {
+            return diff;
+        }
+
+        if (unknown.Count > 0)
+        {
+            var names = string.Join("; ", unknown.Select(u => $"{u.Code}: {string.Join(", ", u.Permissions)}"));
+            return Error.Validation(AuthorizationErrors.ImportUnknownPermissions, $"The document holds permissions this tenant does not know ({names}). Remove them or import into a tenant that has the modules.");
+        }
+
+        var escalation = await EscalationAsync(created.Concat(changed.Select(c => c.Document)).SelectMany(r => r.Permissions), cancellationToken).ConfigureAwait(false);
+        if (escalation is not null)
+        {
+            return escalation;
+        }
+
+        foreach (var (item, role, _) in changed)
+        {
+            if (item.PrincipalType != role.PrincipalType && await InUseAsync(role.Id, cancellationToken).ConfigureAwait(false))
+            {
+                return Error.Conflict(AuthorizationErrors.RoleInUse, $"'{role.Code}' is assigned; the import cannot change its principal type.");
+            }
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var item in created)
+        {
+            var role = new Role(item.Code, item.Name, item.Description, isSystem: false, item.PrincipalType, item.Permissions);
+            context.Roles.Add(role);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await WriteAsync(AuthorizationAuditEvents.RoleCreated, role, [], [], cancellationToken, "import").ConfigureAwait(false);
+        }
+
+        foreach (var (item, role, change) in changed)
+        {
+            var before = role.Permissions.ToList();
+            role.Change(item.Name, item.Description, item.PrincipalType, item.Permissions);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await WriteAsync(AuthorizationAuditEvents.RoleChanged, role, before, change.Fields, cancellationToken, "import").ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var (_, role, _) in changed)
+        {
+            await ForgetHoldersAsync(role.Id, cancellationToken).ConfigureAwait(false);
+        }
+
+        return diff with { Applied = true };
+    }
+
+    private Error? Check(RoleInput input)
+    {
+        if (!Role.IsValidName(input.Name))
+        {
+            return Error.Validation(ApiErrors.Validation, "The name is not valid.", new FieldError("name", "invalid", $"Enter a name of 1 to {Role.NameMaxLength} characters."));
+        }
+
+        if ((input.Description ?? string.Empty).Trim().Length > Role.DescriptionMaxLength)
+        {
+            return Error.Validation(ApiErrors.Validation, "The description is too long.", new FieldError("description", "too_long", $"Use at most {Role.DescriptionMaxLength} characters."));
+        }
+
+        if (input.PrincipalType is not (PrincipalType.User or PrincipalType.Service))
+        {
+            return Error.Validation(AuthorizationErrors.RolePrincipalType, "A tenant role is for people or for service accounts.", new FieldError("principal_type", "invalid", "Choose people or service accounts."));
+        }
+
+        var unknown = Role.Normalise(input.Permissions).Where(p => !catalogue.Contains(p)).ToList();
+        return unknown.Count == 0
+            ? null
+            : Error.Validation(AuthorizationErrors.RolePermissionUnknown, $"This tenant does not know {string.Join(", ", unknown)}.", new FieldError("permissions", "unknown", $"Unknown: {string.Join(", ", unknown)}."));
+    }
+
+    private static Error? CheckDocument(RoleExport document)
+    {
+        if (document.FormatVersion != RoleExport.CurrentFormat || document.Roles is null)
+        {
+            return Error.Validation(AuthorizationErrors.ImportFormat, $"This is not a role export of format {RoleExport.CurrentFormat}.");
+        }
+
+        var duplicate = document.Roles.GroupBy(r => r.Code, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
+        if (duplicate is not null)
+        {
+            return Error.Validation(AuthorizationErrors.ImportFormat, $"The document lists the role '{duplicate.Key}' twice.");
+        }
+
+        var bad = document.Roles.FirstOrDefault(r => !Role.IsValidCode(r.Code) || !Role.IsValidName(r.Name) || r.PrincipalType is not (PrincipalType.User or PrincipalType.Service) || r.Permissions is null);
+        return bad is null
+            ? null
+            : Error.Validation(AuthorizationErrors.ImportFormat, $"The role '{bad.Code}' in the document has a code, a name or a principal type this tenant cannot take.");
+    }
+
+    /// <summary>ADR-0031 rule 2: a role holds only permissions its editor holds tenant-wide.</summary>
+    private async Task<Error?> EscalationAsync(IEnumerable<string> permissions, CancellationToken cancellationToken)
+    {
+        var held = (await grants.OfAsync(actor.Id, cancellationToken).ConfigureAwait(false)).TenantWide;
+        var missing = Role.Normalise(permissions).Where(p => !held.Contains(p)).ToList();
+        return missing.Count == 0
+            ? null
+            : Error.Forbidden(AuthorizationErrors.RoleEscalation, $"A role can only hold permissions you hold for the whole tenant. You do not hold: {string.Join(", ", missing)}.");
+    }
+
+    private async Task<bool> InUseAsync(Guid roleId, CancellationToken cancellationToken) =>
+        await context.RoleAssignments.AnyAsync(a => a.RoleId == roleId, cancellationToken).ConfigureAwait(false);
+
+    private async Task ForgetHoldersAsync(Guid roleId, CancellationToken cancellationToken)
+    {
+        var holders = await context.RoleAssignments.AsNoTracking().Where(a => a.RoleId == roleId).Select(a => a.PrincipalId).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var holder in holders)
+        {
+            grants.Forget(holder);
+        }
+    }
+
+    private static List<string> ChangedFields(Role role, string name, string description, PrincipalType principalType)
+    {
+        var fields = new List<string>();
+        if (!string.Equals(role.Name, (name ?? string.Empty).Trim(), StringComparison.Ordinal))
+        {
+            fields.Add("name");
+        }
+
+        if (!string.Equals(role.Description, (description ?? string.Empty).Trim(), StringComparison.Ordinal))
+        {
+            fields.Add("description");
+        }
+
+        if (role.PrincipalType != principalType)
+        {
+            fields.Add("principal_type");
+        }
+
+        return fields;
+    }
+
+    private Task WriteAsync(string action, Role role, IReadOnlyList<string> before, IReadOnlyList<string> fields, CancellationToken cancellationToken, string? reason = null)
+    {
+        var details = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["name"] = role.Name,
+            ["principal_type"] = role.PrincipalType.ToString().ToLowerInvariant(),
+            ["permissions_before"] = string.Join(',', before),
+            ["permissions_after"] = string.Join(',', role.Permissions),
+        };
+        if (fields.Count > 0)
+        {
+            details["fields"] = string.Join(',', fields);
+        }
+
+        return audit.WriteAsync(new AuditEvent(action, AuditOutcome.Success, actor.Id, role.Code, details, RecordType, role.Id, reason), cancellationToken);
+    }
+
+    private static Error NotFound() => Error.NotFound(AuthorizationErrors.RoleNotFound, "There is no role with this id.");
+
+    private static Error SystemRole(Role role) =>
+        Error.Conflict(AuthorizationErrors.RoleSystem, $"'{role.Name}' is a system role. System roles follow the permission catalogue and cannot be changed or deleted.");
+}
