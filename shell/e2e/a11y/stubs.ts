@@ -18,6 +18,14 @@ export const users = Array.from({ length: 20 }, (_, index) => {
   };
 });
 
+/** A session as /me shows it, from now: idle in an hour and absolute in twelve unless a test moves them (TF-021). */
+export const sessionFromNow = ({ idleIn = 60 * 60_000, endsIn = 12 * 60 * 60_000 }: { idleIn?: number; endsIn?: number } = {}) => ({
+  id: "01a14e12-0000-7000-8000-000000000001",
+  started_at: new Date(Date.now() - 20 * 60_000).toISOString(),
+  expires_at: new Date(Date.now() + endsIn).toISOString(),
+  idle_expires_at: new Date(Date.now() + Math.min(idleIn, endsIn)).toISOString(),
+});
+
 export const me = {
   id: "01a14e12-f3a8-7155-b5b6-17c3abceae77",
   login_id: "admin@acme.localhost",
@@ -25,7 +33,7 @@ export const me = {
   type: "user",
   permissions: ["identity.users.read"],
   permissions_anywhere: ["identity.users.read"],
-  session: { id: "01a14e12-0000-7000-8000-000000000001", expires_at: "2026-10-19T08:00:00Z", idle_expires_at: "2026-10-19T07:00:00Z" },
+  session: sessionFromNow(),
 };
 
 function page(url: string) {
@@ -176,6 +184,58 @@ export const assignments = [
   assignmentRow(2, roles[4], "unit", units[4]),
   assignmentRow(3, roles[1], "tenant", null),
 ];
+
+/**
+ * The two people of the home page (D4): a tenant administrator at the root, and a child-unit administrator who reads
+ * the users of North and the units below it, and nothing else.
+ */
+export const principals = {
+  administrator: {
+    ...me,
+    display_name: "Ada Lovelace",
+    permissions: administrator,
+    permissions_anywhere: administrator,
+    home_unit: { id: units[0].id, name: units[0].name, code: units[0].code },
+  },
+  child: {
+    ...me,
+    id: "01a14e12-f3a8-7155-b5b6-000000000002",
+    login_id: "child-admin@acme.localhost",
+    display_name: "Grace Hopper",
+    permissions: [] as string[],
+    permissions_anywhere: ["identity.users.read"],
+    home_unit: { id: units[4].id, name: units[4].name, code: units[4].code },
+  },
+};
+export type Who = keyof typeof principals;
+
+/** Each one's own assignments, as GET /api/v1/role-assignments/mine answers them. */
+const mine: Record<Who, unknown[]> = {
+  administrator: [{ ...assignmentRow(10, roles[3], "tenant", null), principal_id: principals.administrator.id, principal_name: "Ada Lovelace" }],
+  child: [{ ...assignmentRow(11, roles[4], "unit_with_children", units[4]), principal_id: principals.child.id, principal_name: "Grace Hopper" }],
+};
+
+/** The pages a person opened before, for the home page's Recently opened: kept per person in the browser. */
+export const recentFor = (who: Who) => ({
+  key: `iron.recent.${principals[who].id}`,
+  pages: [
+    { path: `/users/${users[1].id}`, titleKey: "modules.identity.users", module: "identity", label: users[1].display_name, at: 3 },
+    { path: "/console/units", titleKey: "modules.console.units", module: "console", at: 2 },
+    { path: "/users", titleKey: "modules.identity.users", module: "identity", at: 1 },
+  ],
+});
+
+/**
+ * One of the home page's people signed in, with the API from memory: /me, /me/access at the home unit and the person's
+ * own assignments; the session's times can be moved to bring the warning on. Every other call answers 401.
+ */
+export async function stubHome(target: Page, who: Who, session = sessionFromNow()): Promise<void> {
+  const principal = { ...principals[who], session };
+  await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
+  await target.route("**/api/v1/me", (route) => route.fulfill({ json: principal }));
+  await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: principal.permissions_anywhere } }));
+  await target.route("**/api/v1/role-assignments/mine", (route) => route.fulfill({ json: { data: mine[who] } }));
+}
 
 /** The console stubs plus the roles, the catalogue, one user record and its assignments: the A2 pages without a stack. */
 export async function stubAccess(target: Page): Promise<void> {

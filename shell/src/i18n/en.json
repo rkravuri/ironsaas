@@ -319,7 +319,9 @@
       "symmetry": "Symmetry {{count}}",
       "hatch": "Hatch",
       "illustrations": "The drawings",
-      "illustrationsIntro": "Eleven drawings in one hand (brief section 3), each with its accessible name; the loader draws itself in unless motion is reduced."
+      "illustrationsIntro": "Eleven drawings in one hand (brief section 3), each with its accessible name; the loader draws itself in unless motion is reduced.",
+      "moduleMarks": "Module marks",
+      "moduleMarksIntro": "Each module has a mark of its own: the generator with one set of parameters, seeded by the module's name, in the module's accent. It opens the module on the home page."
     },
     "templates": {
       "list": "List page",

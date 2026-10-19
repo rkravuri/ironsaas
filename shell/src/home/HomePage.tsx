@@ -122,7 +122,7 @@ function Opener({ opening, drawIn }: { opening: ModuleOpening; drawIn: boolean }
     <Paper withBorder p="lg" radius="md" component="article" aria-labelledby={id} data-opener={opening.module} style={{ borderTop: `3px solid var(--iron-accent-${accent})` }}>
       <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
         <Group align="flex-start" gap="md" wrap="nowrap">
-          <ModuleMark name={opening.module} accent={accent} size={48} animate={drawIn} />
+          <ModuleMark name={opening.module} accent={accent} size={56} animate={drawIn} />
           <Stack gap={4}>
             <Title order={3} size="h4" id={id}>
               {t(opening.titleKey)}
