@@ -78,7 +78,7 @@ The messages name the project file or the assembly and the forbidden reference.
 
 - Group the resource with `endpoints.MapApiGroup("users")`; the path becomes `/api/v1/users`. Resource names are plural kebab-case nouns.
 - Handlers return `IResult`. A service result goes through `ApiResults.From(result, http, value => TypedResults.Ok(value))`; a failure becomes problem details on its own.
-- Lists: declare the fields once in a `ListFields<T>` (snake_case names, pointing at the entity properties, with a default sort), parse with `ListQueryParser.Parse(http.Request.Query, fields)`, apply with `.ApplyListQuery(query, fields).ToPageAsync(query.Page, ct)` and return `ApiResults.List(page, http, query)`.
+- Lists: declare the fields once in a `ListFields<T>` (snake_case names, pointing at the entity properties, with a default sort), parse with `ListQueryParser.Parse(http.Request.Query, fields)`, apply with `.ApplyListQuery(query, fields).ToPageAsync(query.Page, ct)` and return `ApiResults.List(page, http, query)`. That works for data marked `ITenantWide`; a business record pages through its policy (see Record policies).
 - Request bodies: write an `AbstractValidator<TRequest>`, register it in the module's `AddServices`, and add `.Validate<TRequest>()` to the endpoint.
 - Never catch exceptions to return an error status; let the unexpected exception handler produce the 500 problem with the correlation id. Return `Error`s for expected failures.
 - The OpenAPI document and the Scalar browser are at `/openapi/v1.json` and `/scalar/v1` in Development.
@@ -159,7 +159,7 @@ A permission is checked tenant-wide unless the endpoint says where the access ha
    A record the lookup does not find is checked tenant-wide, so only a tenant-wide grant reaches the handler, which answers 404.
 2. **An operation on a unit itself:** `.ScopedToUnit("id")`, as the organisation unit endpoints do.
 3. **A second place the route cannot carry** (a target in the body): check it in the handler with `IPermissionEvaluator` and `new AccessRequest(...) { Scope = AccessScope.Unit(target) }`, as the unit move does for its new parent.
-4. **A list:** declare `.ScopedByRow()` on the endpoint, so the filter lets in a principal who holds the permission at any scope; then ask once and filter once. `var access = await recordAccess.AccessibleAsync(principal.Id, OrdersPermissions.Read, "purchase_order", ct);` then `query.WhereAccessible(access)` before `ApplyListQuery`. Rows that are not business records name their unit another way: `query.WhereAccessible(access, p => p.HomeUnitId, p => p.Id)`. The same filtered query answers a read by id, with 404 outside. The answer costs one query over the units whatever the list's length (or none for a tenant-wide grant), and the list stays one query. Never check row by row.
+4. **A list:** declare `.ScopedByRow()` on the endpoint, so the filter lets in a principal who holds the permission at any scope; then ask once and filter once. For a business record that is its policy (see Record policies); for other rows, as here. `var access = await recordAccess.AccessibleAsync(principal.Id, OrdersPermissions.Read, "purchase_order", ct);` then `query.WhereAccessible(access)` before `ApplyListQuery`. Rows that are not business records name their unit another way: `query.WhereAccessible(access, p => p.HomeUnitId, p => p.Id)`. The same filtered query answers a read by id, with 404 outside. The answer costs one query over the units whatever the list's length (or none for a tenant-wide grant), and the list stays one query. Never check row by row.
 5. **Test it** with an assignment scoped to a unit: a record of that unit is allowed, a record of a sibling is denied, and a record of a child is allowed only with children (see `ScopeEvaluationTests` in the Authorization tests).
 
 Saving a business record also checks its owner: `OwningOrganisationId` must name an active unit, or the save throws `OwningOrganisationException`. Check the unit in the service first and answer with an error; the interceptor is the guarantee behind it.
@@ -180,6 +180,37 @@ const access = useAccessAt(unit ? { unit: unit.id } : undefined, ["authz.units.m
 The hook asks only when the principal holds the permission somewhere, and caches the answer for 30 seconds. An action on something that reaches a unit and every unit below it, such as removing an assignment with children, passes `{ unit, includeChildren: true }` and gets only what is held over the whole subtree. An action for a record passes `{ recordType, recordId, unit }`; an action whose scope is the tenant, such as changing a role, reads `session.tenantPermissions`. Show nothing while the answer is on its way, and let the endpoint's refusal (403 with the missing permissions named) land in the page's alert.
 
 **Testing it.** Each rule has an integration test with its error code (`AssignmentServiceTests`, `RoleServiceTests`, `RoleImportTests` in the Authorization tests); a scoped list has a test with a reader at a child unit and a principal outside (`ScopedUsersTests` in the Identity tests); `make e2e` sets up a child unit on the tenant and signs in as its administrator (`shell/e2e/scoped.spec.ts`).
+
+## Record policies (A3, ADR-0032)
+
+Every business record type has a policy; its lists and reads by id go through it. Forgetting is not possible: paging a raw query of a business record does not compile (CS0311: it is not `ITenantWide`), and a business record type without a registered policy fails the architecture tests.
+
+**A policy in a few lines**, in the module's `AddServices`. An order is seen in the reader's units, approved where the reader may approve, and changed by its creator while a draft:
+
+```csharp
+services.AddRecordPolicy(
+    "purchase_order",                       // the record type name record-scoped assignments use
+    OrdersPermissions.Read,                 // the scope rule for this permission always applies first
+    RecordRules.All(
+        RecordRules.UnitVisibility<Order>(OrdersPermissions.Read, (OrdersActions.Approve, OrdersPermissions.Approve)),
+        RecordRules.OwnerWhile<Order>(o => o.Status == OrderStatus.Draft, RecordActions.Update)));
+```
+
+`UnitVisibility` reads the units the read permission reaches and allows each action it names where that action's permission reaches; `OwnerWhile` lets the creator perform its actions while the module's condition holds, and does not narrow reading. `All` takes the strictest answer, `Any` the most generous; an action no block has a rule for is denied. The kernel joins the policy to the scope rule with AND, so a policy can hide records and never show more. A policy class of the module's own implements `IRecordPolicy<T>` and registers with `AddRecordPolicy<Order, OrderPolicy>("purchase_order", OrdersPermissions.Read)`.
+
+**A list:**
+
+```csharp
+var orders = await policies.ApplyAsync(context.Orders.AsNoTracking(), ct);    // IRecordPolicies policies
+var page = await orders.ApplyListQuery(query, Fields).ToPageAsync(query.Page, ct);
+return ApiResults.List(page.Map(OrderResponse.From), http, query);
+```
+
+The page and its total count are counted under the policy. `PolicyQuery<T>` narrows further (`Where`), pages, counts or lists; it never hands the raw query back.
+
+**One record for an action:** `var order = await policies.FindAsync<Order>(id, OrdersActions.Approve, ct);` answers the record, tracked by the module's context so the service can change and save it, or `data.record.not_found` (404) when the reader may not see it, the same as an id that does not exist, or `data.record.forbidden` (403) when the reader may see it but not act. Pass the result's error to `ApiResults.Problem`. The endpoint declares the action's permission with `.ScopedByRow()`; the policy decides per record.
+
+**Testing it:** each block and combination without a database, with a `PolicySubject` over a fake reach (`RecordRulesTests` in the Data tests); the policy against PostgreSQL with records of other units in the table (`RecordPolicyTests`); the architecture tests check the registration.
 
 ## A table and its migration (T8)
 
