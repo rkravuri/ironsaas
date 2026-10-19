@@ -1,13 +1,17 @@
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
+using Iron.Kernel.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Identity.Services;
 
-/// <summary>Sessions (TF-020, TF-021, TF-029): start, resolve on every request, touch, end.</summary>
-public sealed class SessionService(IdentityDbContext context, IdentityOptions options, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
+/// <summary>
+/// Sessions (TF-020, TF-021, TF-029): start, resolve on every request, touch, end. A new session takes the tenant's
+/// limits (<see cref="IdentitySettings"/>, ADR-0036), or the configured ones while the tenant has set none.
+/// </summary>
+public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
 {
     /// <summary>
     /// Creates the session row and returns the token for the cookie. The token is never stored. <paramref name="beforeSave"/>
@@ -18,11 +22,25 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     {
         ArgumentNullException.ThrowIfNull(principal);
         var token = SecureTokens.New();
-        var session = new Session(principal.Id, SecureTokens.Hash(token), time.GetUtcNow(), options.Session.Absolute);
+        var (idle, absolute) = await LimitsAsync(cancellationToken).ConfigureAwait(false);
+        var session = new Session(principal.Id, SecureTokens.Hash(token), time.GetUtcNow(), absolute, idle);
         beforeSave?.Invoke(session);
         context.Sessions.Add(session);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return (session, token);
+    }
+
+    /// <summary>
+    /// The limits a new session takes: the tenant's settings, or, while the tenant has set none, the configured system
+    /// defaults (TF-021: tenant-configurable, 60 minutes and 12 hours by default).
+    /// </summary>
+    public async Task<(TimeSpan Idle, TimeSpan Absolute)> LimitsAsync(CancellationToken cancellationToken)
+    {
+        var idle = await settings.ResolveAsync(IdentitySettings.SessionIdleMinutes, SettingContext.Tenant, cancellationToken).ConfigureAwait(false);
+        var absolute = await settings.ResolveAsync(IdentitySettings.SessionAbsoluteHours, SettingContext.Tenant, cancellationToken).ConfigureAwait(false);
+        return (
+            idle.Level == SettingLevel.Default ? options.Session.Idle : TimeSpan.FromMinutes(IdentitySettings.SessionIdleMinutes.Read(idle.Value)),
+            absolute.Level == SettingLevel.Default ? options.Session.Absolute : TimeSpan.FromHours(IdentitySettings.SessionAbsoluteHours.Read(absolute.Value)));
     }
 
     public SignedInPrincipal Describe(Principal principal, Session session)

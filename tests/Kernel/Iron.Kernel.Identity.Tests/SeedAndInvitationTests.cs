@@ -118,7 +118,8 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
         await using var provider = fixture.BuildServices(time);
         await using var scope = provider.CreateAsyncScope();
         var token = await IdentityFixture.ReinviteAdministratorAsync(scope.ServiceProvider);
-        time.Advance(TimeSpan.FromHours(73));
+        // An hour past the default validity of identity.invitation.valid_days (ADR-0036).
+        time.Advance(TimeSpan.FromDays(IdentitySettings.InvitationValidDays.DefaultValue) + TimeSpan.FromHours(1));
 
         var result = await scope.ServiceProvider.GetRequiredService<InvitationService>().AcceptAsync(token, "a long enough password", null, TestContext.Current.CancellationToken);
 

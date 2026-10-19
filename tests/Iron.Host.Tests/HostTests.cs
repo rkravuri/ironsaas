@@ -97,6 +97,30 @@ public class HostTests
     }
 
     [Fact]
+    public void TheShellsTypedSettingKeysAreTheUnitsSettings()
+    {
+        // ADR-0036: useSetting takes only the keys this file declares, so it is held to the code as the catalogue is.
+        var expected = Iron.Kernel.Api.Modules.ShellSettingKeys.ToTypeScript(Iron.Kernel.Api.Modules.LicensingCatalogue.From(Iron.Host.Api.UnitModules.All()));
+        var written = File.ReadAllText(Path.Combine(RepositoryRoot(), Iron.Kernel.Api.Modules.ShellSettingKeys.RelativePath));
+
+        Assert.True(string.Equals(expected, written, StringComparison.Ordinal), $"The shell's setting keys are not the units' settings. Run make catalogue and commit {Iron.Kernel.Api.Modules.ShellSettingKeys.RelativePath}.");
+        Assert.Contains("\"identity.session.idle_minutes\": number;", written, StringComparison.Ordinal);
+    }
+
+    private static string RepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Foundation.slnx")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        throw new InvalidOperationException("Foundation.slnx was not found above the test's folder.");
+    }
+
+    [Fact]
     public async Task TheAnonymousAllowListIsFixedOutsideDevelopment()
     {
         await using var api = Production<Iron.Host.Api.ApiHost>();

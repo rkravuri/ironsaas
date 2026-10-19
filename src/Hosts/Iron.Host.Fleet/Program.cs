@@ -13,6 +13,7 @@ using Iron.Kernel.Fleet;
 using Iron.Kernel.Identity;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
+using Iron.Kernel.Settings;
 using Iron.Kernel.Telemetry;
 using Iron.Kernel.Telemetry.Health;
 using Iron.Kernel.Telemetry.Heartbeat;
@@ -31,7 +32,7 @@ builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this worker runs, in order: the same list as the API host, without endpoints.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule()];
+IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule()];
 
 builder.AddIronTelemetry("iron-fleet", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);

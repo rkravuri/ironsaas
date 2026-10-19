@@ -2,16 +2,22 @@ using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Data.Transactions;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
+using Iron.Kernel.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Identity.Services;
 
-/// <summary>Invitations (TF-018): a signed-in administrator or the seeder opens one; the invitee sets a password and becomes Active.</summary>
+/// <summary>
+/// Invitations (TF-018): a signed-in administrator or the seeder opens one; the invitee sets a password and becomes
+/// Active. The link is valid for the days the invitee's home unit says (<c>identity.invitation.valid_days</c>, walking up
+/// to the tenant, ADR-0036).
+/// </summary>
 public sealed class InvitationService(
     IdentityDbContext context,
     IPasswordHasher hasher,
     IdentityOptions options,
+    ISettings settings,
     IUnitOfWork unitOfWork,
     TimeProvider time,
     IAuditWriter audit,
@@ -22,7 +28,9 @@ public sealed class InvitationService(
     {
         ArgumentNullException.ThrowIfNull(principal);
         var token = SecureTokens.New();
-        principal.Invite(SecureTokens.Hash(token), time.GetUtcNow() + options.Invitation.Validity);
+        var where = principal.HomeUnitId is { } unit ? SettingContext.ForUnit(unit) : SettingContext.Tenant;
+        var days = await settings.GetAsync(IdentitySettings.InvitationValidDays, where, cancellationToken).ConfigureAwait(false);
+        principal.Invite(SecureTokens.Hash(token), time.GetUtcNow() + TimeSpan.FromDays(days));
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.InvitationCreated, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "principal", RecordId: principal.Id), cancellationToken).ConfigureAwait(false);
         return token;

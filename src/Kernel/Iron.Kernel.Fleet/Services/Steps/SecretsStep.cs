@@ -43,7 +43,7 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, I
         await secrets.WriteAsync(context.UnitSecretPath, unit, cancellationToken).ConfigureAwait(false);
 
         // On every run: the token carries the policy by name, so writing it again widens what an existing token may read.
-        await admin.CreateReadPolicyAsync(context.UnitPolicy, [context.UnitSecretPath, context.EntitlementsSecretPath, context.FlagsSecretPath, ProvisioningContext.PlatformFlagsPath], cancellationToken).ConfigureAwait(false);
+        await admin.CreateReadPolicyAsync(context.UnitPolicy, [context.UnitSecretPath, context.EntitlementsSecretPath, context.FlagsSecretPath, ProvisioningContext.PlatformFlagsPath, context.SettingsSecretPaths], cancellationToken).ConfigureAwait(false);
 
         var fleet = await secrets.ReadAsync(context.FleetSecretPath, cancellationToken).ConfigureAwait(false);
         var tokenCreated = false;
@@ -59,7 +59,7 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, I
 
         var published = await entitlements.PublishAsync(context.Slug, cancellationToken).ConfigureAwait(false);
         var flagsPublished = await flags.PublishAsync(context.Slug, cancellationToken).ConfigureAwait(false);
-        return $"unit secret written with {unit.Count} keys; policy {context.UnitPolicy} reads the unit secret, the entitlements and the flag rules; unit token {(tokenCreated ? "created" : "kept")}; entitlements {(published ? "written" : "left to the reconcile")}; flag rules {(flagsPublished ? "written" : "left to the reconcile")}";
+        return $"unit secret written with {unit.Count} keys; policy {context.UnitPolicy} reads the unit secret, the entitlements, the flag rules and the settings' secrets; unit token {(tokenCreated ? "created" : "kept")}; entitlements {(published ? "written" : "left to the reconcile")}; flag rules {(flagsPublished ? "written" : "left to the reconcile")}";
     }
 
     private static string NewSigningKey()

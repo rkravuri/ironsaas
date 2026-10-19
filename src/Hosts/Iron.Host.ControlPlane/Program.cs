@@ -14,6 +14,7 @@ using Iron.Kernel.Fleet;
 using Iron.Kernel.Identity;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
+using Iron.Kernel.Settings;
 using Iron.Kernel.Telemetry;
 using Iron.Kernel.Telemetry.Health;
 using Iron.Kernel.Tenancy;
@@ -33,7 +34,7 @@ var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this host runs, in order: Audit first (the others write events through its contract), then
 // Authorization, then Identity (it replaces the default principal), then Fleet and Tenancy (Tenancy asks Fleet for jobs). The control plane stores no tenant files.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule()];
+IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule()];
 
 builder.AddIronTelemetry("iron-control-plane", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);

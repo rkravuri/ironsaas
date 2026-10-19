@@ -6,6 +6,7 @@ using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
+using Iron.Kernel.Settings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +16,7 @@ using Testcontainers.PostgreSql;
 namespace Iron.Kernel.Identity.Tests;
 
 /// <summary>
-/// One PostgreSQL container for the test run with Audit, Authorization and Identity migrated and seeded through the
+/// One PostgreSQL container for the test run with Audit, Authorization, Identity and Settings migrated and seeded through the
 /// unit's own commands: the first administrator exists in Invited status with the tenant-administrator role.
 /// Argon2id runs with small parameters here so the tests stay fast; the shape of the hash is the same.
 /// </summary>
@@ -82,7 +83,7 @@ public sealed class IdentityFixture : IAsyncLifetime
         services.AddSingleton(Tenant);
         services.AddLogging();
         services.AddIronDatabase(ConnectionString);
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule()]);
+        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule()]);
         configure?.Invoke(services);
         return services.BuildServiceProvider();
     }
