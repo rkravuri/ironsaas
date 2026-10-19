@@ -53,6 +53,6 @@ users.MapPost("/", async (CreateUser request, HttpContext http, UserService serv
 }).Validate<CreateUser>();
 ```
 
-Permissions on endpoints and the start-up check arrive with T8 (`RequirePermission`).
+Permissions on endpoints and the start-up check arrive with T8 (`RequirePermission`). A permission is checked tenant-wide unless the endpoint declares its scope (ADR-0030): `.ScopedToUnit("id")` checks at the organisation unit named by the route value, `.ScopedToRecord("order", lookup)` at the record named by the route value and the unit that owns it, which the lookup finds (`IServiceProvider`, record id, cancellation token to the owning unit id, or null). A record the lookup does not find is checked tenant-wide. The scope reaches the evaluator on `AccessRequest.Scope`.
 
 Tests: `tests/Kernel/Iron.Kernel.Api.Tests` (an in-memory ASP.NET Core server; no Docker).
