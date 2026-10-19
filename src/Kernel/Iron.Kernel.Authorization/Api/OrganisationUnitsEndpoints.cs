@@ -83,7 +83,7 @@ internal static class OrganisationUnitsEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var units = endpoints.MapApiGroup("organisation-units");
-        units.MapGet("/", TreeAsync).RequirePermission(AuthorizationPermissions.UnitsRead).WithName("ListOrganisationUnits").WithSummary("The organisation tree of this tenant, depth first.");
+        units.MapGet("/", TreeAsync).RequirePermission(AuthorizationPermissions.UnitsRead).ScopedByRow().WithName("ListOrganisationUnits").WithSummary("The part of the organisation tree you may see, depth first.");
         units.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.UnitsRead).ScopedToUnit().WithName("GetOrganisationUnit").WithSummary("One organisation unit.");
         units.MapPost("/{id:guid}/children", CreateAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().Validate<CreateUnitRequest>().WithName("CreateOrganisationUnit").WithSummary("Create a unit under this one.");
         units.MapPost("/{id:guid}/rename", RenameAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().Validate<RenameUnitRequest>().WithName("RenameOrganisationUnit").WithSummary("Rename a unit.");
@@ -91,12 +91,13 @@ internal static class OrganisationUnitsEndpoints
         units.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().WithName("DeactivateOrganisationUnit").WithSummary("Deactivate a unit that has no active units under it.");
 
         var kinds = endpoints.MapApiGroup("organisation-kinds");
-        kinds.MapGet("/", Kinds).RequirePermission(AuthorizationPermissions.UnitsRead).WithName("ListOrganisationKinds").WithSummary("The kinds of unit and which kinds each may hold.");
+        kinds.MapGet("/", Kinds).RequirePermission(AuthorizationPermissions.UnitsRead).ScopedByRow().WithName("ListOrganisationKinds").WithSummary("The kinds of unit and which kinds each may hold.");
     }
 
-    private static async Task<IResult> TreeAsync(OrganisationUnitService units, CancellationToken cancellationToken)
+    private static async Task<IResult> TreeAsync(OrganisationUnitService units, AccessGrants grants, ICurrentPrincipal reader, CancellationToken cancellationToken)
     {
-        var tree = await units.TreeAsync(cancellationToken);
+        var access = await grants.AccessibleAsync(reader.Id, AuthorizationPermissions.UnitsRead, OrganisationUnitService.RecordType, cancellationToken);
+        var tree = await units.TreeAsync(access, cancellationToken);
         return TypedResults.Ok(new UnitTreeResponse(tree.Select(UnitResponse.From).ToList()));
     }
 

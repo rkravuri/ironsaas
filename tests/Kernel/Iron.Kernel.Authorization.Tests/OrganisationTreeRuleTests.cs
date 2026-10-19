@@ -160,6 +160,34 @@ public class PrincipalGrantsTests
     }
 
     [Fact]
+    public void AnywhereHoldsEveryPermissionOfEveryGrant()
+    {
+        var grants = new PrincipalGrants(
+        [
+            new Grant(RoleScopeKind.Unit, North, null, ["a.b.read"]),
+            new Grant(RoleScopeKind.Record, Order, "order", ["a.b.approve"]),
+        ]);
+
+        Assert.Equal(["a.b.approve", "a.b.read"], grants.PermissionsAt(AccessScope.Anywhere, []).Order(StringComparer.Ordinal));
+        Assert.Empty(grants.TenantWide);
+    }
+
+    [Fact]
+    public void AGrantWithChildrenIsCoveredOnlyByGrantsThatReachTheWholeSubtree()
+    {
+        var grants = new PrincipalGrants(
+        [
+            new Grant(RoleScopeKind.Unit, Sales, null, ["a.b.manage"]),
+            new Grant(RoleScopeKind.UnitWithChildren, Root, null, ["a.b.read"]),
+        ]);
+
+        Assert.Contains("a.b.manage", grants.PermissionsCovering(RoleScope.Unit(Sales), SalesPath));
+        Assert.DoesNotContain("a.b.manage", grants.PermissionsCovering(RoleScope.Unit(Sales, includeChildren: true), SalesPath));
+        Assert.Contains("a.b.read", grants.PermissionsCovering(RoleScope.Unit(Sales, includeChildren: true), SalesPath));
+        Assert.Empty(grants.PermissionsCovering(RoleScope.Tenant, []));
+    }
+
+    [Fact]
     public void AnUnknownUnitGetsTheTenantWideGrantsOnly()
     {
         var grants = new PrincipalGrants(

@@ -5,6 +5,9 @@ public enum AccessScopeKind
     Tenant,
     Unit,
     Record,
+
+    /// <summary>Any scope at all: the endpoint keeps the rows its caller may see (ADR-0031, <c>ScopedByRow</c>).</summary>
+    Anywhere,
 }
 
 /// <summary>
@@ -34,6 +37,12 @@ public sealed record AccessScope
     /// <summary>No unit and no record: only tenant-wide assignments apply.</summary>
     public static AccessScope Tenant { get; } = new(AccessScopeKind.Tenant, null, null, null);
 
+    /// <summary>
+    /// A permission held at any scope counts. For an endpoint that keeps only the rows its caller may see and answers
+    /// 404 for the others (ADR-0031); never for an endpoint that acts on one place.
+    /// </summary>
+    public static AccessScope Anywhere { get; } = new(AccessScopeKind.Anywhere, null, null, null);
+
     public static AccessScope Unit(Guid unitId)
     {
         if (unitId == Guid.Empty)
@@ -44,8 +53,11 @@ public sealed record AccessScope
         return new AccessScope(AccessScopeKind.Unit, unitId, null, null);
     }
 
-    /// <summary>One record of a type, with the unit that owns it (<c>BusinessRecord.OwningOrganisationId</c>).</summary>
-    public static AccessScope Record(string recordType, Guid recordId, Guid owningUnitId)
+    /// <summary>
+    /// One record of a type, with the unit that owns it (<c>BusinessRecord.OwningOrganisationId</c>) when the caller knows
+    /// it; without the unit only tenant-wide and record grants apply.
+    /// </summary>
+    public static AccessScope Record(string recordType, Guid recordId, Guid? owningUnitId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(recordType);
         if (recordId == Guid.Empty)
@@ -55,7 +67,7 @@ public sealed record AccessScope
 
         if (owningUnitId == Guid.Empty)
         {
-            throw new ArgumentException("The owning unit id is empty.", nameof(owningUnitId));
+            throw new ArgumentException("The owning unit id is empty; pass null when the unit is not known.", nameof(owningUnitId));
         }
 
         return new AccessScope(AccessScopeKind.Record, owningUnitId, recordType, recordId);
@@ -66,6 +78,7 @@ public sealed record AccessScope
     {
         AccessScopeKind.Unit => $"unit:{UnitId:N}",
         AccessScopeKind.Record => $"record:{RecordType}:{RecordId:N}",
+        AccessScopeKind.Anywhere => "anywhere",
         _ => "tenant",
     };
 }

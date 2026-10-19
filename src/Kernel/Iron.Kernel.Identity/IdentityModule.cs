@@ -1,5 +1,6 @@
 using FluentValidation;
 using Iron.Kernel.Api.Modules;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Seeding;
 using Iron.Kernel.Identity.Api;
@@ -52,6 +53,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<SessionService>();
         services.AddScoped<LoginService>();
         services.AddScoped<InvitationService>();
+        services.AddScoped<IPrincipals, PrincipalDirectory>();
+        services.AddScoped<UserService>();
+        services.AddScoped<IValidator<CreateUserRequest>, CreateUserRequestValidator>();
         services.AddScoped<RequestPrincipal>();
         services.AddScoped<ICurrentPrincipal>(provider => provider.GetRequiredService<RequestPrincipal>());
         services.AddScoped<ISeeder, IdentitySeeder>();

@@ -14,10 +14,10 @@ public sealed class RoleAssignments(
     IAuditWriter audit,
     ICurrentPrincipal actor) : IRoleAssignments
 {
-    public Task<Result> AssignAsync(Guid principalId, string roleName, CancellationToken cancellationToken) =>
-        AssignAsync(principalId, roleName, RoleScope.Tenant, cancellationToken);
+    public Task<Result> AssignAsync(Guid principalId, string roleCode, CancellationToken cancellationToken) =>
+        AssignAsync(principalId, roleCode, RoleScope.Tenant, cancellationToken);
 
-    public async Task<Result> AssignAsync(Guid principalId, string roleName, RoleScope scope, CancellationToken cancellationToken)
+    public async Task<Result> AssignAsync(Guid principalId, string roleCode, RoleScope scope, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
         if (principalId == Guid.Empty)
@@ -25,24 +25,16 @@ public sealed class RoleAssignments(
             return Error.Validation(AuthorizationErrors.PrincipalRequired, "A principal is required.");
         }
 
-        var role = await context.Roles.SingleOrDefaultAsync(r => r.Name == roleName, cancellationToken).ConfigureAwait(false);
+        var role = await context.Roles.SingleOrDefaultAsync(r => r.Code == roleCode, cancellationToken).ConfigureAwait(false);
         if (role is null)
         {
-            return Error.NotFound(AuthorizationErrors.RoleNotFound, $"There is no role named '{roleName}'.");
+            return Error.NotFound(AuthorizationErrors.RoleNotFound, $"There is no role with the code '{roleCode}'.");
         }
 
-        if (scope.UnitId is { } unitId)
+        var unit = await CheckUnitAsync(context, scope, cancellationToken).ConfigureAwait(false);
+        if (unit is not null)
         {
-            var unit = await context.OrganisationUnits.AsNoTracking().SingleOrDefaultAsync(u => u.Id == unitId, cancellationToken).ConfigureAwait(false);
-            if (unit is null)
-            {
-                return Error.Validation(AuthorizationErrors.UnitNotFound, "There is no organisation unit with this id; a role can only be assigned to a unit that exists.", new FieldError("unit_id", "not_found", "Choose an existing unit."));
-            }
-
-            if (!unit.IsActive)
-            {
-                return Error.Validation(AuthorizationErrors.UnitInactive, $"The unit '{unit.Name}' is deactivated; a role cannot be assigned to it.", new FieldError("unit_id", "inactive", "Choose an active unit."));
-            }
+            return unit;
         }
 
         var kind = Scopes.NameOf(scope.Kind);
@@ -56,13 +48,32 @@ public sealed class RoleAssignments(
             await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
             context.RoleAssignments.Add(assignment);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["role"] = role.Name, ["principal_id"] = principalId.ToString(), ["scope"] = scope.ToString() };
-            await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleAssigned, AuditOutcome.Success, actor.Id, role.Name, details, "role_assignment", assignment.Id), cancellationToken).ConfigureAwait(false);
+            var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["role"] = role.Code, ["principal_id"] = principalId.ToString(), ["scope"] = scope.ToString() };
+            await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleAssigned, AuditOutcome.Success, actor.Id, role.Code, details, "role_assignment", assignment.Id), cancellationToken).ConfigureAwait(false);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
         grants.Forget(principalId); // the grant shows on the next request, not after the cache window
         return Result.Success();
+    }
+
+    /// <summary>A unit scope names a unit that exists and is active (TF-033 AC4); other scopes pass.</summary>
+    internal static async Task<Error?> CheckUnitAsync(AuthorizationDbContext context, RoleScope scope, CancellationToken cancellationToken)
+    {
+        if (scope.UnitId is not { } unitId)
+        {
+            return null;
+        }
+
+        var unit = await context.OrganisationUnits.AsNoTracking().SingleOrDefaultAsync(u => u.Id == unitId, cancellationToken).ConfigureAwait(false);
+        if (unit is null)
+        {
+            return Error.Validation(AuthorizationErrors.UnitNotFound, "There is no organisation unit with this id; a role can only be assigned to a unit that exists.", new FieldError("unit_id", "not_found", "Choose an existing unit."));
+        }
+
+        return unit.IsActive
+            ? null
+            : Error.Validation(AuthorizationErrors.UnitInactive, $"The unit '{unit.Name}' is deactivated; a role cannot be assigned to it.", new FieldError("unit_id", "inactive", "Choose an active unit."));
     }
 
     public async Task<IReadOnlyList<string>> PermissionsOfAsync(Guid principalId, CancellationToken cancellationToken)
@@ -77,12 +88,19 @@ public sealed class RoleAssignments(
         return permissions.Order(StringComparer.Ordinal).ToList();
     }
 
-    public async Task<IReadOnlyList<string>> RoleNamesOfAsync(Guid principalId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<string>> PermissionsOverAsync(Guid principalId, RoleScope scope, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        var permissions = await grants.PermissionsCoveringAsync(principalId, scope, cancellationToken).ConfigureAwait(false);
+        return permissions.Order(StringComparer.Ordinal).ToList();
+    }
+
+    public async Task<IReadOnlyList<string>> RoleCodesOfAsync(Guid principalId, CancellationToken cancellationToken)
     {
         return await context.RoleAssignments.AsNoTracking()
             .Where(a => a.PrincipalId == principalId && a.ScopeKind == Scopes.Tenant)
-            .Join(context.Roles.AsNoTracking(), a => a.RoleId, r => r.Id, (a, r) => r.Name)
-            .OrderBy(name => name)
+            .Join(context.Roles.AsNoTracking(), a => a.RoleId, r => r.Id, (a, r) => r.Code)
+            .OrderBy(code => code)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

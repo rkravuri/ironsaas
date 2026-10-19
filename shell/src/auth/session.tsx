@@ -47,7 +47,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A failure that is not "not signed in" still shows the login page, with the error noted by the boundary later.
       status = query.isPending ? "loading" : "signed-out";
     }
-    return { status, me, permissions: me?.permissions ?? [], refresh, signOut, forget };
+    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], refresh, signOut, forget };
   }, [query.data, query.error, query.isPending, refresh, signOut, forget]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -72,4 +72,13 @@ public sealed class RoleAssignment : AuditedEntity
 
     /// <summary>The record type of a record scope; null otherwise.</summary>
     public string? ScopeRecordType { get; private set; }
+
+    /// <summary>The scope as the evaluator and the rules read it.</summary>
+    public RoleScope ToScope() => Scopes.KindOf(ScopeKind) switch
+    {
+        RoleScopeKind.Unit => RoleScope.Unit(ScopeId!.Value),
+        RoleScopeKind.UnitWithChildren => RoleScope.Unit(ScopeId!.Value, includeChildren: true),
+        RoleScopeKind.Record => RoleScope.Record(ScopeRecordType!, ScopeId!.Value),
+        _ => RoleScope.Tenant,
+    };
 }

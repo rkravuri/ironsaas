@@ -35,6 +35,16 @@ public class AccessScopeTests
     }
 
     [Fact]
+    public void AnywhereAndARecordWithoutItsUnitAreScopesToo()
+    {
+        Assert.Equal("anywhere", AccessScope.Anywhere.ToString());
+        Assert.Equal(AccessScopeKind.Anywhere, AccessScope.Anywhere.Kind);
+        var record = AccessScope.Record("order", Record, owningUnitId: null);
+        Assert.Null(record.UnitId);
+        Assert.Equal(AccessScopeKind.Record, record.Kind);
+    }
+
+    [Fact]
     public void EmptyIdsAreRefused()
     {
         Assert.Throws<ArgumentException>(() => AccessScope.Unit(Guid.Empty));

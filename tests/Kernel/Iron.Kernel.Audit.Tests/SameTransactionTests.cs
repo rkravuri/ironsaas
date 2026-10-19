@@ -58,7 +58,7 @@ public class SameTransactionTests(AuditFixture fixture)
     private static async Task AssertStored(ServiceProvider provider, Guid principal, bool expected)
     {
         await using var scope = provider.CreateAsyncScope();
-        var roles = await scope.ServiceProvider.GetRequiredService<IRoleAssignments>().RoleNamesOfAsync(principal, TestContext.Current.CancellationToken);
+        var roles = await scope.ServiceProvider.GetRequiredService<IRoleAssignments>().RoleCodesOfAsync(principal, TestContext.Current.CancellationToken);
         var events = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
         var eventExists = await events.Events.AsNoTracking().AnyAsync(e => e.ActorId == principal, TestContext.Current.CancellationToken);
 

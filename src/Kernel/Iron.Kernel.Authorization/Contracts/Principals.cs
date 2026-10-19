@@ -1,0 +1,25 @@
+namespace Iron.Kernel.Authorization.Contracts;
+
+/// <summary>
+/// Who a role is meant for, and what a principal is (TF-032): a person or a service account. Only the tenant
+/// administrator system role is for both (ADR-0031); a principal is never <see cref="Any"/>.
+/// </summary>
+public enum PrincipalKind
+{
+    User,
+    Service,
+    Any,
+}
+
+/// <summary>What Authorization needs to know of a principal to grant it a role and to show the grant (ADR-0031).</summary>
+public sealed record PrincipalSummary(Guid Id, PrincipalKind Type, string DisplayName, Guid? HomeUnitId);
+
+/// <summary>
+/// The principals of this tenant as Authorization sees them. Identity owns principals and implements this, so the
+/// dependency keeps pointing from Identity to Authorization (ADR-0001, ADR-0031).
+/// </summary>
+public interface IPrincipals
+{
+    /// <summary>The principals with these ids that exist; an unknown id is left out.</summary>
+    Task<IReadOnlyDictionary<Guid, PrincipalSummary>> FindAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+}

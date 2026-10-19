@@ -22,7 +22,8 @@ public sealed class RootUnitSeedOptions
 
 /// <summary>
 /// Creates the system roles and keeps them in step with the permission catalogue (TF-032): the tenant administrator
-/// holds every permission of the host, read-only and service-default hold every <c>*.read</c> permission. Then creates
+/// holds every permission of the host and is for any principal type (the control plane's operator is a service account,
+/// ADR-0031), read-only and service-default hold every <c>*.read</c> permission. Then creates
 /// the root organisation unit with the provider's root kind, once (TF-034, ADR-0030). Safe to run again; it never
 /// touches tenant roles or a root that exists.
 /// </summary>
@@ -41,9 +42,9 @@ public sealed class AuthorizationSeeder(
         var all = catalogue.All.Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
         var reads = all.Where(name => name.EndsWith(".read", StringComparison.Ordinal)).ToList();
 
-        await UpsertAsync(SystemRoles.TenantAdministrator, "Every permission of this tenant.", PrincipalType.User, all, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ReadOnly, "Read permissions only.", PrincipalType.User, reads, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ServiceDefault, "The default for service accounts: read permissions.", PrincipalType.Service, reads, cancellationToken).ConfigureAwait(false);
+        await UpsertAsync(SystemRoles.TenantAdministrator, "Tenant administrator", "Every permission of this tenant.", PrincipalKind.Any, all, cancellationToken).ConfigureAwait(false);
+        await UpsertAsync(SystemRoles.ReadOnly, "Read only", "Read permissions only.", PrincipalKind.User, reads, cancellationToken).ConfigureAwait(false);
+        await UpsertAsync(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalKind.Service, reads, cancellationToken).ConfigureAwait(false);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var fallback = tenant?.Id.Value;
@@ -52,18 +53,18 @@ public sealed class AuthorizationSeeder(
         await units.EnsureRootAsync(name, code, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task UpsertAsync(string name, string description, PrincipalType principalType, List<string> permissions, CancellationToken cancellationToken)
+    private async Task UpsertAsync(string code, string name, string description, PrincipalKind principalType, List<string> permissions, CancellationToken cancellationToken)
     {
-        var role = await context.Roles.SingleOrDefaultAsync(r => r.Name == name, cancellationToken).ConfigureAwait(false);
+        var role = await context.Roles.SingleOrDefaultAsync(r => r.Code == code, cancellationToken).ConfigureAwait(false);
         if (role is null)
         {
-            context.Roles.Add(new Role(name, description, isSystem: true, principalType, permissions));
-            logger.LogInformation("Created system role {Role} with {Count} permission(s).", name, permissions.Count);
+            context.Roles.Add(new Role(code, name, description, isSystem: true, principalType, permissions));
+            logger.LogInformation("Created system role {Role} with {Count} permission(s).", code, permissions.Count);
         }
-        else if (!role.Permissions.SequenceEqual(permissions, StringComparer.Ordinal))
+        else if (!role.Permissions.SequenceEqual(permissions, StringComparer.Ordinal) || role.Name != name || role.Description != description || role.PrincipalType != principalType)
         {
-            role.ReplacePermissions(permissions);
-            logger.LogInformation("Updated system role {Role} to {Count} permission(s).", name, permissions.Count);
+            role.Change(name, description, principalType, permissions);
+            logger.LogInformation("Updated system role {Role} to {Count} permission(s).", code, permissions.Count);
         }
     }
 }

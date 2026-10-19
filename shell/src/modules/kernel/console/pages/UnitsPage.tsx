@@ -5,7 +5,7 @@ import { Alert, Badge, Box, Button, Flex, Group, Paper, Stack, Table, Text, Tree
 import { IconChevronRight } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
 import { deactivateUnit, fetchKinds, fetchUnits, type Kinds, type Unit } from "@/api/authorization";
-import { useSession } from "@/auth/session-context";
+import { useAccessAt } from "@/auth/access";
 import { ConfirmDialog, EmptyState, LoadingState, RecordHeader } from "@/components/panels";
 import { ListPage } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
@@ -77,9 +77,7 @@ export function UnitsPage() {
 /** Mounted once the tree has loaded, so the tree opens fully expanded on its first render. */
 function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds | undefined }) {
   const { t } = useTranslation();
-  const { me } = useSession();
   const queryClient = useQueryClient();
-  const canManage = me?.permissions.includes(manage) ?? false;
   const data = useMemo(() => toTreeData(units), [units]);
   const byId = useMemo(() => new Map(units.map((unit) => [unit.id, unit])), [units]);
   const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -87,6 +85,9 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
   const [failure, setFailure] = useState<Failure | undefined>();
   const [busy, setBusy] = useState(false);
   const selected = (selectedId !== undefined ? byId.get(selectedId) : undefined) ?? units[0];
+  // The actions follow what the principal may do at the chosen unit, not tenant-wide (ADR-0031); the API checks again.
+  const access = useAccessAt(selected ? { unit: selected.id } : undefined, [manage]);
+  const canManage = access.can(manage);
   const tree = useTree({
     initialExpandedState: getTreeExpandedState(data, "*"),
     selectedState: selected ? [selected.id] : [],

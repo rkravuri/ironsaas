@@ -35,6 +35,14 @@ const kinds: Kinds = {
 };
 
 describe("the unit tree", () => {
+  it("starts at the units whose parent the reader cannot see (ADR-0031)", () => {
+    // A reader of Sales with its children gets Sales and below; Sales's parent is not in the list.
+    const tree = toTreeData(units.filter((candidate) => ["sales", "north", "city"].includes(candidate.id)));
+    expect(tree.map((node) => node.value)).toEqual(["sales"]);
+    expect(tree[0]?.children?.map((node) => node.value)).toEqual(["north"]);
+    expect(pathLabel(units.slice(2, 5), "city")).toBe("Sales / North / City");
+  });
+
   it("nests the API's list under its parents and keeps the sibling order", () => {
     const tree = toTreeData(units);
     expect(tree.map((node) => node.value)).toEqual(["root"]);

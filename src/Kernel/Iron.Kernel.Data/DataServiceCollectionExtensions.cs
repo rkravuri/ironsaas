@@ -24,8 +24,8 @@ public static class DataServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
-        services.AddSingleton(dataSource);
+        // Built by the container, so disposing a provider closes its pooled connections (tests build many providers).
+        services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString).Build());
         services.AddLogging(); // the runners and the health check log; a host already has logging, a bare container gets a silent one
         services.TryAddSingleton(TimeProvider.System);
 

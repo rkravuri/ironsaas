@@ -38,6 +38,26 @@ public class RecordAccessDatabaseTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task ARowThatBelongsToAUnitAnotherWayIsKeptByTheSameRule()
+    {
+        var prefix = $"selector-{Ids.New():N}";
+        var (inA, inB, granted) = await SeedAsync(prefix);
+
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
+        await using var scope = provider.CreateAsyncScope();
+        var widgets = scope.ServiceProvider.GetRequiredService<SampleDbContext>().Widgets.AsNoTracking().Where(w => w.Name.StartsWith(prefix));
+
+        var within = widgets.WhereAccessible(RecordAccess.Within([UnitA], [granted]), w => (Guid?)w.OwningOrganisationId, w => w.Id);
+        var reached = await within.Select(w => w.Id).ToListAsync(TestContext.Current.CancellationToken);
+        var everything = await widgets.WhereAccessible(RecordAccess.Everything, w => (Guid?)w.OwningOrganisationId, w => w.Id).CountAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(new[] { inA, granted }.Order(), reached.Order());
+        Assert.DoesNotContain(inB, reached);
+        Assert.Equal(3, everything);
+        Assert.Contains("= ANY (", within.ToQueryString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ARecordOwnedByAUnitThatIsNotActiveIsRefusedOnSave()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), services => services.AddSingleton<IOrganisationUnitCheck>(new OnlyClosedIsInactive()));

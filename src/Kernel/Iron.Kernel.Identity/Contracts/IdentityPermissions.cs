@@ -21,6 +21,11 @@ public static class IdentityErrors
     public const string PasswordIsLoginId = "identity.password.is_login_id";
     public const string LoginIdTaken = "identity.login_id.taken";
     public const string ClientInvalid = "identity.client.invalid";
+
+    /// <summary>No user with this id, or none the reader may see: the same answer, so a link reveals nothing (ADR-0031).</summary>
+    public const string UserNotFound = "identity.user.not_found";
+    public const string HomeUnitNotFound = "identity.home_unit.not_found";
+    public const string HomeUnitInactive = "identity.home_unit.inactive";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -40,4 +45,7 @@ public static class IdentityAuditEvents
 
     /// <summary>A principal was given its home unit (TF-034): by the seed for the root, later by an administrator.</summary>
     public const string HomeUnitSet = "identity.home_unit_set";
+
+    /// <summary>An administrator created a user in a unit and opened their invitation (A2).</summary>
+    public const string UserCreated = "identity.user_created";
 }

@@ -67,12 +67,12 @@ test.describe("the Users grid by keyboard", () => {
     await expect(row(1)).toHaveAttribute("aria-selected", "true");
     await expect(row(0)).not.toHaveAttribute("aria-selected", "true");
 
+    // Ctrl+Enter opens the row's record page (A2); back is the list again.
     await page.keyboard.press("Control+Enter");
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText(/@smoke\.localhost|smoke-client/);
-    await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/users\/[0-9a-f-]{36}$/);
+    await expect(page.getByRole("tab", { name: "Access" })).toBeVisible();
+    await page.goBack();
+    await expect(row(0)).toBeVisible();
 
     const comfortable = await row(0).boundingBox();
     await page.getByRole("radiogroup", { name: "Density" }).getByText("Compact").click();

@@ -29,11 +29,16 @@ const kinds = {
   ],
 };
 
-const stub = (permissions: string[], extra = {}) =>
+/** /me/access for every unit of the tree: the same permissions at each, unless a unit has its own. */
+const access = (permissions: string[], perUnit: Record<string, string[]> = {}) =>
+  Object.fromEntries(tree.data.map((unit) => [`GET /api/v1/me/access?unit=${unit.id}`, () => json({ scope: `unit:${unit.id}`, permissions: perUnit[unit.id] ?? permissions })]));
+
+const stub = (permissions: string[], extra = {}, perUnit: Record<string, string[]> = {}) =>
   stubFetch({
     "GET /api/v1/me": () => json(me(permissions)),
     "GET /api/v1/organisation-units": () => json(tree),
     "GET /api/v1/organisation-kinds": () => json(kinds),
+    ...access(permissions, perUnit),
     ...extra,
   });
 
@@ -86,6 +91,24 @@ describe("the organisation units page", () => {
     expect(await within(dialog).findByText("Another unit has this code. Choose another.")).toBeInTheDocument();
     const post = calls.find((call) => call.key === "POST /api/v1/organisation-units/root/children");
     expect(JSON.parse(post?.init?.body as string)).toEqual({ name: "Legal", code: "finance", kind: "unit" });
+  });
+
+  it("offers the actions where the principal may manage the chosen unit, and not elsewhere", async () => {
+    // Held anywhere, so navigation shows the page; at the root only reading, at Sales managing too (ADR-0031).
+    stubFetch({
+      "GET /api/v1/me": () => json(me([], ["authz.units.read", "authz.units.manage"])),
+      "GET /api/v1/organisation-units": () => json(tree),
+      "GET /api/v1/organisation-kinds": () => json(kinds),
+      ...access(["authz.units.read"], { sales: ["authz.units.read", "authz.units.manage"] }),
+    });
+    renderWithProviders(<UnitsPage />);
+
+    await screen.findByRole("tree");
+    await waitFor(() => expect(record()).toHaveTextContent("Acme"));
+    expect(screen.queryByRole("button", { name: "Rename" })).toBeNull();
+    fireEvent.click(within(item("Sales")).getByText("Sales"));
+
+    expect(await screen.findByRole("button", { name: "Rename" })).toBeInTheDocument();
   });
 
   it("is read only without the manage permission", async () => {

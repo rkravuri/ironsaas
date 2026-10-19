@@ -6,7 +6,10 @@ export type SessionStatus = "loading" | "signed-in" | "signed-out";
 export interface Session {
   status: SessionStatus;
   me: Me | undefined;
+  /** Every permission held at any scope: navigation and route guards follow it; the API still decides per row (ADR-0031). */
   permissions: readonly string[];
+  /** The permissions held for the whole tenant: the actions whose scope is the tenant, such as changing roles. */
+  tenantPermissions: readonly string[];
   /** Re-reads /me, after a login. */
   refresh: () => Promise<void>;
   /** Ends the session on the server and forgets it here. */

@@ -16,12 +16,16 @@ public sealed class PrincipalGrants
         ArgumentNullException.ThrowIfNull(grants);
         Grants = grants;
         TenantWide = grants.Where(g => g.Kind == RoleScopeKind.Tenant).SelectMany(g => g.Permissions).ToHashSet(StringComparer.Ordinal);
+        Anywhere = grants.SelectMany(g => g.Permissions).ToHashSet(StringComparer.Ordinal);
         HasUnitGrants = grants.Any(g => g.Kind is RoleScopeKind.Unit or RoleScopeKind.UnitWithChildren);
     }
 
     public IReadOnlyList<Grant> Grants { get; }
 
     public IReadOnlySet<string> TenantWide { get; }
+
+    /// <summary>Every permission held at any scope: what the shell's navigation shows (ADR-0031); the API still decides per row.</summary>
+    public IReadOnlySet<string> Anywhere { get; }
 
     public bool HasUnitGrants { get; }
 
@@ -34,6 +38,11 @@ public sealed class PrincipalGrants
     {
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(unitPath);
+        if (scope.Kind == AccessScopeKind.Anywhere)
+        {
+            return new HashSet<string>(Anywhere, StringComparer.Ordinal);
+        }
+
         var result = new HashSet<string>(TenantWide, StringComparer.Ordinal);
         if (scope.Kind == AccessScopeKind.Tenant)
         {
@@ -57,6 +66,35 @@ public sealed class PrincipalGrants
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// What the principal holds over the whole of a target scope (ADR-0031): the tenant's tenant-wide permissions; a
+    /// unit's permissions at that unit; for a unit with its children only the grants that reach every unit below it
+    /// (tenant-wide, or with children at the unit or an ancestor); a record's permissions at the record.
+    /// <paramref name="unitPath"/> is the ids from the root to the target unit, or empty.
+    /// </summary>
+    public HashSet<string> PermissionsCovering(RoleScope target, IReadOnlyList<Guid> unitPath)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(unitPath);
+        switch (target.Kind)
+        {
+            case RoleScopeKind.Tenant:
+                return new HashSet<string>(TenantWide, StringComparer.Ordinal);
+            case RoleScopeKind.Unit:
+                return unitPath.Count == 0 ? new HashSet<string>(TenantWide, StringComparer.Ordinal) : PermissionsAt(AccessScope.Unit(unitPath[^1]), unitPath);
+            case RoleScopeKind.UnitWithChildren:
+                var covering = new HashSet<string>(TenantWide, StringComparer.Ordinal);
+                foreach (var grant in Grants.Where(g => g.Kind == RoleScopeKind.UnitWithChildren && g.ScopeId is { } top && unitPath.Contains(top)))
+                {
+                    covering.UnionWith(grant.Permissions);
+                }
+
+                return covering;
+            default:
+                return PermissionsAt(AccessScope.Record(target.RecordType!, target.RecordId!.Value, null), []);
+        }
     }
 }
 
@@ -116,6 +154,25 @@ public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache ca
         }
 
         return grants.PermissionsAt(scope, unitPath);
+    }
+
+    /// <summary>What the principal holds over the whole of a target scope (ADR-0031); reads the target unit's path when there is one.</summary>
+    public async Task<IReadOnlySet<string>> PermissionsCoveringAsync(Guid principalId, RoleScope target, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        var grants = await OfAsync(principalId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<Guid> unitPath = [];
+        if (target.UnitId is { } unitId)
+        {
+            var path = await context.OrganisationUnits.AsNoTracking()
+                .Where(unit => unit.Id == unitId)
+                .Select(unit => unit.Path)
+                .SingleOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+            unitPath = path is null ? [] : OrganisationUnit.PathIds(path);
+        }
+
+        return grants.PermissionsCovering(target, unitPath);
     }
 
     /// <summary>
