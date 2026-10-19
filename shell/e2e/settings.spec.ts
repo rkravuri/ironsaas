@@ -97,7 +97,8 @@ test.describe("settings on a unit (ADR-0036)", () => {
     await dialog.getByRole("textbox", { name: "Value" }).fill("30");
     await dialog.getByRole("button", { name: "Save" }).click();
     await expect(row).toContainText("30 minutes");
-    await page.screenshot({ path: "test-results/settings-echo.png", fullPage: true });
+    await expect(dialog).toBeHidden();
+    await page.screenshot({ path: "test-results/settings-echo.png" });
 
     const fresh = await signedInPage(browser);
     const me = await call(fresh, "GET", "/api/v1/me");
