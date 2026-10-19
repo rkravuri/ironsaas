@@ -111,6 +111,39 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
     }
 
     [Fact]
+    public async Task EveryoneReadsTheirOwnAssignmentsAndNobodyElses()
+    {
+        var root = await RootIdAsync();
+        var person = fixture.Principals.Add();
+        var colleague = fixture.Principals.Add();
+        var readOnly = await RoleIdAsync(SystemRoles.ReadOnly);
+        // A role without authz.assignments.read, so the person may not list anybody's assignments.
+        using var unitReader = await SendAsync(HttpMethod.Post, "/api/v1/roles", _administrator, $$"""{"code":"unit-reader-{{Ids.New():N}}","name":"Unit reader","description":"Sees the tree.","principal_type":"user","permissions":["authz.units.read"]}""");
+        Assert.Equal(HttpStatusCode.Created, unitReader.StatusCode);
+        using var unitReaderBody = await JsonAsync(unitReader);
+        var unitReaderId = unitReaderBody.RootElement.GetProperty("id").GetGuid();
+        using var granted = await SendAsync(HttpMethod.Post, "/api/v1/role-assignments", _administrator, $$"""{"principal_id":"{{person}}","role_id":"{{unitReaderId}}","scope_kind":"unit","unit_id":"{{root}}"}""");
+        using var other = await SendAsync(HttpMethod.Post, "/api/v1/role-assignments", _administrator, $$"""{"principal_id":"{{colleague}}","role_id":"{{readOnly}}","scope_kind":"tenant"}""");
+        Assert.Equal(HttpStatusCode.Created, granted.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, other.StatusCode);
+
+        // The person holds no authz.assignments.read: the list refuses, their own assignments do not.
+        using var list = await SendAsync(HttpMethod.Get, $"/api/v1/role-assignments?filter=principal_id:eq:{person}", person);
+        using var mine = await SendAsync(HttpMethod.Get, "/api/v1/role-assignments/mine", person);
+        using var anonymous = await SendAsync(HttpMethod.Get, "/api/v1/role-assignments/mine", null);
+
+        await AssertProblemAsync(list, HttpStatusCode.Forbidden, PermissionErrors.PermissionDenied);
+        Assert.Equal(HttpStatusCode.OK, mine.StatusCode);
+        using var body = await JsonAsync(mine);
+        var row = Assert.Single(body.RootElement.GetProperty("data").EnumerateArray());
+        Assert.Equal(person, row.GetProperty("principal_id").GetGuid());
+        Assert.Equal("Unit reader", row.GetProperty("role_name").GetString());
+        Assert.Equal("unit", row.GetProperty("scope_kind").GetString());
+        Assert.Equal(root, row.GetProperty("unit_path")[0].GetProperty("id").GetGuid());
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+    }
+
+    [Fact]
     public async Task AUnitScopeWithoutAUnitAnswers400WithTheField()
     {
         using var response = await SendAsync(HttpMethod.Post, "/api/v1/role-assignments", _administrator, $$"""{"principal_id":"{{fixture.Principals.Add()}}","role_id":"{{await RoleIdAsync(SystemRoles.ReadOnly)}}","scope_kind":"unit"}""");
