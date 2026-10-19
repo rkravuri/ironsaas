@@ -16,14 +16,16 @@ test.describe("login", () => {
   test("the administrator signs in and sees the navigation from the manifests", async ({ page }) => {
     await signIn(page);
 
-    await expect(page.getByRole("link", { name: "Users" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "My profile" })).toBeVisible();
+    const navigation = page.getByRole("navigation", { name: "Main navigation" });
+    await expect(navigation.getByRole("link", { name: "Users" })).toBeVisible();
+    await expect(navigation.getByRole("link", { name: "My profile" })).toBeVisible();
   });
 
   test("signing out ends the session", async ({ page }) => {
     await signIn(page);
     await page.getByRole("button", { name: /signed in as/i }).click();
     await page.getByRole("menuitem", { name: /sign out/i }).click();
+    await expect(page.getByRole("status")).toHaveText("You have signed out.");
 
     await expect(page).toHaveURL(/\/login/);
   });
