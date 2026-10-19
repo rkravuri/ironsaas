@@ -11,8 +11,8 @@ The running state of the current slice, kept current by Claude Code at the end o
 | D3 Templates, panels and forms | done | main | merged 2026-10-18 (110c6ef); the scan, format and the keyboard test on the stack passed on 2026-10-19 |
 | P1 The laptop store survives a restart, and an update heals a unit | done | main | merged 2026-10-19; five commits (5c24448 to b044602) |
 | L1 Three layers: kernel, business, products | done | main | merged 2026-10-19 (7af58bf); twelve commits (a304e52 to 0ff8305); ADR-0029; the laptop reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
-| A1 Organisation units | review | slice/s2-a1 | seven commits (ba5be84 to the status); ADR-0030; on 2026-10-19 make update-unit gave acme, bravo and echo the migrations and their root units, smoke 11 of 11 and e2e 6 of 6 on echo |
-| A2 Roles and scoped assignments | | | |
+| A1 Organisation units | done | main | merged 2026-10-19 (4004aa3); seven commits (ba5be84 to 077aca4); ADR-0030; acme, bravo and echo updated with their root units, smoke 11 of 11 and e2e 6 of 6 on echo |
+| A2 Roles and scoped assignments | next | | sharpened after A1 (docs/prompts/S2.md) |
 | A3 Record policies | | | |
 | D4 Home and the header | | | |
 | A4 Entitlements | | | |
