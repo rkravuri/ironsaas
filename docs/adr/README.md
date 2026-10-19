@@ -37,7 +37,8 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0027](0027-templates-panels-and-the-form.md) | Templates, panels and the form | Accepted |
 | [0028](0028-laptop-store-persists-and-updates-heal.md) | The laptop store persists, and an update heals a unit | Accepted |
 | [0029](0029-three-layers-kernel-business-products.md) | Three layers: kernel, business, products | Accepted |
+| [0030](0030-organisation-tree-and-scope-evaluation.md) | The organisation tree as a materialised path, and how a scope is evaluated | Accepted |
 
 ## Reading order
 
-For a newcomer: 0001 and 0029 (the shape of the code and its three layers), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 (who may do what), 0016 to 0019 and 0028 (how a tenant comes to exist, and how it heals), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
+For a newcomer: 0001 and 0029 (the shape of the code and its three layers), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 and 0030 (who may do what, and where), 0016 to 0019 and 0028 (how a tenant comes to exist, and how it heals), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 (how S2 onwards is built and how it looks). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
