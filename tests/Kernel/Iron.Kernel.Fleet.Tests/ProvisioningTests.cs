@@ -262,7 +262,7 @@ public class ProvisioningTests(FleetFixture fixture)
 
         // What a store that lost its data looks like to one tenant: every secret under tenants/<slug> is gone.
         var forgotten = await DeleteEverySecretOfAsync(slug, ct);
-        Assert.Equal(["database", "entitlements", "fleet", "storage", "unit"], forgotten.Order(StringComparer.Ordinal));
+        Assert.Equal(["database", "entitlements", "flags", "fleet", "storage", "unit"], forgotten.Order(StringComparer.Ordinal));
         Assert.Null(await root.ReadAsync($"tenants/{slug}/unit", ct));
 
         await using (var scope = provider.CreateAsyncScope())
@@ -304,6 +304,7 @@ public class ProvisioningTests(FleetFixture fixture)
         using var unitStore = new OpenBaoSecretStore(fixture.StoreOptions(tokenAfter));
         Assert.NotNull(await unitStore.ReadAsync($"tenants/{slug}/unit", ct));
         Assert.NotNull(await unitStore.ReadAsync($"tenants/{slug}/entitlements", ct));
+        Assert.NotNull(await unitStore.ReadAsync($"tenants/{slug}/flags", ct));
         await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{slug}/database", ct));
         await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{slug}/fleet", ct));
         Assert.Equal(tokenAfter, runtime.Applied[^1].Environment["Secrets__Token"]);

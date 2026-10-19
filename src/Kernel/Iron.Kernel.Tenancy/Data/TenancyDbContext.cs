@@ -18,6 +18,12 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
 
     public DbSet<EntitlementChange> EntitlementHistory => Set<EntitlementChange>();
 
+    public DbSet<FlagRule> FlagRules => Set<FlagRule>();
+
+    public DbSet<FlagRuleChange> FlagHistory => Set<FlagRuleChange>();
+
+    public DbSet<FlagPublication> FlagPublications => Set<FlagPublication>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Tenant>(tenant =>
@@ -67,6 +73,42 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
             change.Property(c => c.After).HasColumnType("jsonb");
             change.Property(c => c.Reason).HasMaxLength(EntitlementChange.ReasonMaxLength);
             change.HasIndex(c => new { c.TenantId, c.CreatedAt });
+        });
+
+        modelBuilder.Entity<FlagRule>(rule =>
+        {
+            rule.ToTable("flag_rules");
+            rule.Property(r => r.FlagKey).HasMaxLength(100);
+            rule.Property(r => r.Scope).HasConversion<string>().HasMaxLength(20);
+            rule.Property(r => r.Region).HasMaxLength(32);
+            rule.Property(r => r.TenantSlug).HasMaxLength(63);
+            rule.Property(r => r.ConditionKind).HasConversion<string>().HasMaxLength(20);
+            rule.Property(r => r.RolloutOf).HasConversion<string>().HasMaxLength(20);
+            rule.Property(r => r.Attribute).HasMaxLength(50);
+            rule.Property(r => r.ValueJson).HasColumnName("value").HasColumnType("jsonb");
+            rule.Property(r => r.Reason).HasMaxLength(FlagRule.ReasonMaxLength);
+            rule.Ignore(r => r.StorePath);
+            rule.Ignore(r => r.Condition);
+            rule.HasIndex(r => new { r.FlagKey, r.Position });
+            rule.HasIndex(r => r.TenantSlug);
+        });
+
+        modelBuilder.Entity<FlagRuleChange>(change =>
+        {
+            change.ToTable("flag_rule_history");
+            change.Property(c => c.FlagKey).HasMaxLength(100);
+            change.Property(c => c.Kind).HasMaxLength(20);
+            change.Property(c => c.Before).HasColumnType("jsonb");
+            change.Property(c => c.After).HasColumnType("jsonb");
+            change.Property(c => c.Reason).HasMaxLength(FlagRule.ReasonMaxLength);
+            change.HasIndex(c => new { c.FlagKey, c.Revision }).IsUnique();
+        });
+
+        modelBuilder.Entity<FlagPublication>(publication =>
+        {
+            publication.ToTable("flag_publications");
+            publication.Property(p => p.Path).HasMaxLength(100);
+            publication.HasIndex(p => p.Path).IsUnique();
         });
 
         modelBuilder.Entity<TenantHostname>(hostname =>

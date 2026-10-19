@@ -30,6 +30,12 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
     /// <summary>Where the control plane keeps the tenant's effective entitlements for its unit (ADR-0034).</summary>
     public string EntitlementsSecretPath => $"tenants/{Slug}/entitlements";
 
+    /// <summary>Where the control plane keeps the tenant's flag rules (ADR-0035).</summary>
+    public string FlagsSecretPath => $"tenants/{Slug}/flags";
+
+    /// <summary>The global and region flag rules every unit reads (ADR-0035): one write for the platform.</summary>
+    public const string PlatformFlagsPath = "platform/flags";
+
     public string UnitPolicy => $"tenant-{Slug}";
 
     public string ConnectionString(string role, string password) =>

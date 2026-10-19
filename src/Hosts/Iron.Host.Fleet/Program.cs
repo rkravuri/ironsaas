@@ -48,6 +48,7 @@ builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 builder.Services.AddIronFleetWorker();
 builder.Services.AddIronEntitlementReconciler();
+builder.Services.AddIronFlagWorker();
 
 var app = builder.Build();
 

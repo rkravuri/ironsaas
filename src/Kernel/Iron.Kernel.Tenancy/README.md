@@ -28,6 +28,25 @@ What a tenant may use is decided here and nowhere else. Kernel modules are the p
 - **To the unit.** After every committed change the effective entitlements go to the store at `tenants/<slug>/entitlements` (key `document`, Iron.Kernel.Entitlements' `EntitlementsDocument`), and the tenant's `published_revision` follows. When the store refuses, the fleet worker's `EntitlementReconciler` writes every tenant whose copy is behind, every minute (`Tenancy:Reconcile:Seconds`). The fleet's secrets step writes them again on every provisioning and update, so a store that lost them heals with the unit.
 - `make apply-plan TENANT=echo PLAN=Enterprise` shows the preview and applies it (`DRY_RUN=1` previews only; `STARTS` and `ENDS` set the dates); the seeded plans are `standard` (no `authorization.role_transfer`, 14 grace days) and `enterprise` (with it, 30 grace days).
 
+
+## Feature flags and kill switches (TF-050 to TF-053, ADR-0035)
+
+The rules of the flags the units' modules declare. A rule has a scope and its target (global; a region; a tenant; an organisation unit or a user of a tenant), an optional condition (a percentage of tenants or users by stable hash; an attribute among values: `principal_type`, `plan`, `region`) and a value of the flag's type; a flag's rules are tried most specific scope first, then in their order. The control plane's own flags are evaluated from its `Flags` configuration section, not from these rules: it is no tenant.
+
+| Operation | Endpoint | Permission | Refused when |
+|---|---|---|---|
+| The flags of the catalogue | `GET /api/v1/flags` (declaration, status, rule count) | `tenancy.flags.read` | |
+| The report | `GET /api/v1/flags/report`: flags past their removal date with their owner, rules for flags the catalogue no longer has | `tenancy.flags.read` | |
+| A flag's rules | `GET /api/v1/flags/{key}/rules` (with the revision) | `tenancy.flags.read` | |
+| Replace a flag's rules | `PUT /api/v1/flags/{key}/rules` with `revision`, `reason`, `rules` | `tenancy.flags.manage`; for a kill switch also `tenancy.kill_switches.manage` | a flag the catalogue does not have (`tenancy.flag.unknown`); a value of another type (`tenancy.flag.value_type`); a target that does not exist or a bad condition (`tenancy.flag.rule_invalid`); another revision (`tenancy.flag.rules_changed`, 409); a kill switch without a reason (`tenancy.kill_switch.reason_required`) |
+| A flag's history | `GET /api/v1/flags/{key}/history` (list grammar, oldest first) | `tenancy.flags.read` | no route writes it |
+| The kill switches | `GET /api/v1/kill-switches` (on for the platform, since when, why; the tenants it is on for) | `tenancy.flags.read` | |
+| Flip a kill switch | `PUT /api/v1/kill-switches/{path}` with `on`, `reason` and optional `tenant` | `tenancy.kill_switches.manage` (Critical; only the control plane's administrators hold it) | no reason; an unknown path (`tenancy.kill_switch.unknown`) |
+
+- **A change** is one transaction: the rules (an unchanged rule keeps its row, so a kill switch's "since" stays true), one append-only row in `kernel_tenancy.flag_rule_history` with the rules before and after, the revision, the kind (`rules` or `kill_switch`) and the reason, the audit event `tenancy.flag_rules_changed` or `tenancy.kill_switch_flipped`, and the store paths it touches marked behind (`kernel_tenancy.flag_publications`).
+- **To the units.** After the commit the paths behind are written: `platform/flags` with every global and region rule, `tenants/<slug>/flags` with the tenant's own rules, its region and its plan (written again when a plan is applied). When the store refuses, the fleet worker's `FlagReconciler` writes them every minute. The fleet's secrets step widens the unit policy to both paths and writes them again on every provisioning and update.
+- **The report** is logged when the control plane starts and once a week by the fleet worker (TF-052 AC1).
+- `make flag KEY=flags.example_tone VALUE=warm TENANT=echo` sets the unconditional rule for a tenant (or the platform without `TENANT`) and prints it; `make kill-switch PATH=imports ON=true REASON="..."` flips a kill switch for the platform (or `TENANT=x`).
 Configuration (`Tenancy` section): `BaseDomain` (`localhost`; a tenant without hostnames gets `<slug>.<BaseDomain>`), `DefaultRegion` (`local`), `DefaultPlan` (`standard`).
 
 Model change: edit the entity, then `make ef-add MODULE=Tenancy NAME=<WhatChanged>` and commit `Data/Migrations`.

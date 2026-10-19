@@ -55,7 +55,14 @@ public static class TenancyPermissions
 
     public static readonly Permission EntitlementsManage = new("tenancy.entitlements.manage", "Define plans and apply them to tenants", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage];
+    public static readonly Permission FlagsRead = new("tenancy.flags.read", "View feature flags, their rules, their history and the flag report", Risk.Low);
+
+    public static readonly Permission FlagsManage = new("tenancy.flags.manage", "Set the rules of feature flags", Risk.High);
+
+    /// <summary>Flipping a kill switch stops a critical path for tenants (TF-051 AC4): the control plane's administrators only.</summary>
+    public static readonly Permission KillSwitchesManage = new("tenancy.kill_switches.manage", "Turn kill switches on and off, with a reason", Risk.Critical);
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage];
 }
 
 public static class TenancyErrors
@@ -71,6 +78,12 @@ public static class TenancyErrors
     public const string PlanUnknownEntitlements = "tenancy.plan.unknown_entitlements";
     public const string PlanDatesInvalid = "tenancy.plan.dates_invalid";
     public const string HistoryReadOnly = "tenancy.entitlement_history.read_only";
+    public const string FlagUnknown = "tenancy.flag.unknown";
+    public const string FlagRuleInvalid = "tenancy.flag.rule_invalid";
+    public const string FlagValueType = "tenancy.flag.value_type";
+    public const string FlagRulesChanged = "tenancy.flag.rules_changed";
+    public const string KillSwitchReasonRequired = "tenancy.kill_switch.reason_required";
+    public const string KillSwitchUnknown = "tenancy.kill_switch.unknown";
 }
 
 public static class TenancyAuditEvents
@@ -82,6 +95,18 @@ public static class TenancyAuditEvents
     public const string StatusChanged = "tenancy.tenant.status_changed";
     public const string PlanSaved = "tenancy.plan_saved";
     public const string PlanApplied = "tenancy.plan_applied";
+    public const string FlagRulesChanged = "tenancy.flag_rules_changed";
+    public const string KillSwitchFlipped = "tenancy.kill_switch_flipped";
+}
+
+/// <summary>
+/// A tenant's flag rules as the fleet uses them (ADR-0035): written to the store again, with the platform's, which the
+/// secrets step does on every provisioning and update, so a store that lost them heals with the unit.
+/// </summary>
+public interface ITenantFlags
+{
+    /// <summary>Writes <c>platform/flags</c> and <c>tenants/&lt;slug&gt;/flags</c>; false when the store could not take them (the fleet reconciles every minute).</summary>
+    Task<bool> PublishAsync(string slug, CancellationToken cancellationToken);
 }
 
 /// <summary>
