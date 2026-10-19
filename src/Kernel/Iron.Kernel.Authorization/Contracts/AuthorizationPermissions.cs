@@ -18,6 +18,17 @@ public static class AuthorizationPermissions
     public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage];
 }
 
+/// <summary>
+/// The features of the Authorization module (TF-046, ADR-0034). The kernel is always on; a feature of it is licensed
+/// on its own, and role export and import is the one an enterprise plan adds.
+/// </summary>
+public static class AuthorizationFeatures
+{
+    public static readonly Feature RoleTransfer = new("authorization.role_transfer", "Export the tenant's roles to a file and import roles from another tenant");
+
+    public static IReadOnlyList<Feature> All => [RoleTransfer];
+}
+
 /// <summary>The system roles every tenant has (TF-032). They cannot be edited; the seeder keeps them in step with the catalogue.</summary>
 public static class SystemRoles
 {

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Iron.Kernel.Api;
+using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
@@ -33,6 +34,7 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.AppConnectionString, AuditFixture.AppRole);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule()]);
+        builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
 
         _app = builder.Build();
         _app.UseIronTelemetry();

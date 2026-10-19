@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Iron.Kernel.Api;
+using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
@@ -34,6 +35,7 @@ public class RolesEndpointTests(AuthorizationFixture fixture) : IAsyncLifetime
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
         builder.Services.AddModules(builder.Configuration, [new AuthorizationModule()]);
+        builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
 
         _app = builder.Build();
         _app.UseIronTelemetry();

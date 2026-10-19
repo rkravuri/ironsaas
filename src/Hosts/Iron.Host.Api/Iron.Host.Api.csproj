@@ -13,6 +13,7 @@
     <ProjectReference Include="../../Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Authorization/Iron.Kernel.Authorization.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Entitlements/Iron.Kernel.Entitlements.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Files/Iron.Kernel.Files.csproj" />
   </ItemGroup>
 

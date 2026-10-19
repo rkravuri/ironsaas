@@ -1,14 +1,12 @@
 // Iron.Host.Api: see README.md in this folder.
+using Iron.Host.Api;
 using Iron.Kernel.Api;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.OpenApi;
 using Iron.Kernel.Api.Tenancy;
-using Iron.Kernel.Audit;
-using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Health;
-using Iron.Kernel.Files;
 using Iron.Kernel.Identity;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
@@ -21,6 +19,12 @@ if (HealthProbe.IsCommand(args))
     return await HealthProbe.RunAsync(args);
 }
 
+// "catalogue <file>" writes what this build can license, which the control plane carries (make catalogue, ADR-0034).
+if (UnitModules.IsCatalogueCommand(args))
+{
+    return await UnitModules.WriteCatalogueAsync(args);
+}
+
 var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 
 // With Secrets:Address, Secrets:Token and Secrets:Path in the environment, the unit's secret supplies the rest of the
@@ -28,9 +32,8 @@ var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
-// The modules this host runs, in order: Audit first (the others write events through its contract), then
-// Authorization, then Identity (it replaces the default principal), then Files.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule()];
+// The modules this host runs (UnitModules): Audit first, then Authorization, Identity, Files and Entitlements.
+var modules = UnitModules.All();
 
 builder.AddIronTelemetry("iron-api", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);

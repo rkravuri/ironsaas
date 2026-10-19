@@ -26,6 +26,8 @@ public sealed class AuthorizationModule : IModule
 
     public IReadOnlyList<Permission> Permissions => AuthorizationPermissions.All;
 
+    public IReadOnlyList<Feature> Features => AuthorizationFeatures.All;
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
