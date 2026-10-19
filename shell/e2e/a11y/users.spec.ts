@@ -33,11 +33,12 @@ for (const scheme of schemes) {
     await page.keyboard.press("Enter");
     await expect(row(2)).toHaveAttribute("aria-selected", "true");
     await expect(row(1)).not.toHaveAttribute("aria-selected", "true");
+    // Ctrl+Enter opens the row's record page (A2); back is the list again.
     await page.keyboard.press("Control+Enter");
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toContainText("user03@acme.localhost");
-    await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/users\/01a14e12-0000-7000-8000-000000000003$/);
+    await expect(page.getByText("user03@acme.localhost")).toBeVisible();
+    await page.goBack();
+    await expect(row(0)).toBeVisible();
 
     // The density switch changes the row height.
     const comfortable = await row(0).boundingBox();

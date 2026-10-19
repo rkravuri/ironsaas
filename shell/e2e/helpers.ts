@@ -3,14 +3,14 @@ import { expect, type Page } from "@playwright/test";
 export const loginId = process.env.E2E_LOGIN_ID ?? "admin@smoke.localhost";
 export const password = process.env.E2E_PASSWORD ?? "";
 
-/** Signs in through the real login page and waits for the shell. */
-export async function signIn(page: Page): Promise<void> {
-  if (!password) {
+/** Signs in through the real login page and waits for the shell: the administrator, unless another account is given. */
+export async function signIn(page: Page, account: { loginId: string; password: string } = { loginId, password }): Promise<void> {
+  if (!account.password) {
     throw new Error("E2E_PASSWORD is required: the administrator's password, as the smoke tool kept it in the store.");
   }
   await page.goto("/login");
-  await page.getByLabel(/login identifier/i).fill(loginId);
-  await page.getByLabel(/^password/i).fill(password);
+  await page.getByLabel(/login identifier/i).fill(account.loginId);
+  await page.getByLabel(/^password/i).fill(account.password);
   await page.getByRole("button", { name: /sign in/i }).click();
   const shell = page.getByRole("heading", { name: "Foundation" });
   const crash = page.getByRole("heading", { name: /something went wrong/i });

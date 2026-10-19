@@ -378,7 +378,8 @@
     "compact": "Compact"
   },
   "dialog": {
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "wizard": {
     "back": "Back",
@@ -608,7 +609,7 @@
     "unit": "Unit",
     "since": "Since",
     "actions": "Actions",
-    "noUnit": "Whole tenant",
+    "noUnit": "All units",
     "grant": {
       "open": "Grant a role",
       "title": "Grant a role to {{name}}",
@@ -621,7 +622,8 @@
       "atUnit": "A unit",
       "includeChildren": "Include the units below it",
       "includeChildrenHint": "Without it, the role applies to this unit only.",
-      "noUnits": "You cannot see the organisation units, so you cannot grant a role at a unit here."
+      "noUnits": "You cannot see the organisation units, so you cannot grant a role at a unit here.",
+      "loadingRoles": "Loading the roles."
     },
     "remove": {
       "open": "Remove",

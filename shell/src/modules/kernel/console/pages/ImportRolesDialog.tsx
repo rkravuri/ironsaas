@@ -61,7 +61,7 @@ export function ImportRolesDialog({ onClose, onApplied }: { onClose: () => void;
   const blocked = diff !== undefined && diff.unknown.length > 0;
 
   return (
-    <Modal opened onClose={onClose} title={t("roles.import.title")} size="lg" centered>
+    <Modal opened onClose={onClose} title={t("roles.import.title")} size="lg" centered closeButtonProps={{ "aria-label": t("dialog.close") }}>
       <Stack>
         {diff === undefined ? (
           <>

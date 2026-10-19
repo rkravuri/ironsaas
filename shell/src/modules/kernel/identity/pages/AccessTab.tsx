@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -203,6 +203,13 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
     initialValues: { roleId: "", scope: forTenant && !canSeeUnits ? "tenant" : "unit", unitId: homeVisible ? (user.home_unit?.id ?? "") : "", includeChildren: true },
   });
   const values = form.getValues();
+  // The tree arrives after the dialog opens; the user's home unit is the first choice once it is there.
+  const home = homeVisible ? user.home_unit?.id : undefined;
+  useEffect(() => {
+    if (home !== undefined && form.getValues().unitId === "") {
+      form.setFieldValue("unitId", home);
+    }
+  }, [home, form]);
 
   const submit = async (chosen: GrantValues) => {
     const scopeKind: ScopeKind = chosen.scope === "tenant" ? "tenant" : chosen.includeChildren ? "unit_with_children" : "unit";
@@ -212,45 +219,44 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
 
   return (
     <FormDialog opened title={t("access.grant.title", { name: user.display_name })} onClose={onClose}>
-      {roles.isPending || (canSeeUnits && units.isPending) ? (
-        <LoadingState height={160} />
-      ) : (
-        <Form form={form} onSubmit={submit} submitLabel={t("access.grant.submit")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
-          <Select
-            label={t("access.role")}
-            description={t("access.grant.roleHint")}
-            data={options}
-            searchable
-            nothingFoundMessage={t("access.grant.noRoles")}
-            data-autofocus
-            {...form.getInputProps("roleId")}
-          />
-          {forTenant && canSeeUnits && (
-            <Radio.Group label={t("access.grant.where")} {...form.getInputProps("scope")}>
-              <Group mt={4}>
-                <Radio value="unit" label={t("access.grant.atUnit")} />
-                <Radio value="tenant" label={t("access.scopes.tenant")} />
-              </Group>
-            </Radio.Group>
-          )}
-          {values.scope === "unit" &&
-            (canSeeUnits ? (
-              <>
-                <UnitPicker
-                  label={t("access.unit")}
-                  units={unitList}
-                  value={values.unitId}
-                  onChange={(id) => form.setFieldValue("unitId", id)}
-                  error={typeof form.errors.unitId === "string" ? form.errors.unitId : undefined}
-                  disabled={(unit) => unit.status !== "active"}
-                />
-                <Checkbox label={t("access.grant.includeChildren")} description={t("access.grant.includeChildrenHint")} {...form.getInputProps("includeChildren", { type: "checkbox" })} />
-              </>
-            ) : (
-              <Text size="sm">{t("access.grant.noUnits")}</Text>
-            ))}
-        </Form>
-      )}
+      {/* The form is there from the start, so the dialog can focus its first field; the lists fill in as they arrive. */}
+      <Form form={form} onSubmit={submit} submitLabel={t("access.grant.submit")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
+        <Select
+          label={t("access.role")}
+          description={t("access.grant.roleHint")}
+          data={options}
+          searchable
+          nothingFoundMessage={roles.isPending ? t("access.grant.loadingRoles") : t("access.grant.noRoles")}
+          data-autofocus
+          {...form.getInputProps("roleId")}
+        />
+        {forTenant && canSeeUnits && (
+          <Radio.Group label={t("access.grant.where")} {...form.getInputProps("scope")}>
+            <Group mt={4}>
+              <Radio value="unit" label={t("access.grant.atUnit")} />
+              <Radio value="tenant" label={t("access.scopes.tenant")} />
+            </Group>
+          </Radio.Group>
+        )}
+        {values.scope === "unit" &&
+          (!canSeeUnits ? (
+            <Text size="sm">{t("access.grant.noUnits")}</Text>
+          ) : units.isPending ? (
+            <LoadingState height={120} />
+          ) : (
+            <>
+              <UnitPicker
+                label={t("access.unit")}
+                units={unitList}
+                value={values.unitId}
+                onChange={(id) => form.setFieldValue("unitId", id)}
+                error={typeof form.errors.unitId === "string" ? form.errors.unitId : undefined}
+                disabled={(unit) => unit.status !== "active"}
+              />
+              <Checkbox label={t("access.grant.includeChildren")} description={t("access.grant.includeChildrenHint")} {...form.getInputProps("includeChildren", { type: "checkbox" })} />
+            </>
+          ))}
+      </Form>
     </FormDialog>
   );
 }
