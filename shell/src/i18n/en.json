@@ -46,7 +46,8 @@
     },
     "console": {
       "title": "Console",
-      "units": "Organisation units"
+      "units": "Organisation units",
+      "roles": "Roles"
     }
   },
   "users": {
@@ -71,6 +72,21 @@
       "locked": "Locked",
       "inactive": "Inactive",
       "disabled": "Disabled"
+    },
+    "homeUnit": "Home unit",
+    "types": {
+      "user": "Person",
+      "service_account": "Service account",
+      "api_key": "API key holder"
+    },
+    "record": {
+      "notFoundTitle": "This user is not here",
+      "notFoundText": "There is no user at this address that you may see. Check the link, or go back to the list.",
+      "backToList": "Back to users",
+      "failed": "The user could not be loaded.",
+      "noHomeUnit": "None",
+      "details": "Details",
+      "access": "Access"
     }
   },
   "profile": {
@@ -465,6 +481,154 @@
     "empty": {
       "title": "No organisation units yet",
       "text": "The root unit appears when the tenant is provisioned."
+    }
+  },
+  "roles": {
+    "title": "Roles",
+    "description": "What people and service accounts may do. A role is a set of permissions; an assignment gives it at a scope.",
+    "name": "Name",
+    "code": "Code",
+    "descriptionLabel": "Description",
+    "principalType": "For",
+    "kind": "Kind",
+    "permissions": "Permissions",
+    "updated": "Updated",
+    "principalTypes": {
+      "user": "People",
+      "service": "Service accounts",
+      "any": "People and service accounts"
+    },
+    "kinds": {
+      "system": "System role",
+      "tenant": "Tenant role"
+    },
+    "permissionCount_one": "{{count}} permission",
+    "permissionCount_other": "{{count}} permissions",
+    "export": "Export roles",
+    "new": "New role",
+    "risk": {
+      "low": "Low risk",
+      "medium": "Medium risk",
+      "high": "High risk",
+      "critical": "Critical risk"
+    },
+    "modules": {
+      "authz": "Authorization",
+      "identity": "Identity",
+      "audit": "Audit",
+      "tenancy": "Tenancy",
+      "fleet": "Fleet",
+      "files": "Files"
+    },
+    "import": {
+      "open": "Import roles",
+      "title": "Import roles",
+      "intro": "Choose a role export from another tenant, or paste it. You see what would change before anything does.",
+      "file": "The export file",
+      "paste": "Or paste the export",
+      "check": "Check the import",
+      "back": "Back",
+      "apply": "Apply the import",
+      "notJson": "This is not a role export. Choose the file, or paste it as the export wrote it.",
+      "dryRun": "This is what the import would do. Nothing has changed yet.",
+      "unknownTitle": "Permissions this tenant does not know",
+      "unknownText": "The import cannot be applied while the document holds them. Remove them from the file, or import into a tenant that has those modules.",
+      "created_one": "{{count}} new role",
+      "created_other": "{{count}} new roles",
+      "changed_one": "{{count}} role changes",
+      "changed_other": "{{count}} roles change",
+      "gains": "Gains: {{permissions}}",
+      "loses": "Loses: {{permissions}}",
+      "fields": "Also changes: {{fields}}",
+      "field": {
+        "name": "the name",
+        "description": "the description",
+        "principal_type": "who it is for"
+      },
+      "unchanged_one": "{{count}} role stays as it is",
+      "unchanged_other": "{{count}} roles stay as they are",
+      "skipped_one": "{{count}} system role skipped",
+      "skipped_other": "{{count}} system roles skipped",
+      "skippedNote": "Every tenant has the system roles already; an import never changes them."
+    },
+    "editor": {
+      "newTitle": "New role",
+      "notFoundTitle": "This role is not here",
+      "notFoundText": "There is no role at this address. It may have been deleted.",
+      "backToList": "Back to roles",
+      "failed": "The role could not be loaded.",
+      "systemTitle": "A system role",
+      "systemNote": "System roles come with Foundation and follow its permission catalogue, so nobody can change or delete them. To choose permissions yourself, create a tenant role.",
+      "readOnlyNote": "You can read this role. Changing roles needs the permission to manage roles for the whole tenant.",
+      "definition": "Definition",
+      "holders": "Who holds it"
+    },
+    "form": {
+      "codeRequired": "Enter a code of at least two characters.",
+      "codeTooLong": "Use at most 100 characters.",
+      "codeShape": "Use lowercase letters, digits and hyphens, starting with a letter.",
+      "codeHint": "It identifies the role in exports and cannot change later.",
+      "nameRequired": "Enter a name.",
+      "nameTooLong": "Use at most 200 characters.",
+      "descriptionTooLong": "Use at most 500 characters.",
+      "principalTypeHint": "A role is for people or for service accounts, not both.",
+      "permissionsHint": "Choose what the role allows. A role can hold only permissions you hold for the whole tenant.",
+      "create": "Create role",
+      "save": "Save changes",
+      "saved": "Saved."
+    },
+    "delete": {
+      "open": "Delete role",
+      "title": "Delete {{name}}?",
+      "message": "{{name}} will be gone for good. A role that is still assigned cannot be deleted: remove its assignments first.",
+      "confirm": "Delete role"
+    },
+    "holders": {
+      "none": "Nobody holds this role where you can see.",
+      "who": "Who",
+      "where": "Where",
+      "since": "Since"
+    }
+  },
+  "access": {
+    "scopes": {
+      "tenant": "The whole tenant",
+      "unit": "This unit only",
+      "unit_with_children": "This unit and the units below it",
+      "record": "One record"
+    },
+    "noReadTitle": "Access is hidden",
+    "noRead": "You cannot see who holds which role here. That needs the permission to read role assignments.",
+    "intro": "The roles {{name}} holds and where each applies. You see the ones at units you may read.",
+    "none": "No roles here",
+    "noneText": "This account holds no role you can see. Without one, it can sign in but do nothing.",
+    "tableLabel": "Roles of {{name}}",
+    "role": "Role",
+    "scope": "Applies to",
+    "unit": "Unit",
+    "since": "Since",
+    "actions": "Actions",
+    "noUnit": "Whole tenant",
+    "grant": {
+      "open": "Grant a role",
+      "title": "Grant a role to {{name}}",
+      "submit": "Grant role",
+      "roleRequired": "Choose a role.",
+      "unitRequired": "Choose a unit on the tree.",
+      "roleHint": "Only roles for this kind of account are listed.",
+      "noRoles": "No role matches.",
+      "where": "Where it applies",
+      "atUnit": "A unit",
+      "includeChildren": "Include the units below it",
+      "includeChildrenHint": "Without it, the role applies to this unit only.",
+      "noUnits": "You cannot see the organisation units, so you cannot grant a role at a unit here."
+    },
+    "remove": {
+      "open": "Remove",
+      "label": "Remove {{role}}",
+      "title": "Remove {{role}}?",
+      "message": "{{name}} loses {{role}} ({{scope}}) at once.",
+      "confirm": "Remove role"
     }
   }
 }

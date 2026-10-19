@@ -1,11 +1,16 @@
 import type { TreeNodeData } from "@mantine/core";
 import type { Kind, Kinds, Unit } from "@/api/authorization";
 
-/** The API's depth-first list as Mantine's tree data, keeping the API's sibling order; each node's value is the unit id. */
+/**
+ * The API's depth-first list as Mantine's tree data, keeping the API's sibling order; each node's value is the unit id.
+ * A reader of part of the tree gets units whose parent is not in the list (ADR-0031): those start the tree.
+ */
 export function toTreeData(units: readonly Unit[]): TreeNodeData[] {
+  const present = new Set(units.map((unit) => unit.id));
   const children = new Map<string | null, Unit[]>();
   for (const unit of units) {
-    children.set(unit.parent_id, [...(children.get(unit.parent_id) ?? []), unit]);
+    const parent = unit.parent_id !== null && present.has(unit.parent_id) ? unit.parent_id : null;
+    children.set(parent, [...(children.get(parent) ?? []), unit]);
   }
   const build = (parent: string | null): TreeNodeData[] =>
     (children.get(parent) ?? []).map((unit) => {

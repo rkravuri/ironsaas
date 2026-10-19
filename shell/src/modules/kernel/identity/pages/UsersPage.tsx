@@ -1,9 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { fetchUsers, type User } from "@/api/identity";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ListPage } from "@/components/templates";
-import { UserDialog } from "./UserDialog";
 
 const columns: DataGridColumn<User>[] = [
   { field: "login_id", headerKey: "users.loginId", sortable: true, filter: "text", flex: 2 },
@@ -17,18 +17,15 @@ const columns: DataGridColumn<User>[] = [
 
 const defaultSort = [{ field: "login_id", direction: "asc" as const }];
 
-/** The users of this tenant (TF-101 through the grid) on the list template; a row opens the user's details. */
+/** The users the reader may see (TF-101 through the grid, ADR-0031) on the list template; a row opens the user's record. */
 export function UsersPage() {
   const { t } = useTranslation();
-  const [open, setOpen] = useState<User | undefined>();
+  const navigate = useNavigate();
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchUsers(query, signal), []);
 
   return (
-    <>
-      <ListPage title={t("users.title")} description={t("users.description")}>
-        <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} onRowOpen={setOpen} />
-      </ListPage>
-      <UserDialog user={open} onClose={() => setOpen(undefined)} />
-    </>
+    <ListPage title={t("users.title")} description={t("users.description")}>
+      <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} onRowOpen={(user) => void navigate(`/users/${user.id}`)} />
+    </ListPage>
   );
 }

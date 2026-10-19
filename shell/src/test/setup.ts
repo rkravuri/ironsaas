@@ -29,4 +29,9 @@ class ResizeObserverStub {
   disconnect() {}
 }
 Object.defineProperty(window, "ResizeObserver", { writable: true, value: ResizeObserverStub });
+
+// jsdom has no font loading API; Mantine's autosizing textarea listens for fonts that finish loading.
+if (!("fonts" in document)) {
+  Object.defineProperty(document, "fonts", { value: { addEventListener: () => {}, removeEventListener: () => {}, ready: Promise.resolve() } });
+}
 }

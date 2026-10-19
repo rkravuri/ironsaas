@@ -51,11 +51,13 @@ export const problem = (status: number, body: Record<string, unknown>, correlati
     headers: { "Content-Type": "application/problem+json", "X-Correlation-Id": correlationId },
   });
 
-export const me = (permissions: string[] = []) => ({
+/** A /me answer: tenant-wide permissions, and those held anywhere (the tenant-wide ones unless a test says otherwise). */
+export const me = (permissions: string[] = [], anywhere: string[] = permissions) => ({
   id: "01a14e12-f3a8-7155-b5b6-17c3abceae77",
   login_id: "admin@acme.localhost",
   display_name: "Admin",
   type: "user",
   permissions,
+  permissions_anywhere: anywhere,
   session: { id: "01a14e12-0000-7000-8000-000000000001", expires_at: "2026-10-19T08:00:00Z", idle_expires_at: "2026-10-18T09:00:00Z" },
 });
