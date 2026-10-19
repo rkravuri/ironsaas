@@ -11,7 +11,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | D3 Templates, panels and forms | done | main | merged 2026-10-18 (110c6ef); the scan, format and the keyboard test on the stack passed on 2026-10-19 |
 | P1 The laptop store survives a restart, and an update heals a unit | done | main | merged 2026-10-19; five commits (5c24448 to b044602) |
 | L1 Three layers: kernel, business, products | done | main | merged 2026-10-19 (7af58bf); twelve commits (a304e52 to 0ff8305); ADR-0029; the laptop reset, acme, bravo and echo provisioned again, smoke 11 of 11 and e2e 6 of 6 on echo |
-| A1 Organisation units | next | | amended for the kernel (ADR-0029); the tree storage goes in ADR-0030 |
+| A1 Organisation units | review | slice/s2-a1 | seven commits (ba5be84 to the status); ADR-0030; on 2026-10-19 make update-unit gave acme, bravo and echo the migrations and their root units, smoke 11 of 11 and e2e 6 of 6 on echo |
 | A2 Roles and scoped assignments | | | |
 | A3 Record policies | | | |
 | D4 Home and the header | | | |
@@ -34,5 +34,9 @@ The running state of the current slice, kept current by Claude Code at the end o
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
 - The shell does not warn before the session expires (TF-021, D4).
 - My profile moves onto the record template (D4).
+- A holder of `authz.units.read` scoped to a unit cannot list the tree (the list is checked tenant-wide), and `/me` lists tenant-wide permissions only, so the units page offers its actions to tenant-wide managers only; A2's scoped view (`/me/access?unit=`) lifts both.
+- Units cannot be reactivated, merged or split yet (TF-223, A8).
+- A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units.
+- Testing Library names a tree item from all its content, the items below it included (Mantine's Tree gives the item no label of its own); the scan passes, but check a parent item with a screen reader before the tree pattern spreads.
 - Since the L1 reset (2026-10-19) acme, bravo and echo are fresh tenants and their administrators' invitations are in `secret/tenants/<slug>/fleet`; the smoke tenant was not provisioned again (`make smoke` without `TENANT` provisions it).
 - PRD section 2.1 and the requirement texts keep the S1 module names, pointed to ADR-0029 from the document control; the PRD split in the design session renames them and divides `Iron.Organisations` between the kernel tree and `Iron.Business.Organisations`.

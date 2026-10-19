@@ -86,7 +86,7 @@ export const kinds = {
 export async function stubConsole(target: Page): Promise<void> {
   await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
   await target.route("**/api/v1/me", (route) =>
-    route.fulfill({ json: { ...me, permissions: ["identity.users.read", "authz.units.read", "authz.units.manage"], home_unit: { id: units[0]!.id, name: units[0]!.name, code: units[0]!.code } } }),
+    route.fulfill({ json: { ...me, permissions: ["identity.users.read", "authz.units.read", "authz.units.manage"], home_unit: { id: units[0].id, name: units[0].name, code: units[0].code } } }),
   );
   await target.route("**/api/v1/organisation-units", (route) => route.fulfill({ json: { data: units } }));
   await target.route("**/api/v1/organisation-kinds", (route) => route.fulfill({ json: kinds }));
