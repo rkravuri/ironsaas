@@ -44,7 +44,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     /// <summary>The services a host would register for the data layer, with a controllable clock and principal.</summary>
-    public ServiceProvider BuildServices(TimeProvider time, ICurrentPrincipal principal)
+    public ServiceProvider BuildServices(TimeProvider time, ICurrentPrincipal principal, Action<IServiceCollection>? configure = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(time);
@@ -52,6 +52,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         services.AddIronDatabase(ConnectionString);
         // The sample context is created with EnsureCreated and has no migrations; the migrate command must still run over it.
         services.AddIronDbContext<SampleDbContext>(options => options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
+        configure?.Invoke(services);
         return services.BuildServiceProvider();
     }
 }

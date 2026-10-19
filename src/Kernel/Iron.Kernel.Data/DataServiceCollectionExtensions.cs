@@ -37,6 +37,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<UnitOfWork>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<UnitOfWork>());
         services.AddScoped<AuditStampInterceptor>();
+        services.AddScoped<OwningOrganisationInterceptor>();
         services.AddScoped<MigrationRunner>();
         services.AddScoped<SeedRunner>();
         services.AddScoped<SchemaCheckRunner>();
@@ -46,7 +47,7 @@ public static class DataServiceCollectionExtensions
 
     /// <summary>
     /// Registers a module's DbContext against the unit's database, in the module's schema, with snake_case names,
-    /// its own migrations history table and the audit stamp interceptor.
+    /// its own migrations history table, the audit stamp interceptor and the owning organisation check.
     /// </summary>
     public static IServiceCollection AddIronDbContext<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder>? configure = null)
         where TContext : ModuleDbContext
@@ -58,7 +59,7 @@ public static class DataServiceCollectionExtensions
         services.AddDbContext<TContext>((provider, options) =>
         {
             DesignTime.Configure<TContext>(options, provider.GetRequiredService<SharedConnection>().Connection);
-            options.AddInterceptors(provider.GetRequiredService<AuditStampInterceptor>());
+            options.AddInterceptors(provider.GetRequiredService<OwningOrganisationInterceptor>(), provider.GetRequiredService<AuditStampInterceptor>());
             configure?.Invoke(options);
         });
 
