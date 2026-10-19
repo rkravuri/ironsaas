@@ -54,6 +54,8 @@ public sealed class IdentityModule : IModule
         services.AddScoped<LoginService>();
         services.AddScoped<InvitationService>();
         services.AddScoped<IPrincipals, PrincipalDirectory>();
+        services.AddScoped<UserService>();
+        services.AddScoped<IValidator<CreateUserRequest>, CreateUserRequestValidator>();
         services.AddScoped<RequestPrincipal>();
         services.AddScoped<ICurrentPrincipal>(provider => provider.GetRequiredService<RequestPrincipal>());
         services.AddScoped<ISeeder, IdentitySeeder>();

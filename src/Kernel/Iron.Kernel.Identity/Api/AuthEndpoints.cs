@@ -10,7 +10,6 @@ using Iron.Kernel.Identity.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using PrincipalType = Iron.Kernel.Identity.Data.PrincipalType;
 
 namespace Iron.Kernel.Identity.Api;
 
@@ -35,7 +34,14 @@ public sealed record LoginResponse(PrincipalResponse Principal, SessionResponse 
 /// <summary>The home unit as <c>/me</c> shows it: enough to name it; the tree has the rest.</summary>
 public sealed record HomeUnitResponse(Guid Id, string Name, string Code);
 
-public sealed record MeResponse(Guid Id, string LoginId, string DisplayName, PrincipalType Type, IReadOnlyList<string> Permissions, SessionResponse Session, HomeUnitResponse? HomeUnit);
+/// <summary>
+/// Who is signed in. <c>permissions</c> are held for the whole tenant; <c>permissions_anywhere</c> at any scope, which
+/// is what the shell's navigation shows (ADR-0031). The API still decides per row and per unit.
+/// </summary>
+public sealed record MeResponse(Guid Id, string LoginId, string DisplayName, PrincipalType Type, IReadOnlyList<string> Permissions, IReadOnlyList<string> PermissionsAnywhere, SessionResponse Session, HomeUnitResponse? HomeUnit);
+
+/// <summary>The permissions the signed-in principal holds at one unit or one record, for the shell to show its actions there.</summary>
+public sealed record AccessResponse(string Scope, IReadOnlyList<string> Permissions);
 
 public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
@@ -70,6 +76,7 @@ internal static class AuthEndpoints
         auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account.");
 
         endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
+        endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=) or a record (?record_type=&record_id=, with &unit= for the record's unit).");
         TokenEndpoints.Map(endpoints);
         UsersEndpoints.Map(endpoints);
     }
@@ -111,9 +118,27 @@ internal static class AuthEndpoints
     {
         var current = principal.Current!;
         var permissions = await roleAssignments.PermissionsOfAsync(current.Id, cancellationToken);
+        var anywhere = await roleAssignments.PermissionsOfAsync(current.Id, AccessScope.Anywhere, cancellationToken);
         var home = current.HomeUnitId is { } unitId ? await units.FindAsync(unitId, cancellationToken) : null;
         var homeUnit = home is null ? null : new HomeUnitResponse(home.Id, home.Name, home.Code);
-        return TypedResults.Ok(new MeResponse(current.Id, current.LoginId, current.DisplayName, current.Type, permissions, Session(current.SessionId, current.SessionExpiresAt, current.IdleExpiresAt), homeUnit));
+        return TypedResults.Ok(new MeResponse(current.Id, current.LoginId, current.DisplayName, current.Type, permissions, anywhere, Session(current.SessionId, current.SessionExpiresAt, current.IdleExpiresAt), homeUnit));
+    }
+
+    /// <summary>
+    /// What the signed-in principal may do at one unit or one record (ADR-0031). For a record the shell passes the
+    /// record's unit too, as it shows it; the answer only decides which actions the shell offers, and every action is
+    /// checked again by its endpoint.
+    /// </summary>
+    private static async Task<IResult> AccessAsync(HttpContext http, RequestPrincipal principal, IRoleAssignments roleAssignments, CancellationToken cancellationToken)
+    {
+        var scope = AccessQuery.Parse(http.Request.Query);
+        if (scope.IsFailure)
+        {
+            return ApiResults.Problem(scope.Error, http);
+        }
+
+        var permissions = await roleAssignments.PermissionsOfAsync(principal.Current!.Id, scope.Value, cancellationToken);
+        return TypedResults.Ok(new AccessResponse(scope.Value.ToString(), permissions));
     }
 
     private static SessionResponse Session(Guid id, DateTimeOffset expiresAt, DateTimeOffset idleExpiresAt) => new(id, expiresAt, idleExpiresAt);

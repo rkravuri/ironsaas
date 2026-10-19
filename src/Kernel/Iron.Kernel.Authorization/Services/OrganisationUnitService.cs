@@ -1,6 +1,7 @@
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
+using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Data.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -27,9 +28,12 @@ public sealed class OrganisationUnitService(
     public const long TreeLockKey = 0x1A_0B_7E_E5;
 
     /// <summary>Every unit, depth first from the root, siblings by name. A tenant's tree is small next to its records (ADR-0030).</summary>
-    public async Task<IReadOnlyList<OrganisationUnit>> TreeAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<OrganisationUnit>> TreeAsync(CancellationToken cancellationToken) => TreeAsync(RecordAccess.Everything, cancellationToken);
+
+    /// <summary>The units a reach covers (ADR-0031), in tree order; a unit whose parent is outside the reach starts a branch.</summary>
+    public async Task<IReadOnlyList<OrganisationUnit>> TreeAsync(RecordAccess access, CancellationToken cancellationToken)
     {
-        var units = await context.OrganisationUnits.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+        var units = await context.OrganisationUnits.AsNoTracking().WhereAccessible(access, u => (Guid?)u.Id, u => u.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         return InTreeOrder(units);
     }
 
@@ -38,7 +42,9 @@ public sealed class OrganisationUnitService(
         ArgumentNullException.ThrowIfNull(units);
         var children = units.Where(u => u.ParentId is not null).ToLookup(u => u.ParentId!.Value);
         var ordered = new List<OrganisationUnit>(units.Count);
-        var stack = new Stack<OrganisationUnit>(units.Where(u => u.IsRoot).OrderByDescending(u => u.Name, StringComparer.OrdinalIgnoreCase));
+        var present = units.Select(u => u.Id).ToHashSet();
+        var tops = units.Where(u => u.ParentId is not { } parent || !present.Contains(parent));
+        var stack = new Stack<OrganisationUnit>(tops.OrderByDescending(u => u.Path.Length).ThenByDescending(u => u.Name, StringComparer.OrdinalIgnoreCase));
         while (stack.Count > 0)
         {
             var unit = stack.Pop();

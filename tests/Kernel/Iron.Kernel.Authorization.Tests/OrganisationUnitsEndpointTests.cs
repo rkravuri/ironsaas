@@ -133,6 +133,28 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    public async Task AReaderOfASubtreeGetsThatPartOfTheTreeWithItsTopFirstAndTheKinds()
+    {
+        var root = await RootIdAsync();
+        var sales = await CreateAsync(root, "Sales");
+        var north = await CreateAsync(sales, "North");
+        var finance = await CreateAsync(root, "Finance");
+        var reader = Ids.New();
+        await AssignAsync(reader, RoleScope.Unit(sales, includeChildren: true));
+
+        using var tree = await SendAsync(HttpMethod.Get, "/api/v1/organisation-units", reader);
+        using var kinds = await SendAsync(HttpMethod.Get, "/api/v1/organisation-kinds", reader);
+        using var outside = await SendAsync(HttpMethod.Get, $"/api/v1/organisation-units/{finance}", reader);
+
+        Assert.Equal(HttpStatusCode.OK, tree.StatusCode);
+        using var body = await JsonAsync(tree);
+        Assert.Equal([sales, north], body.RootElement.GetProperty("data").EnumerateArray().Select(u => u.GetProperty("id").GetGuid()));
+        Assert.Equal(root, body.RootElement.GetProperty("data")[0].GetProperty("parent_id").GetGuid());
+        Assert.Equal(HttpStatusCode.OK, kinds.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, outside.StatusCode);
+    }
+
+    [Fact]
     public async Task AUnitWithActiveChildrenAnswers409()
     {
         var root = await RootIdAsync();
