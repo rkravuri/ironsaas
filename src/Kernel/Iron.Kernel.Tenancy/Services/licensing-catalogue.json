@@ -5,6 +5,7 @@
     "authz",
     "entitlements",
     "files",
+    "flags",
     "identity"
   ],
   "modules": [],
@@ -13,7 +14,97 @@
       "code": "authorization.role_transfer",
       "module": "authz",
       "licence": null,
-      "description": "Export the tenant\u0027s roles to a file and import roles from another tenant"
+      "description": "Export the tenant's roles to a file and import roles from another tenant"
+    }
+  ],
+  "flags": [
+    {
+      "key": "flags.example_release",
+      "module": "flags",
+      "type": "boolean",
+      "kind": "release",
+      "purpose": "An example release flag: changes nothing; proves rules, scopes and rollouts end to end.",
+      "owner": "Platform team",
+      "remove_by": "2027-03-31",
+      "default": false,
+      "status": "active"
+    },
+    {
+      "key": "flags.example_tone",
+      "module": "flags",
+      "type": "string",
+      "kind": "experiment",
+      "purpose": "An example experiment flag with the values warm and plain: changes nothing; proves string flags.",
+      "owner": "Platform team",
+      "remove_by": "2027-03-31",
+      "default": "plain",
+      "status": "active"
+    },
+    {
+      "key": "kill.ai",
+      "module": "kernel",
+      "type": "boolean",
+      "kind": "operational",
+      "purpose": "Stops calls to AI services.",
+      "owner": "Platform operations",
+      "remove_by": null,
+      "default": false,
+      "status": "active"
+    },
+    {
+      "key": "kill.email",
+      "module": "kernel",
+      "type": "boolean",
+      "kind": "operational",
+      "purpose": "Stops outbound email; the messages wait and are retried when it is off (S4).",
+      "owner": "Platform operations",
+      "remove_by": null,
+      "default": false,
+      "status": "active"
+    },
+    {
+      "key": "kill.imports",
+      "module": "kernel",
+      "type": "boolean",
+      "kind": "operational",
+      "purpose": "Stops imports into a tenant, role import among them.",
+      "owner": "Platform operations",
+      "remove_by": null,
+      "default": false,
+      "status": "active"
+    },
+    {
+      "key": "kill.push",
+      "module": "kernel",
+      "type": "boolean",
+      "kind": "operational",
+      "purpose": "Stops live push to browsers and devices.",
+      "owner": "Platform operations",
+      "remove_by": null,
+      "default": false,
+      "status": "active"
+    },
+    {
+      "key": "kill.sms",
+      "module": "kernel",
+      "type": "boolean",
+      "kind": "operational",
+      "purpose": "Stops outbound SMS.",
+      "owner": "Platform operations",
+      "remove_by": null,
+      "default": false,
+      "status": "active"
+    },
+    {
+      "key": "kill.webhooks",
+      "module": "kernel",
+      "type": "boolean",
+      "kind": "operational",
+      "purpose": "Stops outbound webhook calls.",
+      "owner": "Platform operations",
+      "remove_by": null,
+      "default": false,
+      "status": "active"
     }
   ]
 }

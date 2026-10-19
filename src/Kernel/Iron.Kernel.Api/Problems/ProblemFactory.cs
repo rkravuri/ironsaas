@@ -27,6 +27,7 @@ public static class ProblemFactory
             ErrorKind.Forbidden => StatusCodes.Status403Forbidden,
             ErrorKind.NotFound => StatusCodes.Status404NotFound,
             ErrorKind.Conflict => StatusCodes.Status409Conflict,
+            ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
             _ => StatusCodes.Status500InternalServerError,
         };
     }
@@ -40,6 +41,7 @@ public static class ProblemFactory
             ErrorKind.Forbidden => "This action is not allowed.",
             ErrorKind.NotFound => "Not found.",
             ErrorKind.Conflict => "The request conflicts with the current state.",
+            ErrorKind.Unavailable => "This is stopped for now.",
             _ => "Something went wrong.",
         };
     }

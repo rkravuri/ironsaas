@@ -3,13 +3,14 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Entitlements;
 using Iron.Kernel.Files;
+using Iron.Kernel.Flags;
 using Iron.Kernel.Identity;
 
 namespace Iron.Host.Api;
 
 /// <summary>
 /// The modules a tenant unit runs, in order: Audit first (the others write events through its contract), then
-/// Authorization, then Identity (it replaces the default principal), then Files, then Entitlements. The same list is
+/// Authorization, then Identity (it replaces the default principal), then Files, Entitlements and Flags. The same list is
 /// the source of the licensing catalogue the control plane carries (ADR-0034), so a module added here is licensable
 /// there once <c>make catalogue</c> has written the file; a host test fails until it has.
 /// </summary>
@@ -17,7 +18,7 @@ public static class UnitModules
 {
     public const string CatalogueCommand = "catalogue";
 
-    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule()];
+    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule()];
 
     public static bool IsCatalogueCommand(string[] args)
     {
@@ -25,15 +26,37 @@ public static class UnitModules
         return args.Length > 0 && string.Equals(args[0], CatalogueCommand, StringComparison.Ordinal);
     }
 
-    /// <summary><c>catalogue [file]</c>: the licensing catalogue of this build, to the file or to standard output. Builds no host.</summary>
+    /// <summary>
+    /// <c>catalogue [file]</c>: the catalogue of this build, to the file or to standard output. Builds no host. Writing a
+    /// file keeps the flags it marks retired, and refuses, naming them, flags it marks active that the code no longer
+    /// declares (TF-052 AC2, ADR-0035): retiring a flag is an explicit change of the file.
+    /// </summary>
     public static async Task<int> WriteCatalogueAsync(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        var json = LicensingCatalogue.From(All()).ToJson();
+        var catalogue = LicensingCatalogue.From(All());
+        if (args.Length > 1 && File.Exists(args[1]))
+        {
+            var file = LicensingCatalogue.Parse(await File.ReadAllTextAsync(args[1]).ConfigureAwait(false));
+            var problems = LicensingCatalogue.FlagLifecycleProblems(file, catalogue);
+            if (problems.Count > 0)
+            {
+                foreach (var problem in problems)
+                {
+                    await Console.Error.WriteLineAsync(problem).ConfigureAwait(false);
+                }
+
+                return 1;
+            }
+
+            catalogue = catalogue.WithRetiredFrom(file);
+        }
+
+        var json = catalogue.ToJson();
         if (args.Length > 1)
         {
             await File.WriteAllTextAsync(args[1], json).ConfigureAwait(false);
-            await Console.Out.WriteLineAsync($"Wrote the licensing catalogue to {args[1]}.").ConfigureAwait(false);
+            await Console.Out.WriteLineAsync($"Wrote the catalogue to {args[1]}.").ConfigureAwait(false);
         }
         else
         {

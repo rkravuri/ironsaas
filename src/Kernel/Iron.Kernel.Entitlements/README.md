@@ -9,7 +9,7 @@ Placement test: it knows nothing about any business domain, so it is Kernel. It 
 | `Contracts/` | `IEntitlements` (a module for the tenant, a module for one person, a feature), `EntitlementsDocument` with `ModuleEntitlement` and `FeatureEntitlement` (the store's format, written by the control plane), `EntitlementsPermissions` (`entitlements.subscription.read`, `entitlements.seats.read`, `entitlements.seats.manage`), `EntitlementsErrors`, `EntitlementsAuditEvents` |
 | `Data/` | `EntitlementsDbContext`, `LastKnownEntitlements` (one row: the last document and when the store last confirmed it), `SeatAssignment` (module and person, unique), the design-time factory, generated `Migrations/` |
 | `Services/` | `IEntitlementSource` (`StoreEntitlementSource`, `ConfigurationEntitlementSource`), `EntitlementCache`, `EntitlementRefresher` (the read loop and the last known answer), `EntitlementRules` (dates, grace, a feature governed by its module), `EntitlementEvaluator` (`IEntitlements` and Iron.Kernel.Api's `IEntitlementGate`), `SeatService`, `EntitlementsMetrics`, `EntitlementsHealthCheck`, `EntitlementsOptions` |
-| `Api/` | `GET /api/v1/me/context`, `GET /api/v1/subscription`, `GET /api/v1/seats`, `GET /api/v1/seats/usage`, `POST /api/v1/seats`, `DELETE /api/v1/seats/{id}` |
+| `Api/` | `EntitlementsContextPart` (the `entitlements` part of `GET /api/v1/me/context`), `GET /api/v1/subscription`, `GET /api/v1/seats`, `GET /api/v1/seats/usage`, `POST /api/v1/seats`, `DELETE /api/v1/seats/{id}` |
 
 ## How a unit knows
 

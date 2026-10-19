@@ -2,7 +2,7 @@ namespace Iron.Kernel;
 
 /// <summary>
 /// The kind of an expected failure. The API layer maps it to an HTTP status (T5):
-/// Validation 400, Unauthorized 401, Forbidden 403, NotFound 404, Conflict 409, Unexpected 500.
+/// Validation 400, Unauthorized 401, Forbidden 403, NotFound 404, Conflict 409, Unexpected 500, Unavailable 503.
 /// </summary>
 public enum ErrorKind
 {
@@ -23,4 +23,7 @@ public enum ErrorKind
 
     /// <summary>Something failed that should not fail. Logged with its correlation id; the caller sees no details.</summary>
     Unexpected,
+
+    /// <summary>The operation is stopped for now, on purpose (a kill switch, ADR-0035): the caller may try again later.</summary>
+    Unavailable,
 }

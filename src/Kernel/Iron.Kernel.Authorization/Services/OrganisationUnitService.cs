@@ -73,6 +73,14 @@ public sealed class OrganisationUnitService(
         return unit is null ? null : Info(unit);
     }
 
+    public async Task<IReadOnlyList<Guid>> PathAsync(Guid unitId, CancellationToken cancellationToken)
+    {
+        var path = await context.OrganisationUnits.AsNoTracking().Where(u => u.Id == unitId).Select(u => u.Path).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        return path is null
+            ? []
+            : [.. path.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(segment => Guid.ParseExact(segment, "N"))];
+    }
+
     public static OrganisationUnitInfo Info(OrganisationUnit unit)
     {
         ArgumentNullException.ThrowIfNull(unit);

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Kernel.Flags: the rule documents the control plane writes, and the OpenFeature client product code asks. References Iron.Kernel only. -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Product code evaluates flags through OpenFeature's client (TF-050, TF-056), so the contract hands one out. -->
+    <PackageReference Include="OpenFeature" />
+  </ItemGroup>
+
+</Project>

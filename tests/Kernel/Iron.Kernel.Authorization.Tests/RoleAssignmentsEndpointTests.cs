@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Iron.Kernel.Api;
 using Iron.Kernel.Api.Entitlements;
+using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Problems;
@@ -46,6 +47,7 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
         builder.Services.AddIronDatabase(connectionString);
         builder.Services.AddModules(builder.Configuration, [new AuthorizationModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
+        builder.Services.AddScoped<IFlagGate, AllEntitled>();
 
         _app = builder.Build();
         _app.UseIronTelemetry();

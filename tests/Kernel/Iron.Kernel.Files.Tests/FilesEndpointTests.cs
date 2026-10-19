@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using Iron.Kernel.Api;
 using Iron.Kernel.Api.Entitlements;
+using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit;
@@ -46,6 +47,7 @@ public class FilesEndpointTests(FilesFixture fixture) : IAsyncLifetime
         builder.Services.AddIronDatabase(fixture.ConnectionString);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FilesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
+        builder.Services.AddScoped<IFlagGate, AllEntitled>();
 
         _app = builder.Build();
         _app.UseIronTelemetry();
