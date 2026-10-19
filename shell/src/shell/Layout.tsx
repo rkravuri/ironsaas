@@ -11,13 +11,14 @@ import { useRememberPages } from "./remember-pages";
 import { manifests } from "@/modules";
 import { navigationFor } from "@/modules/registry";
 import { HelpButton } from "./HelpPanel";
+import { KillSwitchBanner } from "./KillSwitchBanner";
 import { ProfileMenu } from "./ProfileMenu";
 import { Search, SearchButton } from "./Search";
 
 /**
  * The frame of every signed-in page (S1 plan 3.10, ADR-0033): the header with the tenant's mark, search, help and the
  * profile menu, and nothing that does not work yet; the navigation from the manifests with Home first; the session
- * warning. A notifications bell and an organisation switcher join when S4 and A8 give them something to do.
+ * warning; for administrators, the kill-switch banner above the page (ADR-0035). A notifications bell and an organisation switcher join when S4 and A8 give them something to do.
  */
 export function Layout() {
   const { t } = useTranslation();
@@ -69,6 +70,7 @@ export function Layout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
+        <KillSwitchBanner />
         <Outlet />
       </AppShell.Main>
       <Search />

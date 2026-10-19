@@ -8,6 +8,20 @@
     "toggleNavigation": "Toggle navigation",
     "navigation": "Main navigation"
   },
+  "killSwitch": {
+    "title": "The platform's operator has stopped {{path}} for now",
+    "since": "Since {{time}}. Everything else works as usual, and this note goes when the operator starts it again.",
+    "reason": "The operator's reason: {{reason}}",
+    "noReason": "The operator gave no reason. Ask your platform's operator if you need to know more.",
+    "paths": {
+      "email": "outgoing email",
+      "webhooks": "outgoing webhooks",
+      "sms": "text messages",
+      "ai": "requests to AI services",
+      "push": "live updates to browsers and devices",
+      "imports": "imports"
+    }
+  },
   "login": {
     "title": "Sign in",
     "loginId": "Login identifier",

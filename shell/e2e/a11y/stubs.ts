@@ -50,8 +50,8 @@ function page(url: string) {
 }
 
 /**
- * What /me/context answers (ADR-0034): the enterprise plan, so role export and import show; a test that needs another
- * answer routes its own.
+ * What /me/context answers (ADR-0034, ADR-0035): the enterprise plan, so role export and import show, and the flags
+ * with no kill switch on; a test that needs another answer routes its own.
  */
 export const context = {
   entitlements: {
@@ -61,6 +61,25 @@ export const context = {
     stale: false,
     modules: [] as unknown[],
     features: [{ code: "authorization.role_transfer", status: "enabled", reason: "licensed" }],
+  },
+  flags: {
+    known: true,
+    confirmed_at: "2026-10-20T09:00:00Z",
+    values: [
+      { key: "flags.example_release", type: "boolean", value: false, reason: "default" },
+      { key: "kill.imports", type: "boolean", value: false, reason: "default" },
+    ],
+    kill_switches: [] as unknown[],
+  },
+};
+
+/** The same answer with the platform operator's import kill switch on, as an administrator receives it. */
+export const contextImportsKilled = {
+  ...context,
+  flags: {
+    ...context.flags,
+    values: context.flags.values.map((flag) => (flag.key === "kill.imports" ? { ...flag, value: true, reason: "targeting_match" } : flag)),
+    kill_switches: [{ path: "imports", flag: "kill.imports", since: "2026-10-20T08:30:00Z", reason: "A fault in role import is being fixed; it is back by the afternoon." }],
   },
 };
 
