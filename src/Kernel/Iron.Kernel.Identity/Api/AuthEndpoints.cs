@@ -10,6 +10,7 @@ using Iron.Kernel.Identity.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using PrincipalType = Iron.Kernel.Identity.Data.PrincipalType;
 
 namespace Iron.Kernel.Identity.Api;
 

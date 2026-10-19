@@ -53,6 +53,8 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IOrganisationUnitCheck, OrganisationUnitCheck>();
         services.AddScoped<ISeeder, AuthorizationSeeder>();
         services.AddScoped<RoleService>();
+        services.AddScoped<AssignmentService>();
+        services.AddScoped<IValidator<GrantRoleRequest>, GrantRoleRequestValidator>();
         services.AddScoped<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
         services.AddScoped<IValidator<UpdateRoleRequest>, UpdateRoleRequestValidator>();
         services.AddScoped<IValidator<ImportRolesRequest>, ImportRolesRequestValidator>();
@@ -65,6 +67,7 @@ public sealed class AuthorizationModule : IModule
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         RolesEndpoints.Map(endpoints);
+        RoleAssignmentsEndpoints.Map(endpoints);
         OrganisationUnitsEndpoints.Map(endpoints);
     }
 }

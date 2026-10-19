@@ -1,15 +1,8 @@
 using System.Text.RegularExpressions;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Entities;
 
 namespace Iron.Kernel.Authorization.Data;
-
-/// <summary>Who a role is meant for (TF-032): people or service accounts. Only the tenant administrator system role is for both (ADR-0031).</summary>
-public enum PrincipalType
-{
-    User,
-    Service,
-    Any,
-}
 
 /// <summary>
 /// A named set of permissions (TF-032). The code identifies the role in assignments, export and import; the name is for
@@ -29,7 +22,7 @@ public sealed partial class Role : AuditedEntity
         Permissions = [];
     }
 
-    public Role(string code, string name, string description, bool isSystem, PrincipalType principalType, IEnumerable<string> permissions)
+    public Role(string code, string name, string description, bool isSystem, PrincipalKind principalType, IEnumerable<string> permissions)
     {
         if (!IsValidCode(code))
         {
@@ -52,7 +45,7 @@ public sealed partial class Role : AuditedEntity
 
     public bool IsSystem { get; private set; }
 
-    public PrincipalType PrincipalType { get; private set; }
+    public PrincipalKind PrincipalType { get; private set; }
 
     /// <summary>Permission names, distinct and sorted. Stored as a PostgreSQL text array.</summary>
     public List<string> Permissions { get; private set; }
@@ -62,9 +55,9 @@ public sealed partial class Role : AuditedEntity
     public static bool IsValidName(string? name) => name is not null && name.Trim().Length is > 0 and <= NameMaxLength;
 
     /// <summary>Whether a principal of this kind may hold the role: the role's type, or any type for a role meant for both.</summary>
-    public bool IsFor(PrincipalType principal) => PrincipalType == PrincipalType.Any || PrincipalType == principal;
+    public bool IsFor(PrincipalKind principal) => PrincipalType == PrincipalKind.Any || PrincipalType == principal;
 
-    public void Change(string name, string description, PrincipalType principalType, IEnumerable<string> permissions)
+    public void Change(string name, string description, PrincipalKind principalType, IEnumerable<string> permissions)
     {
         Name = RequireName(name);
         Description = RequireDescription(description);

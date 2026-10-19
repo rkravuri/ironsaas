@@ -3,7 +3,6 @@ using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Time.Testing;
 
 namespace Iron.Kernel.Authorization.Tests;
 
@@ -16,15 +15,17 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     [Fact]
     public async Task ARoleIsCreatedChangedAndDeletedWithThePermissionsBeforeAndAfterInTheAudit()
     {
-        var (audit, roles) = await AsAdministratorAsync();
+        await using var administrator = await AsAdministratorAsync();
+        var roles = administrator.Get<RoleService>();
 
-        var created = await roles.CreateAsync(Code(), new RoleInput("Unit reader", "Reads units.", PrincipalType.User, [AuthorizationPermissions.UnitsRead.Name]), TestContext.Current.CancellationToken);
-        var changed = await roles.UpdateAsync(created.Value.Id, new RoleInput("Unit and role reader", "Reads units and roles.", PrincipalType.User, Reading), TestContext.Current.CancellationToken);
+        var created = await roles.CreateAsync(Code(), new RoleInput("Unit reader", "Reads units.", PrincipalKind.User, [AuthorizationPermissions.UnitsRead.Name]), TestContext.Current.CancellationToken);
+        var changed = await roles.UpdateAsync(created.Value.Id, new RoleInput("Unit and role reader", "Reads units and roles.", PrincipalKind.User, Reading), TestContext.Current.CancellationToken);
         var deleted = await roles.DeleteAsync(created.Value.Id, TestContext.Current.CancellationToken);
 
         Assert.True(created.IsSuccess);
         Assert.Equal(Reading.Order(StringComparer.Ordinal), changed.Value.Permissions);
         Assert.True(deleted.IsSuccess);
+        var audit = administrator.Audit;
         var create = Assert.Single(audit.Events, e => e.Action == AuthorizationAuditEvents.RoleCreated);
         Assert.Equal(string.Empty, create.Details?["permissions_before"]);
         Assert.Equal(AuthorizationPermissions.UnitsRead.Name, create.Details?["permissions_after"]);
@@ -39,11 +40,11 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     [Fact]
     public async Task ASystemRoleIsReadOnly()
     {
-        var (_, roles) = await AsAdministratorAsync();
-        await using var scope = Services(Ids.New()).CreateAsyncScope();
-        var readOnly = await scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>().Roles.AsNoTracking().SingleAsync(r => r.Code == SystemRoles.ReadOnly, TestContext.Current.CancellationToken);
+        await using var administrator = await AsAdministratorAsync();
+        var roles = administrator.Get<RoleService>();
+        var readOnly = await administrator.Get<AuthorizationDbContext>().Roles.AsNoTracking().SingleAsync(r => r.Code == SystemRoles.ReadOnly, TestContext.Current.CancellationToken);
 
-        var change = await roles.UpdateAsync(readOnly.Id, new RoleInput("Mine now", string.Empty, PrincipalType.User, []), TestContext.Current.CancellationToken);
+        var change = await roles.UpdateAsync(readOnly.Id, new RoleInput("Mine now", string.Empty, PrincipalKind.User, []), TestContext.Current.CancellationToken);
         var delete = await roles.DeleteAsync(readOnly.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(AuthorizationErrors.RoleSystem, change.Error.Code);
@@ -54,11 +55,12 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     [Fact]
     public async Task ARoleStillAssignedIsNotDeleted()
     {
-        var (_, roles) = await AsAdministratorAsync();
-        var role = await roles.CreateAsync(Code(), new RoleInput("Assigned", string.Empty, PrincipalType.User, Reading), TestContext.Current.CancellationToken);
-        await using (var scope = Services(SystemPrincipal.SystemId).CreateAsyncScope())
+        await using var administrator = await AsAdministratorAsync();
+        var roles = administrator.Get<RoleService>();
+        var role = await roles.CreateAsync(Code(), new RoleInput("Assigned", string.Empty, PrincipalKind.User, Reading), TestContext.Current.CancellationToken);
+        await using (var system = fixture.Scope(SystemPrincipal.SystemId))
         {
-            Assert.True((await scope.ServiceProvider.GetRequiredService<IRoleAssignments>().AssignAsync(Ids.New(), role.Value.Code, TestContext.Current.CancellationToken)).IsSuccess);
+            Assert.True((await system.Get<IRoleAssignments>().AssignAsync(Ids.New(), role.Value.Code, TestContext.Current.CancellationToken)).IsSuccess);
         }
 
         var delete = await roles.DeleteAsync(role.Value.Id, TestContext.Current.CancellationToken);
@@ -69,13 +71,14 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     [Fact]
     public async Task UnknownPermissionsATakenCodeAndARoleForBothTypesAreRefused()
     {
-        var (_, roles) = await AsAdministratorAsync();
+        await using var administrator = await AsAdministratorAsync();
+        var roles = administrator.Get<RoleService>();
         var code = Code();
-        await roles.CreateAsync(code, new RoleInput("First", string.Empty, PrincipalType.User, []), TestContext.Current.CancellationToken);
+        await roles.CreateAsync(code, new RoleInput("First", string.Empty, PrincipalKind.User, []), TestContext.Current.CancellationToken);
 
-        var unknown = await roles.CreateAsync(Code(), new RoleInput("Unknown", string.Empty, PrincipalType.User, ["procurement.orders.approve"]), TestContext.Current.CancellationToken);
-        var taken = await roles.CreateAsync(code, new RoleInput("Second", string.Empty, PrincipalType.User, []), TestContext.Current.CancellationToken);
-        var both = await roles.CreateAsync(Code(), new RoleInput("Both", string.Empty, PrincipalType.Any, []), TestContext.Current.CancellationToken);
+        var unknown = await roles.CreateAsync(Code(), new RoleInput("Unknown", string.Empty, PrincipalKind.User, ["procurement.orders.approve"]), TestContext.Current.CancellationToken);
+        var taken = await roles.CreateAsync(code, new RoleInput("Second", string.Empty, PrincipalKind.User, []), TestContext.Current.CancellationToken);
+        var both = await roles.CreateAsync(Code(), new RoleInput("Both", string.Empty, PrincipalKind.Any, []), TestContext.Current.CancellationToken);
 
         Assert.Equal(AuthorizationErrors.RolePermissionUnknown, unknown.Error.Code);
         Assert.Equal("permissions", Assert.Single(unknown.Error.Fields).Field);
@@ -88,22 +91,22 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     public async Task ARoleIsSavedOnlyWithPermissionsItsEditorHoldsTenantWide()
     {
         var editor = Ids.New();
-        await using (var setup = Services(SystemPrincipal.SystemId).CreateAsyncScope())
+        await using (var setup = fixture.Scope(SystemPrincipal.SystemId))
         {
             var editorRole = Code();
-            var context = setup.ServiceProvider.GetRequiredService<AuthorizationDbContext>();
-            context.Roles.Add(new Role(editorRole, "Role editor", string.Empty, isSystem: false, PrincipalType.User, [AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.RolesManage.Name]));
+            var context = setup.Get<AuthorizationDbContext>();
+            context.Roles.Add(new Role(editorRole, "Role editor", string.Empty, isSystem: false, PrincipalKind.User, [AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.RolesManage.Name]));
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
-            await AssignAsync(setup, editor, editorRole);
-            await AssignAsync(setup, editor, SystemRoles.TenantAdministrator, RoleScope.Unit((await OrganisationUnitServiceTests.RootAsync(setup)).Id, includeChildren: true));
+            await AssignAsync(setup.Scope, editor, editorRole);
+            await AssignAsync(setup.Scope, editor, SystemRoles.TenantAdministrator, RoleScope.Unit((await OrganisationUnitServiceTests.RootAsync(setup.Scope)).Id, includeChildren: true));
         }
 
-        await using var scope = Services(editor).CreateAsyncScope();
-        var roles = scope.ServiceProvider.GetRequiredService<RoleService>();
+        await using var scope = fixture.Scope(editor);
+        var roles = scope.Get<RoleService>();
 
-        var within = await roles.CreateAsync(Code(), new RoleInput("Role reader", string.Empty, PrincipalType.User, [AuthorizationPermissions.RolesRead.Name]), TestContext.Current.CancellationToken);
-        var beyond = await roles.CreateAsync(Code(), new RoleInput("Unit manager", string.Empty, PrincipalType.User, [AuthorizationPermissions.UnitsManage.Name]), TestContext.Current.CancellationToken);
-        var changedBeyond = await roles.UpdateAsync(within.Value.Id, new RoleInput("Role reader", string.Empty, PrincipalType.User, [AuthorizationPermissions.AssignmentsManage.Name]), TestContext.Current.CancellationToken);
+        var within = await roles.CreateAsync(Code(), new RoleInput("Role reader", string.Empty, PrincipalKind.User, [AuthorizationPermissions.RolesRead.Name]), TestContext.Current.CancellationToken);
+        var beyond = await roles.CreateAsync(Code(), new RoleInput("Unit manager", string.Empty, PrincipalKind.User, [AuthorizationPermissions.UnitsManage.Name]), TestContext.Current.CancellationToken);
+        var changedBeyond = await roles.UpdateAsync(within.Value.Id, new RoleInput("Role reader", string.Empty, PrincipalKind.User, [AuthorizationPermissions.AssignmentsManage.Name]), TestContext.Current.CancellationToken);
 
         Assert.True(within.IsSuccess);
         Assert.Equal(AuthorizationErrors.RoleEscalation, beyond.Error.Code);
@@ -120,18 +123,14 @@ public class RoleServiceTests(AuthorizationFixture fixture)
         Assert.True(result.IsSuccess, result.IsFailure ? result.Error.Message : null);
     }
 
-    private async Task<(RecordingAuditWriter Audit, RoleService Roles)> AsAdministratorAsync()
+    private async Task<TestScope> AsAdministratorAsync()
     {
         var administrator = Ids.New();
-        await using (var setup = Services(SystemPrincipal.SystemId).CreateAsyncScope())
+        await using (var setup = fixture.Scope(SystemPrincipal.SystemId))
         {
-            await AssignAsync(setup, administrator, SystemRoles.TenantAdministrator);
+            await AssignAsync(setup.Scope, administrator, SystemRoles.TenantAdministrator);
         }
 
-        var audit = new RecordingAuditWriter();
-        var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(administrator), audit);
-        return (audit, provider.CreateScope().ServiceProvider.GetRequiredService<RoleService>());
+        return fixture.Scope(administrator);
     }
-
-    private ServiceProvider Services(Guid principal) => fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(principal), new RecordingAuditWriter());
 }

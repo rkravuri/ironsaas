@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Iron.Kernel.Authorization.Services;
 
 /// <summary>What a tenant role is made of when it is created or changed; the code is fixed at creation.</summary>
-public sealed record RoleInput(string Name, string Description, PrincipalType PrincipalType, IReadOnlyList<string> Permissions);
+public sealed record RoleInput(string Name, string Description, PrincipalKind PrincipalType, IReadOnlyList<string> Permissions);
 
 /// <summary>The export of a tenant's roles (TF-032): a format version and, per role, what another tenant needs to recreate it.</summary>
 public sealed record RoleExport(int FormatVersion, IReadOnlyList<RoleDocument> Roles)
@@ -17,7 +17,7 @@ public sealed record RoleExport(int FormatVersion, IReadOnlyList<RoleDocument> R
     public const int CurrentFormat = 1;
 }
 
-public sealed record RoleDocument(string Code, string Name, string Description, PrincipalType PrincipalType, IReadOnlyList<string> Permissions);
+public sealed record RoleDocument(string Code, string Name, string Description, PrincipalKind PrincipalType, IReadOnlyList<string> Permissions);
 
 public sealed record RoleChange(string Code, IReadOnlyList<string> Added, IReadOnlyList<string> Removed, IReadOnlyList<string> Fields);
 
@@ -270,7 +270,7 @@ public sealed class RoleService(
             return Error.Validation(ApiErrors.Validation, "The description is too long.", new FieldError("description", "too_long", $"Use at most {Role.DescriptionMaxLength} characters."));
         }
 
-        if (input.PrincipalType is not (PrincipalType.User or PrincipalType.Service))
+        if (input.PrincipalType is not (PrincipalKind.User or PrincipalKind.Service))
         {
             return Error.Validation(AuthorizationErrors.RolePrincipalType, "A tenant role is for people or for service accounts.", new FieldError("principal_type", "invalid", "Choose people or service accounts."));
         }
@@ -294,7 +294,7 @@ public sealed class RoleService(
             return Error.Validation(AuthorizationErrors.ImportFormat, $"The document lists the role '{duplicate.Key}' twice.");
         }
 
-        var bad = document.Roles.FirstOrDefault(r => !Role.IsValidCode(r.Code) || !Role.IsValidName(r.Name) || r.PrincipalType is not (PrincipalType.User or PrincipalType.Service) || r.Permissions is null);
+        var bad = document.Roles.FirstOrDefault(r => !Role.IsValidCode(r.Code) || !Role.IsValidName(r.Name) || r.PrincipalType is not (PrincipalKind.User or PrincipalKind.Service) || r.Permissions is null);
         return bad is null
             ? null
             : Error.Validation(AuthorizationErrors.ImportFormat, $"The role '{bad.Code}' in the document has a code, a name or a principal type this tenant cannot take.");
@@ -322,7 +322,7 @@ public sealed class RoleService(
         }
     }
 
-    private static List<string> ChangedFields(Role role, string name, string description, PrincipalType principalType)
+    private static List<string> ChangedFields(Role role, string name, string description, PrincipalKind principalType)
     {
         var fields = new List<string>();
         if (!string.Equals(role.Name, (name ?? string.Empty).Trim(), StringComparison.Ordinal))

@@ -42,9 +42,9 @@ public sealed class AuthorizationSeeder(
         var all = catalogue.All.Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
         var reads = all.Where(name => name.EndsWith(".read", StringComparison.Ordinal)).ToList();
 
-        await UpsertAsync(SystemRoles.TenantAdministrator, "Tenant administrator", "Every permission of this tenant.", PrincipalType.Any, all, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ReadOnly, "Read only", "Read permissions only.", PrincipalType.User, reads, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalType.Service, reads, cancellationToken).ConfigureAwait(false);
+        await UpsertAsync(SystemRoles.TenantAdministrator, "Tenant administrator", "Every permission of this tenant.", PrincipalKind.Any, all, cancellationToken).ConfigureAwait(false);
+        await UpsertAsync(SystemRoles.ReadOnly, "Read only", "Read permissions only.", PrincipalKind.User, reads, cancellationToken).ConfigureAwait(false);
+        await UpsertAsync(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalKind.Service, reads, cancellationToken).ConfigureAwait(false);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var fallback = tenant?.Id.Value;
@@ -53,7 +53,7 @@ public sealed class AuthorizationSeeder(
         await units.EnsureRootAsync(name, code, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task UpsertAsync(string code, string name, string description, PrincipalType principalType, List<string> permissions, CancellationToken cancellationToken)
+    private async Task UpsertAsync(string code, string name, string description, PrincipalKind principalType, List<string> permissions, CancellationToken cancellationToken)
     {
         var role = await context.Roles.SingleOrDefaultAsync(r => r.Code == code, cancellationToken).ConfigureAwait(false);
         if (role is null)

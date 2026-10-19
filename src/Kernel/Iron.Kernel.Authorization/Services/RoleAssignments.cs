@@ -31,18 +31,10 @@ public sealed class RoleAssignments(
             return Error.NotFound(AuthorizationErrors.RoleNotFound, $"There is no role with the code '{roleCode}'.");
         }
 
-        if (scope.UnitId is { } unitId)
+        var unit = await CheckUnitAsync(context, scope, cancellationToken).ConfigureAwait(false);
+        if (unit is not null)
         {
-            var unit = await context.OrganisationUnits.AsNoTracking().SingleOrDefaultAsync(u => u.Id == unitId, cancellationToken).ConfigureAwait(false);
-            if (unit is null)
-            {
-                return Error.Validation(AuthorizationErrors.UnitNotFound, "There is no organisation unit with this id; a role can only be assigned to a unit that exists.", new FieldError("unit_id", "not_found", "Choose an existing unit."));
-            }
-
-            if (!unit.IsActive)
-            {
-                return Error.Validation(AuthorizationErrors.UnitInactive, $"The unit '{unit.Name}' is deactivated; a role cannot be assigned to it.", new FieldError("unit_id", "inactive", "Choose an active unit."));
-            }
+            return unit;
         }
 
         var kind = Scopes.NameOf(scope.Kind);
@@ -63,6 +55,25 @@ public sealed class RoleAssignments(
 
         grants.Forget(principalId); // the grant shows on the next request, not after the cache window
         return Result.Success();
+    }
+
+    /// <summary>A unit scope names a unit that exists and is active (TF-033 AC4); other scopes pass.</summary>
+    internal static async Task<Error?> CheckUnitAsync(AuthorizationDbContext context, RoleScope scope, CancellationToken cancellationToken)
+    {
+        if (scope.UnitId is not { } unitId)
+        {
+            return null;
+        }
+
+        var unit = await context.OrganisationUnits.AsNoTracking().SingleOrDefaultAsync(u => u.Id == unitId, cancellationToken).ConfigureAwait(false);
+        if (unit is null)
+        {
+            return Error.Validation(AuthorizationErrors.UnitNotFound, "There is no organisation unit with this id; a role can only be assigned to a unit that exists.", new FieldError("unit_id", "not_found", "Choose an existing unit."));
+        }
+
+        return unit.IsActive
+            ? null
+            : Error.Validation(AuthorizationErrors.UnitInactive, $"The unit '{unit.Name}' is deactivated; a role cannot be assigned to it.", new FieldError("unit_id", "inactive", "Choose an active unit."));
     }
 
     public async Task<IReadOnlyList<string>> PermissionsOfAsync(Guid principalId, CancellationToken cancellationToken)

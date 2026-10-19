@@ -22,7 +22,7 @@ public sealed record RoleResponse(
     string Name,
     string Description,
     bool IsSystem,
-    PrincipalType PrincipalType,
+    PrincipalKind PrincipalType,
     IReadOnlyList<string> Permissions,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
@@ -35,9 +35,9 @@ public sealed record RoleResponse(
     }
 }
 
-public sealed record CreateRoleRequest(string Code, string Name, string? Description, PrincipalType PrincipalType, IReadOnlyList<string> Permissions);
+public sealed record CreateRoleRequest(string Code, string Name, string? Description, PrincipalKind PrincipalType, IReadOnlyList<string> Permissions);
 
-public sealed record UpdateRoleRequest(string Name, string? Description, PrincipalType PrincipalType, IReadOnlyList<string> Permissions);
+public sealed record UpdateRoleRequest(string Name, string? Description, PrincipalKind PrincipalType, IReadOnlyList<string> Permissions);
 
 public sealed record ImportRolesRequest(bool DryRun, RoleExport Document);
 

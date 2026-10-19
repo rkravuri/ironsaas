@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +20,9 @@ public sealed class AuthorizationFixture : IAsyncLifetime
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19rc1").Build();
 
     public string ConnectionString => _container.GetConnectionString();
+
+    /// <summary>The principals Identity would answer for; a test adds the ones it grants roles to.</summary>
+    public TestPrincipals Principals { get; } = new();
 
     public async ValueTask InitializeAsync()
     {
@@ -46,6 +51,13 @@ public sealed class AuthorizationFixture : IAsyncLifetime
         return connectionString;
     }
 
+    /// <summary>A scope of the module's services acting as one principal; disposing it disposes its provider and closes its connections.</summary>
+    public TestScope Scope(Guid principal, RecordingAuditWriter? audit = null, string? connectionString = null)
+    {
+        audit ??= new RecordingAuditWriter();
+        return new TestScope(BuildServices(new FakeTimeProvider(), new FixedPrincipal(principal), audit, connectionString), audit);
+    }
+
     /// <summary>The services a host would have for this module, with a controllable clock, principal and audit writer.</summary>
     public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null)
     {
@@ -53,6 +65,7 @@ public sealed class AuthorizationFixture : IAsyncLifetime
         services.AddSingleton<TimeProvider>(time);
         services.AddSingleton(principal);
         services.AddSingleton<IAuditWriter>(audit);
+        services.AddSingleton<IPrincipals>(Principals);
         services.AddLogging();
         services.AddIronDatabase(connectionString ?? ConnectionString);
         services.AddModules(new ConfigurationBuilder().Build(), [new AuthorizationModule()]);
@@ -77,6 +90,52 @@ public sealed class HeaderPrincipal(IHttpContextAccessor accessor) : ICurrentPri
     public const string HeaderName = "X-Test-Principal";
 
     public Guid Id => Guid.TryParse(accessor.HttpContext?.Request.Headers[HeaderName].ToString(), out var id) ? id : Guid.Empty;
+}
+
+/// <summary>A provider and one scope of it, disposed together.</summary>
+public sealed class TestScope : IAsyncDisposable
+{
+    private readonly ServiceProvider _provider;
+
+    public TestScope(ServiceProvider provider, RecordingAuditWriter audit)
+    {
+        _provider = provider;
+        Audit = audit;
+        Scope = provider.CreateAsyncScope();
+    }
+
+    public AsyncServiceScope Scope { get; }
+
+    public RecordingAuditWriter Audit { get; }
+
+    public T Get<T>()
+        where T : notnull => Scope.ServiceProvider.GetRequiredService<T>();
+
+    public async ValueTask DisposeAsync()
+    {
+        await Scope.DisposeAsync();
+        await _provider.DisposeAsync();
+    }
+}
+
+/// <summary>Stands in for Identity's principal directory (ADR-0031).</summary>
+public sealed class TestPrincipals : IPrincipals
+{
+    private readonly ConcurrentDictionary<Guid, PrincipalSummary> _principals = new();
+
+    public Guid Add(PrincipalKind kind = PrincipalKind.User, Guid? homeUnit = null)
+    {
+        var id = Ids.New();
+        _principals[id] = new PrincipalSummary(id, kind, $"Principal {id:N}"[..18], homeUnit);
+        return id;
+    }
+
+    public Task<IReadOnlyDictionary<Guid, PrincipalSummary>> FindAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        IReadOnlyDictionary<Guid, PrincipalSummary> found = ids.Where(_principals.ContainsKey).Distinct().ToDictionary(id => id, id => _principals[id]);
+        return Task.FromResult(found);
+    }
 }
 
 public sealed class RecordingAuditWriter : IAuditWriter

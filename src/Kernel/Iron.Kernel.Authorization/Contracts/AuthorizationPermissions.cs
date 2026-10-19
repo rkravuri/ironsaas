@@ -7,13 +7,15 @@ public static class AuthorizationPermissions
 
     public static readonly Permission RolesManage = new("authz.roles.manage", "Create, change and delete tenant roles", Risk.High);
 
+    public static readonly Permission AssignmentsRead = new("authz.assignments.read", "See who holds which role, and where", Risk.Low);
+
     public static readonly Permission AssignmentsManage = new("authz.assignments.manage", "Assign roles to principals and remove assignments", Risk.High);
 
     public static readonly Permission UnitsRead = new("authz.units.read", "View the organisation units of this tenant", Risk.Low);
 
     public static readonly Permission UnitsManage = new("authz.units.manage", "Create, rename, move and deactivate organisation units", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsManage, UnitsRead, UnitsManage];
+    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage];
 }
 
 /// <summary>The system roles every tenant has (TF-032). They cannot be edited; the seeder keeps them in step with the catalogue.</summary>
