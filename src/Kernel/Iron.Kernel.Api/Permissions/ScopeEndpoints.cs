@@ -57,8 +57,26 @@ public sealed class RecordScopeMetadata(string recordType, string routeValue, Fu
     }
 }
 
+/// <summary>The endpoint keeps the rows its caller may see and answers 404 for the others (ADR-0031): the permission counts at any scope.</summary>
+public sealed class RowScopeMetadata : ScopeMetadata
+{
+    public override ValueTask<AccessScope> ResolveAsync(HttpContext http, CancellationToken cancellationToken) => ValueTask.FromResult(AccessScope.Anywhere);
+}
+
 public static class ScopeEndpointExtensions
 {
+    /// <summary>
+    /// The endpoint filters its own rows by the caller's access (<c>IRecordAccess</c> and <c>WhereAccessible</c>) and
+    /// answers 404 for a row outside it, so the filter only checks that the permission is held at some scope (ADR-0031).
+    /// Never for an endpoint that changes one place: that one declares the place.
+    /// </summary>
+    public static TBuilder ScopedByRow<TBuilder>(this TBuilder builder)
+        where TBuilder : IEndpointConventionBuilder
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder.WithMetadata(new RowScopeMetadata());
+    }
+
     /// <summary>The permission of this endpoint is checked at the organisation unit named by a route value (default <c>id</c>).</summary>
     public static TBuilder ScopedToUnit<TBuilder>(this TBuilder builder, string routeValue = "id")
         where TBuilder : IEndpointConventionBuilder

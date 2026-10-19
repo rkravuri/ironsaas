@@ -37,6 +37,7 @@ public class ScopedPermissionFilterTests : IAsyncLifetime
         _app.UseIronTelemetry();
         _app.UseIronApi();
         _app.MapGet("/api/v1/things", () => "things").RequirePermission(Read);
+        _app.MapGet("/api/v1/rows", () => "rows").RequirePermission(Read).ScopedByRow();
         _app.MapGet("/api/v1/units/{id}", (string id) => id).RequirePermission(Read).ScopedToUnit();
         _app.MapGet("/api/v1/things/{id}", (string id) => id)
             .RequirePermission(Read)
@@ -58,6 +59,12 @@ public class ScopedPermissionFilterTests : IAsyncLifetime
     public async Task WithoutAMarkerTheCheckIsTenantWide()
     {
         Assert.Equal(AccessScope.Tenant, await ScopeOf("/api/v1/things"));
+    }
+
+    [Fact]
+    public async Task ScopedByRowChecksThePermissionAnywhere()
+    {
+        Assert.Equal(AccessScope.Anywhere, await ScopeOf("/api/v1/rows"));
     }
 
     [Fact]
