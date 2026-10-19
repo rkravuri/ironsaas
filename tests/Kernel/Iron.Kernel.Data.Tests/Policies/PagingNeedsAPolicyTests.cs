@@ -35,7 +35,7 @@ public class PagingNeedsAPolicyTests
 
         var error = Assert.Single(errors);
         Assert.Equal("CS0311", error.Id);
-        Assert.Contains("ITenantWide", error.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
+        Assert.Contains("IOwnAccessRule", error.GetMessage(CultureInfo.InvariantCulture), StringComparison.Ordinal);
     }
 
     [Fact]

@@ -57,13 +57,13 @@ public static class ListQueryExtensions
     }
 
     /// <summary>
-    /// One page of the query with its total count, for the list envelope, for data that belongs to the whole tenant.
-    /// A business record is paged through its policy instead (<c>IRecordPolicies.ApplyAsync</c>, then
-    /// <c>PolicyQuery.ToPageAsync</c>): it is never <see cref="ITenantWide"/>, so paging its raw query does not compile
-    /// (CS0311, ADR-0032).
+    /// One page of the query with its total count, for the list envelope, for an entity whose module applies its own
+    /// access rule. A business record is paged through its policy instead (<c>IRecordPolicies.ApplyAsync</c>, then
+    /// <c>PolicyQuery.ToPageAsync</c>): it is never <see cref="IOwnAccessRule"/>, so paging its raw query does not
+    /// compile (CS0311, ADR-0032).
     /// </summary>
     public static Task<Page<T>> ToPageAsync<T>(this IQueryable<T> source, PageRequest page, CancellationToken cancellationToken)
-        where T : ITenantWide => PageAsync(source, page, cancellationToken);
+        where T : IOwnAccessRule => PageAsync(source, page, cancellationToken);
 
     /// <summary>The paging itself: the total, then the page, both counted over the same query.</summary>
     internal static async Task<Page<T>> PageAsync<T>(IQueryable<T> source, PageRequest page, CancellationToken cancellationToken)

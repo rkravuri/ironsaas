@@ -67,11 +67,13 @@ public static class SamplePolicies
             RecordRules.UnitVisibility<Widget>(SamplePermissions.WidgetsRead, (RecordActions.Update, SamplePermissions.WidgetsManage)));
 }
 
-/// <summary>A context whose business record is also marked tenant-wide, for the model check's refusal (ADR-0032).</summary>
+/// <summary>A context whose business records carry the markers of other entities, for the model check's refusal (ADR-0032).</summary>
 [Schema("kernel_sample_marked")]
 public sealed class ContextWithAMarkedRecord(DbContextOptions<ContextWithAMarkedRecord> options) : ModuleDbContext(options)
 {
     public DbSet<MarkedRecord> MarkedRecords => Set<MarkedRecord>();
+
+    public DbSet<OwnRuleRecord> OwnRuleRecords => Set<OwnRuleRecord>();
 
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
@@ -85,6 +87,18 @@ public sealed class MarkedRecord : BusinessRecord, ITenantWide
     }
 
     public MarkedRecord(Guid owningOrganisationId)
+        : base(owningOrganisationId)
+    {
+    }
+}
+
+public sealed class OwnRuleRecord : BusinessRecord, IOwnAccessRule
+{
+    private OwnRuleRecord()
+    {
+    }
+
+    public OwnRuleRecord(Guid owningOrganisationId)
         : base(owningOrganisationId)
     {
     }

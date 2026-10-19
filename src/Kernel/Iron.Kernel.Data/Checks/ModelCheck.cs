@@ -8,7 +8,7 @@ namespace Iron.Kernel.Data.Checks;
 /// Checks an Entity Framework model before any database exists: every mapped type derives from <see cref="Entity"/>,
 /// and in a business module (a product) every entity is a <see cref="BusinessRecord"/> unless it is marked
 /// <see cref="ITenantWide"/> on purpose (TF-220: the build fails when a business entity lacks the owning organisation).
-/// In every module, a business record is never also ITenantWide, which would let it page without its policy (ADR-0032).
+/// In every module, a business record carries neither ITenantWide nor IOwnAccessRule, which would let it page without its policy (ADR-0032).
 /// </summary>
 public static class ModelCheck
 {
@@ -32,10 +32,11 @@ public static class ModelCheck
                 continue;
             }
 
-            if (typeof(BusinessRecord).IsAssignableFrom(clrType) && typeof(ITenantWide).IsAssignableFrom(clrType))
+            if (typeof(BusinessRecord).IsAssignableFrom(clrType) && typeof(IOwnAccessRule).IsAssignableFrom(clrType))
             {
+                var marker = typeof(ITenantWide).IsAssignableFrom(clrType) ? nameof(ITenantWide) : nameof(IOwnAccessRule);
                 violations.Add(
-                    $"{contextName}: {clrType.Name} is a BusinessRecord marked ITenantWide. A business record is read and paged through its record policy; remove ITenantWide (ADR-0032).");
+                    $"{contextName}: {clrType.Name} is a BusinessRecord marked {marker}. A business record is read and paged through its record policy; remove {marker} (ADR-0032).");
                 continue;
             }
 

@@ -70,13 +70,15 @@ public class ConventionsTests(PostgresFixture fixture)
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void TheModelCheckRefusesABusinessRecordMarkedTenantWideInEveryModule(bool isBusinessModule)
+    public void TheModelCheckRefusesABusinessRecordCarryingEitherMarkerInEveryModule(bool isBusinessModule)
     {
         var options = new DbContextOptionsBuilder<ContextWithAMarkedRecord>().UseNpgsql(fixture.ConnectionString).Options;
         using var context = new ContextWithAMarkedRecord(options);
 
-        var violation = Assert.Single(ModelCheck.Check(context.Model, nameof(ContextWithAMarkedRecord), isBusinessModule));
+        var violations = ModelCheck.Check(context.Model, nameof(ContextWithAMarkedRecord), isBusinessModule);
 
-        Assert.Contains("MarkedRecord is a BusinessRecord marked ITenantWide", violation, StringComparison.Ordinal);
+        Assert.Equal(2, violations.Count);
+        Assert.Contains(violations, v => v.Contains("MarkedRecord is a BusinessRecord marked ITenantWide", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.Contains("OwnRuleRecord is a BusinessRecord marked IOwnAccessRule", StringComparison.Ordinal));
     }
 }

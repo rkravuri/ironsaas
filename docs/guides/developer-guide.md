@@ -78,7 +78,7 @@ The messages name the project file or the assembly and the forbidden reference.
 
 - Group the resource with `endpoints.MapApiGroup("users")`; the path becomes `/api/v1/users`. Resource names are plural kebab-case nouns.
 - Handlers return `IResult`. A service result goes through `ApiResults.From(result, http, value => TypedResults.Ok(value))`; a failure becomes problem details on its own.
-- Lists: declare the fields once in a `ListFields<T>` (snake_case names, pointing at the entity properties, with a default sort), parse with `ListQueryParser.Parse(http.Request.Query, fields)`, apply with `.ApplyListQuery(query, fields).ToPageAsync(query.Page, ct)` and return `ApiResults.List(page, http, query)`. That works for data marked `ITenantWide`; a business record pages through its policy (see Record policies).
+- Lists: declare the fields once in a `ListFields<T>` (snake_case names, pointing at the entity properties, with a default sort), parse with `ListQueryParser.Parse(http.Request.Query, fields)`, apply with `.ApplyListQuery(query, fields).ToPageAsync(query.Page, ct)` and return `ApiResults.List(page, http, query)`. That works for an entity marked `IOwnAccessRule` (its module applies its own access rule; `ITenantWide` is one); a business record pages through its policy (see Record policies).
 - Request bodies: write an `AbstractValidator<TRequest>`, register it in the module's `AddServices`, and add `.Validate<TRequest>()` to the endpoint.
 - Never catch exceptions to return an error status; let the unexpected exception handler produce the 500 problem with the correlation id. Return `Error`s for expected failures.
 - The OpenAPI document and the Scalar browser are at `/openapi/v1.json` and `/scalar/v1` in Development.
@@ -183,7 +183,7 @@ The hook asks only when the principal holds the permission somewhere, and caches
 
 ## Record policies (A3, ADR-0032)
 
-Every business record type has a policy; its lists and reads by id go through it. Forgetting is not possible: paging a raw query of a business record does not compile (CS0311: it is not `ITenantWide`), and a business record type without a registered policy fails the architecture tests.
+Every business record type has a policy; its lists and reads by id go through it. Forgetting is not possible: paging a raw query of a business record does not compile (CS0311: it is not `IOwnAccessRule`), and a business record type without a registered policy fails the architecture tests.
 
 **A policy in a few lines**, in the module's `AddServices`. An order is seen in the reader's units, approved where the reader may approve, and changed by its creator while a draft:
 
