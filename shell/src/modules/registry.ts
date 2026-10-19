@@ -8,7 +8,8 @@ export type { Shortcut } from "@/components/shortcuts";
 
 /**
  * What a module tells the shell (S1 plan 3.10): its routes with the permission each needs, and its navigation
- * entries. The shell filters both by the permissions from /me. Entitlements and flags join in S2.
+ * entries. The shell filters both by the permissions from /me and, for a licensed module, by its entitlement from
+ * /me/context (ADR-0034). Flags join in A5.
  */
 export interface ModuleRoute {
   /** Absolute path, e.g. "/users". */
@@ -60,6 +61,11 @@ export interface QuickAction {
 
 export interface ModuleManifest {
   name: string;
+  /**
+   * The licence code of a Business or Products module, as its IModule declares it (ADR-0034). A module that is not
+   * entitled has no navigation, no routes, no opener and no quick actions. Kernel modules are the platform and have none.
+   */
+  licence?: string;
   /** i18n key of the module's title, shown as the navigation group. */
   titleKey: string;
   routes: ModuleRoute[];
@@ -80,19 +86,30 @@ export interface RegistryOptions {
   strict: boolean;
 }
 
-export type RegisteredRoute = ModuleRoute & { module: string };
+export type RegisteredRoute = ModuleRoute & { module: string; licence?: string };
+
+/** Whether a licensed module is entitled for the signed-in person: the session's answer from /me/context. */
+export type Entitled = (licence: string) => boolean;
+
+/** Nothing licensed is entitled: what a caller that does not say gets, so a forgotten argument hides rather than shows. */
+export const nothingEntitled: Entitled = () => false;
+
+/** A manifest's module may be shown: a kernel module always, a licensed one when it is entitled. */
+export const isEntitled = (manifest: ModuleManifest, entitled: Entitled): boolean => manifest.licence === undefined || entitled(manifest.licence);
+
+const withLicence = (route: ModuleRoute, manifest: ModuleManifest): RegisteredRoute => ({ ...route, module: manifest.name, ...(manifest.licence !== undefined ? { licence: manifest.licence } : {}) });
 
 /** The routes a principal with these permissions may see; a route without a declared permission throws in strict mode. */
-export function routesFor(manifests: ModuleManifest[], permissions: readonly string[], options: RegistryOptions): RegisteredRoute[] {
+export function routesFor(manifests: ModuleManifest[], permissions: readonly string[], options: RegistryOptions, entitled: Entitled = nothingEntitled): RegisteredRoute[] {
   const granted = new Set(permissions);
   const routes: RegisteredRoute[] = [];
   for (const manifest of manifests) {
     for (const route of manifest.routes) {
-      if (!declares(route, `route ${manifest.name}:${route.path}`, options)) {
+      if (!declares(route, `route ${manifest.name}:${route.path}`, options) || !isEntitled(manifest, entitled)) {
         continue;
       }
       if (route.permission === null || granted.has(route.permission as string)) {
-        routes.push({ ...route, module: manifest.name });
+        routes.push(withLicence(route, manifest));
       }
     }
   }
@@ -109,7 +126,7 @@ export function declaredRoutes(manifests: ModuleManifest[], options: RegistryOpt
   for (const manifest of manifests) {
     for (const route of manifest.routes) {
       if (declares(route, `route ${manifest.name}:${route.path}`, options)) {
-        routes.push({ ...route, module: manifest.name });
+        routes.push(withLicence(route, manifest));
       }
     }
   }
@@ -122,11 +139,14 @@ export interface NavigationGroup {
   entries: NavigationEntry[];
 }
 
-/** The navigation a principal with these permissions sees: modules with at least one visible entry, in manifest order. */
-export function navigationFor(manifests: ModuleManifest[], permissions: readonly string[], options: RegistryOptions): NavigationGroup[] {
+/** The navigation a principal with these permissions sees: entitled modules with at least one visible entry, in manifest order. */
+export function navigationFor(manifests: ModuleManifest[], permissions: readonly string[], options: RegistryOptions, entitled: Entitled = nothingEntitled): NavigationGroup[] {
   const granted = new Set(permissions);
   const groups: NavigationGroup[] = [];
   for (const manifest of manifests) {
+    if (!isEntitled(manifest, entitled)) {
+      continue;
+    }
     const entries = manifest.navigation.filter(
       (entry) =>
         declares(entry, `navigation ${manifest.name}:${entry.path}`, options) &&
@@ -149,18 +169,20 @@ export interface ModuleOpening {
 }
 
 /** The openers a principal with these permissions sees: one per module of the navigation, in its order. */
-export function openersFor(manifests: ModuleManifest[], permissions: readonly string[], options: RegistryOptions): ModuleOpening[] {
+export function openersFor(manifests: ModuleManifest[], permissions: readonly string[], options: RegistryOptions, entitled: Entitled = nothingEntitled): ModuleOpening[] {
   const byName = new Map(manifests.map((manifest) => [manifest.name, manifest]));
-  return navigationFor(manifests, permissions, options).map((group) => {
+  return navigationFor(manifests, permissions, options, entitled).map((group) => {
     const opener = byName.get(group.module)?.opener;
     return { module: group.module, titleKey: group.titleKey, opener, entries: group.entries.slice(0, opener?.entries ?? 3) };
   });
 }
 
-/** The quick actions whose permission the principal holds somewhere; /me/access then says whether at its home unit. */
-export function quickActionsFor(manifests: ModuleManifest[], permissions: readonly string[]): (QuickAction & { module: string })[] {
+/** The quick actions of entitled modules whose permission the principal holds somewhere; /me/access then says whether at its home unit. */
+export function quickActionsFor(manifests: ModuleManifest[], permissions: readonly string[], entitled: Entitled = nothingEntitled): (QuickAction & { module: string })[] {
   const granted = new Set(permissions);
-  return manifests.flatMap((manifest) => (manifest.quickActions ?? []).filter((action) => granted.has(action.permission)).map((action) => ({ ...action, module: manifest.name })));
+  return manifests
+    .filter((manifest) => isEntitled(manifest, entitled))
+    .flatMap((manifest) => (manifest.quickActions ?? []).filter((action) => granted.has(action.permission)).map((action) => ({ ...action, module: manifest.name })));
 }
 
 /** The declared route a path belongs to, for the help panel's keys and the name of a page opened recently. */
@@ -168,7 +190,7 @@ export function routeAt(manifests: ModuleManifest[], pathname: string): Register
   for (const manifest of manifests) {
     for (const route of manifest.routes) {
       if (matchPath({ path: route.path, end: true }, pathname)) {
-        return { ...route, module: manifest.name };
+        return withLicence(route, manifest);
       }
     }
   }

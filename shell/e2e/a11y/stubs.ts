@@ -49,11 +49,27 @@ function page(url: string) {
   };
 }
 
+/**
+ * What /me/context answers (ADR-0034): the enterprise plan, so role export and import show; a test that needs another
+ * answer routes its own.
+ */
+export const context = {
+  entitlements: {
+    revision: 4,
+    plan: "enterprise",
+    confirmed_at: "2026-10-20T09:00:00Z",
+    stale: false,
+    modules: [] as unknown[],
+    features: [{ code: "authorization.role_transfer", status: "enabled", reason: "licensed" }],
+  },
+};
+
 /** A signed-in administrator who may read users, and the users list from memory; every other call answers 401. */
 export async function stubSignedIn(target: Page): Promise<void> {
   // Playwright tries the routes newest first, so the catch-all goes in first and the specific answers after it.
   await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: me }));
+  await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
   // One user by id, as the record page asks; the list's route above answers the rest.
   await target.route("**/api/v1/users/*", (route) => {
@@ -104,6 +120,7 @@ export async function stubConsole(target: Page): Promise<void> {
   await target.route("**/api/v1/me", (route) =>
     route.fulfill({ json: { ...me, permissions: administrator, permissions_anywhere: administrator, home_unit: { id: units[0].id, name: units[0].name, code: units[0].code } } }),
   );
+  await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
   await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: administrator } }));
   await target.route("**/api/v1/organisation-units", (route) => route.fulfill({ json: { data: units } }));
   await target.route("**/api/v1/organisation-kinds", (route) => route.fulfill({ json: kinds }));
@@ -117,6 +134,7 @@ const administrator = [
   "authz.roles.read",
   "authz.units.manage",
   "authz.units.read",
+  "entitlements.subscription.read",
   "identity.users.manage",
   "identity.users.read",
 ];
@@ -233,6 +251,7 @@ export async function stubHome(target: Page, who: Who, session = sessionFromNow(
   const principal = { ...principals[who], session };
   await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: principal }));
+  await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
   await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: principal.permissions_anywhere } }));
   await target.route("**/api/v1/role-assignments/mine", (route) => route.fulfill({ json: { data: mine[who] } }));
 }
@@ -248,4 +267,36 @@ export async function stubAccess(target: Page): Promise<void> {
   await target.route("**/api/v1/role-assignments?**", (route) => route.fulfill({ json: envelope(route.request().url(), assignments) }));
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
   await target.route(`**/api/v1/users/${record.id}`, (route) => route.fulfill({ json: record }));
+}
+
+/** The tenant's subscription as GET /api/v1/subscription answers it: the enterprise plan, one licensed module in its grace days, two features. */
+export const subscription = {
+  plan: "enterprise",
+  revision: 4,
+  confirmed_at: "2026-10-20T09:00:00Z",
+  stale: false,
+  grace_days: 30,
+  modules: [
+    {
+      code: "sourcing",
+      module: "sourcing",
+      subscription_type: "per_person",
+      status: "enabled",
+      reason: "in_grace",
+      starts_on: "2026-01-01",
+      ends_on: "2026-10-15",
+      grace_ends_on: "2026-11-14",
+      seats: { limit: 50, assigned: 48, remaining: 2 },
+    },
+  ],
+  features: [
+    { code: "authorization.role_transfer", description: "Export the tenant's roles to a file and import roles from another tenant", module: "authz", licence: null, status: "enabled", reason: "licensed", starts_on: "2026-10-19", ends_on: null, grace_ends_on: null },
+    { code: "sourcing.auctions", description: "Auctions with pre-bidding", module: "sourcing", licence: "sourcing", status: "disabled", reason: "not_licensed", starts_on: null, ends_on: null, grace_ends_on: null },
+  ],
+};
+
+/** The console stubs plus the subscription. */
+export async function stubSubscription(target: Page, body: unknown = subscription): Promise<void> {
+  await stubConsole(target);
+  await target.route("**/api/v1/subscription", (route) => route.fulfill({ json: body }));
 }

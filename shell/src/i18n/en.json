@@ -44,7 +44,9 @@
     "forbidden": "Your account does not have permission to see this page.",
     "notFoundTitle": "Not found",
     "notFound": "There is no page at this address.",
-    "sessionEnded": "Your session has ended. Sign in again."
+    "sessionEnded": "Your session has ended. Sign in again.",
+    "notEntitledTitle": "Not in your subscription",
+    "notEntitled": "Your organisation's subscription does not include this. Ask your administrator about the plan."
   },
   "modules": {
     "identity": {
@@ -57,7 +59,8 @@
       "title": "Console",
       "units": "Organisation units",
       "roles": "Roles",
-      "line": "The organisation's units and its roles: who may do what, and where."
+      "line": "The organisation's units and its roles: who may do what, and where.",
+      "subscription": "Subscription"
     }
   },
   "users": {
@@ -776,5 +779,76 @@
       "message": "Every session has a time limit, and this one reaches it at {{time}}. It cannot be extended any further: save your work, then sign in again.",
       "keepWorking": "Back to my work"
     }
+  },
+  "subscription": {
+    "title": "Subscription",
+    "description": "What your organisation's plan includes, until when, and how many seats are left.",
+    "failed": "The subscription could not be loaded",
+    "noEnd": "No end date",
+    "plan": {
+      "title": "Your plan",
+      "description": "The platform operator sets the plan. To change it, ask them.",
+      "none": "No plan yet",
+      "grace_one": "After an end date, what it covers keeps working for {{count}} more day.",
+      "grace_other": "After an end date, what it covers keeps working for {{count}} more days.",
+      "confirmed": "Last confirmed by the platform at {{time}}."
+    },
+    "plans": {
+      "standard": "Standard",
+      "enterprise": "Enterprise",
+      "configuration": "Set in this host's configuration"
+    },
+    "stale": {
+      "title": "The subscription cannot be confirmed",
+      "text": "The platform has not confirmed it since {{time}}, so everything it licenses is switched off until it can. Tell the platform operator.",
+      "never": "this unit started"
+    },
+    "modules": {
+      "title": "Licensed modules",
+      "description": "Modules sold on their own. The platform's own parts, such as users, roles and organisation units, are always included.",
+      "empty": "No licensed modules yet",
+      "emptyText": "Modules of the business and product layers appear here when your plan includes them."
+    },
+    "features": {
+      "title": "Features",
+      "description": "Parts of a module licensed on their own. A feature of a module that is not available is not available either.",
+      "empty": "No features in this build"
+    },
+    "columns": {
+      "module": "Module",
+      "feature": "Feature",
+      "sold": "Sold",
+      "status": "Status",
+      "why": "Why",
+      "until": "Until",
+      "seats": "Seats"
+    },
+    "sold": {
+      "per_person": "Per person",
+      "per_transaction": "Per transaction",
+      "platform": "As a platform fee"
+    },
+    "statuses": {
+      "enabled": "Included",
+      "read_only": "Read only",
+      "disabled": "Not available"
+    },
+    "reasons": {
+      "platform": "Part of the platform",
+      "licensed": "In your plan",
+      "switched_off": "Switched off by the platform operator",
+      "not_licensed": "Not in your plan",
+      "not_started": "Starts on {{starts}}",
+      "in_grace": "Ended on {{ends}}; keeps working until {{grace}}",
+      "expired": "Ended on {{ends}}",
+      "module_unavailable": "Its module is not available",
+      "no_seat": "You have no seat",
+      "unknown": "Cannot be confirmed right now"
+    },
+    "seats": {
+      "usage": "{{assigned}} of {{limit}} used, {{remaining}} left",
+      "notCounted": "Not counted"
+    },
+    "moduleNames": {}
   }
 }

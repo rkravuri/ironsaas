@@ -47,7 +47,7 @@ function HomeView({ me }: { me: Me }) {
   const { t } = useTranslation();
   const session = useSession();
   const hostname = window.location.hostname;
-  const openers = useMemo(() => openersFor(manifests, session.permissions, { strict: import.meta.env.DEV }), [session.permissions]);
+  const openers = useMemo(() => openersFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled), [session.permissions, session.entitlements]);
   const sessionId = me.session.id;
   const [drawIn] = useState(() => drawnFor() !== sessionId);
   const [part] = useState(() => dayPart(new Date().getHours()));
@@ -180,7 +180,11 @@ function RecentSection({ principal }: { principal: string }) {
   const [pages] = useState<RecentPage[]>(() => readRecent(principal));
   const visible = pages.filter((page) => {
     const route = routeAt(manifests, page.path);
-    return route !== undefined && (route.permission === null || session.permissions.includes(route.permission ?? ""));
+    return (
+      route !== undefined &&
+      (route.licence === undefined || session.entitlements.entitled(route.licence)) &&
+      (route.permission === null || session.permissions.includes(route.permission ?? ""))
+    );
   });
   const moduleTitle = (module: string) => manifests.find((manifest) => manifest.name === module)?.titleKey ?? "";
   return (

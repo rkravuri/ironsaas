@@ -22,7 +22,7 @@ import { Search, SearchButton } from "./Search";
 export function Layout() {
   const { t } = useTranslation();
   const session = useSession();
-  const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }), [session.permissions]);
+  const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled), [session.permissions, session.entitlements]);
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure();
   useRememberPages();

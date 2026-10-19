@@ -24,7 +24,12 @@ export function ErrorView({ error, onRetry }: ErrorViewProps) {
   if (error instanceof ApiError) {
     message = error.message;
     correlationId = error.correlationId;
-    if (error.isForbidden) {
+    if (error.isForbidden && error.errorCode?.startsWith("entitlements.")) {
+      // The tenant's subscription, not the person's permission (ADR-0034): say so, and who can change it.
+      title = t("errors.notEntitledTitle");
+      message = t("errors.notEntitled");
+      drawing = <Forbidden decorative size="md" />;
+    } else if (error.isForbidden) {
       title = t("errors.forbiddenTitle");
       message = t("errors.forbidden");
       drawing = <Forbidden decorative size="md" />;

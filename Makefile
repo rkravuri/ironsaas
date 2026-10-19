@@ -161,7 +161,8 @@ e2e: shell-node env ## Set up the child-unit data, then run the Playwright tests
 	scoped=$$(E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" STORE_TOKEN="$$OPENBAO_ROOT_TOKEN" python3 $(COMPOSE_DIR)/scripts/e2e-data.py) \
 	  || { echo "The child unit's data for the browser test could not be set up on $(TEST_TENANT)."; exit 1; }; \
 	eval "$$scoped"; \
-	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" npx playwright test
+	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" \
+	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) npx playwright test
 
 shell-install: shell-node ## Install the shell's packages (shell/)
 	cd shell && npm ci --no-audit --no-fund
