@@ -323,6 +323,276 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.ConflictReportEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("ComputedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("computed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("FirstAssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("first_assignment_id");
+
+                    b.Property<Guid?>("FirstDelegationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("first_delegation_id");
+
+                    b.Property<string>("FirstRole")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("first_role");
+
+                    b.Property<string>("FirstScopeKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("first_scope_kind");
+
+                    b.Property<string>("FirstSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("first_source");
+
+                    b.Property<Guid?>("FirstUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("first_unit_id");
+
+                    b.Property<string>("FirstUnitName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("first_unit_name");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("mode");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("PrincipalName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("principal_name");
+
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rule_id");
+
+                    b.Property<string>("RuleName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("rule_name");
+
+                    b.Property<Guid?>("SecondAssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("second_assignment_id");
+
+                    b.Property<Guid?>("SecondDelegationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("second_delegation_id");
+
+                    b.Property<string>("SecondRole")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("second_role");
+
+                    b.Property<string>("SecondScopeKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("second_scope_kind");
+
+                    b.Property<string>("SecondSource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("second_source");
+
+                    b.Property<Guid?>("SecondUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("second_unit_id");
+
+                    b.Property<string>("SecondUnitName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("second_unit_name");
+
+                    b.Property<Guid?>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.Property<string>("UnitName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("unit_name");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conflict_report_entries");
+
+                    b.HasIndex("FirstAssignmentId")
+                        .HasDatabaseName("ix_conflict_report_entries_first_assignment_id");
+
+                    b.HasIndex("PrincipalId")
+                        .HasDatabaseName("ix_conflict_report_entries_principal_id");
+
+                    b.HasIndex("RuleId")
+                        .HasDatabaseName("ix_conflict_report_entries_rule_id");
+
+                    b.HasIndex("SecondAssignmentId")
+                        .HasDatabaseName("ix_conflict_report_entries_second_assignment_id");
+
+                    b.ToTable("conflict_report_entries", "kernel_authz");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.ConflictReportRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Conflicts")
+                        .HasColumnType("integer")
+                        .HasColumnName("conflicts");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Rules")
+                        .HasColumnType("integer")
+                        .HasColumnName("rules");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("trigger");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conflict_report_runs");
+
+                    b.ToTable("conflict_report_runs", "kernel_authz", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.ConflictRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("FirstKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("first_kind");
+
+                    b.Property<string>("FirstValue")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_value");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("mode");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("SecondKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("second_kind");
+
+                    b.Property<string>("SecondValue")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("second_value");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conflict_rules");
+
+                    b.ToTable("conflict_rules", "kernel_authz");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.Delegation", b =>
                 {
                     b.Property<Guid>("Id")

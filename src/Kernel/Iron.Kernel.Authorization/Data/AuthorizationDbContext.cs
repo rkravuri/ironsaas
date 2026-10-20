@@ -30,8 +30,47 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
 
     public DbSet<AccessReviewEscalation> AccessReviewEscalations => Set<AccessReviewEscalation>();
 
+    public DbSet<ConflictRule> ConflictRules => Set<ConflictRule>();
+
+    public DbSet<ConflictReportRun> ConflictReportRuns => Set<ConflictReportRun>();
+
+    public DbSet<ConflictReportEntry> ConflictReportEntries => Set<ConflictReportEntry>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<ConflictRule>(rule =>
+        {
+            rule.Property(r => r.Name).HasMaxLength(ConflictRule.NameMaxLength);
+            rule.Property(r => r.FirstKind).HasMaxLength(20);
+            rule.Property(r => r.FirstValue).HasMaxLength(ConflictRule.ValueMaxLength);
+            rule.Property(r => r.SecondKind).HasMaxLength(20);
+            rule.Property(r => r.SecondValue).HasMaxLength(ConflictRule.ValueMaxLength);
+            rule.Property(r => r.Mode).HasMaxLength(20);
+            rule.Property(r => r.Reason).HasMaxLength(ConflictRule.ReasonMaxLength);
+        });
+
+        modelBuilder.Entity<ConflictReportRun>(run => run.Property(r => r.Trigger).HasMaxLength(20));
+
+        modelBuilder.Entity<ConflictReportEntry>(entry =>
+        {
+            entry.Property(e => e.RuleName).HasMaxLength(ConflictRule.NameMaxLength);
+            entry.Property(e => e.Mode).HasMaxLength(20);
+            entry.Property(e => e.PrincipalName).HasMaxLength(200);
+            entry.Property(e => e.FirstRole).HasMaxLength(Role.NameMaxLength);
+            entry.Property(e => e.FirstScopeKind).HasMaxLength(30);
+            entry.Property(e => e.FirstUnitName).HasMaxLength(OrganisationUnit.NameMaxLength);
+            entry.Property(e => e.FirstSource).HasMaxLength(20);
+            entry.Property(e => e.SecondRole).HasMaxLength(Role.NameMaxLength);
+            entry.Property(e => e.SecondScopeKind).HasMaxLength(30);
+            entry.Property(e => e.SecondUnitName).HasMaxLength(OrganisationUnit.NameMaxLength);
+            entry.Property(e => e.SecondSource).HasMaxLength(20);
+            entry.Property(e => e.UnitName).HasMaxLength(OrganisationUnit.NameMaxLength);
+            entry.HasIndex(e => e.PrincipalId);
+            entry.HasIndex(e => e.RuleId);
+            entry.HasIndex(e => e.FirstAssignmentId);
+            entry.HasIndex(e => e.SecondAssignmentId);
+        });
+
         modelBuilder.Entity<Role>(role =>
         {
             role.Property(r => r.Code).HasMaxLength(Role.CodeMaxLength);

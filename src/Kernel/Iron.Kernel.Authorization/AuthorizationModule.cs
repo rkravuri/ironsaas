@@ -58,6 +58,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<OrganisationUnitService>();
         services.AddScoped<UnitMergeService>();
         services.AddScoped<AccessExplainer>();
+        services.AddScoped<ConflictService>();
         services.AddScoped<IOrganisationUnits>(provider => provider.GetRequiredService<OrganisationUnitService>());
         services.AddScoped<IOrganisationUnitCheck, OrganisationUnitCheck>();
         services.AddScoped<ISeeder, AuthorizationSeeder>();
@@ -84,6 +85,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IValidator<MoveUnitRequest>, MoveUnitRequestValidator>();
         services.AddScoped<IValidator<MergeUnitRequest>, MergeUnitRequestValidator>();
         services.AddScoped<IValidator<ChangeSharingRequest>, ChangeSharingRequestValidator>();
+        services.AddScoped<IValidator<ConflictRuleRequest>, ConflictRuleRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -96,5 +98,6 @@ public sealed class AuthorizationModule : IModule
         AccessReviewsEndpoints.Map(endpoints);
         RecordSharingEndpoints.Map(endpoints);
         AccessExplainEndpoints.Map(endpoints);
+        ConflictRulesEndpoints.Map(endpoints);
     }
 }

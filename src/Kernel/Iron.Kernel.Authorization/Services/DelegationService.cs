@@ -50,7 +50,8 @@ public sealed class DelegationService(
     ICurrentPrincipal current,
     IPermissionEvaluator evaluator,
     AccessGrants grants,
-    TimeProvider time)
+    TimeProvider time,
+    ConflictService segregation)
 {
     public const string RecordType = "delegation";
 
@@ -130,10 +131,23 @@ public sealed class DelegationService(
             return Error.Conflict(AuthorizationErrors.DelegationCycle, $"{delegateTo.DisplayName} already delegates, directly or through others, to {delegator.DisplayName} in this period. Delegations cannot go round in a circle.");
         }
 
+        // Segregation of duties (TF-036, ADR-0039): the delegate's own rights and the delegated duties' rights as if held
+        // together, by the same rules as a grant.
+        var conflicts = await segregation.ForDelegationAsync(delegatorId, input.DelegateId, codes, cancellationToken).ConfigureAwait(false);
+        if (conflicts.FirstOrDefault(c => c.Rule.Mode == ConflictModes.Block) is { } blocking)
+        {
+            return Error.Conflict(AuthorizationErrors.SodConflict, await segregation.RefusalAsync(blocking, input.DelegateId, cancellationToken).ConfigureAwait(false));
+        }
+
         var delegation = new Delegation(delegatorId, input.DelegateId, codes, input.StartsAt, input.EndsAt, input.Reason);
         context.Delegations.Add(delegation);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.DelegationCreated, AuditOutcome.Success, current.Id, delegateTo.DisplayName, Details(delegation), RecordType, delegation.Id, delegation.Reason), cancellationToken).ConfigureAwait(false);
+        if (conflicts.Count > 0)
+        {
+            await segregation.RefreshPrincipalAsync(input.DelegateId, cancellationToken).ConfigureAwait(false);
+        }
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return (await DescribeAsync([delegation], cancellationToken).ConfigureAwait(false))[0];
     }
@@ -171,6 +185,7 @@ public sealed class DelegationService(
         delegation.End(now, current.Id, reason);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.DelegationEnded, AuditOutcome.Success, current.Id, null, Details(delegation), RecordType, delegation.Id, delegation.EndReason), cancellationToken).ConfigureAwait(false);
+        await segregation.RefreshPrincipalAsync(delegation.DelegateId, cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return (await DescribeAsync([delegation], cancellationToken).ConfigureAwait(false))[0];
     }
