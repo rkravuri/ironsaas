@@ -43,6 +43,23 @@ The Functional Foundation PRD split into one document per layer and product (ADR
 
 The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing group is a business master, not a unit kind, because it serves several units and owns no records (BF-007). `src/Business/README.md` and the comment on `IOrganisationKinds` say so too.
 
+## IronSaaS Foundation and suites
+
+The third layer became Suite (ADR-0043), from `docs/prompts/L2-suites.md`: IronSaaS Foundation is the kernel and business layers together, and the eProcurement Suite (`procurement`) is the first suite on it.
+
+| Task | State | Branch | Notes |
+|---|---|---|---|
+| L2 IronSaaS Foundation and suites | done on the branch, waiting for review | slice/l2-suites | seven commits after the prompt (2696cd6), from d4199f4 to the one that writes this row; ADR-0043. The Suite layer in the build (`IronSuite` beside `IronLayer`, `IRON0003` and `IRON0004`, the suite carried into the assembly's metadata) and in the architecture tests, with fixtures for a reference between suites, from the Foundation to a suite, and a name, folder or schema prefix of another suite; `src/Suites/` with its README and the eProcurement Suite's; `make ef-add` finds a suite module by its last segment; `make catalogue` groups by suite, the Foundation first (format version 2); the shell's `modules/suites/`, refused to kernel and business modules, the local lint rule `iron/suite-imports` between suites, a manifest's `suite` held to its folder, and the home page's openers grouped by suite; the requirements in `docs/prd/foundation/` and `docs/prd/suites/procurement/` with every identifier unchanged, prd-check refusing a dependency between suites; TF-244 in the tenancy area and slice V; the README, SECURITY.md and the names. make prd-check passed, make test 822, make shell-check 235 tests, make shell-a11y 60 passed, make format clean |
+
+Decided in the task, each small enough for a line here:
+
+- `Foundation` is not a suite name either, beside `Kernel` and `Business`: `foundation` is the catalogue's and the home page's name for everything outside a suite.
+- A module's suite is its project's `IronSuite`, written into the assembly by `Directory.Build.props` and read by `IModule.Suite`'s default; the architecture test refuses a module that reports another.
+- The catalogue's file went to format version 2 and was written fresh from the code; it held no retired flag, so nothing was lost. In memory its lists stay flat, so no reader changed.
+- The runtime schema check accepts a suite's prefix only for the suites its caller's contexts belong to; the kernel names no suite.
+- The home page keeps "Where to go" and groups inside it, each group under its suite's name (a third-level heading); with only the Foundation's modules today, every tenant sees one group, "IronSaaS Foundation".
+- The PRDs that moved carry version 1.1 with a change-log line (the technical PRD 1.4 DRAFT, with TF-244); no requirement's words changed.
+
 ## Maintenance
 
 | Task | State | Branch | Notes |
@@ -51,7 +68,17 @@ The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing
 
 ## Open questions
 
-None.
+1. **The Business requirements only the eProcurement Suite needs: a proposal, nothing moved.** By ADR-0043's placement test a master that only one suite's products share belongs to that suite. Read against it, these would move to a procurement shared master, `Iron.Suites.Procurement.Purchasing` (schema `procurement_purchasing`), unless the design session keeps them in Business:
+   - BF-007 Purchasing groups: buyers, the categories they cover and the units they serve, for the buyer of a request line (REQ-023), the buyer's work queue and spend by group. No other suite assigns buyers.
+   - BF-107 Supplier categories and preferred status: the preferred or approved status per category behind the supplier suggestions on requests and orders.
+   - BF-106 Supplier configuration defaults: the match levels, required sections and documents and portal channels a new supplier starts with; its onboarding parts could instead be Supplier management's own.
+   - BF-162 Document templates for the products: the order, change order, return note, receipt note and invoice acknowledgement, every one a procurement document.
+   - BF-201 Approval configuration starter set: its examples (the budget owner for requests, finance for invoices, the procurement head for suppliers) are procurement's document types. Business keeps the mechanism (BF-141); the suite would seed its own set.
+
+   Clauses only the suite needs, inside requirements that stay in Business: BF-061's buying group and default match levels; BF-101's match levels and portal channels and BF-108's match levels and preferred flag; BF-021's default ship-to location of a person; BF-161's acknowledgement reminder days, which are Orders'.
+
+   Kept in Business on purpose: the supplier record itself (BF-101 to BF-105, and BF-108's enablement per organisation), since any suite that pays a vendor needs it; budgets, items, categories, units, tax and HSN or SAC codes, payment terms, locations, people, approvals and the delegation of authority, numbering, notifications and setup, which a School ERP needs as much. BF-205's UNSPSC codes and Incoterms are trade standards that a second suite that buys or sells would share; review them with the first such suite.
+2. **The private channel for vulnerabilities.** `SECURITY.md` points to the repository's Security tab ("Report a vulnerability"); that needs private vulnerability reporting switched on in the repository's settings, or SECURITY.md names another private channel.
 
 ## Later items
 
@@ -63,7 +90,7 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Every refused request writes `entitlements.access_denied`; a client that keeps calling a refused endpoint fills the audit trail. The shell hides those calls; rate limits (S3) bound the rest.
 - The last-administrator guard counts tenant-wide assignments, not active principals (ADR-0031): a disabled last administrator still counts.
 - A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units. A record-scoped assignment is not in an access review either (ADR-0037).
-- No kernel module declares a business record, so no module registers a record policy yet; the first business or products module brings the first, and the architecture test then reads its `AddServices`. A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response (ADR-0032).
+- No kernel module declares a business record, so no module registers a record policy yet; the first business or suite module brings the first, and the architecture test then reads its `AddServices`. A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response (ADR-0032).
 - System roles follow the permission catalogue when the seed runs, unchecked by the conflict rules: a new module's permissions in a system role show in the next report run, not as a refusal. A tenant role's change is checked at once (ADR-0039).
 - A rule's change appears in the conflicts report at the next run, within a day, or at once with Run the report now; a record-scoped grant meets only a tenant grant or a grant on the same record in the rules; the grant dialog's conflict preview is not shown when the preview call fails, and the API still refuses a blocked grant (ADR-0039).
 - The explanation covers the checks an endpoint declares; checks a handler makes on its own are not explained, and an allowance says so in words (ADR-0039).
@@ -86,3 +113,5 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Since S2-close the `smoke` tenant is provisioned again on the laptop (on Standard), beside acme, bravo and echo; their administrators' invitations are in `secret/tenants/<slug>/fleet`.
 - Dependabot proposes versions only after 14 days (its cooldown) and majors outside its groups. Two it is told to leave, each with its reason in `.github/dependabot.yml`: `Microsoft.CodeAnalysis.CSharp`, which must match the Roslyn that EF Core's design package pulls (5.9.0 beside EF Core 10.0.12's 5.0.0 does not restore, NU1107), so it is raised by hand with the EF Core that asks for it; and TypeScript majors, until typescript-eslint accepts them (8.72.0 asks for typescript below 6.1). React Router 8 and jest-dom 7 are in since M1.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
+- TF-244 is written, not built: until it is, a unit loads every module `Iron.Host.Api.UnitModules` lists, and no suite module exists yet. A plan cannot yet be refused for naming another group's module (TF-244 AC7); the catalogue's groups are what that check will read.
+- Separate images per suite, and a suite in a repository of its own with the Foundation as packages, wait for ADR-0043's conditions (a separate team, release rhythm or licence).
