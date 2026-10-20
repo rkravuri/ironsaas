@@ -156,6 +156,22 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was FF-171.
 
+#### SUP-006 Organisation approval of an enablement
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Onboarding
+
+**Requirement:** Enabling a supplier in an organisation (BF-108) shall run an optional organisation approval.
+
+**Why:** One registration for the supplier, separate control for each unit.
+
+**Acceptance criteria:**
+
+- AC1 Given organisation approval required in organisation A, When a supplier is enabled in A, Then the enablement takes effect when the approval completes.
+- AC2 Given an enablement in organisation A still in approval, When a buyer of A creates an order for the supplier, Then it is refused naming the pending approval. (error case)
+
+*Depends on:* BF-108, SUP-004, TF-090
+
+**Notes:** Was FF-182, its optional organisation approval; the enablement is BF-108. AC1 and AC2 are written for the split from the requirement's own clauses.
+
 ### 6.2 Changes and status (SUP-021 to SUP-040)
 
 #### SUP-021 Supplier status control
@@ -314,9 +330,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC3 Given an indicator below a threshold, When evaluated, Then the supplier is flagged for review.
 - AC4 Given a user without the supplier performance permission, When indicators are requested, Then it is refused. (error case)
 
-*Depends on:* ORD-021, RCV-024, INV-022
+*Depends on:* ORD-021 (event), RCV-024 (event), INV-022 (event)
 
-**Notes:** Was FF-032. Decision F-09 confirmed.
+**Notes:** Was FF-032. Orders, Receiving and Invoicing are later products, so the rates come from the events they publish (ADR-0042). Decision F-09 confirmed.
 
 #### SUP-063 Supplier reports
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Relationship and performance
@@ -338,22 +354,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ### 6.5 Supplier access (SUP-081 to SUP-100)
 
-#### SUP-081 Supplier portal ownership
-*Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Supplier access
-
-**Requirement:** Every supplier-facing operation shall arrive from the Supplier Network with a delegated token bound to one supplier relationship and shall be bound to that supplier by a kernel record policy; lists filter to the supplier; access by identifier to another supplier's record is refused and audited with the supplier user identity.
-
-**Why:** Gap: missing ownership checks in the current product.
-
-**Acceptance criteria:**
-
-- AC1 Given supplier A's user requests supplier B's order, When evaluated, Then it is refused and audited. (error case)
-- AC2 Given a list of invoices, When loaded by a supplier user, Then only their invoices appear with correct paging.
-- AC3 Given a buyer impersonating a supplier user, When acting, Then the supplier scope applies and the audit shows both identities.
-
-*Depends on:* TF-035, TF-025
-
-**Notes:** Was FF-036.
+Portal ownership (was FF-036) moved to the supplier portal surface at the checkpoint, as SPX-006: a rule every product's supplier views obey. It was SUP-081 in the checkpoint's skeleton; the identifier is not reused, and the block stays this area's.
 
 ## 7. Supplier views
 
@@ -400,7 +401,7 @@ What the supplier sees and does in the portal for this product; the narrative is
 
 | Rule | Statement |
 |---|---|
-| Ownership | Supplier users see and act only on records of their supplier; enforced by kernel record policies on every operation. |
+| Ownership | The supplier portal surface's rule (SPX-006, its section 6), which this product's supplier views obey. |
 
 ### 8.2 State machines
 
@@ -472,7 +473,8 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|
-| P2 | Suppliers and orders | SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-021, SUP-022, SUP-023, SUP-041, SUP-042, SUP-061, SUP-081, SUP-101 |
+| P1 | Masters, organisations and first request | SUP-006 |
+| P2 | Suppliers and orders | SUP-001, SUP-002, SUP-003, SUP-004, SUP-005, SUP-021, SUP-022, SUP-023, SUP-041, SUP-042, SUP-061, SUP-101 |
 | P6 | Completeness | SUP-024, SUP-043, SUP-062, SUP-063, SUP-102 |
 
 ## 16. Decisions and open points
@@ -486,11 +488,18 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 | F-05 | Supplier bank changes need a second approver and an out-of-band verification checklist | SUP-023, BF-105 |
 | F-09 | Supplier performance indicators: on-time acknowledgement, on-time delivery, receipt rejections, invoice accuracy | SUP-062 |
 
+Decided at the PRD split's checkpoint, on 2026-10-20:
+
+| Decision | Where applied |
+|---|---|
+| Portal ownership is the supplier portal surface's rule, which every product's supplier views obey | SPX-006; section 6.5 |
+| The optional organisation approval of an enablement is this product's; the enablement is Business's | SUP-006, BF-108 |
+| Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042) | Section 12 |
+| The module is `Iron.Products.SupplierManagement` | Section 13 |
+
 ### 16.2 Open points
 
-| Question | Default proposed |
-|---|---|
-| SUP-081 (portal ownership, was FF-036) binds every supplier-facing operation to its supplier, in every product, while it lives here. | Each product declares its own record policy for supplier users (TF-035) and cites SUP-081 |
+None from the split.
 
 ## 17. Glossary
 

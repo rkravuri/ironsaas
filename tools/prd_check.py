@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks the requirement documents in docs/prd against the rules of ADR-0041.
+"""Checks the requirement documents in docs/prd against the rules of ADR-0041 and ADR-0042.
 
 Every requirements document is a markdown file with requirement blocks and a CSV beside it, written from the markdown
 (`make prd-csv`). The check reads them all, with the archived Functional Foundation PRD and the map, and names the file
@@ -13,7 +13,9 @@ and the identifier of every problem:
   "(error case)";
 - a product PRD without the sections "Supplier views" and "Records and signatures";
 - a CSV that differs from its markdown in any cell, and a map whose markdown and CSV differ;
-- a dependency on an identifier no document holds.
+- a dependency on an identifier no document holds, one that points up a layer (the kernel, the business layer, the
+  products, the supplier portal surface), and one on a later product in the process order unless it is marked
+  "(event)" (ADR-0042).
 
 Standard library only, so CI needs nothing but Python 3. Exit status 1 when anything is wrong.
 """
@@ -51,6 +53,14 @@ DOCUMENTS = {
 NOT_REQUIREMENT_DOCUMENTS = {"README.md", "requirements-map.md"}
 PRODUCT_SECTIONS = ["Supplier views", "Records and signatures"]
 TAGS = {"Core", "Extended", "Carried", "Improved", "Gap", "New", "Decision", "Later"}
+
+# Dependencies point down the layers (ADR-0029, ADR-0042): kernel, business, products, the supplier portal surface. The
+# product method binds every layer and stands outside them. Between products, the process order: a later product may
+# depend on an earlier one; an earlier one hears from a later one only through a domain event, written "ORD-001 (event)".
+LAYERS = {"TF": 0, "BF": 1, "SUP": 2, "CON": 2, "CAT": 2, "REQ": 2, "ORD": 2, "RCV": 2, "INV": 2, "SPX": 3}
+LAYER_NAMES = {0: "the kernel", 1: "the business layer", 2: "the products", 3: "the supplier portal surface"}
+PROCESS_ORDER = ["SUP", "CON", "CAT", "REQ", "ORD", "RCV", "INV"]
+DEPENDENCY = re.compile(r"^([A-Z]{2,3})-(\d{3})( \(event\))?$")
 
 COLUMNS = ["id", "area", "title", "priority", "tag", "requirement", "rationale", "acceptance_criteria", "depends_on", "notes", "was"]
 ARCHIVE_COLUMNS = COLUMNS[:-1]
@@ -217,17 +227,18 @@ def check_requirements(document: Document, prefix: str) -> list[str]:
     problems = list(document.problems)
     name = document.name
     blocks: dict[str, int] = {}
-    previous = 0
+    previous: dict[str, int] = {}
     for requirement in document.requirements:
         where = f"{name}:{requirement.line}: {requirement.id}"
         if requirement.prefix != prefix:
             problems.append(f"{where}: this document's identifiers start with {prefix}-")
         if prefix != "TF":
-            # The kernel's PRD keeps its historical order (TF-240 sits in section 4.22, before TF-210); the documents of
-            # ADR-0041 rise through the document, in blocks of twenty per area.
-            if requirement.number <= previous:
-                problems.append(f"{where}: out of order; identifiers rise through the document")
-            previous = requirement.number
+            # The kernel's PRD keeps its historical order (TF-240 sits in section 4.22, before TF-210). In the documents
+            # of ADR-0041 identifiers rise through each area, and an area added later takes the next free block wherever
+            # it stands in the document (a product's new area may follow its supplier views' block).
+            if requirement.number <= previous.get(requirement.area, 0):
+                problems.append(f"{where}: out of order; identifiers rise through their area")
+            previous[requirement.area] = requirement.number
             # Blocks of twenty per area (ADR-0041, decision 3): the area's first identifier names its block.
             block = (requirement.number - 1) // 20
             first = blocks.setdefault(requirement.area, block)
@@ -279,6 +290,35 @@ def compare(document: Document, columns: list[str]) -> list[str]:
                 problems.append(f"{name}: {identifier} {column} differs from the markdown")
     if not problems and [row["id"] for row in rows] != [requirement.id for requirement in document.requirements]:
         problems.append(f"{name}: the rows are not in the order of the markdown")
+    return problems
+
+
+def check_dependencies(document: Document, requirement: Requirement, live: dict[str, tuple[Document, Requirement]]) -> list[str]:
+    """Every dependency exists, points down a layer or sideways, and reaches a later product only as an event (ADR-0042)."""
+    problems = []
+    where = f"{document.name}: {requirement.id}"
+    for dependency in requirement.depends_on:
+        match = DEPENDENCY.match(dependency)
+        if not match:
+            problems.append(f"{where}: dependency {dependency!r} is not an identifier, or an identifier followed by (event)")
+            continue
+        identifier, event = f"{match.group(1)}-{match.group(2)}", bool(match.group(3))
+        if identifier not in live:
+            problems.append(f"{where} depends on {identifier}, which no document holds")
+            continue
+        own, theirs = requirement.prefix, match.group(1)
+        if own not in LAYERS or theirs not in LAYERS:
+            if event:
+                problems.append(f"{where}: {identifier} is marked (event), which only a dependency on a later product is")
+            continue
+        if LAYERS[theirs] > LAYERS[own]:
+            problems.append(f"{where} depends on {identifier}, which points up from {LAYER_NAMES[LAYERS[own]]} to {LAYER_NAMES[LAYERS[theirs]]}")
+            continue
+        later = own in PROCESS_ORDER and theirs in PROCESS_ORDER and PROCESS_ORDER.index(theirs) > PROCESS_ORDER.index(own)
+        if later and not event:
+            problems.append(f"{where} depends on {identifier} of a later product; an earlier product hears from it only through an event, written '{identifier} (event)'")
+        if event and not later:
+            problems.append(f"{where}: {identifier} is marked (event), which only a dependency on a later product is")
     return problems
 
 
@@ -370,9 +410,7 @@ def check() -> int:
         problems += check_requirements(document, DOCUMENTS[document.name])
         problems += compare(document, COLUMNS)
         for requirement in document.requirements:
-            for dependency in requirement.depends_on:
-                if dependency not in live:
-                    problems.append(f"{document.name}: {requirement.id} depends on {dependency}, which no document holds")
+            problems += check_dependencies(document, requirement, live)
     if archive:
         problems += compare(archive, ARCHIVE_COLUMNS)
         problems += check_map(archive, live)

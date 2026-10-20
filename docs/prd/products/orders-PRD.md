@@ -226,9 +226,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC3 Given confirmation disabled, When the requester views the order, Then no confirm action appears. (edge)
 - AC4 Given a requester confirming receipt for a line not theirs, When attempted, Then it is refused. (error case)
 
-*Depends on:* ORD-006, RCV-021
+*Depends on:* ORD-006, RCV-021 (event)
 
-**Notes:** Was FF-085.
+**Notes:** Was FF-085. Orders hears of receipts and invoices from their events (ADR-0042); the requester's receipt confirmation is Receiving's, RCV-027, which says the same from its side.
 
 ### 6.2 Acknowledgement and change (ORD-021 to ORD-040)
 
@@ -333,9 +333,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a line closed for invoicing, When an invoice line references it, Then it is refused. (error case)
 - AC3 Given close-short, When applied, Then both flags are set and the budget remainder released.
 
-*Depends on:* ORD-005, RCV-081
+*Depends on:* ORD-005, RCV-081 (event)
 
-**Notes:** Was FF-082.
+**Notes:** Was FF-082. The closure flags follow the quantities Orders keeps from Receiving's bucket events (ORD-121, ADR-0042).
 
 ### 6.4 Lists and later order types (ORD-061 to ORD-080)
 
@@ -352,9 +352,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a supplier user, When listing, Then only their orders appear.
 - AC3 Given a user without read permission, When opening, Then it is refused. (error case)
 
-*Depends on:* ORD-001, RCV-081
+*Depends on:* ORD-001, RCV-081 (event)
 
-**Notes:** Was FF-078.
+**Notes:** Was FF-078. The received and invoiced quantities are those Orders keeps from Receiving's bucket events (ORD-121, ADR-0042).
 
 #### ORD-062 Blanket and standing orders
 *Priority:* **Could** · *Tag:* `[New]` · *Area:* Lists and later order types
@@ -409,6 +409,27 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was FF-161, the order cycle times; the invoice measures are INV-085.
 
+### 6.6 Quantities (ORD-121 to ORD-140)
+
+The received and invoiced quantities Orders keeps on its order lines from Receiving's bucket events (ADR-0042), for its views and closure flags. The checks that must be atomic read the buckets themselves, in Receiving (RCV-081). This area was added at the checkpoint, so its block follows the supplier views'.
+
+#### ORD-121 Nightly reconciliation of order quantities
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Quantities
+
+**Requirement:** A nightly job shall recompute the received and invoiced quantities Orders keeps on its order lines from the bucket events of Receiving it has applied (RCV-081), compare them with the stored values, write differences to a drift report and alert operators; drift is an incident, not auto-healed. It runs in the one nightly reconciliation window of the kernel's jobs (TF-120 to TF-124).
+
+**Why:** Counters are a cache; documents are the truth.
+
+**Acceptance criteria:**
+
+- AC1 Given consistent data, When the job runs, Then zero drift rows exist and a success record is stored.
+- AC2 Given a manual database change that breaks a counter, When the job runs, Then the drift row names the line and values and an alert fires. (error case)
+- AC3 Given the job fails, When detected, Then an alert fires.
+
+*Depends on:* ORD-061, RCV-081 (event), TF-120, TF-123
+
+**Notes:** Was FF-133, the quantities Orders keeps; Orders hears of them from Receiving's events (ADR-0042). Receiving, Invoicing and the Business budgets reconcile their own counters in RCV-083, INV-027 and BF-073, in the same window.
+
 ## 7. Supplier views
 
 What the supplier sees and does in the portal for this product; the narrative is written after the checkpoint. The requirements (ORD-101 to ORD-120):
@@ -426,9 +447,9 @@ What the supplier sees and does in the portal for this product; the narrative is
 - AC2 Given version 2, When opened, Then the diff and a new acknowledgement request are shown.
 - AC3 Given an order of another supplier by identifier, When requested, Then it is refused. (error case)
 
-*Depends on:* ORD-006, ORD-021, SUP-081
+*Depends on:* ORD-006, ORD-021, TF-035, TF-234
 
-**Notes:** Was FF-151.
+**Notes:** Was FF-151. It obeys the supplier portal's ownership rule, SPX-006, and depends on the kernel requirements that enforce it (ADR-0042).
 
 ## 8. Rules and state machines
 
@@ -519,7 +540,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|
 | P2 | Suppliers and orders | ORD-001, ORD-002, ORD-003, ORD-004, ORD-005, ORD-006, ORD-021, ORD-022, ORD-061, ORD-101 |
-| P4 | Invoicing and matching | ORD-081, ORD-082 |
+| P4 | Invoicing and matching | ORD-081, ORD-082, ORD-121 |
 | P5 | Catalogue, contracts, change orders | ORD-007, ORD-008, ORD-009, ORD-023, ORD-041, ORD-042, ORD-043, ORD-062 |
 
 ## 16. Decisions and open points
@@ -534,7 +555,7 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 
 ### 16.2 Open points
 
-From the split: ORD-008 (contract reference on order lines) and the Contracts product's CON-021 (consumption) depend on each other, and ORD-009 (requester confirmation) depends on the Receiving product's RCV-021. The module dependencies between products are settled with the modules after the checkpoint.
+Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). Orders calls Contracts to record releases (ORD-008, CON-021) and Requests to read converted lines (ORD-001); it hears from Receiving through its bucket events (ORD-043, ORD-061, ORD-121) and of receipts for the requester's notifications (ORD-009). Each module reconciles its own counters in one nightly window (ORD-121).
 
 ## 17. Glossary
 

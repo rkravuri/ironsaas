@@ -241,9 +241,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a line without supplier, When converted, Then it is refused naming the line. (error case)
 - AC3 Given only some lines converted, When saved, Then the request is Partially Ordered with remaining quantities visible.
 
-*Depends on:* REQ-007, ORD-001
+*Depends on:* REQ-007, ORD-001 (event)
 
-**Notes:** Was FF-058. Decision F-01 confirmed.
+**Notes:** Was FF-058. Converting publishes an event; Orders, a later product, creates the draft orders when it handles it (ADR-0042). Decision F-01 confirmed.
 
 #### REQ-022 Partial ordering and close-short
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Ordering
@@ -410,7 +410,7 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 
 ### 16.2 Open points
 
-From the split: REQ-021 (conversion) depends on the Orders product's ORD-001, and ORD-001 is created from REQ-021; the module dependency between the two products is settled with the modules after the checkpoint.
+Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). The conversion of a request into orders publishes an event Orders handles (REQ-021); Orders reads the request's lines and splits through this product's Contracts (ORD-001).
 
 ## 17. Glossary
 

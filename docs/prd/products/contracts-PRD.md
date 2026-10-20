@@ -184,9 +184,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given 100 percent reached with blocking, When an order is submitted, Then it is refused. (error case)
 - AC3 Given an order cancelled, When processed, Then the consumption is released.
 
-*Depends on:* ORD-008, CON-001
+*Depends on:* CON-001
 
-**Notes:** Was FF-143. Decision F-07 confirmed.
+**Notes:** Was FF-143. Orders records each release and its cancellation through this product's Contracts (ORD-008); this product never calls Orders (ADR-0042). Decision F-07 confirmed.
 
 #### CON-022 Expiry and renewal alerts
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Consumption and renewal
@@ -272,7 +272,7 @@ The business and kernel requirements this product needs, by identifier. Written 
 
 ## 13. Layer, module, schema and permissions
 
-Written after the checkpoint. The archived PRD's permission catalogue (its section 8.3) named `contracts.contract.{read,create,update,publish}`. The module's name is an open point (section 16.2).
+Written after the checkpoint. The module is `Iron.Products.ContractManagement` (schema `products_contract_management`), accepted at the checkpoint; the product keeps the name Contracts. The archived PRD's permission catalogue (its section 8.3) named `contracts.contract.{read,create,update,publish}`.
 
 ## 14. Configuration
 
@@ -299,12 +299,12 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 
 ### 16.2 Open points
 
-From the split, for the design session:
+Decided at the PRD split's checkpoint, on 2026-10-20:
 
-| Question | Default proposed |
+| Decision | Where applied |
 |---|---|
-| A module named `Iron.Products.Contracts` would have the public project `Iron.Products.Contracts.Contracts` (ADR-0001), which reads like a mistake. | Name the module `Iron.Products.ContractManagement` (schema `products_contract_management`) and keep "Contracts" as the product's name |
-| CON-021 (consumption) and the Orders product's ORD-008 (contract reference on order lines) depend on each other. | The module dependencies between products are settled with the modules after the checkpoint |
+| The module is `Iron.Products.ContractManagement`, since `Iron.Products.Contracts` would have the public project `Iron.Products.Contracts.Contracts` | Section 13 |
+| Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042); Contracts is second, so Orders records its releases through this product's Contracts | CON-021, ORD-008 |
 
 ## 17. Glossary
 

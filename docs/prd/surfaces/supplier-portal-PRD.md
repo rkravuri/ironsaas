@@ -31,7 +31,7 @@ Goals 3 and 8 of the archived PRD, in its words:
 
 ### 1.3 Lessons from the current product
 
-Keep, from the archived PRD's list: supplier portal for orders, shipment notices, invoices and catalogues. Improve: supplier ownership on every portal operation (SUP-081); one rule implementation for both surfaces.
+Keep, from the archived PRD's list: supplier portal for orders, shipment notices, invoices and catalogues. Improve: supplier ownership on every portal operation (SPX-006); one rule implementation for both surfaces.
 
 ## 2. Scope
 
@@ -60,7 +60,7 @@ From the archived PRD's list: multi-tier supplier collaboration. Supplier single
 
 ## 4. How the surface is composed
 
-The portal's own screens are this document's (section 5). Every other supplier screen is a view a product contributes, specified in that product's section 7:
+The portal's own screens are this document's (section 5). Every other supplier screen is a view a product contributes, specified in that product's section 7. Every view obeys the portal's rules (section 6), supplier ownership first (SPX-006); a view cites the rule and depends on the kernel requirements that enforce it, TF-035 and TF-234, not on this surface (ADR-0042):
 
 | Supplier view | Requirement | Product |
 |---|---|---|
@@ -81,7 +81,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### SPX-001 Supplier portal access through the network
 *Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Portal
 
-**Requirement:** Supplier users log in once to the Supplier Network (password, MFA; SSO later), see a customer switcher and a unified inbox, and open each customer's screens served with that customer's name, branding context, organisation and rules; inside a customer they see only their supplier's records (SUP-081) and only modules the customer enabled for suppliers.
+**Requirement:** Supplier users log in once to the Supplier Network (password, MFA; SSO later), see a customer switcher and a unified inbox, and open each customer's screens served with that customer's name, branding context, organisation and rules; inside a customer they see only their supplier's records (SPX-006) and only modules the customer enabled for suppliers.
 
 **Why:** Secure self-service.
 
@@ -91,7 +91,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given an enterprise user, When they open the network portal, Then it is refused. (error case)
 - AC3 Given customer A disables supplier invoicing, When the supplier works in A, Then invoices are hidden for A only.
 
-*Depends on:* TF-230, TF-233, TF-234, TF-040, SUP-081
+*Depends on:* TF-230, TF-233, TF-234, TF-040, SPX-006
 
 **Notes:** Was FF-150.
 
@@ -143,7 +143,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given no enablement in C, When the supplier opens a C document by identifier, Then it is refused. (error case)
 - AC3 Given an invoice created by the supplier, When saved, Then its organisation equals the order's organisation and the organisation's bill-to details apply.
 
-*Depends on:* BF-108, SUP-081, SPX-001
+*Depends on:* BF-108, SPX-006, SPX-001
 
 **Notes:** Was FF-189.
 
@@ -163,6 +163,23 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* BF-103, TF-230, TF-239
 
 **Notes:** Was FF-027, the portal users; the contact data is BF-103.
+
+#### SPX-006 Supplier portal ownership
+*Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Portal
+
+**Requirement:** Every supplier-facing operation shall arrive from the Supplier Network with a delegated token bound to one supplier relationship and shall be bound to that supplier by a kernel record policy; lists filter to the supplier; access by identifier to another supplier's record is refused and audited with the supplier user identity.
+
+**Why:** Gap: missing ownership checks in the current product.
+
+**Acceptance criteria:**
+
+- AC1 Given supplier A's user requests supplier B's order, When evaluated, Then it is refused and audited. (error case)
+- AC2 Given a list of invoices, When loaded by a supplier user, Then only their invoices appear with correct paging.
+- AC3 Given a buyer impersonating a supplier user, When acting, Then the supplier scope applies and the audit shows both identities.
+
+*Depends on:* TF-035, TF-025
+
+**Notes:** Was FF-036. Moved from Supplier management (SUP-081 in the checkpoint's skeleton, an identifier not reused) by the design session's answer: a rule every product's supplier views obey (section 4); they cite it and depend on the kernel's TF-035 and TF-234 (ADR-0042).
 
 ### 5.2 Supplier Network experience (SPX-021 to SPX-040)
 
@@ -311,8 +328,7 @@ From the archived PRD's section 7.1:
 | Rule | Statement |
 |---|---|
 | Network boundary | Supplier credentials and the supplier's master profile live in the Supplier Network; documents live only in the customer tenant; every supplier action arrives with a delegated token for one customer and one relationship and is audited with the supplier user identity. |
-
-The ownership rule (supplier users see and act only on records of their supplier) is the Supplier management product's section 8.1.
+| Ownership | Supplier users see and act only on records of their supplier; enforced by kernel record policies on every operation (SPX-006). Every product's supplier views obey it. |
 
 ## 7. Data and integration
 
@@ -331,7 +347,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|
-| P2 | Suppliers and orders | SPX-001, SPX-002, SPX-004, SPX-005, SPX-021, SPX-022, SPX-023, SPX-024 |
+| P2 | Suppliers and orders | SPX-001, SPX-002, SPX-004, SPX-005, SPX-006, SPX-021, SPX-022, SPX-023, SPX-024 |
 | P6 | Completeness | SPX-003, SPX-025, SPX-026, SPX-027, SPX-028 |
 
 ## 10. Decisions and open points
@@ -343,6 +359,13 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 | ID | Decision | Where applied |
 |---|---|---|
 | F-16 | One Supplier Portal for all suppliers of all customers, with easy work across customers | Section 2.1, SPX-021 to SPX-028, and the supplier views of every product, served through the network |
+
+Decided at the PRD split's checkpoint, on 2026-10-20:
+
+| Decision | Where applied |
+|---|---|
+| Portal ownership moves from Supplier management to this surface, as a rule every product's supplier views obey | SPX-006 (was SUP-081 in the checkpoint's skeleton) and section 6 |
+| The surface sits above the products: it depends on them, and their views obey its rules without depending on it (ADR-0042) | Section 4 |
 
 ### 10.2 Open points
 

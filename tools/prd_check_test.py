@@ -41,12 +41,13 @@ class PrdCheckTest(unittest.TestCase):
         prd_check.ARCHIVE = self.prd / "archive" / "functional-foundation-p2p-PRD-v1.md"
         prd_check.MAP_MD = self.prd / "requirements-map.md"
         prd_check.MAP_CSV = self.prd / "requirements-map.csv"
-        prd_check.DOCUMENTS = {"technical-foundation-PRD.md": "TF", "business-foundation-PRD.md": "BF", "products/requests-PRD.md": "REQ"}
+        prd_check.DOCUMENTS = {"technical-foundation-PRD.md": "TF", "business-foundation-PRD.md": "BF", "products/requests-PRD.md": "REQ", "products/orders-PRD.md": "ORD"}
         self.files = {
             "archive/functional-foundation-p2p-PRD-v1.md": "# Old\n\n" + block("FF-001", "Legal entities", "Finance masters", GOOD) + block("FF-002", "Requests", "Requests", GOOD),
             "technical-foundation-PRD.md": "# Kernel\n\n" + block("TF-001", "Tenant registry", "Tenancy", GOOD),
             "business-foundation-PRD.md": "# Business\n\n" + block("BF-001", "Legal entities", "Organisations", GOOD, "TF-001", "Was FF-001."),
             "products/requests-PRD.md": "# Requests\n\n" + block("REQ-001", "Requests", "Requests", GOOD, "BF-001", "Was FF-002.") + PRODUCT_SECTIONS,
+            "products/orders-PRD.md": "# Orders\n\n" + block("ORD-001", "Orders", "Orders", GOOD, "REQ-001, BF-001") + PRODUCT_SECTIONS,
         }
         self.map_rows = [
             "| FF-001 | Legal entities | moved | BF-001 | `business-foundation-PRD.md` |  |  |  |  |",
@@ -132,6 +133,29 @@ class PrdCheckTest(unittest.TestCase):
     def test_an_identifier_with_another_documents_prefix_is_refused(self) -> None:
         self.files["business-foundation-PRD.md"] += block("REQ-002", "Stray", "Organisations", GOOD)
         self.assert_refused("REQ-002: this document's identifiers start with BF-")
+
+
+    def test_a_business_requirement_on_a_product_is_refused(self) -> None:
+        self.files["business-foundation-PRD.md"] = "# Business\n\n" + block("BF-001", "Legal entities", "Organisations", GOOD, "REQ-001", "Was FF-001.")
+        self.assert_refused("BF-001 depends on REQ-001, which points up from the business layer to the products")
+
+    def test_an_earlier_product_on_a_later_one_is_refused_unless_an_event(self) -> None:
+        requests = "# Requests\n\n" + block("REQ-001", "Requests", "Requests", GOOD, "BF-001, ORD-001", "Was FF-002.") + PRODUCT_SECTIONS
+        self.files["products/requests-PRD.md"] = requests
+        self.files["products/orders-PRD.md"] = "# Orders\n\n" + block("ORD-001", "Orders", "Orders", GOOD, "BF-001") + PRODUCT_SECTIONS
+        self.assert_refused("REQ-001 depends on ORD-001 of a later product")
+        self.files["products/requests-PRD.md"] = requests.replace("ORD-001", "ORD-001 (event)")
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+
+    def test_an_event_mark_on_anything_but_a_later_product_is_refused(self) -> None:
+        self.files["products/orders-PRD.md"] = "# Orders\n\n" + block("ORD-001", "Orders", "Orders", GOOD, "REQ-001 (event)") + PRODUCT_SECTIONS
+        self.assert_refused("ORD-001: REQ-001 is marked (event), which only a dependency on a later product is")
+
+    def test_a_new_area_after_the_supplier_views_block_is_accepted(self) -> None:
+        self.files["products/orders-PRD.md"] += block("ORD-041", "Views", "Supplier views", GOOD) + block("ORD-061", "Reconciliation", "Quantities", GOOD)
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
 
 
 if __name__ == "__main__":

@@ -87,9 +87,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a quantity above open quantity, When submitted, Then it is refused naming the line. (error case)
 - AC3 Given an approved notice, When a receipt is created, Then its lines are offered with announced quantities.
 
-*Depends on:* ORD-006, SUP-081
+*Depends on:* ORD-006, TF-035, TF-234
 
-**Notes:** Was FF-090.
+**Notes:** Was FF-090. It obeys the supplier portal's ownership rule, SPX-006, and depends on the kernel requirements that enforce it (ADR-0042).
 
 #### RCV-002 Shipment notice visibility and tracking
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Shipment notices
@@ -244,9 +244,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given filters by pending approval, When applied, Then only those appear.
 - AC3 Given a user without read permission, When opening, Then it is refused. (error case)
 
-*Depends on:* RCV-024, SUP-081
+*Depends on:* RCV-024, TF-035, TF-234
 
-**Notes:** Was FF-104.
+**Notes:** Was FF-104. It obeys the supplier portal's ownership rule, SPX-006, and depends on the kernel requirements that enforce it (ADR-0042).
 
 ### 6.3 Service receipts (RCV-041 to RCV-060)
 
@@ -284,9 +284,9 @@ The service entry against an order line, milestones, percentage of completion, a
 - AC2 Given 10 received with 10 invoiced, When a return is attempted, Then it is refused with the credit note path explained. (error case)
 - AC3 Given approval, When done, Then the supplier receives the return note.
 
-*Depends on:* RCV-024, INV-044
+*Depends on:* RCV-024, RCV-081
 
-**Notes:** Was FF-097.
+**Notes:** Was FF-097. Its dependency on credit notes (INV-044) became one on the buckets (RCV-081), which Invoicing updates through this product's Contracts (ADR-0042).
 
 ### 6.5 Quantities (RCV-081 to RCV-100)
 
@@ -324,6 +324,23 @@ The service entry against an order line, milestones, percentage of completion, a
 *Depends on:* RCV-081
 
 **Notes:** Was FF-099.
+
+#### RCV-083 Nightly reconciliation of the received buckets
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Quantities
+
+**Requirement:** A nightly job shall recompute the received buckets (received submitted and received approved, RCV-081) from receipts and returns, compare them with the stored values, write differences to a drift report and alert operators; drift is an incident, not auto-healed. It runs in the one nightly reconciliation window of the kernel's jobs (TF-120 to TF-124).
+
+**Why:** Counters are a cache; documents are the truth.
+
+**Acceptance criteria:**
+
+- AC1 Given consistent data, When the job runs, Then zero drift rows exist and a success record is stored.
+- AC2 Given a manual database change that breaks a counter, When the job runs, Then the drift row names the line and values and an alert fires. (error case)
+- AC3 Given the job fails, When detected, Then an alert fires.
+
+*Depends on:* RCV-081, RCV-061, TF-120, TF-123
+
+**Notes:** Was FF-133, the received buckets; Orders, Invoicing and the Business budgets reconcile their own counters in ORD-121, INV-027 and BF-073, in the same window.
 
 ### 6.6 Reports (RCV-101 to RCV-120)
 
@@ -461,7 +478,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 |---|---|---|
 | P2 | Suppliers and orders | RCV-121 |
 | P3 | Receiving | RCV-001, RCV-002, RCV-021, RCV-022, RCV-023, RCV-024, RCV-025, RCV-026, RCV-027, RCV-028, RCV-041, RCV-061, RCV-081, RCV-082, RCV-122 |
-| P4 | Invoicing and matching | RCV-101 |
+| P4 | Invoicing and matching | RCV-083, RCV-101 |
 
 ## 16. Decisions and open points
 
@@ -481,7 +498,7 @@ From the archived PRD's section 10.2:
 |---|---|---|
 | G-06 | Mobile companion scope for this product: approval centre only, or also receipt confirmation? | Approval centre first; receipt confirmation second |
 
-From the split: RCV-061 (returns) depends on the Invoicing product's INV-044 (credit notes), and invoices read this product's receipts and buckets. The module dependencies between products are settled with the modules after the checkpoint.
+Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). Receiving calls Orders (RCV-001, RCV-021, RCV-081); Invoicing updates the invoiced buckets through this product's Contracts, so returns read the buckets, not credit notes (RCV-061). Each module reconciles its own counters in one nightly window (RCV-083).
 
 ## 17. Glossary
 

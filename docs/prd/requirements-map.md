@@ -24,8 +24,8 @@ Three moved requirements had an error case without the marker; their AC1 is now 
 
 | Outcome | FF identifiers |
 |---|---|
-| moved | 157 |
-| split | 6 |
+| moved | 154 |
+| split | 9 |
 | merged | 0 |
 | covered | 9 |
 | retired | 0 |
@@ -33,17 +33,29 @@ Three moved requirements had an error case without the marker; their AC1 is now 
 
 | Document | Prefix | Requirements from the archived PRD |
 |---|---|---|
-| `business-foundation-PRD.md` | BF- | 39 |
+| `business-foundation-PRD.md` | BF- | 40 |
 | `product-method.md` | PM- | 5 |
 | `products/supplier-management-PRD.md` | SUP- | 18 |
 | `products/catalogue-PRD.md` | CAT- | 12 |
 | `products/requests-PRD.md` | REQ- | 14 |
-| `products/orders-PRD.md` | ORD- | 20 |
-| `products/receiving-PRD.md` | RCV- | 17 |
-| `products/invoicing-PRD.md` | INV- | 29 |
+| `products/orders-PRD.md` | ORD- | 21 |
+| `products/receiving-PRD.md` | RCV- | 18 |
+| `products/invoicing-PRD.md` | INV- | 30 |
 | `products/contracts-PRD.md` | CON- | 9 |
-| `surfaces/supplier-portal-PRD.md` | SPX- | 13 |
-| all | | 176 |
+| `surfaces/supplier-portal-PRD.md` | SPX- | 14 |
+| all | | 181 |
+
+## Changed at the checkpoint
+
+The design session answered the checkpoint on 2026-10-20, and five rows changed:
+
+- FF-182: split; its optional organisation approval moved from the Business PRD to Supplier management (SUP-006), since Business never depends on a product (ADR-0042).
+- FF-202: split; its ISO 20022 payment status codes moved from the Business PRD to Invoicing (INV-045), for the same reason.
+- FF-133: split four ways; each module reconciles its own counters in one nightly window (INV-027, ORD-121, RCV-083, BF-073).
+- FF-036: moved from Supplier management to the supplier portal surface (SPX-006), as a rule every product's supplier views obey. It was SUP-081 in the checkpoint's skeleton; that identifier is not reused.
+- FF-184: its clause on approvals, tasks and notifications is the new kernel requirement TF-243.
+
+Dependencies changed with ADR-0042 too; each requirement whose dependencies changed says why in its notes.
 
 ## Rows placed by the test
 
@@ -60,6 +72,9 @@ Where a part of a split kept no criterion of the original that tests it, or none
 - BF-105 AC2 (from FF-029): Given a bank account whose verification is not complete, When it is chosen for a payment instruction, Then it is refused. (error case)
 - CAT-006 AC1 (from FF-049): Given a valid supplier item file, When imported, Then supplier items are created for their items and suppliers.
 - CAT-007 AC2 (from FF-186): Given a catalogue item published only to organisation A, When a user of organisation B requests it by identifier, Then it is refused. (error case)
+- SUP-006 AC1 (from FF-182): Given organisation approval required in organisation A, When a supplier is enabled in A, Then the enablement takes effect when the approval completes.
+- SUP-006 AC2 (from FF-182): Given an enablement in organisation A still in approval, When a buyer of A creates an order for the supplier, Then it is refused naming the pending approval. (error case)
+- INV-045 AC2 (from FF-202): Given a payment status message whose code is not an ISO 20022 payment status code, When received, Then it is rejected naming the code. (error case)
 - BF-203 AC2 (from FF-188): Given a user without administration permission, When they open an organisation's readiness checklist, Then it is refused. (error case)
 
 ## The map
@@ -97,7 +112,7 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-033 | Supplier change approval | moved | SUP-022 | `products/supplier-management-PRD.md` |  |  |  |  |
 | FF-034 | Supplier 360 view and lists | moved | SUP-061 | `products/supplier-management-PRD.md` |  |  |  |  |
 | FF-035 | Supplier configuration defaults | moved | BF-106 | `business-foundation-PRD.md` |  |  |  |  |
-| FF-036 | Supplier portal ownership | moved | SUP-081 | `products/supplier-management-PRD.md` |  |  |  |  |
+| FF-036 | Supplier portal ownership | moved | SPX-006 | `surfaces/supplier-portal-PRD.md` |  |  |  | Moved to the supplier portal surface by the design session's answer at the checkpoint: a rule every product's supplier views obey. It was SUP-081 in the checkpoint's skeleton; that identifier is not reused. |
 | FF-037 | Supplier merge | moved | SUP-024 | `products/supplier-management-PRD.md` |  |  |  |  |
 | FF-038 | Supplier categories and preferred status | moved | BF-107 | `business-foundation-PRD.md` |  |  |  |  |
 | FF-039 | Supplier risk flags | moved | SUP-043 | `products/supplier-management-PRD.md` |  |  |  |  |
@@ -180,7 +195,7 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-130 | Accrual report | moved | INV-082 | `products/invoicing-PRD.md` |  |  |  |  |
 | FF-131 | Uninvoiced and open-order views | moved | INV-083 | `products/invoicing-PRD.md` |  |  |  |  |
 | FF-132 | Matching configuration | moved | INV-061 | `products/invoicing-PRD.md` |  |  |  |  |
-| FF-133 | Nightly reconciliation of buckets and budgets | moved | INV-027 | `products/invoicing-PRD.md` |  |  |  | Reconciles counters of Orders, Receiving and Business; an open point in the Invoicing PRD. |
+| FF-133 | Nightly reconciliation of buckets and budgets | split | INV-027, ORD-121, RCV-083, BF-073 | `products/invoicing-PRD.md`, `products/orders-PRD.md`, `products/receiving-PRD.md`, `business-foundation-PRD.md` |  |  |  | Split by the design session's answer at the checkpoint: each module reconciles its own counters in its own requirement, all in one nightly window of the kernel's jobs (TF-120 to TF-124). |
 | FF-134 | Holds console | moved | INV-026 | `products/invoicing-PRD.md` |  |  |  |  |
 | FF-140 | Contract repository | moved | CON-001 | `products/contracts-PRD.md` |  |  |  |  |
 | FF-141 | Contract items and pricing | moved | CON-002 | `products/contracts-PRD.md` |  |  |  |  |
@@ -212,13 +227,13 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-172 | Matching and tolerance configuration screen | moved | INV-062 | `products/invoicing-PRD.md` |  |  |  |  |
 | FF-173 | Document templates for the product | moved | BF-162 | `business-foundation-PRD.md` |  |  |  |  |
 | FF-174 | Approval configuration starter set | moved | BF-201 | `business-foundation-PRD.md` |  |  |  |  |
-| FF-175 | Go-live checklist and data readiness | moved | BF-202 | `business-foundation-PRD.md` |  |  |  | Its checklist is contributions to the kernel's IUnitReadiness (A8). |
-| FF-176 | Country accelerator packs | moved | BF-204 | `business-foundation-PRD.md` |  |  |  |  |
+| FF-175 | Go-live checklist and data readiness | moved | BF-202 | `business-foundation-PRD.md` |  |  |  | Its checklist is contributions to the kernel's IUnitReadiness (A8); its dependency on the supplier onboarding configuration is dropped (ADR-0042). |
+| FF-176 | Country accelerator packs | moved | BF-204 | `business-foundation-PRD.md` |  |  |  | Its dependency on e-invoicing readiness is reversed: INV-010 depends on it (ADR-0042). |
 | FF-180 | Owning organisation on every record | covered | BF-003 | `business-foundation-PRD.md` | TF-220 | S1 (the owning organisation on every business record), A1 (an active unit), A3 (the unit policy on lists and reads), A8 (sharing modes) |  | The owning organisation and the sharing mode are the kernel's; BF-003 keeps the business rules FF-180 adds: which records carry them, documents take the organisation of the requester or buyer and never mix organisations, the organisation shows on lists and records. |
 | FF-181 | Sharing modes for master data | covered | BF-004 | `business-foundation-PRD.md` | TF-220 | A8 (sharing modes, the shares in kernel_data) |  | The three sharing modes are the kernel's; BF-004 keeps the default mode per master type and what a change of mode does to documents that reference the record. |
-| FF-182 | Supplier enablement per organisation | moved | BF-108 | `business-foundation-PRD.md` |  |  |  |  |
+| FF-182 | Supplier enablement per organisation | split | BF-108, SUP-006 | `business-foundation-PRD.md`, `products/supplier-management-PRD.md` |  |  |  | Split by the design session's answer at the checkpoint (Business never depends on a product, ADR-0042): the enablement and its terms to Business, its optional organisation approval to Supplier management. Its clause that supplier users see the documents of every organisation that enabled them, with its AC3, is SPX-004's, which says the same (was FF-189). |
 | FF-183 | Organisation-specific configuration | covered | BF-005 | `business-foundation-PRD.md` | TF-221 | A6 (settings with the unit scope); numbering and templates are S4, approval configurations S5 |  | The organisation scope of configuration is the kernel's; BF-005 keeps which business configuration is set per organisation (open point G-03). |
-| FF-184 | Document visibility by organisation | covered |  |  | TF-222, TF-035 | A3 (record policies on reads and lists), A8 (cross-unit access, the read audit, the working unit) |  | Nothing business left over; each product's record policies apply it (section 9 of each product PRD after the checkpoint). Its clause that approvals, tasks and notifications respect the same access has no kernel requirement yet: an open point for the design session. |
+| FF-184 | Document visibility by organisation | covered |  |  | TF-222, TF-035, TF-243 | A3 (record policies on reads and lists), A8 (cross-unit access, the read audit, the working unit); TF-243 is not built yet (with the workflow engine, S5) |  | Nothing business left over; each product's record policies apply it. Its clause that approvals, tasks and notifications respect the same access is TF-243, which the design session added at the checkpoint. |
 | FF-185 | Finance masters per legal entity and organisation | moved | BF-002 | `business-foundation-PRD.md` |  |  |  |  |
 | FF-186 | Catalogue and contract applicability per organisation | split | CAT-007, CON-006 | `products/catalogue-PRD.md`, `products/contracts-PRD.md` |  |  |  | Split between Catalogue and Contracts, as the brief says. |
 | FF-187 | Consolidated reporting and organisation switcher | covered |  |  | TF-222 | A8 (the working unit with All my units, consolidated views by a parent's scope) |  | Nothing business left over: per-organisation and consolidated reports are TF-222's consolidated mode, which each product's reports follow. |
@@ -234,7 +249,7 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-197 | Relationship status and history | moved | SPX-028 | `surfaces/supplier-portal-PRD.md` |  |  |  |  |
 | FF-200 | Process reference pack per module | moved | PM-001 | `product-method.md` |  |  |  |  |
 | FF-201 | Standards alignment of document models | moved | PM-021 | `product-method.md` |  |  |  |  |
-| FF-202 | Reference data from standards | moved | BF-205 | `business-foundation-PRD.md` |  |  |  | Reference data is Business. |
+| FF-202 | Reference data from standards | split | BF-205, INV-045 | `business-foundation-PRD.md`, `products/invoicing-PRD.md` |  |  |  | Split by the design session's answer at the checkpoint (Business never depends on a product, ADR-0042): the masters' reference data to Business, the ISO 20022 payment status codes to Invoicing. |
 | FF-203 | Benchmark indicators built in | moved | PM-022 | `product-method.md` |  |  |  |  |
 | FF-204 | External practitioner review | moved | PM-002 | `product-method.md` |  |  |  |  |
 | FF-205 | Research log and living process documentation | moved | PM-003 | `product-method.md` |  |  |  |  |

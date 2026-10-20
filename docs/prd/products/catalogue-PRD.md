@@ -203,9 +203,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given an empty cart, When converted, Then a message says the cart is empty. (error case)
 - AC3 Given a favourite, When the requester returns, Then it is listed first.
 
-*Depends on:* CAT-004, REQ-001
+*Depends on:* CAT-004, REQ-001 (event)
 
-**Notes:** Was FF-045.
+**Notes:** Was FF-045. Converting the cart publishes an event; Requests, a later product, creates the draft request when it handles it (ADR-0042).
 
 #### CAT-022 Contract items in the catalogue
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Shopping
@@ -356,7 +356,7 @@ From the archived PRD's section 10.2:
 |---|---|---|
 | G-08 | Catalogues: one catalogue per customer (default) or one network catalogue offered to many customers? | Per customer in version 1; network catalogue later |
 
-From the split: CAT-022 (contract items in browsing) depends on the Contracts product's CON-002; the module dependency between the two products is settled with the modules after the checkpoint.
+Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). Catalogue may call Contracts (CAT-022 on CON-002); the conversion of a cart into a request publishes an event Requests handles (CAT-021).
 
 ## 17. Glossary
 

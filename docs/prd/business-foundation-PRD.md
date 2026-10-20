@@ -69,7 +69,7 @@ Indian and Asian customers very often run several business units (they call them
 - Configuration per organisation: numbering, templates, approval configurations, tolerances and settings can override the tenant values (TF-221).
 - Reporting: per organisation, and consolidated for group roles with children included.
 
-The archived PRD's area for this was FF-180 to FF-189, and the map says where each went. The kernel covers document visibility by organisation and consolidated reporting (TF-222, TF-035). The business rules are BF-001, BF-002, BF-003, BF-004, BF-005, BF-108 and BF-203. Catalogues and contracts per organisation are CAT-007 and CON-006, and the supplier portal across organisations is SPX-004.
+The archived PRD's area for this was FF-180 to FF-189, and the map says where each went. The kernel covers document visibility by organisation and consolidated reporting (TF-222, TF-035). The business rules are BF-001, BF-002, BF-003, BF-004, BF-005, BF-108, BF-083 and BF-203. Catalogues and contracts per organisation are CAT-007 and CON-006, and the supplier portal across organisations is SPX-004.
 
 ### 2.3 Out of scope in version 1 (`[Later]`)
 
@@ -477,9 +477,26 @@ Chart of accounts and segments, account strings, budgets, fiscal calendar, curre
 
 **Notes:** Was FF-014.
 
+#### BF-073 Nightly reconciliation of budgets
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Finance
+
+**Requirement:** A nightly job shall recompute budget reserved and consumed from the consumption history, whose rows name their documents (BF-064), compare them with the stored values, write differences to a drift report and alert operators; drift is an incident, not auto-healed. It runs in the one nightly reconciliation window of the kernel's jobs (TF-120 to TF-124).
+
+**Why:** Counters are a cache; documents are the truth.
+
+**Acceptance criteria:**
+
+- AC1 Given consistent data, When the job runs, Then zero drift rows exist and a success record is stored.
+- AC2 Given a manual database change that breaks a counter, When the job runs, Then the drift row names the line and values and an alert fires. (error case)
+- AC3 Given the job fails, When detected, Then an alert fires.
+
+*Depends on:* BF-064, BF-066, TF-120, TF-123
+
+**Notes:** Was FF-133, the budgets. Business recomputes from its own consumption history and needs nothing from the products (ADR-0042). Orders, Receiving and Invoicing reconcile their own counters in ORD-121, RCV-083 and INV-027, in the same window.
+
 ### 5.5 Locations (BF-081 to BF-100)
 
-Ship-to locations and warehouses, which requests, orders and receipts offer. Bill-to addresses are the legal entity's (BF-001).
+Locations of three types, ship-to, bill-to and warehouse (BF-083), each linked to its legal entity, which requests, orders, receipts and invoices offer.
 
 #### BF-081 Ship-to locations
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Locations
@@ -514,6 +531,24 @@ Ship-to locations and warehouses, which requests, orders and receipts offer. Bil
 *Depends on:* BF-001
 
 **Notes:** Was FF-100.
+
+#### BF-083 Location types and bill-to locations
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Locations
+
+**Requirement:** Every location shall have a type, ship-to, bill-to or warehouse, and be linked to its legal entity; each legal entity has one default bill-to location, and more are allowed.
+
+**Why:** A legal entity is billed at an address of its own, sometimes at more than one, and the locations master already holds the ship-to locations and the warehouses.
+
+**Acceptance criteria:**
+
+- AC1 Given a legal entity with two bill-to locations, one of them its default, When a billing address is chosen for a document of that legal entity, Then the default is proposed and the other is offered.
+- AC2 Given a bill-to location without a legal entity, When saved, Then it is refused. (error case)
+- AC3 Given a second bill-to location marked default for the same legal entity, When saved, Then the first loses the default.
+- AC4 Given a warehouse, When billing addresses are offered, Then it is not among them.
+
+*Depends on:* BF-001, BF-081, BF-082
+
+**Notes:** Decided at the PRD split's checkpoint (section 12.1). The billing address among a legal entity's attributes (BF-001) is its default bill-to location.
 
 ### 5.6 Supplier master (BF-101 to BF-120)
 
@@ -640,7 +675,7 @@ The supplier record and its parts, which every product reads, and its enablement
 #### BF-108 Supplier enablement per organisation
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier master
 
-**Requirement:** A supplier shall register once per tenant and be enabled per organisation with organisation-specific terms (payment and shipping terms, currency, match levels, preferred flag, status On or On Hold) and an optional organisation approval; documents of an organisation may use only suppliers enabled in it; supplier users see documents of all organisations they are enabled in, labelled by organisation.
+**Requirement:** A supplier shall register once per tenant and be enabled per organisation with organisation-specific terms (payment and shipping terms, currency, match levels, preferred flag, status On or On Hold); documents of an organisation may use only suppliers enabled in it.
 
 **Why:** One registration for the supplier, separate control for each unit.
 
@@ -648,11 +683,10 @@ The supplier record and its parts, which every product reads, and its enablement
 
 - AC1 Given a supplier enabled in A but not B, When a buyer of B creates an order for it, Then it is refused with an enablement action offered. (error case)
 - AC2 Given organisation terms set, When an order in that organisation is created, Then the organisation's terms default.
-- AC3 Given a supplier user, When listing orders, Then orders of all enabling organisations appear with the organisation name.
 
-*Depends on:* BF-101, SUP-004, BF-003
+*Depends on:* BF-101, BF-003
 
-**Notes:** Was FF-182. Decision G-01 default.
+**Notes:** Was FF-182, the enablement and its terms. Its optional organisation approval is SUP-006, since Business never depends on a product (ADR-0042); its clause that supplier users see the documents of every organisation that enabled them, with its AC3, is SPX-004's, which says the same. Decision G-01 default.
 
 ### 5.7 Lookups (BF-121 to BF-140)
 
@@ -739,9 +773,9 @@ The approval starter set, go-live and organisation readiness as contributions to
 - AC2 Given all items complete, When the view loads, Then it shows ready.
 - AC3 Given a user without administration permission, When opening, Then it is refused. (error case)
 
-*Depends on:* BF-161, SUP-005
+*Depends on:* BF-161, TF-223
 
-**Notes:** Was FF-175. Its checklist is made of contributions to the kernel's IUnitReadiness (A8).
+**Notes:** Was FF-175. Its checklist is made of contributions to the kernel's IUnitReadiness (A8). Its dependency on the supplier onboarding configuration (SUP-005) is dropped: Business never depends on a product, and a product that needs readiness items contributes its own to IUnitReadiness (TF-223, ADR-0042).
 
 #### BF-203 Organisation readiness checklist
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Setup and data
@@ -773,14 +807,14 @@ The approval starter set, go-live and organisation readiness as contributions to
 - AC3 Given a pack upgraded, When installed, Then existing documents keep their computed values and new documents use the new rules.
 - AC4 Given a pack installation by a tenant administrator without operator rights, When attempted, Then it is refused. (error case)
 
-*Depends on:* BF-071, INV-010, TF-088
+*Depends on:* BF-071, TF-088
 
-**Notes:** Was FF-176. Decision G-05 default: operators install, tenant administrators configure.
+**Notes:** Was FF-176. Its dependency on e-invoicing readiness is reversed: INV-010 applies the packs' e-invoice field rules and depends on this requirement (ADR-0042). Decision G-05 default: operators install, tenant administrators configure.
 
 #### BF-205 Reference data from standards
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Setup and data
 
-**Requirement:** Categories shall support UNSPSC codes (with tenant-specific trees mapped to UNSPSC), items and locations shall support GS1 identifiers (GTIN, GLN), currencies ISO 4217, dates ISO 8601, locations UN/LOCODE, shipping terms Incoterms 2020, and payment status messages ISO 20022 codes, each as optional reference attributes that packs and integrations can rely on.
+**Requirement:** Categories shall support UNSPSC codes (with tenant-specific trees mapped to UNSPSC), items and locations shall support GS1 identifiers (GTIN, GLN), currencies ISO 4217, dates ISO 8601, locations UN/LOCODE and shipping terms Incoterms 2020, each as optional reference attributes that packs and integrations can rely on.
 
 **Why:** Common language with ERPs, suppliers and networks.
 
@@ -788,11 +822,10 @@ The approval starter set, go-live and organisation readiness as contributions to
 
 - AC1 Given a category mapped to a UNSPSC code, When exported, Then the code is included.
 - AC2 Given an item with a GTIN of wrong length or check digit, When saved, Then it is refused. (error case)
-- AC3 Given a payment status message with an ISO 20022 code, When received, Then it maps to the invoice payment state.
 
-*Depends on:* BF-042, BF-041, INV-043
+*Depends on:* BF-042, BF-041
 
-**Notes:** Was FF-202.
+**Notes:** Was FF-202, the reference data of the masters; the payment status codes (ISO 20022) with AC3 are INV-045, since Business never depends on a product (ADR-0042).
 
 #### BF-206 Masters import, export and ERP sync
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Setup and data
@@ -811,9 +844,29 @@ The approval starter set, go-live and organisation readiness as contributions to
 
 **Notes:** Was FF-015.
 
+#### BF-207 Use of master records by the products
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Setup and data
+
+**Requirement:** Business shall declare an extension point through which each product answers which of its live documents use a given master record; a master record in use shall be refused deletion and may be deactivated instead, and a change of a master's sharing mode shall list the documents of other organisations that use it (BF-004).
+
+**Why:** Masters refuse deletion while documents use them (BF-072 AC3, BF-102 AC2) and list the documents a narrowed sharing mode affects (BF-004 AC2). The documents are the products', and Business never depends on a product (ADR-0042), so the products tell Business through a point it declares and they implement.
+
+**Acceptance criteria:**
+
+- AC1 Given a payment term used on an open order, When its deletion is requested, Then it is refused naming the order, and deactivation is offered. (error case)
+- AC2 Given an item shared with organisations A and B and used on a request of B, When its sharing mode becomes private to A, Then the warning lists that request.
+- AC3 Given a master record no product uses, When its deletion is requested, Then it is deleted.
+- AC4 Given a product that does not answer, When the deletion of a master is requested, Then it is refused naming the product, not allowed. (error case)
+
+*Depends on:* BF-004, BF-072, BF-102
+
+**Notes:** Written at the checkpoint, after the design session's first answer: the one place where Business must hear from the products. Every product whose documents use masters implements it, and its Dependencies section says so (section 6.2).
+
 ## 6. Kernel extension points
 
-The kernel declares these interfaces in its Contracts; this layer implements them (ADR-0029, decision 5). Written in full after the checkpoint.
+### 6.1 What the kernel declares and this layer implements
+
+The kernel declares these interfaces in its Contracts; this layer implements them (ADR-0029, decision 5).
 
 | Interface | Declared in | What this layer supplies |
 |---|---|---|
@@ -821,6 +874,14 @@ The kernel declares these interfaces in its Contracts; this layer implements the
 | `IReviewEscalation` | `Iron.Kernel.Authorization.Contracts` (A7) | The reviewer's manager, from the people master, for an overdue access review (section 5.2) |
 | `IUnitReadiness` | `Iron.Kernel.Authorization.Contracts` (A8) | The readiness items of a unit: BF-202 and BF-203 |
 | `IUnitRecordOwners` | `Iron.Kernel.Data` (A8) | The masters a unit owns, which move in a unit merge |
+
+### 6.2 What this layer declares and the products implement
+
+Business never depends on a product (ADR-0042). Where it must hear from one, it declares an extension point in its Contracts and the product implements it; the product's Dependencies section says so.
+
+| Extension point | Requirement | Who implements it |
+|---|---|---|
+| The use of master records: which live documents of a product use a given master | BF-207 | Every product whose documents use masters: Supplier management, Contracts, Catalogue, Requests, Orders, Receiving and Invoicing |
 
 ## 7. Rules and state machines
 
@@ -875,7 +936,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 | P1 | Masters, organisations and first request | BF-001, BF-002, BF-003, BF-004, BF-005, BF-042, BF-043, BF-061, BF-062, BF-063, BF-064, BF-065, BF-066, BF-067, BF-069, BF-070, BF-071, BF-072, BF-081, BF-108, BF-161, BF-202, BF-206 |
 | P2 | Suppliers and orders | BF-101, BF-102, BF-103, BF-104, BF-105, BF-106, BF-162, BF-201, BF-203 |
 | P3 | Receiving | BF-082 |
-| P4 | Invoicing and matching | BF-068 |
+| P4 | Invoicing and matching | BF-068, BF-073 |
 | P5 | Catalogue, contracts, change orders | BF-041, BF-044 |
 | P6 | Completeness | BF-107, BF-204 |
 
@@ -894,7 +955,14 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1, where they apply 
 | F-14 | One supplier registration per tenant with per-organisation enablement | BF-108 |
 | F-15 | Intercompany documents not in version 1; design hooks kept | Section 2.3 |
 
-The split itself is ADR-0041.
+The split itself is ADR-0041. Decided at its checkpoint, on 2026-10-20:
+
+| Decision | Where applied |
+|---|---|
+| Business never depends on a product: a clause that belongs in a product moves there; where Business must hear from a product, it declares an extension point the product implements (ADR-0042) | BF-108 (its organisation approval is SUP-006), BF-202 and BF-204 (their product dependencies dropped; INV-010 depends on BF-204), BF-205 (its payment status codes are INV-045), BF-207 |
+| Each module reconciles its own counters, in one nightly window of the kernel's jobs | BF-073 for the budgets |
+| Approvals, tasks and notifications respect access | TF-243 |
+| Bill-to is a location type in the locations master, linked to its legal entity, one default per legal entity and more allowed | BF-083 |
 
 ### 12.2 Open points
 
@@ -906,13 +974,6 @@ From the archived PRD's section 10.2:
 | G-03 | Which organisation-level overrides are needed on day one beyond numbering, templates, approvals and tolerances? | Those four plus budget validation switches |
 | G-04 | Intercompany documents in a later version: which flows (one organisation buying for another, internal recharge)? | Not in version 1; hooks kept on records |
 | G-05 | Accelerator pack delivery: installed by operators per tenant, or chosen by tenant administrators from a catalogue? | Operators install; tenant administrators configure |
-
-From the split, for the design session:
-
-| Question | Default proposed |
-|---|---|
-| Four business requirements cite a product's: BF-108 (supplier enablement) depends on SUP-004 (approval and publishing), BF-202 (go-live checklist) on SUP-005 (onboarding configuration), BF-204 (country packs) on INV-010 (e-invoicing readiness), BF-205 (reference data) on INV-043 (payment status). Code may not depend upward (ADR-0029). | Each becomes a contribution the product makes to this layer (as a product contributes readiness items to `IUnitReadiness`), and the dependency is reworded after the checkpoint |
-| Is a bill-to location a master of its own, or only the legal entity's billing address (BF-001)? | The legal entity's billing address, as the archived PRD has it |
 
 ## 13. Glossary
 

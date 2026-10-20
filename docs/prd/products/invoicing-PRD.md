@@ -251,9 +251,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC3 Given the fields present, When exported to the ERP, Then they are included. (edge)
 - AC4 Given an e-invoice field with an invalid format, When submitted with the rule on, Then it is refused naming the field. (error case)
 
-*Depends on:* INV-001, BF-071
+*Depends on:* INV-001, BF-071, BF-204
 
-**Notes:** Was FF-129. Decision F-08 confirmed.
+**Notes:** Was FF-129. It depends on the country packs (BF-204), whose e-invoice field rules it applies (ADR-0042). Decision F-08 confirmed.
 
 ### 6.2 Matching and controls (INV-021 to INV-040)
 
@@ -359,10 +359,10 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was FF-134.
 
-#### INV-027 Nightly reconciliation of buckets and budgets
+#### INV-027 Nightly reconciliation of the invoiced buckets
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Matching and controls
 
-**Requirement:** A nightly job shall recompute received and invoiced buckets from receipts and invoices and budget reserved and consumed from documents, compare with stored values, write differences to a drift report and alert operators; drift is an incident, not auto-healed.
+**Requirement:** A nightly job shall recompute the invoiced buckets (invoiced submitted and invoiced approved, RCV-081) from invoices and credit notes, compare them with the stored values, write differences to a drift report and alert operators; drift is an incident, not auto-healed. It runs in the one nightly reconciliation window of the kernel's jobs (TF-120 to TF-124).
 
 **Why:** Counters are a cache; documents are the truth.
 
@@ -372,9 +372,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a manual database change that breaks a counter, When the job runs, Then the drift row names the line and values and an alert fires. (error case)
 - AC3 Given the job fails, When detected, Then an alert fires.
 
-*Depends on:* RCV-081, BF-066, TF-120
+*Depends on:* RCV-081, INV-044, TF-120, TF-123
 
-**Notes:** Was FF-133. It reconciles counters of Orders, Receiving and Business; open point in section 16.
+**Notes:** Was FF-133, the invoiced buckets; Orders, Receiving and the Business budgets reconcile their own counters in ORD-121, RCV-083 and BF-073, in the same window.
 
 ### 6.3 Approval and payment (INV-041 to INV-060)
 
@@ -447,6 +447,22 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was FF-127.
 
+#### INV-045 Payment status codes from ISO 20022
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Approval and payment
+
+**Requirement:** Payment status messages shall carry ISO 20022 codes as optional reference attributes that integrations can rely on.
+
+**Why:** Common language with ERPs, suppliers and networks.
+
+**Acceptance criteria:**
+
+- AC1 Given a payment status message with an ISO 20022 code, When received, Then it maps to the invoice payment state.
+- AC2 Given a payment status message whose code is not an ISO 20022 payment status code, When received, Then it is rejected naming the code. (error case)
+
+*Depends on:* INV-043
+
+**Notes:** Was FF-202, the payment status codes; the reference data of the masters is BF-205. AC2 is written for the split, after INV-043 AC2.
+
 ### 6.4 Configuration (INV-061 to INV-080)
 
 #### INV-061 Matching configuration
@@ -499,9 +515,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC3 Given global summary, When viewed, Then counts match the lists. (edge)
 - AC4 Given a user without invoice read permission, When the queue is opened, Then it is refused. (error case)
 
-*Depends on:* INV-001, SUP-081
+*Depends on:* INV-001, TF-035, TF-234
 
-**Notes:** Was FF-126.
+**Notes:** Was FF-126. It obeys the supplier portal's ownership rule, SPX-006, and depends on the kernel requirements that enforce it (ADR-0042).
 
 #### INV-082 Accrual report
 *Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Lists and reports
@@ -590,9 +606,9 @@ What the supplier sees and does in the portal for this product; the narrative is
 - AC2 Given a variance block, When submitted, Then the supplier sees the reason per line. (error case)
 - AC3 Given payment status received, When viewed, Then it is shown with date and reference.
 
-*Depends on:* INV-002, INV-003, INV-043, SUP-081
+*Depends on:* INV-002, INV-003, INV-043, TF-035, TF-234
 
-**Notes:** Was FF-155.
+**Notes:** Was FF-155. It obeys the supplier portal's ownership rule, SPX-006, and depends on the kernel requirements that enforce it (ADR-0042).
 
 ## 8. Rules and state machines
 
@@ -685,6 +701,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|
+| P0 | Process reference packs | INV-045 |
 | P4 | Invoicing and matching | INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, INV-008, INV-021, INV-022, INV-023, INV-024, INV-025, INV-026, INV-027, INV-041, INV-042, INV-043, INV-061, INV-062, INV-081, INV-082, INV-083, INV-084, INV-085, INV-101 |
 | P6 | Completeness | INV-009, INV-010, INV-044 |
 
@@ -705,12 +722,13 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 
 ### 16.2 Open points
 
-From the split, for the design session:
+Decided at the PRD split's checkpoint, on 2026-10-20:
 
-| Question | Default proposed |
+| Decision | Where applied |
 |---|---|
-| INV-027 (nightly reconciliation, was FF-133) recomputes the buckets of Orders and Receiving and the budgets of the Business layer, and the brief's table keeps it here. | It stays here and reads the others through their Contracts; or each module reconciles its own counters |
-| Invoices read the Receiving product's receipts and buckets, and Receiving's returns depend on this product's credit notes (RCV-061 on INV-044). | The module dependencies between products are settled with the modules after the checkpoint |
+| Each module reconciles its own counters in its own requirement, in one nightly window of the kernel's jobs (TF-120 to TF-124) | INV-027 for the invoiced buckets; ORD-121, RCV-083 and BF-073 for the others |
+| Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042); Invoicing is the last, so it calls every earlier one | Section 12 |
+| The ISO 20022 payment status codes are this product's | INV-045 (was part of FF-202) |
 
 ## 17. Glossary
 
