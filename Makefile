@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check format catalogue apply-plan clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check format catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -119,6 +119,16 @@ update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit 
 apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
 	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) DRY_RUN=$(or $(DRY_RUN),0) $(COMPOSE_DIR)/scripts/apply-plan.sh $(TENANT) $(PLAN) "$(STARTS)" "$(ENDS)"
+
+flag: ## Set a flag's rule for a tenant, or for the platform without TENANT, and print it (ADR-0035): make flag KEY=flags.example_tone VALUE=warm TENANT=echo [REASON="..."]
+	@test -n "$(KEY)" && test -n "$(VALUE)" || (echo 'usage: make flag KEY=flags.example_tone VALUE=warm [TENANT=echo] [REASON="..."]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) /bin/bash $(COMPOSE_DIR)/scripts/flag-rule.sh flag "$(KEY)" '$(VALUE)' "$(TENANT)" "$(REASON)"
+
+# PATH=imports on the command line replaces the recipe's PATH, so the recipe names /bin/bash and the script resets PATH.
+KILL_SWITCH = $(if $(filter command line,$(origin PATH)),$(PATH),$(SWITCH))
+kill-switch: ## Turn a kill switch on or off for the platform, or TENANT=x, with a reason (only an operator): make kill-switch PATH=imports ON=true REASON="..."
+	@test -n "$(KILL_SWITCH)" && test -n "$(ON)" && test -n "$(REASON)" || (echo 'usage: make kill-switch PATH=imports ON=true REASON="why, for the administrators" [TENANT=echo]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) /bin/bash $(COMPOSE_DIR)/scripts/flag-rule.sh kill "$(KILL_SWITCH)" "$(ON)" "$(REASON)" "$(TENANT)"
 
 deprovision: ## Ask the fleet to take a tenant's unit down (data is kept): make deprovision TENANT=acme
 	@test -n "$(TENANT)" || (echo "usage: make deprovision TENANT=acme" && exit 1)

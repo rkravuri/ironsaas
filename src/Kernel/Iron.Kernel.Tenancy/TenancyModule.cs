@@ -9,6 +9,7 @@ using Iron.Kernel.Tenancy.Services;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Tenancy;
 
@@ -41,6 +42,13 @@ public sealed class TenancyModule : IModule
         services.AddScoped<EntitlementPublisher>();
         services.AddScoped<ITenantEntitlements>(provider => provider.GetRequiredService<EntitlementPublisher>());
         services.AddScoped<ISeeder, PlanSeeder>();
+        services.AddScoped<FlagPublications>();
+        services.AddScoped<FlagRuleService>();
+        services.AddScoped<FlagPublisher>();
+        services.AddScoped<ITenantFlags>(provider => provider.GetRequiredService<FlagPublisher>());
+        services.AddScoped<FlagReportService>();
+        services.AddScoped<IValidator<ReplaceFlagRulesRequest>, ReplaceFlagRulesRequestValidator>();
+        services.AddScoped<IValidator<KillSwitchRequest>, KillSwitchRequestValidator>();
         services.AddScoped<IValidator<CreateTenantRequest>, CreateTenantRequestValidator>();
         services.AddScoped<IValidator<SavePlanRequest>, SavePlanRequestValidator>();
         services.AddScoped<IValidator<ApplyPlanRequest>, ApplyPlanRequestValidator>();
@@ -55,6 +63,7 @@ public sealed class TenancyModule : IModule
         ArgumentNullException.ThrowIfNull(endpoints);
         TenantsEndpoints.Map(endpoints);
         EntitlementEndpoints.Map(endpoints);
+        FlagEndpoints.Map(endpoints);
     }
 }
 
@@ -68,6 +77,26 @@ public static class TenancyWorkerExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<EntitlementReconciler>();
+        return services;
+    }
+
+    /// <summary>
+    /// The fleet worker's flag loops (ADR-0035): every minute the flag paths whose store copy is behind are written again,
+    /// and once a week the flag report goes to the log (TF-052 AC1). Only the fleet host calls it.
+    /// </summary>
+    public static IServiceCollection AddIronFlagWorker(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddHostedService<FlagReconciler>();
+        services.AddHostedService(provider => new FlagReportLogger(provider.GetRequiredService<IServiceScopeFactory>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<FlagReportLogger>>(), TimeSpan.FromDays(7)));
+        return services;
+    }
+
+    /// <summary>The flag report in the log once, when the control plane starts (TF-052).</summary>
+    public static IServiceCollection AddIronFlagReportAtStart(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddHostedService(provider => new FlagReportLogger(provider.GetRequiredService<IServiceScopeFactory>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<FlagReportLogger>>()));
         return services;
     }
 }

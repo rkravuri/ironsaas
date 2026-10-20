@@ -40,4 +40,7 @@ public interface IOrganisationUnits
     Task<OrganisationUnitInfo?> RootAsync(CancellationToken cancellationToken);
 
     Task<OrganisationUnitInfo?> FindAsync(Guid unitId, CancellationToken cancellationToken);
+
+    /// <summary>The ids from the root down to the unit, the unit last; empty for a unit that does not exist. One read of the materialised path.</summary>
+    Task<IReadOnlyList<Guid>> PathAsync(Guid unitId, CancellationToken cancellationToken);
 }

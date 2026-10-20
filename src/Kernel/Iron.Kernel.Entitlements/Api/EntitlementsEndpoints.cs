@@ -22,11 +22,6 @@ public sealed record ContextEntry(string Code, EntitlementStatus Status, string 
 /// <summary>The entitlements part of <c>/me/context</c>: the answer's revision and age, and every licensed module and feature of this build.</summary>
 public sealed record ContextEntitlements(int Revision, string? Plan, DateTimeOffset? ConfirmedAt, bool Stale, IReadOnlyList<ContextEntry> Modules, IReadOnlyList<ContextEntry> Features);
 
-/// <summary>
-/// <c>GET /api/v1/me/context</c>: what the shell reads with the session and every 30 seconds (ADR-0034). A5 adds the
-/// flags to it, A6 the settings, so the shell keeps one call.
-/// </summary>
-public sealed record ContextResponse(ContextEntitlements Entitlements);
 
 public sealed record SeatsResponse(int? Limit, int Assigned, int? Remaining);
 
@@ -57,7 +52,7 @@ public sealed class AssignSeatRequestValidator : AbstractValidator<AssignSeatReq
     }
 }
 
-/// <summary>The unit's entitlement API: the shell's context, the subscription, and seats (TF-041, TF-043).</summary>
+/// <summary>The unit's entitlement API: the subscription and seats (TF-041, TF-043); the shell's part of /me/context is <see cref="EntitlementsContextPart"/>.</summary>
 internal static class EntitlementsEndpoints
 {
     public static readonly ListFields<SeatAssignment> SeatFields = new ListFields<SeatAssignment>()
@@ -69,7 +64,6 @@ internal static class EntitlementsEndpoints
 
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/v1/me/context", ContextAsync).RequireSignedIn().WithTags("me").WithName("MyContext").WithSummary("What applies to you in this tenant: its entitlements now (flags and settings join in A5 and A6).");
         endpoints.MapApiGroup("subscription").MapGet("/", Subscription).RequirePermission(EntitlementsPermissions.SubscriptionRead).WithName("GetSubscription").WithSummary("The tenant's licensed modules and features with status, dates and reason, and seat usage.");
 
         var seats = endpoints.MapApiGroup("seats");
@@ -77,21 +71,6 @@ internal static class EntitlementsEndpoints
         seats.MapGet("/usage", UsageAsync).RequirePermission(EntitlementsPermissions.SeatsRead).WithName("SeatUsage").WithSummary("Per per-person module: the licensed count, the seats assigned and the seats left.");
         seats.MapPost("/", AssignAsync).RequirePermission(EntitlementsPermissions.SeatsManage).Validate<AssignSeatRequest>().WithName("AssignSeat").WithSummary("Give a person a seat of a per-person module, within the licensed count.");
         seats.MapDelete("/{id:guid}", UnassignAsync).RequirePermission(EntitlementsPermissions.SeatsManage).WithName("RemoveSeat").WithSummary("Take a seat back; the person loses the module on the next request.");
-    }
-
-    private static async Task<IResult> ContextAsync(ICurrentPrincipal principal, EntitlementEvaluator entitlements, EntitlementCache cache, LicensingCatalogue catalogue, CancellationToken cancellationToken)
-    {
-        var modules = new List<ContextEntry>();
-        foreach (var module in catalogue.Modules)
-        {
-            var entitlement = await entitlements.ModuleForAsync(module.Code, principal.Id, cancellationToken);
-            modules.Add(new ContextEntry(module.Code, entitlement.Status, entitlement.Reason));
-        }
-
-        var features = catalogue.Features.Select(f => entitlements.Feature(f.Code)).Zip(catalogue.Features, (e, f) => new ContextEntry(f.Code, e.Status, e.Reason)).ToList();
-        var snapshot = entitlements.Snapshot;
-        var current = cache.Current;
-        return TypedResults.Ok(new ContextResponse(new ContextEntitlements(current?.Document.Revision ?? 0, current?.Document.Plan, current?.ConfirmedAt, snapshot is null, modules, features)));
     }
 
     private static async Task<IResult> Subscription(EntitlementEvaluator entitlements, EntitlementCache cache, LicensingCatalogue catalogue, SeatService seats, CancellationToken cancellationToken)

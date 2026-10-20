@@ -131,7 +131,7 @@ internal static class EntitlementEndpoints
         return TypedResults.Ok(new TenantEntitlementsResponse(tenant.Slug, tenant.Plan, tenant.GraceDays, tenant.EntitlementsRevision, tenant.PublishedRevision, items));
     }
 
-    private static async Task<IResult> ApplyAsync(string slug, ApplyPlanRequest request, HttpContext http, EntitlementService entitlements, ITenantEntitlements publisher, CancellationToken cancellationToken)
+    private static async Task<IResult> ApplyAsync(string slug, ApplyPlanRequest request, HttpContext http, EntitlementService entitlements, ITenantEntitlements publisher, ITenantFlags flags, CancellationToken cancellationToken)
     {
         var application = new PlanApplication(request.Plan, request.StartsOn, request.EndsOn, $"Plan {request.Plan.Trim().ToLowerInvariant()} applied");
         if (request.DryRun)
@@ -142,8 +142,10 @@ internal static class EntitlementEndpoints
         var applied = await entitlements.ApplyAsync(slug, application, cancellationToken);
         if (applied.IsSuccess && applied.Value.ChangesAnything)
         {
-            // After the commit (ADR-0034): a store that cannot take it now gets it from the fleet's reconcile.
+            // After the commit (ADR-0034): a store that cannot take it now gets it from the fleet's reconcile. The flags
+            // follow, since their attribute rules read the plan (ADR-0035).
             await publisher.PublishAsync(slug, cancellationToken);
+            await flags.PublishAsync(slug, cancellationToken);
         }
 
         return ApiResults.From(applied, http, preview => TypedResults.Ok(preview));

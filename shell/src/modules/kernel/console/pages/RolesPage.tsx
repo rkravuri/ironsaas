@@ -6,6 +6,7 @@ import { IconDownload, IconPlus, IconUpload } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
 import { exportRoles, fetchRoles, type Role } from "@/api/authorization";
 import { useFeature } from "@/auth/entitlements";
+import { useFlag } from "@/auth/flags";
 import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ListPage } from "@/components/templates";
@@ -15,6 +16,8 @@ import { ImportRolesDialog } from "./ImportRolesDialog";
 const manage = "authz.roles.manage";
 /** Role export and import are licensed on their own (ADR-0034): the enterprise plan has them. */
 const roleTransfer = "authorization.role_transfer";
+/** The platform operator's kill switch for imports (ADR-0035): while it is on, the API refuses the import. */
+const importsKilled = "kill.imports";
 const defaultSort = [{ field: "code", direction: "asc" as const }];
 
 /** Saves the export as a file the person keeps, then hands it to another tenant's import. */
@@ -30,7 +33,8 @@ function download(document: unknown) {
 
 /**
  * The roles of this tenant (TF-032) on the list template: system roles first by their code, a row opens the role.
- * Export and Import show only while the tenant's plan has role transfer; the API refuses them otherwise.
+ * Export and Import show only while the tenant's plan has role transfer; the API refuses them otherwise. Import also
+ * hides while the platform's operator has stopped imports; the banner above the page says why.
  */
 export function RolesPage() {
   const { t } = useTranslation();
@@ -38,6 +42,8 @@ export function RolesPage() {
   const session = useSession();
   const canManage = session.tenantPermissions.includes(manage);
   const transfer = useFeature(roleTransfer);
+  const killed = useFlag(importsKilled, false);
+  const canImport = canManage && transfer.writable && !killed;
   const [importing, setImporting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [failure, setFailure] = useState<ApiError | undefined>();
@@ -74,7 +80,7 @@ export function RolesPage() {
                 {t("roles.export")}
               </Button>
             )}
-            {canManage && transfer.writable && (
+            {canImport && (
               <Button variant="default" leftSection={<IconUpload size={16} aria-hidden="true" />} onClick={() => setImporting(true)}>
                 {t("roles.import.open")}
               </Button>
@@ -110,7 +116,7 @@ export function RolesPage() {
           onRowOpen={(role) => void navigate(`/console/roles/${role.id}`)}
         />
       </ListPage>
-      {importing && transfer.writable && (
+      {importing && canImport && (
         <ImportRolesDialog
           onClose={() => setImporting(false)}
           onApplied={() => {

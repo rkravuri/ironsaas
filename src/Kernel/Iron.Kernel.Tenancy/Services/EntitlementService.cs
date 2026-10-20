@@ -46,7 +46,8 @@ public sealed class EntitlementService(
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ICurrentPrincipal current,
-    TimeProvider time)
+    TimeProvider time,
+    FlagPublications flagPublications)
 {
     public static readonly JsonSerializerOptions Json = new()
     {
@@ -151,6 +152,9 @@ public sealed class EntitlementService(
         {
             context.EntitlementHistory.Add(new EntitlementChange(tenant.Id, tenant.Slug, revision, KindName(change.Kind), change.Code, Serialize(change.Before), Serialize(change.After), reason));
         }
+
+        // The tenant's flag rules carry its plan for attribute rules (ADR-0035): their store copy is behind now too.
+        await flagPublications.TouchAsync(Iron.Kernel.Flags.Contracts.FlagRulesDocument.TenantPath(tenant.Slug), cancellationToken).ConfigureAwait(false);
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var details = new Dictionary<string, string>(StringComparer.Ordinal)

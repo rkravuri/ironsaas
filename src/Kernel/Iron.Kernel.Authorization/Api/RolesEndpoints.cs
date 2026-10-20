@@ -1,5 +1,6 @@
 using FluentValidation;
 using Iron.Kernel.Api.Entitlements;
+using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
@@ -102,7 +103,8 @@ internal static class RolesEndpoints
         roles.MapGet("/", ListAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().WithName("ListRoles").WithSummary("List the roles of this tenant.");
         // Export and import are an enterprise feature (ADR-0034): a tenant without it gets entitlements.feature_disabled.
         roles.MapGet("/export", ExportAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().RequireFeature(AuthorizationFeatures.RoleTransfer.Code).WithName("ExportRoles").WithSummary("The tenant roles as a document another tenant can import.");
-        roles.MapPost("/import", ImportAsync).RequirePermission(AuthorizationPermissions.RolesManage).RequireFeature(AuthorizationFeatures.RoleTransfer.Code).Validate<ImportRolesRequest>().WithName("ImportRoles").WithSummary("Compare a role export with this tenant's roles, and apply it unless it is a dry run.");
+        // An import is a critical path: the kill switch kill.imports stops it (flags.killed, ADR-0035).
+        roles.MapPost("/import", ImportAsync).RequirePermission(AuthorizationPermissions.RolesManage).RequireFeature(AuthorizationFeatures.RoleTransfer.Code).RequireFlagOff(KillSwitches.Imports.Key).Validate<ImportRolesRequest>().WithName("ImportRoles").WithSummary("Compare a role export with this tenant's roles, and apply it unless it is a dry run.");
         roles.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().WithName("GetRole").WithSummary("One role.");
         roles.MapPost("/", CreateAsync).RequirePermission(AuthorizationPermissions.RolesManage).Validate<CreateRoleRequest>().WithName("CreateRole").WithSummary("Create a tenant role.");
         roles.MapPut("/{id:guid}", UpdateAsync).RequirePermission(AuthorizationPermissions.RolesManage).Validate<UpdateRoleRequest>().WithName("UpdateRole").WithSummary("Change a tenant role's name, description, principal type and permissions.");

@@ -42,6 +42,10 @@
     <Project Path="src/Kernel/Iron.Kernel.Entitlements/Iron.Kernel.Entitlements.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Entitlements/Contracts/Iron.Kernel.Entitlements.Contracts.csproj" />
   </Folder>
+  <Folder Name="/src/Kernel/Iron.Kernel.Flags/">
+    <Project Path="src/Kernel/Iron.Kernel.Flags/Iron.Kernel.Flags.csproj" />
+    <Project Path="src/Kernel/Iron.Kernel.Flags/Contracts/Iron.Kernel.Flags.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/Hosts/">
     <Project Path="src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />
     <Project Path="src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj" />
@@ -65,6 +69,7 @@
     <Project Path="tests/Kernel/Iron.Kernel.Tenancy.Tests/Iron.Kernel.Tenancy.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Fleet.Tests/Iron.Kernel.Fleet.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Entitlements.Tests/Iron.Kernel.Entitlements.Tests.csproj" />
+    <Project Path="tests/Kernel/Iron.Kernel.Flags.Tests/Iron.Kernel.Flags.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Iron.Smoke/Iron.Smoke.csproj" />

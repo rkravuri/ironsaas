@@ -1,3 +1,4 @@
+using Iron.Kernel.Api.Context;
 using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Permissions;
 using Microsoft.AspNetCore.Builder;
@@ -72,6 +73,12 @@ public static class ModuleExtensions
             {
                 module.MapEndpoints(endpoints);
             }
+        }
+
+        // One /me/context for the parts the modules registered (entitlements, flags, settings): the shell reads one call.
+        if (endpoints.ServiceProvider.GetServices<ContextPartRegistration>().Any())
+        {
+            endpoints.MapContext();
         }
 
         return endpoints;

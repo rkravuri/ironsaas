@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Iron.Kernel.Api;
 using Iron.Kernel.Api.Entitlements;
+using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit;
@@ -39,6 +40,7 @@ public class TenantsEndpointTests(TenancyFixture fixture) : IAsyncLifetime
         builder.Services.AddIronSecretStore(builder.Configuration);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
+        builder.Services.AddScoped<IFlagGate, AllEntitled>();
 
         _app = builder.Build();
         _app.UseIronTelemetry();

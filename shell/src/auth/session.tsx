@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, onResponse, onUnauthenticated } from "@/api/client";
 import { fetchContext } from "@/api/entitlements";
 import { fetchMe, logout as logoutCall, type Me } from "@/api/identity";
+import type { KillSwitch } from "@/api/flags";
 import { contextQueryKey, contextRefreshMs, entitlementsFrom } from "./entitlements";
+import { flagProvider } from "./flags";
 import { openSessionChannel, type SessionChannel, type SessionEnd } from "./session-channel";
 import type { EndReason } from "./session-clock";
 import { meQueryKey, SessionContext, type Session, type SessionStatus } from "./session-context";
@@ -16,7 +18,8 @@ const heardEnd = (reason: SessionEnd): SessionEnd => (reason === "signed-out" ? 
  * The signed-in principal from /me, shared by the shell, the guards and the pages (ADR-0020), and the session's times
  * for the warning (ADR-0033): /me sets them, every answer moves them, and the tabs of the browser share them. With the
  * session, /me/context: what the tenant is entitled to, read again every 30 seconds while the tab is visible, so a plan
- * changed in the control plane shows within a minute without a new sign-in (TF-043, ADR-0034).
+ * changed in the control plane shows within a minute without a new sign-in (TF-043, ADR-0034), and the flags evaluated
+ * for this person, which feed the shell's OpenFeature provider (TF-054, ADR-0035).
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -103,6 +106,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   });
   const contextData = me !== undefined ? context.data : undefined;
   const entitlements = useMemo(() => entitlementsFrom(contextData, me !== undefined && context.isPending), [contextData, me, context.isPending]);
+  const flags = contextData?.flags;
+  const killSwitches = useMemo<readonly KillSwitch[]>(() => flags?.kill_switches ?? [], [flags]);
+  // Without an answer (signed out, still loading, or the call failed) the provider knows nothing and every flag has its
+  // default. A layout effect, so the page re-renders with the new values before it paints: no flash of a hidden control.
+  useLayoutEffect(() => flagProvider.update(flags?.values ?? []), [flags]);
   useEffect(() => {
     if (me) {
       watch.fromMe(me.session, query.dataUpdatedAt);
@@ -149,8 +157,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A failure that is not "not signed in" still shows the login page, with the error noted by the boundary later.
       status = query.isPending ? "loading" : "signed-out";
     }
-    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], entitlements, ended, refresh, signedIn, extend, signOut, expire, forget };
-  }, [me, query.error, query.isPending, entitlements, ended, refresh, signedIn, extend, signOut, expire, forget]);
+    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], entitlements, killSwitches, ended, refresh, signedIn, extend, signOut, expire, forget };
+  }, [me, query.error, query.isPending, entitlements, killSwitches, ended, refresh, signedIn, extend, signOut, expire, forget]);
 
   return (
     <SessionWatchContext.Provider value={watch}>

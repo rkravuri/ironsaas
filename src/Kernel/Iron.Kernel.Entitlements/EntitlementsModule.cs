@@ -1,4 +1,5 @@
 using FluentValidation;
+using Iron.Kernel.Api.Context;
 using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Data;
@@ -59,6 +60,7 @@ public sealed class EntitlementsModule : IModule
         services.AddScoped<IEntitlements>(provider => provider.GetRequiredService<EntitlementEvaluator>());
         services.AddScoped<IEntitlementGate>(provider => provider.GetRequiredService<EntitlementEvaluator>());
         services.AddScoped<IValidator<AssignSeatRequest>, AssignSeatRequestValidator>();
+        services.AddContextPart<EntitlementsContextPart>(EntitlementsContextPart.PartName);
         services.AddHealthChecks().AddCheck<EntitlementsHealthCheck>("entitlements", HealthStatus.Degraded, ["ready"]);
     }
 

@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { KillSwitch } from "@/api/flags";
 import type { Me } from "@/api/identity";
 import type { Entitlements } from "./entitlements";
 import type { SessionEnd } from "./session-channel";
@@ -15,6 +16,8 @@ export interface Session {
   tenantPermissions: readonly string[];
   /** What this tenant, and this person's seats, entitle (ADR-0034): from /me/context, read with the session and every 30 seconds. */
   entitlements: Entitlements;
+  /** The kill switches that are on, from /me/context: the API sends them to administrators only (ADR-0035). */
+  killSwitches: readonly KillSwitch[];
   /** Why the last session ended, for the sentence on the login page; undefined when nothing ended it here. */
   ended: SessionEnd | undefined;
   /** Re-reads /me. */

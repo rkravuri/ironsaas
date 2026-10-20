@@ -9,3 +9,13 @@ Everything that is not code and not written here by us, with its source and lice
 | Tabler Icons | `@tabler/icons-react` | MIT | icons |
 
 Drawings and patterns under `shell/src/design/` are original work of this repository.
+
+## Packages a task asked to record
+
+NuGet packages carry their licence in a comment in `Directory.Packages.props` (ADR-0003). The shell's `package.json` cannot carry comments, so a frontend package whose licence a task asks to record is listed here.
+
+| Package | Version | Licence | Used for |
+|---|---|---|---|
+| `@openfeature/web-sdk` | 1.10.0 (2026-07-28) | Apache-2.0 | evaluating flags in the shell through OpenFeature (A5, ADR-0035) |
+| `@openfeature/core` | 1.12.0 (2026-07-28) | Apache-2.0 | the web SDK's shared types, a peer dependency it needs (A5) |
+| `OpenFeature` (NuGet, recorded here too) | 2.14.1 (2026-08-10) | Apache-2.0 | evaluating flags in the API (A5) |

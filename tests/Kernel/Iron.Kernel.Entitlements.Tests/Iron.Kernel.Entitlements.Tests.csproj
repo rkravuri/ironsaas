@@ -34,6 +34,7 @@
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Entitlements/Iron.Kernel.Entitlements.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Entitlements/Contracts/Iron.Kernel.Entitlements.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Flags/Iron.Kernel.Flags.csproj" />
   </ItemGroup>
 
 </Project>

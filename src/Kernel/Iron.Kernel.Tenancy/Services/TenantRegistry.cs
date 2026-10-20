@@ -24,6 +24,7 @@ public sealed class TenantRegistry(
     IAuditWriter audit,
     EntitlementService entitlements,
     ITenantEntitlements publisher,
+    ITenantFlags flags,
     ILogger<TenantRegistry> logger) : ITenantRegistry
 {
     public async Task<Result<TenantRecord>> CreateAsync(NewTenant request, CancellationToken cancellationToken)
@@ -72,6 +73,7 @@ public sealed class TenantRegistry(
 
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         await publisher.PublishAsync(tenant.Slug, cancellationToken).ConfigureAwait(false);
+        await flags.PublishAsync(tenant.Slug, cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Tenant {Slug} created with {Count} hostname(s) and the plan {Plan}.", tenant.Slug, hostnames.Count, plan);
         return ToRecord(tenant, hostnames);

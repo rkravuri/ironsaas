@@ -27,7 +27,7 @@ public sealed class EntitlementsFixture : IAsyncLifetime
 
     public string ConnectionString => _container.GetConnectionString();
 
-    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new AuthorizationModule(), new EntitlementsModule(), new FixtureModule()];
+    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new AuthorizationModule(), new EntitlementsModule(), new Flags.FlagsModule(), new FixtureModule()];
 
     public async ValueTask InitializeAsync()
     {

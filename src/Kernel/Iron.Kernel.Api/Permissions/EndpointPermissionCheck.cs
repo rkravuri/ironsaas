@@ -1,4 +1,5 @@
 using Iron.Kernel.Api.Entitlements;
+using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Modules;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -13,7 +14,8 @@ namespace Iron.Kernel.Api.Permissions;
 /// <summary>
 /// The start-up check of TF-030: every endpoint carries RequirePermission, RequireSignedIn or an explicit AllowAnonymous marker, every
 /// declared permission is in the catalogue, and an evaluator is registered when anything is protected; every required
-/// feature is declared, and an entitlement gate is registered when anything is licensed (ADR-0034). The host does
+/// feature is declared, and an entitlement gate is registered when anything is licensed (ADR-0034); every flag an
+/// endpoint needs is declared, and a flag gate is registered when any endpoint needs one (ADR-0035). The host does
 /// not start otherwise; the message names the offending operations. Registered by AddIronApi, so no host can forget it.
 /// It is a startup filter, not a hosted service: WebApplication starts hosted services before it builds the pipeline,
 /// and the endpoints exist only once the pipeline is built.
@@ -38,8 +40,9 @@ public sealed class EndpointPermissionCheck(ILogger<EndpointPermissionCheck> log
         var isService = services.GetRequiredService<IServiceProviderIsService>();
         var evaluatorRegistered = isService.IsService(typeof(IPermissionEvaluator));
         var gateRegistered = isService.IsService(typeof(IEntitlementGate));
+        var flagGateRegistered = isService.IsService(typeof(IFlagGate));
 
-        var violations = Check(endpoints, catalogue, evaluatorRegistered, services.GetService<LicensingCatalogue>(), gateRegistered);
+        var violations = Check(endpoints, catalogue, evaluatorRegistered, services.GetService<LicensingCatalogue>(), gateRegistered, flagGateRegistered);
         if (violations.Count > 0)
         {
             throw new InvalidOperationException("The start-up permission check failed (TF-030):" + Environment.NewLine + string.Join(Environment.NewLine, violations));
@@ -57,8 +60,9 @@ public sealed class EndpointPermissionCheck(ILogger<EndpointPermissionCheck> log
     /// The pure rules, unit tested without a host. Beside the permissions (TF-030): every feature an endpoint requires is
     /// declared by a module of the host, and an entitlement gate is registered when anything is licensed (ADR-0034).
     /// </summary>
-    public static IReadOnlyList<string> Check(IEnumerable<Endpoint> endpoints, PermissionCatalogue? catalogue, bool evaluatorRegistered, LicensingCatalogue? licensing = null, bool gateRegistered = true)
+    public static IReadOnlyList<string> Check(IEnumerable<Endpoint> endpoints, PermissionCatalogue? catalogue, bool evaluatorRegistered, LicensingCatalogue? licensing = null, bool gateRegistered = true, bool flagGateRegistered = true)
     {
+        var anyFlagged = false;
         ArgumentNullException.ThrowIfNull(endpoints);
 
         var violations = new List<string>();
@@ -76,6 +80,15 @@ public sealed class EndpointPermissionCheck(ILogger<EndpointPermissionCheck> log
             }
 
             anyLicensed |= endpoint.Metadata.GetMetadata<LicensedModuleMetadata>() is not null;
+
+            foreach (var flag in endpoint.Metadata.GetOrderedMetadata<FlagMetadata>())
+            {
+                anyFlagged = true;
+                if (licensing is not null && licensing.FindActiveFlag(flag.Key) is null)
+                {
+                    violations.Add($"{Describe(endpoint)}: flag '{flag.Key}' is not declared by any module of this host.");
+                }
+            }
 
             var permission = endpoint.Metadata.GetMetadata<PermissionMetadata>();
             var signedIn = endpoint.Metadata.GetMetadata<SignedInMetadata>();
@@ -111,6 +124,11 @@ public sealed class EndpointPermissionCheck(ILogger<EndpointPermissionCheck> log
         if (anyLicensed && !gateRegistered)
         {
             violations.Add("Endpoints of a licensed module or with a feature exist but no IEntitlementGate is registered. Add the Entitlements module to the host.");
+        }
+
+        if (anyFlagged && !flagGateRegistered)
+        {
+            violations.Add("Endpoints that need a flag exist but no IFlagGate is registered. Add the Flags module to the host.");
         }
 
         return violations;

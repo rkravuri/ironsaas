@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Iron.Kernel.Api.Modules;
 
 /// <summary>
-/// What a host needs from a module: its name, its permissions, its licence and features, its services and its endpoints.
+/// What a host needs from a module: its name, its permissions, its licence, features and flags, its services and its endpoints.
 /// A host lists its modules in Program.cs and calls AddModules and MapModules (ADR-0001: explicit composition, no assembly scanning).
 /// </summary>
 public interface IModule
@@ -25,6 +25,12 @@ public interface IModule
 
     /// <summary>The parts of the module licensed on their own (TF-046), in any layer. Endpoints name them with <c>RequireFeature</c>.</summary>
     IReadOnlyList<Feature> Features => [];
+
+    /// <summary>
+    /// The module's feature flags (TF-050, TF-052, ADR-0035), each with its owner, purpose, type, kind, removal date and
+    /// default. The kill switches are the kernel's and every host has them; a module never declares a <c>kill.</c> flag.
+    /// </summary>
+    IReadOnlyList<Flag> Flags => [];
 
     void AddServices(IServiceCollection services, IConfiguration configuration);
 

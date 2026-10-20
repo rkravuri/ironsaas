@@ -51,5 +51,7 @@ public sealed class Error
 
     public static Error Unexpected(string code, string message) => new(ErrorKind.Unexpected, code, message);
 
+    public static Error Unavailable(string code, string message) => new(ErrorKind.Unavailable, code, message);
+
     public override string ToString() => $"{Kind} {Code}: {Message}";
 }
