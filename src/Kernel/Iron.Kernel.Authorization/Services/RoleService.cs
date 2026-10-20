@@ -36,13 +36,15 @@ public sealed record ImportDiff(
 /// <summary>
 /// Tenant roles (TF-032, ADR-0031): create, change and delete, export and import. System roles are read-only; a role
 /// still assigned is not deleted; a role is saved only with permissions its editor holds tenant-wide, and only with
-/// permissions the catalogue knows. Every change writes its audit event, with the permissions before and after, in the
-/// same transaction.
+/// permissions the catalogue knows. A change of permissions is checked against the conflict rules for everyone holding
+/// the role (ADR-0039). Every change writes its audit event, with the permissions before and after, in the same
+/// transaction.
 /// </summary>
 public sealed class RoleService(
     AuthorizationDbContext context,
     AccessGrants grants,
     PermissionCatalogue catalogue,
+    ConflictService segregation,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ICurrentPrincipal actor)
@@ -106,12 +108,24 @@ public sealed class RoleService(
             return Error.Conflict(AuthorizationErrors.RoleInUse, $"'{role.Name}' is assigned; its principal type cannot change while it is. Remove its assignments first.");
         }
 
+        var permissions = Role.Normalise(input.Permissions);
+        var permissionsChange = !permissions.ToHashSet(StringComparer.Ordinal).SetEquals(role.Permissions);
+        if (permissionsChange && await BlockedAsync(new Dictionary<Guid, IReadOnlyCollection<string>> { [role.Id] = permissions }, cancellationToken).ConfigureAwait(false) is { } blocked)
+        {
+            return blocked;
+        }
+
         var before = role.Permissions.ToList();
         var fields = ChangedFields(role, input.Name, input.Description, input.PrincipalType);
         role.Change(input.Name, input.Description, input.PrincipalType, input.Permissions);
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await WriteAsync(AuthorizationAuditEvents.RoleChanged, role, before, fields, cancellationToken).ConfigureAwait(false);
+        if (permissionsChange)
+        {
+            await segregation.RefreshHoldersAsync([role.Id], cancellationToken).ConfigureAwait(false);
+        }
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         await ForgetHoldersAsync(role.Id, cancellationToken).ConfigureAwait(false);
         return role;
@@ -232,6 +246,15 @@ public sealed class RoleService(
             }
         }
 
+        // The roles whose permissions change are checked together: two changes may complete one pair.
+        var permissionChanges = changed
+            .Where(c => c.Change.Added.Count > 0 || c.Change.Removed.Count > 0)
+            .ToDictionary(c => c.Role.Id, c => (IReadOnlyCollection<string>)Role.Normalise(c.Document.Permissions));
+        if (permissionChanges.Count > 0 && await BlockedAsync(permissionChanges, cancellationToken).ConfigureAwait(false) is { } blocked)
+        {
+            return blocked;
+        }
+
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         foreach (var item in created)
         {
@@ -247,6 +270,11 @@ public sealed class RoleService(
             role.Change(item.Name, item.Description, item.PrincipalType, item.Permissions);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await WriteAsync(AuthorizationAuditEvents.RoleChanged, role, before, change.Fields, cancellationToken, "import").ConfigureAwait(false);
+        }
+
+        if (permissionChanges.Count > 0)
+        {
+            await segregation.RefreshHoldersAsync([.. permissionChanges.Keys], cancellationToken).ConfigureAwait(false);
         }
 
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -308,6 +336,17 @@ public sealed class RoleService(
         return missing.Count == 0
             ? null
             : Error.Forbidden(AuthorizationErrors.RoleEscalation, $"A role can only hold permissions you hold for the whole tenant. You do not hold: {string.Join(", ", missing)}.");
+    }
+
+    /// <summary>
+    /// A change of roles' permissions checked against the conflict rules at once (TF-036, ADR-0039): refused when a block
+    /// rule would find a new conflict for anyone holding one of the roles, with the rule named and how many people it
+    /// would affect. Under a warn rule the change is saved, and the holders' rows of the report are computed again.
+    /// </summary>
+    private async Task<Error?> BlockedAsync(IReadOnlyDictionary<Guid, IReadOnlyCollection<string>> changes, CancellationToken cancellationToken)
+    {
+        var blocking = (await segregation.ForRoleChangesAsync(changes, cancellationToken).ConfigureAwait(false)).Where(c => c.Conflict.Rule.Mode == ConflictModes.Block).ToList();
+        return blocking.Count == 0 ? null : Error.Conflict(AuthorizationErrors.SodConflict, ConflictService.RoleChangeRefusal(blocking, [.. changes.Keys]));
     }
 
     private async Task<bool> InUseAsync(Guid roleId, CancellationToken cancellationToken) =>

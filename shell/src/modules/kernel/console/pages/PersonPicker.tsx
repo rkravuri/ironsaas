@@ -8,13 +8,15 @@ import { searchDirectory, type DirectoryEntry } from "@/api/identity";
 export interface PersonPickerProps extends Omit<SelectProps, "data" | "searchable" | "onSearchChange" | "searchValue" | "filter"> {
   /** People who cannot be chosen here, such as the person delegating. */
   exclude?: readonly string[];
+  /** A person chosen already, such as the one whose record the page was opened from: shown by name before any search. */
+  initial?: DirectoryEntry | undefined;
 }
 
 /**
  * A person of this tenant, found by two letters or more of their name or login (the directory, ADR-0037): anyone may
  * delegate, including people who may not list users, so the answer carries a name and a home unit only.
  */
-export function PersonPicker({ exclude = [], ...props }: PersonPickerProps) {
+export function PersonPicker({ exclude = [], initial, ...props }: PersonPickerProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [debounced] = useDebouncedValue(search.trim(), 250);
@@ -25,7 +27,7 @@ export function PersonPicker({ exclude = [], ...props }: PersonPickerProps) {
     staleTime: 30_000,
   });
   // The chosen person stays in the list, so the field keeps showing their name after a new search.
-  const [chosen, setChosen] = useState<DirectoryEntry | undefined>();
+  const [chosen, setChosen] = useState<DirectoryEntry | undefined>(initial);
 
   const entries = useMemo(() => {
     const shown = new Map<string, DirectoryEntry>();

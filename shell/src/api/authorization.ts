@@ -345,6 +345,8 @@ export const ReviewItemSchema = z.object({
   yours: z.boolean(),
   /** Nobody but its own person may review its unit: the campaign's owner decides it. */
   with_owner: z.boolean(),
+  /** The conflict rules this assignment takes part in, by name, from the report (ADR-0039). */
+  conflicts: z.array(z.string()).default([]),
 });
 export type ReviewItem = z.infer<typeof ReviewItemSchema>;
 export const ReviewItemListSchema = listSchema(ReviewItemSchema);
@@ -377,3 +379,187 @@ export const ConfirmManySchema = z.object({ confirmed: z.number(), already_decid
 
 export const confirmItems = (review: string, itemIds: string[], comment?: string) =>
   request(`${reviews}/${encodeURIComponent(review)}/confirm`, { method: "POST", body: { item_ids: itemIds, comment: comment ?? null }, schema: ConfirmManySchema });
+
+/** A route value an action needs: a unit (its permission is checked there), a record (and its policy), or a plain value. */
+export const ActionRouteValueSchema = z.object({ name: z.string(), kind: z.enum(["unit", "record", "value"]), record_type: z.string().nullable() });
+export type ActionRouteValue = z.infer<typeof ActionRouteValueSchema>;
+
+/** An endpoint whose access can be explained (ADR-0039): its name, its summary in words, its module and what it needs. */
+export const ExplainableActionSchema = z.object({
+  name: z.string(),
+  summary: z.string(),
+  module: z.string(),
+  method: z.string(),
+  route: z.string(),
+  permission: z.string().nullable(),
+  route_values: z.array(ActionRouteValueSchema),
+});
+export type ExplainableAction = z.infer<typeof ExplainableActionSchema>;
+
+export const fetchExplainableActions = (signal?: AbortSignal) =>
+  request("/api/v1/access/actions", { schema: z.object({ data: z.array(ExplainableActionSchema) }), ...(signal ? { signal } : {}) });
+
+const ExplainedUnitSchema = z.object({ id: z.string(), name: z.string() });
+
+/** An assignment that granted the permission: the role and the scope (TF-039 AC2). */
+export const ExplainedGrantSchema = z.object({
+  assignment_id: z.string(),
+  role_id: z.string(),
+  role_code: z.string(),
+  role_name: z.string(),
+  scope_kind: z.string(),
+  unit: ExplainedUnitSchema.nullable(),
+  record_type: z.string().nullable(),
+  record_id: z.string().nullable(),
+});
+export type ExplainedGrant = z.infer<typeof ExplainedGrantSchema>;
+
+export const ExplainResultSchema = z.enum(["passed", "failed", "not_reached", "not_applicable"]);
+export type ExplainResult = z.infer<typeof ExplainResultSchema>;
+
+/** One check, explained: its result, its reason code, the status a failure answers, and the facts behind it. */
+export const ExplainedCheckSchema = z.object({
+  check: z.enum(["principal", "entitlement", "flags", "permission", "record_policy"]),
+  result: ExplainResultSchema,
+  reason: z.string(),
+  status: z.number().nullable(),
+  error_code: z.string().nullable(),
+  message: z.string(),
+  facts: z.record(z.string(), z.string()),
+  granted_by: z.array(ExplainedGrantSchema),
+});
+export type ExplainedCheck = z.infer<typeof ExplainedCheckSchema>;
+
+const ExplainedPersonSchema = z.object({ id: z.string(), name: z.string(), type: z.string(), status: z.string(), home_unit: ExplainedUnitSchema.nullable() });
+
+/** Why a person can or cannot perform an action: the checks in order, the outcome, and the status the API would answer. */
+export const AccessExplanationSchema = z.object({
+  principal: ExplainedPersonSchema,
+  action: ExplainableActionSchema,
+  acting_for: ExplainedPersonSchema.nullable(),
+  allowed: z.boolean(),
+  status: z.number(),
+  checks: z.array(ExplainedCheckSchema),
+});
+export type AccessExplanation = z.infer<typeof AccessExplanationSchema>;
+
+export interface ExplainQuestion {
+  principal: string;
+  action: string;
+  values: Record<string, string>;
+  actingFor?: string | undefined;
+}
+
+export function explainQuery(question: ExplainQuestion): string {
+  const params = new URLSearchParams({ principal: question.principal, action: question.action });
+  for (const [name, value] of Object.entries(question.values)) {
+    if (value !== "") {
+      params.set(name, value);
+    }
+  }
+  if (question.actingFor) {
+    params.set("acting_for", question.actingFor);
+  }
+  return params.toString();
+}
+
+export const explainAccess = (question: ExplainQuestion, signal?: AbortSignal) =>
+  request(`/api/v1/access/explain?${explainQuery(question)}`, { schema: AccessExplanationSchema, ...(signal ? { signal } : {}) });
+
+/** Segregation of duties (TF-036, ADR-0039): what a rule's side names, and what the rule does. */
+export const ConflictSideKindSchema = z.enum(["permission", "role"]);
+export type ConflictSideKind = z.infer<typeof ConflictSideKindSchema>;
+export const ConflictModeSchema = z.enum(["block", "warn"]);
+export type ConflictMode = z.infer<typeof ConflictModeSchema>;
+
+const ConflictSideSchema = z.object({ kind: ConflictSideKindSchema, value: z.string(), name: z.string() });
+
+export const ConflictRuleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  first: ConflictSideSchema,
+  second: ConflictSideSchema,
+  mode: ConflictModeSchema,
+  reason: z.string(),
+  owner_id: z.string(),
+  owner_name: z.string().nullable(),
+  updated_at: z.string(),
+  version: z.number(),
+});
+export type ConflictRule = z.infer<typeof ConflictRuleSchema>;
+export const ConflictRuleListSchema = listSchema(ConflictRuleSchema);
+
+export interface ConflictRuleBody {
+  name: string;
+  first: { kind: ConflictSideKind; value: string };
+  second: { kind: ConflictSideKind; value: string };
+  mode: ConflictMode;
+  reason: string;
+  owner_id?: string | undefined;
+}
+
+const conflictRules = "/api/v1/conflict-rules";
+
+export const fetchConflictRules = (query: string, signal?: AbortSignal) =>
+  request(`${conflictRules}${query ? `?${query}` : ""}`, { schema: ConflictRuleListSchema, ...(signal ? { signal } : {}) });
+
+export const createConflictRule = (body: ConflictRuleBody) => request(conflictRules, { method: "POST", body, schema: ConflictRuleSchema });
+
+export const updateConflictRule = (id: string, body: ConflictRuleBody) => request(`${conflictRules}/${encodeURIComponent(id)}`, { method: "PUT", body, schema: ConflictRuleSchema });
+
+export const deleteConflictRule = (id: string) => request(`${conflictRules}/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** One grant of a conflict: the role, where it applies, and whether it is the person's own or delegated to them. */
+export const ConflictGrantSchema = z.object({
+  assignment_id: z.string().nullable(),
+  delegation_id: z.string().nullable(),
+  role: z.string(),
+  scope_kind: z.string(),
+  unit_id: z.string().nullable(),
+  unit_name: z.string().nullable(),
+  source: z.enum(["assignment", "delegation"]),
+});
+export type ConflictGrant = z.infer<typeof ConflictGrantSchema>;
+
+/** One conflict of the report: the person, the rule, the two grants, and the unit both reach (none for the whole tenant). */
+export const ConflictEntrySchema = z.object({
+  id: z.string(),
+  rule_id: z.string(),
+  rule_name: z.string(),
+  mode: ConflictModeSchema,
+  principal_id: z.string(),
+  principal_name: z.string(),
+  first: ConflictGrantSchema,
+  second: ConflictGrantSchema,
+  unit_id: z.string().nullable(),
+  unit_name: z.string().nullable(),
+  computed_at: z.string(),
+});
+export type ConflictEntry = z.infer<typeof ConflictEntrySchema>;
+export const ConflictEntryListSchema = listSchema(ConflictEntrySchema);
+
+export const fetchConflicts = (query: string, signal?: AbortSignal) =>
+  request(`/api/v1/conflict-report${query ? `?${query}` : ""}`, { schema: ConflictEntryListSchema, ...(signal ? { signal } : {}) });
+
+export const ConflictRunSchema = z.object({ id: z.string(), trigger: z.enum(["daily", "on_demand"]), rules: z.number(), conflicts: z.number(), computed_at: z.string() });
+export type ConflictRun = z.infer<typeof ConflictRunSchema>;
+
+export const fetchLatestConflictRun = (signal?: AbortSignal) =>
+  request("/api/v1/conflict-report/runs/latest", { schema: z.object({ run: ConflictRunSchema.nullable() }), ...(signal ? { signal } : {}) });
+
+export const runConflictReport = () => request("/api/v1/conflict-report/runs", { method: "POST", schema: ConflictRunSchema });
+
+/** A conflict a grant would create, before the grant: the rule, and the grant it meets on the other side. */
+export const GrantConflictSchema = z.object({
+  rule_id: z.string(),
+  rule_name: z.string(),
+  mode: ConflictModeSchema,
+  reason: z.string(),
+  with: ConflictGrantSchema,
+  unit_id: z.string().nullable(),
+  unit_name: z.string().nullable(),
+});
+export type GrantConflict = z.infer<typeof GrantConflictSchema>;
+
+export const previewGrantConflicts = (body: { principal_id: string; role_id: string; scope_kind: ScopeKind; unit_id?: string }, signal?: AbortSignal) =>
+  request(`${assignments}/conflicts`, { method: "POST", body, schema: z.object({ data: z.array(GrantConflictSchema) }), ...(signal ? { signal } : {}) });

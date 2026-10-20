@@ -49,6 +49,7 @@ builder.Services.AddModules(builder.Configuration, modules);
 
 // The daily passes that belong to one process per unit, not to every API replica.
 builder.Services.AddAccessReviewEscalation();
+builder.Services.AddConflictReport();
 
 var app = builder.Build();
 

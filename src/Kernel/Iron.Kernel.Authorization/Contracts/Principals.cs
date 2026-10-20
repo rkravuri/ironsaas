@@ -11,8 +11,20 @@ public enum PrincipalKind
     Any,
 }
 
-/// <summary>What Authorization needs to know of a principal to grant it a role and to show the grant (ADR-0031).</summary>
-public sealed record PrincipalSummary(Guid Id, PrincipalKind Type, string DisplayName, Guid? HomeUnitId);
+/// <summary>
+/// What Authorization needs to know of a principal to grant it a role and to show the grant (ADR-0031), and whether it
+/// may sign in at all, the first check of an explanation (ADR-0039).
+/// </summary>
+public sealed record PrincipalSummary(Guid Id, PrincipalKind Type, string DisplayName, Guid? HomeUnitId, string Status = PrincipalStatuses.Active);
+
+/// <summary>A principal's status as Identity keeps it: only an active one signs in.</summary>
+public static class PrincipalStatuses
+{
+    public const string Active = "active";
+    public const string Invited = "invited";
+    public const string Locked = "locked";
+    public const string Disabled = "disabled";
+}
 
 /// <summary>
 /// The principals of this tenant as Authorization sees them. Identity owns principals and implements this, so the

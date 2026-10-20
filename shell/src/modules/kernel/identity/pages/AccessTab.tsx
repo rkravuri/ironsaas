@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Checkbox, Group, Radio, Select, Stack, Table, Text, VisuallyHidden } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { IconHelpCircle, IconPlus } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
-import { fetchAssignments, fetchRoles, fetchUnits, grantRole, removeAssignment, type Assignment, type ScopeKind } from "@/api/authorization";
+import { fetchAssignments, fetchRoles, fetchUnits, grantRole, previewGrantConflicts, removeAssignment, type Assignment, type ScopeKind } from "@/api/authorization";
 import type { UserRecord } from "@/api/identity";
 import { useAccessAt } from "@/auth/access";
 import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, FormDialog, LoadingState } from "@/components/panels";
 import { scopeLabel, unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
+import { GrantConflictNotice } from "@/modules/kernel/console/pages/GrantConflictNotice";
 import { UnitPicker } from "@/modules/kernel/console/pages/UnitPicker";
 
 const read = "authz.assignments.read";
@@ -28,6 +30,7 @@ const assignmentsKey = (principal: string) => ["authz", "role-assignments", "pri
 export function AccessTab({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
   const session = useSession();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [granting, setGranting] = useState(false);
   const [removing, setRemoving] = useState<Assignment | undefined>();
@@ -68,11 +71,23 @@ export function AccessTab({ user }: { user: UserRecord }) {
         <Text size="sm" c="dimmed" maw={640}>
           {t("access.intro", { name: user.display_name })}
         </Text>
-        {session.permissions.includes(manage) && (
-          <Button leftSection={<IconPlus size={16} aria-hidden="true" />} onClick={() => setGranting(true)}>
-            {t("access.grant.open")}
-          </Button>
-        )}
+        <Group gap="sm">
+          {session.permissions.includes("authz.access.explain") && (
+            <Button
+              variant="default"
+              leftSection={<IconHelpCircle size={16} aria-hidden="true" />}
+              title={t("access.explainHint")}
+              onClick={() => void navigate(`/console/explain?principal=${encodeURIComponent(user.id)}&name=${encodeURIComponent(user.display_name)}`)}
+            >
+              {t("access.explain")}
+            </Button>
+          )}
+          {session.permissions.includes(manage) && (
+            <Button leftSection={<IconPlus size={16} aria-hidden="true" />} onClick={() => setGranting(true)}>
+              {t("access.grant.open")}
+            </Button>
+          )}
+        </Group>
       </Group>
       {failure && (
         <Alert color="danger" role="alert">
@@ -207,6 +222,20 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
     initialValues: { roleId: "", scope: forTenant && !canSeeUnits ? "tenant" : "unit", unitId: homeVisible ? (user.home_unit?.id ?? "") : "", includeChildren: true },
   });
   const values = form.getValues();
+  // The conflict rules are asked about the grant as it stands, so the dialog says what they will do before the confirm
+  // (TF-036): a grant still missing its role or unit is not asked about.
+  const question = useMemo(() => {
+    if (values.roleId === "" || (values.scope === "unit" && values.unitId === "")) {
+      return undefined;
+    }
+    const scopeKind: ScopeKind = values.scope === "tenant" ? "tenant" : values.includeChildren ? "unit_with_children" : "unit";
+    return { principal_id: user.id, role_id: values.roleId, scope_kind: scopeKind, ...(values.scope === "unit" ? { unit_id: values.unitId } : {}) };
+  }, [user.id, values.roleId, values.scope, values.unitId, values.includeChildren]);
+  const conflicts = useQuery({
+    queryKey: ["authz", "grant-conflicts", question],
+    queryFn: ({ signal }) => (question ? previewGrantConflicts(question, signal) : Promise.resolve({ data: [] })),
+    enabled: question !== undefined,
+  });
   // The tree arrives after the dialog opens; the user's home unit is the first choice once it is there.
   const home = homeVisible ? user.home_unit?.id : undefined;
   useEffect(() => {
@@ -260,6 +289,7 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
               <Checkbox label={t("access.grant.includeChildren")} description={t("access.grant.includeChildrenHint")} {...form.getInputProps("includeChildren", { type: "checkbox" })} />
             </>
           ))}
+        {question !== undefined && conflicts.data && <GrantConflictNotice name={user.display_name} conflicts={conflicts.data.data} />}
       </Form>
     </FormDialog>
   );

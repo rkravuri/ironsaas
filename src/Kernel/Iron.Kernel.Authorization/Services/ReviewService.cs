@@ -65,7 +65,8 @@ public sealed record ReviewItemView(
     IReadOnlyList<UnitStep> UnitPath,
     ItemDecisionView? Decision,
     bool Yours,
-    bool WithOwner);
+    bool WithOwner,
+    IReadOnlyList<string> Conflicts);
 
 /// <summary>What a confirm-all did: the items it confirmed, and those someone had decided already, which it left alone.</summary>
 public sealed record ConfirmManyView(int Confirmed, int AlreadyDecided);
@@ -331,6 +332,18 @@ public sealed class ReviewService(
             withOwner.UnionWith(await WithOwnerAsync(reviewId, cancellationToken).ConfigureAwait(false));
         }
 
+        // An assignment that takes part in a conflict of the report says so, by the rule's name (TF-036, ADR-0039).
+        var assignments = items.Select(i => i.AssignmentId).Distinct().ToArray();
+        var conflicts = (await context.ConflictReportEntries.AsNoTracking()
+                .Where(e => (e.FirstAssignmentId != null && assignments.Contains(e.FirstAssignmentId.Value)) || (e.SecondAssignmentId != null && assignments.Contains(e.SecondAssignmentId.Value)))
+                .Select(e => new { e.FirstAssignmentId, e.SecondAssignmentId, e.RuleName })
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false))
+            .SelectMany(e => new[] { (e.FirstAssignmentId, e.RuleName), (e.SecondAssignmentId, e.RuleName) })
+            .Where(e => e.Item1 is not null)
+            .GroupBy(e => e.Item1!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(e => e.RuleName).Distinct().Order(StringComparer.CurrentCulture)]);
+
         return [.. items.Select(item =>
         {
             ItemDecisionView? decision = decisions.TryGetValue(item.Id, out var made)
@@ -351,7 +364,8 @@ public sealed class ReviewService(
                 [.. item.UnitPathIds.Zip(item.UnitPathNames, (unit, name) => new UnitStep(unit, name))],
                 decision,
                 IsOwn(item),
-                withOwner.Contains(item.Id));
+                withOwner.Contains(item.Id),
+                conflicts.GetValueOrDefault(item.AssignmentId) ?? []);
         })];
     }
 

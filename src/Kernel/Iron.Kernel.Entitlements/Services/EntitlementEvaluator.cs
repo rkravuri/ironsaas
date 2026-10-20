@@ -67,7 +67,15 @@ public sealed class EntitlementEvaluator(
         return EntitlementRules.Feature(snapshot.Document, feature, module, Today);
     }
 
+    /// <summary>The filters' check: the decision, and for a refusal its log line, count and audit event.</summary>
     public async ValueTask<EntitlementDecision> CheckAsync(EntitlementRequest request, CancellationToken cancellationToken)
+    {
+        var decision = await DecideAsync(request, cancellationToken).ConfigureAwait(false);
+        return decision.Allowed ? decision : await RefuseAsync(request, decision, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The decision alone, for the filters' check and for an explanation (ADR-0039): one rule, no side effects.</summary>
+    public async ValueTask<EntitlementDecision> DecideAsync(EntitlementRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Licence is { } licence)
@@ -75,19 +83,17 @@ public sealed class EntitlementEvaluator(
             var module = request.PrincipalId is { } principal && principal != Guid.Empty
                 ? await ModuleForAsync(licence, principal, cancellationToken).ConfigureAwait(false)
                 : Module(licence);
-            var refusal = Refusal(module, request.IsWrite, licence, isFeature: false);
-            if (refusal is not null)
+            if (Refusal(module, request.IsWrite, licence, isFeature: false) is { } refusal)
             {
-                return await RefuseAsync(request, refusal, cancellationToken).ConfigureAwait(false);
+                return refusal;
             }
         }
 
         foreach (var code in request.Features)
         {
-            var refusal = Refusal(Feature(code), request.IsWrite, code, isFeature: true);
-            if (refusal is not null)
+            if (Refusal(Feature(code), request.IsWrite, code, isFeature: true) is { } refusal)
             {
-                return await RefuseAsync(request, refusal, cancellationToken).ConfigureAwait(false);
+                return refusal;
             }
         }
 

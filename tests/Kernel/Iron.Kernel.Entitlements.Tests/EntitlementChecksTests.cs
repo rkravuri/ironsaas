@@ -71,6 +71,26 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    public async Task TheGatesDecisionForAnExplanationIsTheChecksAnswerAndWritesNothing()
+    {
+        await PublishAsync(Documents.With(10, [Documents.Fixture(EntitlementStatus.Disabled)]));
+        var request = new EntitlementRequest(FixtureModule.Licence.Code, [], IsWrite: false, _administrator, "GET /api/v1/fixture-things", "/api/v1/fixture-things");
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var gate = scope.ServiceProvider.GetRequiredService<IEntitlementGate>();
+        var events = scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking().Where(e => e.EventType == EntitlementsAuditEvents.AccessDenied && e.ActorId == _administrator);
+        var before = await events.CountAsync(TestContext.Current.CancellationToken);
+
+        var decided = await gate.DecideAsync(request, TestContext.Current.CancellationToken);
+        var afterDeciding = await events.CountAsync(TestContext.Current.CancellationToken);
+        var checkedAnswer = await gate.CheckAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(checkedAnswer, decided);
+        Assert.Equal((false, EntitlementErrors.ModuleDisabled), (decided.Allowed, decided.ErrorCode));
+        Assert.Equal(before, afterDeciding);
+        Assert.Equal(before + 1, await events.CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task ADisabledModuleIsRefusedWhateverThePermissionAndTheRefusalIsAudited()
     {
         await PublishAsync(Documents.With(10, [Documents.Fixture(EntitlementStatus.Disabled)]));

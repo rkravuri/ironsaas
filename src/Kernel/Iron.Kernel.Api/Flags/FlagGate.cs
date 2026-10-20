@@ -27,7 +27,14 @@ public sealed record FlagDecision(bool Allowed, string? ErrorCode, string? Messa
 /// </summary>
 public interface IFlagGate
 {
+    /// <summary>The answer the filters act on; a refusal is logged, counted and audited.</summary>
     ValueTask<FlagDecision> CheckAsync(FlagRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The same answer without its side effects, for explaining someone's access (ADR-0039): the flags are evaluated for
+    /// the request's principal as <see cref="CheckAsync"/> evaluates them, and nothing is logged, counted or audited.
+    /// </summary>
+    ValueTask<FlagDecision> DecideAsync(FlagRequest request, CancellationToken cancellationToken) => CheckAsync(request, cancellationToken);
 }
 
 /// <summary>Endpoint metadata: the endpoint needs a flag on, or off. <c>RequireFlag</c> and <c>RequireFlagOff</c> put it there.</summary>
@@ -105,24 +112,44 @@ public static class FlagCheck
 
     private const string CheckedKey = "Iron.FlagsChecked";
 
+    /// <summary>
+    /// What an endpoint asks of the gate, or null when it names no flag: the request the filter checks and the explainer
+    /// decides (ADR-0039), built from the same metadata.
+    /// </summary>
+    public static FlagRequest? RequestFor(EndpointMetadataCollection metadata, Guid? principalId, string operation, string path)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        var requirements = metadata.GetOrderedMetadata<FlagMetadata>().Select(m => new FlagRequirement(m.Key, m.MustBeOn)).Distinct().ToList();
+        return requirements.Count == 0 ? null : new FlagRequest(requirements, principalId, operation, path);
+    }
+
+    /// <summary>The answer when no gate is registered: a flag nobody can evaluate is off.</summary>
+    public static FlagDecision Unconfirmed(FlagRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return FlagDecision.Refuse(FlagErrors.Disabled, "This is not available.", request.Flags[0].Key, null);
+    }
+
+    /// <summary>The status a refusal answers: 503 for a kill switch, 404 for a flag that is off.</summary>
+    public static int StatusOf(FlagDecision decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        return decision.ErrorCode == FlagErrors.Killed ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status404NotFound;
+    }
+
     /// <summary>The problem to answer, or null when the endpoint names no flag or every flag allows the request.</summary>
     public static async ValueTask<IResult?> RefusalAsync(HttpContext http, Guid? principalId)
     {
         ArgumentNullException.ThrowIfNull(http);
-        var requirements = http.GetEndpoint()?.Metadata.GetOrderedMetadata<FlagMetadata>()
-            .Select(m => new FlagRequirement(m.Key, m.MustBeOn))
-            .Distinct()
-            .ToList();
-        if (requirements is null || requirements.Count == 0 || !http.Items.TryAdd(CheckedKey, true))
+        var metadata = http.GetEndpoint()?.Metadata;
+        var request = metadata is null ? null : RequestFor(metadata, principalId, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/");
+        if (request is null || !http.Items.TryAdd(CheckedKey, true))
         {
             return null;
         }
 
         var gate = http.RequestServices.GetService<IFlagGate>();
-        var request = new FlagRequest(requirements, principalId, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/");
-        var decision = gate is null
-            ? FlagDecision.Refuse(FlagErrors.Disabled, "This is not available.", requirements[0].Key, null)
-            : await gate.CheckAsync(request, http.RequestAborted).ConfigureAwait(false);
+        var decision = gate is null ? Unconfirmed(request) : await gate.CheckAsync(request, http.RequestAborted).ConfigureAwait(false);
         if (decision.Allowed)
         {
             return null;

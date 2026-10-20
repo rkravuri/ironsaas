@@ -21,7 +21,16 @@ public static class AuthorizationPermissions
 
     public static readonly Permission ReviewsDecide = new("authz.reviews.decide", "Confirm or revoke the role assignments of a unit in an access review", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage, DelegationsManage, ReviewsManage, ReviewsDecide];
+    /// <summary>Explain why a person can or cannot perform an action (TF-039): it reveals their access, so it is high risk.</summary>
+    public static readonly Permission AccessExplain = new("authz.access.explain", "Explain why a person can or cannot perform an action", Risk.High);
+
+    /// <summary>Read the conflict rules and the report of existing conflicts (TF-036).</summary>
+    public static readonly Permission SodRead = new("authz.sod.read", "See the conflict rules and the conflicts report", Risk.Medium);
+
+    /// <summary>Define, change and remove conflict rules, and run the report now (TF-036).</summary>
+    public static readonly Permission SodManage = new("authz.sod.manage", "Define the conflict rules between permissions or roles, and run the report", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage, DelegationsManage, ReviewsManage, ReviewsDecide, AccessExplain, SodRead, SodManage];
 }
 
 /// <summary>
@@ -97,6 +106,17 @@ public static class AuthorizationErrors
     public const string ReviewItemDecided = "authz.review.item_decided";
     public const string ReviewDuePassed = "authz.review.due_passed";
     public const string ReviewOwnItem = "authz.review.own_item";
+
+    /// <summary>No endpoint of that name to explain (ADR-0039).</summary>
+    public const string ExplainActionUnknown = "authz.explain.action_unknown";
+
+    /// <summary>A block rule refuses a grant or a delegation that would create its conflict; the message names the rule (TF-036 AC1).</summary>
+    public const string SodConflict = "authz.sod.conflict";
+
+    public const string SodRuleNotFound = "authz.sod.rule_not_found";
+    public const string SodRuleInvalid = "authz.sod.rule_invalid";
+    public const string SodSideUnknown = "authz.sod.side_unknown";
+    public const string SodSidesSame = "authz.sod.sides_same";
 }
 
 /// <summary>Audit event types raised by Authorization (TF-060).</summary>
@@ -120,4 +140,12 @@ public static class AuthorizationAuditEvents
     public const string ReviewDecided = "authz.review_decided";
     public const string ReviewClosed = "authz.review_closed";
     public const string ReviewEscalated = "authz.review_escalated";
+
+    /// <summary>Someone's access to an action was explained (ADR-0039): it reveals their access, so it is on the record.</summary>
+    public const string AccessExplained = "authz.access_explained";
+
+    public const string SodRuleCreated = "authz.sod_rule_created";
+    public const string SodRuleChanged = "authz.sod_rule_changed";
+    public const string SodRuleDeleted = "authz.sod_rule_deleted";
+    public const string SodReportRun = "authz.sod_report_run";
 }

@@ -169,6 +169,50 @@ describe("the user record page", () => {
     expect(JSON.parse(post?.init?.body as string)).toEqual({ principal_id: "u1", role_id: "r1", scope_kind: "unit_with_children", unit_id: "east" });
   });
 
+  it("says in words, before the confirm, that a conflict rule refuses the grant, and shows the refusal naming the rule (TF-036)", async () => {
+    const refusal = "The conflict rule 'Payments apart' blocks this: Ada Lovelace would hold both sides of it at East. One person should not raise and approve a payment.";
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me([], granter)),
+      "GET /api/v1/users/u1": () => json(user),
+      [assignments]: () => json(list([])),
+      "GET /api/v1/roles?page_size=200&sort=name": () =>
+        json(list([{ id: "r1", code: "payment-raiser", name: "Payment raiser", description: "", is_system: false, principal_type: "user", permissions: ["payments.raise"], created_at: "", updated_at: "", version: 1 }])),
+      "GET /api/v1/organisation-units": () => json({ data: [unit("sales", "Sales", "acme"), unit("east", "East", "sales")] }),
+      "POST /api/v1/role-assignments/conflicts": () =>
+        json({
+          data: [
+            {
+              rule_id: "c1",
+              rule_name: "Payments apart",
+              mode: "block",
+              reason: "One person should not raise and approve a payment.",
+              with: { assignment_id: "a1", delegation_id: null, role: "Payment approver", scope_kind: "unit_with_children", unit_id: "sales", unit_name: "Sales", source: "assignment" },
+              unit_id: "east",
+              unit_name: "East",
+            },
+          ],
+        }),
+      "POST /api/v1/role-assignments": () => problem(409, { title: "Conflict", detail: refusal, error_code: "authz.sod.conflict" }),
+    });
+    page();
+
+    fireEvent.click(await screen.findByRole("tab", { name: "Access" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Grant a role" }));
+    const dialog = await screen.findByRole("dialog", { name: "Grant a role to Ada Lovelace" });
+    fireEvent.click(await within(dialog).findByLabelText("Role"));
+    fireEvent.click(await screen.findByRole("option", { name: "Payment raiser", hidden: true }));
+    fireEvent.click(within(within(dialog).getByRole("tree", { name: "Unit" })).getByText("East"));
+
+    expect(await within(dialog).findByRole("status")).toHaveTextContent("The conflict rules refuse this grant");
+    expect(within(dialog).getByText("Payments apart: Ada Lovelace already holds Payment approver at Sales and the units below it, so would hold both sides at East.")).toBeInTheDocument();
+    // The dialog asks again as the grant changes: first at the home unit, last at the unit chosen.
+    const asked = calls.findLast((call) => call.key === "POST /api/v1/role-assignments/conflicts");
+    expect(JSON.parse(asked?.init?.body as string)).toEqual({ principal_id: "u1", role_id: "r1", scope_kind: "unit_with_children", unit_id: "east" });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Grant role" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(refusal);
+  });
+
   it("hides the access for a reader without the permission to read assignments", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])), "GET /api/v1/users/u1": () => json(user) });
     page();

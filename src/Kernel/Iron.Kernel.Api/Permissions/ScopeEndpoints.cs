@@ -10,14 +10,22 @@ namespace Iron.Kernel.Api.Permissions;
 public abstract class ScopeMetadata
 {
     /// <summary>The scope of this request, or tenant-wide when the route value is missing or names nothing.</summary>
-    public abstract ValueTask<AccessScope> ResolveAsync(HttpContext http, CancellationToken cancellationToken);
-
-    protected static Guid? RouteId(HttpContext http, string routeValue)
+    public ValueTask<AccessScope> ResolveAsync(HttpContext http, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(http);
-        return http.Request.RouteValues.TryGetValue(routeValue, out var value) && Guid.TryParse(value?.ToString(), out var id) && id != Guid.Empty
-            ? id
-            : null;
+        return ResolveAsync(http.RequestServices, name => http.Request.RouteValues.TryGetValue(name, out var value) ? value?.ToString() : null, cancellationToken);
+    }
+
+    /// <summary>
+    /// The scope for these route values: a request's, or those an explanation names (ADR-0039), resolved the same way.
+    /// Tenant-wide when the route value is missing or names nothing.
+    /// </summary>
+    public abstract ValueTask<AccessScope> ResolveAsync(IServiceProvider services, Func<string, string?> routeValue, CancellationToken cancellationToken);
+
+    protected static Guid? RouteId(Func<string, string?> routeValue, string name)
+    {
+        ArgumentNullException.ThrowIfNull(routeValue);
+        return Guid.TryParse(routeValue(name), out var id) && id != Guid.Empty ? id : null;
     }
 }
 
@@ -26,9 +34,9 @@ public sealed class UnitScopeMetadata(string routeValue) : ScopeMetadata
 {
     public string RouteValue { get; } = routeValue;
 
-    public override ValueTask<AccessScope> ResolveAsync(HttpContext http, CancellationToken cancellationToken)
+    public override ValueTask<AccessScope> ResolveAsync(IServiceProvider services, Func<string, string?> routeValue, CancellationToken cancellationToken)
     {
-        var unitId = RouteId(http, RouteValue);
+        var unitId = RouteId(routeValue, RouteValue);
         return ValueTask.FromResult(unitId is null ? AccessScope.Tenant : AccessScope.Unit(unitId.Value));
     }
 }
@@ -36,23 +44,26 @@ public sealed class UnitScopeMetadata(string routeValue) : ScopeMetadata
 /// <summary>
 /// The route value is a record's id, and the lookup finds the unit that owns it (its <c>OwningOrganisationId</c>), for
 /// example with one query on the module's context. A record that is not found is checked tenant-wide, so only a
-/// tenant-wide grant reaches the handler that answers 404.
+/// tenant-wide grant reaches the handler that answers 404. <see cref="PolicyAction"/> names the record policy action the
+/// handler opens the record for, so an explanation runs the same policy (ADR-0039); null when the handler applies none.
 /// </summary>
-public sealed class RecordScopeMetadata(string recordType, string routeValue, Func<IServiceProvider, Guid, CancellationToken, Task<Guid?>> owningUnit) : ScopeMetadata
+public sealed class RecordScopeMetadata(string recordType, string routeValue, Func<IServiceProvider, Guid, CancellationToken, Task<Guid?>> owningUnit, string? policyAction = null) : ScopeMetadata
 {
     public string RecordType { get; } = recordType;
 
     public string RouteValue { get; } = routeValue;
 
-    public override async ValueTask<AccessScope> ResolveAsync(HttpContext http, CancellationToken cancellationToken)
+    public string? PolicyAction { get; } = policyAction;
+
+    public override async ValueTask<AccessScope> ResolveAsync(IServiceProvider services, Func<string, string?> routeValue, CancellationToken cancellationToken)
     {
-        var recordId = RouteId(http, RouteValue);
+        var recordId = RouteId(routeValue, RouteValue);
         if (recordId is null)
         {
             return AccessScope.Tenant;
         }
 
-        var unitId = await owningUnit(http.RequestServices, recordId.Value, cancellationToken).ConfigureAwait(false);
+        var unitId = await owningUnit(services, recordId.Value, cancellationToken).ConfigureAwait(false);
         return unitId is null || unitId == Guid.Empty ? AccessScope.Tenant : AccessScope.Record(RecordType, recordId.Value, unitId.Value);
     }
 }
@@ -60,7 +71,7 @@ public sealed class RecordScopeMetadata(string recordType, string routeValue, Fu
 /// <summary>The endpoint keeps the rows its caller may see and answers 404 for the others (ADR-0031): the permission counts at any scope.</summary>
 public sealed class RowScopeMetadata : ScopeMetadata
 {
-    public override ValueTask<AccessScope> ResolveAsync(HttpContext http, CancellationToken cancellationToken) => ValueTask.FromResult(AccessScope.Anywhere);
+    public override ValueTask<AccessScope> ResolveAsync(IServiceProvider services, Func<string, string?> routeValue, CancellationToken cancellationToken) => ValueTask.FromResult(AccessScope.Anywhere);
 }
 
 public static class ScopeEndpointExtensions
@@ -89,14 +100,16 @@ public static class ScopeEndpointExtensions
     /// <summary>
     /// The permission of this endpoint is checked at the record named by a route value (default <c>id</c>): the lookup
     /// gives the unit that owns the record, so a role assigned to that unit, or to an ancestor with its children, applies.
+    /// <paramref name="policyAction"/> is the record policy action the handler opens the record for with
+    /// <c>IRecordPolicies.FindAsync</c>, so an explanation of the endpoint runs that policy too (ADR-0039).
     /// </summary>
-    public static TBuilder ScopedToRecord<TBuilder>(this TBuilder builder, string recordType, Func<IServiceProvider, Guid, CancellationToken, Task<Guid?>> owningUnit, string routeValue = "id")
+    public static TBuilder ScopedToRecord<TBuilder>(this TBuilder builder, string recordType, Func<IServiceProvider, Guid, CancellationToken, Task<Guid?>> owningUnit, string routeValue = "id", string? policyAction = null)
         where TBuilder : IEndpointConventionBuilder
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(recordType);
         ArgumentNullException.ThrowIfNull(owningUnit);
         ArgumentException.ThrowIfNullOrWhiteSpace(routeValue);
-        return builder.WithMetadata(new RecordScopeMetadata(recordType, routeValue, owningUnit));
+        return builder.WithMetadata(new RecordScopeMetadata(recordType, routeValue, owningUnit, policyAction));
     }
 }

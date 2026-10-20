@@ -5,8 +5,11 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Iron.Kernel.Authorization.Services;
 
-/// <summary>One assignment as the evaluator needs it: where it applies and what its role grants.</summary>
-public sealed record Grant(RoleScopeKind Kind, Guid? ScopeId, string? RecordType, IReadOnlyCollection<string> Permissions);
+/// <summary>
+/// One assignment as the evaluator needs it: where it applies and what its role grants, with the assignment and the role
+/// it comes from, which an explanation names (ADR-0039).
+/// </summary>
+public sealed record Grant(RoleScopeKind Kind, Guid? ScopeId, string? RecordType, IReadOnlyCollection<string> Permissions, Guid? AssignmentId = null, Guid? RoleId = null, string? RoleCode = null, string? RoleName = null);
 
 /// <summary>Every assignment of one principal, with the tenant-wide permissions gathered once.</summary>
 public sealed class PrincipalGrants
@@ -56,23 +59,37 @@ public sealed class PrincipalGrants
             return result;
         }
 
-        var unit = unitPath.Count > 0 ? unitPath[^1] : (Guid?)null;
-        foreach (var grant in Grants)
+        foreach (var grant in Grants.Where(g => Applies(g, scope, unitPath)))
         {
-            var applies = grant.Kind switch
-            {
-                RoleScopeKind.Unit => unit is not null && grant.ScopeId == unit,
-                RoleScopeKind.UnitWithChildren => grant.ScopeId is { } top && unitPath.Contains(top),
-                RoleScopeKind.Record => scope.Kind == AccessScopeKind.Record && grant.ScopeId == scope.RecordId && string.Equals(grant.RecordType, scope.RecordType, StringComparison.Ordinal),
-                _ => false,
-            };
-            if (applies)
-            {
-                result.UnionWith(grant.Permissions);
-            }
+            result.UnionWith(grant.Permissions);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// The grants that give a permission at a scope, by the same rule as <see cref="PermissionsAt"/>: what an explanation
+    /// names for an allowance (TF-039 AC2, ADR-0039).
+    /// </summary>
+    public IReadOnlyList<Grant> GrantsGiving(string permission, AccessScope scope, IReadOnlyList<Guid> unitPath)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(unitPath);
+        return [.. Grants.Where(g => g.Permissions.Contains(permission, StringComparer.Ordinal)
+            && (scope.Kind == AccessScopeKind.Anywhere || g.Kind == RoleScopeKind.Tenant || (scope.Kind != AccessScopeKind.Tenant && Applies(g, scope, unitPath))))];
+    }
+
+    /// <summary>A unit grant applies to its unit, a grant with children to its unit and every unit below it, a record grant to its record.</summary>
+    private static bool Applies(Grant grant, AccessScope scope, IReadOnlyList<Guid> unitPath)
+    {
+        var unit = unitPath.Count > 0 ? unitPath[^1] : (Guid?)null;
+        return grant.Kind switch
+        {
+            RoleScopeKind.Unit => unit is not null && grant.ScopeId == unit,
+            RoleScopeKind.UnitWithChildren => grant.ScopeId is { } top && unitPath.Contains(top),
+            RoleScopeKind.Record => scope.Kind == AccessScopeKind.Record && grant.ScopeId == scope.RecordId && string.Equals(grant.RecordType, scope.RecordType, StringComparison.Ordinal),
+            _ => false,
+        };
     }
 
     /// <summary>
@@ -118,15 +135,19 @@ public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache ca
 
     public static string CacheKey(Guid principalId) => $"authz:grants:{principalId:N}";
 
-    public async Task<PrincipalGrants> OfAsync(Guid principalId, CancellationToken cancellationToken)
+    public async Task<PrincipalGrants> OfAsync(Guid principalId, CancellationToken cancellationToken) =>
+        (await WithActingAsync(principalId, cancellationToken).ConfigureAwait(false)).Grants;
+
+    /// <summary>The grants a principal's checks use, and whose they are: the delegator's, limited, while acting (ADR-0037).</summary>
+    private async Task<(PrincipalGrants Grants, ActingSubstitution? Acting)> WithActingAsync(Guid principalId, CancellationToken cancellationToken)
     {
         if (await acting.ForAsync(principalId, cancellationToken).ConfigureAwait(false) is { } substitution)
         {
             var delegators = await LoadAsync(substitution.DelegatorId, cancellationToken).ConfigureAwait(false);
-            return substitution.Limit is null ? delegators : delegators.LimitedTo(substitution.Limit);
+            return (substitution.Limit is null ? delegators : delegators.LimitedTo(substitution.Limit), substitution);
         }
 
-        return await LoadAsync(principalId, cancellationToken).ConfigureAwait(false);
+        return (await LoadAsync(principalId, cancellationToken).ConfigureAwait(false), null);
     }
 
     /// <summary>A principal's own grants, from the cache when it is fresh.</summary>
@@ -141,11 +162,11 @@ public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache ca
 
         var rows = await context.RoleAssignments.AsNoTracking()
             .Where(assignment => assignment.PrincipalId == principalId)
-            .Join(context.Roles.AsNoTracking(), assignment => assignment.RoleId, role => role.Id, (assignment, role) => new { assignment.ScopeKind, assignment.ScopeId, assignment.ScopeRecordType, role.Permissions })
+            .Join(context.Roles.AsNoTracking(), assignment => assignment.RoleId, role => role.Id, (assignment, role) => new { assignment.Id, assignment.ScopeKind, assignment.ScopeId, assignment.ScopeRecordType, role.Permissions, RoleId = role.Id, role.Code, role.Name })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var grants = new PrincipalGrants(rows.Select(row => new Grant(Scopes.KindOf(row.ScopeKind), row.ScopeId, row.ScopeRecordType, row.Permissions)).ToList());
+        var grants = new PrincipalGrants(rows.Select(row => new Grant(Scopes.KindOf(row.ScopeKind), row.ScopeId, row.ScopeRecordType, row.Permissions, row.Id, row.RoleId, row.Code, row.Name)).ToList());
         var seconds = Math.Clamp(options.CacheSeconds, 0, PermissionCacheOptions.MaxCacheSeconds);
         if (seconds > 0)
         {
@@ -158,10 +179,17 @@ public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache ca
     public void Forget(Guid principalId) => cache.Remove(CacheKey(principalId));
 
     /// <summary>The permissions a principal holds at a scope. Reads one unit's path when the principal has unit grants at all.</summary>
-    public async Task<IReadOnlySet<string>> PermissionsAtAsync(Guid principalId, AccessScope scope, CancellationToken cancellationToken)
+    public async Task<IReadOnlySet<string>> PermissionsAtAsync(Guid principalId, AccessScope scope, CancellationToken cancellationToken) =>
+        (await AtAsync(principalId, scope, cancellationToken).ConfigureAwait(false)).Permissions;
+
+    /// <summary>
+    /// The principal's grants at a scope: what the evaluator's check and its explanation both read (ADR-0039), the
+    /// permissions held there, the grants that give each, and the delegator whose grants counted while acting.
+    /// </summary>
+    public async Task<ScopedGrants> AtAsync(Guid principalId, AccessScope scope, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
-        var grants = await OfAsync(principalId, cancellationToken).ConfigureAwait(false);
+        var (grants, substitution) = await WithActingAsync(principalId, cancellationToken).ConfigureAwait(false);
         IReadOnlyList<Guid> unitPath = [];
         if (scope.UnitId is { } unitId && grants.HasUnitGrants)
         {
@@ -173,7 +201,7 @@ public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache ca
             unitPath = path is null ? [] : OrganisationUnit.PathIds(path);
         }
 
-        return grants.PermissionsAt(scope, unitPath);
+        return new ScopedGrants(grants, scope, unitPath, substitution);
     }
 
     /// <summary>What the principal holds over the whole of a target scope (ADR-0031); reads the target unit's path when there is one.</summary>
@@ -229,4 +257,12 @@ public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache ca
     }
 
     private sealed record CachedGrants(PrincipalGrants Grants, DateTimeOffset ExpiresAt);
+}
+
+/// <summary>A principal's grants read for one scope: the permissions held there, and the grants that give one of them.</summary>
+public sealed record ScopedGrants(PrincipalGrants Grants, AccessScope Scope, IReadOnlyList<Guid> UnitPath, ActingSubstitution? Acting)
+{
+    public IReadOnlySet<string> Permissions => Grants.PermissionsAt(Scope, UnitPath);
+
+    public IReadOnlyList<Grant> Giving(string permission) => Grants.GrantsGiving(permission, Scope, UnitPath);
 }

@@ -1,10 +1,14 @@
 using System.Collections.Concurrent;
 using Iron.Kernel.Api.Modules;
+using Iron.Kernel.Api.Permissions;
+using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Data.Policies;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -133,8 +137,35 @@ public sealed class DutyProbeModule : IModule
 
     public void AddServices(IServiceCollection services, IConfiguration configuration) => ProbeRecords.Add(services);
 
+    /// <summary>
+    /// Two crate endpoints as a product maps a record route (ADR-0039): the permission at the crate's unit, then the
+    /// crate opened through its policy for the action the endpoint names, so an explanation runs the same policy.
+    /// </summary>
     public void MapEndpoints(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints)
     {
+        var crates = endpoints.MapGroup("/api/v1/probe/crates");
+        crates.MapGet("/{id:guid}", ReadCrateAsync)
+            .RequirePermission(ProbeRecords.CratesRead)
+            .ScopedToRecord(ProbeRecords.CrateType, ProbeRecords.OwningUnitAsync, policyAction: RecordActions.Read)
+            .WithName("GetProbeCrate")
+            .WithSummary("One crate.");
+        crates.MapPost("/{id:guid}/update", UpdateCrateAsync)
+            .RequirePermission(ProbeRecords.CratesRead)
+            .ScopedToRecord(ProbeRecords.CrateType, ProbeRecords.OwningUnitAsync, policyAction: RecordActions.Update)
+            .WithName("UpdateProbeCrate")
+            .WithSummary("Change a crate.");
+    }
+
+    private static async Task<IResult> ReadCrateAsync(Guid id, IRecordPolicies policies, HttpContext http, CancellationToken cancellationToken)
+    {
+        var found = await policies.FindAsync<Crate>(id, RecordActions.Read, cancellationToken);
+        return found.IsFailure ? ApiResults.Problem(found.Error, http) : TypedResults.Ok(new { found.Value.Id, found.Value.Label });
+    }
+
+    private static async Task<IResult> UpdateCrateAsync(Guid id, IRecordPolicies policies, HttpContext http, CancellationToken cancellationToken)
+    {
+        var found = await policies.FindAsync<Crate>(id, RecordActions.Update, cancellationToken);
+        return found.IsFailure ? ApiResults.Problem(found.Error, http) : TypedResults.Ok(new { found.Value.Id, found.Value.Label });
     }
 }
 
@@ -177,10 +208,10 @@ public sealed class TestPrincipals : IPrincipals
 {
     private readonly ConcurrentDictionary<Guid, PrincipalSummary> _principals = new();
 
-    public Guid Add(PrincipalKind kind = PrincipalKind.User, Guid? homeUnit = null)
+    public Guid Add(PrincipalKind kind = PrincipalKind.User, Guid? homeUnit = null, string status = PrincipalStatuses.Active, string? name = null)
     {
         var id = Ids.New();
-        _principals[id] = new PrincipalSummary(id, kind, $"Principal {id:N}"[..18], homeUnit);
+        _principals[id] = new PrincipalSummary(id, kind, name ?? $"Principal {id:N}"[..18], homeUnit, status);
         return id;
     }
 

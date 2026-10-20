@@ -1,7 +1,9 @@
-import { IconAdjustments, IconClipboardCheck, IconKey, IconReceipt, IconSitemap, IconSquarePlus, IconUserShare } from "@tabler/icons-react";
+import { IconAdjustments, IconClipboardCheck, IconHelpCircle, IconKey, IconReceipt, IconScale, IconSitemap, IconSquarePlus, IconUserShare } from "@tabler/icons-react";
 import { gridShortcuts, tabShortcuts, treeShortcuts } from "@/components/shortcuts";
 import type { ModuleManifest } from "@/modules/registry";
+import { ConflictsPage } from "./pages/ConflictsPage";
 import { DelegationsPage } from "./pages/DelegationsPage";
+import { ExplainPage } from "./pages/ExplainPage";
 import { ReviewRecordPage } from "./pages/ReviewRecordPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
 import { RoleEditorPage } from "./pages/RoleEditorPage";
@@ -14,7 +16,8 @@ import { UnitsPage } from "./pages/UnitsPage";
  * The tenant console (kernel layer, ADR-0029): the administration of the kernel's mechanisms. A1 brought the
  * organisation tree, A2 the roles, A4 the subscription (read only: plans are the operator's), A6 the settings of the
  * tenant and its units, A7 others' delegations (for their administrators; a person's own are in My profile) and access
- * reviews (for their reviewers, ADR-0037). Flag rules are the operator's, in the control plane (ADR-0035).
+ * reviews (for their reviewers, ADR-0037), A9 the explanation of a person's access and the conflict rules with their
+ * report (ADR-0039). Flag rules are the operator's, in the control plane (ADR-0035).
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -29,6 +32,8 @@ export const consoleManifest: ModuleManifest = {
     { path: "/console/delegations", permission: "authz.delegations.manage", element: <DelegationsPage />, titleKey: "modules.console.delegations", shortcuts: gridShortcuts },
     { path: "/console/access-reviews", permission: "authz.reviews.decide", element: <ReviewsPage />, titleKey: "modules.console.accessReviews", shortcuts: gridShortcuts },
     { path: "/console/access-reviews/:id", permission: "authz.reviews.decide", element: <ReviewRecordPage />, titleKey: "modules.console.accessReviews", shortcuts: tabShortcuts },
+    { path: "/console/explain", permission: "authz.access.explain", element: <ExplainPage />, titleKey: "modules.console.explain" },
+    { path: "/console/conflicts", permission: "authz.sod.read", element: <ConflictsPage />, titleKey: "modules.console.conflicts", shortcuts: tabShortcuts },
   ],
   navigation: [
     { labelKey: "modules.console.units", path: "/console/units", permission: "authz.units.read", icon: <IconSitemap size={16} /> },
@@ -37,6 +42,8 @@ export const consoleManifest: ModuleManifest = {
     { labelKey: "modules.console.settings", path: "/console/settings", permission: "settings.values.read", icon: <IconAdjustments size={16} /> },
     { labelKey: "modules.console.delegations", path: "/console/delegations", permission: "authz.delegations.manage", icon: <IconUserShare size={16} /> },
     { labelKey: "modules.console.accessReviews", path: "/console/access-reviews", permission: "authz.reviews.decide", icon: <IconClipboardCheck size={16} /> },
+    { labelKey: "modules.console.explain", path: "/console/explain", permission: "authz.access.explain", icon: <IconHelpCircle size={16} /> },
+    { labelKey: "modules.console.conflicts", path: "/console/conflicts", permission: "authz.sod.read", icon: <IconScale size={16} /> },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },
   // The Units page opens its dialog for a new unit under the person's home unit from ?add (D4).

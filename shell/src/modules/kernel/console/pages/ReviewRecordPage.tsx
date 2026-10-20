@@ -190,6 +190,13 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
       { field: "unit_path", headerKey: "reviews.items.columns.path", flex: 2, format: (item) => item.unit_path.map((step) => step.name).join(" / ") },
       { field: "scope_kind", headerKey: "reviews.items.columns.scope", width: 200, format: (item) => t(`reviews.items.scopes.${item.scope_kind}`) },
       { field: "decision", headerKey: "reviews.items.columns.decision", flex: 2, format: (item) => decisionLabel(item, t) },
+      // An item that takes part in a conflict of the report says so by the rule's name (TF-036): words, not a mark alone.
+      {
+        field: "conflicts",
+        headerKey: "reviews.items.columns.conflicts",
+        flex: 2,
+        format: (item) => (item.conflicts.length > 0 ? t("reviews.items.conflict", { rules: item.conflicts.join(", ") }) : t("reviews.items.noConflict")),
+      },
     ],
     [t],
   );

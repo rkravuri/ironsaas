@@ -40,6 +40,7 @@ public sealed class AssignmentService(
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ICurrentPrincipal actor,
+    ConflictService segregation,
     ILogger<AssignmentService> logger)
 {
     public const string RecordType = "role_assignment";
@@ -162,12 +163,25 @@ public sealed class AssignmentService(
             return (await DescribeAsync([existing], cancellationToken).ConfigureAwait(false))[0];
         }
 
+        // Segregation of duties (TF-036): a block rule refuses the grant and names itself; a warn rule lets it through,
+        // and the person's conflicts are listed in the report at once.
+        var conflicts = await segregation.ForGrantAsync(principalId, role, scope, cancellationToken).ConfigureAwait(false);
+        if (conflicts.FirstOrDefault(c => c.Rule.Mode == ConflictModes.Block) is { } blocking)
+        {
+            return Error.Conflict(AuthorizationErrors.SodConflict, await segregation.RefusalAsync(blocking, principalId, cancellationToken).ConfigureAwait(false));
+        }
+
         var assignment = new RoleAssignment(role.Id, principalId, scope);
         await using (var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false))
         {
             context.RoleAssignments.Add(assignment);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await WriteAsync(AuthorizationAuditEvents.RoleAssigned, AuditOutcome.Success, assignment.Id, role, principalId, scope, cancellationToken).ConfigureAwait(false);
+            if (conflicts.Count > 0)
+            {
+                await segregation.RefreshPrincipalAsync(principalId, cancellationToken).ConfigureAwait(false);
+            }
+
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -231,6 +245,7 @@ public sealed class AssignmentService(
         context.RoleAssignments.Remove(assignment);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await WriteAsync(AuthorizationAuditEvents.RoleUnassigned, AuditOutcome.Success, assignment.Id, role, assignment.PrincipalId, scope, cancellationToken, reviewId).ConfigureAwait(false);
+        await segregation.RefreshPrincipalAsync(assignment.PrincipalId, cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         grants.Forget(assignment.PrincipalId);
         return Result.Success();

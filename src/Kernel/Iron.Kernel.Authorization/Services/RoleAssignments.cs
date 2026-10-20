@@ -13,7 +13,8 @@ public sealed class RoleAssignments(
     AccessGrants grants,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
-    ICurrentPrincipal actor) : IRoleAssignments
+    ICurrentPrincipal actor,
+    ConflictService segregation) : IRoleAssignments
 {
     public Task<Result> AssignAsync(Guid principalId, string roleCode, CancellationToken cancellationToken) =>
         AssignAsync(principalId, roleCode, RoleScope.Tenant, cancellationToken);
@@ -45,12 +46,24 @@ public sealed class RoleAssignments(
             .ConfigureAwait(false);
         if (!exists)
         {
+            // The same segregation of duties as a grant through the API (TF-036): whoever asks, a block rule refuses.
+            var conflicts = await segregation.ForGrantAsync(principalId, role, scope, cancellationToken).ConfigureAwait(false);
+            if (conflicts.FirstOrDefault(c => c.Rule.Mode == ConflictModes.Block) is { } blocking)
+            {
+                return Error.Conflict(AuthorizationErrors.SodConflict, await segregation.RefusalAsync(blocking, principalId, cancellationToken).ConfigureAwait(false));
+            }
+
             var assignment = new RoleAssignment(role.Id, principalId, scope);
             await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
             context.RoleAssignments.Add(assignment);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["role"] = role.Code, ["principal_id"] = principalId.ToString(), ["scope"] = scope.ToString() };
             await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleAssigned, AuditOutcome.Success, actor.Id, role.Code, details, "role_assignment", assignment.Id), cancellationToken).ConfigureAwait(false);
+            if (conflicts.Count > 0)
+            {
+                await segregation.RefreshPrincipalAsync(principalId, cancellationToken).ConfigureAwait(false);
+            }
+
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
