@@ -1,6 +1,6 @@
 # Status
 
-The running state of the current slice, kept current by Claude Code at the end of every session. The slice plan is `docs/slices/S2-access-control-organisations-and-design.md`; the tasks are in `docs/prompts/S2.md`.
+The running state of the current slice, kept current by Claude Code at the end of every session. The slice plan is `docs/slices/S3-trust-and-compliance.md`; the tasks are in `docs/prompts/S3.md`. S2's record follows S3's.
 
 ## Slice S2
 
@@ -27,11 +27,24 @@ S2 is done: every task merged, the done-when of the plan's section 1 proven, the
 
 ## Slice S3
 
-S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the tasks are written in the design session, into `docs/prompts/S3.md` and this table, now that the PRD split is merged.
+S3 is under way: T1 is in review. The plan's task table, with the later items folded into their tasks, is in `docs/slices/S3-trust-and-compliance.md`; T2 to T10 are outlines in `docs/prompts/S3.md`, sharpened in the design session before each starts.
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
-| | | | |
+| T1 Traceability | in review | slice/s3-t1 | prompt 43454fe, SECURITY.md's address 2d6f41b, then six commits 05b3e6b to d77d223; ADR-0044 (proposed). Every test names what it proves: 925 tests (585 .NET methods, 239 Vitest, 21 browser and 27 scan call sites, 14 smoke steps, 39 Python), 228 with criteria, 627 with decisions only, 70 untraced with their reasons; the analyzer (IRON0005 to IRON0007) and `iron/test-proves` refuse a test without its list. `make trace` writes the matrix (55 of 433 requirements and 130 of 1402 criteria have a test; S1 and S2: 50 requirements, 161 criteria, 122 with a test, 39 listed in `docs/trace/exceptions.md` for the review, none missing); CI publishes it on every run and the release keeps it with its images. Vitest's workers follow available memory; `make verify` passed three times in a row with the stack running (357, 345 and 321 s; 1 MB swapped in all). Smoke 14 of 14 and e2e 25 of 25 on echo, after `make images`, `make update-unit TENANT=echo` and `make up-control`: the laptop's images predated L2, whose header the browser tests wait for; with every kind's results the matrix shows all 925 tests passing |
+
+Decided in T1, each small enough for a line here:
+
+- A test that proves nothing a criterion or an ADR states is marked untraced with its reason (`[Untraced("why")]`, a title's `[untraced]` with `// Untraced: why` above), so the build still refuses a test that names nothing and the matrix lists them for the review.
+- A decision tag names any rule an ADR decided that no criterion states, a mechanism's behaviour as well as a rule of the build; `docs/design/design-language.md` is ADR-0024's brief, so its rules count as ADR-0024's.
+- A criterion with two halves proven by two tests (the shell hides a disabled module, the API refuses it) is named by both; a test that checks only part of a criterion's Then names the criterion when the part is the unit's own outcome, as the agents' reports record per test.
+- TF-033 AC1 says "forbidden"; a read outside the reader's scope answers not found (ADR-0031, ADR-0032), so those tests name TF-035 AC1 as amended, and TF-033 AC1 is named where the answer is a literal 403.
+- The analyzer project is the one Test project named `*.Testing.Analyzers`, which the layer rule now accepts; `Directory.Build.props` puts it into every Test project that is an Exe.
+- The result files live in `artifacts/test-results/<kind>` (not committed), the Playwright JUnit files outside `test-results/e2e` and `test-results/a11y`, which Playwright empties first.
+- A slice is done for the matrix when every task of its plan's table is done; the exceptions' first dates are T1's proposal date, 2026-10-21, until the review approves them.
+- The smoke's `tenant` step proves TF-180 AC2 only on a run that provisions, as the pipeline's integration stage always does; on the laptop it reuses the tenant.
+- Two browser tests had broken on main since L2 without a run to show it, because the laptop's images were older: the sign-in helper waited for any heading named "IronSaaS", which since L2 also finds the home page's "IronSaaS Foundation" (now an exact match); the Users grid test looked for `smoke-client` on the first page of fifty, which the accounts every run leaves on echo had pushed past (it now looks for the administrator, who sorts first).
+- `dotnet format` prints "Warnings were encountered while loading the workspace" for the projects that load the analyzer; the check still passes and finds every file.
 
 ## The PRD split
 
@@ -77,7 +90,15 @@ Decided while making the review's changes, as readings of decision 8 beyond its 
 
 ## Open questions
 
-None open. (Closed in S3 T1: `SECURITY.md` sends reports to `security@example.com`, the address the owner gave.)
+For T1's review:
+
+1. The exceptions list (`docs/trace/exceptions.md`, 39 criteria of S1 and S2): approve the rows, or ask for the tests; the six under "Built, without a test" are real gaps.
+2. The 70 untraced tests (the matrix's section "Tests that prove no requirement and no decision"): for each, write the criterion or the decision it proves, or remove the test. Most check helpers' guards and defaults (page 50, currency codes, unit code format, hostname normalisation) that only a README or the code states.
+3. TF-030 AC2 asks for permissions "grouped by resource"; the role editor groups them by module. Amend the criterion or regroup.
+4. TF-033 AC1 says a record of another unit is "forbidden"; reads answer not found, as TF-035 AC1 was amended to say. Amend TF-033 AC1 the same way?
+5. TF-011 AC2's message is "The login details are not correct"; the API answers it, the shell's login page shows its own words.
+6. TF-130 AC4's counter of lost spans, which the S1 plan lists as built, does not exist; the exceptions list proposes S3 T10.
+7. `SECURITY.md` names `security@example.com`, as asked; `example.com` is a reserved domain that receives no mail, so reports go nowhere until the real address replaces it.
 
 ## Later items
 

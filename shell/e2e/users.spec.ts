@@ -17,10 +17,11 @@ test.describe("the Users grid", () => {
     expect(response.url()).toContain("page_size=50");
     expect(response.url()).toContain("sort=login_id");
 
-    // The grid draws the rows near its viewport only, and every run adds accounts to echo, so the smoke client's row may
-    // be out of sight: the page the API answered names it, and the administrator's row is first in the grid.
+    // The grid draws the rows near its viewport only, and every run adds accounts to the tenant, so the first page is read
+    // from the API's answer: by login identifier it starts with the administrator, whose row is first in the grid too.
+    // (It asked for the smoke client until more than fifty accounts sorted before it.)
     const answered = (await response.json()) as { data: { login_id: string }[] };
-    expect(answered.data.map((user) => user.login_id)).toContain("smoke-client");
+    expect(answered.data.map((user) => user.login_id)).toContain(loginId);
     const grid = page.getByRole("region", { name: "Users" });
     await expect(loginCell(grid, loginId)).toBeVisible();
 
