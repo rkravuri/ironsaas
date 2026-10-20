@@ -3433,6 +3433,70 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* TF-231, TF-025, TF-180
 
 
+### 4.29 Visibility and access (TF-241 and TF-243, 2 requirements)
+
+#### TF-241 Content visibility and visibility tags  
+*Priority:* **Must** · *Tag:* `[Core]` `[New]` · *Area:* Visibility and access
+
+**Requirement:** Visibility tags shall narrow what a person sees, by six rules: (1) administrators define the visibility tags; (2) master data and transactions can carry tags, and a record without tags is visible to everyone who passes roles and units; (3) a person can hold tags, and a person without tags sees every record; (4) a person sees a tagged record when they share at least one tag with it; (5) a person can only put tags they hold on a record; (6) transactions may take their tags from their master, and each product says how. The filter applies after roles, permissions and units, inside the same query, and only narrows (ADR-0032); changes of tags on records and on people are audited; the access explanation shows the tags as a check (ADR-0039); access reviews cover who holds which tags.
+
+**Why:** Carried: the current product's content groups. Roles and units decide what a person may do and where; tags decide which of those records they see, without a unit or a role for every region, programme or category.
+
+**Acceptance criteria:**
+
+- AC1 Given a record tagged APAC and LATAM and a person holding only APAC, When the person lists the records, Then the record is shown (rule 4).
+- AC2 Given a record tagged LATAM and a person holding only APAC, When the person opens it by identifier, Then it answers not found, and the explanation of the person's access names the tag check. (error case)
+- AC3 Given a record without tags, When a person who passes roles and units lists the records, Then it is shown (rule 2).
+- AC4 Given a person who holds no tags, When they list records they pass roles and units for, Then tagged and untagged records are shown (rule 3).
+- AC5 Given a person holding only APAC, When they put LATAM on a record, Then it is refused naming the tag (rule 5). (error case)
+- AC6 Given 100 records of which the person may see 40 by their tags, When the list is paged, Then the total and the pages count the 40.
+- AC7 Given a tag added to a person or a record, When saved, Then the audit records the change with before and after, and the next access review lists the person's tags.
+- AC8 Given a transaction created from a master with tags and a product rule that the transaction takes them, When it is saved, Then it carries the master's tags (rule 6).
+
+*Depends on:* TF-033, TF-035, TF-038, TF-039, TF-060, TF-220
+
+**Notes:** Also called content groups, the current product's name. Scheduled before the first business slice (section 7), because every business record type needs it from its first day. The Business PRD says which masters carry tags (its section 5.10); each product says how its transactions take theirs (its section 10).
+
+#### TF-243 Approvals, tasks and notifications respect access  
+*Priority:* **Must** · *Tag:* `[Core]` `[New]` · *Area:* Visibility and access
+
+**Requirement:** An approval step, a task or a notification shall go only to a person who can read the record it concerns, by scope, record policy and visibility tags; a configured approver who cannot read the record is reported as a configuration error and the approval configuration's fallback applies (TF-091); a notification never contains data its reader may not read.
+
+**Why:** Organisation separation and visibility tags would mean little if an approval, a task or an email showed a record to someone the record's own page refuses. The archived Functional Foundation PRD asked it for organisations (its FF-184).
+
+**Acceptance criteria:**
+
+- AC1 Given an approval configuration whose approver has no scope over the record's unit, When the chain is built, Then the step is not given to that approver, a configuration error names the configuration, the step and the approver, and the configuration's fallback applies. (error case)
+- AC2 Given a task about a record its intended assignee cannot read, When it is assigned, Then it is refused naming the missing access. (error case)
+- AC3 Given a daily digest that would list a record tagged LATAM for a reader holding only APAC, When the digest is built, Then that record is left out.
+- AC4 Given an approver who can read the record, When the chain is built, Then the step is given to them as configured.
+
+*Depends on:* TF-035, TF-091, TF-097, TF-151, TF-222, TF-241
+
+**Notes:** Written at the PRD split's checkpoint, the design session's answer to FF-184's clause that approvals, tasks and notifications respect the same access (`requirements-map.md`).
+
+### 4.30 Forms engine (TF-242, 1 requirement)
+
+#### TF-242 Forms engine  
+*Priority:* **Should** · *Tag:* `[Core]` `[New]` `[Decision]` · *Area:* Forms engine
+
+**Requirement:** The kernel shall provide forms: form templates with sections, questions of typed answers, validation, conditional questions, scoring and weights, and versions; instances of a template attached to a record; responses audited, with an optional electronic signature (TF-063). Supplier questionnaires, onboarding and supplier information forms, surveys and sourcing evaluations use it.
+
+**Why:** Four products need structured questions with answers that can be scored and signed; one engine keeps them alike and saves building it four times.
+
+**Acceptance criteria:**
+
+- AC1 Given a question shown only when an earlier answer is yes, When the earlier answer is no, Then the question is hidden and not required.
+- AC2 Given a required number question answered with text, When the response is submitted, Then it is refused naming the question. (error case)
+- AC3 Given a template with scored questions and weights, When a response is scored, Then its score is the weighted sum and is stored with the response.
+- AC4 Given a template changed after an instance was sent, When the instance is opened, Then it shows the version it was sent with.
+- AC5 Given a template that requires a signature, When a response is submitted without the re-authentication the tenant requires, Then it is refused. (error case)
+- AC6 Given a response submitted, When the audit is searched for its record, Then the submitter, the time and the answers are there.
+
+*Depends on:* TF-060, TF-063, TF-094
+
+**Notes:** `[Decision]`: in which slice. Proposed: with the workflow engine in S5, before supplier questionnaires (SUP-042) and onboarding forms (SUP-002) need it; surveys and sourcing come later. Its module is `Iron.Kernel.Forms` (section 2.1).
+
 ## 5. Non-functional targets
 
 | Area | Target | Measured by |
