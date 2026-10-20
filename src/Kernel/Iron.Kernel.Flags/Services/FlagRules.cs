@@ -58,6 +58,7 @@ public static class StableHash
 /// wins: user, then unit (the home unit before the units above it), then tenant, region, global. Within a scope the rules
 /// are tried in their order, and the first whose target and condition match decides. No match: the declaration's default.
 /// A rule whose value is not of the flag's type is skipped; the control plane refuses them, this is the second guard.
+/// A kill switch is the exception: it is on when any rule that applies says so, at any scope (see <see cref="KillSwitch"/>).
 /// </summary>
 public static class FlagRules
 {
@@ -69,6 +70,11 @@ public static class FlagRules
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(subject);
         var mine = rules.Where(r => string.Equals(r.Flag, flag.Key, StringComparison.Ordinal) && Flag.Fits(flag.Type, r.Value)).ToList();
+        if (flag.IsKillSwitch)
+        {
+            return KillSwitch(flag, mine, subject);
+        }
+
         foreach (var scope in Precedence)
         {
             var candidates = mine.Where(r => r.Scope == scope && Targets(r, subject));
@@ -81,6 +87,31 @@ public static class FlagRules
                 {
                     return new FlagResult(rule.Value, rule.Condition?.Kind == FlagConditionKind.Percentage ? FlagResult.SplitReason : FlagResult.TargetingReason, rule);
                 }
+            }
+        }
+
+        return new FlagResult(flag.Default, FlagResult.DefaultReason, null);
+    }
+
+    /// <summary>
+    /// A kill switch stops its path when any rule that applies to the subject says so, at any scope, whatever a more
+    /// specific rule says (ADR-0035): a switch the operator turns on for the platform stops the path for every tenant,
+    /// and no tenant, unit or user rule can exempt anyone. The control plane refuses a rule that says false, since
+    /// removing the rule is how a switch goes off; one stored before that rule is ignored here. The most specific rule
+    /// that says so is the one reported, with its reason and its time.
+    /// </summary>
+    private static FlagResult KillSwitch(Flag flag, List<FlagRuleEntry> rules, FlagSubject subject)
+    {
+        foreach (var scope in Precedence)
+        {
+            var on = rules
+                .Where(r => r.Scope == scope && r.Value.ValueKind == JsonValueKind.True && Targets(r, subject))
+                .OrderBy(r => scope == FlagScope.Unit ? Distance(r, subject) : 0)
+                .ThenBy(r => r.Position)
+                .FirstOrDefault(r => Holds(flag.Key, r.Condition, subject));
+            if (on is not null)
+            {
+                return new FlagResult(on.Value, on.Condition?.Kind == FlagConditionKind.Percentage ? FlagResult.SplitReason : FlagResult.TargetingReason, on);
             }
         }
 

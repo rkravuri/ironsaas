@@ -167,6 +167,20 @@ public class FlagRulesEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AKillSwitchRuleThatSaysFalseIsRefusedWithItsOwnCodeSinceRemovingTheRuleTurnsTheSwitchOff()
+    {
+        var tenant = await CreateTenantAsync();
+
+        // An exemption of one tenant from a switch that is on for the platform: refused, and nothing is written.
+        using var refused = await SendAsync(HttpMethod.Put, $"/api/v1/flags/{Imports}/rules", new { reason = "Exempt one tenant.", rules = new object[] { new { scope = "global", value = true }, new { scope = "tenant", tenant, value = false } } });
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal(TenancyErrors.KillSwitchFalseRule, await ErrorCodeAsync(refused));
+        using var rules = await JsonAsync(await SendAsync(HttpMethod.Get, $"/api/v1/flags/{Imports}/rules"));
+        Assert.DoesNotContain(rules.RootElement.GetProperty("rules").EnumerateArray(), rule => rule.GetProperty("value").ValueKind == JsonValueKind.False);
+    }
+
+    [Fact]
     public async Task TheReportNamesFlagsPastTheirRemovalDateWithTheirOwnerAndRulesLeftForFlagsThatAreGone()
     {
         await using (var scope = _app!.Services.CreateAsyncScope())

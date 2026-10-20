@@ -252,6 +252,9 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
 
     private async Task SeatAsync(Guid principal)
     {
+        // Each test seats its own administrator, and the seats outlive the test: without this, the third test in a row
+        // to seat someone would find the fixture's two seats taken by the tests before it.
+        await ClearSeatsAsync();
         await using var scope = _app!.Services.CreateAsyncScope();
         var result = await scope.ServiceProvider.GetRequiredService<SeatService>().AssignAsync(FixtureModule.Licence.Code, principal, TestContext.Current.CancellationToken);
         Assert.True(result.IsSuccess, result.IsFailure ? result.Error.Message : null);

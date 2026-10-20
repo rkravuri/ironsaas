@@ -152,22 +152,26 @@ public sealed class FlagRefresher(
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<FlagsDbContext>();
-            var row = await context.LastKnown.SingleOrDefaultAsync(r => r.Key == LastKnownFlagRules.CurrentKey, cancellationToken).ConfigureAwait(false);
-            if (row is null)
-            {
-                context.LastKnown.Add(new LastKnownFlagRules(rules.Platform?.ToJson(), rules.Tenant?.ToJson(), now));
-            }
-            else
-            {
-                row.Confirm(rules.Platform?.ToJson(), rules.Tenant?.ToJson(), now);
-            }
+            var by = scope.ServiceProvider.GetRequiredService<ICurrentPrincipal>().Id;
+            var platform = rules.Platform?.ToJson();
+            var tenant = rules.Tenant?.ToJson();
 
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            // One statement: the API and the worker keep the same row and may both write it at once on a unit's first start,
+            // and the second then updates what the first inserted instead of failing on the unique key. The audit columns
+            // are set here as the save interceptor would set them.
+            await context.Database.ExecuteSqlAsync(
+                $"""
+                insert into kernel_flags.last_known (id, key, platform_document, tenant_document, confirmed_at, created_at, created_by, updated_at, updated_by, version)
+                values ({Ids.New()}, {LastKnownFlagRules.CurrentKey}, cast({platform} as jsonb), cast({tenant} as jsonb), {now}, {now}, {by}, {now}, {by}, 1)
+                on conflict (key) do update set platform_document = excluded.platform_document, tenant_document = excluded.tenant_document,
+                    confirmed_at = excluded.confirmed_at, updated_at = excluded.updated_at, updated_by = excluded.updated_by, version = last_known.version + 1
+                """,
+                cancellationToken).ConfigureAwait(false);
             _persistedAt = now;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // The API and the worker keep the same row; when both write at once one of them loses, which is harmless.
+            // The database did not answer; the rules in memory stand, and the next read keeps them again.
             logger.LogWarning("The last known flag rules could not be kept in the database: {Error}", exception.Message);
         }
     }

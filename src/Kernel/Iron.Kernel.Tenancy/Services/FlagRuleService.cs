@@ -55,6 +55,16 @@ public sealed class FlagRuleService(
             return Error.Validation(TenancyErrors.KillSwitchReasonRequired, $"'{key}' is a kill switch: say why it changes, in words the tenants' administrators will read.", new FieldError("reason", "required", "Give the reason."));
         }
 
+        // A kill switch goes off when its rule is removed. A rule that says false would read as an exemption, and none is
+        // possible: the switch is on wherever any applicable rule says so (ADR-0035), so such a rule is refused, not kept.
+        if (flag.IsKillSwitch && inputs.Any(input => input.Value.ValueKind == JsonValueKind.False))
+        {
+            return Error.Validation(
+                TenancyErrors.KillSwitchFalseRule,
+                $"'{key}' is a kill switch, and a rule for it can only say true. To turn it off for the platform or a tenant, remove that rule: make kill-switch ... ON=false. No rule exempts a tenant from a switch that is on.",
+                new FieldError("rules", "false_rule", "A kill switch's rule says true; remove the rule to turn the switch off."));
+        }
+
         var problems = await ProblemsAsync(flag.Type, inputs, cancellationToken).ConfigureAwait(false);
         if (problems.Count > 0)
         {
