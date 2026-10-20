@@ -14,7 +14,7 @@
 | Companion document | Functional Foundation PRD for procure-to-pay (same folder). It assumes everything in this document exists. |
 | Tags | `[Core]` must exist before the first business product ships. `[Extended]` can follow in a later slice. `[Decision]` a choice you must confirm. `[Carried]` behaviour carried over from the current product. `[Gap]` a gap or defect found in the current product that Foundation must close. |
 
-Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped. 2026-10-19 (task A3): TF-035 AC1 follows ADR-0032: another supplier's order by identifier answers not found, so a link reveals nothing. 2026-10-20 (task A5): TF-050 AC3 follows ADR-0035: the last known value comes before the default in code, so a kill switch that is on stays on while the flag service is unavailable.
+Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped. 2026-10-19 (task A3): TF-035 AC1 follows ADR-0032: another supplier's order by identifier answers not found, so a link reveals nothing. 2026-10-20 (task A5): TF-050 AC3 follows ADR-0035: the last known value comes before the default in code, so a kill switch that is on stays on while the flag service is unavailable. 2026-10-20 (the PRD split, ADR-0041): six criteria that are error cases carry the marker `(error case)`, as the one form of acceptance criteria asks (TF-004 AC2, TF-007 AC1, TF-021 AC1, TF-029 AC2, TF-040 AC2, TF-046 AC1); the CSV is written from this document, gains the column `was`, and so also carries the three criteria amended in S2 (TF-032 AC3, TF-035 AC1, TF-050 AC3), which had reached only this document.
 
 ## 1. Vision and principles
 
@@ -324,7 +324,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Acceptance criteria:**
 
 - AC1 Given a tenant set to ReadOnly, When a user tries a write, Then it is refused with a read-only message and reads still work.
-- AC2 Given a decommission request, When confirmed by a second operator, Then the tenant is frozen, a final export is produced, and data is deleted after the retention hold; a single operator cannot complete it. (error case for single approval)
+- AC2 Given a decommission request, When confirmed by a second operator, Then the tenant is frozen, a final export is produced, and data is deleted after the retention hold; a single operator cannot complete it. (error case)
 - AC3 Given a hostname removed, When a user opens it, Then the neutral error page is shown.
 
 *Depends on:* TF-001, TF-181
@@ -369,7 +369,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given a tenant at its hard API limit, When another request arrives, Then it is refused with a rate-limit response and a retry-after hint.
+- AC1 Given a tenant at its hard API limit, When another request arrives, Then it is refused with a rate-limit response and a retry-after hint. (error case)
 - AC2 Given a tenant at 80% of storage, When measured, Then an alert and an in-console warning are raised.
 - AC3 Given limits changed by an operator, When saved, Then they apply within one minute without restart.
 
@@ -589,7 +589,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given 60 minutes without activity, When the next request arrives, Then it is refused with a session-expired signal and the UI returns to login.
+- AC1 Given 60 minutes without activity, When the next request arrives, Then it is refused with a session-expired signal and the UI returns to login. (error case)
 - AC2 Given a limit of one concurrent session, When a second login happens, Then the first session is ended and the user informed. (edge)
 - AC3 Given a session at 12 hours, When active, Then it ends and re-authentication is required.
 
@@ -711,7 +711,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Acceptance criteria:**
 
 - AC1 Given a tenant-wide revocation, When executed, Then every session and refresh token is invalid within one minute.
-- AC2 Given a revoked access token still within its 15 minutes, When used on a sensitive operation, Then it is refused because the session check runs on every request.
+- AC2 Given a revoked access token still within its 15 minutes, When used on a sensitive operation, Then it is refused because the session check runs on every request. (error case)
 - AC3 Given logout, When the back button is used, Then no protected page is served. (edge)
 
 *Depends on:* TF-020
@@ -883,7 +883,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Acceptance criteria:**
 
 - AC1 Given a module Disabled, When a user opens the application, Then its menu is absent and its operations are refused.
-- AC2 Given a module in ReadOnly, When a write is attempted, Then it is refused with a read-only message and reads work.
+- AC2 Given a module in ReadOnly, When a write is attempted, Then it is refused with a read-only message and reads work. (error case)
 - AC3 Given a subscription end date passed, When evaluated, Then the status is Expired and treated as Disabled with a grace period configurable per plan. (edge)
 
 *Depends on:* TF-001
@@ -973,7 +973,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given a feature disabled, When its operation is called, Then it is refused with a not-entitled code.
+- AC1 Given a feature disabled, When its operation is called, Then it is refused with a not-entitled code. (error case)
 - AC2 Given a feature enabled, When the UI loads, Then the related controls appear.
 - AC3 Given a feature of a disabled module, When enabled alone, Then it is still unavailable because the module governs. (edge)
 
