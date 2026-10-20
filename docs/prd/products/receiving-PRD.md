@@ -9,7 +9,7 @@
 | Identifier prefix | `RCV-`, in blocks of twenty per area (ADR-0041); the table is `receiving-requirements.csv` |
 | Version | 0.1 SKELETON (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers. The expanded service receipts and the sections marked "after the checkpoint" are written then. |
+| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers, and the expanded service receipts. The sections marked "after the checkpoint" are written then. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Units of measure and warehouses are the Business PRD's; orders and invoices are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
@@ -34,7 +34,7 @@ Keep, from the archived PRD's list: GRN pending quantity counting in-progress re
 
 ### 2.1 In scope
 
-Shipment notices with their tracking, receipts with tolerance, inspection and approval, rejection and cancellation, receipt documents, receiving delegation and requester receipts, service receipts (expanded after the checkpoint: service entry against an order line, milestones, percentage of completion, acceptance by the requester, partial acceptance), returns, the received and invoiced buckets and open quantities, and the receiving reports.
+Shipment notices with their tracking, receipts with tolerance, inspection and approval, rejection and cancellation, receipt documents, receiving delegation and requester receipts, service receipts (service entries against an order line, milestones, percentage of completion, acceptance by the requester, partial acceptance), returns, the received and invoiced buckets and open quantities, and the receiving reports.
 
 ### 2.2 Out of scope in version 1 (`[Later]`)
 
@@ -250,7 +250,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ### 6.3 Service receipts (RCV-041 to RCV-060)
 
-The service entry against an order line, milestones, percentage of completion, acceptance by the requester and partial acceptance are written here after the checkpoint.
+Service receipts by amount (RCV-041), expanded in the split: the service entry against an order line, milestones, percentage of completion, acceptance by the requester and partial acceptance.
 
 #### RCV-041 Service receipts
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
@@ -268,6 +268,91 @@ The service entry against an order line, milestones, percentage of completion, a
 *Depends on:* RCV-021, RCV-081
 
 **Notes:** Was FF-102.
+
+#### RCV-042 Service entry against an order line
+*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Service receipts
+
+**Requirement:** A service entry shall be recorded against a service order line, with the period or the work it covers, an amount or a percentage of the line (RCV-044), notes and attachments; it counts as received only when it is accepted (RCV-045, RCV-046).
+
+**Why:** Services are delivered over time and confirmed by the people who used them, not counted at a dock.
+
+**Acceptance criteria:**
+
+- AC1 Given a service line of 10,000, When an entry of 2,500 for October is saved, Then it waits for acceptance and the open amount stays 10,000.
+- AC2 Given an entry above the open amount plus the stamped tolerance, When it is submitted, Then it is refused naming the open amount. (error case)
+- AC3 Given an entry on a line that is not a service line, When it is saved, Then it is refused; goods are received by receipt (RCV-021). (error case)
+
+*Depends on:* RCV-041, ORD-005, TF-160
+
+**Notes:** New in the split, expanding RCV-041 (was FF-102). `[Decision]`: who records an entry. Proposed: the receiver or the requester in the tenant, and the supplier in the portal, where it waits for the requester's acceptance (section 7).
+
+#### RCV-043 Service milestones
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
+
+**Requirement:** A service order line may be divided into milestones, each with a name, a due date and an amount or a percentage of the line, together making up the line; a service entry records a milestone as done.
+
+**Why:** Many services are paid by stages agreed with the supplier.
+
+**Acceptance criteria:**
+
+- AC1 Given milestones of 30, 30 and 40 percent on a line of 10,000, When saved, Then they are kept with their due dates and amounts 3,000, 3,000 and 4,000.
+- AC2 Given milestones that make up 90 percent of the line, When saved, Then it is refused naming the shortfall. (error case)
+- AC3 Given the entry for the second milestone accepted, When the line is viewed, Then 6,000 is received and the third milestone is open.
+
+*Depends on:* RCV-042
+
+**Notes:** New in the split.
+
+#### RCV-044 Percentage of completion
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
+
+**Requirement:** A service entry may record how far the line is complete, as a percentage of the whole; the amount it receives is the line amount times the percentage, less what the line has received before.
+
+**Why:** Long services are confirmed by progress rather than by amount.
+
+**Acceptance criteria:**
+
+- AC1 Given a line of 10,000 with 40 percent received, When an entry of 60 percent complete is accepted, Then 2,000 more is received and the line stands at 6,000.
+- AC2 Given a line at 60 percent, When an entry of 50 percent is saved, Then it is refused naming the percentage already reached. (error case)
+- AC3 Given an entry of 100 percent accepted, When the line is viewed, Then it is fully received.
+
+*Depends on:* RCV-042
+
+**Notes:** New in the split.
+
+#### RCV-045 Acceptance by the requester
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
+
+**Requirement:** A service entry shall be accepted or rejected by the line's requester, or by a person the receipt approval configuration names, with a reason for a rejection; only what is accepted counts as received, updates the buckets (RCV-081) and becomes invoiceable.
+
+**Why:** The person who used the service knows whether it was delivered.
+
+**Acceptance criteria:**
+
+- AC1 Given an entry of 2,500, When the requester accepts it, Then 2,500 is received approved and can be invoiced.
+- AC2 Given a rejection without a reason, When saved, Then it is refused. (error case)
+- AC3 Given a person who is neither the requester nor named by the configuration, When they accept an entry, Then it is refused. (error case)
+
+*Depends on:* RCV-042, RCV-024, RCV-081, TF-090
+
+**Notes:** New in the split.
+
+#### RCV-046 Partial acceptance
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
+
+**Requirement:** The requester may accept part of a service entry, an amount or a percentage lower than entered, with a reason; the accepted part counts as received, and the rest is rejected and the supplier told.
+
+**Why:** A service is often delivered in part; the entry should not be all or nothing.
+
+**Acceptance criteria:**
+
+- AC1 Given an entry of 2,500, When the requester accepts 2,000 with a reason, Then 2,000 is received approved, 500 is rejected, and the supplier is notified with the reason.
+- AC2 Given an acceptance above the entered amount, When saved, Then it is refused. (error case)
+- AC3 Given a partial acceptance without a reason, When saved, Then it is refused. (error case)
+
+*Depends on:* RCV-045, TF-150
+
+**Notes:** New in the split.
 
 ### 6.4 Returns (RCV-061 to RCV-080)
 
