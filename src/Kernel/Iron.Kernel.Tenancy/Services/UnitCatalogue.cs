@@ -6,7 +6,7 @@ namespace Iron.Kernel.Tenancy.Services;
 /// <summary>
 /// What the units of this build can license (ADR-0034): the file <c>licensing-catalogue.json</c> beside this class,
 /// which <c>make catalogue</c> writes from the unit host's modules and a host test keeps equal to them, embedded in
-/// this assembly so the control plane image carries it. The control plane never loads a Business or Products module.
+/// this assembly so the control plane image carries it. The control plane never loads a Business or suite module.
 /// </summary>
 public sealed class UnitCatalogue(LicensingCatalogue catalogue)
 {

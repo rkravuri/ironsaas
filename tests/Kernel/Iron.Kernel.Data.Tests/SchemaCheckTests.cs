@@ -89,11 +89,21 @@ public class SchemaCheckRuleTests
     [Fact]
     public void AForeignKeyIntoAnotherSchemaIsNamed()
     {
-        var foreignKey = new ForeignKeyInfo("fk_orders_supplier", "products_procurement", "orders", "kernel_identity", "principals");
+        var foreignKey = new ForeignKeyInfo("fk_orders_supplier", "procurement_orders", "orders", "kernel_identity", "principals");
 
         var violation = Assert.Single(SchemaCheck.Evaluate([], [foreignKey]));
 
-        Assert.Contains("products_procurement.orders: foreign key fk_orders_supplier points into schema kernel_identity", violation, StringComparison.Ordinal);
+        Assert.Contains("procurement_orders.orders: foreign key fk_orders_supplier points into schema kernel_identity", violation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ASuitesPrefixCountsOnlyWhenTheCallerNamesTheSuite()
+    {
+        // The kernel names no suite (ADR-0043): without the caller's list, a suite's schema has no known prefix.
+        Assert.StartsWith("procurement_orders: a module schema starts with its layer's prefix (kernel_, business_)", Assert.Single(SchemaCheck.CheckSchemaNames(["procurement_orders"])), StringComparison.Ordinal);
+        Assert.Empty(SchemaCheck.CheckSchemaNames(["procurement_orders", "kernel_identity"], ["procurement"]));
+        Assert.Throws<ArgumentException>(() => SchemaCheck.CheckSchemaNames(["kernel_identity"], ["Procurement"]));
+        Assert.Throws<ArgumentException>(() => SchemaCheck.CheckSchemaNames(["kernel_identity"], ["kernel"]));
     }
 
     [Fact]
@@ -107,14 +117,18 @@ public class SchemaCheckRuleTests
     [Theory]
     [InlineData("kernel_identity", true)]
     [InlineData("business_items", true)]
-    [InlineData("products_procurement", true)]
+    [InlineData("procurement_orders", true)]
     [InlineData("identity", false)]
     [InlineData("kernel_", false)]
     [InlineData("Kernel_identity", false)]
     [InlineData("core_identity", false)]
-    public void AModuleSchemaCarriesItsLayerPrefix(string schema, bool accepted)
+    [InlineData("products_orders", false)]
+    [InlineData("school_pupils", false)]
+    [InlineData("procurement_", false)]
+    public void AModuleSchemaCarriesItsLayerPrefixOrANamedSuitesPrefix(string schema, bool accepted)
     {
-        var violations = SchemaCheck.CheckSchemaNames([schema]);
+        // The caller names the suites of its modules (ADR-0043): here procurement, so school_ is not a prefix.
+        var violations = SchemaCheck.CheckSchemaNames([schema], ["procurement"]);
 
         if (accepted)
         {

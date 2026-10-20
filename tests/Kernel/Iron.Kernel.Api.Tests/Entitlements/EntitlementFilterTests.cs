@@ -181,7 +181,7 @@ public class EntitlementFilterTests : IAsyncLifetime
         }
     }
 
-    /// <summary>A Products-like module: licensed per person, with a feature of its own.</summary>
+    /// <summary>A module like a suite's: licensed per person, with a feature of its own.</summary>
     private sealed class LicensedModule : IModule
     {
         public static readonly Permission Read = new("widgets.items.read", "Read widgets", Risk.Low);

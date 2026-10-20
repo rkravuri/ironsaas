@@ -30,7 +30,7 @@ public class RecordPolicyRulesTests
             violations.AddRange(RecordPolicyRules.Check(assembly));
         }
 
-        // No kernel module declares a business record today (A3, step 6); the first business or products module will.
+        // No kernel module declares a business record today (A3, step 6); the first business or suite module will.
         ArchitectureAssert.NoViolations($"Record policies over {records} business record type(s) (TF-035, ADR-0032)", violations);
     }
 

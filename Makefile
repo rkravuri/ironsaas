@@ -87,9 +87,10 @@ migrate: env ## Run the tenant API image command "migrate" against the laptop da
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(DEV_TENANT) $(DEV_DATABASE) $(DEV_STORAGE) dotnet run --project src/Hosts/Iron.Host.Api -- migrate
 
-# A module is named by the last segment of its project name, whatever its layer (ADR-0029):
-# MODULE=Identity is src/Kernel/Iron.Kernel.Identity. Hosts are not modules. A segment that names no module, or more than one, is refused.
-MODULE_DIR = $(patsubst %/,%,$(dir $(wildcard $(foreach layer,Kernel Business Products,src/$(layer)/Iron.$(layer).$(MODULE)/Iron.$(layer).$(MODULE).csproj))))
+# A module is named by the last segment of its project name, whatever its layer or suite (ADR-0029, ADR-0043):
+# MODULE=Identity is src/Kernel/Iron.Kernel.Identity, MODULE=Orders is src/Suites/Procurement/Iron.Suites.Procurement.Orders.
+# Hosts are not modules. A segment that names no module, or more than one, is refused.
+MODULE_DIR = $(patsubst %/,%,$(dir $(wildcard src/Kernel/Iron.Kernel.$(MODULE)/Iron.Kernel.$(MODULE).csproj src/Business/Iron.Business.$(MODULE)/Iron.Business.$(MODULE).csproj src/Suites/*/Iron.Suites.*.$(MODULE)/Iron.Suites.*.$(MODULE).csproj)))
 MODULE_CHECK = test -n "$(MODULE)" && test $(words $(MODULE_DIR)) -eq 1 || (echo "MODULE=$(MODULE) must be the last segment of exactly one module's name (Identity for Iron.Kernel.Identity); found: $(or $(MODULE_DIR),none)" && exit 1)
 
 ef-add: ## Add a migration for a module context: make ef-add MODULE=Authorization NAME=Initial
