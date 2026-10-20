@@ -6,7 +6,8 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    # TEMPORARY for S2-close: the branch proves the pipeline before the merge; removed before the review.
+    branches: [main, slice/s2-close]
 
 permissions:
   contents: read
