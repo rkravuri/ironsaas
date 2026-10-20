@@ -22,7 +22,7 @@ for (const scheme of schemes) {
       await page.keyboard.press("ArrowDown");
     }
     await expect(page.getByRole("heading", { name: "Operations" })).toBeVisible();
-    await page.screenshot({ path: `test-results/units-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/units-${scheme}.png` });
 
     // On to the record's first action, which opens the form for a unit under Operations; Escape closes it.
     await page.keyboard.press("Tab");
@@ -31,7 +31,7 @@ for (const scheme of schemes) {
     const dialog = page.getByRole("dialog", { name: "A new unit under Operations" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByLabel("Name")).toBeFocused();
-    await page.screenshot({ path: `test-results/units-create-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/units-create-${scheme}.png` });
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 

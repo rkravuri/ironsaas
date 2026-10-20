@@ -6,6 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e/a11y",
+  // A folder of its own, beside the browser tests' test-results/e2e: Playwright empties its output folder before a run,
+  // and the default, test-results itself, took the browser tests' screenshots with it. The specs write theirs here too.
+  outputDir: "test-results/a11y",
   timeout: 60_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

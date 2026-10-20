@@ -42,10 +42,10 @@ for (const scheme of schemes) {
       await page.goto(`/gallery?scheme=${scheme}&density=${density}`);
       await expect(page.locator("[data-gallery-ready='true']")).toBeAttached();
       // The pictures the review looks at, next to the report.
-      await page.screenshot({ path: `test-results/gallery-${scheme}-${density}.png`, fullPage: true });
+      await page.screenshot({ path: `test-results/a11y/gallery-${scheme}-${density}.png`, fullPage: true });
       if (density === "comfortable") {
-        await page.locator("section[aria-labelledby='gallery-drawings']").screenshot({ path: `test-results/gallery-drawings-${scheme}.png` });
-        await page.locator("#gallery-record-page").screenshot({ path: `test-results/record-page-${scheme}.png` });
+        await page.locator("section[aria-labelledby='gallery-drawings']").screenshot({ path: `test-results/a11y/gallery-drawings-${scheme}.png` });
+        await page.locator("#gallery-record-page").screenshot({ path: `test-results/a11y/record-page-${scheme}.png` });
       }
       expect(await scan(page)).toEqual([]);
     });
@@ -60,7 +60,7 @@ for (const scheme of schemes) {
       await page.goto(`http://${tenant}.localhost:4180/login`);
       await expect(page.getByRole("button", { name: /sign in/i })).toBeInViewport();
       await expect(page.locator(`svg[data-mandala='${tenant}.localhost']`).first()).toBeVisible();
-      await page.screenshot({ path: `test-results/login-${tenant}-${scheme}.png` });
+      await page.screenshot({ path: `test-results/a11y/login-${tenant}-${scheme}.png` });
       expect(await scan(page)).toEqual([]);
     });
   }

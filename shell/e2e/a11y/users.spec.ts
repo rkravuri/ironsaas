@@ -16,7 +16,7 @@ for (const scheme of schemes) {
     // A row may render in more than one container (pinned columns); the first is the one that holds the cells.
     const row = (index: number) => grid.locator(`.ag-row[row-index="${index}"]`).first();
     await expect(row(0)).toBeVisible();
-    await page.screenshot({ path: `test-results/users-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/users-${scheme}.png` });
 
     // Tab into the grid: the header first, then the first cell of the first row.
     await page.getByRole("radiogroup", { name: "Density" }).getByRole("radio", { name: "Compact" }).focus();

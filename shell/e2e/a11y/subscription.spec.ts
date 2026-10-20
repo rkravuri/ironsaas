@@ -29,7 +29,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
     // The page is in the console's navigation.
     await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Subscription" })).toBeVisible();
-    await page.screenshot({ path: `test-results/subscription-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/subscription-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     // Keyboard only: the contents list takes the person to a section.
@@ -48,7 +48,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("alert")).toContainText("The subscription cannot be confirmed");
     await expect(page.getByText("No licensed modules yet")).toBeVisible();
     await expect(page.getByRole("table", { name: "Features" })).toContainText("Cannot be confirmed right now");
-    await page.screenshot({ path: `test-results/subscription-stale-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/subscription-stale-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
   });
 }

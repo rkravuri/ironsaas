@@ -58,7 +58,7 @@ for (const scheme of schemes) {
     await expect(menu.getByRole("menuitem", { name: /^North\s*, chosen$/ })).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: /Finance/ })).toContainText("Under Acme Corporation");
     await expect(menu.getByRole("menuitem", { name: /All my units/ })).toBeVisible();
-    await page.screenshot({ path: `test-results/working-unit-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/working-unit-${scheme}.png` });
     await expectNoViolation(page);
 
     await menu.getByRole("menuitem", { name: /Finance/ }).click();
@@ -69,7 +69,7 @@ for (const scheme of schemes) {
     await page.getByRole("menu").getByRole("menuitem", { name: /All my units/ }).click();
     await expect(page.getByRole("button", { name: "Working for All my units. Choose the unit you work for" })).toBeVisible();
     await expect(page.getByText("The list shows all your units.", { exact: false })).toBeVisible();
-    await page.screenshot({ path: `test-results/working-unit-users-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/working-unit-users-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
   });
 
@@ -99,7 +99,7 @@ for (const scheme of schemes) {
     await tree.getByText("Sales", { exact: true }).click();
     await expect(page.getByRole("heading", { name: "Sales" })).toBeVisible();
     await expect(page.getByText("No module asks anything of a new unit yet.")).toBeVisible();
-    await page.screenshot({ path: `test-results/units-readiness-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/units-readiness-${scheme}.png` });
 
     // Keyboard only: the button opens the dialog on Enter, the choice of unit takes the focus, typing narrows it, and the
     // arrow and Enter choose.
@@ -120,7 +120,7 @@ for (const scheme of schemes) {
     await expect(preview).toContainText("14 people whose home unit becomes Operations: Ada Lovelace, Grace Hopper, Linus Pauling, and 11 more");
     await expect(preview).toContainText("1 is not moved, because Operations has its own value: ui.theme");
     await expect(dialog.getByRole("button", { name: "Merge Sales into Operations" })).toBeVisible();
-    await page.screenshot({ path: `test-results/units-merge-preview-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/units-merge-preview-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -136,7 +136,7 @@ for (const scheme of schemes) {
 
     const record = page.locator("#gallery-record-page");
     await expect(record.getByText("Belongs to North and is shared with Finance: the people whose roles cover any of them see it.")).toBeVisible();
-    await record.locator("[data-sharing]").screenshot({ path: `test-results/sharing-${scheme}.png` });
+    await record.locator("[data-sharing]").screenshot({ path: `test-results/a11y/sharing-${scheme}.png` });
 
     // Keyboard only: the button opens the dialog, the chosen mode takes the focus, the units are checkboxes on the tree.
     const open = record.getByRole("button", { name: "Change who sees this" });
@@ -160,7 +160,7 @@ for (const scheme of schemes) {
     await expect(south).toBeFocused();
     await page.keyboard.press("Space");
     await expect(south).toBeChecked();
-    await page.screenshot({ path: `test-results/sharing-dialog-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/sharing-dialog-${scheme}.png` });
     await expectNoViolation(page);
 
     const save = dialog.getByRole("button", { name: "Save" });

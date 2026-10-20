@@ -23,7 +23,7 @@ for (const scheme of schemes) {
     const grid = page.getByRole("region", { name: "Roles" });
     await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("Operations lead");
     await expect(page.getByRole("button", { name: "Import roles" })).toBeVisible();
-    await page.screenshot({ path: `test-results/roles-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/roles-${scheme}.png` });
     await expectNoViolation(page);
 
     // A tenant role: the permissions by module, each risk in words; Space ticks a permission.
@@ -35,7 +35,7 @@ for (const scheme of schemes) {
     await assign.focus();
     await page.keyboard.press("Space");
     await expect(assign).toBeChecked();
-    await page.screenshot({ path: `test-results/role-editor-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/role-editor-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     // A system role says why it cannot change, and offers no way to.
@@ -43,7 +43,7 @@ for (const scheme of schemes) {
     await expect(page.getByText(/System roles come with Foundation/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
     await expect(page.getByRole("checkbox", { name: "Create, change and delete tenant roles" })).toBeDisabled();
-    await page.screenshot({ path: `test-results/role-system-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/role-system-${scheme}.png` });
     await expectNoViolation(page);
   });
 }

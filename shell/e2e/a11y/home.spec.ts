@@ -47,7 +47,7 @@ for (const scheme of schemes) {
       }
       // Home is first in the navigation and is the page shown.
       await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link").first()).toHaveAccessibleName("Home");
-      await page.screenshot({ path: `test-results/home-${person.who}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `test-results/a11y/home-${person.who}-${scheme}.png`, fullPage: true });
       await expectNoViolation(page);
     });
   }
@@ -63,7 +63,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("button", { name: /^Add a unit/ })).toBeVisible();
     await search.fill("prof");
     await expect(page.getByRole("button", { name: /^My profile/ })).toBeVisible();
-    await page.screenshot({ path: `test-results/search-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/search-${scheme}.png` });
     await expectNoViolation(page);
 
     await page.keyboard.press("Escape");
@@ -82,7 +82,7 @@ for (const scheme of schemes) {
     const panel = page.getByRole("dialog", { name: "Help" });
     await expect(panel.getByRole("table", { name: "Keys on every page" })).toBeVisible();
     await expect(panel.getByRole("table", { name: "Keys on My profile" })).toContainText("Move between tabs");
-    await page.screenshot({ path: `test-results/help-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/help-${scheme}.png` });
     await expectNoViolation(page);
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
@@ -94,7 +94,7 @@ for (const scheme of schemes) {
     await expect(warning).toBeVisible();
     await expect(warning.getByRole("button", { name: "Stay signed in" })).toBeFocused();
     await expect(warning).toHaveAccessibleDescription(/This one ends at .+ Stay signed in to carry on/);
-    await page.screenshot({ path: `test-results/session-warning-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/session-warning-${scheme}.png` });
     await expectNoViolation(page);
   });
 
@@ -104,7 +104,7 @@ for (const scheme of schemes) {
     await expect(warning).toBeVisible();
     await expect(warning).toHaveAccessibleDescription(/save your work, then sign in again/);
     await expect(warning.getByRole("button", { name: "Stay signed in" })).toHaveCount(0);
-    await page.screenshot({ path: `test-results/session-final-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/session-final-${scheme}.png` });
     await expectNoViolation(page);
   });
 
@@ -112,20 +112,20 @@ for (const scheme of schemes) {
     await open(page, "child", scheme, "/me");
     await expect(page.getByRole("heading", { level: 2, name: "Grace Hopper" })).toBeVisible();
     await expect(page.locator("[data-panel=record-header]")).toContainText("Home unit: North");
-    await page.screenshot({ path: `test-results/profile-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/profile-${scheme}.png` });
     await expectNoViolation(page);
 
     await page.getByRole("tab", { name: "Details" }).focus();
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("list", { name: "Your roles" })).toContainText("User reader, at Acme Corporation / Operations / North and every unit below it");
-    await page.screenshot({ path: `test-results/profile-access-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/profile-access-${scheme}.png` });
     await expectNoViolation(page);
 
     // Delegations (A7): the person's own, both ways, in words with their status.
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("list", { name: "Your delegations" })).toContainText("You hand user administration to Linus Pauling");
     await expect(page.getByRole("tabpanel", { name: "Delegations" })).toContainText("Over");
-    await page.screenshot({ path: `test-results/profile-delegations-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/profile-delegations-${scheme}.png` });
     await expectNoViolation(page);
 
     // Preferences (A6): the colour scheme and the density, which follow the person.
@@ -133,12 +133,12 @@ for (const scheme of schemes) {
     const preferences = page.getByRole("tabpanel", { name: "Preferences" });
     await expect(preferences).toContainText("they follow you to every browser you sign in on");
     await expect(preferences.getByRole("radio", { name: "Same as the device" })).toBeChecked();
-    await page.screenshot({ path: `test-results/profile-preferences-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/profile-preferences-${scheme}.png` });
     await expectNoViolation(page);
 
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("tabpanel", { name: "Session" })).toContainText("Ends at the latest at");
-    await page.screenshot({ path: `test-results/profile-session-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/profile-session-${scheme}.png` });
     await expectNoViolation(page);
   });
 
@@ -165,14 +165,14 @@ for (const scheme of schemes) {
     await dialog.getByRole("textbox", { name: "Display name" }).fill("Katherine Johnson");
     await dialog.getByRole("textbox", { name: /^Login identifier/ }).fill("katherine@acme.localhost");
     await expect(dialog.getByRole("tree", { name: "Home unit" })).toBeVisible();
-    await page.screenshot({ path: `test-results/invite-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/invite-${scheme}.png` });
     await expectNoViolation(page);
 
     await dialog.getByRole("button", { name: "Invite" }).click();
     const done = page.getByRole("dialog", { name: "Katherine Johnson is invited" });
     await expect(done.getByRole("textbox", { name: "Invitation link" })).toHaveValue(/\/invitations\/a-token-shown-once$/);
     await expect(done).toContainText("Email delivery comes later");
-    await page.screenshot({ path: `test-results/invite-link-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/invite-link-${scheme}.png` });
     await expectNoViolation(page);
   });
 }

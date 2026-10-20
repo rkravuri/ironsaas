@@ -95,7 +95,7 @@ jobs:
       - name: Build the gallery and scan it
         run: npm run a11y
 
-      # The four screenshots and the report on every run: the review looks at the pictures, not only at failures.
+      # The screenshots (test-results/a11y) and the report on every run: the review looks at the pictures, not only at failures.
       - name: Upload the screenshots and the report
         if: always()
         uses: actions/upload-artifact@v4

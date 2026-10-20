@@ -34,7 +34,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("button", { name: "Export roles" })).toBeVisible();
     await expect(page.getByRole("link", { name: /New role/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Import roles" })).toHaveCount(0);
-    await page.screenshot({ path: `test-results/kill-switch-banner-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/kill-switch-banner-${scheme}.png` });
     await expectNoViolation(page);
   });
 }

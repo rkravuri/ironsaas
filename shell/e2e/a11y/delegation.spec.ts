@@ -22,7 +22,7 @@ for (const scheme of schemes) {
     await expect(yours).toContainText("Ada Lovelace hands you user administration");
     await expect(yours).toContainText("You hand user administration to Grace Hopper");
     await expect(yours.getByText("Scheduled")).toBeVisible();
-    await page.screenshot({ path: `test-results/my-delegations-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/my-delegations-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     // Keyboard only: the dialog opens on Enter, takes focus, offers duties in words, and closes with Escape back to its button.
@@ -37,7 +37,7 @@ for (const scheme of schemes) {
     await page.getByRole("option", { name: "Grace Hopper, North" }).click();
     await dialog.getByRole("checkbox", { name: "user administration" }).check();
     await dialog.getByRole("textbox", { name: "Reason" }).fill("Annual leave.");
-    await page.screenshot({ path: `test-results/my-delegations-create-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/my-delegations-create-${scheme}.png` });
     await expectNoViolation(page);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
@@ -53,14 +53,14 @@ for (const scheme of schemes) {
     await expect(page.getByRole("heading", { level: 2, name: "Delegations" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "Linus Pauling" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "End the chosen delegation" })).toBeDisabled();
-    await page.screenshot({ path: `test-results/delegations-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/delegations-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     await page.getByRole("button", { name: "Delegate for someone" }).click();
     const dialog = page.getByRole("dialog", { name: "Delegate someone's duties" });
     await expect(dialog.getByRole("combobox", { name: "Whose duties" })).toBeVisible();
     await expect(dialog.getByRole("combobox", { name: "To whom" })).toBeVisible();
-    await page.screenshot({ path: `test-results/delegations-create-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/delegations-create-${scheme}.png` });
     await expectNoViolation(page);
     // The focus starts in the person picker, which keeps Escape for its own list; Cancel closes the dialog.
     await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -79,7 +79,7 @@ for (const scheme of schemes) {
     const menu = page.getByRole("menu");
     await expect(menu.getByRole("menuitem", { name: /Myself/ })).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: /Ada Lovelace/ })).toContainText("user administration, until");
-    await page.screenshot({ path: `test-results/acting-control-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/acting-control-${scheme}.png` });
     await expectNoViolation(page);
 
     await menu.getByRole("menuitem", { name: /Ada Lovelace/ }).click();
@@ -87,7 +87,7 @@ for (const scheme of schemes) {
     await expect(band).toBeVisible();
     await expect(band).toContainText("You use Ada Lovelace's rights for user administration until");
     await expect(page.getByRole("button", { name: /Acting for Ada Lovelace/ })).toBeVisible();
-    await page.screenshot({ path: `test-results/acting-band-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/acting-band-${scheme}.png` });
     await expectNoViolation(page);
 
     await band.getByRole("button", { name: "Act as myself" }).click();
@@ -103,7 +103,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("heading", { level: 2, name: "Access reviews" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "Finance year end" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "10 of 14 decided. 4 are overdue." })).toBeVisible();
-    await page.screenshot({ path: `test-results/reviews-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/reviews-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     await page.goto(`/console/access-reviews/${reviewId}`);
@@ -113,14 +113,14 @@ for (const scheme of schemes) {
     await expect(page.getByRole("gridcell", { name: "About your own access: another reviewer decides it." })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "No other reviewer here: the review's owner decides it." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirm the 4 items on this page" })).toBeEnabled();
-    await page.screenshot({ path: `test-results/review-record-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/a11y/review-record-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     await page.getByRole("gridcell", { name: "Marie Curie" }).click();
     await page.getByRole("button", { name: "Revoke" }).click();
     const dialog = page.getByRole("dialog", { name: "Revoke this role" });
     await expect(dialog).toContainText("Marie Curie loses Store manager at");
-    await page.screenshot({ path: `test-results/review-revoke-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/review-revoke-${scheme}.png` });
     await expectNoViolation(page);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();

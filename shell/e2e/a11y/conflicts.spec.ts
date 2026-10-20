@@ -36,7 +36,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("gridcell", { name: "Warns" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Change" })).toBeDisabled();
     await page.screenshot({
-      path: `test-results/conflicts-rules-${scheme}.png`,
+      path: `test-results/a11y/conflicts-rules-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);
@@ -59,7 +59,7 @@ for (const scheme of schemes) {
     await page.keyboard.press("ArrowDown");
     await expect(dialog.getByRole("radio", { name: "Warns" })).toBeChecked();
     await page.screenshot({
-      path: `test-results/conflicts-editor-${scheme}.png`,
+      path: `test-results/a11y/conflicts-editor-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);
@@ -80,7 +80,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("gridcell", { name: "The whole organisation", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Run the report now" })).toBeEnabled();
     await page.screenshot({
-      path: `test-results/conflicts-report-${scheme}.png`,
+      path: `test-results/a11y/conflicts-report-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);
@@ -106,7 +106,7 @@ for (const scheme of schemes) {
     await expect(notice).toContainText("Shape the tree or read its people:");
     await expect(notice).toContainText("Why the rule exists: Who shapes a unit should not also read the people in it.");
     await page.screenshot({
-      path: `test-results/grant-conflict-${scheme}.png`,
+      path: `test-results/a11y/grant-conflict-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);

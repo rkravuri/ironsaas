@@ -53,7 +53,7 @@ for (const scheme of schemes) {
     await expect(checks).toContainText(`${grace.name} does not hold the permission "Create, change and delete tenant roles" for the whole organisation.`);
     await expect(checks).toContainText("The record's policy: not reached");
     await page.screenshot({
-      path: `test-results/explain-denial-${scheme}.png`,
+      path: `test-results/a11y/explain-denial-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);
@@ -76,7 +76,7 @@ for (const scheme of schemes) {
     ).toBeVisible();
     await expect(page.getByRole("list", { name: "Granted by" })).toContainText("Operations lead, at Operations and the units below it");
     await page.screenshot({
-      path: `test-results/explain-allowance-${scheme}.png`,
+      path: `test-results/a11y/explain-allowance-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);

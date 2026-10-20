@@ -28,7 +28,7 @@ for (const scheme of schemes) {
     await expect(table.getByRole("row")).toHaveCount(4);
     await expect(table).toContainText("This unit and the units below it");
     await expect(table).toContainText("Acme Corporation / Operations / North");
-    await page.screenshot({ path: `test-results/user-record-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/user-record-${scheme}.png` });
     await expectNoViolation(page);
 
     // Grant a role: the dialog opens with the role field focused, and the unit picker is a tree.
@@ -38,7 +38,7 @@ for (const scheme of schemes) {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("combobox", { name: "Role" })).toBeFocused();
     await expect(dialog.getByRole("tree", { name: "Unit" })).toBeVisible();
-    await page.screenshot({ path: `test-results/user-grant-${scheme}.png` });
+    await page.screenshot({ path: `test-results/a11y/user-grant-${scheme}.png` });
     await expectNoViolation(page);
     // The searchable role field opens its list on focus: the first Escape closes the list, the second the dialog.
     await page.keyboard.press("Escape");
