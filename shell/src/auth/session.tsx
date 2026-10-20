@@ -17,9 +17,9 @@ const heardEnd = (reason: SessionEnd): SessionEnd => (reason === "signed-out" ? 
 /**
  * The signed-in principal from /me, shared by the shell, the guards and the pages (ADR-0020), and the session's times
  * for the warning (ADR-0033): /me sets them, every answer moves them, and the tabs of the browser share them. With the
- * session, /me/context: what the tenant is entitled to, read again every 30 seconds so a plan changed in the control
- * plane shows within a minute without a new sign-in (TF-043, ADR-0034), and the flags evaluated for this person, which
- * feed the shell's OpenFeature provider (TF-054, ADR-0035).
+ * session, /me/context: what the tenant is entitled to, read again every 30 seconds while the tab is visible, so a plan
+ * changed in the control plane shows within a minute without a new sign-in (TF-043, ADR-0034), and the flags evaluated
+ * for this person, which feed the shell's OpenFeature provider (TF-054, ADR-0035).
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -98,8 +98,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     enabled: me !== undefined,
     retry: false,
     staleTime: contextRefreshMs,
+    // Every 30 seconds while the tab is visible, never while it is hidden, and at once when it is shown again, however
+    // fresh the last answer: a person coming back to the tab sees what applies now, and a hidden tab costs nothing.
     refetchInterval: contextRefreshMs,
-    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: "always",
   });
   const contextData = me !== undefined ? context.data : undefined;
   const entitlements = useMemo(() => entitlementsFrom(contextData, me !== undefined && context.isPending), [contextData, me, context.isPending]);

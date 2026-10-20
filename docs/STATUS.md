@@ -15,7 +15,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A2 Roles and scoped assignments | done | main | merged 2026-10-19 (05a34eb); nine commits (0457c7f to 1d9f7b5); ADR-0031; acme, bravo and echo updated, smoke 11 of 11 and e2e 8 of 8 on echo, with a child-unit administrator |
 | A3 Record policies | done | main | merged 2026-10-19 (1af5b18); seven commits (c813656 to 49e3f70); ADR-0032; acme, bravo and echo carry A2 and A3, smoke 11 of 11 on echo |
 | D4 Home and the header | done | main | merged 2026-10-19 (179fbfa); seven commits (79cb00f to 096dff9); ADR-0033; acme, bravo and echo carry D4, smoke 11 of 11 and e2e 11 of 11 on echo |
-| A4 Entitlements | review | slice/s2-a4 | six commits after the prompt (8879856), 33bcea1 to the status commit; ADR-0034; the control plane and acme, bravo and echo carry A4, all three on the Enterprise plan; smoke 11 of 11 and e2e 14 of 14 on echo, where Export and Import went 28 s after the move to Standard and came back 27 s after the move back |
+| A4 Entitlements | done | main | merged 2026-10-20 (94ad0d3); seven commits after the prompt (8879856), 33bcea1 to 465c70e; ADR-0034; the refresh question closed: 30 seconds, accepted; the shell reads /me/context only while its tab is visible; acme, bravo and echo on the Enterprise plan, smoke 11 of 11 and e2e 14 of 14 on echo at review |
 | A5 Feature flags | review | slice/s2-a5 | stacked on slice/s2-a4, which is not merged yet; five commits after the prompt (adccccb), 67031f7 to the status commit; ADR-0035; the control plane and acme, bravo and echo carry A5; `make kill-switch PATH=imports` on echo stopped role import (503 `flags.killed`) and showed the banner in 24 s, and turned off, both returned in 27 s; smoke 11 of 11 and e2e 15 of 15 on echo, where the browser test saw the banner, the hidden Import and the refusal 30 s after the switch went on and all three return 30 s after it went off |
 | A6 Settings | | | |
 | A7 Delegation and access reviews | | | |
@@ -28,10 +28,10 @@ The running state of the current slice, kept current by Claude Code at the end o
 - A5 names its permissions `tenancy.flags.read`, `tenancy.flags.manage` and `tenancy.kill_switches.manage`, not `flags.read`, `flags.manage` and `flags.kill_switches.manage` as section A5 says: a permission names the module that checks it, in three parts (CLAUDE.md), and the rules live in Tenancy (ADR-0035, decision 3). The kill switch permission is critical, one step above the section's high. Confirm, or say which names to use.
 - A5 is stacked on `slice/s2-a4`: A4 was not merged when A5 began, and A5 builds on its channel. Merge A4 first; A5's own commits start after A4's status commit.
 - The most specific scope wins for kill switches too (ADR-0035, decision 7), so an operator with `tenancy.kill_switches.manage` can exempt a tenant from a global kill switch with a tenant rule set to false through `PUT /api/v1/flags/kill.<path>/rules`. `make kill-switch ... ON=false` never does: it removes the rule at its scope. Confirm the exemption is wanted, or the rules endpoint refuses a false kill switch rule.
-- A4 reads the entitlements every 30 seconds at the unit and in the shell, not every 60 as section A4 says: the two caches are in series, and at 60 each a change could take two minutes to reach the shell, against TF-043's minute (ADR-0034, decision 4). Each is still within TF-043's "at most 60 seconds", and the unit's is a setting (`Entitlements:RefreshSeconds`). Confirm 30, or say 60 and accept two minutes in the worst case.
 
 ## Later items
 
+- Before S2 closes: the shell test suite passes reliably on a loaded machine. Find the slow tests, bound the workers, and keep explicit timeouts only where a test renders something heavy; today a test can time out at 5 seconds when `make shell-check` runs right after `make test`.
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
