@@ -53,6 +53,10 @@ public sealed class PolicyEvaluation<T>
 
     public PolicySubject Subject { get; }
 
+    /// <summary>Whether the principal may take an action on a record already read: for a page to offer the action or not. Nothing is audited.</summary>
+    public async Task<bool> AllowsAsync(T record, string action, CancellationToken cancellationToken) =>
+        await _policy.DecideAsync(record, action, Subject, cancellationToken).ConfigureAwait(false) == PolicyDecision.Allowed;
+
     /// <summary>
     /// A list: the scope rule (ADR-0030) for the read permission, following the record's sharing mode, then the policy's
     /// filter, joined with AND, so a policy narrows and never widens; then the reader's working unit and the units below

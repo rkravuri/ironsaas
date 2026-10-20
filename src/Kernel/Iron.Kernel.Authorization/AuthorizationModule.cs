@@ -82,6 +82,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IValidator<RenameUnitRequest>, RenameUnitRequestValidator>();
         services.AddScoped<IValidator<MoveUnitRequest>, MoveUnitRequestValidator>();
         services.AddScoped<IValidator<MergeUnitRequest>, MergeUnitRequestValidator>();
+        services.AddScoped<IValidator<ChangeSharingRequest>, ChangeSharingRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -92,5 +93,6 @@ public sealed class AuthorizationModule : IModule
         OrganisationUnitsEndpoints.Map(endpoints);
         DelegationsEndpoints.Map(endpoints);
         AccessReviewsEndpoints.Map(endpoints);
+        RecordSharingEndpoints.Map(endpoints);
     }
 }

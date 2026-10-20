@@ -8,8 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Data.Sharing;
 
-/// <summary>A record's sharing as its page shows it: the mode and the units it is listed for.</summary>
-public sealed record RecordSharingView(string RecordType, Guid RecordId, Guid OwningUnitId, SharingMode Mode, IReadOnlyList<Guid> Units);
+/// <summary>A record's sharing as its page shows it: the mode, the units it is listed for, and whether the reader may change it.</summary>
+public sealed record RecordSharingView(string RecordType, Guid RecordId, Guid OwningUnitId, SharingMode Mode, IReadOnlyList<Guid> Units, bool MayChange);
 
 /// <summary>The error codes of changing a record's sharing (ADR-0038).</summary>
 public static class SharingErrors
@@ -73,7 +73,8 @@ public sealed class RecordSharing(
             return found.Error;
         }
 
-        return new RecordSharingView(name, recordId, found.Value.OwningOrganisationId, found.Value.SharingMode, await UnitsOfAsync(name, recordId, cancellationToken).ConfigureAwait(false));
+        var mayChange = await policies.For<T>(current.Id).AllowsAsync(found.Value, RecordActions.Share, cancellationToken).ConfigureAwait(false);
+        return new RecordSharingView(name, recordId, found.Value.OwningOrganisationId, found.Value.SharingMode, await UnitsOfAsync(name, recordId, cancellationToken).ConfigureAwait(false), mayChange);
     }
 
     private async Task<Result<RecordSharingView>> ChangeCoreAsync<T>(string name, Guid recordId, SharingMode mode, IReadOnlyList<Guid> units, CancellationToken cancellationToken)
@@ -104,7 +105,7 @@ public sealed class RecordSharing(
         var unitsBefore = existing.Select(s => s.UnitId).Order().ToList();
         if (modeBefore == mode && unitsBefore.SequenceEqual(listed))
         {
-            return new RecordSharingView(name, recordId, record.OwningOrganisationId, mode, listed);
+            return new RecordSharingView(name, recordId, record.OwningOrganisationId, mode, listed, MayChange: true);
         }
 
         await using (var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false))
@@ -122,7 +123,7 @@ public sealed class RecordSharing(
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        return new RecordSharingView(name, recordId, record.OwningOrganisationId, mode, listed);
+        return new RecordSharingView(name, recordId, record.OwningOrganisationId, mode, listed, MayChange: true);
     }
 
     private async Task<IReadOnlyList<Guid>> UnitsOfAsync(string name, Guid recordId, CancellationToken cancellationToken) =>
