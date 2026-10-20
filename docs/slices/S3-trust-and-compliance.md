@@ -57,11 +57,35 @@ Continuing into S3 from earlier slices: TF-021 (the concurrent session limit), T
 
 ## 4. Task breakdown
 
-| Task | Name | Scope | Done when | State |
-|---|---|---|---|---|
-| | | | | |
+From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T10 outlines that the design session sharpens before each starts.
 
-The design session writes the tasks into this table and into `docs/prompts/S3.md`.
+| Task | What it builds | Requirements | State |
+|---|---|---|---|
+| T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | in review (slice/s3-t1) |
+| T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | outline |
+| T3 | MFA and step-up re-authentication | TF-013 | outline |
+| T4 | Single sign-on with OpenID Connect | TF-014 | outline |
+| T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-022, TF-025, TF-026, TF-028, TF-029 | outline |
+| T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |
+| T7 | Field-level change history, electronic signatures, signature manifestation, audit-trail review | TF-062, TF-063, TF-219 | outline |
+| T8 | Evidence exports, second approval for sensitive changes, validation pack per release | TF-067, TF-068, TF-218 | outline |
+| T9 | Hardening: input validation and output encoding review, rate limits and anti-automation, encryption in transit, key management and rotation | TF-070 to TF-075 | outline |
+| T10 | Secure development lifecycle, vulnerability management, security monitoring and incident response | TF-076, TF-077, TF-079 | outline |
+| S3-close | Smoke steps, documentation, closing notes | | not started |
+
+Outside S3, as the technical PRD's section 7 says: SAML (TF-015), SCIM (TF-016) and API keys (TF-024) in S7; anti-tampering of uploads (TF-078) in S4; device and login risk signals (TF-027) later.
+
+### Later items folded into the tasks
+
+STATUS's later items that belong to S3, each in the task it fits (T1 decided the fold; the design session moves an item when it sharpens a task):
+
+- **T1**: the shell's page tests that timed out beside the stack straight after `make test` (measured and settled, ADR-0044); the tests tagged with every PRD's identifiers (TF-218).
+- **T2**: a password reset an operator can use when a tenant's administrator password is lost, which also lets the smoke and the browser tests set a password again; an API that disables a person, so that each browser test run and each smoke run stop leaving an inactive unit with its people behind; the last-administrator guard counting a disabled or locked administrator, since T2 brings the locked state.
+- **T5**: "Sign out everywhere" in the sessions console; a response header with the session's idle end, so the shell's estimate is exact when a tenant shortens the limits.
+- **T9**: rate limits that bound a client calling a refused endpoint, each refusal now writing `entitlements.access_denied` to the audit trail.
+- **T10**: Dependabot's cooldown and the two packages it is told to leave, under the dependency policy with its fix times; the chiseled images' Kerberos probe message, with the images' SBOM; a system role's new permissions from the seed shown in the conflicts report and raised as a privilege grant, which TF-079's alerts cover.
+
+The other later items belong to the business and suite slices, S4 (notifications and the escalation messages), S5 (workflow) or the slice of their own requirement, and stay in STATUS.
 
 ## 5. How we build
 
