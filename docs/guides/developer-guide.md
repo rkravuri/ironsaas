@@ -301,6 +301,34 @@ The units page shows the items and whether the unit is ready; the kernel registe
 
 Tests: `tests/Kernel/Iron.Kernel.Data.Tests/Policies/SharingTests.cs` covers the modes with paging, the read audit, the refusals, the list audit, the working unit and a merge's move; `tests/Kernel/Iron.Kernel.Authorization.Tests` has a probe module with a real business record (`ProbeRecords.cs`) used by `WorkingUnitTests`, `UnitMergeTests` and `RecordSharingEndpointTests`; `tests/Kernel/Iron.Kernel.Identity.Tests/ScopedUsersTests.cs` follows the working unit and a merge over HTTP; `tests/Kernel/Iron.Kernel.Settings.Tests/UnitChangeTests.cs` proves that a move keeps a unit's settings and a merge moves them.
 
+## Explaining access and conflicts (A9, ADR-0039)
+
+An administrator asks why a person can or cannot do something in the console's **Explain access**, or from a user's Access tab with **Why can't they…?**. The answer lists the checks the request meets, in order, from the same decisions the request makes. A module gets this for nothing for every named endpoint that declares its permission: give the endpoint a name (`WithName`) and a summary in words (`WithSummary`), since the summary is what the person picks the action by, and scope it as usual (`ScopedToUnit`, `ScopedToRecord`, `ScopedByRow`). A record route that has a policy action other than read names it: `ScopedToRecord(type, owningUnit, policyAction: RecordActions.Update)`.
+
+A gate added to the request path must answer its decision without side effects, beside the check that logs and audits:
+
+```csharp
+public interface IMyGate
+{
+    // The decision alone: no log, no metric, no audit. The explanation calls this for the explained person.
+    Task<MyDecision> DecideAsync(MyRequest request, CancellationToken cancellationToken);
+
+    // The request's check: the same decision, then the refusal's log, metric and audit.
+    Task<MyDecision> CheckAsync(MyRequest request, CancellationToken cancellationToken);
+}
+```
+
+Then add its check to `AccessExplainer` in its place in the order. A check a handler makes on its own is not explained, so a handler that refuses for its own reason says why in the error's words.
+
+**Conflict rules** need no code in a module: a rule's sides are its permissions and roles, which the tenant's administrators choose in the console's **Conflict rules**. What a module should know:
+
+- A grant that would complete a blocking rule is refused with `authz.sod.conflict` (409), through the API and through `IRoleAssignments.AssignAsync`, the trusted path a seed or another module uses. A module that grants roles itself handles that error.
+- A rule's role side counts only when the grant gives every permission of the role. Adding a permission to a role can complete a pair for its holders; the daily report finds it, the grant is not refused.
+- Conflicts are by overlapping scope: a tenant grant meets every unit, a unit grant with its children meets its subtree, two unrelated units never meet.
+- The report runs in the worker host (`AddConflictReport()`, daily and two minutes after start); a grant, a removal and a delegation refresh that person's rows at once.
+
+Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/ExplainAccessTests.cs` holds the matrix that compares each explanation with the real call (licensed module, feature, kill switch, scope, acting, record policy), and the audit; `ConflictDetectorTests.cs` covers the overlap rule alone; `ConflictTests.cs` covers each mode on assignments and delegations, unrelated units, the report on a fake clock after a rule's change, and the review marker; `tests/Kernel/Iron.Kernel.Identity.Tests/ScopedUsersTests.cs` shows that a person of another tenant cannot be explained.
+
 ## Write an ADR
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).

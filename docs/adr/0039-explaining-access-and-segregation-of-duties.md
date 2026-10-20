@@ -1,0 +1,43 @@
+# ADR-0039: Explaining access, and segregation of duties by overlapping scope
+
+**Status:** Accepted
+**Date:** 2026-10-20
+**Decided by:** Product owner and architect
+
+## Context
+
+TF-039 asks that an administrator can see why a person can or cannot perform an action, at a unit or on a record, with the checks in order. TF-036 asks for rules between permissions or roles that one person should not hold together, enforced when roles are granted and duties delegated, and a report of the conflicts that exist.
+
+A request meets several gates before its handler runs, each from its own decision: the principal and its status (Identity), the subscription's modules and features (ADR-0034), flags and kill switches (ADR-0035), the permission at its scope, with acting for the delegator (ADR-0031, ADR-0037), and, on a record route, the record's policy (ADR-0032). An explanation written apart from these gates would drift from them the first time one changes.
+
+## Decision
+
+1. **One code path.** Each gate answers its decision without side effects: `IEntitlementGate.DecideAsync`, `IFlagGate.DecideAsync`, `IPermissionEvaluator.ExplainAsync` (one private decision with `EvaluateAsync`), and `IRecordPolicies.ExplainAsync` (one private decision with `FindAsync`). A real request calls the same decision and then logs, counts and audits a refusal. The explainer calls the decisions for the explained person, never for the reader, so explaining writes no denial of theirs.
+2. **An action is an endpoint.** The actions that can be explained are the API's named endpoints that declare a permission or a signed-in principal, read from their metadata: the module (`ModuleMetadata`, which `MapModules` adds to every module's group), the summary in words, the permission, the scope (unit, record or row), the licence, the features and the flags. A route value the scope reads is asked for as a unit or a record; any other as a value. `GET /api/v1/access/actions` lists them.
+3. **The checks, in order.** The principal (it exists in this tenant and is active; its type), the entitlement and features, the flags and kill switches, the permission at its scope with acting for, and the record's policy for a record route. Each check answers its result (passed, failed, not reached, not applicable), a reason, the status and error code the real call would answer, and the facts behind it. The first failure decides; the checks after it are not reached. An allowance names each assignment that grants it: the role and where it applies. On a record route, the policy says whether the record exists and whether the person may see it: forbidden is 403, not visible is 404, as the real call answers.
+4. **Acting for.** With `acting_for`, the explainer assumes that pair for the request (`ActingScope.Assume`), so the permission check reads the delegator's grants limited to the delegated duties, as the person's own request would.
+5. **Who may explain, and the audit.** `GET /api/v1/access/explain` needs `authz.access.explain` (high risk), checked at the explained person's home unit. A person who does not exist in this tenant answers 404 `authz.principal.not_found`; a person of another tenant is such a person, since each tenant's unit has its own database. Every explanation writes `authz.access_explained` with the person, the action, the outcome, the status, the failing check and its reason, and the route values.
+6. **What the explanation covers.** The checks the endpoint declares. A check a handler makes on its own after them (the parent of a move, the target of a merge, the granter's own rights in a grant) is not in the explanation: an allowance means the request reaches the handler. The matrix test proves the explanation's status equals the real call's over principals with and without roles, at and outside scopes, a module unlicensed, a feature off, a kill switch on, acting and not, and a record inside and outside its policy.
+7. **A conflict rule.** Two sides, each a permission (by name) or a role (by id), a mode (block or warn), a reason and an owner, the person who answers for it (the author unless named). Rules are tenant-wide. `authz.sod.manage` writes them; `authz.sod.read` reads them and the report. The kernel ships none: what must be kept apart is the tenant's business. A side must be known and the two must differ. Each change is audited (`authz.sod_rule_created`, `authz.sod_rule_changed`, `authz.sod_rule_deleted`).
+8. **Holding a side.** A grant holds a permission side when its role gives the permission, and a role side when it is that role with every one of its permissions. One grant can hold both sides.
+9. **Conflicts by overlapping scope.** A person holds both sides of a rule when one grant holds the first, one holds the second, and some unit lies within the scope of both. A tenant grant reaches every unit; a unit grant its unit; a grant with children its unit and every unit below it; a record grant its record only, so it meets a tenant grant or a grant on the same record. Rights at two unrelated units are not a conflict: a buyer in one store and an approver in another is the separation the rule wants.
+10. **On an assignment.** The new grant is checked with the person's other grants; only conflicts it takes part in are its doing. A rule that blocks refuses it with `authz.sod.conflict` (409) and a message that names the rule, the person, the unit and the reason. A rule that warns lets it through, and the person's rows of the report are computed again at once. `POST /api/v1/role-assignments/conflicts` answers the same question before the grant, for the grant dialog, with the permission granting needs. The trusted path (`IRoleAssignments.AssignAsync`) refuses a blocked grant too.
+11. **On a delegation.** The delegate's own grants and the delegator's grants limited to the delegated duties' permissions are checked as if the delegate held them together. A delegated grant holds a role side only when the duties cover every permission of the role. Block refuses; warn allows and lists. Ending a delegation computes the delegate's rows again.
+12. **The report.** One row per person, rule, the two grants (each an assignment or a delegation, with its role, scope and unit) and the unit both reach, none for the whole tenant. The worker computes it in full every day (first two minutes after it starts) and on demand (`POST /api/v1/conflict-report/runs`, `authz.sod.manage`), replacing every row; each full run is recorded (`kernel_authz.conflict_report_runs`, append-only) and audited (`authz.sod_report_run`). A grant, a removal, a new delegation and an ended one compute that person's rows at once. A rule's change appears in the report at the next run, within a day, or at once on demand.
+13. **The review marker.** An access review item lists the rules its assignment takes part in, from the report, so a reviewer sees the conflict in words beside the decision.
+
+## Options considered
+
+- An explanation engine that reads the grants itself. Rejected: it drifts from the gates; one decision answers both.
+- Replaying the request through the pipeline with the explained person. Rejected: the handler would run and could change data; the gates are decisions, so they are called directly.
+- Conflicts only at identical scopes. Rejected: a tenant grant and a unit grant overlap at that unit, which is the case the rule is for.
+- Conflicts anywhere in the tenant, whatever the units. Rejected: rights at unrelated units are the separation itself (TF-036).
+- Computing the whole report again on every rule change. Rejected for now: a rule change touches everyone; the daily run and the run on demand cover it within the day TF-036 allows.
+- Checking a role's change against the rules when it is made. Deferred: a role that gains a permission can complete a pair for its holders; the next run lists it.
+- Rules shipped by the kernel. Rejected: the kernel does not know a tenant's duties.
+
+## Consequences
+
+- Easier: a gate added to the request path answers a decision, and the explanation shows it; any module's endpoint is explainable from its metadata, with no code in the module. A product's conflict rules need no code: its permissions and roles are the sides.
+- Harder: every gate keeps its decision free of side effects. A check a handler makes itself is not explained, so a handler that refuses for its own reason says why in its error.
+- Later: checks made in handlers; a role's change checked against the rules when it is made; a record grant that meets a grant at the record's owning unit; computing the report at once for one rule.
