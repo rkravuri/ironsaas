@@ -77,7 +77,7 @@ Decided while making the review's changes, as readings of decision 8 beyond its 
 
 ## Open questions
 
-1. `SECURITY.md` names `SECURITY_EMAIL_HERE`, as the review wrote it; the owner replaces it with the security address.
+None open. (Closed in S3 T1: `SECURITY.md` sends reports to `security@example.com`, the address the owner gave.)
 
 ## Later items
 
