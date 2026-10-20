@@ -70,7 +70,7 @@ Scope evaluation performance (unit tree closure table against recursive queries)
 | A7 | Delegation and access reviews | Delegations with duties and dates, acting-as with both identities in audit, overlap and cycle refused; review campaigns, TF-037, TF-038 | A delegate's action records both identities; an overdue review is reported | done |
 | A8 | Cross-organisation access and lifecycle | Assignments to several units, sharing with listed units, cross-unit read audit, the organisation switcher, create, move, deactivate, TF-222, TF-223 | A private record of another unit is refused without sharing and audited when shared | done |
 | A9 | Explanation and segregation of duties | "Why can" endpoint and page; conflict rules with warn or block, TF-039, TF-036 | The explanation names the role, scope, policy, entitlement or flag that decided | done |
-| S2-close | Smoke, docs, done | Smoke steps for scope, entitlement and kill switch; docs; the closing notes | `make smoke` with the new steps; the done-when of section 1 | next |
+| S2-close | Smoke, docs, done | Smoke steps for scope, entitlement and kill switch; docs; the closing notes | `make smoke` with the new steps; the done-when of section 1 | done |
 
 ## 5. How we build
 
