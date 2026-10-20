@@ -4,7 +4,8 @@ using System.Text.Json;
 using Iron.Kernel.Security.Secrets;
 using Iron.Smoke;
 
-// The smoke test (TF-240): the stack as an operator and a user meet it. Every step is a real call through the ingress
+// The smoke test: the stack as an operator and a user meet it. Each step names the requirement criteria or the decisions it
+// proves (ADR-0044), in its report line and in the report make trace reads. Every step is a real call through the ingress
 // or the control plane; nothing is mocked. Exit code 0 when every step passes. Eleven steps since S1, three since S2.
 var options = SmokeOptions.FromEnvironment();
 using var cancellation = new CancellationTokenSource();
@@ -24,14 +25,14 @@ var fleetSecretPath = $"tenants/{options.Tenant}/fleet";
 var smokeSecretPath = $"tenants/{options.Tenant}/smoke";
 
 string? operatorToken = null;
-await report.StepAsync("control-token", async () =>
+await report.StepAsync("control-token", ["ADR-0015", "ADR-0017"], async () =>
 {
     var answer = (await api.SendAsync(HttpMethod.Post, options.ControlUrl, "/connect/token", basic: (options.OperatorClientId, options.OperatorSecret), form: "grant_type=client_credentials", cancellationToken: ct)).Expect(HttpStatusCode.OK, "operator token");
     operatorToken = answer.Text("access_token") ?? throw new SmokeException("The token answer has no access_token.");
     return $"operator token for the control plane ({answer.Text("token_type")})";
 });
 
-await report.StepAsync("tenant", async () =>
+await report.StepAsync("tenant", ["TF-180 AC2"], async () =>
 {
     var existing = await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}", bearer: operatorToken, cancellationToken: ct);
     if (existing.Status == HttpStatusCode.NotFound)
@@ -82,14 +83,14 @@ await report.StepAsync("tenant", async () =>
     throw new SmokeException($"tenant {options.Tenant} is {status}; the smoke needs an active or provisioning tenant");
 });
 
-await report.StepAsync("health", async () =>
+await report.StepAsync("health", ["TF-001 AC1"], async () =>
 {
     var answer = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/health/ready", host: host, cancellationToken: ct)).Expect(HttpStatusCode.OK, "readiness through the ingress");
     return $"{host} ready: {answer.Text("status")}";
 });
 
 string? smokeToken = null;
-await report.StepAsync("smoke-token", async () =>
+await report.StepAsync("smoke-token", ["ADR-0015"], async () =>
 {
     var fleet = await store.ReadAsync(fleetSecretPath, ct) ?? throw new SmokeException($"no secret at {fleetSecretPath}; was the tenant provisioned by this fleet?");
     var secret = fleet.GetValueOrDefault("smoke_client_secret") ?? throw new SmokeException("the fleet secret has no smoke_client_secret");
@@ -98,7 +99,7 @@ await report.StepAsync("smoke-token", async () =>
     return $"token for smoke-client, expires in {answer.Body!.Value.GetProperty("expires_in").GetInt32()} s";
 });
 
-await report.StepAsync("token-call", async () =>
+await report.StepAsync("token-call", ["TF-023 AC1"], async () =>
 {
     var me = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/api/v1/me", host: host, bearer: smokeToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "/me with the token");
     if (me.Text("login_id") != "smoke-client")
@@ -112,7 +113,7 @@ await report.StepAsync("token-call", async () =>
 });
 
 string? administratorPassword = null;
-await report.StepAsync("administrator", async () =>
+await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
 {
     administratorPassword = options.AdministratorPassword;
     if (administratorPassword is not null)
@@ -147,14 +148,14 @@ await report.StepAsync("administrator", async () =>
 
 string? cookie = null;
 string? cookieCorrelation = null;
-await report.StepAsync("login", async () =>
+await report.StepAsync("login", ["TF-011 AC1"], async () =>
 {
     var answer = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/login", host: host, json: new { login_id = options.AdministratorLoginId, password = administratorPassword }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "login");
     cookie = answer.SetCookie ?? throw new SmokeException("login answered 200 without a session cookie");
     return $"session cookie {cookie[..cookie.IndexOf('=', StringComparison.Ordinal)]} for {options.AdministratorLoginId}";
 });
 
-await report.StepAsync("cookie-call", async () =>
+await report.StepAsync("cookie-call", ["ADR-0010", "ADR-0014"], async () =>
 {
     var users = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/api/v1/users?page_size=50&sort=login_id", host: host, cookie: cookie, cancellationToken: ct)).Expect(HttpStatusCode.OK, "users with the cookie");
     var logins = users.Body!.Value.GetProperty("data").EnumerateArray().Select(u => u.GetProperty("login_id").GetString()).ToList();
@@ -167,7 +168,7 @@ await report.StepAsync("cookie-call", async () =>
     return $"{logins.Count} user(s) with the cookie; correlation {cookieCorrelation}";
 });
 
-await report.StepAsync("denials", async () =>
+await report.StepAsync("denials", ["TF-003 AC1", "ADR-0012"], async () =>
 {
     var anonymous = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/api/v1/users", host: host, cancellationToken: ct)).Expect(HttpStatusCode.Unauthorized, "anonymous users call");
     var foreign = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/api/v1/me", host: host, bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.Unauthorized, "a control plane token at the tenant");
@@ -191,7 +192,7 @@ await report.StepAsync("denials", async () =>
     return string.Join("; ", parts);
 });
 
-await report.StepAsync("logout", async () =>
+await report.StepAsync("logout", ["ADR-0014"], async () =>
 {
     var answer = await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/logout", host: host, cookie: cookie, cancellationToken: ct);
     if (answer.Status is not (HttpStatusCode.NoContent or HttpStatusCode.OK))
@@ -203,7 +204,7 @@ await report.StepAsync("logout", async () =>
     return "the session ended and the old cookie is refused";
 });
 
-await report.StepAsync("trace", async () =>
+await report.StepAsync("trace", ["ADR-0010"], async () =>
 {
     if (options.TempoUrl is null)
     {
@@ -234,9 +235,9 @@ await report.StepAsync("trace", async () =>
 // short id names what they make, apart from earlier runs.
 var run = Convert.ToHexString(RandomNumberGenerator.GetBytes(3)).ToLowerInvariant();
 var access = new AccessSteps(api, options, operatorToken ?? string.Empty, administratorPassword ?? string.Empty, run);
-await report.StepAsync("scoped-role", () => access.ScopedRoleAsync(ct));
-await report.StepAsync("plan-change", () => access.PlanChangeAsync(ct));
-await report.StepAsync("kill-switch", () => access.KillSwitchAsync(ct));
+await report.StepAsync("scoped-role", ["TF-035 AC1", "ADR-0031"], () => access.ScopedRoleAsync(ct));
+await report.StepAsync("plan-change", ["TF-046 AC1", "ADR-0034"], () => access.PlanChangeAsync(ct));
+await report.StepAsync("kill-switch", ["ADR-0035"], () => access.KillSwitchAsync(ct));
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
