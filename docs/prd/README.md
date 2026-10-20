@@ -1,6 +1,24 @@
 # Product requirements
 
-- `technical-foundation-PRD.md` and `technical-foundation-requirements.csv`: the Technical Foundation PRD (the SaaS platform) and its requirements table (TF-001 and onwards).
-- `functional-foundation-p2p-PRD.md` and `functional-foundation-p2p-requirements.csv`: the Functional Foundation PRD for procure-to-pay (FF-001 and onwards). It assumes everything in the technical PRD exists.
+One requirements document per layer and product (ADR-0041), each with its CSV beside it:
 
-The build plan in slices is section 7 of the technical PRD. Each slice has a plan under `docs/slices/`.
+| Document | What it holds | Prefix |
+|---|---|---|
+| `technical-foundation-PRD.md` | The kernel: the SaaS platform's mechanisms | `TF-` |
+| `business-foundation-PRD.md` | The business layer: the shared masters and the business configuration of kernel mechanisms | `BF-` |
+| `products/supplier-management-PRD.md` | The supplier's life cycle | `SUP-` |
+| `products/catalogue-PRD.md` | Supplier items, catalogues and shopping | `CAT-` |
+| `products/requests-PRD.md` | Purchase requests | `REQ-` |
+| `products/orders-PRD.md` | Purchase orders | `ORD-` |
+| `products/receiving-PRD.md` | Shipment notices, goods and service receipts, returns | `RCV-` |
+| `products/invoicing-PRD.md` | Invoices, matching, payment status, credit notes | `INV-` |
+| `products/contracts-PRD.md` | Contracts | `CON-` |
+| `surfaces/supplier-portal-PRD.md` | The supplier portal and the Supplier Network experience, a surface | `SPX-` |
+| `product-method.md` | The product method, binding for the business layer and every product | `PM-` |
+| `products/<name>-scope.md` | Sourcing, auctions, projects and tasks, surveys, expenses: one page each, no requirements yet | `SRC-`, `AUC-`, `PRJ-`, `SRV-`, `EXP-` reserved |
+
+`requirements-map.md` (and its CSV) says where every requirement of the Functional Foundation PRD for procure-to-pay went; that PRD is archived in `archive/`.
+
+A requirement is cited by its identifier, and a test names what it proves by the identifier and the criterion: `REQ-012 AC2` (TF-218). Identifiers are stable and never reused; each area of a document has a block of twenty.
+
+The markdown is the source: after editing a document, `make prd-csv` writes its CSV, and `make prd-check` checks every document, its CSV and the map (CI runs it). The build plan in slices is section 7 of the technical PRD. Each slice has a plan under `docs/slices/`.
