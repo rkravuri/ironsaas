@@ -107,10 +107,13 @@ export function ReviewRecordPage() {
   );
 }
 
-/** What a decided item says: who decided what, in words. */
+/** What an item says: who decided what, or who decides it, in words. */
 function decisionLabel(item: ReviewItem, t: ReturnType<typeof useTranslation>["t"]): string {
   if (!item.decision) {
-    return t("reviews.items.toDecide");
+    if (item.yours) {
+      return t("reviews.items.yours");
+    }
+    return item.with_owner ? t("reviews.items.withOwner") : t("reviews.items.toDecide");
   }
   return t(item.decision.decision === "confirm" ? "reviews.items.confirmedBy" : "reviews.items.revokedBy", { name: item.decision.decided_by.name });
 }
@@ -136,7 +139,8 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
   const fetchPage = useCallback(
     async (query: string, signal?: AbortSignal): Promise<ListResult<ReviewItem>> => {
       const result = await fetchReviewItems(review.id, state, query, signal);
-      setPageOpen(result.data.filter((item) => item.decision === null));
+      // Nobody decides their own access (ADR-0037): the page's confirmation leaves the reader's own rows out.
+      setPageOpen(result.data.filter((item) => item.decision === null && !item.yours));
       return result;
     },
     [review.id, state],
@@ -190,7 +194,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
     [t],
   );
 
-  const undecided = selected !== undefined && selected.decision === null && open;
+  const undecided = selected !== undefined && selected.decision === null && !selected.yours && open;
 
   return (
     <Stack gap="sm">

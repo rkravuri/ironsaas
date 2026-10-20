@@ -25,7 +25,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Open questions
 
-- A7: may a reviewer decide an item about their own role? The section says a reviewer decides the items of their units, so today they may; a segregation-of-duties rule would refuse it and leave such an item to another reviewer of the unit, or to escalation when there is none. A9 (segregation of duties) is the natural home if the answer is no.
+None.
 
 ## Later items
 

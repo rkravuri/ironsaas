@@ -56,8 +56,9 @@ public sealed record ReviewSummaryResponse(Guid Id, string Name, DateOnly DueOn,
 /// <summary>
 /// Access reviews (TF-038, ADR-0037). Starting and closing need <c>authz.reviews.manage</c> tenant-wide. A reviewer holds
 /// <c>authz.reviews.decide</c> at an item's unit: the item list keeps their units' items, and a decision is checked at
-/// the item's unit. The campaigns themselves are for managers and reviewers both, so those two endpoints are for anyone
-/// signed in, and the service refuses anyone who is neither, with an audited denial.
+/// the item's unit. An item nobody but its own person may review goes to the campaign's owner, who may not hold the
+/// permission there, and nobody decides their own access. So the campaigns, their items and the decisions are for anyone
+/// signed in, and the service decides who may, refusing anyone else with an audited denial.
 /// </summary>
 internal static class AccessReviewsEndpoints
 {
@@ -86,14 +87,13 @@ internal static class AccessReviewsEndpoints
         reviews.MapPost("/", StartAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).Validate<StartReviewRequest>().WithName("StartAccessReview").WithSummary("Start a campaign over units, with or without their children: the assignments there are taken as its items now.");
         reviews.MapGet("/{id:guid}", GetAsync).RequireSignedIn().WithName("GetAccessReview").WithSummary("One campaign with the progress of what you may see, per unit, and its escalations.");
         reviews.MapPost("/{id:guid}/close", CloseAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).WithName("CloseAccessReview").WithSummary("Close a campaign: no more decisions.");
-        reviews.MapGet("/{id:guid}/items", ItemsAsync).RequirePermission(AuthorizationPermissions.ReviewsDecide).ScopedByRow().WithName("ListAccessReviewItems").WithSummary("The items of a campaign at the units where you hold authz.reviews.decide; state=open or decided narrows them.");
+        reviews.MapGet("/{id:guid}/items", ItemsAsync).RequireSignedIn().WithName("ListAccessReviewItems").WithSummary("The items you decide: at the units where you hold authz.reviews.decide, and as the campaign's owner those nobody else may review; state=open or decided narrows them.");
         reviews.MapPost("/{id:guid}/items/{itemId:guid}/decision", DecideAsync)
-            .RequirePermission(AuthorizationPermissions.ReviewsDecide)
-            .ScopedToRecord(AccessReviewItem.RecordType, (services, itemId, ct) => ReviewService.ItemUnitAsync(services.GetRequiredService<AuthorizationDbContext>(), itemId, ct), "itemId")
+            .RequireSignedIn()
             .Validate<DecideItemRequest>()
             .WithName("DecideAccessReviewItem")
-            .WithSummary("Confirm an assignment, or revoke it, which removes it at once; the last tenant administrator stays.");
-        reviews.MapPost("/{id:guid}/confirm", ConfirmAsync).RequirePermission(AuthorizationPermissions.ReviewsDecide).ScopedByRow().Validate<ConfirmItemsRequest>().WithName("ConfirmAccessReviewItems").WithSummary("Confirm a page of items at once; items decided meanwhile are left as they are.");
+            .WithSummary("Confirm an assignment, or revoke it, which removes it at once; the last tenant administrator stays, and nobody decides their own access.");
+        reviews.MapPost("/{id:guid}/confirm", ConfirmAsync).RequireSignedIn().Validate<ConfirmItemsRequest>().WithName("ConfirmAccessReviewItems").WithSummary("Confirm a page of items at once; items decided meanwhile are left as they are, and none may be about your own access.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, ReviewService reviews, CancellationToken cancellationToken)
@@ -150,15 +150,20 @@ internal static class AccessReviewsEndpoints
             _ => ItemState.All,
         };
         var query = parsed.Value;
-        var items = await reviews.ItemsAsync(id, narrowed, cancellationToken);
-        var page = await items.ApplyListQuery(query, ItemFields).ToPageAsync(query.Page, cancellationToken);
+        var items = await reviews.ItemsAsync(id, narrowed, PermissionFilter.Operation(http), cancellationToken);
+        if (items.IsFailure)
+        {
+            return ApiResults.Problem(items.Error, http);
+        }
+
+        var page = await items.Value.ApplyListQuery(query, ItemFields).ToPageAsync(query.Page, cancellationToken);
         var views = (await reviews.DescribeItemsAsync(page.Items, cancellationToken)).ToDictionary(v => v.Id);
         return ApiResults.List(page.Map(i => views[i.Id]), http, query);
     }
 
     private static async Task<IResult> DecideAsync(Guid id, Guid itemId, DecideItemRequest request, HttpContext http, ReviewService reviews, CancellationToken cancellationToken) =>
-        ApiResults.From(await reviews.DecideAsync(id, itemId, request.Decision, request.Comment, cancellationToken), http, view => TypedResults.Ok(view));
+        ApiResults.From(await reviews.DecideAsync(id, itemId, request.Decision, request.Comment, PermissionFilter.Operation(http), cancellationToken), http, view => TypedResults.Ok(view));
 
     private static async Task<IResult> ConfirmAsync(Guid id, ConfirmItemsRequest request, HttpContext http, ReviewService reviews, CancellationToken cancellationToken) =>
-        ApiResults.From(await reviews.ConfirmManyAsync(id, request.ItemIds, request.Comment, cancellationToken), http, view => TypedResults.Ok(view));
+        ApiResults.From(await reviews.ConfirmManyAsync(id, request.ItemIds, request.Comment, PermissionFilter.Operation(http), cancellationToken), http, view => TypedResults.Ok(view));
 }

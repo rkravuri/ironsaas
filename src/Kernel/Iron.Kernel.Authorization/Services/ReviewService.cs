@@ -45,7 +45,11 @@ public sealed record ReviewView(
 
 public sealed record ItemDecisionView(ReviewDecision Decision, string? Comment, ReviewPerson DecidedBy, DateTimeOffset DecidedAt, bool AssignmentRemoved);
 
-/// <summary>One item to decide: the assignment as it stood when the campaign started, and the decision once there is one.</summary>
+/// <summary>
+/// One item to decide: the assignment as it stood when the campaign started, and the decision once there is one.
+/// <c>Yours</c>: the item is about the reader's own access, so another reviewer decides it. <c>WithOwner</c>: nobody but
+/// its own person may review its unit, so the campaign's owner decides it (ADR-0037).
+/// </summary>
 public sealed record ReviewItemView(
     Guid Id,
     Guid ReviewId,
@@ -59,7 +63,9 @@ public sealed record ReviewItemView(
     Guid UnitId,
     string UnitName,
     IReadOnlyList<UnitStep> UnitPath,
-    ItemDecisionView? Decision);
+    ItemDecisionView? Decision,
+    bool Yours,
+    bool WithOwner);
 
 /// <summary>What a confirm-all did: the items it confirmed, and those someone had decided already, which it left alone.</summary>
 public sealed record ConfirmManyView(int Confirmed, int AlreadyDecided);
@@ -75,8 +81,10 @@ public enum ItemState
 /// <summary>
 /// Access review campaigns (TF-038, ADR-0037). Starting and closing one needs <c>authz.reviews.manage</c> tenant-wide;
 /// the endpoint checks it. A reviewer is whoever holds <c>authz.reviews.decide</c> at an item's unit: they see and decide
-/// the items of their units and no others. A revoke removes the assignment through the assignments' own removal path,
-/// in the transaction that records the decision, so the last-administrator guard holds and the change is at once.
+/// the items of their units and no others, except an item about their own access, which another reviewer of the unit
+/// or of a unit above decides, or the campaign's owner when there is none (ADR-0037). A revoke removes the assignment
+/// through the assignments' own removal path, in the transaction that records the decision, so the last-administrator
+/// guard holds and the change is at once.
 /// </summary>
 public sealed class ReviewService(
     AuthorizationDbContext context,
@@ -87,6 +95,7 @@ public sealed class ReviewService(
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ICurrentPrincipal current,
+    UnitReviewers reviewers,
     TimeProvider time)
 {
     public const string RecordType = "access_review";
@@ -98,7 +107,7 @@ public sealed class ReviewService(
 
     /// <summary>
     /// The campaigns the reader may see: every one for a tenant-wide manager; for a reviewer, those with items at their
-    /// units; null for anyone else, who is refused (TF-038 AC4).
+    /// units; for their owner, the campaigns they started; null for anyone else, who is refused (TF-038 AC4).
     /// </summary>
     public async Task<IQueryable<AccessReview>?> VisibleAsync(CancellationToken cancellationToken)
     {
@@ -108,13 +117,15 @@ public sealed class ReviewService(
             return context.AccessReviews.AsNoTracking();
         }
 
-        if (!held.Anywhere.Contains(AuthorizationPermissions.ReviewsDecide.Name))
+        var owner = Effective;
+        var reviews = held.Anywhere.Contains(AuthorizationPermissions.ReviewsDecide.Name);
+        if (!reviews && !await context.AccessReviews.AnyAsync(r => r.OwnerId == owner, cancellationToken).ConfigureAwait(false))
         {
             return null;
         }
 
-        var items = await DecidableAsync(cancellationToken).ConfigureAwait(false);
-        return context.AccessReviews.AsNoTracking().Where(review => items.Any(item => item.ReviewId == review.Id));
+        var items = reviews ? await DecidableAsync(cancellationToken).ConfigureAwait(false) : context.AccessReviewItems.Where(_ => false);
+        return context.AccessReviews.AsNoTracking().Where(review => review.OwnerId == owner || items.Any(item => item.ReviewId == review.Id));
     }
 
     /// <summary>The refusal for a reader who neither manages nor reviews: the denial is audited like any other.</summary>
@@ -202,7 +213,7 @@ public sealed class ReviewService(
         }
 
         var manages = await ManagesAsync(cancellationToken).ConfigureAwait(false);
-        var items = manages ? context.AccessReviewItems.AsNoTracking() : await DecidableAsync(cancellationToken).ConfigureAwait(false);
+        var items = manages ? context.AccessReviewItems.AsNoTracking() : (await ReachAsync(review, cancellationToken).ConfigureAwait(false)).Items;
         var rows = await (
                 from item in items.Where(i => i.ReviewId == id)
                 join made in context.AccessReviewDecisions on item.Id equals made.ItemId into decisions
@@ -280,16 +291,31 @@ public sealed class ReviewService(
         });
     }
 
-    /// <summary>The items of a campaign the reader decides: at the units where they hold <c>authz.reviews.decide</c>.</summary>
-    public async Task<IQueryable<AccessReviewItem>> ItemsAsync(Guid reviewId, ItemState state, CancellationToken cancellationToken)
+    /// <summary>
+    /// The items of a campaign the reader decides: at the units where they hold <c>authz.reviews.decide</c>, and for its
+    /// owner, those nobody but their own person may review. Anyone who neither reviews nor owns the campaign is refused.
+    /// </summary>
+    public async Task<Result<IQueryable<AccessReviewItem>>> ItemsAsync(Guid reviewId, ItemState state, string operation, CancellationToken cancellationToken)
     {
-        var items = (await DecidableAsync(cancellationToken).ConfigureAwait(false)).Where(i => i.ReviewId == reviewId);
-        return state switch
+        var review = await context.AccessReviews.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reviewId, cancellationToken).ConfigureAwait(false);
+        if (review is null)
+        {
+            return Error.NotFound(AuthorizationErrors.ReviewNotFound, "There is no access review with this id.");
+        }
+
+        var reach = await ReachAsync(review, cancellationToken).ConfigureAwait(false);
+        if (!reach.Reviews && !reach.Owns)
+        {
+            return await RefusalAsync(operation, cancellationToken).ConfigureAwait(false);
+        }
+
+        var items = reach.Items;
+        return Result.Success(state switch
         {
             ItemState.Open => items.Where(i => !context.AccessReviewDecisions.Any(d => d.ItemId == i.Id)),
             ItemState.Decided => items.Where(i => context.AccessReviewDecisions.Any(d => d.ItemId == i.Id)),
             _ => items,
-        };
+        });
     }
 
     /// <summary>The items with their decisions and the deciders' names: a few queries for the page.</summary>
@@ -299,6 +325,12 @@ public sealed class ReviewService(
         var ids = items.Select(i => i.Id).ToArray();
         var decisions = await context.AccessReviewDecisions.AsNoTracking().Where(d => ids.Contains(d.ItemId)).ToDictionaryAsync(d => d.ItemId, cancellationToken).ConfigureAwait(false);
         var people = await principals.FindAsync([.. decisions.Values.Select(d => d.CreatedBy).Distinct()], cancellationToken).ConfigureAwait(false);
+        var withOwner = new HashSet<Guid>();
+        foreach (var reviewId in items.Select(i => i.ReviewId).Distinct())
+        {
+            withOwner.UnionWith(await WithOwnerAsync(reviewId, cancellationToken).ConfigureAwait(false));
+        }
+
         return [.. items.Select(item =>
         {
             ItemDecisionView? decision = decisions.TryGetValue(item.Id, out var made)
@@ -317,30 +349,43 @@ public sealed class ReviewService(
                 item.UnitId,
                 item.UnitName,
                 [.. item.UnitPathIds.Zip(item.UnitPathNames, (unit, name) => new UnitStep(unit, name))],
-                decision);
+                decision,
+                IsOwn(item),
+                withOwner.Contains(item.Id));
         })];
-    }
-
-    /// <summary>The unit that owns an item, for the endpoint's permission check at the item's unit.</summary>
-    public static async Task<Guid?> ItemUnitAsync(AuthorizationDbContext context, Guid itemId, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        return await context.AccessReviewItems.AsNoTracking().Where(i => i.Id == itemId).Select(i => (Guid?)i.UnitId).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Decides one item (TF-038 AC2). A revoke removes the assignment at once, in the transaction that records the
-    /// decision; when the guard keeps the last tenant administrator, nothing is recorded and the answer says why.
+    /// decision; when the guard keeps the last tenant administrator, nothing is recorded and the answer says why. An item
+    /// of a unit the reader does not review is refused and audited like any check at that place; an item about the
+    /// reader's own access is refused with its own code.
     /// </summary>
-    public async Task<Result<ReviewItemView>> DecideAsync(Guid reviewId, Guid itemId, ReviewDecision decision, string? comment, CancellationToken cancellationToken)
+    public async Task<Result<ReviewItemView>> DecideAsync(Guid reviewId, Guid itemId, ReviewDecision decision, string? comment, string operation, CancellationToken cancellationToken)
     {
-        var item = await (await ItemsAsync(reviewId, ItemState.All, cancellationToken).ConfigureAwait(false)).SingleOrDefaultAsync(i => i.Id == itemId, cancellationToken).ConfigureAwait(false);
-        if (item is null)
+        var review = await context.AccessReviews.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reviewId, cancellationToken).ConfigureAwait(false);
+        if (review is null)
         {
-            return Error.NotFound(AuthorizationErrors.ReviewItemNotFound, "There is no item with this id in this review for you to decide.");
+            return Error.NotFound(AuthorizationErrors.ReviewNotFound, "There is no access review with this id.");
         }
 
-        var review = await context.AccessReviews.AsNoTracking().SingleAsync(r => r.Id == reviewId, cancellationToken).ConfigureAwait(false);
+        var reach = await ReachAsync(review, cancellationToken).ConfigureAwait(false);
+        if (!reach.Reviews && !reach.Owns)
+        {
+            return await RefusalAsync(operation, cancellationToken).ConfigureAwait(false);
+        }
+
+        var item = await reach.Items.SingleOrDefaultAsync(i => i.Id == itemId, cancellationToken).ConfigureAwait(false);
+        if (item is null)
+        {
+            return await OutsideAsync(reviewId, itemId, operation, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (IsOwn(item))
+        {
+            return OwnItem();
+        }
+
         if (!review.IsOpen)
         {
             return Error.Conflict(AuthorizationErrors.ReviewClosed, "This review is closed, so its items cannot be decided any more.");
@@ -386,20 +431,31 @@ public sealed class ReviewService(
     /// Confirms the items of a page at once, behind the shell's confirmation: each must be the reader's to decide; any
     /// decided meanwhile is left as it was and counted.
     /// </summary>
-    public async Task<Result<ConfirmManyView>> ConfirmManyAsync(Guid reviewId, IReadOnlyList<Guid> itemIds, string? comment, CancellationToken cancellationToken)
+    public async Task<Result<ConfirmManyView>> ConfirmManyAsync(Guid reviewId, IReadOnlyList<Guid> itemIds, string? comment, string operation, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(itemIds);
+        var review = await context.AccessReviews.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reviewId, cancellationToken).ConfigureAwait(false);
+        if (review is null)
+        {
+            return Error.NotFound(AuthorizationErrors.ReviewNotFound, "There is no access review with this id.");
+        }
+
+        var reach = await ReachAsync(review, cancellationToken).ConfigureAwait(false);
+        if (!reach.Reviews && !reach.Owns)
+        {
+            return await RefusalAsync(operation, cancellationToken).ConfigureAwait(false);
+        }
+
         var ids = itemIds.Distinct().ToArray();
-        var items = await (await ItemsAsync(reviewId, ItemState.All, cancellationToken).ConfigureAwait(false)).Where(i => ids.Contains(i.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var items = await reach.Items.Where(i => ids.Contains(i.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
         if (items.Count != ids.Length)
         {
             return Error.NotFound(AuthorizationErrors.ReviewItemNotFound, "Some of these items are not in this review for you to decide. Nothing was confirmed; reload the list and try again.");
         }
 
-        var review = await context.AccessReviews.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reviewId, cancellationToken).ConfigureAwait(false);
-        if (review is null)
+        if (items.Any(IsOwn))
         {
-            return Error.NotFound(AuthorizationErrors.ReviewNotFound, "There is no access review with this id.");
+            return OwnItem();
         }
 
         if (!review.IsOpen)
@@ -469,6 +525,67 @@ public sealed class ReviewService(
         var key = LockKey(reviewId);
         return context.Database.ExecuteSqlAsync($"select pg_advisory_xact_lock({key})", cancellationToken);
     }
+
+    /// <summary>The person whose rights the request uses: the delegator while acting for them (ADR-0037).</summary>
+    private Guid Effective => current.ActingForId ?? current.Id;
+
+    /// <summary>An item about the reader's own access, or, while acting, about the person they act for.</summary>
+    private bool IsOwn(AccessReviewItem item) => item.PrincipalId == current.Id || item.PrincipalId == current.ActingForId;
+
+    private static Error OwnItem() =>
+        Error.Forbidden(AuthorizationErrors.ReviewOwnItem, "This item is about your own access, so you cannot decide it. Another reviewer of its unit or of a unit above it decides it, or the campaign's owner when there is none.");
+
+    /// <summary>An item the reader may not decide: refused, and audited at the item's unit like any other check there.</summary>
+    private async Task<Error> OutsideAsync(Guid reviewId, Guid itemId, string operation, CancellationToken cancellationToken)
+    {
+        var unit = await context.AccessReviewItems.AsNoTracking().Where(i => i.Id == itemId && i.ReviewId == reviewId).Select(i => (Guid?)i.UnitId).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (unit is null)
+        {
+            return Error.NotFound(AuthorizationErrors.ReviewItemNotFound, "There is no item with this id in this review.");
+        }
+
+        await evaluator.EvaluateAsync(new AccessRequest(current.Id, AuthorizationPermissions.ReviewsDecide, operation, operation) { Scope = AccessScope.Record(AccessReviewItem.RecordType, itemId, unit.Value) }, cancellationToken).ConfigureAwait(false);
+        return Error.Forbidden(PermissionErrors.PermissionDenied, $"You do not hold {AuthorizationPermissions.ReviewsDecide.Name} at this item's unit, so you cannot decide it.");
+    }
+
+    /// <summary>
+    /// What one reader may do in one campaign. <see cref="Reach.Items"/> are those they see and decide: the items at the
+    /// units where they hold <c>authz.reviews.decide</c>, and, for the campaign's owner, the items nobody but their own
+    /// person may review. An item about the reader's own access is among them, to read, never to decide.
+    /// </summary>
+    private async Task<Reach> ReachAsync(AccessReview review, CancellationToken cancellationToken)
+    {
+        var held = await grants.OfAsync(current.Id, cancellationToken).ConfigureAwait(false);
+        var reviewsAnywhere = held.Anywhere.Contains(AuthorizationPermissions.ReviewsDecide.Name);
+        var owns = review.OwnerId == Effective;
+        var withOwner = await WithOwnerAsync(review.Id, cancellationToken).ConfigureAwait(false);
+        var decidable = reviewsAnywhere
+            ? (await DecidableAsync(cancellationToken).ConfigureAwait(false)).Select(i => i.Id)
+            : context.AccessReviewItems.Where(_ => false).Select(i => i.Id);
+        Guid[] routed = owns ? [.. withOwner] : [];
+        var reviewId = review.Id;
+        var items = context.AccessReviewItems.AsNoTracking().Where(i => i.ReviewId == reviewId && (decidable.Contains(i.Id) || routed.Contains(i.Id)));
+        return new Reach(items, reviewsAnywhere, owns);
+    }
+
+    /// <summary>
+    /// The items of a campaign that nobody but their own person may review: nobody else holds <c>authz.reviews.decide</c>
+    /// at the item's unit or above it, so the campaign's owner decides them (ADR-0037). Asked as the reviewers are now.
+    /// </summary>
+    private async Task<IReadOnlySet<Guid>> WithOwnerAsync(Guid reviewId, CancellationToken cancellationToken)
+    {
+        var units = await context.AccessReviewItems.AsNoTracking().Where(i => i.ReviewId == reviewId).Select(i => new { i.UnitId, i.UnitPathIds }).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
+        var reviewersOf = new Dictionary<Guid, IReadOnlyList<Guid>>();
+        foreach (var unit in units.DistinctBy(u => u.UnitId))
+        {
+            reviewersOf[unit.UnitId] = await reviewers.OfUnitAsync(unit.UnitPathIds, cancellationToken).ConfigureAwait(false);
+        }
+
+        var items = await context.AccessReviewItems.AsNoTracking().Where(i => i.ReviewId == reviewId).Select(i => new { i.Id, i.UnitId, i.PrincipalId }).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return items.Where(i => reviewersOf[i.UnitId].All(reviewer => reviewer == i.PrincipalId)).Select(i => i.Id).ToHashSet();
+    }
+
+    private sealed record Reach(IQueryable<AccessReviewItem> Items, bool Reviews, bool Owns);
 
     private async Task<bool> ManagesAsync(CancellationToken cancellationToken) =>
         (await grants.OfAsync(current.Id, cancellationToken).ConfigureAwait(false)).TenantWide.Contains(AuthorizationPermissions.ReviewsManage.Name);

@@ -1163,7 +1163,9 @@
       "comment": "Comment",
       "commentHint": "Optional. Kept with your decision.",
       "commentTooLong": "Keep the comment to 500 characters.",
-      "closed": "This review is closed. Its decisions stay as they are, and no more can be made."
+      "closed": "This review is closed. Its decisions stay as they are, and no more can be made.",
+      "yours": "About your own access: another reviewer decides it.",
+      "withOwner": "No other reviewer here: the review's owner decides it."
     },
     "units": {
       "label": "Units of this review",

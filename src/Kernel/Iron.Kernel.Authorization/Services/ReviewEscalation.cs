@@ -28,6 +28,7 @@ public sealed class CampaignOwnerEscalation : IReviewEscalation
 public sealed class ReviewEscalationPass(
     AuthorizationDbContext context,
     IReviewEscalation escalation,
+    UnitReviewers reviewersOf,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ICurrentPrincipal current,
@@ -75,31 +76,10 @@ public sealed class ReviewEscalationPass(
         return escalated;
     }
 
-    /// <summary>
-    /// The reviewers of a unit: the principals holding <c>authz.reviews.decide</c> there, tenant-wide, at the unit, or
-    /// with children at the unit or above it. <paramref name="unitPath"/> is the ids from the root to the unit.
-    /// </summary>
-    public async Task<IReadOnlyList<Guid>> ReviewersAsync(IReadOnlyList<Guid> unitPath, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(unitPath);
-        var unit = unitPath[^1];
-        var path = unitPath.ToArray();
-        var deciding = context.Roles.Where(r => r.Permissions.Contains(AuthorizationPermissions.ReviewsDecide.Name)).Select(r => r.Id);
-        return await context.RoleAssignments.AsNoTracking()
-            .Where(a => deciding.Contains(a.RoleId)
-                && (a.ScopeKind == Scopes.Tenant
-                    || (a.ScopeKind == Scopes.Unit && a.ScopeId == unit)
-                    || (a.ScopeKind == Scopes.UnitWithChildren && path.Contains(a.ScopeId!.Value))))
-            .Select(a => a.PrincipalId)
-            .Distinct()
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-    }
-
     private async Task<bool> EscalateAsync(AccessReview review, Guid unitId, string unitName, int openItems, DateOnly today, CancellationToken cancellationToken)
     {
         var path = await context.AccessReviewItems.AsNoTracking().Where(i => i.ReviewId == review.Id && i.UnitId == unitId).Select(i => i.UnitPathIds).FirstAsync(cancellationToken).ConfigureAwait(false);
-        var reviewers = await ReviewersAsync(path, cancellationToken).ConfigureAwait(false);
+        var reviewers = await reviewersOf.OfUnitAsync(path, cancellationToken).ConfigureAwait(false);
         var daysOverdue = review.DaysOverdue(today);
         var overdue = new OverdueReview(review.Id, review.Name, review.OwnerId, unitId, unitName, review.DueOn, daysOverdue, openItems, reviewers);
         var named = await escalation.TargetsAsync(overdue, cancellationToken).ConfigureAwait(false);

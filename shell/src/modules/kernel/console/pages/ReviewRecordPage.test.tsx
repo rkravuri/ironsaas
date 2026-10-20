@@ -22,7 +22,7 @@ const record = {
   by_unit: [{ unit_id: "01a17b00-0000-7000-8000-0000000000c2", unit_name: "Store 12", unit_path: ["Acme", "North", "Store 12"], progress: progress(1, 3), escalation: null }],
   can_manage: false,
 };
-const item = (id: string, name: string, decided: boolean) => ({
+const item = (id: string, name: string, decided: boolean, yours = false) => ({
   id,
   review_id: review,
   assignment_id: `${id.slice(0, -2)}aa`,
@@ -40,6 +40,8 @@ const item = (id: string, name: string, decided: boolean) => ({
     { id: "01a17b00-0000-7000-8000-0000000000c2", name: "Store 12" },
   ],
   decision: decided ? { decision: "confirm", comment: null, decided_by: { id: "x", name: "Grace" }, decided_at: "2026-10-20T10:00:00Z", assignment_removed: false } : null,
+  yours,
+  with_owner: false,
 });
 const list = (data: unknown[]) => ({
   data,
@@ -47,7 +49,10 @@ const list = (data: unknown[]) => ({
   links: { self: "x", first: "x", previous: null, next: null, last: "x" },
 });
 const items = `/api/v1/access-reviews/${review}/items`;
-const open = [item("01a17b00-0000-7000-8000-0000000000e1", "Bob Builder", false), item("01a17b00-0000-7000-8000-0000000000e2", "Carol Clerk", false)];
+const others = [item("01a17b00-0000-7000-8000-0000000000e1", "Bob Builder", false), item("01a17b00-0000-7000-8000-0000000000e2", "Carol Clerk", false)];
+/** The reviewer's own role in the unit: they read it and never decide it (ADR-0037). */
+const own = item("01a17b00-0000-7000-8000-0000000000e4", "Admin", false, true);
+const open = [...others, own];
 const decided = [item("01a17b00-0000-7000-8000-0000000000e3", "Dan Decided", true)];
 /** The page renders the grid, the heaviest thing in the shell, so these tests wait longer than the default. */
 const heavy = { timeout: 10_000 };
@@ -75,7 +80,7 @@ afterEach(() => {
 });
 
 describe("the access review page (TF-038)", () => {
-  it("asks for the items still to decide, which the API keeps to the reviewer's units, and offers to confirm that page", async () => {
+  it("asks for the items still to decide, which the API keeps to the reviewer's units, and offers to confirm that page without the reviewer's own", async () => {
     const { calls } = show();
 
     expect(await screen.findByRole("heading", { name: "Quarterly review" }, heavy)).toBeInTheDocument();
@@ -106,6 +111,7 @@ describe("the access review page (TF-038)", () => {
 
     expect(await screen.findByText("Confirmed 2 items.")).toBeInTheDocument();
     const posted = calls.find((call) => call.key === `POST /api/v1/access-reviews/${review}/confirm`);
-    expect(JSON.parse(posted?.init?.body as string)).toEqual({ item_ids: open.map((row) => row.id), comment: null });
+    // The reviewer's own row is left out: another reviewer decides it.
+    expect(JSON.parse(posted?.init?.body as string)).toEqual({ item_ids: others.map((row) => row.id), comment: null });
   }, heavyTest);
 });

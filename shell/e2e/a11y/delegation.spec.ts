@@ -109,7 +109,10 @@ for (const scheme of schemes) {
     await page.goto(`/console/access-reviews/${reviewId}`);
     await expect(page.getByRole("heading", { name: "Quarterly review, Operations" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "Marie Curie" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Confirm the 5 items on this page" })).toBeEnabled();
+    // The viewer's own row says who decides it, and the page's confirmation leaves it out.
+    await expect(page.getByRole("gridcell", { name: "About your own access: another reviewer decides it." })).toBeVisible();
+    await expect(page.getByRole("gridcell", { name: "No other reviewer here: the review's owner decides it." })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirm the 4 items on this page" })).toBeEnabled();
     await page.screenshot({ path: `test-results/review-record-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 

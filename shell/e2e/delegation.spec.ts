@@ -159,15 +159,22 @@ test.describe("delegation and access reviews", () => {
       await expect(childPage.getByText("Revoked: A colleague no longer holds Revocable in review.")).toBeVisible();
       expect(await revocableAssignments(page)).toEqual([]);
 
-      // The rest of the page is confirmed at once, behind its confirmation.
-      const confirmPage = childPage.getByRole("button", { name: /^Confirm the \d+ items? on this page$/ });
+      // The reviewer's own roles in the unit are theirs to read, not to decide: the row says so, and the page has
+      // nothing else left for them to confirm.
+      await expect(childPage.getByRole("gridcell", { name: "About your own access: another reviewer decides it." }).first()).toBeVisible();
+      await expect(childPage.getByRole("button", { name: "Confirm the 0 items on this page" })).toBeDisabled();
+      await childPage.screenshot({ path: "test-results/e2e/review-own-rows.png", fullPage: true });
+
+      // The administrator, who reviews every unit, confirms them, behind the page's confirmation.
+      await open(page, `/console/access-reviews/${reviewId}`);
+      const confirmPage = page.getByRole("button", { name: /^Confirm the [1-9]\d* items? on this page$/ });
       await expect(confirmPage).toBeEnabled();
       await confirmPage.click();
-      const confirmation = childPage.getByRole("dialog", { name: "Confirm this page" });
+      const confirmation = page.getByRole("dialog", { name: "Confirm this page" });
       await confirmation.getByRole("button", { name: /^Confirm \d+ items?$/ }).click();
-      await expect(childPage.getByText(/^Confirmed \d+ items?\.$/)).toBeVisible();
+      await expect(page.getByText(/^Confirmed \d+ items?\.$/)).toBeVisible();
       await expect(confirmation).toBeHidden();
-      await childPage.screenshot({ path: "test-results/e2e/review-decided.png", fullPage: true });
+      await page.screenshot({ path: "test-results/e2e/review-decided.png", fullPage: true });
     } finally {
       await endDelegations(page);
       for (const reviewing of await assignmentsOf(page, childId, reviewerRoleId)) {

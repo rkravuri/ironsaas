@@ -87,6 +87,7 @@ public static class AuthorizationErrors
     public const string ReviewItemNotFound = "authz.review.item_not_found";
     public const string ReviewItemDecided = "authz.review.item_decided";
     public const string ReviewDuePassed = "authz.review.due_passed";
+    public const string ReviewOwnItem = "authz.review.own_item";
 }
 
 /// <summary>Audit event types raised by Authorization (TF-060).</summary>

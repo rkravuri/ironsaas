@@ -15,6 +15,8 @@ namespace Iron.Kernel.Authorization.Tests;
 [Collection(AuthorizationCollection.Name)]
 public class ReviewTests(AuthorizationFixture fixture)
 {
+    private const string Op = "POST /api/v1/access-reviews";
+
     [Fact]
     public async Task StartingACampaignTakesASnapshotOfTheAssignmentsInItsUnitsWithTheirPaths()
     {
@@ -64,16 +66,17 @@ public class ReviewTests(AuthorizationFixture fixture)
 
         await using var asReviewer = fixture.Scope(storeReviewer);
         var reviews = asReviewer.Get<ReviewService>();
-        var visible = await (await reviews.ItemsAsync(review.Id, ItemState.All, TestContext.Current.CancellationToken)).ToListAsync(TestContext.Current.CancellationToken);
+        var visible = await (await reviews.ItemsAsync(review.Id, ItemState.All, Op, TestContext.Current.CancellationToken)).Value.ToListAsync(TestContext.Current.CancellationToken);
         var described = await reviews.DescribeAsync(review.Id, TestContext.Current.CancellationToken);
-        var outside = await reviews.DecideAsync(review.Id, adasItem, ReviewDecision.Confirm, null, TestContext.Current.CancellationToken);
+        var outside = await reviews.DecideAsync(review.Id, adasItem, ReviewDecision.Confirm, null, Op, TestContext.Current.CancellationToken);
         var listed = await (await reviews.VisibleAsync(TestContext.Current.CancellationToken))!.Select(r => r.Id).ToListAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal([grace], visible.Select(i => i.PrincipalId));
         Assert.Equal(1, described.Value.Progress.Total);
         Assert.Equal(["Store 12"], described.Value.ByUnit.Select(u => u.UnitName));
         Assert.False(described.Value.CanManage);
-        Assert.Equal(AuthorizationErrors.ReviewItemNotFound, outside.Error.Code);
+        Assert.Equal((ErrorKind.Forbidden, PermissionErrors.PermissionDenied), (outside.Error.Kind, outside.Error.Code));
+        Assert.Contains(asReviewer.Audit.Events, e => e.Action == PermissionEvaluator.DenialAction && e.PrincipalId == storeReviewer);
         Assert.Contains(review.Id, listed);
 
         await using var asStranger = fixture.Scope(stranger);
@@ -101,9 +104,9 @@ public class ReviewTests(AuthorizationFixture fixture)
         var grants = scope.Get<AccessGrants>();
         Assert.NotEmpty((await grants.OfAsync(ada, TestContext.Current.CancellationToken)).Grants); // warms the cache the revoke must clear
 
-        var revoked = await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == ada).Id, ReviewDecision.Revoke, "Left the team.", TestContext.Current.CancellationToken);
-        var confirmed = await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == grace).Id, ReviewDecision.Confirm, null, TestContext.Current.CancellationToken);
-        var again = await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == grace).Id, ReviewDecision.Revoke, null, TestContext.Current.CancellationToken);
+        var revoked = await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == ada).Id, ReviewDecision.Revoke, "Left the team.", Op, TestContext.Current.CancellationToken);
+        var confirmed = await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == grace).Id, ReviewDecision.Confirm, null, Op, TestContext.Current.CancellationToken);
+        var again = await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == grace).Id, ReviewDecision.Revoke, null, Op, TestContext.Current.CancellationToken);
 
         Assert.True(revoked.IsSuccess, revoked.IsFailure ? revoked.Error.Message : null);
         Assert.Equal((ReviewDecision.Revoke, "Left the team.", true, reviewer), (revoked.Value.Decision!.Decision, revoked.Value.Decision.Comment, revoked.Value.Decision.AssignmentRemoved, revoked.Value.Decision.DecidedBy.Id));
@@ -126,23 +129,116 @@ public class ReviewTests(AuthorizationFixture fixture)
     {
         var tenant = await fixture.CreateTenantDatabaseAsync($"review_{Ids.New():N}");
         var administrator = fixture.Principals.Add();
+        var reviewer = fixture.Principals.Add();
         await using (var setup = fixture.Scope(SystemPrincipal.SystemId, connectionString: tenant))
         {
             await RoleServiceTests.AssignAsync(setup.Scope, administrator, SystemRoles.TenantAdministrator);
+            var context = setup.Get<AuthorizationDbContext>();
+            var reviewing = new Role(RoleServiceTests.Code(), "Tenant reviewer", string.Empty, isSystem: false, PrincipalKind.User, [AuthorizationPermissions.ReviewsManage.Name, AuthorizationPermissions.ReviewsDecide.Name]);
+            context.Roles.Add(reviewing);
+            context.RoleAssignments.Add(new RoleAssignment(reviewing.Id, reviewer, RoleScope.Tenant));
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
-        await using var scope = fixture.Scope(administrator, connectionString: tenant);
+        // Another reviewer revokes the administrator: nobody decides their own access, so the guard is what refuses.
+        await using var scope = fixture.Scope(reviewer, connectionString: tenant);
         var reviews = scope.Get<ReviewService>();
         var root = await OrganisationUnitServiceTests.RootAsync(scope.Scope);
         var started = await reviews.StartAsync(new StartReviewInput("The whole tenant", Today(new FakeTimeProvider()).AddDays(14), [new ReviewUnitInput(root.Id, IncludeChildren: false)]), TestContext.Current.CancellationToken);
-        var item = await (await reviews.ItemsAsync(started.Value.Id, ItemState.All, TestContext.Current.CancellationToken)).SingleAsync(i => i.PrincipalId == administrator, TestContext.Current.CancellationToken);
+        var item = await (await reviews.ItemsAsync(started.Value.Id, ItemState.All, Op, TestContext.Current.CancellationToken)).Value.SingleAsync(i => i.PrincipalId == administrator, TestContext.Current.CancellationToken);
 
-        var refused = await reviews.DecideAsync(started.Value.Id, item.Id, ReviewDecision.Revoke, null, TestContext.Current.CancellationToken);
+        var refused = await reviews.DecideAsync(started.Value.Id, item.Id, ReviewDecision.Revoke, null, Op, TestContext.Current.CancellationToken);
 
         Assert.Equal((Scopes.Tenant, root.Id), (item.ScopeKind, item.UnitId));
         Assert.Equal((ErrorKind.Conflict, AuthorizationErrors.AssignmentLastAdministrator), (refused.Error.Kind, refused.Error.Code));
         Assert.True(await scope.Get<AuthorizationDbContext>().RoleAssignments.AnyAsync(a => a.Id == item.AssignmentId, TestContext.Current.CancellationToken));
-        Assert.Equal(1, (await reviews.DescribeAsync(started.Value.Id, TestContext.Current.CancellationToken)).Value.Progress.Open);
+        // Open: the administrator's item, and the reviewer's own tenant-wide role, which someone else decides.
+        Assert.Equal(2, (await reviews.DescribeAsync(started.Value.Id, TestContext.Current.CancellationToken)).Value.Progress.Open);
+    }
+
+    [Fact]
+    public async Task NobodyDecidesTheirOwnAccessAnotherReviewerOfTheUnitOrAboveDoes()
+    {
+        var (north, store, _) = await TreeAsync();
+        var grace = fixture.Principals.Add();
+        await AssignAsync(grace, await RoleAsync([AuthorizationPermissions.UnitsRead.Name]), RoleScope.Unit(store.Id));
+        var storeReviewer = await HolderAsync([AuthorizationPermissions.ReviewsDecide.Name], RoleScope.Unit(store.Id));
+        var northReviewer = await HolderAsync([AuthorizationPermissions.ReviewsDecide.Name], RoleScope.Unit(north.Id, includeChildren: true));
+        var review = await StartAsManagerAsync(new ReviewUnitInput(north.Id, IncludeChildren: true));
+        var items = await ItemsOfAsync(fixture, review.Id);
+        var own = items.Single(i => i.PrincipalId == storeReviewer);
+        var graces = items.Single(i => i.PrincipalId == grace);
+
+        await using var asStore = fixture.Scope(storeReviewer);
+        var reviews = asStore.Get<ReviewService>();
+        var seen = await reviews.DescribeItemsAsync(await (await reviews.ItemsAsync(review.Id, ItemState.All, Op, TestContext.Current.CancellationToken)).Value.ToListAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+        var refused = await reviews.DecideAsync(review.Id, own.Id, ReviewDecision.Confirm, null, Op, TestContext.Current.CancellationToken);
+        var refusedMany = await reviews.ConfirmManyAsync(review.Id, [own.Id, graces.Id], null, Op, TestContext.Current.CancellationToken);
+        var gracesConfirmed = await reviews.DecideAsync(review.Id, graces.Id, ReviewDecision.Confirm, null, Op, TestContext.Current.CancellationToken);
+
+        // The store's reviewer reads their own item, marked as theirs, and cannot decide it, alone or in a page.
+        Assert.True(seen.Single(i => i.Id == own.Id).Yours);
+        Assert.False(seen.Single(i => i.Id == own.Id).WithOwner);
+        Assert.Equal((ErrorKind.Forbidden, AuthorizationErrors.ReviewOwnItem), (refused.Error.Kind, refused.Error.Code));
+        Assert.Equal(AuthorizationErrors.ReviewOwnItem, refusedMany.Error.Code);
+        Assert.True(gracesConfirmed.IsSuccess);
+
+        // The reviewer of the unit above decides it.
+        await using var asNorth = fixture.Scope(northReviewer);
+        var decided = await asNorth.Get<ReviewService>().DecideAsync(review.Id, own.Id, ReviewDecision.Revoke, "Moved to another store.", Op, TestContext.Current.CancellationToken);
+        Assert.True(decided.IsSuccess, decided.IsFailure ? decided.Error.Message : null);
+        Assert.Equal(northReviewer, decided.Value.Decision!.DecidedBy.Id);
+    }
+
+    [Fact]
+    public async Task AnItemNobodyElseMayReviewGoesToTheCampaignOwnerWhoDecidesItWithoutTheReviewPermission()
+    {
+        // A tenant of its own, so no reviewer from another test reaches its units.
+        var tenant = await fixture.CreateTenantDatabaseAsync($"owner_{Ids.New():N}");
+        var (lone, grace, owner) = (fixture.Principals.Add(), fixture.Principals.Add(), fixture.Principals.Add());
+        Guid outpost;
+        await using (var setup = fixture.Scope(SystemPrincipal.SystemId, connectionString: tenant))
+        {
+            var root = await OrganisationUnitServiceTests.RootAsync(setup.Scope);
+            outpost = (await OrganisationUnitServiceTests.CreateAsync(setup.Get<OrganisationUnitService>(), root.Id, "Outpost")).Id;
+            var context = setup.Get<AuthorizationDbContext>();
+            var reviewing = new Role(RoleServiceTests.Code(), "Outpost reviewer", string.Empty, isSystem: false, PrincipalKind.User, [AuthorizationPermissions.ReviewsDecide.Name]);
+            var reading = new Role(RoleServiceTests.Code(), "Outpost reader", string.Empty, isSystem: false, PrincipalKind.User, [AuthorizationPermissions.UnitsRead.Name]);
+            var managing = new Role(RoleServiceTests.Code(), "Review manager", string.Empty, isSystem: false, PrincipalKind.User, [AuthorizationPermissions.ReviewsManage.Name]);
+            context.Roles.AddRange(reviewing, reading, managing);
+            context.RoleAssignments.AddRange(
+                new RoleAssignment(reviewing.Id, lone, RoleScope.Unit(outpost)),
+                new RoleAssignment(reading.Id, grace, RoleScope.Unit(outpost)),
+                new RoleAssignment(managing.Id, owner, RoleScope.Tenant));
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using var asOwner = fixture.Scope(owner, connectionString: tenant);
+        var ownerReviews = asOwner.Get<ReviewService>();
+        var started = await ownerReviews.StartAsync(new StartReviewInput("Outpost", Today(new FakeTimeProvider()).AddDays(14), [new ReviewUnitInput(outpost, IncludeChildren: false)]), TestContext.Current.CancellationToken);
+        Assert.True(started.IsSuccess, started.IsFailure ? started.Error.Message : null);
+        var review = started.Value.Id;
+
+        // The owner holds no review permission, yet sees and decides the one item only its own person could review.
+        var ownersItems = await ownerReviews.DescribeItemsAsync(await (await ownerReviews.ItemsAsync(review, ItemState.All, Op, TestContext.Current.CancellationToken)).Value.ToListAsync(TestContext.Current.CancellationToken), TestContext.Current.CancellationToken);
+        var lonesItem = Assert.Single(ownersItems);
+        Assert.Equal((lone, true, false), (lonesItem.PrincipalId, lonesItem.WithOwner, lonesItem.Yours));
+
+        await using var asLone = fixture.Scope(lone, connectionString: tenant);
+        var loneReviews = asLone.Get<ReviewService>();
+        var lonesOwn = await loneReviews.DecideAsync(review, lonesItem.Id, ReviewDecision.Confirm, null, Op, TestContext.Current.CancellationToken);
+        var gracesItem = await (await loneReviews.ItemsAsync(review, ItemState.All, Op, TestContext.Current.CancellationToken)).Value.SingleAsync(i => i.PrincipalId == grace, TestContext.Current.CancellationToken);
+        var gracesDecided = await loneReviews.DecideAsync(review, gracesItem.Id, ReviewDecision.Confirm, null, Op, TestContext.Current.CancellationToken);
+        var ownerDecided = await ownerReviews.DecideAsync(review, lonesItem.Id, ReviewDecision.Confirm, "Still runs the outpost.", Op, TestContext.Current.CancellationToken);
+        var ownerOutside = await ownerReviews.DecideAsync(review, gracesItem.Id, ReviewDecision.Revoke, null, Op, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AuthorizationErrors.ReviewOwnItem, lonesOwn.Error.Code);
+        Assert.True(gracesDecided.IsSuccess, gracesDecided.IsFailure ? gracesDecided.Error.Message : null);
+        Assert.True(ownerDecided.IsSuccess, ownerDecided.IsFailure ? ownerDecided.Error.Message : null);
+        Assert.Equal(owner, ownerDecided.Value.Decision!.DecidedBy.Id);
+
+        // Grace's item has a reviewer other than Grace, so it is not the owner's to decide.
+        Assert.Equal((ErrorKind.Forbidden, PermissionErrors.PermissionDenied), (ownerOutside.Error.Kind, ownerOutside.Error.Code));
     }
 
     [Fact]
@@ -161,12 +257,12 @@ public class ReviewTests(AuthorizationFixture fixture)
         var reviews = scope.Get<ReviewService>();
         var review = await StartAsync(scope, new ReviewUnitInput(north.Id, IncludeChildren: false));
         var items = await ItemsOfAsync(fixture, review.Id);
-        Assert.True((await reviews.DecideAsync(review.Id, items[0].Id, ReviewDecision.Revoke, null, TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await reviews.DecideAsync(review.Id, items[0].Id, ReviewDecision.Revoke, null, Op, TestContext.Current.CancellationToken)).IsSuccess);
 
-        var many = await reviews.ConfirmManyAsync(review.Id, [.. items.Select(i => i.Id)], "Checked with the team lead.", TestContext.Current.CancellationToken);
-        var foreign = await reviews.ConfirmManyAsync(review.Id, [Ids.New()], null, TestContext.Current.CancellationToken);
+        var many = await reviews.ConfirmManyAsync(review.Id, [.. items.Select(i => i.Id)], "Checked with the team lead.", Op, TestContext.Current.CancellationToken);
+        var foreign = await reviews.ConfirmManyAsync(review.Id, [Ids.New()], null, Op, TestContext.Current.CancellationToken);
         var closed = await reviews.CloseAsync(review.Id, TestContext.Current.CancellationToken);
-        var late = await reviews.DecideAsync(review.Id, items[1].Id, ReviewDecision.Revoke, null, TestContext.Current.CancellationToken);
+        var late = await reviews.DecideAsync(review.Id, items[1].Id, ReviewDecision.Revoke, null, Op, TestContext.Current.CancellationToken);
         var closedAgain = await reviews.CloseAsync(review.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal((2, 1), (many.Value.Confirmed, many.Value.AlreadyDecided));
@@ -194,7 +290,7 @@ public class ReviewTests(AuthorizationFixture fixture)
         var started = await reviews.StartAsync(new StartReviewInput("Quarterly review", Today(time).AddDays(2), [new ReviewUnitInput(north.Id, IncludeChildren: true)]), TestContext.Current.CancellationToken);
         var review = started.Value;
         var items = await ItemsOfAsync(fixture, review.Id);
-        Assert.True((await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == ada).Id, ReviewDecision.Confirm, null, TestContext.Current.CancellationToken)).IsSuccess);
+        Assert.True((await reviews.DecideAsync(review.Id, items.Single(i => i.PrincipalId == ada).Id, ReviewDecision.Confirm, null, Op, TestContext.Current.CancellationToken)).IsSuccess);
 
         time.Advance(TimeSpan.FromDays(2 + 6)); // six days overdue: not yet
         await pass.RunAsync(TestContext.Current.CancellationToken);

@@ -62,6 +62,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<DelegationService>();
         services.AddScoped<IDelegations, DelegationQueries>();
         services.AddScoped<ReviewService>();
+        services.AddScoped<UnitReviewers>();
         services.AddScoped<ReviewEscalationPass>();
 
         // Who hears of late reviewers is an extension point (ADR-0037): a business module that knows managers replaces it.

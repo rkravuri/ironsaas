@@ -269,6 +269,10 @@ export const ReviewItemSchema = z.object({
   decision: z
     .object({ decision: ReviewDecisionSchema, comment: z.string().nullable(), decided_by: PersonSchema, decided_at: z.string(), assignment_removed: z.boolean() })
     .nullable(),
+  /** About the reader's own access: another reviewer decides it (ADR-0037). */
+  yours: z.boolean(),
+  /** Nobody but its own person may review its unit: the campaign's owner decides it. */
+  with_owner: z.boolean(),
 });
 export type ReviewItem = z.infer<typeof ReviewItemSchema>;
 export const ReviewItemListSchema = listSchema(ReviewItemSchema);

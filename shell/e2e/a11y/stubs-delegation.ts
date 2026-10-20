@@ -99,7 +99,8 @@ export async function stubReviews(target: Page): Promise<void> {
     return steps.map((step) => ({ id: step.id, name: step.name }));
   };
   const [operations, north, south] = [units[3], units[4], units[5]];
-  const people = ["Ada Lovelace", "Grace Hopper", "Linus Pauling", "Marie Curie", "Alan Turing", "Katherine Johnson", "Edsger Dijkstra", "Barbara Liskov"];
+  // The last is the viewer's own role, which another reviewer decides; the one before it only the review's owner may decide (ADR-0037).
+  const people = ["Ada Lovelace", "Grace Hopper", "Linus Pauling", "Marie Curie", "Alan Turing", "Katherine Johnson", "Edsger Dijkstra", me.display_name];
   const items = people.map((name, index) => {
     const unit = [operations, north, south][index % 3] ?? operations;
     const n = String(index).padStart(2, "0");
@@ -117,6 +118,8 @@ export async function stubReviews(target: Page): Promise<void> {
       unit_name: unit.name,
       unit_path: path(unit),
       decision: index < 3 ? { decision: index === 1 ? "revoke" : "confirm", comment: null, decided_by: grace, decided_at: days(-1), assignment_removed: index === 1 } : null,
+      yours: index === 7,
+      with_owner: index === 6,
     };
   });
   const byUnit = [operations, north, south].map((unit) => {
