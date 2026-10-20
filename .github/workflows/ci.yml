@@ -154,3 +154,5 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
+          # The exceptions, each with its reason.
+          trivyignores: .trivyignore.yaml

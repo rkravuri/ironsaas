@@ -9,8 +9,10 @@ RUN dotnet publish src/Hosts/Iron.Host.Fleet/Iron.Host.Fleet.csproj --configurat
 # The fleet drives Docker on the laptop (ADR-0019), so its image carries the Docker CLI and the Compose plugin, taken
 # from the official docker image, and runs as root to use the mounted socket. Not chiseled, unlike the other hosts.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
-COPY --from=docker:28-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=docker:28-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+# An exact CLI release, at least two weeks old (ADR-0003): docker:28-cli carried a Go library and a gRPC with critical
+# vulnerabilities. The root user is the one exception to non-root images, recorded in .trivyignore.yaml.
+COPY --from=docker:29.8.1-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:29.8.1-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
 WORKDIR /app
 COPY --from=build /app .
 RUN mkdir -p /var/lib/foundation/units

@@ -10,6 +10,8 @@ RUN dotnet publish src/Hosts/Iron.Host.ControlPlane/Iron.Host.ControlPlane.cspro
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS runtime
 WORKDIR /app
 COPY --from=build /app .
+# The base image's own non-root user, said here so the image's scan and its readers see it.
+USER $APP_UID
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 CMD ["dotnet", "Iron.Host.ControlPlane.dll", "health"]
 ENTRYPOINT ["dotnet", "Iron.Host.ControlPlane.dll"]
