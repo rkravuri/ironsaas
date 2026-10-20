@@ -7,14 +7,14 @@
 | Document title | Catalogue: supplier items, supplier catalogues and shopping, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `CAT-`, in blocks of twenty per area (ADR-0041); the table is `catalogue-requirements.csv` |
-| Version | 0.1 SKELETON (the split of 2026-10-20) |
+| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers. The sections marked "after the checkpoint" are written then. |
+| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Items, categories, units and suppliers are the Business PRD's (BF-041 to BF-044, BF-101); contract items are the Contracts product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Supplier items, catalogues and shopping moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The item master went to the Business PRD.
+Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Supplier items, catalogues and shopping moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The item master went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -24,7 +24,8 @@ Approved content to buy from: supplier items with their prices, catalogues that 
 
 ### 1.2 Goals (outcomes)
 
-Written after the checkpoint.
+1. Requesters buy from published content at agreed prices: catalogue and contract items within their validity (CAT-004, CAT-005, CAT-022).
+2. Suppliers maintain their catalogues, and no price changes without the buyer's acceptance (CAT-002, CAT-003).
 
 ### 1.3 Lessons from the current product
 
@@ -205,7 +206,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* CAT-004, REQ-001 (event)
 
-**Notes:** Was FF-045. Converting the cart publishes an event; Requests, a later product, creates the draft request when it handles it (ADR-0042).
+**Notes:** Was FF-045. Converting the cart publishes an event that Requests, a later product, handles by creating the draft request from the cart, which it reads through this product's Contracts; this product hears of the request it became only through Requests' event (ADR-0042).
 
 #### CAT-022 Contract items in the catalogue
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Shopping
@@ -263,7 +264,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ## 7. Supplier views
 
-What the supplier sees and does in the portal for this product; the narrative is written after the checkpoint. The requirements (CAT-061 to CAT-080):
+In the portal the supplier downloads templates, uploads catalogues, sees each revision with its diff and the buyer's comments, and its current published items (CAT-061). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+
+The requirements (CAT-061 to CAT-080):
 
 #### CAT-061 Catalogue in the portal
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Supplier views
@@ -295,17 +298,25 @@ From the archived PRD's section 7.2: Catalogue: Draft → Accepted → Published
 
 ## 9. Records and signatures (Part 11)
 
-Which records are approved, acknowledged or signed and so need electronic signatures (TF-063, TF-219), which need an audit-trail review, and their retention class (TF-066). Written after the checkpoint.
+Records approved, acknowledged or signed carry an electronic signature (TF-063) with signer, time, meaning and record version, shown and printed as TF-219 asks; a tenant may require re-authentication at signing for the record types it selects. The table names this product's; the mechanism is the kernel's and is not repeated here.
+
+| Record | Electronic signature (TF-063) | Audit-trail review (TF-219) |
+|---|---|---|
+| Catalogue revision (CAT-003) | The buyer's acceptance or rejection, whole or per line, meaning approved or rejected | Yes: accepted price changes |
+| Catalogue publishing (CAT-004, CAT-007) | Not signed; audited | No |
+| Supplier items and prices (CAT-001, CAT-005) | Not signed; changes tracked (TF-062) | No |
+
+Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion.
 
 ## 10. Visibility tags
 
-How this product's records take their tags (TF-241, rule 6). Written after the checkpoint.
+A catalogue, its lines and the supplier items take their supplier's tags (TF-241, rule 6), so a buyer group that may not see a supplier does not see its prices either; contract items in browsing (CAT-022) take their contract's. `[Decision]`: proposed as written.
 
 ## 11. Data, integration and reports
 
 ### 11.1 Data notes
 
-Written after the checkpoint.
+Supplier items and catalogue lines carry their prices with validity and currency, and a price change never reaches an issued order (CAT-005). Catalogues and revisions have public numbers from the kernel's numbering (TF-166), standard columns, version, custom fields (TF-200), attachments for images (TF-160) and tracked change history (TF-062).
 
 ### 11.2 Integrations
 
@@ -317,23 +328,46 @@ From the archived PRD's section 8.4: catalogue status.
 
 ### 11.4 Search, exports and analytics feed
 
-What this product indexes for search (TF-204), exports for audit and the ERP (TF-203, TF-205, TF-206) and feeds to analytics (TF-089, TF-203), as the archived FF-164 to FF-166 asked. Declared after the checkpoint.
+- Search (TF-204): catalogue lines and supplier items by name, description, part number and attributes, with the tenant's synonyms (CAT-023); the items themselves are indexed by the Business layer.
+- Exports (TF-203, TF-205, TF-206): supplier items and prices to the ERP through export definitions; the catalogue status for auditors.
+- Analytics feed (TF-089, TF-203): the daily snapshot of catalogue status and prices.
+
+These are what the archived FF-164 to FF-166 asked of this product; the mechanisms are the kernel's.
 
 ## 12. Dependencies
 
-The business and kernel requirements this product needs, by identifier. Written after the checkpoint.
+### 12.1 Its place in the process order
+
+Third, after Supplier management and Contracts (ADR-0042): it calls Contracts for the contract items it shows (CAT-022 on CON-002), and hears from Requests only through its events.
+
+### 12.2 What it uses
+
+- Kernel, cited by its requirements: TF-171 (the grid), TF-203 (saved views and exports), TF-204 (search), TF-205 (imports). Through its sections: TF-035, TF-063 and TF-219, TF-241, TF-243.
+- Business: BF-003 (organisation of records), BF-041 (items), BF-101 (suppliers).
+- Earlier products: Contracts (CON-002, contract items and prices).
+
+### 12.3 Events
+
+- Publishes: cart converted, which Requests handles by creating the draft request from the cart (CAT-021); revision submitted, accepted and rejected; catalogue published and unpublished.
+- Subscribes: from Requests, request created from a cart (CAT-021, `REQ-001 (event)`).
+
+### 12.4 Extension points it implements
+
+- BF-207: supplier items and catalogue lines use items and suppliers.
 
 ## 13. Layer, module, schema and permissions
 
-Written after the checkpoint; the proposed module is `Iron.Products.Catalogue` (schema `products_catalogue`). The archived PRD's permission catalogue (its section 8.3) named `catalogue.catalogue.{read,accept,reject,publish}` for catalogues; its `catalogue.item.*` is now the Business item master's. Permission names name the module, so they follow it once it is settled.
+The module is `Iron.Products.Catalogue` (schema `products_catalogue`), its shell module `shell/src/modules/products/catalogue/`, licensed as a module (ADR-0034).
+
+Permissions proposed (`[Decision]` for the names): `catalogue.supplier_items.{read,manage}`, `catalogue.catalogues.{read,accept,reject,publish}`, `catalogue.synonyms.manage`, `catalogue.reports.read`. They replace the archived PRD's `catalogue.catalogue.{read,accept,reject,publish}`; its `catalogue.item.*` is now the Business item master's.
 
 ## 14. Configuration
 
-Written after the checkpoint.
+Search synonyms (CAT-023) and the organisations a catalogue is published to (CAT-007). None of the archived PRD's section 8.5 settings is this product's.
 
 ## 15. Slices
 
-Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are proposed in the technical PRD's section 7 after the checkpoint.
+Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are in the technical PRD's section 7.
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|
@@ -360,4 +394,8 @@ Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each ot
 
 ## 17. Glossary
 
-Written after the checkpoint.
+| Term | Meaning |
+|---|---|
+| Supplier item | An item one supplier offers, with its part number, price, unit, lead time and validity |
+| Catalogue revision | A supplier's upload of its catalogue, accepted or rejected by the buyer, whole or per line |
+

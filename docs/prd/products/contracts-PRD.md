@@ -7,14 +7,14 @@
 | Document title | Contracts: the contract repository, pricing and consumption, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `CON-`, in blocks of twenty per area (ADR-0041); the table is `contracts-requirements.csv` |
-| Version | 0.1 SKELETON (the split of 2026-10-20) |
+| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers. The sections marked "after the checkpoint" are written then. |
+| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Suppliers and items are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -24,7 +24,8 @@ Agreed terms in one place: contracts with suppliers, their items and prices, pub
 
 ### 1.2 Goals (outcomes)
 
-Written after the checkpoint.
+1. Orders that reference a contract use its prices and stop or warn at its ceiling (ORD-008, CON-021).
+2. Owners hear before a contract runs out or expires (CON-021, CON-022).
 
 ## 2. Scope
 
@@ -228,7 +229,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ## 7. Supplier views
 
-The archived PRD gave suppliers no contract view: its portal requirements cover orders, shipment notices, receipts, invoices, catalogues, company data, questionnaires and tasks. What a supplier sees of its contracts is written after the checkpoint.
+The archived PRD gave suppliers no contract view: its portal requirements cover orders, shipment notices, receipts, invoices, catalogues, company data, questionnaires and tasks. `[Decision]` for the design session: proposed, a supplier sees the published contracts it is party to, read-only, with their items, prices and remaining quantity, written as a requirement once confirmed. Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
 
 ## 8. Rules and state machines
 
@@ -242,17 +243,25 @@ From the archived PRD's section 7.2: Contract: Draft → In approval → Approve
 
 ## 9. Records and signatures (Part 11)
 
-Which records are approved, acknowledged or signed and so need electronic signatures (TF-063, TF-219), which need an audit-trail review, and their retention class (TF-066). Written after the checkpoint.
+Records approved, acknowledged or signed carry an electronic signature (TF-063) with signer, time, meaning and record version, shown and printed as TF-219 asks; a tenant may require re-authentication at signing for the record types it selects. The table names this product's; the mechanism is the kernel's and is not repeated here.
+
+| Record | Electronic signature (TF-063) | Audit-trail review (TF-219) |
+|---|---|---|
+| Contract approval and publishing (CON-003) | Each approval decision, new and change | Yes: changes to published contracts |
+| Renewal (CON-022) | A new version, approved as a change | No |
+| Signed copies (CON-004) | An attachment; signing the contract itself is later scope, with authoring and negotiation | No |
+
+Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion.
 
 ## 10. Visibility tags
 
-How this product's records take their tags (TF-241, rule 6). Written after the checkpoint.
+A contract carries the tags its owner sets from the tags they hold (TF-241, rule 5), and its items take the contract's (rule 6); the Business PRD names contracts among the records that carry tags (BF-181). `[Decision]`: proposed as written.
 
 ## 11. Data, integration and reports
 
 ### 11.1 Data notes
 
-Written after the checkpoint.
+Every contract has a public number from the kernel's numbering at submission (TF-166), standard columns, version, custom fields (TF-200), attachments (TF-160) and tracked change history (TF-062); consumption is kept per organisation and in total (CON-006).
 
 ### 11.2 Integrations
 
@@ -264,23 +273,45 @@ From the archived PRD's section 8.4: contract consumption and expiry (CON-041).
 
 ### 11.4 Search, exports and analytics feed
 
-What this product indexes for search (TF-204), exports for audit and the ERP (TF-203, TF-205, TF-206) and feeds to analytics (TF-089, TF-203), as the archived FF-164 to FF-166 asked. Declared after the checkpoint.
+- Search (TF-204): contracts by number, name, supplier and the clause fields (CON-004).
+- Exports (TF-203, TF-205, TF-206): approved contracts with their decisions for auditors.
+- Analytics feed (TF-089, TF-203): the daily snapshot of contract consumption.
+
+These are what the archived FF-164 to FF-166 asked of this product; the mechanisms are the kernel's.
 
 ## 12. Dependencies
 
-The business and kernel requirements this product needs, by identifier. Written after the checkpoint.
+### 12.1 Its place in the process order
+
+Second (ADR-0042): it calls no product. Orders records each release and its cancellation through this product's Contracts (ORD-008), and Catalogue reads its contract items (CAT-022).
+
+### 12.2 What it uses
+
+- Kernel, cited by its requirements: TF-090 (approvals), TF-120 (jobs), TF-160 (files), TF-205 (imports). Through its sections: TF-035, TF-063 and TF-219, TF-166, TF-241, TF-243.
+- Business: BF-003 (organisation of records), BF-041 (items), BF-101 (suppliers).
+
+### 12.3 Events
+
+- Publishes: contract published, unpublished, renewed and expired; a threshold reached.
+- Subscribes: from Orders, order issued and cancelled, for the coverage report's spend off contract (CON-041).
+
+### 12.4 Extension points it implements
+
+- BF-207: contracts use suppliers and items.
 
 ## 13. Layer, module, schema and permissions
 
-Written after the checkpoint. The module is `Iron.Products.ContractManagement` (schema `products_contract_management`), accepted at the checkpoint; the product keeps the name Contracts. The archived PRD's permission catalogue (its section 8.3) named `contracts.contract.{read,create,update,publish}`.
+The module is `Iron.Products.ContractManagement` (schema `products_contract_management`), accepted at the checkpoint, since `Iron.Products.Contracts` would have the public project `Iron.Products.Contracts.Contracts`; the product keeps the name Contracts. Its shell module is `shell/src/modules/products/contract-management/`, licensed as a module (ADR-0034).
+
+Permissions proposed (`[Decision]` for the names): `contract_management.contracts.{read,create,update,approve,publish}`, `contract_management.reports.read`. They replace the archived PRD's `contracts.contract.{read,create,update,publish}`.
 
 ## 14. Configuration
 
-Written after the checkpoint.
+Whether exceeding a contract's ceiling blocks or warns, and the threshold that alerts the owner (80 percent in CON-021's example), are this product's settings (TF-057).
 
 ## 15. Slices
 
-Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are proposed in the technical PRD's section 7 after the checkpoint.
+Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are in the technical PRD's section 7.
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|
@@ -308,4 +339,8 @@ Decided at the PRD split's checkpoint, on 2026-10-20:
 
 ## 17. Glossary
 
-Written after the checkpoint.
+| Term | Meaning |
+|---|---|
+| Ceiling | The quantity or value a contract or a contract item allows |
+| Consumption | The quantity and value released against a contract by issued order lines, returned on cancellation or close-short |
+

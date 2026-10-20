@@ -7,14 +7,14 @@
 | Document title | Invoicing: invoices, matching, approval for payment and credit notes, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `INV-`, in blocks of twenty per area (ADR-0041); the table is `invoicing-requirements.csv` |
-| Version | 0.1 SKELETON (the split of 2026-10-20) |
+| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers. The sections marked "after the checkpoint" are written then. |
+| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`; its module was called Payables), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Finance masters, budgets, tax codes, payment terms and suppliers are the Business PRD's; orders and receipts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
+Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
 
 ## 1. Vision and goals
 
@@ -591,7 +591,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ## 7. Supplier views
 
-What the supplier sees and does in the portal for this product; the narrative is written after the checkpoint. The requirements (INV-101 to INV-120):
+In the portal the supplier creates order-based, receipt-based and proforma invoices and credit notes for its orders, uploads its invoice document, sees the validations before it submits, and follows status, holds, disputes and payment (INV-101). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+
+The requirements (INV-101 to INV-120):
 
 #### INV-101 Invoices in the portal
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Supplier views
@@ -655,11 +657,22 @@ Credit note: Draft → Submitted → Approved → Applied.
 
 ## 9. Records and signatures (Part 11)
 
-Which records are approved, acknowledged or signed and so need electronic signatures (TF-063, TF-219), which need an audit-trail review, and their retention class (TF-066). Written after the checkpoint.
+Records approved, acknowledged or signed carry an electronic signature (TF-063) with signer, time, meaning and record version, shown and printed as TF-219 asks; a tenant may require re-authentication at signing for the record types it selects. The table names this product's; the mechanism is the kernel's and is not repeated here.
+
+| Record | Electronic signature (TF-063) | Audit-trail review (TF-219) |
+|---|---|---|
+| Invoice approval (INV-041) | Each approval decision, meaning approved or rejected | Yes: approvals that followed a released hold |
+| Hold release (INV-022, INV-026) | The release with its reason, signed by the person who releases it | Yes: every release |
+| Payment release (INV-043) | The release for payment, meaning approved; `[Decision]`: re-authentication required by default | Yes |
+| Credit notes (INV-044) | Each approval decision | No |
+| Capture suggestions (INV-009) | The user's confirmation, beside the AI service's suggestion (TF-208) | Yes: confirmations of suggested values |
+| Split overrides on order-based lines (INV-007 AC3) | Not signed; audited | Yes |
+
+Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion.
 
 ## 10. Visibility tags
 
-How this product's records take their tags (TF-241, rule 6). Written after the checkpoint.
+An order-based invoice takes its order's tags, a non-order invoice its supplier's, and a credit note its invoice's (TF-241, rule 6). `[Decision]`: proposed as written.
 
 ## 11. Data, integration and reports
 
@@ -681,15 +694,38 @@ From the archived PRD's section 8.4: invoices by status and age; invoice holds a
 
 ### 11.4 Search, exports and analytics feed
 
-What this product indexes for search (TF-204), exports for audit and the ERP (TF-203, TF-205, TF-206) and feeds to analytics (TF-089, TF-203), as the archived FF-164 to FF-166 asked. Declared after the checkpoint.
+- Search (TF-204): invoices and credit notes by number, supplier invoice number, supplier and order number.
+- Exports (TF-203, TF-205, TF-206): approved invoices and credit notes to the ERP (section 11.2), and the period's approved invoices with their decisions and signatures for auditors.
+- Analytics feed (TF-089, TF-203): the daily snapshot of invoices, holds and payment status.
+
+These are what the archived FF-164 to FF-166 asked of this product; the mechanisms are the kernel's.
 
 ## 12. Dependencies
 
-The business and kernel requirements this product needs, by identifier. Written after the checkpoint.
+### 12.1 Its place in the process order
+
+Last (ADR-0042): it calls Orders, Receiving and Requests, and no product depends on it except through its events.
+
+### 12.2 What it uses
+
+- Kernel, cited by its requirements: TF-035 and TF-234 (for its supplier views), TF-057 (settings), TF-084 (row locks), TF-090 (approvals), TF-105 (webhooks), TF-120 and TF-123 (jobs), TF-171 (the grid), TF-203 (saved views and exports), TF-208 (the AI service). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
+- Business: BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-204 (country packs); and through their use, BF-074 (HSN and SAC codes), BF-083 (bill-to), BF-105 (bank accounts for payment), BF-143 (approvers), BF-163 (number series).
+- Earlier products: Orders (INV-001, INV-022 and INV-024 on ORD-005, the stamped match levels and tolerances); Receiving (the approved receipts and the buckets, which it updates for the invoiced quantities: INV-001 to INV-003, INV-021, INV-027, INV-042, INV-044, INV-082 and INV-083); Requests (INV-004 and INV-007 on REQ-003, the split rules).
+
+### 12.3 Events
+
+- Publishes: invoice submitted, held, released, approved, rejected, disputed, cancelled, approved for payment and paid; credit note approved. Supplier management's indicators and the ERP (section 11.2) use them.
+- Subscribes: none.
+
+### 12.4 Extension points it implements
+
+- BF-207: invoice lines use suppliers, terms, tax codes, account strings and bank accounts.
 
 ## 13. Layer, module, schema and permissions
 
-Written after the checkpoint; the proposed module is `Iron.Products.Invoicing` (schema `products_invoicing`). The archived PRD's permission catalogue (its section 8.3) named `payables.invoice.{read,create,update,submit,approve,hold_release,dispute,cancel,release_payment}` and `payables.credit_note.*`, after the module then called Payables. Permission names name the module, so they follow it once it is settled.
+The module is `Iron.Products.Invoicing` (schema `products_invoicing`), its shell module `shell/src/modules/products/invoicing/`, licensed as a module (ADR-0034).
+
+Permissions proposed (`[Decision]` for the names): `invoicing.invoices.{read,read_all,create,update,submit,approve,dispute,cancel,release_payment}`, `invoicing.holds.release`, `invoicing.credit_notes.{read,create,approve}`, `invoicing.splits.override`, `invoicing.configuration.manage`, `invoicing.accruals.read`, `invoicing.reports.read`. They replace the archived PRD's `payables.invoice.*` and `payables.credit_note.*`, named after the module then called Payables.
 
 ## 14. Configuration
 
@@ -697,7 +733,7 @@ From the archived PRD's section 8.5: match levels by default (product 3-way, ser
 
 ## 15. Slices
 
-Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are proposed in the technical PRD's section 7 after the checkpoint.
+Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are in the technical PRD's section 7.
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|

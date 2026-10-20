@@ -7,14 +7,14 @@
 | Document title | The supplier portal and the Supplier Network experience: one portal for all suppliers of all customers, Product Requirements Document of a surface |
 | Layer | A surface, not a product (ADR-0029): the supplier's screens are served through the kernel's Supplier Network plane (TF-230 to TF-239), and each product contributes its supplier views in its own PRD's section 7 |
 | Identifier prefix | `SPX-`, in blocks of twenty per area (ADR-0041); the table is `supplier-portal-requirements.csv` |
-| Version | 0.1 SKELETON (the split of 2026-10-20) |
+| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers. The sections marked "after the checkpoint" are written then. |
+| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, with the design session's answers at the checkpoint (section 10.1). |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), the Technical Foundation PRD's section 3.6, ADR-0029 and ADR-0041. |
 | Dependency | The network itself (identity, registry, relationships, action index, delegated access, profile propagation) is the kernel's TF-230 to TF-239; the supplier record is the Business PRD's; the documents are the products'. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
+Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
 
 ## 1. Vision and goals
 
@@ -339,11 +339,17 @@ From the archived PRD's section 7.1:
 
 ## 8. Dependencies
 
-The kernel, business and product requirements this surface needs, by identifier. Written after the checkpoint.
+The surface sits above the products (ADR-0042): it may use any of them, and none depends on it.
+
+- Kernel: TF-025 (impersonation), TF-035 (record policies), TF-040 (entitlements, for the modules a customer enabled), TF-097 (tasks), TF-151 (digests), TF-230 to TF-236 and TF-239 (the Supplier Network plane), TF-243 (access in what is sent).
+- Business: BF-103 (contacts), BF-108 (enablement per organisation).
+- Products: Supplier management (SPX-021 on SUP-001 and SUP-002, SPX-025 on SUP-022 and SUP-023, SPX-028 on SUP-062), Orders (SPX-024 on ORD-021), Receiving (SPX-024 on RCV-001), Invoicing (SPX-024 on INV-002), and every product's supplier views (section 4).
+
+A supplier user acts with the supplier role in a delegated token (TF-234), never with a tenant role; each product's supplier views answer to that role.
 
 ## 9. Slices
 
-Where the moved requirements sat in the archived PRD's build plan (its section 9); its supplier-facing parts need the kernel's slice S8. The slices are proposed in the technical PRD's section 7 after the checkpoint.
+Where the moved requirements sat in the archived PRD's build plan (its section 9); its supplier-facing parts need the kernel's slice S8 (the technical PRD's section 7).
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|

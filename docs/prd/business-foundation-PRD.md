@@ -1226,6 +1226,14 @@ From the archived PRD's section 8.1: the largest tables of this layer (budget co
 
 Budget consumption by line and document (BF-068).
 
+### 8.4 Search, exports and analytics feed
+
+- Search (TF-204): suppliers by number, name and tax identifier; items by code, name and description; projects by code and name. The products find them here rather than indexing them again.
+- Exports (TF-203, TF-205, TF-206): the masters to and from the ERP (BF-206); for auditors, the history of the delegation of authority matrix (BF-142) and the budget adjustments and transfers (BF-067).
+- Analytics feed (TF-089, TF-203): the daily snapshot of budgets, reserved, consumed and available per line (BF-064).
+
+These are what the archived FF-164 to FF-166 asked of the masters; the mechanisms are the kernel's.
+
 ## 9. Modules, schemas and permissions
 
 Proposed by the placement test (ADR-0029): each holds masters or configuration that two or more products read, and none holds a product's documents. `[Decision]`: the modules and the permission names below, for the design session to confirm.

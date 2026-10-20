@@ -7,14 +7,14 @@
 | Document title | Receiving: shipment notices, goods and service receipts, returns, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `RCV-`, in blocks of twenty per area (ADR-0041); the table is `receiving-requirements.csv` |
-| Version | 0.1 SKELETON (the split of 2026-10-20) |
+| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers, and the expanded service receipts. The sections marked "after the checkpoint" are written then. |
+| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Units of measure and warehouses are the Business PRD's; orders and invoices are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
+Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -24,7 +24,8 @@ Reliable receiving: suppliers announce what they ship, receivers record what arr
 
 ### 1.2 Goals (outcomes)
 
-Written after the checkpoint.
+1. A receipt never takes more than is open within tolerance, even when two are made at once (RCV-021, RCV-022).
+2. Only approved receipts and accepted service entries are invoiceable (RCV-024, RCV-045).
 
 ### 1.3 Lessons from the current product
 
@@ -447,7 +448,9 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 
 ## 7. Supplier views
 
-What the supplier sees and does in the portal for this product; the narrative is written after the checkpoint. The requirements (RCV-121 to RCV-140):
+In the portal the supplier creates and submits shipment notices from its orders and sees their status (RCV-121), sees its receipts and returns with quantities, inspection results and PDFs (RCV-122), and records service entries for the requester's acceptance where the tenant allows it (RCV-042, a `[Decision]`). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+
+The requirements (RCV-121 to RCV-140):
 
 #### RCV-121 Shipment notices in the portal
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Supplier views
@@ -517,11 +520,20 @@ Return: Draft → Submitted → Approved.
 
 ## 9. Records and signatures (Part 11)
 
-Which records are approved, acknowledged or signed and so need electronic signatures (TF-063, TF-219), which need an audit-trail review, and their retention class (TF-066). Written after the checkpoint.
+Records approved, acknowledged or signed carry an electronic signature (TF-063) with signer, time, meaning and record version, shown and printed as TF-219 asks; a tenant may require re-authentication at signing for the record types it selects. The table names this product's; the mechanism is the kernel's and is not repeated here.
+
+| Record | Electronic signature (TF-063) | Audit-trail review (TF-219) |
+|---|---|---|
+| Shipment notice approval (RCV-001) | The approval decision, where configured | No |
+| Receipt approval (RCV-024) | Each approval decision; the receiver's receipt is attributed and audited (TF-060) | Yes: cancellations of approved receipts (RCV-025) |
+| Service entry acceptance (RCV-045, RCV-046) | The requester's acceptance, meaning approved, or rejection | Yes: partial acceptances |
+| Returns (RCV-061) | The approval decision | Yes |
+
+Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion.
 
 ## 10. Visibility tags
 
-How this product's records take their tags (TF-241, rule 6). Written after the checkpoint.
+Shipment notices, receipts, returns and service entries take their order's tags (TF-241, rule 6). `[Decision]`: proposed as written.
 
 ## 11. Data, integration and reports
 
@@ -541,15 +553,38 @@ From the archived PRD's section 8.4: receipts pending approval.
 
 ### 11.4 Search, exports and analytics feed
 
-What this product indexes for search (TF-204), exports for audit and the ERP (TF-203, TF-205, TF-206) and feeds to analytics (TF-089, TF-203), as the archived FF-164 to FF-166 asked. Declared after the checkpoint.
+- Search (TF-204): receipts and shipment notices by number, order number, supplier and delivery note number.
+- Exports (TF-203, TF-205, TF-206): approved receipts to the ERP (section 11.2), and approved receipts with their decisions for auditors.
+- Analytics feed (TF-089, TF-203): the daily snapshot of the buckets (RCV-081).
+
+These are what the archived FF-164 to FF-166 asked of this product; the mechanisms are the kernel's.
 
 ## 12. Dependencies
 
-The business and kernel requirements this product needs, by identifier. Written after the checkpoint.
+### 12.1 Its place in the process order
+
+Sixth (ADR-0042): it calls Orders, and Invoicing, the later product, writes the invoiced buckets through this product's Contracts, so Receiving hears nothing from it.
+
+### 12.2 What it uses
+
+- Kernel, cited by its requirements: TF-035 and TF-234 (for its supplier views), TF-037 (delegation of the receiving duty), TF-084 (row locks), TF-090 (approvals), TF-120 and TF-123 (jobs), TF-150 (notifications), TF-160 (files), TF-162 (rendering), TF-171 (the grid), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
+- Business: BF-043 (units of measure); and through their use, BF-082 and BF-083 (warehouses and locations), BF-163 (number series).
+- Earlier products: Orders (RCV-001, RCV-021, RCV-042 and RCV-081 on ORD-005 and ORD-006: the issued lines, their stamped match levels and tolerances, holds and closure).
+
+### 12.3 Events
+
+- Publishes: shipment notice submitted; goods received (receipt approved), receipt rejected and cancelled; return approved; service entry accepted; and the bucket changes, received and invoiced, from which Orders keeps its quantities (ORD-121).
+- Subscribes: none.
+
+### 12.4 Extension points it implements
+
+- BF-207: receipts use warehouses and units of measure.
 
 ## 13. Layer, module, schema and permissions
 
-Written after the checkpoint; the proposed module is `Iron.Products.Receiving` (schema `products_receiving`). The archived PRD's permission catalogue (its section 8.3) named `receiving.asn.*` and `receiving.receipt.{read,create,submit,approve,cancel,return}`, each with `read_all` versus `read_own` variants where ownership applies.
+The module is `Iron.Products.Receiving` (schema `products_receiving`), its shell module `shell/src/modules/products/receiving/`, licensed as a module (ADR-0034).
+
+Permissions proposed (`[Decision]` for the names): `receiving.shipment_notices.{read,create,submit,approve}`, `receiving.receipts.{read,read_all,create,submit,approve,cancel}`, `receiving.returns.{create,approve}`, `receiving.service_entries.{create,accept}`, `receiving.reports.read`. They follow the archived PRD's `receiving.asn.*` and `receiving.receipt.*`.
 
 ## 14. Configuration
 
@@ -557,7 +592,7 @@ From the archived PRD's section 8.5: receipt approval required (tenant-wide in v
 
 ## 15. Slices
 
-Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are proposed in the technical PRD's section 7 after the checkpoint.
+Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are in the technical PRD's section 7.
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|

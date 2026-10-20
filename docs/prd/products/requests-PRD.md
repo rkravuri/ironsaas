@@ -7,14 +7,14 @@
 | Document title | Purchase requests: controlled demand with budget, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `REQ-`, in blocks of twenty per area (ADR-0041); the table is `requests-requirements.csv` |
-| Version | 0.1 SKELETON (the split of 2026-10-20) |
+| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers. The sections marked "after the checkpoint" are written then. |
+| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, items, units, locations and suppliers are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
+Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -243,7 +243,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* REQ-007, ORD-001 (event)
 
-**Notes:** Was FF-058. Converting publishes an event; Orders, a later product, creates the draft orders when it handles it (ADR-0042). Decision F-01 confirmed.
+**Notes:** Was FF-058. Converting publishes an event that Orders, a later product, handles by creating the draft orders; Orders publishes the orders it created, and this product marks the lines and the request Partially Ordered or Ordered when it hears of them (ADR-0042). Decision F-01 confirmed.
 
 #### REQ-022 Partial ordering and close-short
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Ordering
@@ -319,7 +319,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ## 7. Supplier views
 
-Suppliers do not see requests; they see the orders made from them (ORD-101). Written in full after the checkpoint.
+Suppliers do not see requests; they see the orders made from them (ORD-101). This product has no supplier view.
 
 ## 8. Rules and state machines
 
@@ -351,11 +351,19 @@ stateDiagram-v2
 
 ## 9. Records and signatures (Part 11)
 
-Which records are approved, acknowledged or signed and so need electronic signatures (TF-063, TF-219), which need an audit-trail review, and their retention class (TF-066). Written after the checkpoint.
+Records approved, acknowledged or signed carry an electronic signature (TF-063) with signer, time, meaning and record version, shown and printed as TF-219 asks; a tenant may require re-authentication at signing for the record types it selects. The table names this product's; the mechanism is the kernel's and is not repeated here.
+
+| Record | Electronic signature (TF-063) | Audit-trail review (TF-219) |
+|---|---|---|
+| Request approval (REQ-007) | Each approval decision, meaning approved or rejected | Yes: approvals that went ahead with a budget shortfall in warning mode (REQ-006 AC2) |
+| Cancellation and close-short (REQ-008, REQ-022) | Not signed; audited with the reason | Yes |
+| Shared templates (REQ-041) | Not signed | No |
+
+Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion.
 
 ## 10. Visibility tags
 
-How this product's records take their tags (TF-241, rule 6). Written after the checkpoint.
+A request takes the tags of its project (BF-075) when it has one; otherwise it starts without tags, and its requester may add the tags they hold (TF-241, rules 5 and 6). `[Decision]`: proposed as written; the alternative is to take the tags of the suppliers or items on its lines.
 
 ## 11. Data, integration and reports
 
@@ -373,15 +381,38 @@ From the archived PRD's section 8.4: open requests. The request's cycle times ar
 
 ### 11.4 Search, exports and analytics feed
 
-What this product indexes for search (TF-204), exports for audit and the ERP (TF-203, TF-205, TF-206) and feeds to analytics (TF-089, TF-203), as the archived FF-164 to FF-166 asked. Declared after the checkpoint.
+- Search (TF-204): requests by number, requester, supplier, item and free text.
+- Exports (TF-203, TF-205, TF-206): approved requests with their approval decisions and signatures, for auditors (TF-064).
+- Analytics feed (TF-089, TF-203): the daily snapshot of requests, their lines and splits.
+
+These are what the archived FF-164 to FF-166 asked of this product; the mechanisms are the kernel's.
 
 ## 12. Dependencies
 
-The business and kernel requirements this product needs, by identifier. Written after the checkpoint.
+### 12.1 Its place in the process order
+
+Fourth (ADR-0042): it calls Supplier management, Contracts and Catalogue, and hears from Orders only through its events.
+
+### 12.2 What it uses
+
+- Kernel, cited by its requirements: TF-033 (scoped assignments), TF-035 (record policies), TF-090 and TF-091 (approvals and resolvers), TF-171 (the grid), TF-202 (hooks), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166 (numbering), TF-241, TF-243.
+- Business: BF-001 (legal entities), BF-041 and BF-043 (items, units), BF-061 to BF-066 (charts, account strings, budget periods, budget check and consumption), BF-070 (rates); and through their use on lines, BF-025 (a person's defaults), BF-075 (projects), BF-081 and BF-083 (locations), BF-143 (approvers from the delegation of authority), BF-163 (number series).
+- Earlier products: Supplier management (REQ-005 on SUP-004, a line's supplier published, not on hold, without a critical flag or a blocking expired document); Contracts (a contract item's price and reference on a line, CAT-022); Catalogue (the cart it converts, read through Catalogue's Contracts).
+
+### 12.3 Events
+
+- Publishes: request approved, converted, cancelled and closed short. Orders creates draft orders from a conversion.
+- Subscribes: from Catalogue, cart converted, to create the draft request (CAT-021); from Orders, orders created from request lines, to mark the lines and the request Partially Ordered or Ordered (REQ-021, `ORD-001 (event)`) and to keep the remaining quantities (REQ-022).
+
+### 12.4 Extension points it implements
+
+- BF-207: request lines use items, suppliers, account strings, locations and projects.
 
 ## 13. Layer, module, schema and permissions
 
-Written after the checkpoint; the proposed module is `Iron.Products.Requests` (schema `products_requests`). The archived PRD's permission catalogue (its section 8.3) named `requests.request.{read,create,update,submit,cancel,convert,close}`, each with `read_all` versus `read_own` variants where ownership applies.
+The module is `Iron.Products.Requests` (schema `products_requests`), its shell module `shell/src/modules/products/requests/`, licensed as a module (ADR-0034).
+
+Permissions proposed (`[Decision]` for the names): `requests.requests.{read,read_all,create,update,submit,cancel,convert,close}`, `requests.templates.share`, `requests.reports.read`. `read` covers a person's own requests and those requested for them through the record policy; `read_all` every request in the person's scope, as the archived PRD's `read_own` and `read_all` did.
 
 ## 14. Configuration
 
@@ -389,7 +420,7 @@ From the archived PRD's section 8.5: multi-currency on lines. Budget validation 
 
 ## 15. Slices
 
-Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are proposed in the technical PRD's section 7 after the checkpoint.
+Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are in the technical PRD's section 7.
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|

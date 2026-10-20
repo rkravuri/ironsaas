@@ -7,14 +7,14 @@
 | Document title | Supplier management: the supplier's life cycle with the tenant, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `SUP-`, in blocks of twenty per area (ADR-0041); the table is `supplier-management-requirements.csv` |
-| Version | 0.1 SKELETON (the split of 2026-10-20) |
+| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Skeleton for the design session's checkpoint: the requirements moved from the Functional Foundation PRD under their new identifiers. The sections marked "after the checkpoint" are written then. |
+| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | The supplier record and its parts are the Business PRD's (BF-101 to BF-108); every mechanism is a kernel capability cited by its TF identifier. The supplier's own screens are served through the supplier portal surface (`../surfaces/supplier-portal-PRD.md`). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
+Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -24,7 +24,11 @@ Only vetted suppliers receive orders. A buyer invites a supplier, the supplier r
 
 ### 1.2 Goals (outcomes)
 
-Written after the checkpoint. The archived PRD's goal 3 (suppliers self-serve, onboarding included) is the supplier portal surface's goal 1.
+1. Only suppliers that are approved and published, with their mandatory documents valid, receive orders (SUP-004, SUP-041).
+2. A change to a supplier's controlled fields, its bank accounts above all, takes effect only after approval and verification (SUP-022, SUP-023).
+3. Each supplier's status, compliance, risks and performance are in one place (SUP-061, SUP-062).
+
+The archived PRD's goal 3 (suppliers self-serve, onboarding included) is the supplier portal surface's goal 1.
 
 ### 1.3 Lessons from the current product
 
@@ -54,9 +58,14 @@ From the archived PRD's list: supplier risk scoring from external data; multi-ti
 ```mermaid
 erDiagram
   SUPPLIER ||--o{ SUPPLIER_DOCUMENT : holds
+  SUPPLIER ||--o{ QUESTIONNAIRE_RESPONSE : answers
+  SUPPLIER ||--o{ RISK_FLAG : carries
+  SUPPLIER ||--o{ PENDING_CHANGE : "proposed for"
+  SUPPLIER ||--o{ PERFORMANCE_INDICATOR : "measured by"
+  SUPPLIER_ENABLEMENT ||--o| ENABLEMENT_APPROVAL : "approved by"
 ```
 
-`SUPPLIER` is the Business master (BF-101), drawn for context. Questionnaire responses, risk flags, pending changes and performance indicators attach to it; the model is drawn in full after the checkpoint.
+`SUPPLIER` and `SUPPLIER_ENABLEMENT` are the Business masters (BF-101, BF-108), drawn for context. A questionnaire response is an instance of a kernel form (TF-242); approvals are the kernel's workflow chains (TF-090).
 
 ## 5. Processes
 
@@ -358,7 +367,9 @@ Portal ownership (was FF-036) moved to the supplier portal surface at the checkp
 
 ## 7. Supplier views
 
-What the supplier sees and does in the portal for this product; the narrative is written after the checkpoint. The requirements (SUP-101 to SUP-120):
+In the portal (`../surfaces/supplier-portal-PRD.md`) the supplier registers once and completes this tenant's sections (SUP-002, through SPX-021), maintains its company data and sees what awaits each customer's approval (SUP-101), answers questionnaires and uploads the documents the tenant requires, with what is missing for publishing (SUP-102), and sees its relationship's status and the indicators the customer shares (SPX-028). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+
+The requirements (SUP-101 to SUP-120):
 
 #### SUP-101 Company data in the portal
 *Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Supplier views
@@ -427,11 +438,21 @@ stateDiagram-v2
 
 ## 9. Records and signatures (Part 11)
 
-Which records are approved, acknowledged or signed and so need electronic signatures (TF-063, TF-219), which need an audit-trail review, and their retention class (TF-066). Written after the checkpoint.
+Records approved, acknowledged or signed carry an electronic signature (TF-063) with signer, time, meaning and record version, shown and printed as TF-219 asks; a tenant may require re-authentication at signing for the record types it selects. The table names this product's; the mechanism is the kernel's and is not repeated here.
+
+| Record | Electronic signature (TF-063) | Audit-trail review (TF-219) |
+|---|---|---|
+| Supplier approval and publishing (SUP-004), organisation approval of an enablement (SUP-006) | Each approval decision, meaning approved or rejected | Yes: who approved which supplier, and in which organisation |
+| Bank account verification (SUP-023) | The approver's decision with the verification checklist, meaning approved; `[Decision]`: re-authentication required by default | Yes: every addition, change and verification |
+| Supplier change approval (SUP-022) | Each approval decision | Yes: controlled fields before and after |
+| Status changes and merges (SUP-021, SUP-024) | Not signed; audited with the reason (TF-060) | Yes: holds, deactivations and merges |
+| Documents to sign at invitation (SUP-001) and questionnaire responses (SUP-042) | Signed by the supplier user where the tenant asks (TF-164, TF-242) | No |
+
+Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion. `[Decision]`: a supplier's records close when its relationship ends.
 
 ## 10. Visibility tags
 
-How this product's records take their tags (TF-241, rule 6). Written after the checkpoint.
+The supplier master carries the tags (BF-181). This product's records about a supplier, its pending changes, documents, questionnaire responses, risk flags and indicators, take the supplier's tags (TF-241, rule 6) and change with them; a record of this product carries no tags of its own. `[Decision]`: proposed as written.
 
 ## 11. Data, integration and reports
 
@@ -451,17 +472,39 @@ From the archived PRD's section 8.4: supplier master with status and documents e
 
 ### 11.4 Search, exports and analytics feed
 
-What this product indexes for search (TF-204), exports for audit and the ERP (TF-203, TF-205, TF-206) and feeds to analytics (TF-089, TF-203), as the archived FF-164 to FF-166 asked. Declared after the checkpoint.
+- Search (TF-204): the supplier itself is indexed by the Business layer (by number, name and tax identifier); this product indexes its supplier documents by type and expiry.
+- Exports (TF-203, TF-205, TF-206): approved suppliers and bank changes to the ERP (section 11.2); for auditors, the period's supplier approvals and bank verifications with their decisions and signatures.
+- Analytics feed (TF-089, TF-203): the daily snapshot of supplier status, documents expiring and performance indicators.
+
+These are what the archived FF-164 to FF-166 asked of this product; the mechanisms are the kernel's.
 
 ## 12. Dependencies
 
-The business and kernel requirements this product needs, by identifier. Written after the checkpoint.
+### 12.1 Its place in the process order
+
+First of the products (ADR-0042): it calls no other product, and hears from the later ones only through their events.
+
+### 12.2 What it uses
+
+- Kernel, cited by its requirements: TF-018 (invitations), TF-028 (terms), TF-057 (settings), TF-090 (approvals), TF-120 (jobs), TF-150 (notifications), TF-164 (signature capture), TF-232 and TF-235 (the Supplier Network's relationships and profile propagation). Through its sections: TF-035 (record policies), TF-063 and TF-219 (signatures), TF-241 (visibility tags), TF-242 (forms, for questionnaires), TF-243 (access in what is sent).
+- Business: BF-101 (the supplier master), BF-105 (bank accounts), BF-108 (enablement per organisation).
+
+### 12.3 Events
+
+- Publishes: supplier approved, published, unpublished, on hold, released, deactivated and reactivated; bank account verified; document expired and renewed. The outbound integration (section 11.2) rests on them.
+- Subscribes: from Orders, order issued, acknowledged, declined, closed and cancelled; from Receiving, receipt submitted, approved and rejected; from Invoicing, invoice submitted, held, approved, rejected and cancelled. SUP-062's indicators and SUP-021's warning about open documents count them.
+
+### 12.4 Extension points it implements
+
+- BF-207: which of its records use a master (a supplier's documents, questionnaires and risk flags use the supplier).
+
+The 360 view's tabs for orders, receipts, invoices, contracts and the catalogue (SUP-061) are contributed by those products' shell modules, which register a tab on this product's page, so this product reads none of their data.
 
 ## 13. Layer, module, schema and permissions
 
-Written after the checkpoint. The proposed module is `Iron.Products.SupplierManagement` (schema `products_supplier_management`), not `Iron.Products.Suppliers`: the supplier master would be `Iron.Business.Suppliers`, and two modules whose names end in the same segment cannot both be named to `make ef-add MODULE=` (ADR-0029).
+The module is `Iron.Products.SupplierManagement` (schema `products_supplier_management`), accepted at the checkpoint; not `Iron.Products.Suppliers`, since the supplier master is `Iron.Business.Suppliers` and two modules whose names end in the same segment cannot both be named to `make ef-add MODULE=` (ADR-0029). Its shell module is `shell/src/modules/products/supplier-management/`, and it is licensed as a module (ADR-0034).
 
-The archived PRD's permission catalogue (its section 8.3) named these for the life cycle: `suppliers.supplier.{approve,publish,hold,deactivate,invite,impersonate}`, `suppliers.bank.verify`, `suppliers.document.*`. Permission names name the module, so they follow it once it is settled.
+Permissions proposed (`[Decision]` for the names), naming the module: `supplier_management.suppliers.{invite,approve,publish,hold,deactivate,impersonate}`, `supplier_management.changes.approve`, `supplier_management.bank_accounts.verify`, `supplier_management.documents.{read,manage}`, `supplier_management.questionnaires.{read,send,score}`, `supplier_management.risk_flags.{read,manage}`, `supplier_management.performance.read`, `supplier_management.merges.run`, `supplier_management.configuration.manage`, `supplier_management.reports.read`. They replace the archived PRD's `suppliers.supplier.{approve,publish,hold,deactivate,invite,impersonate}`, `suppliers.bank.verify` and `suppliers.document.*`. A supplier user's own actions arrive through the network with a delegated token and the supplier role (TF-234), not with these.
 
 ## 14. Configuration
 
@@ -469,7 +512,7 @@ From the archived PRD's section 8.5: supplier onboarding sections and required d
 
 ## 15. Slices
 
-Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are proposed in the technical PRD's section 7 after the checkpoint.
+Where the moved requirements sat in the archived PRD's build plan (its section 9). The product slices are in the technical PRD's section 7.
 
 | Slice of the archived plan | Its outcome | This document's requirements from it |
 |---|---|---|
@@ -503,4 +546,10 @@ None from the split.
 
 ## 17. Glossary
 
+| Term | Meaning |
+|---|---|
+| Publishing | Making an approved supplier selectable on new requests and orders, once its publishing criteria are met |
+| Controlled field | A supplier field whose change runs the supplier-change approval (legal name, tax identifiers, bank, addresses, contacts) |
+
 The terms of the supplier master are in the Business PRD's glossary, the terms of the network in the supplier portal surface's.
+
