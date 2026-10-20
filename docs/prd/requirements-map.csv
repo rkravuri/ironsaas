@@ -25,7 +25,7 @@
 "FF-028","Supplier sites","moved","BF-104","business-foundation-PRD.md","","","",""
 "FF-029","Supplier bank accounts with verification","split","BF-105|SUP-023","business-foundation-PRD.md|products/supplier-management-PRD.md","","","","The account data to Business, its verification to Supplier management, as the brief says."
 "FF-030","Supplier documents and compliance expiry","moved","SUP-041","products/supplier-management-PRD.md","","","",""
-"FF-031","Supplier questionnaires","moved","SUP-042","products/supplier-management-PRD.md","","","","On the kernel's forms engine (TF-242, after the checkpoint); AC1 marked as the error case it is."
+"FF-031","Supplier questionnaires","moved","SUP-042","products/supplier-management-PRD.md","","","","On the kernel's forms engine (TF-242); AC1 marked as the error case it is."
 "FF-032","Supplier performance indicators","moved","SUP-062","products/supplier-management-PRD.md","","","",""
 "FF-033","Supplier change approval","moved","SUP-022","products/supplier-management-PRD.md","","","",""
 "FF-034","Supplier 360 view and lists","moved","SUP-061","products/supplier-management-PRD.md","","","",""

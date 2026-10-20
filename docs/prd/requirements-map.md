@@ -5,7 +5,7 @@
 | What it maps | Every requirement of the Functional Foundation PRD for procure-to-pay, version 1.2 (`archive/functional-foundation-p2p-PRD-v1.md`), to its new identifier and document (ADR-0041) |
 | Table | `requirements-map.csv` has the same rows; `make prd-check` holds the two equal and checks every row against the documents |
 | Date | 2026-10-20 |
-| Status | At the design session's checkpoint: the placement the brief decided, with the rows it did not settle placed by the test and marked |
+| Status | The placement the brief decided, the rows it did not settle placed by the test and marked, and the design session's answers at the checkpoint (section "Changed at the checkpoint") |
 
 ## How to read it
 
@@ -107,7 +107,7 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-028 | Supplier sites | moved | BF-104 | `business-foundation-PRD.md` |  |  |  |  |
 | FF-029 | Supplier bank accounts with verification | split | BF-105, SUP-023 | `business-foundation-PRD.md`, `products/supplier-management-PRD.md` |  |  |  | The account data to Business, its verification to Supplier management, as the brief says. |
 | FF-030 | Supplier documents and compliance expiry | moved | SUP-041 | `products/supplier-management-PRD.md` |  |  |  |  |
-| FF-031 | Supplier questionnaires | moved | SUP-042 | `products/supplier-management-PRD.md` |  |  |  | On the kernel's forms engine (TF-242, after the checkpoint); AC1 marked as the error case it is. |
+| FF-031 | Supplier questionnaires | moved | SUP-042 | `products/supplier-management-PRD.md` |  |  |  | On the kernel's forms engine (TF-242); AC1 marked as the error case it is. |
 | FF-032 | Supplier performance indicators | moved | SUP-062 | `products/supplier-management-PRD.md` |  |  |  |  |
 | FF-033 | Supplier change approval | moved | SUP-022 | `products/supplier-management-PRD.md` |  |  |  |  |
 | FF-034 | Supplier 360 view and lists | moved | SUP-061 | `products/supplier-management-PRD.md` |  |  |  |  |
