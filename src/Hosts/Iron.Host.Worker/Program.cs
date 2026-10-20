@@ -47,6 +47,9 @@ builder.Services.AddIronDatabase(connectionString, builder.Configuration["Databa
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 
+// The daily passes that belong to one process per unit, not to every API replica.
+builder.Services.AddAccessReviewEscalation();
+
 var app = builder.Build();
 
 if (DatabaseCommands.IsCommand(args))

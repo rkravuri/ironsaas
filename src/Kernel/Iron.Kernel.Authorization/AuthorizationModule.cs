@@ -61,6 +61,14 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<AssignmentService>();
         services.AddScoped<DelegationService>();
         services.AddScoped<IDelegations, DelegationQueries>();
+        services.AddScoped<ReviewService>();
+        services.AddScoped<ReviewEscalationPass>();
+
+        // Who hears of late reviewers is an extension point (ADR-0037): a business module that knows managers replaces it.
+        services.TryAddScoped<IReviewEscalation, CampaignOwnerEscalation>();
+        services.AddScoped<IValidator<StartReviewRequest>, StartReviewRequestValidator>();
+        services.AddScoped<IValidator<DecideItemRequest>, DecideItemRequestValidator>();
+        services.AddScoped<IValidator<ConfirmItemsRequest>, ConfirmItemsRequestValidator>();
         services.AddScoped<IValidator<CreateDelegationRequest>, CreateDelegationRequestValidator>();
         services.AddScoped<IValidator<GrantRoleRequest>, GrantRoleRequestValidator>();
         services.AddScoped<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
@@ -78,5 +86,6 @@ public sealed class AuthorizationModule : IModule
         RoleAssignmentsEndpoints.Map(endpoints);
         OrganisationUnitsEndpoints.Map(endpoints);
         DelegationsEndpoints.Map(endpoints);
+        AccessReviewsEndpoints.Map(endpoints);
     }
 }
