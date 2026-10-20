@@ -3,7 +3,8 @@ name: CI
 # Every pull request and every push to main (ADR-0022): the code builds with warnings as errors, the architecture and
 # integration tests pass on the run's PostgreSQL, Azurite and OpenBao, the shell lints, is formatted (ADR-0040),
 # type-checks, tests and builds, its gallery passes the
-# accessibility scan, no secret is in the history, and no known critical or high vulnerability is in the dependencies.
+# accessibility scan, no secret is in the history, no known critical or high vulnerability is in the dependencies, and
+# the requirement documents keep their identifiers, their map and their tables (ADR-0041).
 
 on:
   pull_request:
@@ -121,6 +122,11 @@ jobs:
           sh infra/compose/scripts/init-env.sh
           docker compose --file infra/compose/compose.yaml --env-file infra/compose/.env \
             --profile telemetry --profile ci --profile control config --quiet
+
+      # The requirement documents (ADR-0041): identifiers, the map from the archived PRD, the criteria, the product
+      # PRDs' sections and every CSV against its markdown. Python 3 and its standard library, as the runner has them.
+      - name: Check the requirement documents
+        run: make prd-check
 
   secrets:
     name: Secret scan (gitleaks)
