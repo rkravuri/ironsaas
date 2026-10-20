@@ -28,7 +28,13 @@ describe("the ListQuery mapping", () => {
   });
 
   it("maps the grid's sort model in order and drops unsorted columns", () => {
-    expect(sortFromGrid([{ colId: "a", sort: "desc" }, { colId: "b", sort: null }, { colId: "c", sort: "asc" }])).toEqual([
+    expect(
+      sortFromGrid([
+        { colId: "a", sort: "desc" },
+        { colId: "b", sort: null },
+        { colId: "c", sort: "asc" },
+      ]),
+    ).toEqual([
       { field: "a", direction: "desc" },
       { field: "c", direction: "asc" },
     ]);

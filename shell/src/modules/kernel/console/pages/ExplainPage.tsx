@@ -110,13 +110,7 @@ export function ExplainPage() {
                   />
                 ),
               )}
-              <PersonPicker
-                label={t("explain.actingFor")}
-                description={t("explain.actingForHint")}
-                value={actingFor}
-                onChange={setActingFor}
-                exclude={person === "" ? [] : [person]}
-              />
+              <PersonPicker label={t("explain.actingFor")} description={t("explain.actingForHint")} value={actingFor} onChange={setActingFor} exclude={person === "" ? [] : [person]} />
               <Group justify="flex-end">
                 <Button type="submit" disabled={person === "" || !action || missing}>
                   {t("explain.ask")}

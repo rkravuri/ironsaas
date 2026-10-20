@@ -16,7 +16,19 @@ const choice = (path: { id: string; name: string }[]) => ({ ...path.at(-1)!, cod
 /** The choices of a person homed at North with a role at Sales and its units, and one at Finance alone. */
 const choices = [choice([acme, sales]), choice([acme, sales, north]), choice([acme, finance])];
 
-const meWith = ({ units = choices, working = north, all = false, available = true, acting = false }: { units?: typeof choices; working?: { id: string; name: string }; all?: boolean; available?: boolean; acting?: boolean }) => ({
+const meWith = ({
+  units = choices,
+  working = north,
+  all = false,
+  available = true,
+  acting = false,
+}: {
+  units?: typeof choices;
+  working?: { id: string; name: string };
+  all?: boolean;
+  available?: boolean;
+  acting?: boolean;
+}) => ({
   ...me(["identity.users.read"]),
   home_unit: { ...north, code: "north" },
   working_unit: { ...working, code: working.name.toLowerCase() },
@@ -113,7 +125,8 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
   it("says why a choice failed, with the correlation id, and keeps the unit", async () => {
     renderControl({
       "GET /api/v1/me": () => json(meWith({})),
-      "POST /api/v1/me/working-unit": () => problem(403, { error_code: "identity.working_unit.not_yours", detail: "You may not work for that unit. Choose your home unit or a unit where you hold a role." }, "corr-unit"),
+      "POST /api/v1/me/working-unit": () =>
+        problem(403, { error_code: "identity.working_unit.not_yours", detail: "You may not work for that unit. Choose your home unit or a unit where you hold a role." }, "corr-unit"),
     });
     const user = userEvent.setup();
 

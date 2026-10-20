@@ -53,8 +53,7 @@ export function stubFetch(handlers: Record<string, FetchHandler>) {
   return { fetchMock, calls };
 }
 
-export const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
-  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
+export const json = (body: unknown, status = 200, headers: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
 
 export const problem = (status: number, body: Record<string, unknown>, correlationId = "corr-123") =>
   new Response(JSON.stringify({ status, correlation_id: correlationId, ...body }), {

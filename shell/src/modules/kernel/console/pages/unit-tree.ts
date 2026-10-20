@@ -62,11 +62,7 @@ export function moveTargets(units: readonly Unit[], unit: Unit, kinds: Kinds | u
   }
   const own = subtreeIds(units, unit.id);
   return units.filter(
-    (candidate) =>
-      candidate.status === "active" &&
-      !own.has(candidate.id) &&
-      candidate.id !== unit.parent_id &&
-      (kindOf(kinds, candidate.kind)?.child_kinds.includes(unit.kind) ?? false),
+    (candidate) => candidate.status === "active" && !own.has(candidate.id) && candidate.id !== unit.parent_id && (kindOf(kinds, candidate.kind)?.child_kinds.includes(unit.kind) ?? false),
   );
 }
 

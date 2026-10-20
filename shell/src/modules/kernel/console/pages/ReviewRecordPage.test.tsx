@@ -80,38 +80,50 @@ afterEach(() => {
 });
 
 describe("the access review page (TF-038)", () => {
-  it("asks for the items still to decide, which the API keeps to the reviewer's units, and offers to confirm that page without the reviewer's own", async () => {
-    const { calls } = show();
+  it(
+    "asks for the items still to decide, which the API keeps to the reviewer's units, and offers to confirm that page without the reviewer's own",
+    async () => {
+      const { calls } = show();
 
-    expect(await screen.findByRole("heading", { name: "Quarterly review" }, heavy)).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy)).toBeEnabled();
-    expect(calls.map((call) => call.key)).toContain(`GET ${items}?state=open&page_number=1&page_size=50&sort=unit_name`);
-    // A reviewer who does not manage the campaign cannot close it.
-    expect(screen.queryByRole("button", { name: "Close the review" })).not.toBeInTheDocument();
-  }, heavyTest);
+      expect(await screen.findByRole("heading", { name: "Quarterly review" }, heavy)).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy)).toBeEnabled();
+      expect(calls.map((call) => call.key)).toContain(`GET ${items}?state=open&page_number=1&page_size=50&sort=unit_name`);
+      // A reviewer who does not manage the campaign cannot close it.
+      expect(screen.queryByRole("button", { name: "Close the review" })).not.toBeInTheDocument();
+    },
+    heavyTest,
+  );
 
-  it("asks for the decided items when the reviewer chooses them, and has nothing on that page to confirm", async () => {
-    const { calls } = show();
-    const user = userEvent.setup();
-    await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy);
+  it(
+    "asks for the decided items when the reviewer chooses them, and has nothing on that page to confirm",
+    async () => {
+      const { calls } = show();
+      const user = userEvent.setup();
+      await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy);
 
-    await user.click(screen.getByText("Decided"));
+      await user.click(screen.getByText("Decided"));
 
-    await waitFor(() => expect(calls.map((call) => call.key)).toContain(`GET ${items}?state=decided&page_number=1&page_size=50&sort=unit_name`));
-    expect(await screen.findByRole("button", { name: "Confirm the 0 items on this page" }, heavy)).toBeDisabled();
-  }, heavyTest);
+      await waitFor(() => expect(calls.map((call) => call.key)).toContain(`GET ${items}?state=decided&page_number=1&page_size=50&sort=unit_name`));
+      expect(await screen.findByRole("button", { name: "Confirm the 0 items on this page" }, heavy)).toBeDisabled();
+    },
+    heavyTest,
+  );
 
-  it("confirms the page's open items behind a confirmation, and says how many", async () => {
-    const { calls } = show();
-    const user = userEvent.setup();
+  it(
+    "confirms the page's open items behind a confirmation, and says how many",
+    async () => {
+      const { calls } = show();
+      const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy));
-    expect(await screen.findByText("The 2 items still to decide on this page keep their access, and your decision is recorded for each.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Confirm 2 items" }));
+      await user.click(await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy));
+      expect(await screen.findByText("The 2 items still to decide on this page keep their access, and your decision is recorded for each.")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Confirm 2 items" }));
 
-    expect(await screen.findByText("Confirmed 2 items.")).toBeInTheDocument();
-    const posted = calls.find((call) => call.key === `POST /api/v1/access-reviews/${review}/confirm`);
-    // The reviewer's own row is left out: another reviewer decides it.
-    expect(JSON.parse(posted?.init?.body as string)).toEqual({ item_ids: others.map((row) => row.id), comment: null });
-  }, heavyTest);
+      expect(await screen.findByText("Confirmed 2 items.")).toBeInTheDocument();
+      const posted = calls.find((call) => call.key === `POST /api/v1/access-reviews/${review}/confirm`);
+      // The reviewer's own row is left out: another reviewer decides it.
+      expect(JSON.parse(posted?.init?.body as string)).toEqual({ item_ids: others.map((row) => row.id), comment: null });
+    },
+    heavyTest,
+  );
 });

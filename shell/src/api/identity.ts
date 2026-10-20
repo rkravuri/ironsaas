@@ -104,8 +104,7 @@ export const actFor = (principalId: string) => request("/api/v1/me/acting-for", 
 export const stopActing = () => request("/api/v1/me/acting-for", { method: "DELETE", schema: MeSchema });
 
 /** Work for one of your units, or all of them (ADR-0038); answers /me. */
-export const workFor = (choice: WorkFor) =>
-  request("/api/v1/me/working-unit", { method: "POST", body: "allUnits" in choice ? { all_units: true } : { unit_id: choice.unitId }, schema: MeSchema });
+export const workFor = (choice: WorkFor) => request("/api/v1/me/working-unit", { method: "POST", body: "allUnits" in choice ? { all_units: true } : { unit_id: choice.unitId }, schema: MeSchema });
 
 /** A person as the delegate picker offers them (ADR-0037): a display name, a home unit's name, and the id to choose them by. */
 export const DirectoryEntrySchema = z.object({ id: z.string(), display_name: z.string(), home_unit: z.string().nullable() });
@@ -134,11 +133,9 @@ export function accessQuery(target: AccessTarget): string {
   return params.toString();
 }
 
-export const fetchAccess = (target: AccessTarget, signal?: AbortSignal) =>
-  request(`/api/v1/me/access?${accessQuery(target)}`, { schema: AccessSchema, ...(signal ? { signal } : {}) });
+export const fetchAccess = (target: AccessTarget, signal?: AbortSignal) => request(`/api/v1/me/access?${accessQuery(target)}`, { schema: AccessSchema, ...(signal ? { signal } : {}) });
 
-export const login = (loginId: string, password: string) =>
-  request("/auth/login", { method: "POST", body: { login_id: loginId, password } });
+export const login = (loginId: string, password: string) => request("/auth/login", { method: "POST", body: { login_id: loginId, password } });
 
 export const logout = () => request("/auth/logout", { method: "POST" });
 
@@ -148,11 +145,9 @@ export const acceptInvitation = (token: string, password: string, displayName: s
     body: { password, display_name: displayName },
   });
 
-export const fetchUsers = (query: string, signal?: AbortSignal) =>
-  request(`/api/v1/users${query ? `?${query}` : ""}`, { schema: UserListSchema, ...(signal ? { signal } : {}) });
+export const fetchUsers = (query: string, signal?: AbortSignal) => request(`/api/v1/users${query ? `?${query}` : ""}`, { schema: UserListSchema, ...(signal ? { signal } : {}) });
 
-export const fetchUser = (id: string, signal?: AbortSignal) =>
-  request(`/api/v1/users/${encodeURIComponent(id)}`, { schema: UserRecordSchema, ...(signal ? { signal } : {}) });
+export const fetchUser = (id: string, signal?: AbortSignal) => request(`/api/v1/users/${encodeURIComponent(id)}`, { schema: UserRecordSchema, ...(signal ? { signal } : {}) });
 
 /** POST /api/v1/users: the user created and the invitation link to pass on by hand until email delivery (S4). */
 export const CreatedUserSchema = z.object({ user: UserSchema, invitation_link: z.string(), invitation_expires_at: z.string() });

@@ -131,8 +131,7 @@ function MyAccess() {
   );
 }
 
-const where = (assignment: Assignment, t: TFunction): string =>
-  t(`profile.access.scopes.${assignment.scope_kind}`, { unit: unitPathLabel(assignment) });
+const where = (assignment: Assignment, t: TFunction): string => t(`profile.access.scopes.${assignment.scope_kind}`, { unit: unitPathLabel(assignment) });
 
 /**
  * The person's preferences (ADR-0036): the colour scheme and the density, saved with the person, so they follow them to

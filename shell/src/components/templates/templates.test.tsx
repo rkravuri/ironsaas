@@ -47,7 +47,14 @@ describe("the record template", () => {
 function Wizard() {
   const [active, setActive] = useState(0);
   return (
-    <WizardPage title="New unit" steps={[{ label: "Name" }, { label: "Parent" }, { label: "Confirm" }]} active={active} onBack={() => setActive((step) => step - 1)} onNext={() => setActive((step) => step + 1)} summary={<p>So far: nothing</p>}>
+    <WizardPage
+      title="New unit"
+      steps={[{ label: "Name" }, { label: "Parent" }, { label: "Confirm" }]}
+      active={active}
+      onBack={() => setActive((step) => step - 1)}
+      onNext={() => setActive((step) => step + 1)}
+      summary={<p>So far: nothing</p>}
+    >
       <p>Step {active + 1}</p>
     </WizardPage>
   );
@@ -73,7 +80,13 @@ describe("the console and dashboard templates", () => {
   it("list the console's sections in a contents nav and under their headings", () => {
     stubFetch({});
     renderWithProviders(
-      <ConsolePage title="Settings" sections={[{ id: "general", title: "General", description: "The tenant's name.", children: <p>Name field</p> }, { id: "mail", title: "Mail", children: <p>Mail field</p> }]} />,
+      <ConsolePage
+        title="Settings"
+        sections={[
+          { id: "general", title: "General", description: "The tenant's name.", children: <p>Name field</p> },
+          { id: "mail", title: "Mail", children: <p>Mail field</p> },
+        ]}
+      />,
     );
     const nav = screen.getByRole("navigation", { name: "On this page" });
     expect(within(nav).getByRole("link", { name: "General" })).toHaveAttribute("href", "#general");
@@ -83,7 +96,15 @@ describe("the console and dashboard templates", () => {
 
   it("show a dashboard card per number in the display family", () => {
     stubFetch({});
-    renderWithProviders(<DashboardPage title="Today" cards={[{ id: "open", label: "Open orders", value: "128", hint: "12 since yesterday" }, { id: "late", label: "Late", value: "3", tone: "danger" }]} />);
+    renderWithProviders(
+      <DashboardPage
+        title="Today"
+        cards={[
+          { id: "open", label: "Open orders", value: "128", hint: "12 since yesterday" },
+          { id: "late", label: "Late", value: "3", tone: "danger" },
+        ]}
+      />,
+    );
     const card = screen.getByRole("region", { name: "Open orders" });
     expect(within(card).getByText("128").style.fontFamily).toContain("iron-font-display");
     expect(screen.getByRole("region", { name: "Late" })).toHaveTextContent("3");

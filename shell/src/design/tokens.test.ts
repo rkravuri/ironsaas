@@ -32,7 +32,15 @@ describe("the tokens", () => {
   });
 
   it("use no pure black or white anywhere", () => {
-    const values = [tokens.ink.light, tokens.ink.dark, tokens.paper.light, tokens.paper.dark, ...tokens.neutral.gray, ...tokens.neutral.dark, ...accentNames.flatMap((name) => [...tokens.accents[name].shades])];
+    const values = [
+      tokens.ink.light,
+      tokens.ink.dark,
+      tokens.paper.light,
+      tokens.paper.dark,
+      ...tokens.neutral.gray,
+      ...tokens.neutral.dark,
+      ...accentNames.flatMap((name) => [...tokens.accents[name].shades]),
+    ];
     expect(values.filter((value) => pure.includes(value))).toEqual([]);
   });
 

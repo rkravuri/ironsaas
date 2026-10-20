@@ -82,13 +82,13 @@ test.describe("the Users grid by keyboard", () => {
     const density = page.getByRole("radiogroup", { name: "Density" });
     await density.getByText("Comfortable").click();
     await expect.poll(async () => (await row(0).boundingBox())?.height).toBe(40);
-    const savedCompact = page.waitForResponse((response) => response.request().method() === "PUT" && response.url().includes("/api/v1/settings/shell.density") && (response.request().postData() ?? "").includes("compact"));
+    const savedCompact = page.waitForResponse(
+      (response) => response.request().method() === "PUT" && response.url().includes("/api/v1/settings/shell.density") && (response.request().postData() ?? "").includes("compact"),
+    );
     await density.getByText("Compact").click();
     await expect.poll(async () => (await row(0).boundingBox())?.height).toBe(32);
     // Saved first, then removed, so the removal is the last word.
     expect((await savedCompact).status()).toBe(200);
-    await expect
-      .poll(() => page.evaluate(async () => (await fetch("/api/v1/settings/shell.density?scope=user", { method: "DELETE", credentials: "same-origin" })).status))
-      .toBe(200);
+    await expect.poll(() => page.evaluate(async () => (await fetch("/api/v1/settings/shell.density?scope=user", { method: "DELETE", credentials: "same-origin" })).status)).toBe(200);
   });
 });

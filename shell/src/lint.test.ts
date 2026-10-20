@@ -80,7 +80,10 @@ describe("the lint rules", () => {
       };
 
       for (const path of [pagePath, "src/modules/business/organisations/manifest.tsx", "src/modules/products/procurement/manifest.tsx"]) {
-        expect((await ruleFor(path)).some((pattern) => pattern.group?.includes("ag-grid-*")), path).toBe(true);
+        expect(
+          (await ruleFor(path)).some((pattern) => pattern.group?.includes("ag-grid-*")),
+          path,
+        ).toBe(true);
       }
       expect(await refusedBy(eslint, "src/modules/products/procurement/manifest.tsx", "@/modules/business/organisations/manifest")).toBe(false);
       expect(await refusedBy(eslint, "src/modules/index.ts", "@/modules/products/procurement/manifest")).toBe(false);

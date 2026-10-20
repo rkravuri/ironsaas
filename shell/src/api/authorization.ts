@@ -43,8 +43,7 @@ export const createUnit = (parentId: string, body: { name: string; code: string;
 
 export const renameUnit = (id: string, name: string) => request(`${units}/${encodeURIComponent(id)}/rename`, { method: "POST", body: { name }, schema: UnitSchema });
 
-export const moveUnit = (id: string, parentId: string) =>
-  request(`${units}/${encodeURIComponent(id)}/move`, { method: "POST", body: { parent_id: parentId }, schema: UnitSchema });
+export const moveUnit = (id: string, parentId: string) => request(`${units}/${encodeURIComponent(id)}/move`, { method: "POST", body: { parent_id: parentId }, schema: UnitSchema });
 
 export const deactivateUnit = (id: string) => request(`${units}/${encodeURIComponent(id)}/deactivate`, { method: "POST", schema: UnitSchema });
 
@@ -58,8 +57,7 @@ export const ReadinessSchema = z.object({
 });
 export type Readiness = z.infer<typeof ReadinessSchema>;
 
-export const fetchReadiness = (id: string, signal?: AbortSignal) =>
-  request(`${units}/${encodeURIComponent(id)}/readiness`, { schema: ReadinessSchema, ...(signal ? { signal } : {}) });
+export const fetchReadiness = (id: string, signal?: AbortSignal) => request(`${units}/${encodeURIComponent(id)}/readiness`, { schema: ReadinessSchema, ...(signal ? { signal } : {}) });
 
 /** The kinds of thing a merge moves, in the order the preview lists them (ADR-0038). */
 export const mergePartCodes = ["records", "people", "assignments", "settings", "shares", "children"] as const;
@@ -222,11 +220,9 @@ export const MyAssignmentsSchema = z.object({ data: z.array(AssignmentSchema) })
 
 export const fetchMyAssignments = (signal?: AbortSignal) => request(`${assignments}/mine`, { schema: MyAssignmentsSchema, ...(signal ? { signal } : {}) });
 
-export const fetchAssignments = (query: string, signal?: AbortSignal) =>
-  request(`${assignments}?${query}`, { schema: AssignmentListSchema, ...(signal ? { signal } : {}) });
+export const fetchAssignments = (query: string, signal?: AbortSignal) => request(`${assignments}?${query}`, { schema: AssignmentListSchema, ...(signal ? { signal } : {}) });
 
-export const grantRole = (body: { principal_id: string; role_id: string; scope_kind: ScopeKind; unit_id?: string }) =>
-  request(assignments, { method: "POST", body, schema: AssignmentSchema });
+export const grantRole = (body: { principal_id: string; role_id: string; scope_kind: ScopeKind; unit_id?: string }) => request(assignments, { method: "POST", body, schema: AssignmentSchema });
 
 export const removeAssignment = (id: string) => request(`${assignments}/${encodeURIComponent(id)}`, { method: "DELETE" });
 
@@ -267,8 +263,7 @@ const delegations = "/api/v1/delegations";
 export const fetchMyDelegations = (signal?: AbortSignal) => request(`${delegations}/mine`, { schema: MyDelegationsSchema, ...(signal ? { signal } : {}) });
 
 /** Others' delegations, for administrators: those whose delegator's home unit you hold authz.delegations.manage at. */
-export const fetchManagedDelegations = (query: string, signal?: AbortSignal) =>
-  request(`${delegations}${query ? `?${query}` : ""}`, { schema: DelegationListSchema, ...(signal ? { signal } : {}) });
+export const fetchManagedDelegations = (query: string, signal?: AbortSignal) => request(`${delegations}${query ? `?${query}` : ""}`, { schema: DelegationListSchema, ...(signal ? { signal } : {}) });
 
 export interface NewDelegation {
   /** Left out for your own; someone else's needs authz.delegations.manage at their home unit. */
@@ -282,8 +277,7 @@ export interface NewDelegation {
 
 export const createDelegation = (body: NewDelegation) => request(delegations, { method: "POST", body, schema: DelegationSchema });
 
-export const endDelegation = (id: string, reason?: string) =>
-  request(`${delegations}/${encodeURIComponent(id)}/end`, { method: "POST", body: { reason: reason ?? null }, schema: DelegationSchema });
+export const endDelegation = (id: string, reason?: string) => request(`${delegations}/${encodeURIComponent(id)}/end`, { method: "POST", body: { reason: reason ?? null }, schema: DelegationSchema });
 
 /** Access reviews (TF-038). */
 export const ReviewStatusSchema = z.enum(["open", "closed"]);
@@ -338,9 +332,7 @@ export const ReviewItemSchema = z.object({
   unit_id: z.string(),
   unit_name: z.string(),
   unit_path: z.array(z.object({ id: z.string(), name: z.string() })),
-  decision: z
-    .object({ decision: ReviewDecisionSchema, comment: z.string().nullable(), decided_by: PersonSchema, decided_at: z.string(), assignment_removed: z.boolean() })
-    .nullable(),
+  decision: z.object({ decision: ReviewDecisionSchema, comment: z.string().nullable(), decided_by: PersonSchema, decided_at: z.string(), assignment_removed: z.boolean() }).nullable(),
   /** About the reader's own access: another reviewer decides it (ADR-0037). */
   yours: z.boolean(),
   /** Nobody but its own person may review its unit: the campaign's owner decides it. */
@@ -396,8 +388,7 @@ export const ExplainableActionSchema = z.object({
 });
 export type ExplainableAction = z.infer<typeof ExplainableActionSchema>;
 
-export const fetchExplainableActions = (signal?: AbortSignal) =>
-  request("/api/v1/access/actions", { schema: z.object({ data: z.array(ExplainableActionSchema) }), ...(signal ? { signal } : {}) });
+export const fetchExplainableActions = (signal?: AbortSignal) => request("/api/v1/access/actions", { schema: z.object({ data: z.array(ExplainableActionSchema) }), ...(signal ? { signal } : {}) });
 
 const ExplainedUnitSchema = z.object({ id: z.string(), name: z.string() });
 
@@ -500,8 +491,7 @@ export interface ConflictRuleBody {
 
 const conflictRules = "/api/v1/conflict-rules";
 
-export const fetchConflictRules = (query: string, signal?: AbortSignal) =>
-  request(`${conflictRules}${query ? `?${query}` : ""}`, { schema: ConflictRuleListSchema, ...(signal ? { signal } : {}) });
+export const fetchConflictRules = (query: string, signal?: AbortSignal) => request(`${conflictRules}${query ? `?${query}` : ""}`, { schema: ConflictRuleListSchema, ...(signal ? { signal } : {}) });
 
 export const createConflictRule = (body: ConflictRuleBody) => request(conflictRules, { method: "POST", body, schema: ConflictRuleSchema });
 

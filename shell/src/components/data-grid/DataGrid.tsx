@@ -32,7 +32,16 @@ import { rowKeyAction } from "./keys";
 import { dataGridTheme } from "./theme";
 
 // Only what the wrapper uses; the validation module explains a missing one in development and costs nothing in production.
-ModuleRegistry.registerModules([InfiniteRowModelModule, PaginationModule, RowSelectionModule, TextFilterModule, NumberFilterModule, DateFilterModule, ColumnApiModule, ...(import.meta.env.DEV ? [ValidationModule] : [])]);
+ModuleRegistry.registerModules([
+  InfiniteRowModelModule,
+  PaginationModule,
+  RowSelectionModule,
+  TextFilterModule,
+  NumberFilterModule,
+  DateFilterModule,
+  ColumnApiModule,
+  ...(import.meta.env.DEV ? [ValidationModule] : []),
+]);
 
 export type DataGridFilter = "text" | "number" | "date" | false;
 

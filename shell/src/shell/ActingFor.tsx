@@ -81,15 +81,7 @@ export function ActingBand({ choice }: { choice: ActingChoice }) {
   return (
     <>
       {acting && (
-        <Alert
-          role="status"
-          variant="light"
-          color="info"
-          mb="md"
-          icon={<IconUserShare size={18} aria-hidden="true" />}
-          title={t("acting.band.title", { name: acting.name })}
-          data-acting-band
-        >
+        <Alert role="status" variant="light" color="info" mb="md" icon={<IconUserShare size={18} aria-hidden="true" />} title={t("acting.band.title", { name: acting.name })} data-acting-band>
           <Group justify="space-between" align="flex-end" gap="sm">
             <Stack gap={2} maw={720}>
               <Text size="sm">{t("acting.band.rights", { name: acting.name, duties: dutyList(acting.duties, i18n.language), until: until(acting.until, i18n.language) })}</Text>

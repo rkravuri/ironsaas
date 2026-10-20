@@ -42,7 +42,10 @@ test.describe("working across units", () => {
     await page.screenshot({ path: "test-results/e2e/working-unit-home.png" });
 
     await page.getByRole("button", { name: control(secondUnit) }).click();
-    await page.getByRole("menu").getByRole("menuitem", { name: new RegExp(`^${thirdUnit}`) }).click();
+    await page
+      .getByRole("menu")
+      .getByRole("menuitem", { name: new RegExp(`^${thirdUnit}`) })
+      .click();
 
     await expect(page.getByRole("button", { name: control(thirdUnit) })).toBeVisible();
     await expect(page.getByText(`The list keeps to ${thirdUnit} and the units below it.`, { exact: false })).toBeVisible();
@@ -55,7 +58,10 @@ test.describe("working across units", () => {
 
     // Back to the home unit, so the next run starts where a new session does.
     await page.getByRole("button", { name: control(thirdUnit) }).click();
-    await page.getByRole("menu").getByRole("menuitem", { name: new RegExp(`^${secondUnit}`) }).click();
+    await page
+      .getByRole("menu")
+      .getByRole("menuitem", { name: new RegExp(`^${secondUnit}`) })
+      .click();
     await expect(page.getByRole("button", { name: control(secondUnit) })).toBeVisible();
   });
 
@@ -66,7 +72,11 @@ test.describe("working across units", () => {
     expect(runUnitId).not.toBe("");
     const intoUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, { name: into, code: `e2e-into-${run}`, kind: "unit" });
     const fromUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, { name: from, code: `e2e-from-${run}`, kind: "unit" });
-    const person = await call<{ user: { id: string } }>(page, "POST", "/api/v1/users", { login_id: `merged-${run}@${tenant}.localhost`, display_name: `Merged person ${run}`, home_unit_id: fromUnit.body.id });
+    const person = await call<{ user: { id: string } }>(page, "POST", "/api/v1/users", {
+      login_id: `merged-${run}@${tenant}.localhost`,
+      display_name: `Merged person ${run}`,
+      home_unit_id: fromUnit.body.id,
+    });
     expect([intoUnit.status, fromUnit.status, person.status]).toEqual([201, 201, 201]);
 
     await open(page, "/console/units");

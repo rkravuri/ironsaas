@@ -180,11 +180,7 @@ function RecentSection({ principal }: { principal: string }) {
   const [pages] = useState<RecentPage[]>(() => readRecent(principal));
   const visible = pages.filter((page) => {
     const route = routeAt(manifests, page.path);
-    return (
-      route !== undefined &&
-      (route.licence === undefined || session.entitlements.entitled(route.licence)) &&
-      (route.permission === null || session.permissions.includes(route.permission ?? ""))
-    );
+    return route !== undefined && (route.licence === undefined || session.entitlements.entitled(route.licence)) && (route.permission === null || session.permissions.includes(route.permission ?? ""));
   });
   const moduleTitle = (module: string) => manifests.find((manifest) => manifest.name === module)?.titleKey ?? "";
   return (

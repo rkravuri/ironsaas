@@ -48,7 +48,11 @@ function DelegationForm({ forSomeone, onClose, onDone }: Omit<DelegationDialogPr
           duties: z.array(z.string()).min(1, t("delegations.form.dutiesRequired")),
           from: z.string().min(1, t("delegations.form.fromRequired")),
           until: z.string().min(1, t("delegations.form.untilRequired")),
-          reason: z.string().trim().min(1, t("delegations.form.reasonRequired")).max(reasonMax, t("delegations.form.reasonTooLong", { max: reasonMax })),
+          reason: z
+            .string()
+            .trim()
+            .min(1, t("delegations.form.reasonRequired"))
+            .max(reasonMax, t("delegations.form.reasonTooLong", { max: reasonMax })),
         })
         .refine((values) => values.until >= values.from, { path: ["until"], message: t("delegations.form.untilBeforeFrom") })
         .refine((values) => values.until >= first, { path: ["until"], message: t("delegations.form.untilPassed") }),

@@ -17,8 +17,7 @@ const knownIssues: { rule: string; target: string }[] = [];
 
 const targetsOf = (violation: Violation): string[] => violation.nodes.map((node) => node.target.map(String).join(" "));
 
-const describeViolation = (violation: Violation): string =>
-  `${violation.id} (${violation.impact ?? "unknown"}): ${violation.help} at ${targetsOf(violation).join("; ")} (${violation.helpUrl})`;
+const describeViolation = (violation: Violation): string => `${violation.id} (${violation.impact ?? "unknown"}): ${violation.help} at ${targetsOf(violation).join("; ")} (${violation.helpUrl})`;
 
 async function prepare(page: Page, scheme: (typeof schemes)[number]): Promise<void> {
   // No API behind the preview: every call answers "not signed in", which is the state the public pages expect.

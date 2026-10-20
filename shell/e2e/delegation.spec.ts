@@ -55,7 +55,10 @@ const loginCells = (grid: Locator) => grid.locator('[role="gridcell"][col-id="lo
 test.describe("delegation and access reviews", () => {
   test.skip(child.loginId === "" || colleagueId === "" || revocableRoleId === "" || reviewerRoleId === "", "make e2e sets up the child unit's data first");
 
-  test("the administrator delegates user administration, the delegate acts for them with both names in the audit, and a review on the child unit revokes a role at once", async ({ page, browser }, testInfo) => {
+  test("the administrator delegates user administration, the delegate acts for them with both names in the audit, and a review on the child unit revokes a role at once", async ({
+    page,
+    browser,
+  }, testInfo) => {
     test.setTimeout(180_000);
     await signIn(page);
     const administrator = (await call<{ display_name: string }>(page, "GET", "/api/v1/me")).body.display_name;
@@ -118,7 +121,10 @@ test.describe("delegation and access reviews", () => {
       const start = page.getByRole("dialog", { name: "Start an access review" });
       await start.getByRole("textbox", { name: "Name" }).fill(`E2E review ${run}`);
       await start.getByLabel("Due").fill(day(7));
-      await start.getByRole("tree").getByText(process.env.E2E_CHILD_UNIT ?? "E2E branch", { exact: true }).click();
+      await start
+        .getByRole("tree")
+        .getByText(process.env.E2E_CHILD_UNIT ?? "E2E branch", { exact: true })
+        .click();
       await start.getByRole("button", { name: "Start the review" }).click();
       await expect(page.getByRole("heading", { name: `E2E review ${run}` })).toBeVisible();
       reviewId = page.url().split("/").pop();

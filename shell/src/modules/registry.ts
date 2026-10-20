@@ -148,9 +148,7 @@ export function navigationFor(manifests: ModuleManifest[], permissions: readonly
       continue;
     }
     const entries = manifest.navigation.filter(
-      (entry) =>
-        declares(entry, `navigation ${manifest.name}:${entry.path}`, options) &&
-        (entry.permission === null || granted.has(entry.permission as string)),
+      (entry) => declares(entry, `navigation ${manifest.name}:${entry.path}`, options) && (entry.permission === null || granted.has(entry.permission as string)),
     );
     if (entries.length > 0) {
       groups.push({ module: manifest.name, titleKey: manifest.titleKey, entries });

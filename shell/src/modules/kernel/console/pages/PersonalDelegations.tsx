@@ -122,7 +122,13 @@ export function PersonalDelegations() {
                   <Group gap="xs" wrap="nowrap">
                     <DelegationStatus delegation={delegation} />
                     {canAct && (
-                      <Button size="xs" variant="light" leftSection={<IconUserShare size={14} aria-hidden="true" />} loading={acting === delegation.delegator.id} onClick={() => void actFor(delegation.delegator.id)}>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconUserShare size={14} aria-hidden="true" />}
+                        loading={acting === delegation.delegator.id}
+                        onClick={() => void actFor(delegation.delegator.id)}
+                      >
                         {t("delegations.actFor", { name: delegation.delegator.name })}
                       </Button>
                     )}

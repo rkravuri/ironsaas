@@ -46,7 +46,8 @@ export function SharingPanel({ sharing, onChange }: { sharing: RecordSharing; on
   const Icon = modeIcons[sharing.mode];
   const unit = sharing.owning_unit.name;
   const listed = new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format(sharing.units.map((shared) => shared.name));
-  const words = sharing.mode === "private" ? t("sharing.words.private", { unit }) : sharing.mode === "shared" ? t("sharing.words.shared", { unit, units: listed }) : t("sharing.words.tenant", { unit });
+  const words =
+    sharing.mode === "private" ? t("sharing.words.private", { unit }) : sharing.mode === "shared" ? t("sharing.words.shared", { unit, units: listed }) : t("sharing.words.tenant", { unit });
 
   return (
     <Stack gap={6} data-sharing={sharing.mode}>
@@ -99,7 +100,12 @@ function SharingDialog({ sharing, onClose, onSave }: { sharing: RecordSharing; o
 
   return (
     <FormDialog opened title={t("sharing.title")} onClose={onClose}>
-      <Form form={form} onSubmit={(values) => onSave(values.mode, values.mode === "shared" ? values.units : [])} submitLabel={t("sharing.save")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
+      <Form
+        form={form}
+        onSubmit={(values) => onSave(values.mode, values.mode === "shared" ? values.units : [])}
+        submitLabel={t("sharing.save")}
+        secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+      >
         <Radio.Group label={t("sharing.mode")} {...form.getInputProps("mode")}>
           <Stack gap="sm" mt={6}>
             <Radio value="private" label={t("sharing.modes.private")} description={t("sharing.modes.privateHint", { unit })} data-autofocus={mode === "private" ? true : undefined} />

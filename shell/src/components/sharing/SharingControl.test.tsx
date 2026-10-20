@@ -41,7 +41,11 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
   });
 
   it("says a private record is its unit's, and a tenant one the whole organisation's", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me()), [`GET ${path}`]: () => json(sharing("private")), "GET /api/v1/record-sharing/sales_order/o2": () => json({ ...sharing("tenant"), record_id: "o2" }) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      [`GET ${path}`]: () => json(sharing("private")),
+      "GET /api/v1/record-sharing/sales_order/o2": () => json({ ...sharing("tenant"), record_id: "o2" }),
+    });
     renderWithProviders(
       <>
         <SharingControl recordType="sales_order" recordId="o1" />
@@ -94,7 +98,11 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
 
     // Each unit's level is the number of lists around it: Acme, then Sales, then North's place, then Desk.
     expect([level(box("Acme")), level(box("Sales")), level(box("Desk")), level(box("Finance"))]).toEqual([1, 2, 4, 2]);
-    expect(within(item("Acme")).getAllByRole("listitem").map((li) => li.firstChild?.textContent)).toEqual(["Sales", "North, the record's own unit, sees it whatever you choose", "Desk", "Finance"]);
+    expect(
+      within(item("Acme"))
+        .getAllByRole("listitem")
+        .map((li) => li.firstChild?.textContent),
+    ).toEqual(["Sales", "North, the record's own unit, sees it whatever you choose", "Desk", "Finance"]);
     const own = within(item("Sales")).getByText("North, the record's own unit, sees it whatever you choose");
     expect(own.closest("li")).toContainElement(box("Desk"));
     expect(level(own)).toBe(3);

@@ -19,12 +19,30 @@ const unit = (id: string, name: string, parent: string | null) => ({
 const actions = {
   data: [
     { name: "ImportRoles", summary: "Import roles from another tenant.", module: "authz", method: "POST", route: "/api/v1/roles/import", permission: "authz.roles.manage", route_values: [] },
-    { name: "RenameOrganisationUnit", summary: "Rename a unit.", module: "authz", method: "POST", route: "/api/v1/organisation-units/{id}/rename", permission: "authz.units.manage", route_values: [{ name: "id", kind: "unit", record_type: null }] },
+    {
+      name: "RenameOrganisationUnit",
+      summary: "Rename a unit.",
+      module: "authz",
+      method: "POST",
+      route: "/api/v1/organisation-units/{id}/rename",
+      permission: "authz.units.manage",
+      route_values: [{ name: "id", kind: "unit", record_type: null }],
+    },
   ],
 };
 
 const grace = { id: "p1", name: "Grace Hopper", type: "user", status: "active", home_unit: { id: "north", name: "North" } };
-const check = (name: string, result: string, reason: string, extra: Record<string, unknown> = {}) => ({ check: name, result, reason, status: null, error_code: null, message: "", facts: {}, granted_by: [], ...extra });
+const check = (name: string, result: string, reason: string, extra: Record<string, unknown> = {}) => ({
+  check: name,
+  result,
+  reason,
+  status: null,
+  error_code: null,
+  message: "",
+  facts: {},
+  granted_by: [],
+  ...extra,
+});
 
 const denial = {
   principal: grace,
@@ -53,7 +71,18 @@ const allowance = {
     check("flags", "not_applicable", "no_flags"),
     check("permission", "passed", "granted", {
       facts: { permission: "authz.units.manage", permission_name: "Create, rename and move units", scope: "unit", unit: "North" },
-      granted_by: [{ assignment_id: "a1", role_id: "r1", role_code: "units", role_name: "Units manager", scope_kind: "unit_with_children", unit: { id: "sales", name: "Sales" }, record_type: null, record_id: null }],
+      granted_by: [
+        {
+          assignment_id: "a1",
+          role_id: "r1",
+          role_code: "units",
+          role_name: "Units manager",
+          scope_kind: "unit_with_children",
+          unit: { id: "sales", name: "Sales" },
+          record_type: null,
+          record_id: null,
+        },
+      ],
     }),
     check("record_policy", "not_applicable", "no_record"),
   ],

@@ -307,7 +307,16 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
           />
         );
       case "json":
-        return <Textarea label={t("settings.edit.value")} description={setting.requirement} autosize minRows={4} styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }} {...form.getInputProps("value")} />;
+        return (
+          <Textarea
+            label={t("settings.edit.value")}
+            description={setting.requirement}
+            autosize
+            minRows={4}
+            styles={{ input: { fontFamily: "var(--mantine-font-family-monospace)" } }}
+            {...form.getInputProps("value")}
+          />
+        );
       default:
         return <TextInput label={t("settings.edit.value")} description={setting.requirement} data-autofocus {...form.getInputProps("value")} />;
     }

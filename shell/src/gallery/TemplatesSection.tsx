@@ -63,8 +63,18 @@ export function TemplatesSection() {
             title={t("gallery.console.title")}
             description={t("gallery.console.description")}
             sections={[
-              { id: "gallery-console-general", title: t("gallery.console.general"), description: t("gallery.console.generalDescription"), children: <TextInput label={t("gallery.console.tenantName")} defaultValue="Acme" /> },
-              { id: "gallery-console-mail", title: t("gallery.console.mail"), description: t("gallery.console.mailDescription"), children: <TextInput label={t("gallery.console.sender")} defaultValue="noreply@acme.localhost" /> },
+              {
+                id: "gallery-console-general",
+                title: t("gallery.console.general"),
+                description: t("gallery.console.generalDescription"),
+                children: <TextInput label={t("gallery.console.tenantName")} defaultValue="Acme" />,
+              },
+              {
+                id: "gallery-console-mail",
+                title: t("gallery.console.mail"),
+                description: t("gallery.console.mailDescription"),
+                children: <TextInput label={t("gallery.console.sender")} defaultValue="noreply@acme.localhost" />,
+              },
             ]}
           />
         </Example>

@@ -47,7 +47,15 @@ export function DialogsSection() {
             </>
           }
         />
-        <ConfirmDialog opened={confirm} title={t("gallery.dialogs.confirmTitle")} message={t("gallery.dialogs.confirmMessage")} confirmLabel={t("gallery.dialogs.confirmLabel")} danger onConfirm={() => setConfirm(false)} onCancel={() => setConfirm(false)} />
+        <ConfirmDialog
+          opened={confirm}
+          title={t("gallery.dialogs.confirmTitle")}
+          message={t("gallery.dialogs.confirmMessage")}
+          confirmLabel={t("gallery.dialogs.confirmLabel")}
+          danger
+          onConfirm={() => setConfirm(false)}
+          onCancel={() => setConfirm(false)}
+        />
         <FormDialog opened={rename} title={t("gallery.dialogs.formTitle")} onClose={() => setRename(false)}>
           <Form
             form={form}

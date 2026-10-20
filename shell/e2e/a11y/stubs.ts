@@ -44,7 +44,16 @@ function page(url: string) {
   const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
   return {
     data: users.slice(start, start + pageSize),
-    meta: { page_number: pageNumber, page_size: pageSize, total_count: users.length, total_pages: totalPages, has_previous: pageNumber > 1, has_next: pageNumber < totalPages, page_size_capped: false, max_page_size: 200 },
+    meta: {
+      page_number: pageNumber,
+      page_size: pageSize,
+      total_count: users.length,
+      total_pages: totalPages,
+      has_previous: pageNumber > 1,
+      has_next: pageNumber < totalPages,
+      page_size_capped: false,
+      max_page_size: 200,
+    },
     links: { self: url, first: url, previous: null, next: null, last: url },
   };
 }
@@ -190,9 +199,33 @@ const roleRow = (n: number, code: string, name: string, description: string, sys
 /** The roles of a tenant: the three system roles and two of its own. */
 export const roles = [
   roleRow(4, "operations-lead", "Operations lead", "Shapes the Operations part of the tree and its people.", false, "user", ["authz.units.manage", "authz.units.read", "identity.users.read"]),
-  roleRow(2, "read-only", "Read only", "Read permissions only.", true, "user", catalogue.filter((p) => p.name.endsWith(".read")).map((p) => p.name)),
-  roleRow(3, "service-default", "Service default", "Read permissions for service accounts.", true, "service", catalogue.filter((p) => p.name.endsWith(".read")).map((p) => p.name)),
-  roleRow(1, "tenant-administrator", "Tenant administrator", "Every permission of the catalogue.", true, "any", catalogue.map((p) => p.name)),
+  roleRow(
+    2,
+    "read-only",
+    "Read only",
+    "Read permissions only.",
+    true,
+    "user",
+    catalogue.filter((p) => p.name.endsWith(".read")).map((p) => p.name),
+  ),
+  roleRow(
+    3,
+    "service-default",
+    "Service default",
+    "Read permissions for service accounts.",
+    true,
+    "service",
+    catalogue.filter((p) => p.name.endsWith(".read")).map((p) => p.name),
+  ),
+  roleRow(
+    1,
+    "tenant-administrator",
+    "Tenant administrator",
+    "Every permission of the catalogue.",
+    true,
+    "any",
+    catalogue.map((p) => p.name),
+  ),
   roleRow(5, "user-reader", "User reader", "Lists the people of a unit.", false, "user", ["identity.users.read"]),
 ];
 
@@ -220,11 +253,7 @@ const assignmentRow = (n: number, role: (typeof roles)[number], scope: string, u
   created_at: "2026-10-19T10:00:00Z",
 });
 
-export const assignments = [
-  assignmentRow(1, roles[0], "unit_with_children", units[3]),
-  assignmentRow(2, roles[4], "unit", units[4]),
-  assignmentRow(3, roles[1], "tenant", null),
-];
+export const assignments = [assignmentRow(1, roles[0], "unit_with_children", units[3]), assignmentRow(2, roles[4], "unit", units[4]), assignmentRow(3, roles[1], "tenant", null)];
 
 /**
  * The two people of the home page (D4): a tenant administrator at the root, and a child-unit administrator who reads
@@ -336,8 +365,28 @@ export const subscription = {
     },
   ],
   features: [
-    { code: "authorization.role_transfer", description: "Export the tenant's roles to a file and import roles from another tenant", module: "authz", licence: null, status: "enabled", reason: "licensed", starts_on: "2026-10-19", ends_on: null, grace_ends_on: null },
-    { code: "sourcing.auctions", description: "Auctions with pre-bidding", module: "sourcing", licence: "sourcing", status: "disabled", reason: "not_licensed", starts_on: null, ends_on: null, grace_ends_on: null },
+    {
+      code: "authorization.role_transfer",
+      description: "Export the tenant's roles to a file and import roles from another tenant",
+      module: "authz",
+      licence: null,
+      status: "enabled",
+      reason: "licensed",
+      starts_on: "2026-10-19",
+      ends_on: null,
+      grace_ends_on: null,
+    },
+    {
+      code: "sourcing.auctions",
+      description: "Auctions with pre-bidding",
+      module: "sourcing",
+      licence: "sourcing",
+      status: "disabled",
+      reason: "not_licensed",
+      starts_on: null,
+      ends_on: null,
+      grace_ends_on: null,
+    },
   ],
 };
 

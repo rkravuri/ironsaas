@@ -208,13 +208,11 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
 
   const schema = useMemo(
     () =>
-      z
-        .object({ roleId: z.string().min(1, t("access.grant.roleRequired")), scope: z.enum(["tenant", "unit"]), unitId: z.string(), includeChildren: z.boolean() })
-        .superRefine((values, context) => {
-          if (values.scope === "unit" && values.unitId === "") {
-            context.addIssue({ code: "custom", path: ["unitId"], message: t("access.grant.unitRequired") });
-          }
-        }),
+      z.object({ roleId: z.string().min(1, t("access.grant.roleRequired")), scope: z.enum(["tenant", "unit"]), unitId: z.string(), includeChildren: z.boolean() }).superRefine((values, context) => {
+        if (values.scope === "unit" && values.unitId === "") {
+          context.addIssue({ code: "custom", path: ["unitId"], message: t("access.grant.unitRequired") });
+        }
+      }),
     [t],
   );
   const form = useZodForm<GrantValues>({

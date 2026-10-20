@@ -34,9 +34,7 @@ describe("the module registry", () => {
   });
 
   it("throws in development for a route without a declared permission, and hides it in production", () => {
-    const careless: ModuleManifest[] = [
-      { name: "careless", titleKey: "x", routes: [{ path: "/oops", element: null, titleKey: "x" }], navigation: [] },
-    ];
+    const careless: ModuleManifest[] = [{ name: "careless", titleKey: "x", routes: [{ path: "/oops", element: null, titleKey: "x" }], navigation: [] }];
     expect(() => validateManifests(careless, { strict: true })).toThrow(ManifestError);
     expect(() => routesFor(careless, ["anything"], { strict: true })).toThrow(/declares no permission/);
 

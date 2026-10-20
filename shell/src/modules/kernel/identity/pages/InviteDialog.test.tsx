@@ -65,7 +65,19 @@ describe("inviting a person", () => {
       "POST /api/v1/users": () =>
         json(
           {
-            user: { id: "new-1", login_id: "grace@acme.localhost", display_name: "Grace Hopper", type: "user", status: "invited", email: null, home_unit_id: "branch", last_login_at: null, created_at: "2026-10-19T10:00:00Z", updated_at: "2026-10-19T10:00:00Z", version: 1 },
+            user: {
+              id: "new-1",
+              login_id: "grace@acme.localhost",
+              display_name: "Grace Hopper",
+              type: "user",
+              status: "invited",
+              email: null,
+              home_unit_id: "branch",
+              last_login_at: null,
+              created_at: "2026-10-19T10:00:00Z",
+              updated_at: "2026-10-19T10:00:00Z",
+              version: 1,
+            },
             invitation_link: "/invitations/secret-token",
             invitation_expires_at: "2026-10-22T10:00:00Z",
           },
@@ -144,20 +156,40 @@ describe("inviting a person", () => {
 });
 
 describe("the Users page and the invite dialog follow the unit you work for (ADR-0038)", () => {
-  const working = (unitId: string, name: string, allUnits = false) => () =>
-    json({
-      ...me(["identity.users.read"], manager),
-      home_unit: { id: "branch", name: "Branch", code: "branch" },
-      working_unit: { id: unitId, name, code: unitId },
-      all_units: allUnits,
-      working_units: {
-        units: [
-          { id: "branch", name: "Branch", code: "branch", depth: 1, path: [{ id: "root", name: "Acme" }, { id: "branch", name: "Branch" }] },
-          { id: "finance", name: "Finance", code: "finance", depth: 1, path: [{ id: "root", name: "Acme" }, { id: "finance", name: "Finance" }] },
-        ],
-        all_units_available: true,
-      },
-    });
+  const working =
+    (unitId: string, name: string, allUnits = false) =>
+    () =>
+      json({
+        ...me(["identity.users.read"], manager),
+        home_unit: { id: "branch", name: "Branch", code: "branch" },
+        working_unit: { id: unitId, name, code: unitId },
+        all_units: allUnits,
+        working_units: {
+          units: [
+            {
+              id: "branch",
+              name: "Branch",
+              code: "branch",
+              depth: 1,
+              path: [
+                { id: "root", name: "Acme" },
+                { id: "branch", name: "Branch" },
+              ],
+            },
+            {
+              id: "finance",
+              name: "Finance",
+              code: "finance",
+              depth: 1,
+              path: [
+                { id: "root", name: "Acme" },
+                { id: "finance", name: "Finance" },
+              ],
+            },
+          ],
+          all_units_available: true,
+        },
+      });
 
   it("says the list keeps to the unit, and a person invited joins it unless another is chosen", async () => {
     openUsers("/users", { "GET /api/v1/me": working("finance", "Finance") });

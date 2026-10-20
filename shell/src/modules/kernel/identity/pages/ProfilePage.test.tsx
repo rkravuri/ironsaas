@@ -42,11 +42,11 @@ describe("My profile", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("tab", { name: "Access" }));
     const roles = await screen.findByRole("list", { name: "Your roles" });
-    expect(within(roles).getAllByRole("listitem").map((item) => item.firstChild?.textContent)).toEqual([
-      "Unit user reader, at Acme / E2E branch and every unit below it",
-      "Read only, for the whole tenant",
-      "Auditor, at Acme / Finance only",
-    ]);
+    expect(
+      within(roles)
+        .getAllByRole("listitem")
+        .map((item) => item.firstChild?.textContent),
+    ).toEqual(["Unit user reader, at Acme / E2E branch and every unit below it", "Read only, for the whole tenant", "Auditor, at Acme / Finance only"]);
 
     await user.click(screen.getByRole("tab", { name: "Session" }));
     const panel = await screen.findByRole("tabpanel", { name: "Session" });

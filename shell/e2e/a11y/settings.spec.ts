@@ -11,7 +11,9 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the settings page in the ${scheme} scheme: by module, each value with its source in words, a unit's inherited value, the change dialog by keyboard, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the settings page in the ${scheme} scheme: by module, each value with its source in words, a unit's inherited value, the change dialog by keyboard, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubSettings(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });

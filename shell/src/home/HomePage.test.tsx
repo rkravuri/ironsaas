@@ -7,7 +7,16 @@ import { json, me, renderWithProviders, stubFetch } from "@/test/render";
 
 const root = { id: "01a15100-0000-7000-8000-000000000001", name: "Acme Corporation", code: "acme" };
 const branch = { id: "01a15100-0000-7000-8000-000000000009", name: "E2E branch", code: "e2e-branch" };
-const administrator = ["authz.assignments.manage", "authz.assignments.read", "authz.roles.manage", "authz.roles.read", "authz.units.manage", "authz.units.read", "identity.users.manage", "identity.users.read"];
+const administrator = [
+  "authz.assignments.manage",
+  "authz.assignments.read",
+  "authz.roles.manage",
+  "authz.roles.read",
+  "authz.units.manage",
+  "authz.units.read",
+  "identity.users.manage",
+  "identity.users.read",
+];
 const principal = me().id;
 
 function signIn({ anywhere, atHome, unit }: { anywhere: string[]; atHome: string[]; unit: typeof root }) {

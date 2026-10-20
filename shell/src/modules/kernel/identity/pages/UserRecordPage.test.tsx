@@ -142,7 +142,18 @@ describe("the user record page", () => {
       "GET /api/v1/roles?page_size=200&sort=name": () =>
         json(
           list([
-            { id: "r1", code: "user-reader", name: "User reader", description: "", is_system: false, principal_type: "user", permissions: ["identity.users.read"], created_at: "", updated_at: "", version: 1 },
+            {
+              id: "r1",
+              code: "user-reader",
+              name: "User reader",
+              description: "",
+              is_system: false,
+              principal_type: "user",
+              permissions: ["identity.users.read"],
+              created_at: "",
+              updated_at: "",
+              version: 1,
+            },
             { id: "r2", code: "service-default", name: "Service default", description: "", is_system: true, principal_type: "service", permissions: [], created_at: "", updated_at: "", version: 1 },
           ]),
         ),
@@ -176,7 +187,22 @@ describe("the user record page", () => {
       "GET /api/v1/users/u1": () => json(user),
       [assignments]: () => json(list([])),
       "GET /api/v1/roles?page_size=200&sort=name": () =>
-        json(list([{ id: "r1", code: "payment-raiser", name: "Payment raiser", description: "", is_system: false, principal_type: "user", permissions: ["payments.raise"], created_at: "", updated_at: "", version: 1 }])),
+        json(
+          list([
+            {
+              id: "r1",
+              code: "payment-raiser",
+              name: "Payment raiser",
+              description: "",
+              is_system: false,
+              principal_type: "user",
+              permissions: ["payments.raise"],
+              created_at: "",
+              updated_at: "",
+              version: 1,
+            },
+          ]),
+        ),
       "GET /api/v1/organisation-units": () => json({ data: [unit("sales", "Sales", "acme"), unit("east", "East", "sales")] }),
       "POST /api/v1/role-assignments/conflicts": () =>
         json({

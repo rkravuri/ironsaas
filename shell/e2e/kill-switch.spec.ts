@@ -25,7 +25,10 @@ async function killImports(on: boolean): Promise<number> {
     });
     expect(token.ok(), await token.text()).toBe(true);
     const { access_token: accessToken } = (await token.json()) as { access_token: string };
-    const flipped = await control.put("/api/v1/kill-switches/imports", { data: { on, reason: on ? reason : "The browser test is done.", tenant }, headers: { Authorization: `Bearer ${accessToken}` } });
+    const flipped = await control.put("/api/v1/kill-switches/imports", {
+      data: { on, reason: on ? reason : "The browser test is done.", tenant },
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     expect(flipped.ok(), await flipped.text()).toBe(true);
     return Date.now();
   } finally {

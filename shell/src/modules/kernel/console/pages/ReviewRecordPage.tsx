@@ -64,7 +64,11 @@ export function ReviewRecordPage() {
   };
 
   const status: RecordStatus =
-    data.status === "closed" ? { label: t("reviews.status.closed"), tone: "neutral" } : data.overdue ? { label: t("reviews.status.overdue"), tone: "warning" } : { label: t("reviews.status.open"), tone: "info" };
+    data.status === "closed"
+      ? { label: t("reviews.status.closed"), tone: "neutral" }
+      : data.overdue
+        ? { label: t("reviews.status.overdue"), tone: "warning" }
+        : { label: t("reviews.status.open"), tone: "info" };
 
   return (
     <>
@@ -179,7 +183,9 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         confirming.items.map((item) => item.id),
       );
       setConfirming((current) => ({ ...current, opened: false }));
-      return result.already_decided > 0 ? t("reviews.items.confirmedManyWithDecided", { count: result.confirmed, decided: result.already_decided }) : t("reviews.items.confirmedMany", { count: result.confirmed });
+      return result.already_decided > 0
+        ? t("reviews.items.confirmedManyWithDecided", { count: result.confirmed, decided: result.already_decided })
+        : t("reviews.items.confirmedMany", { count: result.confirmed });
     });
 
   const columns = useMemo<DataGridColumn<ReviewItem>[]>(
@@ -287,7 +293,12 @@ function RevokeForm({ item, onClose, onDone }: { item: ReviewItem; onClose: () =
   const schema = useMemo(() => z.object({ comment: z.string().max(500, t("reviews.items.commentTooLong")) }), [t]);
   const form = useZodForm({ schema, initialValues: { comment: "" } });
   return (
-    <Form form={form} onSubmit={async (values) => onDone(values.comment.trim() || undefined)} submitLabel={t("reviews.items.revokeConfirm")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
+    <Form
+      form={form}
+      onSubmit={async (values) => onDone(values.comment.trim() || undefined)}
+      submitLabel={t("reviews.items.revokeConfirm")}
+      secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+    >
       <Text size="sm">{t("reviews.items.revokeMessage", { name: item.principal_name, role: item.role_name, unit: item.unit_name })}</Text>
       <Textarea label={t("reviews.items.comment")} description={t("reviews.items.commentHint")} autosize minRows={2} maxRows={5} data-autofocus {...form.getInputProps("comment")} />
     </Form>

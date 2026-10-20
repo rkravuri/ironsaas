@@ -38,7 +38,12 @@ export function FormSection() {
           {t("gallery.sections.form")}
         </Title>
         <Text>{t("gallery.form.intro")}</Text>
-        <Form form={form} onSubmit={(values) => (values.likeTheServer ? Promise.reject(serverProblem()) : Promise.resolve())} submitLabel={t("gallery.form.save")} secondary={{ label: t("gallery.form.cancel"), onClick: () => form.reset() }}>
+        <Form
+          form={form}
+          onSubmit={(values) => (values.likeTheServer ? Promise.reject(serverProblem()) : Promise.resolve())}
+          submitLabel={t("gallery.form.save")}
+          secondary={{ label: t("gallery.form.cancel"), onClick: () => form.reset() }}
+        >
           <TextInput label={t("gallery.form.displayName")} description={t("gallery.form.displayNameHint")} {...form.getInputProps("displayName")} />
           <TextInput label={t("gallery.form.email")} {...form.getInputProps("email")} />
           <Checkbox label={t("gallery.form.likeTheServer")} {...form.getInputProps("likeTheServer", { type: "checkbox" })} />

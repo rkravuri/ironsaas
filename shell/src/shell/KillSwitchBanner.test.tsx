@@ -17,7 +17,12 @@ const killed: KillSwitch = { path: "imports", flag: "kill.imports", since: "2026
 /** What /me/context answers: the API puts the kill switches in for administrators only, so the stub decides who sees them. */
 const context = (killSwitches: KillSwitch[]) => ({
   entitlements,
-  flags: { known: true, confirmed_at: "2026-10-20T09:00:00Z", values: [{ key: "kill.imports", type: "boolean", value: killSwitches.length > 0, reason: "targeting_match" }], kill_switches: killSwitches },
+  flags: {
+    known: true,
+    confirmed_at: "2026-10-20T09:00:00Z",
+    values: [{ key: "kill.imports", type: "boolean", value: killSwitches.length > 0, reason: "targeting_match" }],
+    kill_switches: killSwitches,
+  },
 });
 
 function renderShell() {

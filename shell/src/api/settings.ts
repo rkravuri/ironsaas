@@ -85,5 +85,4 @@ export const saveSetting = (key: string, place: SettingPlace, value: unknown) =>
   });
 
 /** Removes the value at a place (TF-058 AC2); the answer is the setting there with the inherited value. */
-export const resetSetting = (key: string, place: SettingPlace) =>
-  request(`/api/v1/settings/${encodeURIComponent(key)}?${placeQuery(place)}`, { method: "DELETE", schema: SettingViewSchema });
+export const resetSetting = (key: string, place: SettingPlace) => request(`/api/v1/settings/${encodeURIComponent(key)}?${placeQuery(place)}`, { method: "DELETE", schema: SettingViewSchema });

@@ -37,7 +37,13 @@ export function Search() {
     const titles = new Map(manifests.map((manifest) => [manifest.name, manifest.titleKey]));
     groups.push({
       group: t("search.actions"),
-      actions: quick.actions.map((action) => ({ id: `action:${action.id}`, label: t(action.labelKey), description: t(titles.get(action.module) ?? ""), leftSection: action.icon, onClick: () => void navigate(action.path) })),
+      actions: quick.actions.map((action) => ({
+        id: `action:${action.id}`,
+        label: t(action.labelKey),
+        description: t(titles.get(action.module) ?? ""),
+        leftSection: action.icon,
+        onClick: () => void navigate(action.path),
+      })),
     });
   }
 
@@ -62,7 +68,18 @@ export function SearchButton() {
   const { t } = useTranslation();
   const keys = `${onMac() ? "⌘" : "Ctrl"} K`;
   return (
-    <Button variant="default" size="sm" onClick={() => spotlight.open()} leftSection={<IconSearch size={16} aria-hidden="true" />} rightSection={<Kbd size="xs" visibleFrom="sm">{keys}</Kbd>} aria-keyshortcuts="Control+K Meta+K">
+    <Button
+      variant="default"
+      size="sm"
+      onClick={() => spotlight.open()}
+      leftSection={<IconSearch size={16} aria-hidden="true" />}
+      rightSection={
+        <Kbd size="xs" visibleFrom="sm">
+          {keys}
+        </Kbd>
+      }
+      aria-keyshortcuts="Control+K Meta+K"
+    >
       <Text span size="sm" visibleFrom="sm">
         {t("search.open")}
       </Text>

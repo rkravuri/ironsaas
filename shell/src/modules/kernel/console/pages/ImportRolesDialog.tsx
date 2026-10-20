@@ -150,7 +150,9 @@ function DiffView({ diff }: { diff: ImportDiff }) {
                 </Text>
                 {change.added.length > 0 && <Text size="sm">{t("roles.import.gains", { permissions: change.added.join(", ") })}</Text>}
                 {change.removed.length > 0 && <Text size="sm">{t("roles.import.loses", { permissions: change.removed.join(", ") })}</Text>}
-                {change.fields.length > 0 && <Text size="sm">{t("roles.import.fields", { fields: change.fields.map((field) => t(`roles.import.field.${field}`, { defaultValue: field })).join(", ") })}</Text>}
+                {change.fields.length > 0 && (
+                  <Text size="sm">{t("roles.import.fields", { fields: change.fields.map((field) => t(`roles.import.field.${field}`, { defaultValue: field })).join(", ") })}</Text>
+                )}
               </List.Item>
             ))}
           </List>

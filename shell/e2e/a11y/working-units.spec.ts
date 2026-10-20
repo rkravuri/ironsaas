@@ -7,7 +7,9 @@ const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
 async function expectNoViolation(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
-  expect(results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`)).toEqual([]);
+  expect(
+    results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`),
+  ).toEqual([]);
 }
 
 const [acme, , finance, operations, north, , sales] = units;
@@ -66,7 +68,10 @@ for (const scheme of schemes) {
     await expect(page.getByText("The list keeps to Finance and the units below it.", { exact: false })).toBeVisible();
 
     await page.getByRole("button", { name: /Choose the unit you work for/ }).click();
-    await page.getByRole("menu").getByRole("menuitem", { name: /All my units/ }).click();
+    await page
+      .getByRole("menu")
+      .getByRole("menuitem", { name: /All my units/ })
+      .click();
     await expect(page.getByRole("button", { name: "Working for All my units. Choose the unit you work for" })).toBeVisible();
     await expect(page.getByText("The list shows all your units.", { exact: false })).toBeVisible();
     await page.screenshot({ path: `test-results/a11y/working-unit-users-${scheme}.png`, fullPage: true });
@@ -84,7 +89,15 @@ for (const scheme of schemes) {
           parts: [
             { code: "records", module: "orders", record_type: "sales_order", record_type_name: "Sales orders", count: 128, items: [], conflicts: [] },
             { code: "people", module: "identity", record_type: null, record_type_name: null, count: 14, items: ["Ada Lovelace", "Grace Hopper", "Linus Pauling"], conflicts: [] },
-            { code: "assignments", module: "authorization", record_type: null, record_type_name: null, count: 2, items: ["Ada Lovelace (Sales lead)", "Grace Hopper (Reader)"], conflicts: ["Marie Curie (Reader)"] },
+            {
+              code: "assignments",
+              module: "authorization",
+              record_type: null,
+              record_type_name: null,
+              count: 2,
+              items: ["Ada Lovelace (Sales lead)", "Grace Hopper (Reader)"],
+              conflicts: ["Marie Curie (Reader)"],
+            },
             { code: "settings", module: "settings", record_type: null, record_type_name: null, count: 1, items: ["orders.numbering.prefix"], conflicts: ["ui.theme"] },
             { code: "shares", module: "data", record_type: null, record_type_name: null, count: 3, items: ["sales_order"], conflicts: [] },
             { code: "children", module: "authorization", record_type: null, record_type_name: null, count: 2, items: ["Enterprise", "Partners"], conflicts: [] },

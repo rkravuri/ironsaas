@@ -49,10 +49,16 @@ describe("the mandala's draw-in", () => {
   });
 
   it("stands still when the viewer asked for less motion", () => {
-    vi.spyOn(window, "matchMedia").mockImplementation(
-      (query: string) =>
-        ({ matches: query === reducedMotionQuery, media: query, onchange: null, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: () => false }),
-    );
+    vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
+      matches: query === reducedMotionQuery,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: () => false,
+    }));
     const { container } = render(<Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed="still" size={40} animate />);
     expect(container.querySelector("path.iron-draw-in")).toBeNull();
   });

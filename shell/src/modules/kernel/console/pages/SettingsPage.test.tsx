@@ -6,7 +6,18 @@ import { SettingsPage } from "./SettingsPage";
 
 const administrator = ["authz.units.read", "settings.values.manage", "settings.values.read"];
 const reader = ["settings.values.read"];
-const root = { id: "01a15100-0000-7000-8000-0000000000c1", name: "Acme", code: "acme", kind: "root", parent_id: null, depth: 0, status: "active", created_at: "2026-10-19T09:00:00Z", updated_at: "2026-10-19T09:00:00Z", version: 1 };
+const root = {
+  id: "01a15100-0000-7000-8000-0000000000c1",
+  name: "Acme",
+  code: "acme",
+  kind: "root",
+  parent_id: null,
+  depth: 0,
+  status: "active",
+  created_at: "2026-10-19T09:00:00Z",
+  updated_at: "2026-10-19T09:00:00Z",
+  version: 1,
+};
 const operations = { ...root, id: "01a15100-0000-7000-8000-0000000000c2", name: "Operations", code: "operations", kind: "unit", parent_id: root.id, depth: 1 };
 const warehouse = { ...root, id: "01a15100-0000-7000-8000-0000000000c3", name: "Warehouse", code: "warehouse", kind: "unit", parent_id: operations.id, depth: 2 };
 const ravi = { id: "01a15100-0000-7000-8000-0000000000d1", name: "Ravi" };
@@ -112,7 +123,12 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     const user = userEvent.setup();
     const { calls } = open(administrator, {
       "PUT /api/v1/settings/identity.session.idle_minutes": () =>
-        problem(400, { title: "Bad Request", error_code: "settings.value.invalid", detail: "The value for 'identity.session.idle_minutes' is refused. A whole number from 15 to 480.", errors: [{ field: "value", code: "invalid", message: "A whole number from 15 to 480." }] }),
+        problem(400, {
+          title: "Bad Request",
+          error_code: "settings.value.invalid",
+          detail: "The value for 'identity.session.idle_minutes' is refused. A whole number from 15 to 480.",
+          errors: [{ field: "value", code: "invalid", message: "A whole number from 15 to 480." }],
+        }),
     });
     const idle = await row("A session ends without activity after");
 

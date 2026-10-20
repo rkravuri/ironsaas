@@ -58,7 +58,14 @@ describe("the attachment panel", () => {
     const onUpload = vi.fn(() => Promise.resolve());
     const onDownload = vi.fn();
     const onDelete = vi.fn(() => Promise.resolve());
-    renderWithProviders(<AttachmentPanel attachments={[{ id: "a", name: "contract.pdf", size: 24_576, uploadedAt: "2026-10-18T09:00:00Z", uploadedBy: "Ada" }]} onUpload={onUpload} onDownload={onDownload} onDelete={onDelete} />);
+    renderWithProviders(
+      <AttachmentPanel
+        attachments={[{ id: "a", name: "contract.pdf", size: 24_576, uploadedAt: "2026-10-18T09:00:00Z", uploadedBy: "Ada" }]}
+        onUpload={onUpload}
+        onDownload={onDownload}
+        onDelete={onDelete}
+      />,
+    );
     expect(screen.getByText("24 KB")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Download contract.pdf" }));
     expect(onDownload).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }));
@@ -86,7 +93,12 @@ describe("the history, approval and comment panels", () => {
     renderWithProviders(
       <>
         <HistoryPanel events={[{ id: "e1", at: "2026-10-18T09:00:00Z", actor: "Ada", action: "Created", summary: "From the import." }]} />
-        <ApprovalPanel steps={[{ id: "s1", name: "Manager", approver: "Grace", state: "approved" }, { id: "s2", name: "Finance", approver: "Linus", state: "pending" }]} />
+        <ApprovalPanel
+          steps={[
+            { id: "s1", name: "Manager", approver: "Grace", state: "approved" },
+            { id: "s2", name: "Finance", approver: "Linus", state: "pending" },
+          ]}
+        />
         <CommentPanel comments={[{ id: "c1", author: "Ada", at: "2026-10-18T09:00:00Z", text: "Looks right." }]} onAdd={onAdd} />
       </>,
     );

@@ -233,7 +233,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       workFor,
       dismissActingEnded,
     };
-  }, [me, query.error, query.isPending, entitlements, killSwitches, settings, settingsKnown, ended, actingEnded, refresh, signedIn, extend, signOut, expire, forget, actFor, stopActing, workFor, dismissActingEnded]);
+  }, [
+    me,
+    query.error,
+    query.isPending,
+    entitlements,
+    killSwitches,
+    settings,
+    settingsKnown,
+    ended,
+    actingEnded,
+    refresh,
+    signedIn,
+    extend,
+    signOut,
+    expire,
+    forget,
+    actFor,
+    stopActing,
+    workFor,
+    dismissActingEnded,
+  ]);
 
   return (
     <SessionWatchContext.Provider value={watch}>

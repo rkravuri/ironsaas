@@ -66,7 +66,12 @@ export async function stubDelegations(target: Page, { acting = false }: { acting
       json: {
         data: [
           { code: "all", module: "kernel", name: "all duties", description: "Everything the person may do, at every scope they may do it.", permissions: [] },
-          { ...userAdministration, module: "identity", description: "Reading and managing people: their accounts, their invitations, and the roles they hold where.", permissions: ["identity.users.read", "identity.users.manage"] },
+          {
+            ...userAdministration,
+            module: "identity",
+            description: "Reading and managing people: their accounts, their invitations, and the roles they hold where.",
+            permissions: ["identity.users.read", "identity.users.manage"],
+          },
         ],
       },
     }),
@@ -74,7 +79,12 @@ export async function stubDelegations(target: Page, { acting = false }: { acting
   await target.route("**/api/v1/delegations?**", (route) => route.fulfill({ json: listOf(managedDelegations) }));
   await target.route("**/api/v1/delegations/mine", (route) => route.fulfill({ json: { data: myDelegations } }));
   await target.route("**/api/v1/directory?**", (route) =>
-    route.fulfill({ json: listOf([{ id: grace.id, display_name: grace.name, home_unit: "North" }, { id: linus.id, display_name: linus.name, home_unit: "Finance" }]) }),
+    route.fulfill({
+      json: listOf([
+        { id: grace.id, display_name: grace.name, home_unit: "North" },
+        { id: linus.id, display_name: linus.name, home_unit: "Finance" },
+      ]),
+    }),
   );
 }
 
