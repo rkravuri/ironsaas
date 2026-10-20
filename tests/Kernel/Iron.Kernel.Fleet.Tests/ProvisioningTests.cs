@@ -321,15 +321,15 @@ public class ProvisioningTests(FleetFixture fixture)
     private async Task<List<string>> DeleteEverySecretOfAsync(string slug, CancellationToken cancellationToken)
     {
         using var http = new HttpClient { BaseAddress = new Uri(fixture.OpenBaoAddress + "/") };
-        http.DefaultRequestHeaders.Add("X-Vault-Token", FleetFixture.RootToken);
-        using var list = new HttpRequestMessage(new HttpMethod("LIST"), new Uri($"v1/secret/metadata/tenants/{slug}", UriKind.Relative));
+        http.DefaultRequestHeaders.Add("X-Vault-Token", fixture.RootToken);
+        using var list = new HttpRequestMessage(new HttpMethod("LIST"), new Uri($"v1/{fixture.Mount}/metadata/tenants/{slug}", UriKind.Relative));
         using var listed = await http.SendAsync(list, cancellationToken);
         listed.EnsureSuccessStatusCode();
         var body = await listed.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
         var names = body.GetProperty("data").GetProperty("keys").EnumerateArray().Select(key => key.GetString()!).ToList();
         foreach (var name in names)
         {
-            using var deleted = await http.DeleteAsync(new Uri($"v1/secret/metadata/tenants/{slug}/{name}", UriKind.Relative), cancellationToken);
+            using var deleted = await http.DeleteAsync(new Uri($"v1/{fixture.Mount}/metadata/tenants/{slug}/{name}", UriKind.Relative), cancellationToken);
             deleted.EnsureSuccessStatusCode();
         }
 

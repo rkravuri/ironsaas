@@ -3,12 +3,12 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Testing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
-using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Audit.Tests;
 
@@ -18,20 +18,24 @@ namespace Iron.Kernel.Audit.Tests;
 /// </summary>
 public sealed class AuditFixture : IAsyncLifetime
 {
-    public const string AppRole = "acme_app";
-    private const string AppPassword = "acme";
+    // A role lives in the whole server, which the run's projects share; the fleet's tests make acme_app for their tenant.
+    public const string AppRole = "audit_app";
+    private const string AppPassword = "audit";
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19rc1").Build();
+    private TestPostgres? _postgres;
 
     /// <summary>The owner connection: migrations, seeds, grants.</summary>
-    public string ConnectionString => _container.GetConnectionString();
+    public string ConnectionString => Postgres.ConnectionString;
+
+    /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
+    private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
     /// <summary>The runtime connection: what a unit's hosts use.</summary>
     public string AppConnectionString => new NpgsqlConnectionStringBuilder(ConnectionString) { Username = AppRole, Password = AppPassword }.ToString();
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync(TestContext.Current.CancellationToken);
+        _postgres = await TestPostgres.StartAsync("audit", TestContext.Current.CancellationToken);
         await using (var dataSource = new NpgsqlDataSourceBuilder(ConnectionString).Build())
         await using (var connection = await dataSource.OpenConnectionAsync(TestContext.Current.CancellationToken))
         await using (var command = connection.CreateCommand())
@@ -45,7 +49,13 @@ public sealed class AuditFixture : IAsyncLifetime
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
     }
 
-    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (_postgres is not null)
+        {
+            await _postgres.DisposeAsync();
+        }
+    }
 
     /// <summary>The services a host would have for these two modules, with a controllable clock and principal.</summary>
     public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, string? connectionString = null)

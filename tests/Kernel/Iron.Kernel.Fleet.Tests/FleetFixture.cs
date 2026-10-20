@@ -1,5 +1,3 @@
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
@@ -8,11 +6,10 @@ using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Fleet.Services;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Tenancy;
+using Iron.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
-using Testcontainers.Azurite;
-using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Fleet.Tests;
 
@@ -22,38 +19,36 @@ namespace Iron.Kernel.Fleet.Tests;
 /// </summary>
 public sealed class FleetFixture : IAsyncLifetime
 {
-    public const string RootToken = "fleet-test-root-token";
+    private TestPostgres? _postgres;
+    private TestBlob? _blob;
+    private TestOpenBao? _openBao;
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:19rc1").Build();
-    private readonly AzuriteContainer _azurite = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.37.0").WithCommand("--skipApiVersionCheck", "--loose").Build();
-    private readonly IContainer _openBao = new ContainerBuilder("openbao/openbao:2.7.1")
-        .WithCommand("server", "-dev", "-dev-root-token-id=" + RootToken, "-dev-listen-address=0.0.0.0:8200")
-        .WithEnvironment("BAO_ADDR", "http://127.0.0.1:8200")
-        .WithCreateParameterModifier(parameters =>
-        {
-            parameters.HostConfig ??= new Docker.DotNet.Models.HostConfig();
-            parameters.HostConfig.CapAdd = ["IPC_LOCK"];
-        })
-        .WithPortBinding(8200, true)
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request.ForPort(8200).ForPath("/v1/sys/health")))
-        .Build();
+    /// <summary>The control plane's own database; the database step makes the tenants' beside it on the same server.</summary>
+    public string ControlConnectionString => Postgres.ConnectionString;
 
-    /// <summary>The control plane's own database (the container's default one).</summary>
-    public string ControlConnectionString => _postgres.GetConnectionString();
+    public string StorageConnectionString => (_blob ?? throw new InvalidOperationException("The fixture is not initialised.")).ConnectionString;
 
-    public string StorageConnectionString => _azurite.GetConnectionString();
+    public string OpenBaoAddress => OpenBao.Address;
 
-    public string OpenBaoAddress => $"http://{_openBao.Hostname}:{_openBao.GetMappedPublicPort(8200)}";
+    /// <summary>The store's root token: the fleet's own, as the control plane's is on the laptop.</summary>
+    public string RootToken => OpenBao.RootToken;
 
-    public SecretStoreOptions StoreOptions(string token = RootToken, string path = "tenants") => new() { Address = OpenBaoAddress, Token = token, Path = path };
+    /// <summary>The fleet tests' own KV mount in the store.</summary>
+    public string Mount => OpenBao.Mount;
+
+    public SecretStoreOptions StoreOptions(string? token = null, string path = "tenants") => new() { Address = OpenBaoAddress, Token = token ?? RootToken, Mount = OpenBao.Mount, Path = path };
+
+    private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
+
+    private TestOpenBao OpenBao => _openBao ?? throw new InvalidOperationException("The fixture is not initialised.");
 
     public FleetOptions FleetOptions => new()
     {
         Database = new FleetOptions.FleetDatabaseOptions
         {
             AdminConnectionString = ControlConnectionString,
-            UnitHost = _postgres.Hostname,
-            UnitPort = _postgres.GetMappedPublicPort(5432),
+            UnitHost = Postgres.Host,
+            UnitPort = Postgres.Port,
         },
         Storage = new FleetOptions.FleetStorageOptions { AccountConnectionString = StorageConnectionString, UnitBlobEndpoint = null, SasValidDays = 7 },
         Secrets = new FleetOptions.FleetSecretsOptions { UnitAddress = OpenBaoAddress, UnitTokenValidDays = 7 },
@@ -66,7 +61,9 @@ public sealed class FleetFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        await Task.WhenAll(_postgres.StartAsync(TestContext.Current.CancellationToken), _azurite.StartAsync(TestContext.Current.CancellationToken), _openBao.StartAsync(TestContext.Current.CancellationToken));
+        _postgres = await TestPostgres.StartAsync("fleet", TestContext.Current.CancellationToken);
+        _blob = await TestBlob.StartAsync(TestContext.Current.CancellationToken);
+        _openBao = await TestOpenBao.StartAsync("fleet", TestContext.Current.CancellationToken);
         await using var provider = BuildServices(Clock(), new RecordingRuntime());
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
@@ -74,9 +71,20 @@ public sealed class FleetFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        await _openBao.DisposeAsync();
-        await _azurite.DisposeAsync();
-        await _postgres.DisposeAsync();
+        if (_openBao is not null)
+        {
+            await _openBao.DisposeAsync();
+        }
+
+        if (_blob is not null)
+        {
+            await _blob.DisposeAsync();
+        }
+
+        if (_postgres is not null)
+        {
+            await _postgres.DisposeAsync();
+        }
     }
 
     /// <summary>The control plane's services as the fleet host has them, with the store configured and the runtime replaced.</summary>
@@ -87,6 +95,7 @@ public sealed class FleetFixture : IAsyncLifetime
         {
             ["Secrets:Address"] = OpenBaoAddress,
             ["Secrets:Token"] = RootToken,
+            ["Secrets:Mount"] = OpenBao.Mount,
             ["Secrets:Path"] = "control",
             ["Fleet:Database:AdminConnectionString"] = options.Database.AdminConnectionString,
             ["Fleet:Database:UnitHost"] = options.Database.UnitHost,

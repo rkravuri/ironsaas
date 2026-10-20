@@ -39,10 +39,11 @@ jobs:
       - name: Format check
         run: dotnet format Foundation.slnx --verify-no-changes --no-restore
 
-      # Architecture, unit and integration tests; the integration tests start PostgreSQL, Azurite and OpenBao with
-      # Testcontainers on the runner's Docker. Microsoft Testing Platform mode: the solution is passed with --solution.
+      # Architecture, unit and integration tests; the integration tests use PostgreSQL, Azurite and OpenBao, as
+      # the run's one container of each on the runner's Docker, four test projects at a time, as on the laptop
+      # (tests/test-services.sh; Microsoft Testing Platform mode, the solution passed with --solution).
       - name: Test
-        run: dotnet test --solution Foundation.slnx --configuration Release --no-build
+        run: make test CONFIG=Release TEST_ARGS=--no-build
 
   shell:
     name: Shell lint, tests and build

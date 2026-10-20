@@ -18,8 +18,18 @@ help: ## Show this list
 build: ## Build every project (warnings are errors)
 	dotnet build Foundation.slnx --configuration $(CONFIG)
 
-test: ## Run every test project (Microsoft Testing Platform, see global.json)
-	dotnet test --solution Foundation.slnx --configuration $(CONFIG)
+# One PostgreSQL, one Azurite and one OpenBao for the whole run, each project in its own database, containers and mount
+# (tests/test-services.sh, tests/Iron.Testing), and at most four test projects at once. Every project at once (one per
+# CPU thread), each with containers of its own, started some forty containers beside the stack, and a starved thread
+# failed Testcontainers' five-second image name check before any test ran. The services go whatever the result.
+TEST_PARALLEL ?= 4
+TEST_ARGS ?=
+
+test: ## Run every test project (Microsoft Testing Platform, see global.json) on the run's three services, four at a time
+	@services=$$(sh tests/test-services.sh up) || { sh tests/test-services.sh down; exit 1; }; \
+	eval "$$services"; \
+	dotnet test --solution Foundation.slnx --configuration $(CONFIG) --max-parallel-test-modules $(TEST_PARALLEL) $(TEST_ARGS); \
+	status=$$?; sh tests/test-services.sh down; exit $$status
 
 check: ## Run only the architecture checks (module boundaries, layout)
 	dotnet test --project tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj --configuration $(CONFIG)

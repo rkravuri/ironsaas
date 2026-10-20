@@ -3,31 +3,31 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Testing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
-using Testcontainers.Azurite;
-using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Files.Tests;
 
 /// <summary>PostgreSQL and Azurite for the test run, migrated and seeded through the unit's own commands (the seed creates the container).</summary>
 public sealed class FilesFixture : IAsyncLifetime
 {
-    public const string Container = "acme";
+    // Apart from the fleet tests' tenant slugs, which name their containers in the run's one Azurite.
+    public const string Container = "files";
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:19rc1").Build();
-    // --skipApiVersionCheck as on the laptop platform: the SDK's newest API version runs ahead of the emulator (ADR-0006).
-    private readonly AzuriteContainer _azurite = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:3.37.0").WithCommand("--skipApiVersionCheck", "--loose").Build();
+    private TestPostgres? _postgres;
+    private TestBlob? _blob;
 
-    public string ConnectionString => _postgres.GetConnectionString();
+    public string ConnectionString => (_postgres ?? throw new InvalidOperationException("The fixture is not initialised.")).ConnectionString;
 
-    public string StorageConnectionString => _azurite.GetConnectionString();
+    public string StorageConnectionString => (_blob ?? throw new InvalidOperationException("The fixture is not initialised.")).ConnectionString;
 
     public async ValueTask InitializeAsync()
     {
-        await Task.WhenAll(_postgres.StartAsync(TestContext.Current.CancellationToken), _azurite.StartAsync(TestContext.Current.CancellationToken));
+        _postgres = await TestPostgres.StartAsync("files", TestContext.Current.CancellationToken);
+        _blob = await TestBlob.StartAsync(TestContext.Current.CancellationToken);
         await using var provider = BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
@@ -35,8 +35,15 @@ public sealed class FilesFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        await _azurite.DisposeAsync();
-        await _postgres.DisposeAsync();
+        if (_blob is not null)
+        {
+            await _blob.DisposeAsync();
+        }
+
+        if (_postgres is not null)
+        {
+            await _postgres.DisposeAsync();
+        }
     }
 
     public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, string container = Container)

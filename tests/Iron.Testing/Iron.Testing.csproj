@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The platform services the integration tests run on: PostgreSQL, Azurite and OpenBao. Under make test one container
+    of each serves the whole run (tests/test-services.sh); a project run alone starts its own with Testcontainers.
+  -->
+  <PropertyGroup>
+    <IronLayer>Test</IronLayer>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Azurite" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+  </ItemGroup>
+
+</Project>

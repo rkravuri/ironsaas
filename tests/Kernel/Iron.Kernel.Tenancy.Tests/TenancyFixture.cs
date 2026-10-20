@@ -5,30 +5,39 @@ using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Fleet;
 using Iron.Kernel.Security.Secrets;
+using Iron.Testing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
-using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Tenancy.Tests;
 
 /// <summary>The control plane's database for the test run: Audit, Authorization, Fleet and Tenancy migrated and seeded.</summary>
 public sealed class TenancyFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19rc1").Build();
+    private TestPostgres? _postgres;
 
-    public string ConnectionString => _container.GetConnectionString();
+    public string ConnectionString => Postgres.ConnectionString;
+
+    /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
+    private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync(TestContext.Current.CancellationToken);
+        _postgres = await TestPostgres.StartAsync("tenancy", TestContext.Current.CancellationToken);
         await using var provider = BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
     }
 
-    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (_postgres is not null)
+        {
+            await _postgres.DisposeAsync();
+        }
+    }
 
     public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, Action<IServiceCollection>? configure = null)
     {

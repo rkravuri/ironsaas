@@ -37,6 +37,7 @@ public class LayerRulesTests
     [InlineData("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", "Host")]
     [InlineData("tests/Kernel/Iron.Kernel.Identity.Tests/Iron.Kernel.Identity.Tests.csproj", "Test")]
     [InlineData("tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj", "Test")]
+    [InlineData("tests/Iron.Testing/Iron.Testing.csproj", "Test")]
     [InlineData("tools/Iron.Smoke/Iron.Smoke.csproj", "Tool")]
     public void EveryLayerAcceptsItsOwnProjects(string relativePath, string layer)
     {
@@ -51,6 +52,8 @@ public class LayerRulesTests
     [InlineData("src/Hosts/Iron.Kernel.Api/Iron.Kernel.Api.csproj", "Host")]
     [InlineData("products/Procurement/Procurement.csproj", "Products")]
     [InlineData("src/Kernel/Iron.Kernel.Identity.Tests/Iron.Kernel.Identity.Tests.csproj", "Test")]
+    [InlineData("tests/Iron.Fixtures/Iron.Fixtures.csproj", "Test")]
+    [InlineData("src/Kernel/Iron.Kernel.Testing/Iron.Kernel.Testing.csproj", "Test")]
     public void ALayerMustAgreeWithTheNameAndTheFolder(string relativePath, string layer)
     {
         var violation = Assert.Single(LayerRules.Check([Fixture.Declaring(relativePath, layer)]));
