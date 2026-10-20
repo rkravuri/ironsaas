@@ -118,7 +118,7 @@ describe("the role editor", () => {
     });
     page("/console/roles/r1");
 
-    expect(await screen.findByText(/System roles come with Foundation/)).toBeInTheDocument();
+    expect(await screen.findByText(/System roles come with IronSaaS Foundation/)).toBeInTheDocument();
     expect(screen.getByText("System role")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete role" })).toBeNull();

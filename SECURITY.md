@@ -4,14 +4,11 @@ IronSaaS Foundation and its suites hold the records of regulated businesses, so 
 
 ## Reporting a vulnerability
 
-Report it privately, never in a public issue, pull request or discussion:
-
-- through the repository's **Security** tab, **Report a vulnerability** (a private advisory that only the maintainers see), or
-- directly to the repository's owner, if you cannot use the advisory.
+Report it privately, by email to **SECURITY_EMAIL_HERE**, never in a public issue, pull request or discussion.
 
 Say what you found, where (file, endpoint or page), how to reproduce it, and what an attacker could do with it. Do not include real personal data or a tenant's records; describe them instead.
 
-The maintainers aim to acknowledge a report within five working days, to agree with you what is affected and when a fix ships, and to credit you in the advisory unless you ask not to be named. Please give us the time to fix it before you tell anyone else.
+The maintainers aim to acknowledge a report within five working days, to agree with you what is affected and when a fix ships, and to credit you in the release notes of the fix unless you ask not to be named. Please give us the time to fix it before you tell anyone else.
 
 ## What is in scope
 

@@ -15,7 +15,7 @@ export async function signIn(
   await page.getByLabel(/login identifier/i).fill(account.loginId);
   await page.getByLabel(/^password/i).fill(account.password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  const shell = page.getByRole("heading", { name: "Foundation" });
+  const shell = page.getByRole("heading", { name: "IronSaaS" });
   const crash = page.getByRole("heading", { name: /something went wrong/i });
   await expect(shell.or(crash)).toBeVisible();
   if (await crash.isVisible()) {

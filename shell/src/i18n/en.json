@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Foundation",
+    "name": "IronSaaS",
     "loading": "Loading…",
     "signOut": "Sign out",
     "signedInAs": "Signed in as {{name}}",
@@ -712,7 +712,7 @@
       "backToList": "Back to roles",
       "failed": "The role could not be loaded.",
       "systemTitle": "A system role",
-      "systemNote": "System roles come with Foundation and follow its permission catalogue, so nobody can change or delete them. To choose permissions yourself, create a tenant role.",
+      "systemNote": "System roles come with IronSaaS Foundation and follow its permission catalogue, so nobody can change or delete them. To choose permissions yourself, create a tenant role.",
       "readOnlyNote": "You can read this role. Changing roles needs the permission to manage roles for the whole tenant.",
       "definition": "Definition",
       "holders": "Who holds it"
@@ -811,7 +811,7 @@
     "placeholder": "Search pages and actions by name or module",
     "pages": "Pages",
     "actions": "Quick actions",
-    "shell": "Foundation",
+    "shell": "IronSaaS",
     "nothingFound": "Nothing matches. Try the name of a page or of a module."
   },
   "help": {

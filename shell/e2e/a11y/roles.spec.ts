@@ -47,7 +47,7 @@ for (const scheme of schemes) {
 
     // A system role says why it cannot change, and offers no way to.
     await page.goto(`/console/roles/${systemRole.id}`);
-    await expect(page.getByText(/System roles come with Foundation/)).toBeVisible();
+    await expect(page.getByText(/System roles come with IronSaaS Foundation/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
     await expect(page.getByRole("checkbox", { name: "Create, change and delete tenant roles" })).toBeDisabled();
     await page.screenshot({ path: `test-results/a11y/role-system-${scheme}.png` });
