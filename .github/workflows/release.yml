@@ -2,7 +2,8 @@ name: Release
 
 # A push to main (ADR-0022): the five images are built and pushed to GitHub Container Registry tagged with the commit,
 # scanned, and then proven on the runner: the platform and the control plane start from those images, the fleet
-# provisions a tenant, and the smoke test runs against it. Green runs tag the images "integration".
+# provisions a tenant, and the smoke test runs against it. Green runs tag the images "integration". The traceability
+# matrix of the commit, CI's results with the smoke's, is kept with the run that built the images (ADR-0044).
 
 on:
   push:
@@ -136,3 +137,55 @@ jobs:
               --tag "${{ steps.repo.outputs.repository }}/$image:integration" \
               "${{ steps.repo.outputs.repository }}/$image:${{ github.sha }}"
           done
+
+  # The matrix of the commit the images were built from: CI's result files for the same commit, which this job waits
+  # for, and the smoke's report from the integration stage, kept for 90 days with this run (TF-218, ADR-0044). T8's
+  # validation pack is built from it.
+  trace:
+    name: Traceability matrix of the release
+    runs-on: ubuntu-latest
+    needs: integration
+    if: always()
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: CI's results for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=""
+          for attempt in $(seq 1 30); do
+            run=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --event push --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          test -n "$run" || { echo "No CI run for $GITHUB_SHA"; exit 1; }
+          # Waits for the run to end, whatever its result: a failing run's results belong in the matrix too.
+          gh run watch "$run" --interval 30 > /dev/null || true
+          gh run download "$run" --pattern 'test-results-*' --dir ci-results
+          mkdir -p artifacts/test-results
+          for folder in ci-results/*/; do cp -r "$folder". artifacts/test-results/; done
+
+      - name: The smoke's report
+        uses: actions/download-artifact@v7
+        with:
+          name: smoke-report
+          path: artifacts/test-results/smoke
+        continue-on-error: true
+
+      - name: Build the matrix
+        run: make trace
+
+      - name: Keep the matrix with the images
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: traceability-matrix-${{ github.sha }}
+          path: artifacts/trace
+          if-no-files-found: ignore
+          retention-days: 90

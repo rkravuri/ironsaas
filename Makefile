@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check prd-check prd-csv format catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -25,10 +25,16 @@ build: ## Build every project (warnings are errors)
 TEST_PARALLEL ?= 4
 TEST_ARGS ?=
 
-test: ## Run every test project (Microsoft Testing Platform, see global.json) on the run's three services, four at a time
-	@services=$$(sh tests/test-services.sh up) || { sh tests/test-services.sh down; exit 1; }; \
+# Every test run leaves its result files under artifacts/test-results (not committed), one folder per kind, which make
+# trace joins to the tests and what they prove (ADR-0044). A kind's folder holds its last run only.
+RESULTS := $(CURDIR)/artifacts/test-results
+
+test: ## Run every test project (Microsoft Testing Platform, see global.json) on the run's three services, four at a time; TRX into artifacts/test-results/dotnet
+	@rm -rf $(RESULTS)/dotnet; \
+	services=$$(sh tests/test-services.sh up) || { sh tests/test-services.sh down; exit 1; }; \
 	eval "$$services"; \
-	dotnet test --solution Foundation.slnx --configuration $(CONFIG) --max-parallel-test-modules $(TEST_PARALLEL) $(TEST_ARGS); \
+	dotnet test --solution Foundation.slnx --configuration $(CONFIG) --max-parallel-test-modules $(TEST_PARALLEL) \
+	  --results-directory $(RESULTS)/dotnet --report-xunit-trx $(TEST_ARGS); \
 	status=$$?; sh tests/test-services.sh down; exit $$status
 
 check: ## Run only the architecture checks (module boundaries, layout)
@@ -37,7 +43,7 @@ check: ## Run only the architecture checks (module boundaries, layout)
 # The requirement documents in docs/prd (ADR-0041): every identifier once, every FF identifier in the map, criteria in
 # the Given, When, Then form with an error case, the product PRDs' sections, and each CSV equal to its markdown.
 prd-check: ## Check the requirement documents, their CSVs and the map (ADR-0041); the check's own tests first
-	python3 tools/prd_check_test.py
+	python3 tools/prd_check_test.py --junit $(RESULTS)/python/prd-check.xml
 	python3 tools/prd_check.py
 
 prd-csv: ## Write every requirement document's CSV, and the map's, from its markdown
@@ -46,6 +52,28 @@ prd-csv: ## Write every requirement document's CSV, and the map's, from its mark
 format: shell-node ## Apply the code style: dotnet format from .editorconfig, Prettier in the shell (ADR-0040)
 	dotnet format Foundation.slnx
 	cd shell && npm run format --silent
+
+format-check: shell-node ## Check the code style without changing a file, as CI does: dotnet format and Prettier
+	dotnet format Foundation.slnx --verify-no-changes
+	cd shell && npm run format:check --silent
+
+# The traceability matrix (TF-218, ADR-0044): every test's identifiers read from the sources, its result from the last
+# run's files under artifacts/test-results, the matrix written to artifacts/trace. It fails on an identifier no document
+# holds, and on a criterion of a done slice without a test that docs/trace/exceptions.md does not list.
+trace: ## Build the traceability matrix into artifacts/trace from the last results (ADR-0044); its own tests first
+	python3 tools/trace_test.py --junit $(RESULTS)/python/trace.xml
+	python3 tools/trace.py
+
+# Every check in order, each on its own, so the shell's tests never run beside make test (ADR-0044): the requirement
+# documents, the .NET suite, the shell (lint, format, tests, build), the accessibility scan, the format check, and the
+# matrix from what those runs wrote. With the stack running it is the check before a push.
+verify: ## Run prd-check, test, shell-check, shell-a11y, the format check and trace, in that order, stopping at the first failure
+	$(MAKE) prd-check
+	$(MAKE) test
+	$(MAKE) shell-check
+	$(MAKE) shell-a11y
+	$(MAKE) format-check
+	$(MAKE) trace
 
 CATALOGUE_FILE := src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json
 SETTING_KEYS_FILE := shell/src/api/setting-keys.ts
@@ -184,7 +212,7 @@ TEST_TENANT = $(or $(TENANT),smoke)
 smoke: env ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions or reuses tenant smoke, or TENANT=x
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
-	SMOKE_TENANT=$(TEST_TENANT) dotnet run --project tools/Iron.Smoke --configuration Release
+	SMOKE_TENANT=$(TEST_TENANT) SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
 
 e2e: shell-node env ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate it (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \

@@ -18,7 +18,13 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
+  // The JUnit file is make trace's (ADR-0044); outside test-results/e2e, which Playwright empties first, so the last run's
+  // results stay until the next run writes them again.
+  reporter: [
+    ["list"],
+    ["junit", { outputFile: "../artifacts/test-results/e2e/junit.xml" }],
+    ...(process.env.CI ? [["html", { open: "never" }] as const] : []),
+  ],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "https://smoke.localhost",
     ignoreHTTPSErrors: true,
