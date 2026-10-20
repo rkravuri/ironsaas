@@ -62,10 +62,16 @@ export interface QuickAction {
 export interface ModuleManifest {
   name: string;
   /**
-   * The licence code of a Business or Products module, as its IModule declares it (ADR-0034). A module that is not
+   * The licence code of a Business or suite module, as its IModule declares it (ADR-0034). A module that is not
    * entitled has no navigation, no routes, no opener and no quick actions. Kernel modules are the platform and have none.
    */
   licence?: string;
+  /**
+   * The short name of the suite a module under suites/<suite>/ belongs to, "procurement" (ADR-0043); the home page groups
+   * its opener under that suite. A kernel or business module is the Foundation's and declares none. A test holds the
+   * declaration to the module's folder.
+   */
+  suite?: string;
   /** i18n key of the module's title, shown as the navigation group. */
   titleKey: string;
   routes: ModuleRoute[];
@@ -174,9 +180,14 @@ export function navigationFor(
   return groups;
 }
 
+/** The group of the kernel and business modules on the home page, before any suite's (ADR-0043). */
+export const foundationSuite = "foundation";
+
 /** A module's opener on the home page, for a principal who may open at least one of its entries. */
 export interface ModuleOpening {
   module: string;
+  /** The module's suite, or the Foundation's group for a kernel or business module. */
+  suite: string;
   titleKey: string;
   opener: ModuleOpener | undefined;
   /** The first visible entries, as many as the opener asks for. */
@@ -195,11 +206,32 @@ export function openersFor(
     const opener = byName.get(group.module)?.opener;
     return {
       module: group.module,
+      suite: byName.get(group.module)?.suite ?? foundationSuite,
       titleKey: group.titleKey,
       opener,
       entries: group.entries.slice(0, opener?.entries ?? 3),
     };
   });
+}
+
+/** The openers of one suite, or of the Foundation. */
+export interface SuiteOpenings {
+  suite: string;
+  openings: ModuleOpening[];
+}
+
+/**
+ * The openers grouped by suite (ADR-0043): the Foundation's first, then each suite in the order its first module is
+ * listed, each keeping the order of the list. A group with no opener the principal may open is not there.
+ */
+export function openersBySuite(openings: ModuleOpening[]): SuiteOpenings[] {
+  const groups = new Map<string, ModuleOpening[]>([[foundationSuite, []]]);
+  for (const opening of openings) {
+    groups.set(opening.suite, [...(groups.get(opening.suite) ?? []), opening]);
+  }
+  return [...groups]
+    .filter(([, members]) => members.length > 0)
+    .map(([suite, members]) => ({ suite, openings: members }));
 }
 
 /** The quick actions of entitled modules whose permission the principal holds somewhere; /me/access then says whether at its home unit. */

@@ -47,6 +47,13 @@ describe("the home page", () => {
     expect(screen.getByRole("img", { name: /A small building with its flag up/ })).toBeInTheDocument();
     expect(screen.getByText(/Your home unit is Acme Corporation/)).toBeInTheDocument();
 
+    // The kernel's modules are the Foundation's, grouped under its name before any suite's (ADR-0043).
+    const foundation = screen.getByRole("region", { name: "IronSaaS Foundation" });
+    expect(within(foundation).getByRole("article", { name: "Identity" })).toBeInTheDocument();
+    expect(within(foundation).getByRole("article", { name: "Console" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "IronSaaS Foundation",
+    ]);
     expect(within(opener("Identity")).getByRole("link", { name: "Users" })).toHaveAttribute("href", "/users");
     expect(within(opener("Identity")).getByText(/people and service accounts/)).toBeInTheDocument();
     expect(within(opener("Console")).getByRole("link", { name: "Organisation units" })).toHaveAttribute(

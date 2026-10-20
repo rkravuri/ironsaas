@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { ESLint, type Linter } from "eslint";
+import { ESLint, Linter } from "eslint";
+import { ironPlugin } from "../lint/suite-imports.js";
 
 // Every stylesheet under src, read at transform time; src/design is where values are allowed to live.
 const stylesheets = import.meta.glob<string>(["/src/**/*.css", "!/src/design/**"], {
@@ -41,7 +42,7 @@ describe("the lint rules", () => {
     expect(findings(inWrapper, "no-restricted-imports")).toEqual([]);
   }, 60_000);
 
-  /** The layer rule (ADR-0029): a shell module imports downward only, from kernel to business to products. */
+  /** The layer rule (ADR-0029, ADR-0043): a shell module imports downward only, from kernel to business to the suites. */
   describe("the layer rule", () => {
     const importRule = "no-restricted-imports";
     const probe = (sources: string[]): string =>
@@ -60,16 +61,16 @@ describe("the lint rules", () => {
       );
     };
 
-    it("refuses business and products imports in a kernel module, by alias and by relative path", async () => {
+    it("refuses business and suite imports in a kernel module, by alias and by relative path", async () => {
       const eslint = new ESLint();
       const refused = [
         "@/modules/business/organisations/manifest",
-        "../../products/procurement/manifest",
-        "@/modules/products",
+        "../../suites/procurement/orders/manifest",
+        "@/modules/suites",
       ];
       const allowed = [
         "@/modules/kernel/identity/pages/UsersPage",
-        "./products/local",
+        "./suites/local",
         "@/components/data-grid",
         "@/modules/registry",
       ];
@@ -83,17 +84,17 @@ describe("the lint rules", () => {
       );
     }, 60_000);
 
-    it("refuses products imports in a business module and allows the kernel", async () => {
+    it("refuses suite imports in a business module and allows the kernel", async () => {
       const eslint = new ESLint();
       const businessPage = "src/modules/business/organisations/pages/UnitsPage.tsx";
 
-      expect(await refusedBy(eslint, businessPage, "@/modules/products/procurement/manifest")).toBe(true);
-      expect(await refusedBy(eslint, businessPage, "../../../products/procurement/manifest")).toBe(true);
+      expect(await refusedBy(eslint, businessPage, "@/modules/suites/procurement/orders/manifest")).toBe(true);
+      expect(await refusedBy(eslint, businessPage, "../../../suites/procurement/orders/manifest")).toBe(true);
       expect(await refusedBy(eslint, businessPage, "@/modules/kernel/identity/manifest")).toBe(false);
       expect(await refusedBy(eslint, businessPage, "@/modules/business/items/manifest")).toBe(false);
     }, 60_000);
 
-    it("keeps the grid rule inside the layers and leaves the products layer and the module list free of layer patterns", async () => {
+    it("keeps the grid rule inside the layers and leaves the suites and the module list free of layer patterns", async () => {
       const eslint = new ESLint();
       const ruleFor = async (path: string): Promise<{ group?: string[]; regex?: string }[]> => {
         const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
@@ -107,7 +108,7 @@ describe("the lint rules", () => {
       for (const path of [
         pagePath,
         "src/modules/business/organisations/manifest.tsx",
-        "src/modules/products/procurement/manifest.tsx",
+        "src/modules/suites/procurement/orders/manifest.tsx",
       ]) {
         expect(
           (await ruleFor(path)).some((pattern) => pattern.group?.includes("ag-grid-*")),
@@ -117,11 +118,73 @@ describe("the lint rules", () => {
       expect(
         await refusedBy(
           eslint,
-          "src/modules/products/procurement/manifest.tsx",
+          "src/modules/suites/procurement/orders/manifest.tsx",
           "@/modules/business/organisations/manifest",
         ),
       ).toBe(false);
-      expect(await refusedBy(eslint, "src/modules/index.ts", "@/modules/products/procurement/manifest")).toBe(false);
+      expect(await refusedBy(eslint, "src/modules/index.ts", "@/modules/suites/procurement/orders/manifest")).toBe(
+        false,
+      );
+    }, 60_000);
+  });
+
+  /** The suite rule (ADR-0043): a suite's module never imports from another suite, whichever way the path is written. */
+  describe("the suite rule", () => {
+    const suiteRule = "iron/suite-imports";
+    const probe = (sources: string[]): string =>
+      `${sources.map((source, index) => `import { value${index} } from "${source}";`).join("\n")}\nexport const probe = [${sources.map((_, index) => `value${index}`).join(", ")}];\n`;
+    const verify = (filename: string, sources: string[]): Linter.LintMessage[] =>
+      new Linter().verify(
+        probe(sources),
+        [{ files: ["**/*.ts"], plugins: { iron: ironPlugin }, rules: { [suiteRule]: "error" } }],
+        { filename },
+      );
+
+    it("refuses an import from another suite by alias and by relative path, and allows the suite's own and the layers below", () => {
+      const ordersPage = "src/modules/suites/procurement/orders/pages/OrdersPage.ts";
+      const refused = [
+        "@/modules/suites/school/pupils/manifest",
+        "../../../school/pupils/manifest",
+        "@/modules/suites/school",
+      ];
+      const allowed = [
+        "@/modules/suites/procurement/purchasing/manifest",
+        "../../purchasing/manifest",
+        "./OrderLines",
+        "@/modules/business/organisations/manifest",
+        "@/modules/kernel/identity/manifest",
+        "@/components/data-grid",
+        "@mantine/core",
+      ];
+
+      const messages = verify(ordersPage, [...refused, ...allowed]);
+
+      expect(messages.map((message) => message.line)).toEqual([1, 2, 3]);
+      expect(messages.every((message) => message.ruleId === suiteRule)).toBe(true);
+      expect(messages[0]?.message).toBe(
+        "A module of the procurement suite must not import from the school suite: a suite never references another suite (ADR-0043). What both need belongs in a business module.",
+      );
+    });
+
+    it("knows the suite from the path whether it is relative to the shell or absolute", () => {
+      // As ESLint itself passes it: absolute, under the shell's root.
+      const absolute = `${process.cwd()}/src/modules/suites/school/pupils/manifest.ts`;
+      expect(verify(absolute, ["@/modules/suites/procurement/orders/manifest"])).toHaveLength(1);
+      expect(verify(absolute, ["../../procurement/orders/manifest"])).toHaveLength(1);
+      expect(verify(absolute, ["../classes/manifest"])).toEqual([]);
+      // Outside the suites the rule has nothing to say; the layer rule and modules/index.ts cover the rest.
+      expect(verify("src/modules/index.ts", ["@/modules/suites/procurement/orders/manifest"])).toEqual([]);
+    });
+
+    it("is on for every file under modules/suites and nowhere else", async () => {
+      const eslint = new ESLint();
+      const ruleFor = async (path: string): Promise<unknown> => {
+        const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
+        return config.rules?.[suiteRule];
+      };
+      expect(await ruleFor("src/modules/suites/procurement/orders/manifest.tsx")).toEqual([2]);
+      expect(await ruleFor(pagePath)).toBeUndefined();
+      expect(await ruleFor("src/modules/business/organisations/manifest.tsx")).toBeUndefined();
     }, 60_000);
   });
 

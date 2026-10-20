@@ -62,6 +62,10 @@
     "notEntitledTitle": "Not in your subscription",
     "notEntitled": "Your organisation's subscription does not include this. Ask your administrator about the plan."
   },
+  "suites": {
+    "foundation": "IronSaaS Foundation",
+    "procurement": "eProcurement Suite"
+  },
   "modules": {
     "identity": {
       "title": "Identity",

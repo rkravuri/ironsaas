@@ -3,6 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
+import { ironPlugin } from "./lint/suite-imports.js";
 
 // The grid rule (S1 plan 3.10): nothing imports ag-grid except the DataGrid wrapper, so the Enterprise switch is one place.
 const gridWrapper = ["src/components/data-grid/**"];
@@ -11,9 +12,11 @@ const gridImports = {
   message: "Import DataGrid from '@/components/data-grid' instead; only the wrapper talks to AG Grid.",
 };
 
-// The layer rule (ADR-0029): shell modules live in modules/kernel, modules/business and modules/products, and import
-// downward only, as the .NET projects reference. The pattern sees both "@/modules/business/x" and "../../business/x";
-// a module's own folder named business or products ("./business") is not a layer. modules/index.ts composes all three.
+// The layer rule (ADR-0029, ADR-0043): shell modules live in modules/kernel, modules/business and
+// modules/suites/<suite>, and import downward only, as the .NET projects reference. The pattern sees both
+// "@/modules/business/x" and "../../business/x"; a module's own folder named business or suites ("./business") is not a
+// layer. A suite never imports from another suite: the local rule iron/suite-imports reads the suite from the file's
+// path, which a pattern cannot. modules/index.ts composes every layer and suite.
 const layerImports = (layer, above) => ({
   regex: `(^|/)(modules|[.][.])/(${above.join("|")})(/|$)`,
   caseSensitive: true,
@@ -211,12 +214,17 @@ export default tseslint.config(
     // A later block replaces the rule's options, so the grid pattern is repeated with each layer's.
     files: ["src/modules/kernel/**/*.{ts,tsx}"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("kernel", ["business", "products"])] }],
+      "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("kernel", ["business", "suites"])] }],
     },
   },
   {
     files: ["src/modules/business/**/*.{ts,tsx}"],
-    rules: { "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("business", ["products"])] }] },
+    rules: { "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("business", ["suites"])] }] },
+  },
+  {
+    files: ["src/modules/suites/**/*.{ts,tsx}"],
+    plugins: { iron: ironPlugin },
+    rules: { "iron/suite-imports": "error" },
   },
   {
     // Everything under src, except where the values are defined and where they are mapped into the grid.
@@ -225,7 +233,14 @@ export default tseslint.config(
     rules: { "no-restricted-syntax": ["error", colourRule] },
   },
   {
-    files: ["eslint.config.js", "vite.config.ts", "playwright.config.ts", "playwright.a11y.config.ts"],
+    files: [
+      "eslint.config.js",
+      "lint/suite-imports.js",
+      "lint/suite-imports.d.ts",
+      "vite.config.ts",
+      "playwright.config.ts",
+      "playwright.a11y.config.ts",
+    ],
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
