@@ -5,7 +5,7 @@
 | Document | One-page scope of a later product (ADR-0041). Its full PRD starts from its own process reference pack (PM-001), reviewed by an external practitioner (PM-002). |
 | Layer | Products (ADR-0029) |
 | Identifier prefix | `SRV-`, reserved; no requirements yet |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
 
 ## Purpose
@@ -30,7 +30,7 @@ A survey is designed on a form template; its audience is chosen (people, busines
 - Business: people (BF-021), business groups (BF-024), suppliers and their categories (BF-101, BF-107).
 - Earlier products (ADR-0042): none required.
 
-`[Decision]`, its place in the process order: it calls no product, so it can sit first; a product that wants a survey's results hears of them through its events.
+Its place in the process order, decided 2026-10-20: it calls no product, so it can sit first; a product that wants a survey's results hears of them through its events.
 
 ## Out of scope
 

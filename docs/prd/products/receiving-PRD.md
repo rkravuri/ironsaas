@@ -7,14 +7,14 @@
 | Document title | Receiving: shipment notices, goods and service receipts, returns, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `RCV-`, in blocks of twenty per area (ADR-0041); the table is `receiving-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Units of measure and warehouses are the Business PRD's; orders and invoices are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -271,9 +271,9 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 **Notes:** Was FF-102.
 
 #### RCV-042 Service entry against an order line
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Service receipts
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
 
-**Requirement:** A service entry shall be recorded against a service order line, with the period or the work it covers, an amount or a percentage of the line (RCV-044), notes and attachments; it counts as received only when it is accepted (RCV-045, RCV-046).
+**Requirement:** A service entry shall be recorded against a service order line by the line's requester, or by the supplier through the portal, with the period or the work it covers, an amount or a percentage of the line (RCV-044), notes and attachments; the requester accepts it, and it counts as received only when accepted (RCV-045, RCV-046).
 
 **Why:** Services are delivered over time and confirmed by the people who used them, not counted at a dock.
 
@@ -282,10 +282,12 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 - AC1 Given a service line of 10,000, When an entry of 2,500 for October is saved, Then it waits for acceptance and the open amount stays 10,000.
 - AC2 Given an entry above the open amount plus the stamped tolerance, When it is submitted, Then it is refused naming the open amount. (error case)
 - AC3 Given an entry on a line that is not a service line, When it is saved, Then it is refused; goods are received by receipt (RCV-021). (error case)
+- AC4 Given a person who is neither the line's requester nor the supplier, When they record an entry, Then it is refused. (error case)
+- AC5 Given an entry the supplier recorded in the portal, When it is saved, Then it waits for the requester's acceptance.
 
 *Depends on:* RCV-041, ORD-005, TF-160
 
-**Notes:** New in the split, expanding RCV-041 (was FF-102). `[Decision]`: who records an entry. Proposed: the receiver or the requester in the tenant, and the supplier in the portal, where it waits for the requester's acceptance (section 7).
+**Notes:** New in the split, expanding RCV-041 (was FF-102). Decided 2026-10-20: the requester, or the supplier through the portal, records a service entry, and the requester accepts it.
 
 #### RCV-043 Service milestones
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
@@ -324,7 +326,7 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 #### RCV-045 Acceptance by the requester
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
 
-**Requirement:** A service entry shall be accepted or rejected by the line's requester, or by a person the receipt approval configuration names, with a reason for a rejection; only what is accepted counts as received, updates the buckets (RCV-081) and becomes invoiceable.
+**Requirement:** A service entry shall be accepted or rejected by the line's requester, with a reason for a rejection; only what is accepted counts as received, updates the buckets (RCV-081) and becomes invoiceable.
 
 **Why:** The person who used the service knows whether it was delivered.
 
@@ -332,11 +334,11 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 
 - AC1 Given an entry of 2,500, When the requester accepts it, Then 2,500 is received approved and can be invoiced.
 - AC2 Given a rejection without a reason, When saved, Then it is refused. (error case)
-- AC3 Given a person who is neither the requester nor named by the configuration, When they accept an entry, Then it is refused. (error case)
+- AC3 Given a person who is not the line's requester, When they accept an entry, Then it is refused. (error case)
 
-*Depends on:* RCV-042, RCV-024, RCV-081, TF-090
+*Depends on:* RCV-042, RCV-027, RCV-081
 
-**Notes:** New in the split.
+**Notes:** New in the split. Decided 2026-10-20 with RCV-042: the requester accepts; a requester who is away delegates the receiving duty (RCV-027, TF-037).
 
 #### RCV-046 Partial acceptance
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Service receipts
@@ -448,7 +450,7 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 
 ## 7. Supplier views
 
-In the portal the supplier creates and submits shipment notices from its orders and sees their status (RCV-121), sees its receipts and returns with quantities, inspection results and PDFs (RCV-122), and records service entries for the requester's acceptance where the tenant allows it (RCV-042, a `[Decision]`). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+In the portal the supplier creates and submits shipment notices from its orders and sees their status (RCV-121), sees its receipts and returns with quantities, inspection results and PDFs (RCV-122), and records service entries for the requester to accept (RCV-042). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
 
 The requirements (RCV-121 to RCV-140):
 
@@ -533,7 +535,7 @@ Retention: this product's records are business documents and follow TF-066's def
 
 ## 10. Visibility tags
 
-Shipment notices, receipts, returns and service entries take their order's tags (TF-241, rule 6). `[Decision]`: proposed as written.
+Shipment notices, receipts, returns and service entries take their order's tags (TF-241, rule 6). Decided 2026-10-20.
 
 ## 11. Data, integration and reports
 
@@ -584,7 +586,7 @@ Sixth (ADR-0042): it calls Orders, and Invoicing, the later product, writes the 
 
 The module is `Iron.Products.Receiving` (schema `products_receiving`), its shell module `shell/src/modules/products/receiving/`, licensed as a module (ADR-0034).
 
-Permissions proposed (`[Decision]` for the names): `receiving.shipment_notices.{read,create,submit,approve}`, `receiving.receipts.{read,read_all,create,submit,approve,cancel}`, `receiving.returns.{create,approve}`, `receiving.service_entries.{create,accept}`, `receiving.reports.read`. They follow the archived PRD's `receiving.asn.*` and `receiving.receipt.*`.
+Permissions, decided 2026-10-20: `receiving.shipment_notices.{read,create,submit,approve}`, `receiving.receipts.{read,read_all,create,submit,approve,cancel}`, `receiving.returns.{create,approve}`, `receiving.service_entries.{create,accept}`, `receiving.reports.read`. They follow the archived PRD's `receiving.asn.*` and `receiving.receipt.*`.
 
 ## 14. Configuration
 

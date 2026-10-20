@@ -7,14 +7,14 @@
 | Document title | Purchase requests: controlled demand with budget, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `REQ-`, in blocks of twenty per area (ADR-0041); the table is `requests-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, items, units, locations and suppliers are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -241,9 +241,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a line without supplier, When converted, Then it is refused naming the line. (error case)
 - AC3 Given only some lines converted, When saved, Then the request is Partially Ordered with remaining quantities visible.
 
-*Depends on:* REQ-007, ORD-001 (event)
+*Depends on:* REQ-007
 
-**Notes:** Was FF-058. Converting publishes an event that Orders, a later product, handles by creating the draft orders; Orders publishes the orders it created, and this product marks the lines and the request Partially Ordered or Ordered when it hears of them (ADR-0042). Decision F-01 confirmed.
+**Notes:** Was FF-058. The buyer converts on Orders' screen, which reads the approved lines through this product's Contracts and marks them converted, so the request becomes Partially Ordered or Ordered at once (ADR-0042). Decision F-01 confirmed.
 
 #### REQ-022 Partial ordering and close-short
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Ordering
@@ -261,6 +261,24 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* REQ-021, BF-066
 
 **Notes:** Was FF-059.
+
+
+#### REQ-023 Buyer and work queue from the purchasing group
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Ordering
+
+**Requirement:** A request line's buyer shall be a buyer of the purchasing group that serves the line's category and unit (BF-007), and a buyer's work queue of approved lines to order shall show the lines of the groups they belong to, filterable by group.
+
+**Why:** Buyers work by what they buy and for whom; the purchasing group says which buyer a line goes to.
+
+**Acceptance criteria:**
+
+- AC1 Given a purchasing group covering IT hardware for unit A, When a request line of IT hardware in unit A is approved, Then a buyer of that group is its buyer.
+- AC2 Given a buyer of two purchasing groups, When they open their work queue, Then it shows the approved lines of both groups and can be filtered by group.
+- AC3 Given a line whose category and unit no purchasing group serves, When it is approved, Then it has no buyer and the queue shows it as unassigned. (error case)
+
+*Depends on:* REQ-007, BF-007
+
+**Notes:** New at the review of the PRD split, 2026-10-20: purchasing groups assign the buyer and filter the work queue (BF-007). They give no access, so a buyer still needs a role over the line's unit to open it.
 
 ### 6.3 Templates and lists (REQ-041 to REQ-060)
 
@@ -363,7 +381,7 @@ Retention: this product's records are business documents and follow TF-066's def
 
 ## 10. Visibility tags
 
-A request takes the tags of its project (BF-075) when it has one; otherwise it starts without tags, and its requester may add the tags they hold (TF-241, rules 5 and 6). `[Decision]`: proposed as written; the alternative is to take the tags of the suppliers or items on its lines.
+A request takes the tags of its project (BF-075) when it has one; otherwise it starts without tags, and its requester may add the tags they hold (TF-241, rules 5 and 6). Decided 2026-10-20.
 
 ## 11. Data, integration and reports
 
@@ -391,18 +409,18 @@ These are what the archived FF-164 to FF-166 asked of this product; the mechanis
 
 ### 12.1 Its place in the process order
 
-Fourth (ADR-0042): it calls Supplier management, Contracts and Catalogue, and hears from Orders only through its events.
+Fourth (ADR-0042): it calls Supplier management, Contracts and Catalogue, and hears from no later product: Orders reads and marks converted lines through this product's Contracts.
 
 ### 12.2 What it uses
 
 - Kernel, cited by its requirements: TF-033 (scoped assignments), TF-035 (record policies), TF-090 and TF-091 (approvals and resolvers), TF-171 (the grid), TF-202 (hooks), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166 (numbering), TF-241, TF-243.
-- Business: BF-001 (legal entities), BF-041 and BF-043 (items, units), BF-061 to BF-066 (charts, account strings, budget periods, budget check and consumption), BF-070 (rates); and through their use on lines, BF-025 (a person's defaults), BF-075 (projects), BF-081 and BF-083 (locations), BF-143 (approvers from the delegation of authority), BF-163 (number series).
+- Business: BF-001 (legal entities), BF-041 and BF-043 (items, units), BF-061 to BF-066 (charts, account strings, budget periods, budget check and consumption), BF-070 (rates); and through their use on lines, BF-007 (the buyer from the purchasing group), BF-075 (projects), BF-081 and BF-083 (locations), BF-143 (approvers from the delegation of authority), BF-163 (number series).
 - Earlier products: Supplier management (REQ-005 on SUP-004, a line's supplier published, not on hold, without a critical flag or a blocking expired document); Contracts (a contract item's price and reference on a line, CAT-022); Catalogue (the cart it converts, read through Catalogue's Contracts).
 
 ### 12.3 Events
 
-- Publishes: request approved, converted, cancelled and closed short. Orders creates draft orders from a conversion.
-- Subscribes: from Catalogue, cart converted, to create the draft request (CAT-021); from Orders, orders created from request lines, to mark the lines and the request Partially Ordered or Ordered (REQ-021, `ORD-001 (event)`) and to keep the remaining quantities (REQ-022).
+- Publishes: request approved, cancelled and closed short.
+- Subscribes: none. A requester turns a cart into a request on this product's screen, reading the cart through Catalogue's Contracts (CAT-021); a buyer converts approved lines on Orders' screen, which reads and marks them through this product's Contracts (REQ-021, REQ-022).
 
 ### 12.4 Extension points it implements
 
@@ -412,7 +430,7 @@ Fourth (ADR-0042): it calls Supplier management, Contracts and Catalogue, and he
 
 The module is `Iron.Products.Requests` (schema `products_requests`), its shell module `shell/src/modules/products/requests/`, licensed as a module (ADR-0034).
 
-Permissions proposed (`[Decision]` for the names): `requests.requests.{read,read_all,create,update,submit,cancel,convert,close}`, `requests.templates.share`, `requests.reports.read`. `read` covers a person's own requests and those requested for them through the record policy; `read_all` every request in the person's scope, as the archived PRD's `read_own` and `read_all` did.
+Permissions, decided 2026-10-20: `requests.requests.{read,read_all,create,update,submit,cancel,convert,close}`, `requests.templates.share`, `requests.reports.read`. `read` covers a person's own requests and those requested for them through the record policy; `read_all` every request in the person's scope, as the archived PRD's `read_own` and `read_all` did.
 
 ## 14. Configuration
 
@@ -441,7 +459,7 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 
 ### 16.2 Open points
 
-Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). The conversion of a request into orders publishes an event Orders handles (REQ-021); Orders reads the request's lines and splits through this product's Contracts (ORD-001).
+Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). A buyer converts a request into orders on Orders' screen, which reads the request's lines and splits and marks them converted through this product's Contracts (REQ-021, ORD-001). Corrected at the review of 2026-10-20: a person's conversion is a call from the later product's screen, and only automatic conversions are events.
 
 ## 17. Glossary
 

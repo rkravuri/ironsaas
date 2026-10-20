@@ -7,14 +7,14 @@
 | Document title | Purchase orders: compliant ordering from approved suppliers, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `ORD-`, in blocks of twenty per area (ADR-0041); the table is `orders-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, terms and suppliers are the Business PRD's; requests, receipts, invoices and contracts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -512,7 +512,7 @@ Retention: this product's records are business documents and follow TF-066's def
 
 ## 10. Visibility tags
 
-An order converted from a request takes the request's tags, and a direct order takes its supplier's (TF-241, rule 6). `[Decision]`: proposed as written, after the brief's example.
+An order converted from a request takes the request's tags, and a direct order takes its supplier's (TF-241, rule 6). Decided 2026-10-20.
 
 ## 11. Data, integration and reports
 
@@ -529,7 +529,7 @@ From the archived PRD's section 8.1: order lines follow the kernel's partitionin
 
 ### 11.3 Reports
 
-From the archived PRD's section 8.4: open orders and lines with received and invoiced quantities; cycle times (request to order, order to receipt).
+From the archived PRD's section 8.4: open orders and lines with received and invoiced quantities; cycle times (request to order, order to receipt). Decided at the review: spend by purchasing group (BF-007).
 
 ### 11.4 Search, exports and analytics feed
 
@@ -548,13 +548,13 @@ Fifth (ADR-0042): it calls Supplier management, Contracts and Requests, and hear
 ### 12.2 What it uses
 
 - Kernel, cited by its requirements: TF-035 and TF-234 (record policies and delegated access, for its supplier view), TF-090 (approvals), TF-120 and TF-123 (jobs), TF-150 (notifications), TF-162 (rendering), TF-171 (the grid), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
-- Business: BF-001 (legal entities), BF-061 (charts), BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (suppliers); and through their use, BF-083 (bill-to), BF-108 (enablement), BF-143 (approvers), BF-162 and BF-163 (templates, number series).
-- Earlier products: Supplier management (ORD-004 on SUP-041, documents that block orders, and the supplier's status and risk flags); Contracts (ORD-008 on CON-021, the release recorded at issue and returned on cancellation); Requests (ORD-001 and ORD-003 on REQ-003, the converted lines and their splits).
+- Business: BF-001 (legal entities), BF-061 (charts), BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (suppliers); and through their use, BF-007 (spend by purchasing group), BF-074 (HSN and SAC codes on lines), BF-083 (bill-to), BF-108 (enablement), BF-143 (approvers), BF-162 and BF-163 (templates, number series).
+- Earlier products: Supplier management (ORD-004 on SUP-041, documents that block orders, and the supplier's status and risk flags); Contracts (ORD-008 on CON-021, the release recorded at issue and returned on cancellation); Requests (ORD-001 and ORD-003 on REQ-003, the converted lines and their splits): a buyer converts an approved request on this product's screen, which reads its lines and marks them converted at once (REQ-021).
 
 ### 12.3 Events
 
-- Publishes: orders created from request lines (Requests marks its lines); order issued, changed, acknowledged, declined, held, released, closed and cancelled (Supplier management's indicators and warnings; the ERP, section 11.2).
-- Subscribes: from Requests, request converted, to create the draft orders; from Receiving, the bucket changes, received and invoiced (ORD-043, ORD-061, ORD-121, `RCV-081 (event)`), and goods received for the requester's notifications (ORD-009, `RCV-021 (event)`).
+- Publishes: order issued, changed, acknowledged, declined, held, released, closed and cancelled (Supplier management's indicators and warnings; the ERP, section 11.2).
+- Subscribes: from Receiving, the bucket changes, received and invoiced (ORD-043, ORD-061, ORD-121, `RCV-081 (event)`), and goods received for the requester's notifications (ORD-009, `RCV-021 (event)`).
 
 ### 12.4 Extension points it implements
 
@@ -564,7 +564,7 @@ Fifth (ADR-0042): it calls Supplier management, Contracts and Requests, and hear
 
 The module is `Iron.Products.Orders` (schema `products_orders`), its shell module `shell/src/modules/products/orders/`, licensed as a module (ADR-0034).
 
-Permissions proposed (`[Decision]` for the names): `orders.orders.{read,read_all,create,create_direct,update,submit,issue,change,hold,close,cancel}`, `orders.reports.read`; `read` and `read_all` as in the Purchase requests product. They follow the archived PRD's `orders.order.*` with the resource in the plural, as the kernel's names are.
+Permissions, decided 2026-10-20: `orders.orders.{read,read_all,create,create_direct,update,submit,issue,change,hold,close,cancel}`, `orders.reports.read`; `read` and `read_all` as in the Purchase requests product. They follow the archived PRD's `orders.order.*` with the resource in the plural, as the kernel's names are.
 
 ## 14. Configuration
 

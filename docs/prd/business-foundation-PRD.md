@@ -7,15 +7,15 @@
 | Document title | Business Foundation: the shared business masters and the business configuration of kernel mechanisms, Product Requirements Document |
 | Layer | Business (ADR-0029): modules `Iron.Business.<Module>` in `src/Business/`, schemas `business_<module>`; the modules are proposed in section 9 |
 | Identifier prefix | `BF-`, in blocks of twenty per area (ADR-0041); the table is `business-foundation-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review. The requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint, and the new areas and requirements of the split, marked `[New]`; every rule the sources did not state is a `[Decision]` with its proposed default. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `archive/functional-foundation-p2p-PRD-v1.md`), the map from its identifiers (`requirements-map.md`), ADR-0029 and ADR-0041, and the split brief (`docs/prompts/PRD-split.md`). |
 | Dependency | Every mechanism (identity, roles, the unit tree, the approvals engine, audit, files, notifications, numbering, custom fields and lookups, imports, telemetry) is a kernel capability in the Technical Foundation PRD, cited by its TF identifier and never specified again here. The products build on this document; where a requirement here names a product's, it is an open point (section 12.2). |
 | Method | The product method (`product-method.md`) is binding: a process reference pack before the first slice of each module (PM-001). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
 
 ## 1. Vision and goals
 
@@ -212,77 +212,79 @@ Legal entity attributes, the finance masters of a legal entity, the business rul
 **Notes:** Was FF-183. The organisation scope of configuration is the kernel's (TF-221: settings in A6, numbering and templates in S4, approval configurations in S5); this requirement keeps which business configuration is set per organisation. Open point G-03 (section 12.2).
 
 #### BF-006 Kinds of organisation unit
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Organisations
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Organisations
 
-**Requirement:** The business layer shall supply the kinds of the kernel's organisation units through `IOrganisationKinds` (TF-034): legal entity, business unit, department and team, with the kinds each may hold as children; a unit's kind decides which business attributes it carries, so a legal entity carries those of BF-001 and a department none of them.
+**Requirement:** The business layer shall supply the kinds of the kernel's organisation units through `IOrganisationKinds` (TF-034), with where each may stand: a legal entity under the root or a legal entity; a business unit under a legal entity or a business unit; a department under a business unit or a legal entity; a team under a department. A unit's kind decides which business attributes it carries, so a legal entity carries those of BF-001 and a department none of them.
 
 **Why:** The unit tree is a kernel mechanism without business meaning (ADR-0029); this layer says what its units are.
 
 **Acceptance criteria:**
 
-- AC1 Given the business layer installed, When an administrator adds a unit, Then the kinds offered are those the parent's kind may hold.
+- AC1 Given a legal entity, When an administrator adds a unit under it, Then the kinds offered are legal entity, business unit and department.
 - AC2 Given a department, When an administrator adds a legal entity under it, Then it is refused naming the kinds a department may hold. (error case)
-- AC3 Given a unit of the kind legal entity, When it is opened, Then its finance attributes (BF-001) are shown, and a department shows none.
+- AC3 Given the root, When an administrator adds a business unit directly under it, Then it is refused, since a business unit stands under a legal entity or a business unit. (error case)
+- AC4 Given a unit of the kind legal entity, When it is opened, Then its finance attributes (BF-001) are shown, and a department shows none.
 
 *Depends on:* TF-034, BF-001
 
-**Notes:** `[Decision]`: which kind may hold which. Proposed: the root holds legal entities and business units; a legal entity holds business units and departments; a business unit holds business units and departments; a department holds teams; a team holds none. A purchasing group is not a kind (BF-007). Open point G-02 keeps its default: any unit may own documents, and the legal entity above it supplies the chart of accounts and the tax registration.
+**Notes:** Decided 2026-10-20: the kinds and where each may stand, as written. A purchasing group is not a kind (BF-007). Open point G-02 keeps its default: any unit may own documents, and the legal entity above it supplies the chart of accounts and the tax registration.
 
 #### BF-007 Purchasing groups
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Organisations
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Organisations
 
-**Requirement:** Purchasing groups shall be a business master, not a unit kind: a group of buyers (BF-021), the categories it covers (BF-042) and the units it serves; a group serves several units and owns no records.
+**Requirement:** Purchasing groups shall be a business master, not a unit kind: a group of buyers (BF-021), the categories it covers (BF-042) and the units it serves; a group serves several units and owns no records. The products use a group to assign the buyer of a request line by the line's category and unit (REQ-023), to filter a buyer's work queue, and to report spend by group; a purchasing group gives no access and takes no part in approvals.
 
 **Why:** Buyers are organised by what they buy and for whom, across units. A unit kind would put a group at one place in the tree and make it an owner of records, and a purchasing group is neither.
 
 **Acceptance criteria:**
 
 - AC1 Given a purchasing group covering the category IT hardware and serving units A and B, When it is opened, Then its buyers, categories and units are listed.
-- AC2 Given a purchasing group, When someone tries to make it the owning organisation of a record, Then it is refused, because a purchasing group is no unit. (error case)
-- AC3 Given a request line of the category IT hardware in unit A, When a product asks which purchasing group serves it, Then the group is named.
+- AC2 Given a line of the category IT hardware in unit A, When a product asks which purchasing group serves it, Then the group and its buyers are named.
+- AC3 Given a buyer of a purchasing group, When they open a request of a unit their roles do not reach, Then it is refused, because the group grants no access. (error case)
+- AC4 Given a purchasing group, When someone tries to make it the owning organisation of a record, Then it is refused, because a purchasing group is no unit. (error case)
 
 *Depends on:* BF-021, BF-042, TF-034
 
-**Notes:** Corrects the A1 amendment in `docs/prompts/S2.md`, which listed purchasing group among the unit kinds. `[Decision]`: what the groups are used for. Proposed: the products find the purchasing group of a line from its category and unit, for the buyers' work (the requests a group's buyers convert into orders) and as approvers or observers through a resolver (BF-143); a group gives no visibility and no permission of its own.
+**Notes:** Decided 2026-10-20: a purchasing group assigns the buyer, filters the work queue and reports spend; it is not access and not approvals. Corrects the A1 amendment in `docs/prompts/S2.md`, which listed purchasing group among the unit kinds.
 
 ### 5.2 People (BF-021 to BF-040)
 
-The people master linked to kernel principals: employee identifier, designation, job grade, the manager as the reporting line, business groups for routing and notifications (not for visibility, and not roles), and a person's defaults. It implements the kernel's `IReviewEscalation` (BF-026).
+The people master linked to kernel principals: employee identifier, designation, job grade, the manager as the reporting line, business groups for routing and notifications (not for visibility, and not roles), and a person's default ship-to location and account string. Documents default to the session's working unit (A8), which starts at the home unit, so BF-025 (a person's defaults on new documents) was retired on 2026-10-20 and its identifier is not reused. It implements the kernel's `IReviewEscalation` (BF-026).
 
 #### BF-021 People master
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* People
 
-**Requirement:** The people master shall hold, for each person who works in the tenant, a link to their kernel principal (TF-010), an employee identifier unique in the tenant, a designation, a job grade, a manager, business groups, a default unit, a default ship-to location and a default account string; a person has one principal, and a principal at most one person.
+**Requirement:** The people master shall hold, for each person who works in the tenant, a link to their kernel principal (TF-010), an employee identifier unique in the tenant, a designation, a job grade, a manager, business groups, a default ship-to location and a default account string; a person has one principal, and a principal at most one person.
 
 **Why:** Approvals, notifications and defaults need business facts about people, such as who their manager is and which grade they hold, which the kernel's principals do not carry by design.
 
 **Acceptance criteria:**
 
-- AC1 Given a principal, When a person is created for it with an employee identifier, a designation, a job grade, a manager and a default unit, Then the person is listed with them.
+- AC1 Given a principal, When a person is created for it with an employee identifier, a designation, a job grade and a manager, Then the person is listed with them.
 - AC2 Given an employee identifier another person holds, When saved, Then it is refused naming the field. (error case)
 - AC3 Given a principal linked to a person, When a second person is linked to it, Then it is refused. (error case)
 - AC4 Given a person whose principal is disabled (TF-010), When people are offered as managers or approvers, Then that person is not offered.
 
 *Depends on:* TF-010, TF-034, BF-022, BF-023, BF-024
 
-**Notes:** Loaded by import and by ERP or HR sync like the other masters (BF-206, TF-206).
+**Notes:** Loaded by import and by ERP or HR sync like the other masters (BF-206, TF-206). Decided 2026-10-20: the people master holds no default unit, because documents default to the session's working unit (A8), which starts at the home unit (TF-034); BF-025, which proposed a person's defaults on new documents, is retired, and its identifier is not reused.
 
 #### BF-022 Designations and job grades
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* People
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* People
 
-**Requirement:** Designations and job grades shall be business lookups (BF-121) with a code and a name, the job grades in an order from lowest to highest, so that the delegation of authority matrix can name a grade and those above it (BF-142).
+**Requirement:** Designations and job grades shall be business lookups (BF-121) with a code and a name, and every job grade has a rank from lowest to highest, so that the delegation of authority matrix can name a grade and those above it (BF-142).
 
 **Why:** The delegation of authority matrix decides by designation and job grade; both must be shared lists, not free text.
 
 **Acceptance criteria:**
 
-- AC1 Given grades G1 to G5 in order, When a matrix row names G3 and above, Then people of G3, G4 and G5 match it.
+- AC1 Given grades G1 to G5 ranked in that order, When a matrix row names G3 and above, Then people of G3, G4 and G5 match it.
 - AC2 Given a designation people hold, When its deletion is requested, Then it is refused, and it can be deactivated. (error case)
 - AC3 Given a code another grade has, When saved, Then it is refused. (error case)
 
 *Depends on:* BF-121, TF-201
 
-**Notes:** `[Decision]`: an order among the grades, so a row can say "and above". Proposed as written; designations have no order.
+**Notes:** Decided 2026-10-20: grades have a rank; designations have none.
 
 #### BF-023 Manager and the reporting line
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* People
@@ -313,23 +315,6 @@ The people master linked to kernel principals: employee identifier, designation,
 - AC3 Given a group without active members named on a step, When the chain is built, Then the configuration's fallback applies (TF-091).
 
 *Depends on:* BF-021, TF-090, TF-091, TF-150, TF-243
-
-#### BF-025 A person's defaults on new documents
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* People
-
-**Requirement:** A person's default unit, default ship-to location and default account string shall be proposed on the documents they create, and stay editable.
-
-**Why:** Requesters raise many documents for the same unit, delivery point and cost; proposing them saves keying and mistakes.
-
-**Acceptance criteria:**
-
-- AC1 Given a person with a default unit, ship-to location and account string, When they create a document, Then the three are proposed and can be changed.
-- AC2 Given a default account string that has become inactive, When a document is created, Then it is not proposed and the person is told why. (error case)
-- AC3 Given a default ship-to location of another legal entity than the document's, When the document is created, Then it is not proposed.
-
-*Depends on:* BF-021, BF-062, BF-081, TF-034
-
-**Notes:** `[Decision]`: the default unit beside the kernel's home unit (TF-034) and the session's working unit (A8). Proposed: the default unit is the home unit unless the person sets another, and a working unit chosen in the session wins.
 
 #### BF-026 Escalation to the reviewer's manager
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* People
@@ -637,40 +622,43 @@ Chart of accounts and segments, account strings, budgets, fiscal calendar, curre
 **Notes:** Was FF-133, the budgets. Business recomputes from its own consumption history and needs nothing from the products (ADR-0042). Orders, Receiving and Invoicing reconcile their own counters in ORD-121, RCV-083 and INV-027, in the same window.
 
 #### BF-074 HSN and SAC codes
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Finance
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Finance
 
-**Requirement:** HSN codes for goods and SAC codes for services shall be explicit tax classifications (BF-071): an item, or a line without an item, may carry one, a product an HSN code and a service a SAC code; the Indian GST pack (BF-204) supplies the code lists and whether a code is required.
+**Requirement:** HSN codes for goods and SAC codes for services shall be explicit tax classifications (BF-071): an item of type product carries an HSN code and a service a SAC code, and order and invoice lines carry the code of their item or one of their own, wherever the legal entity's country pack requires it (BF-204); the pack supplies the code lists.
 
 **Why:** Indian GST invoices and e-invoices carry the HSN or SAC code of every line; naming them, rather than leaving them among "harmonised codes", makes them testable.
 
 **Acceptance criteria:**
 
-- AC1 Given an item of type product with the HSN code 8471, When it is used on a line, Then the line carries 8471 as its classification.
+- AC1 Given an item of type product with the HSN code 8471, When it is used on an order line, Then the line carries 8471 as its classification.
 - AC2 Given a service item, When an HSN code is set on it, Then it is refused, since a service carries a SAC code. (error case)
-- AC3 Given the Indian GST pack with codes required, When a line without a code is submitted, Then it is refused naming the line. (error case)
-- AC4 Given a code that is not in the pack's list, When saved on an item, Then it is refused naming the code. (error case)
+- AC3 Given a legal entity whose pack requires the codes, When an item of type product of that legal entity is saved without an HSN code, Then it is refused. (error case)
+- AC4 Given a legal entity whose pack requires the codes, When an order or invoice line without a code is submitted, Then it is refused naming the line. (error case)
+- AC5 Given a legal entity whose pack does not require them, When a line without a code is submitted, Then it is accepted.
+- AC6 Given a code that is not in the pack's list, When saved on an item, Then it is refused naming the code. (error case)
 
 *Depends on:* BF-041, BF-071, BF-204
 
-**Notes:** `[Decision]`: where a code is required. Proposed: on the lines of documents of a legal entity with a GST registration, as the pack sets it.
+**Notes:** Decided 2026-10-20: required on items and services and on order and invoice lines wherever the legal entity's country pack requires it.
 
 #### BF-075 Projects as cost objects
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Finance
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Finance
 
-**Requirement:** Projects shall be a master of cost objects, each with a code, a name, validity dates, an owning unit and a link to budget lines (BF-064); a line may be coded to an active project within its validity, and a project outside its validity or inactive is not offered on new lines.
+**Requirement:** Projects shall be a master of cost objects, each with a code, a name, validity dates and an owning unit; a project may own budget lines (BF-064), and spending against the project checks and reserves them like any budget (BF-065, BF-066); a line may be coded to an active project within its validity, and a project outside its validity or inactive is not offered on new lines.
 
-**Why:** Spend is followed by project as well as by account string. A project here is a cost object; projects and tasks as a product are later scope (`products/projects-and-tasks-scope.md`).
+**Why:** Spend is followed and controlled by project as well as by account string. A project here is a cost object; projects and tasks as a product are later scope (`products/projects-and-tasks-scope.md`).
 
 **Acceptance criteria:**
 
 - AC1 Given an active project valid this year, When a line is coded, Then the project is offered and stored on the line.
 - AC2 Given a project whose validity has ended, When it is used on a new line, Then it is refused naming the project. (error case)
 - AC3 Given a code another project has, When saved, Then it is refused. (error case)
-- AC4 Given a project linked to two budget lines, When its consumption is reported, Then the consumption of both lines is shown.
+- AC4 Given a project owning a budget line with 5,000 available and blocking on, When a line of 8,000 coded to the project is submitted, Then it is refused with the shortfall. (error case)
+- AC5 Given the same project, When a line of 3,000 coded to it is submitted, Then 3,000 of the project's budget line is reserved.
 
-*Depends on:* BF-064, TF-034, TF-220
+*Depends on:* BF-064, BF-065, BF-066, TF-034, TF-220
 
-**Notes:** `[Decision]`: what the budget link does. Proposed: it names the budget lines the project may consume and reports them together; the budget check of a line stays by its account string (BF-065).
+**Notes:** Decided 2026-10-20: a project may own budget lines, and spending against it checks and reserves them like any budget.
 
 ### 5.5 Locations (BF-081 to BF-100)
 
@@ -888,9 +876,9 @@ The business lists every product uses, built on the kernel's custom lookups (TF-
 **Notes:** A list one product alone uses, such as Supplier management's risk flag types (SUP-043), belongs to that product.
 
 #### BF-122 Seeded values of the business lookups
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Lookups
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Lookups
 
-**Requirement:** The business lookups shall be seeded with starter values that tenant administrators may edit, deactivate or extend; a seed never overwrites a tenant's values (TF-088).
+**Requirement:** The business lookups shall be seeded with starter values that tenant administrators may edit, deactivate or extend: the charge types freight, handling and other, and remit-to among the address types, the other lists starting empty for the tenant to fill; a seed never overwrites a tenant's values (TF-088).
 
 **Why:** A tenant can raise its first request within a day (goal 3) only if the common lists are not empty.
 
@@ -902,7 +890,7 @@ The business lists every product uses, built on the kernel's custom lookups (TF-
 
 *Depends on:* BF-121, TF-088
 
-**Notes:** `[Decision]`: the starter values. Proposed: those the archived PRD names, the charge types freight, handling and other, and remit-to among the address types; the other lists start empty for the tenant to fill.
+**Notes:** Decided 2026-10-20: the proposed values stand, marked for review in the slice that builds this requirement (B2).
 
 ### 5.8 Approvals and delegation of authority (BF-141 to BF-160)
 
@@ -926,9 +914,9 @@ Approval configurations per document type on the kernel's workflow engine (TF-09
 **Notes:** Built with the kernel's workflow engine (S5).
 
 #### BF-142 Delegation of authority matrix
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Approvals and delegation of authority
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Approvals and delegation of authority
 
-**Requirement:** Tenant administrators shall maintain a delegation of authority matrix: rows of approval limits by amount and currency, for a designation, a job grade or a role, for a category or all, per legal entity or unit, each with validity dates; every change is audited with before and after (TF-060). The matrix decides who may approve what; the kernel's delegation of duties (TF-037) decides who acts for whom.
+**Requirement:** Tenant administrators shall maintain a delegation of authority matrix: rows of approval limits in the matrix's currency, for a designation, a job grade or a role, for a category or all, per legal entity or unit, each with validity dates; every change is audited with before and after (TF-060). When several rows match a person and a document, the most specific row wins, a category and a unit before a unit alone; a row as specific as another for the same people, category, unit and dates is refused when saved. A document's amount is converted to the matrix's currency at the document's rate date (BF-070), and limits are never converted. The matrix decides who may approve what; the kernel's delegation of duties (TF-037) decides who acts for whom.
 
 **Why:** Who may approve up to what amount is a business control auditors ask to see (goal 2).
 
@@ -938,10 +926,13 @@ Approval configurations per document type on the kernel's workflow engine (TF-09
 - AC2 Given a row whose end date is before its start date, When saved, Then it is refused. (error case)
 - AC3 Given a row changed, When the audit is searched, Then actor, time, before and after are recorded.
 - AC4 Given a row past its validity, When approvers are resolved (BF-143), Then it is not used.
+- AC5 Given a row for grade G3 in unit U and one for grade G3 and category IT in unit U, When approvers of an IT document of U are resolved, Then the second row decides.
+- AC6 Given a row for grade G3, category IT and unit U valid this year, When a second row for the same grade, category and unit with overlapping dates is saved, Then it is refused naming the first. (error case)
+- AC7 Given a matrix in INR and a document of 1,000 USD, When approvers are resolved, Then the document's amount is converted to INR at the rate of its rate date, and the rows' limits stay as written.
 
-*Depends on:* BF-001, BF-022, BF-042, TF-060
+*Depends on:* BF-001, BF-022, BF-042, BF-070, TF-060
 
-**Notes:** `[Decision]`: two rows that match the same person and document. Proposed: the most specific row wins (a unit before its legal entity, a category before all), and between equals the lower limit. `[Decision]`: a row in another currency than the document. Proposed: the document's amount is converted with the rate valid on its date (BF-070).
+**Notes:** Decided 2026-10-20: the most specific row wins, equally specific rows are refused when saved, the document's amount is converted at its rate date and limits never are.
 
 #### BF-143 Approvers from the matrix
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Approvals and delegation of authority
@@ -1011,9 +1002,9 @@ Document type settings and document templates; number series per document type a
 *Depends on:* TF-166, BF-001, BF-005
 
 #### BF-164 Business notification templates and audiences
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Numbering, templates and notifications
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Numbering, templates and notifications
 
-**Requirement:** The business layer shall hold the templates of the products' notification keys per language, and per legal entity or unit where the tenant wants (TF-150, TF-221), and say who is told what: each key names its audience, a role on the document (requester, buyer owner, approver, supplier primary contact), a business group (BF-024) or a person; no notification goes to someone who cannot read its record (TF-243).
+**Requirement:** The business layer shall hold the templates of the products' notification keys per language, and per legal entity or unit where the tenant wants (TF-150, TF-221), and say who is told what: each key names its audience, a role on the document (requester, buyer owner, approver, supplier primary contact), a business group (BF-024) or a person; no notification goes to someone who cannot read its record (TF-243). The starter templates are one per key, in English, active from provisioning, and the tenant edits them.
 
 **Why:** The products declare what happens; the tenant decides, in its own words, who hears of it.
 
@@ -1025,16 +1016,16 @@ Document type settings and document templates; number series per document type a
 
 *Depends on:* BF-024, TF-150, TF-151, TF-221, TF-243
 
-**Notes:** `[Decision]`: the starter templates. Proposed: one per key, in English, active from provisioning, which the tenant edits.
+**Notes:** Decided 2026-10-20: the proposed starter templates stand, marked for review in the slice that builds this requirement (B3).
 
 ### 5.10 Content visibility on masters (BF-181 to BF-200)
 
 Which masters carry visibility tags, on the kernel mechanism TF-241: suppliers, items and projects here, contracts in the Contracts product.
 
 #### BF-181 Masters that carry visibility tags
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Content visibility on masters
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Content visibility on masters
 
-**Requirement:** Suppliers, items and projects shall carry visibility tags (TF-241): their tags are set by people who hold them (rule 5), a master without tags is visible to everyone who passes roles and units (rule 2), and the products' transactions take tags from them as each product says (rule 6). Contracts carry tags too, in the Contracts product.
+**Requirement:** Suppliers, items and projects shall carry visibility tags (TF-241): a new master takes its creator's tags, which may then be changed within rule 5, and a creator who holds no tags creates it untagged; a master without tags is visible to everyone who passes roles and units (rule 2); the products' transactions take tags from them as each product says (rule 6). Contracts carry tags too, in the Contracts product.
 
 **Why:** A buyer group that shares a unit but not its suppliers, items or projects needs them narrowed from the first record.
 
@@ -1043,10 +1034,12 @@ Which masters carry visibility tags, on the kernel mechanism TF-241: suppliers, 
 - AC1 Given a supplier tagged APAC and a buyer holding only LATAM, When the buyer lists suppliers, Then it is not shown.
 - AC2 Given a buyer holding only APAC, When they tag an item LATAM, Then it is refused naming the tag. (error case)
 - AC3 Given an item without tags, When anyone who passes roles and units searches items, Then it is shown.
+- AC4 Given a buyer holding APAC and LATAM, When they create a supplier, Then it carries APAC and LATAM.
+- AC5 Given a creator who holds no tags, When they create an item, Then it is untagged.
 
 *Depends on:* BF-041, BF-075, BF-101, TF-241
 
-**Notes:** `[Decision]`: the tags of a new master. Proposed: a new master starts without tags, and its creator may add the tags they hold.
+**Notes:** Decided 2026-10-20: a new master takes its creator's tags.
 
 ### 5.11 Setup and data (BF-201 to BF-220)
 
@@ -1236,12 +1229,12 @@ These are what the archived FF-164 to FF-166 asked of the masters; the mechanism
 
 ## 9. Modules, schemas and permissions
 
-Proposed by the placement test (ADR-0029): each holds masters or configuration that two or more products read, and none holds a product's documents. `[Decision]`: the modules and the permission names below, for the design session to confirm.
+Proposed by the placement test (ADR-0029): each holds masters or configuration that two or more products read, and none holds a product's documents. Decided 2026-10-20: the modules and the permission names below.
 
-| Module | Holds | Schema | Requirements | Permissions proposed |
+| Module | Holds | Schema | Requirements | Permissions |
 |---|---|---|---|---|
 | `Iron.Business.Organisations` | The kinds of unit, legal entity attributes, purchasing groups, the organisation rules | `business_organisations` | BF-001 to BF-007, BF-203 | `organisations.legal_entities.{read,manage}`, `organisations.purchasing_groups.{read,manage}` |
-| `Iron.Business.People` | People, managers, business groups, the escalation to a manager | `business_people` | BF-021 to BF-026 | `people.people.{read,manage}`, `people.groups.{read,manage}` |
+| `Iron.Business.People` | People, managers, business groups, the escalation to a manager | `business_people` | BF-021 to BF-024, BF-026 | `people.people.{read,manage}`, `people.groups.{read,manage}` |
 | `Iron.Business.Items` | Items, categories and commodities, units of measure | `business_items` | BF-041 to BF-044 | `items.items.{read,manage}`, `items.categories.{read,manage}`, `items.units.{read,manage}` |
 | `Iron.Business.Finance` | Charts of accounts, account strings, budgets, fiscal calendars, currencies and rates, tax codes with HSN and SAC, payment and shipping terms, projects, the budget reconciliation | `business_finance` | BF-061 to BF-075 | `finance.charts.{read,manage}`, `finance.budgets.{read,manage,adjust}`, `finance.rates.{read,manage,approve}`, `finance.taxes.{read,manage}`, `finance.terms.{read,manage}`, `finance.projects.{read,manage}` |
 | `Iron.Business.Locations` | Ship-to, bill-to and warehouse locations | `business_locations` | BF-081 to BF-083 | `locations.locations.{read,manage}` |
@@ -1294,6 +1287,8 @@ The split itself is ADR-0041. Decided at its checkpoint, on 2026-10-20:
 | Each module reconciles its own counters, in one nightly window of the kernel's jobs | BF-073 for the budgets |
 | Approvals, tasks and notifications respect access | TF-243 |
 | Bill-to is a location type in the locations master, linked to its legal entity, one default per legal entity and more allowed | BF-083 |
+
+Decided at the review of the split, on 2026-10-20, each written into its requirement with "decided 2026-10-20" in its notes: BF-006, BF-007 (with REQ-023 on the product side), BF-022, BF-074, BF-075, BF-122, BF-142, BF-164 and BF-181; BF-025 retired; the modules and permissions of section 9.
 
 ### 12.2 Open points
 

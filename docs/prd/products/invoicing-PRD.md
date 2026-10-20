@@ -7,14 +7,14 @@
 | Document title | Invoicing: invoices, matching, approval for payment and credit notes, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `INV-`, in blocks of twenty per area (ADR-0041); the table is `invoicing-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`; its module was called Payables), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Finance masters, budgets, tax codes, payment terms and suppliers are the Business PRD's; orders and receipts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
 
 ## 1. Vision and goals
 
@@ -663,7 +663,7 @@ Records approved, acknowledged or signed carry an electronic signature (TF-063) 
 |---|---|---|
 | Invoice approval (INV-041) | Each approval decision, meaning approved or rejected | Yes: approvals that followed a released hold |
 | Hold release (INV-022, INV-026) | The release with its reason, signed by the person who releases it | Yes: every release |
-| Payment release (INV-043) | The release for payment, meaning approved; `[Decision]`: re-authentication required by default | Yes |
+| Payment release (INV-043) | The release for payment, meaning approved; re-authentication required by default (decided 2026-10-20) | Yes |
 | Credit notes (INV-044) | Each approval decision | No |
 | Capture suggestions (INV-009) | The user's confirmation, beside the AI service's suggestion (TF-208) | Yes: confirmations of suggested values |
 | Split overrides on order-based lines (INV-007 AC3) | Not signed; audited | Yes |
@@ -672,7 +672,7 @@ Retention: this product's records are business documents and follow TF-066's def
 
 ## 10. Visibility tags
 
-An order-based invoice takes its order's tags, a non-order invoice its supplier's, and a credit note its invoice's (TF-241, rule 6). `[Decision]`: proposed as written.
+An order-based invoice takes its order's tags, a non-order invoice its supplier's, and a credit note its invoice's (TF-241, rule 6). Decided 2026-10-20.
 
 ## 11. Data, integration and reports
 
@@ -725,7 +725,7 @@ Last (ADR-0042): it calls Orders, Receiving and Requests, and no product depends
 
 The module is `Iron.Products.Invoicing` (schema `products_invoicing`), its shell module `shell/src/modules/products/invoicing/`, licensed as a module (ADR-0034).
 
-Permissions proposed (`[Decision]` for the names): `invoicing.invoices.{read,read_all,create,update,submit,approve,dispute,cancel,release_payment}`, `invoicing.holds.release`, `invoicing.credit_notes.{read,create,approve}`, `invoicing.splits.override`, `invoicing.configuration.manage`, `invoicing.accruals.read`, `invoicing.reports.read`. They replace the archived PRD's `payables.invoice.*` and `payables.credit_note.*`, named after the module then called Payables.
+Permissions, decided 2026-10-20: `invoicing.invoices.{read,read_all,create,update,submit,approve,dispute,cancel,release_payment}`, `invoicing.holds.release`, `invoicing.credit_notes.{read,create,approve}`, `invoicing.splits.override`, `invoicing.configuration.manage`, `invoicing.accruals.read`, `invoicing.reports.read`. They replace the archived PRD's `payables.invoice.*` and `payables.credit_note.*`, named after the module then called Payables.
 
 ## 14. Configuration
 

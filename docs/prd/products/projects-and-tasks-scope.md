@@ -5,7 +5,7 @@
 | Document | One-page scope of a later product (ADR-0041). Its full PRD starts from its own process reference pack (PM-001), reviewed by an external practitioner (PM-002). |
 | Layer | Products (ADR-0029) |
 | Identifier prefix | `PRJ-`, reserved; no requirements yet |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
 
 ## Purpose
@@ -30,7 +30,7 @@ A project is created with its team; its tasks are planned with owners and due da
 - Business: projects as cost objects (BF-075), people (BF-021) and business groups (BF-024).
 - Earlier products (ADR-0042): any whose records a task concerns; it calls them to show the record and never the other way.
 
-`[Decision]`, its place in the process order: proposed last, after Invoicing, since its tasks may concern any earlier product's records.
+Its place in the process order, decided 2026-10-20: last, after Invoicing, since its tasks may concern any earlier product's records.
 
 ## Out of scope
 

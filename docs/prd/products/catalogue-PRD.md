@@ -7,14 +7,14 @@
 | Document title | Catalogue: supplier items, supplier catalogues and shopping, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `CAT-`, in blocks of twenty per area (ADR-0041); the table is `catalogue-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Items, categories, units and suppliers are the Business PRD's (BF-041 to BF-044, BF-101); contract items are the Contracts product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Supplier items, catalogues and shopping moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The item master went to the Business PRD.
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Supplier items, catalogues and shopping moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The item master went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -204,9 +204,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given an empty cart, When converted, Then a message says the cart is empty. (error case)
 - AC3 Given a favourite, When the requester returns, Then it is listed first.
 
-*Depends on:* CAT-004, REQ-001 (event)
+*Depends on:* CAT-004
 
-**Notes:** Was FF-045. Converting the cart publishes an event that Requests, a later product, handles by creating the draft request from the cart, which it reads through this product's Contracts; this product hears of the request it became only through Requests' event (ADR-0042).
+**Notes:** Was FF-045. A requester converts the cart on Requests' screen, which reads the cart through this product's Contracts and creates the draft request at once; this product depends on no later product (ADR-0042).
 
 #### CAT-022 Contract items in the catalogue
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Shopping
@@ -310,7 +310,7 @@ Retention: this product's records are business documents and follow TF-066's def
 
 ## 10. Visibility tags
 
-A catalogue, its lines and the supplier items take their supplier's tags (TF-241, rule 6), so a buyer group that may not see a supplier does not see its prices either; contract items in browsing (CAT-022) take their contract's. `[Decision]`: proposed as written.
+A catalogue, its lines and the supplier items take their supplier's tags (TF-241, rule 6), so a buyer group that may not see a supplier does not see its prices either; contract items in browsing (CAT-022) take their contract's. Decided 2026-10-20.
 
 ## 11. Data, integration and reports
 
@@ -338,7 +338,7 @@ These are what the archived FF-164 to FF-166 asked of this product; the mechanis
 
 ### 12.1 Its place in the process order
 
-Third, after Supplier management and Contracts (ADR-0042): it calls Contracts for the contract items it shows (CAT-022 on CON-002), and hears from Requests only through its events.
+Third, after Supplier management and Contracts (ADR-0042): it calls Contracts for the contract items it shows (CAT-022 on CON-002), and depends on no later product: Requests turns a cart into a request on its own screen, reading the cart through this product's Contracts.
 
 ### 12.2 What it uses
 
@@ -348,8 +348,8 @@ Third, after Supplier management and Contracts (ADR-0042): it calls Contracts fo
 
 ### 12.3 Events
 
-- Publishes: cart converted, which Requests handles by creating the draft request from the cart (CAT-021); revision submitted, accepted and rejected; catalogue published and unpublished.
-- Subscribes: from Requests, request created from a cart (CAT-021, `REQ-001 (event)`).
+- Publishes: revision submitted, accepted and rejected; catalogue published and unpublished.
+- Subscribes: none.
 
 ### 12.4 Extension points it implements
 
@@ -359,7 +359,7 @@ Third, after Supplier management and Contracts (ADR-0042): it calls Contracts fo
 
 The module is `Iron.Products.Catalogue` (schema `products_catalogue`), its shell module `shell/src/modules/products/catalogue/`, licensed as a module (ADR-0034).
 
-Permissions proposed (`[Decision]` for the names): `catalogue.supplier_items.{read,manage}`, `catalogue.catalogues.{read,accept,reject,publish}`, `catalogue.synonyms.manage`, `catalogue.reports.read`. They replace the archived PRD's `catalogue.catalogue.{read,accept,reject,publish}`; its `catalogue.item.*` is now the Business item master's.
+Permissions, decided 2026-10-20: `catalogue.supplier_items.{read,manage}`, `catalogue.catalogues.{read,accept,reject,publish}`, `catalogue.synonyms.manage`, `catalogue.reports.read`. They replace the archived PRD's `catalogue.catalogue.{read,accept,reject,publish}`; its `catalogue.item.*` is now the Business item master's.
 
 ## 14. Configuration
 
@@ -390,7 +390,7 @@ From the archived PRD's section 10.2:
 |---|---|---|
 | G-08 | Catalogues: one catalogue per customer (default) or one network catalogue offered to many customers? | Per customer in version 1; network catalogue later |
 
-Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). Catalogue may call Contracts (CAT-022 on CON-002); the conversion of a cart into a request publishes an event Requests handles (CAT-021).
+Decided at the PRD split's checkpoint, on 2026-10-20: Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042). Catalogue may call Contracts (CAT-022 on CON-002); a requester turns a cart into a request on Requests' screen, which reads the cart through this product's Contracts (CAT-021). Corrected at the review of 2026-10-20: a person's conversion is a call from the later product's screen, and only automatic conversions are events.
 
 ## 17. Glossary
 

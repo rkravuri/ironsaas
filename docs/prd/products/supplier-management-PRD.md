@@ -7,14 +7,14 @@
 | Document title | Supplier management: the supplier's life cycle with the tenant, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `SUP-`, in blocks of twenty per area (ADR-0041); the table is `supplier-management-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | The supplier record and its parts are the Business PRD's (BF-101 to BF-108); every mechanism is a kernel capability cited by its TF identifier. The supplier's own screens are served through the supplier portal surface (`../surfaces/supplier-portal-PRD.md`). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -443,16 +443,16 @@ Records approved, acknowledged or signed carry an electronic signature (TF-063) 
 | Record | Electronic signature (TF-063) | Audit-trail review (TF-219) |
 |---|---|---|
 | Supplier approval and publishing (SUP-004), organisation approval of an enablement (SUP-006) | Each approval decision, meaning approved or rejected | Yes: who approved which supplier, and in which organisation |
-| Bank account verification (SUP-023) | The approver's decision with the verification checklist, meaning approved; `[Decision]`: re-authentication required by default | Yes: every addition, change and verification |
+| Bank account verification (SUP-023) | The approver's decision with the verification checklist, meaning approved; re-authentication required by default (decided 2026-10-20) | Yes: every addition, change and verification |
 | Supplier change approval (SUP-022) | Each approval decision | Yes: controlled fields before and after |
 | Status changes and merges (SUP-021, SUP-024) | Not signed; audited with the reason (TF-060) | Yes: holds, deactivations and merges |
 | Documents to sign at invitation (SUP-001) and questionnaire responses (SUP-042) | Signed by the supplier user where the tenant asks (TF-164, TF-242) | No |
 
-Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion. `[Decision]`: a supplier's records close when its relationship ends.
+Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion. A supplier's records close when its relationship ends (decided 2026-10-20).
 
 ## 10. Visibility tags
 
-The supplier master carries the tags (BF-181). This product's records about a supplier, its pending changes, documents, questionnaire responses, risk flags and indicators, take the supplier's tags (TF-241, rule 6) and change with them; a record of this product carries no tags of its own. `[Decision]`: proposed as written.
+The supplier master carries the tags (BF-181). This product's records about a supplier, its pending changes, documents, questionnaire responses, risk flags and indicators, take the supplier's tags (TF-241, rule 6) and change with them; a record of this product carries no tags of its own. Decided 2026-10-20.
 
 ## 11. Data, integration and reports
 
@@ -504,7 +504,7 @@ The 360 view's tabs for orders, receipts, invoices, contracts and the catalogue 
 
 The module is `Iron.Products.SupplierManagement` (schema `products_supplier_management`), accepted at the checkpoint; not `Iron.Products.Suppliers`, since the supplier master is `Iron.Business.Suppliers` and two modules whose names end in the same segment cannot both be named to `make ef-add MODULE=` (ADR-0029). Its shell module is `shell/src/modules/products/supplier-management/`, and it is licensed as a module (ADR-0034).
 
-Permissions proposed (`[Decision]` for the names), naming the module: `supplier_management.suppliers.{invite,approve,publish,hold,deactivate,impersonate}`, `supplier_management.changes.approve`, `supplier_management.bank_accounts.verify`, `supplier_management.documents.{read,manage}`, `supplier_management.questionnaires.{read,send,score}`, `supplier_management.risk_flags.{read,manage}`, `supplier_management.performance.read`, `supplier_management.merges.run`, `supplier_management.configuration.manage`, `supplier_management.reports.read`. They replace the archived PRD's `suppliers.supplier.{approve,publish,hold,deactivate,invite,impersonate}`, `suppliers.bank.verify` and `suppliers.document.*`. A supplier user's own actions arrive through the network with a delegated token and the supplier role (TF-234), not with these.
+Permissions, decided 2026-10-20, naming the module: `supplier_management.suppliers.{invite,approve,publish,hold,deactivate,impersonate}`, `supplier_management.changes.approve`, `supplier_management.bank_accounts.verify`, `supplier_management.documents.{read,manage}`, `supplier_management.questionnaires.{read,send,score}`, `supplier_management.risk_flags.{read,manage}`, `supplier_management.performance.read`, `supplier_management.merges.run`, `supplier_management.configuration.manage`, `supplier_management.reports.read`. They replace the archived PRD's `suppliers.supplier.{approve,publish,hold,deactivate,invite,impersonate}`, `suppliers.bank.verify` and `suppliers.document.*`. A supplier user's own actions arrive through the network with a delegated token and the supplier role (TF-234), not with these.
 
 ## 14. Configuration
 

@@ -5,7 +5,7 @@
 | Document | One-page scope of a later product (ADR-0041). Its full PRD starts from its own process reference pack (PM-001), reviewed by an external practitioner (PM-002). |
 | Layer | Products (ADR-0029) |
 | Identifier prefix | `AUC-`, reserved; no requirements yet |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
 
 ## Purpose
@@ -30,7 +30,7 @@ Lots are drafted, alone or from a sourcing event; the rules are set and approved
 - Business: suppliers and their enablement (BF-101, BF-108), items (BF-041), currencies (BF-070).
 - Earlier products (ADR-0042): Sourcing, whose lots it auctions and whose award takes its result; Supplier management, for invited suppliers.
 
-`[Decision]`, its place in the process order: proposed right after Sourcing.
+Its place in the process order, decided 2026-10-20: right after Sourcing.
 
 ## Out of scope
 

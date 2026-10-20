@@ -7,14 +7,14 @@
 | Document title | Contracts: the contract repository, pricing and consumption, Product Requirements Document |
 | Layer | Products (ADR-0029); the module is proposed in section 13 |
 | Identifier prefix | `CON-`, in blocks of twenty per area (ADR-0041); the table is `contracts-requirements.csv` |
-| Version | 0.2 DRAFT for review (the split of 2026-10-20) |
+| Version | 1.0 (accepted at the review of 2026-10-20) |
 | Date | 2026-10-20 |
-| Status | Draft for review: the requirements moved from the Functional Foundation PRD under their new identifiers, the design session's answers at the checkpoint (section 16.1), and the sections the split adds: supplier views, records and signatures, visibility tags, dependencies, module and permissions. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Suppliers and items are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -229,7 +229,26 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ## 7. Supplier views
 
-The archived PRD gave suppliers no contract view: its portal requirements cover orders, shipment notices, receipts, invoices, catalogues, company data, questionnaires and tasks. `[Decision]` for the design session: proposed, a supplier sees the published contracts it is party to, read-only, with their items, prices and remaining quantity, written as a requirement once confirmed. Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+The archived PRD gave suppliers no contract view: its portal requirements cover orders, shipment notices, receipts, invoices, catalogues, company data, questionnaires and tasks. Decided 2026-10-20: a supplier sees the published contracts it is party to, read-only (CON-061). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+
+The requirements (CON-061 to CON-080):
+
+#### CON-061 Contracts in the portal
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier views
+
+**Requirement:** Suppliers shall see, read-only in the portal, the published contracts they are party to, with their items, prices, validity and remaining quantity or value.
+
+**Why:** A supplier that invoices against a contract needs its prices and the room left on it without asking the buyer.
+
+**Acceptance criteria:**
+
+- AC1 Given a published contract with a supplier, When the supplier opens its contracts in the portal, Then the contract is listed with its items, prices, validity and remaining quantity.
+- AC2 Given a contract of another supplier, When it is requested by identifier, Then it is refused. (error case)
+- AC3 Given a contract in draft or unpublished, When the supplier lists its contracts, Then it is not shown.
+
+*Depends on:* CON-003, CON-021, TF-035, TF-234
+
+**Notes:** New at the review of the PRD split, 2026-10-20. It obeys the supplier portal's ownership rule, SPX-006 (ADR-0042).
 
 ## 8. Rules and state machines
 
@@ -255,7 +274,7 @@ Retention: this product's records are business documents and follow TF-066's def
 
 ## 10. Visibility tags
 
-A contract carries the tags its owner sets from the tags they hold (TF-241, rule 5), and its items take the contract's (rule 6); the Business PRD names contracts among the records that carry tags (BF-181). `[Decision]`: proposed as written.
+A contract carries the tags its owner sets from the tags they hold (TF-241, rule 5), and its items take the contract's (rule 6); the Business PRD names contracts among the records that carry tags (BF-181). Decided 2026-10-20.
 
 ## 11. Data, integration and reports
 
@@ -303,7 +322,7 @@ Second (ADR-0042): it calls no product. Orders records each release and its canc
 
 The module is `Iron.Products.ContractManagement` (schema `products_contract_management`), accepted at the checkpoint, since `Iron.Products.Contracts` would have the public project `Iron.Products.Contracts.Contracts`; the product keeps the name Contracts. Its shell module is `shell/src/modules/products/contract-management/`, licensed as a module (ADR-0034).
 
-Permissions proposed (`[Decision]` for the names): `contract_management.contracts.{read,create,update,approve,publish}`, `contract_management.reports.read`. They replace the archived PRD's `contracts.contract.{read,create,update,publish}`.
+Permissions, decided 2026-10-20: `contract_management.contracts.{read,create,update,approve,publish}`, `contract_management.reports.read`. They replace the archived PRD's `contracts.contract.{read,create,update,publish}`.
 
 ## 14. Configuration
 
