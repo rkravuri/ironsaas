@@ -3,13 +3,13 @@ import { call, open, signIn } from "./helpers";
 
 /**
  * Working across units against a real unit (A8, ADR-0038). `make e2e` sets up the data first
- * (infra/compose/scripts/e2e-data.py): a second branch with a colleague, and a person homed there who reads the users
- * of both branches. They choose the unit they work for, and the Users page follows. Then the administrator merges two
+ * (infra/compose/scripts/e2e-data.py): a second and a third branch, each with a colleague, and a person homed at the
+ * second who reads the users of both. They choose the unit they work for, and the Users page follows. Then the administrator merges two
  * units made for the run, after reading the preview, and the person homed at one is homed at the other.
  */
 const two = { loginId: process.env.E2E_TWO_UNITS_LOGIN_ID ?? "", password: process.env.E2E_TWO_UNITS_PASSWORD ?? "" };
-const firstUnit = process.env.E2E_CHILD_UNIT ?? "E2E branch";
 const secondUnit = process.env.E2E_SECOND_UNIT ?? "E2E second branch";
+const thirdUnit = process.env.E2E_THIRD_UNIT ?? "E2E third branch";
 const tenant = process.env.E2E_TENANT ?? "smoke";
 const run = Date.now().toString(36);
 
@@ -40,16 +40,19 @@ test.describe("working across units", () => {
     await page.screenshot({ path: "test-results/e2e/working-unit-home.png" });
 
     await page.getByRole("button", { name: control(secondUnit) }).click();
-    await page.getByRole("menu").getByRole("menuitem", { name: new RegExp(`^${firstUnit}`) }).click();
+    await page.getByRole("menu").getByRole("menuitem", { name: new RegExp(`^${thirdUnit}`) }).click();
 
-    await expect(page.getByRole("button", { name: control(firstUnit) })).toBeVisible();
-    await expect(page.getByText(`The list keeps to ${firstUnit} and the units below it.`, { exact: false })).toBeVisible();
-    await expect(loginCells(grid).filter({ hasText: /^child-admin-/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: control(thirdUnit) })).toBeVisible();
+    await expect(page.getByText(`The list keeps to ${thirdUnit} and the units below it.`, { exact: false })).toBeVisible();
+    await expect(loginCells(grid).filter({ hasText: /^third-colleague-/ })).toBeVisible();
     await expect(loginCells(grid).filter({ hasText: two.loginId })).toHaveCount(0);
+    for (const cell of await loginCells(grid).all()) {
+      await expect(cell).toHaveText(/^third-colleague-[0-9a-z]+@/);
+    }
     await page.screenshot({ path: "test-results/e2e/working-unit-other.png" });
 
     // Back to the home unit, so the next run starts where a new session does.
-    await page.getByRole("button", { name: control(firstUnit) }).click();
+    await page.getByRole("button", { name: control(thirdUnit) }).click();
     await page.getByRole("menu").getByRole("menuitem", { name: new RegExp(`^${secondUnit}`) }).click();
     await expect(page.getByRole("button", { name: control(secondUnit) })).toBeVisible();
   });

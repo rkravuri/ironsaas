@@ -8,14 +8,17 @@ test.describe("the Users grid", () => {
   test("lists the tenant's users from the API with server paging and sorting", async ({ page }) => {
     await signIn(page);
     // Register the wait before loading the page, so the first request cannot be missed.
-    const firstPage = page.waitForRequest((request) => request.url().includes("/api/v1/users?") && request.url().includes("page_number=1"));
+    const firstPage = page.waitForResponse((response) => response.url().includes("/api/v1/users?") && response.url().includes("page_number=1"));
     await page.goto("/users");
-    const request = await firstPage;
-    expect(request.url()).toContain("page_size=50");
-    expect(request.url()).toContain("sort=login_id");
+    const response = await firstPage;
+    expect(response.url()).toContain("page_size=50");
+    expect(response.url()).toContain("sort=login_id");
 
+    // The grid draws the rows near its viewport only, and every run adds accounts to echo, so the smoke client's row may
+    // be out of sight: the page the API answered names it, and the administrator's row is first in the grid.
+    const answered = (await response.json()) as { data: { login_id: string }[] };
+    expect(answered.data.map((user) => user.login_id)).toContain("smoke-client");
     const grid = page.getByRole("region", { name: "Users" });
-    await expect(loginCell(grid, "smoke-client")).toBeVisible();
     await expect(loginCell(grid, loginId)).toBeVisible();
 
     // A header click is a server round trip with the sort in the query: ascending, then descending.
@@ -30,7 +33,7 @@ test.describe("the Users grid", () => {
     await signIn(page);
     await open(page, "/users");
     const grid = page.getByRole("region", { name: "Users" });
-    await expect(loginCell(grid, "smoke-client")).toBeVisible();
+    await expect(loginCell(grid, loginId)).toBeVisible();
 
     // "smoke-" matches the smoke client only; the administrator's login id holds "smoke." instead.
     const filtered = page.waitForRequest((request) => request.url().includes("filter=login_id%3Acontains%3Asmoke-"));
@@ -52,7 +55,7 @@ test.describe("the Users grid by keyboard", () => {
     await open(page, "/users");
     const grid = page.getByRole("region", { name: "Users" });
     const row = (index: number) => grid.locator(`.ag-row[row-index="${index}"]`).first();
-    await expect(loginCell(grid, "smoke-client")).toBeVisible();
+    await expect(loginCell(grid, loginId)).toBeVisible();
 
     await page.getByRole("radiogroup", { name: "Density" }).getByRole("radio", { name: "Compact" }).focus();
     for (let presses = 0; presses < 8 && (await grid.locator(".ag-cell-focus").count()) === 0; presses += 1) {
