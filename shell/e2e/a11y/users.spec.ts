@@ -40,11 +40,13 @@ for (const scheme of schemes) {
     await page.goBack();
     await expect(row(0)).toBeVisible();
 
-    // The density switch changes the row height.
-    const comfortable = await row(0).boundingBox();
+    // The density switch changes the row height. Back from the record, the grid renders its rows again, so the row's
+    // height is read once it has a box, not at the first glance.
+    let comfortable = 0;
+    await expect.poll(async () => (comfortable = (await row(0).boundingBox())?.height ?? 0)).toBeGreaterThan(32);
     // The segmented control hides its radios; the visible label takes the click.
     await page.getByRole("radiogroup", { name: "Density" }).getByText("Compact").click();
-    await expect.poll(async () => (await row(0).boundingBox())?.height).toBeLessThan(comfortable?.height ?? 0);
+    await expect.poll(async () => (await row(0).boundingBox())?.height).toBeLessThan(comfortable);
     await expect.poll(async () => (await row(0).boundingBox())?.height).toBe(32);
 
     const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
