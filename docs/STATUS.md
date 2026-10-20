@@ -18,14 +18,14 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A4 Entitlements | done | main | merged 2026-10-20 (94ad0d3); seven commits after the prompt (8879856), 33bcea1 to 465c70e; ADR-0034; the refresh question closed: 30 seconds, accepted; the shell reads /me/context only while its tab is visible; acme, bravo and echo on the Enterprise plan, smoke 11 of 11 and e2e 14 of 14 on echo at review |
 | A5 Feature flags | done | main | merged 2026-10-20 (999abbf); six commits after the prompt (adccccb), 67031f7 to 83bbd1b; ADR-0035; the permission names accepted (`tenancy.flags.*`, `tenancy.kill_switches.manage`); a kill switch is on wherever any applicable rule says so, and a rule that says false is refused; the last-known rows of flags and entitlements are one upsert each; the import kill switch on echo worked both ways within a minute at review, smoke 11 of 11 and e2e 15 of 15 on echo |
 | A6 Settings | done | main | merged 2026-10-20 (04408a4); six commits after the prompt (ce511f5), 891a27a to ce0564a; ADR-0036; the permission names kept (`settings.values.read`, `settings.values.manage`); an invitation is valid for 3 days by default, TF-018's 72 hours; the control plane and acme, bravo and echo carry A6, smoke 11 of 11 and e2e 18 of 18 on echo |
-| A7 Delegation and access reviews | next | | |
+| A7 Delegation and access reviews | in progress | slice/s2-a7 | ADR-0037; delegations, acting for the delegator with both names on every event, access reviews with the daily escalation pass, and the shell pages are built; the browser test on echo and the laptop run are next |
 | A8 Cross-organisation access and lifecycle | | | |
 | A9 Explanation and segregation of duties | | | |
 | S2-close | | | |
 
 ## Open questions
 
-None.
+- A7: may a reviewer decide an item about their own role? The section says a reviewer decides the items of their units, so today they may; a segregation-of-duties rule would refuse it and leave such an item to another reviewer of the unit, or to escalation when there is none. A9 (segregation of duties) is the natural home if the answer is no.
 
 ## Later items
 
@@ -67,4 +67,10 @@ None.
 - Each unit process reads all of the tenant's settings twice a minute. Fine for the handful of settings today; with many thousands of values, read only what changed since the last read (ADR-0036).
 - A setting's name on the console comes from the shell's catalogue (`settings.names`); a setting a module declares without one shows its key until it is named.
 - Each `make e2e` invites one more person (`validity-...`) into echo's `E2E branch` to prove the unit's invitation validity; those accounts stay Invited, as the home test's do, and the child-unit test accepts both.
+- A record-scoped assignment is not in an access review: a record's people are decided where the record is (ADR-0037). The shell starts a campaign over one unit with or without its children; the API takes several.
+- The escalation of late reviewers is recorded and audited, not sent: the message is S4, and the reviewer's manager comes from a business module's `IReviewEscalation` (ADR-0037).
+- TF-037 AC1 (a workflow assigns the delegate too) is S5. Approval, receiving and evaluation are declared as duties by the slices that build them.
+- The directory (`/api/v1/directory`) shows the names and home units of active people to everyone signed in, for choosing a delegate. Revisit if a tenant needs people hidden from each other.
+- A delegator who loses a role loses it for their delegate at once in the process that changed it, and within the grants cache's 60 seconds in the others (ADR-0012, ADR-0037).
+- Since A7 the console's navigation and its opener show Delegations to everyone, since anyone may delegate; the console's administration pages stay with their permissions.
 - Since A6 the density follows the person, so the Users grid's browser test starts from comfortable and removes the administrator's density at the end; a test that changes a preference cleans it up the same way.
