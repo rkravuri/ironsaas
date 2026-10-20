@@ -34,8 +34,9 @@ test: ## Run every test project (Microsoft Testing Platform, see global.json) on
 check: ## Run only the architecture checks (module boundaries, layout)
 	dotnet test --project tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj --configuration $(CONFIG)
 
-format: ## Apply the code style from .editorconfig
+format: shell-node ## Apply the code style: dotnet format from .editorconfig, Prettier in the shell (ADR-0040)
 	dotnet format Foundation.slnx
+	cd shell && npm run format --silent
 
 CATALOGUE_FILE := src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json
 SETTING_KEYS_FILE := shell/src/api/setting-keys.ts
