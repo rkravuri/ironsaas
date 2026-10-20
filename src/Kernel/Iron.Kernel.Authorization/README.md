@@ -24,8 +24,26 @@ The kinds come from `IOrganisationKinds`. The kernel default offers `root` (it m
 | Rename | `POST /api/v1/organisation-units/{id}/rename` with `name` | `authz.units.manage`, the unit | |
 | Move with its subtree | `POST /api/v1/organisation-units/{id}/move` with `parent_id` | `authz.units.manage`, the unit and the new parent | the root; a cycle (under itself or a descendant); an inactive parent; a kind the parent may not hold; the subtree would pass 16 levels |
 | Deactivate | `POST /api/v1/organisation-units/{id}/deactivate` | `authz.units.manage`, the unit | the root; any active unit below it (409, TF-034 AC2) |
+| Reactivate | `POST /api/v1/organisation-units/{id}/reactivate` | `authz.units.manage`, the unit | a deactivated parent (`authz.unit.parent_inactive`, 409); a merged unit (`authz.unit.merged`, 409) |
+| What the modules need of the unit | `GET /api/v1/organisation-units/{id}/readiness` | `authz.units.read`, the unit | |
+| Preview a merge into another unit | `GET /api/v1/organisation-units/{id}/merge-preview?into=<id>` | `authz.units.manage`, both units | as the merge |
+| Merge into another unit | `POST /api/v1/organisation-units/{id}/merge` with `into_id` | `authz.units.manage`, both units | the root; into itself or a unit below it (`authz.unit.merge_into_own`); an inactive unit; a child kind the other may not hold; too deep; merged already |
 
-Every write takes the tree's transaction-scoped advisory lock and writes its audit event in the same transaction: `authz.unit_created`, `authz.unit_renamed`, `authz.unit_moved`, `authz.unit_deactivated` (record type `organisation_unit`). A move changes the unit's row and rewrites its descendants' paths in one statement. A deactivated unit stays in the tree; no unit, record or role assignment can be placed in it.
+Every write takes the tree's transaction-scoped advisory lock and writes its audit event in the same transaction: `authz.unit_created`, `authz.unit_renamed`, `authz.unit_moved`, `authz.unit_deactivated`, `authz.unit_reactivated`, `authz.unit_merged` (record type `organisation_unit`). A move changes the unit's row and rewrites its descendants' paths in one statement. A deactivated unit stays in the tree; no unit, record or role assignment can be placed in it.
+
+## A unit's readiness and merging units (TF-223, ADR-0038)
+
+Readiness: a module that needs something of each unit (a numbering series, a ledger, a default warehouse) registers `IUnitReadiness` from this module's Contracts, `services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitReadiness, MyChecklist>())`, and answers its items in words, each done or not. The kernel registers none, so a unit is ready until a product asks for something.
+
+Merging B into A: `UnitMergeService` previews and merges. It asks every `IUnitRecordOwners` (the data library's, which a module with business records registers with `AddUnitRecordOwners<TContext>(module)`) for B's records, Identity and Settings through `IUnitMergeParticipant` (the people homed at B; B's settings, A's own values winning), the data library for the shares that list B, and moves the assignments scoped to B (dropping one the person already holds at A) and B's children itself, each child as an audited move. One transaction under the tree's lock; one `authz.unit_merged` lists every id moved and what was dropped; B ends inactive with `merged_into_id`. A move keeps a unit's scoped roles and its settings, which are keyed by its id.
+
+## The working unit (TF-222, ADR-0038)
+
+`IWorkingUnits` answers the units a person may work for: their home unit and the units their own assignments name, active ones, in tree order with their paths, and whether "All my units" is open to them (more than one unit, and a role at a parent with children below it or at the tenant). Identity keeps the choice in the session. `IUnitReach` (the data library's) answers the reader's home unit and the units below it, outside which a read is audited, and the working unit and the units below it, which lists keep to; it answers no narrowing for a token, the consolidated view, while acting, or for another principal.
+
+## Sharing a record (TF-222, ADR-0038)
+
+`GET` and `PUT /api/v1/record-sharing/{type}/{id}` read and change the sharing of any business record with a policy, through the data library's `IRecordSharing`. Each needs a signed-in principal; the record's policy decides the rest (reading needs the record readable, changing is the action `share`). The answer names the owning unit and the listed units, says whether the reader may change it, and to one who may, lists the tenant's active units to choose from.
 
 ## Scopes (TF-033, ADR-0030)
 

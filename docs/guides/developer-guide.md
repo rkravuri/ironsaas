@@ -248,6 +248,58 @@ A module that must not be done while acting (an action only the person themselve
 
 Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/DelegationTests.cs` declares a probe module with three duties and shows each refusal and acting with exactly the delegator's rights; `ReviewTests.cs` covers the snapshot, the reviewers' units, the revoke and the guard, and the escalation on a fake clock; `tests/Kernel/Iron.Kernel.Identity.Tests/ActingForTests.cs` follows acting through the session, `/me` and the audit list.
 
+## Working across units (A8, ADR-0038)
+
+A business record belongs to one unit and is **private** to it by default: the people whose roles cover that unit see it. It can be **shared** with listed units, whose people may then read it, or opened to the **tenant**, which everyone holding the read permission somewhere sees. A module writes none of this: `BusinessRecord` carries the mode, the data library keeps the listed units, and `UnitVisibility` and the policy engine follow the mode in the list's own query.
+
+To let people share a record, allow the action `share` in its policy, with the permission over the owning unit that should decide it:
+
+```csharp
+services.AddRecordPolicy(
+    OrderRecords.OrderType,
+    OrderPermissions.OrdersRead,
+    RecordRules.UnitVisibility<Order>(
+        OrderPermissions.OrdersRead,
+        (RecordActions.Update, OrderPermissions.OrdersManage),
+        (RecordActions.Share, OrderPermissions.OrdersManage)));
+```
+
+The record page then shows the shell's `SharingControl` (`@/components/sharing`) with the record type and id; it reads and changes the sharing through `GET` and `PUT /api/v1/record-sharing/{type}/{id}`, and shows only the words to a reader who may not change it. Changing it is audited with the units before and after.
+
+What a module gets for nothing:
+
+- **The read audit.** A read by id (`FindAsync`) of a private or shared record outside the reader's home unit and the units below it is audited with what allowed it; a refused read of a record that exists is audited as the reader was answered; a list page with such records writes one event. Open records through `IRecordPolicies`, never by a raw query, and this holds.
+- **The working unit.** A person whose roles reach several units chooses the unit they work for in the header. Lists keep to it and the units below it; reads by id do not. Give a new record its unit with `NewRecords.OwningUnit(currentPrincipal)`, or `NewRecords.OwningUnit(currentPrincipal, chosen)` when the page lets the person choose; it answers null for a token or a job, which must name the unit. Resolve a setting for the person with `SettingContext.ForPerson(currentPrincipal.Id)` and it follows the unit they work for. Do not read `ICurrentPrincipal.WorkingUnitId` to decide access; read it only for a default.
+- **"All my units".** A role at a parent with children, or at the tenant, opens the consolidated view: lists show everything the person may see, new records and settings follow the home unit.
+
+**A merge moves a module's records.** Register the records of a module context once, beside its policies:
+
+```csharp
+services.AddUnitRecordOwners<OrdersDbContext>("orders");
+```
+
+`ContextRecordOwners<TContext>` finds every business record type of the context with a policy, lists what a unit owns for the preview, and moves it to the surviving unit in one statement per type, deleted records included, in the merge's transaction. A module that keeps something else at a unit (its own per-unit configuration, a counter) implements `IUnitMergeParticipant` from Authorization's Contracts: `PreviewAsync` reads what would move without changing anything, `ApplyAsync` moves it in the caller's transaction and answers what moved, and `MergedAsync` refreshes a cache after the commit. Return one `UnitMergePart` per kind of thing, with its words for the preview, its ids for the audit event, and what is dropped as a conflict. Register it with `services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitMergeParticipant, MyMerge>())`.
+
+**A unit's readiness.** A product that needs something in each unit before people work there implements `IUnitReadiness` (Authorization's Contracts) and answers its checklist: one `ReadinessItem` per need, in words, done or not.
+
+```csharp
+public sealed class OrdersReadiness(OrdersDbContext context) : IUnitReadiness
+{
+    public async Task<IReadOnlyList<ReadinessItem>> CheckAsync(OrganisationUnitInfo unit, CancellationToken cancellationToken)
+    {
+        var numbered = await context.NumberSeries.AnyAsync(s => s.UnitId == unit.Id, cancellationToken);
+        return [new ReadinessItem("orders", "orders.numbering", "A numbering series for orders", numbered)];
+    }
+}
+
+// in OrdersModule.AddServices
+services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitReadiness, OrdersReadiness>());
+```
+
+The units page shows the items and whether the unit is ready; the kernel registers none.
+
+Tests: `tests/Kernel/Iron.Kernel.Data.Tests/Policies/SharingTests.cs` covers the modes with paging, the read audit, the refusals, the list audit, the working unit and a merge's move; `tests/Kernel/Iron.Kernel.Authorization.Tests` has a probe module with a real business record (`ProbeRecords.cs`) used by `WorkingUnitTests`, `UnitMergeTests` and `RecordSharingEndpointTests`; `tests/Kernel/Iron.Kernel.Identity.Tests/ScopedUsersTests.cs` follows the working unit and a merge over HTTP; `tests/Kernel/Iron.Kernel.Settings.Tests/UnitChangeTests.cs` proves that a move keeps a unit's settings and a merge moves them.
+
 ## Write an ADR
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).
