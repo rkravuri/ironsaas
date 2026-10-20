@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useParams } from "react-router";
-import { json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
+import { fill, json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
 import { UsersPage } from "./UsersPage";
 
 const unit = (id: string, name: string, parent: string | null) => ({
@@ -76,8 +76,8 @@ describe("inviting a person", () => {
     await user.click(await screen.findByRole("button", { name: "Invite a person" }));
     const dialog = await screen.findByRole("dialog", { name: "Invite a person" });
 
-    await user.type(within(dialog).getByLabelText("Display name"), "Grace Hopper");
-    await user.type(within(dialog).getByLabelText(/^Login identifier/), "grace@acme.localhost");
+    await fill(user, within(dialog).getByLabelText("Display name"), "Grace Hopper");
+    await fill(user, within(dialog).getByLabelText(/^Login identifier/), "grace@acme.localhost");
     // The home unit is chosen already, and the path of the choice is written under the tree.
     expect(await within(dialog).findByText("Acme / Branch")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Invite" }));
@@ -107,8 +107,8 @@ describe("inviting a person", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Invite a person" }));
     const dialog = await screen.findByRole("dialog", { name: "Invite a person" });
-    await user.type(within(dialog).getByLabelText("Display name"), "Ada Lovelace");
-    await user.type(within(dialog).getByLabelText(/^Login identifier/), "ada@acme.localhost");
+    await fill(user, within(dialog).getByLabelText("Display name"), "Ada Lovelace");
+    await fill(user, within(dialog).getByLabelText(/^Login identifier/), "ada@acme.localhost");
     await within(dialog).findByText("Acme / Branch");
     await user.click(within(dialog).getByRole("button", { name: "Invite" }));
 
@@ -120,8 +120,8 @@ describe("inviting a person", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Invite a person" }));
     const dialog = await screen.findByRole("dialog", { name: "Invite a person" });
-    await user.type(within(dialog).getByLabelText("Display name"), "Ada Lovelace");
-    await user.type(within(dialog).getByLabelText(/^Login identifier/), "ada@acme.localhost");
+    await fill(user, within(dialog).getByLabelText("Display name"), "Ada Lovelace");
+    await fill(user, within(dialog).getByLabelText(/^Login identifier/), "ada@acme.localhost");
     await user.click(await within(dialog).findByText("Finance"));
 
     expect(await within(dialog).findByText(/You cannot invite people into this unit/)).toBeInTheDocument();

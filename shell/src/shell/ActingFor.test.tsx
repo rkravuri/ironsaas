@@ -1,14 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MantineProvider } from "@mantine/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router";
-import { SessionProvider } from "@/auth/session";
-import { colorSchemeManager } from "@/design/scheme";
-import { json, me, problem, stubFetch, type FetchHandler } from "@/test/render";
-import { cssVariablesResolver, theme } from "@/theme";
-import { Layout } from "./Layout";
+import { useSession } from "@/auth/session-context";
+import { json, me, problem, renderWithProviders, stubFetch, type FetchHandler } from "@/test/render";
+import { useActingChoice } from "./acting";
+import { ActingBand, ActingForControl } from "./ActingFor";
 
 const ada = "01a17a00-0000-7000-8000-0000000000a1";
 const userAdministration = { code: "identity.user_administration", name: "user administration" };
@@ -23,24 +19,22 @@ const meWith = ({ holds = false, acting = false }: { holds?: boolean; acting?: b
   delegations: { given: [], received: holds ? [received] : [] },
 });
 
+/** The header's control and the band under it, as the layout places them, with who is signed in: no whole layout. */
+function Acting() {
+  const choice = useActingChoice();
+  const { me: signedIn } = useSession();
+  return (
+    <>
+      <ActingForControl choice={choice} />
+      <ActingBand choice={choice} />
+      <p>{signedIn?.display_name}</p>
+    </>
+  );
+}
+
 function renderShell(handlers: Record<string, FetchHandler>) {
   const stub = stubFetch(handlers);
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <MantineProvider theme={theme} colorSchemeManager={colorSchemeManager} cssVariablesResolver={cssVariablesResolver}>
-      <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          <MemoryRouter initialEntries={["/"]}>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<p>home</p>} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </SessionProvider>
-      </QueryClientProvider>
-    </MantineProvider>,
-  );
+  renderWithProviders(<Acting />);
   return stub;
 }
 
@@ -52,7 +46,7 @@ describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
   it("is not there for a person who holds no active delegation", async () => {
     renderShell({ "GET /api/v1/me": () => json(meWith({})) });
 
-    expect(await screen.findByRole("button", { name: /signed in as admin/i })).toBeInTheDocument();
+    expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /act for/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/you are acting for/i)).not.toBeInTheDocument();
   });
@@ -85,12 +79,21 @@ describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
   it("says so when the delegation ended while acting, and the person acts as themselves again", async () => {
     let mine = 0;
     let context = 0;
+    // The answer that says the delegation ended waits until the test has seen the band, so the order is the test's.
+    let release: () => void = () => undefined;
+    const ended = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     renderShell({
       // Acting at first; after the API said the delegation ended, as the person themselves with nothing held.
       "GET /api/v1/me": () => json(mine++ === 0 ? meWith({ holds: true, acting: true }) : meWith({})),
-      "GET /api/v1/me/context": () => {
+      "GET /api/v1/me/context": async () => {
+        const first = context++ === 0;
+        if (first) {
+          await ended;
+        }
         const answer = problem(404, { title: "Not Found", error_code: "test.unhandled" });
-        if (context++ === 0) {
+        if (first) {
           answer.headers.set("Iron-Acting-Ended", ada);
         }
         return answer;
@@ -98,6 +101,7 @@ describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
     });
 
     expect(await screen.findByText("You are acting for Ada Lovelace")).toBeInTheDocument();
+    release();
 
     expect(await screen.findByText("The delegation from Ada Lovelace has ended, so you act as yourself again.")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText("You are acting for Ada Lovelace")).not.toBeInTheDocument());

@@ -4,7 +4,7 @@ import { TextInput } from "@mantine/core";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ApiError, ProblemSchema } from "@/api/client";
-import { renderWithProviders, stubFetch } from "@/test/render";
+import { fill, renderWithProviders, stubFetch } from "@/test/render";
 import { Form } from "./Form";
 import { useZodForm } from "./useZodForm";
 
@@ -48,8 +48,8 @@ describe("the form", () => {
     });
     const onSubmit = vi.fn(() => Promise.reject(new ApiError(400, problem, undefined)));
     renderWithProviders(<Sample onSubmit={onSubmit} />);
-    await user.type(screen.getByLabelText("Display name"), "Ada");
-    await user.type(screen.getByLabelText("Email"), "ada@example.com");
+    await fill(user, screen.getByLabelText("Display name"), "Ada");
+    await fill(user, screen.getByLabelText("Email"), "ada@example.com");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());

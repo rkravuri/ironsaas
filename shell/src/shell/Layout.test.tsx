@@ -9,7 +9,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import schemeScript from "../../public/scheme.js?raw";
 import { SessionProvider } from "@/auth/session";
 import { colorSchemeManager, schemeStorageKey } from "@/design/scheme";
-import { json, me, stubFetch } from "@/test/render";
+import { fill, json, me, stubFetch } from "@/test/render";
 import { cssVariablesResolver, theme } from "@/theme";
 import { Layout } from "./Layout";
 
@@ -71,7 +71,7 @@ describe("the header", () => {
     expect(await palette.findByRole("button", { name: /^Invite a person/ })).toBeInTheDocument();
     expect(palette.getByRole("button", { name: /^Add a unit/ })).toBeInTheDocument();
 
-    await user.type(search, "units");
+    await fill(user, search, "units");
     await user.keyboard("{Enter}");
 
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/console/units"));
