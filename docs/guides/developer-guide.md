@@ -10,7 +10,7 @@ The sections, in order:
 - What a tenant has: Licensing a module or feature, Feature flags and kill switches, Declaring a setting.
 - The control plane: The control plane and a provisioning step.
 - The shell: A shell page, Styling a page, A module on the home page and in the header.
-- Proving a change: Proving a change.
+- Proving a change: Proving a change, Naming what a test proves.
 
 ## Working on the repository
 
@@ -45,8 +45,9 @@ src/
     Iron.Host.Api/  Iron.Host.Worker/            tenant unit hosts, with their Dockerfiles
     Iron.Host.ControlPlane/  Iron.Host.Fleet/    control plane hosts, with their Dockerfiles
 shell/                       the React shell: src/api, src/auth, src/modules/<layer>/<module> (a suite's under suites/<suite>/), src/components/data-grid, e2e/
-tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, <Layer>/<Project>.Tests, and
-                             Iron.Testing (the platform services the tests run on) with test-services.sh
+tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, <Layer>/<Project>.Tests,
+                             Iron.Testing (the platform services the tests run on, and [Proves]) with test-services.sh,
+                             and Iron.Testing.Analyzers (a test names what it proves)
 tools/Iron.Smoke/            the smoke test; scaffolding tools come after S1
 infra/compose/               the laptop platform and the unit template's rendered output
 .github/workflows/           ci.yml and release.yml
@@ -62,6 +63,7 @@ docs/                        prd/, adr/, guides/, slices/
 | Layers (ADR-0029, ADR-0043) | A project declares no `<IronLayer>` or one that is not `Kernel`, `Business`, `Suite`, `Host`, `Test` or `Tool` (the build stops with `IRON0001` or `IRON0002`); a Suite project declares no `<IronSuite>`, another project declares one, or the value is not a suite's name (`IRON0003`, `IRON0004`); the layer or the suite does not match the project's name, folder and schema prefix; a project references a higher layer (Kernel to Business or a suite, Business to a suite), even its Contracts; a suite's project references another suite's | Declare the layer. For an upward need, invert it: the lower layer declares an interface in its Contracts, the higher one implements it. |
 | Module boundaries (ADR-0001) | A module references another module's implementation project; a Contracts project references anything but `Iron.Kernel`; a kernel library references a module; a host references another host | Move the shared type into the other module's `Contracts` project and reference that. |
 | Private namespaces (ADR-0001) | An assembly uses a type from another module's `Api`, `Services` or `Data` namespace | Expose what you need through the other module's `Contracts` project. |
+| What a test proves (ADR-0044) | A test method has neither `[Proves(...)]` nor `[Untraced("why")]` (`IRON0005`), names an identifier out of form (`IRON0006`), or is both (`IRON0007`); a Vitest or Playwright title does not end with the bracketed list (`iron/test-proves`) | Name the criteria or the decision the test proves; see Naming what a test proves. |
 | Layout | A project is not in a folder with its own name; a Contracts project is outside its module; a module has no Contracts project; a project under `src/` does not start with `Iron.`; `src/` holds something other than `Kernel/`, `Business/`, `Suites/` and `Hosts/`, or `src/Suites/` a folder that is not a suite with its README | Move or rename the project; add the missing Contracts project. |
 
 The messages name the project file or the assembly and the forbidden reference.
@@ -560,9 +562,35 @@ The home page, the search and the help panel read the manifests, so a module app
 | Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace, then a role scoped to a unit, a plan change and a kill switch reaching the API, each restored |
 | Browser | `make e2e` | login, home, the search, the grid, inviting a person, a child-unit administrator's view, delegation and reviews, settings, working across units, explaining access and conflict rules, and a plan and a kill switch reaching the shell within a minute, in a real browser, each run in a unit of its own |
 | Pipeline's stage | `make integration` | platform and control plane from images, then the smoke |
+| Traceability | `make trace` | each requirement criterion and decision with the tests that prove it and their last results, and the criteria of the done slices that nothing proves (ADR-0044) |
+| Every check in order | `make verify` | `make prd-check`, `make test`, `make shell-check`, `make shell-a11y`, `make format-check` and `make trace`, one after another; the check before a push, with the stack running or not |
 
-Every pull request runs the first two levels and both formatters in CI; every merge to main builds the images and runs the pipeline's stage on the runner.
+Every pull request runs the first two levels, both formatters and the matrix in CI; every merge to main builds the images, runs the pipeline's stage on the runner and keeps the matrix with them.
 
 **The tests' platform services.** `make test` starts one PostgreSQL, one Azurite and one OpenBao for the whole run (`tests/test-services.sh`) and runs four test projects at a time; each project works in a database, blob containers and a store mount of its own. A fixture gets them from `tests/Iron.Testing`: `await TestPostgres.StartAsync("orders", ct)` answers a connection string to a new database (and `CreateDatabaseAsync` another, for a second tenant), `TestBlob.StartAsync` the account, `TestOpenBao.StartAsync("orders", ct)` the store with a mount named after the project. A project run alone (an IDE, `dotnet test` on one project) starts containers of its own the same way. Names that live in a whole server rather than a database (PostgreSQL roles, blob containers, store policies) must stay apart between projects: give them the project's name.
 
 **The browser tests' data.** `make e2e` makes a unit of the run's own under the root (`infra/compose/scripts/e2e-data.py`), with the people, units and assignments the tests need inside it, and deactivates it at the end whatever the result. A test that needs a unit makes it under the run's unit (`E2E_RUN_UNIT_ID`), never under the root, and names what it makes with the run's id. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.
+
+## Naming what a test proves (ADR-0044)
+
+Every test names the requirement criteria or the decisions it proves, so that `make trace` can show each criterion with its tests and their results (TF-218). Read the test against the criterion's text: a test proves `TF-033 AC2` when it sets up the Given, does the When and checks the Then, at whatever level decides the outcome.
+
+| What the test proves | You write |
+|---|---|
+| a criterion | `TF-033 AC2`, or `REQ-012 AC1` for a suite's requirement |
+| every criterion of a requirement | `TF-033` |
+| a rule an ADR decided that no criterion states (a rule of the build or the architecture, a mechanism's behaviour) | `ADR-0029` |
+| nothing a requirement or an ADR states | untraced, with the reason; the design session decides it, so never tag a test to fit |
+
+| Kind | The form |
+|---|---|
+| .NET | `[Proves("TF-033 AC1", "TF-033 AC3")]` on the line below `[Fact]` or `[Theory]` (namespace `Iron.Testing`, a global using in every test project); `[Untraced("why")]` alone. The build refuses a test method without one (`IRON0005`). |
+| Vitest and Playwright | the title ends with the list: `it("a child-unit administrator sees only its users [TF-033 AC1]", ...)`, also at the end of a template, `` test(`... in the ${scheme} scheme [TF-172 AC1]`, ...) ``; `[untraced]` alone, with `// Untraced: why` on the line above. Lint refuses a title without it. |
+| The smoke | `await report.StepAsync("login", ["TF-011 AC1"], async () => ...)`; the step's line and the report show it. |
+| The Python tools' tests | the docstring ends with the list: `"""A moved identifier is never held again. [ADR-0043]"""`. |
+
+Run the tests of one requirement or criterion with the trait: `dotnet test --project tests/Kernel/Iron.Kernel.Authorization.Tests --filter "proves=TF-033"`, or `"proves=TF-033 AC2"`.
+
+**The matrix.** `make trace` reads every test and what it names from the sources, and each test's result from the last run's files under `artifacts/test-results` (`make test`, `make shell-check`, `make shell-a11y`, `make e2e`, `make smoke` and `make prd-check` write them), and writes `artifacts/trace/matrix.md` and `matrix.json`. A kind that has not run shows its tests as not run. It fails when a test names an identifier no document holds, when a criterion of a done slice (every task of its plan done) has no test, unless `docs/trace/exceptions.md` lists it with its reason and the date the design session approved it, and when an exception is no longer needed. CI publishes the matrix on every run; the release keeps it with its images.
+
+**When a criterion of a done slice loses its last test**, write the test again or ask the design session for an exception; an exception that a new test makes unneeded is removed in the same change.

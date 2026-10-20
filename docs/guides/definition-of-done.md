@@ -4,8 +4,9 @@ What a change needs before it is merged to main. The pull request template summa
 
 ## Every change
 
-- [ ] `make test` and `make shell-check` are green locally and in CI; `make format` (`dotnet format` and Prettier, ADR-0040) makes no change.
+- [ ] `make verify` is green locally (it runs `make prd-check`, `make test`, `make shell-check`, `make shell-a11y`, the format check and `make trace` in order), and CI is green; `make format` (`dotnet format` and Prettier, ADR-0040) makes no change.
 - [ ] New or changed behaviour has tests at the level that proves it: a unit test for a rule, an integration test on the container fixtures for anything that touches the database, the store or storage, a shell test for a page or a mapping.
+- [ ] Every new test names the requirement criteria or the decision it proves (`[Proves("TF-033 AC2")]`, a title ending `[TF-033 AC2]`, ADR-0044), read against the criterion's text, and `make trace` passes: no unknown identifier, and no criterion of a done slice without a test or an approved exception.
 - [ ] No warning was suppressed without a comment that says why.
 - [ ] No secret, credential or personal data is in the change; gitleaks in CI is the net, not the first check.
 - [ ] Documentation where behaviour changed: the README's first hour if the path changed, the developer guide if a way of doing things changed, the runbook if an operator's command or a symptom changed, the module's README if its responsibility changed.

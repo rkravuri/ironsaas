@@ -9,5 +9,6 @@ The shell is one React build for every tenant (ADR-0020). The design language is
 - Colour, type, space and motion come from `shell/src/design/tokens.ts` and the theme; no colour by value, no palette name in a page; status is never colour alone.
 - Every string goes through `src/i18n/en.json`. Labels on every control; visible focus; keyboard operation; `prefers-reduced-motion` honoured.
 - Tests: Vitest with Testing Library for pages and mappings; Playwright in `e2e/` for user paths against the stack; the gallery scan with axe for accessibility.
+- Every test's title ends with what it proves: `it("... [TF-033 AC2, ADR-0038]", ...)`, at the end of a template too, or `[untraced]` with `// Untraced: why` on the line above; lint refuses a title without it (`iron/test-proves`) and `make trace` an identifier that does not exist (ADR-0044).
 - Drawings are original SVG in one hand (brief section 3); never a known character, mascot, brand or artist's style; accessible name or `aria-hidden`.
 - Fonts and images come from their official source with the licence recorded in `docs/licences.md`; no request to any external host (the CSP stays as it is).

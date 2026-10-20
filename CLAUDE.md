@@ -19,6 +19,7 @@ Stop and ask, in the session, only when: a decision with real alternatives has n
 
 - `.NET`: `make build`, `make test` (the data tests start PostgreSQL, Azurite and OpenBao with Testcontainers, so Docker must run), `make check`, `make format` (CI verifies).
 - Shell: `make shell-install` once, `make shell-check` (lint, type check, tests, build), `make shell-a11y` (the gallery scan), `make shell-dev`.
+- Everything in order: `make verify` runs `make prd-check`, `make test`, `make shell-check`, `make shell-a11y`, `make format-check` and `make trace` (the traceability matrix into `artifacts/trace`, ADR-0044), each on its own.
 - Requirements: `make prd-check` (CI runs it); after editing a requirements document, `make prd-csv` writes its CSV.
 - Migrations: `make ef-add MODULE=<Module> NAME=<WhatChanged>` after an entity change (`MODULE` is the last segment of the module's name: `Identity` for `Iron.Kernel.Identity`); commit the generated files; never edit a committed migration.
 - The stack: `make up`, `make images`, `make provision TENANT=x`, `make update-unit TENANT=x`, `make smoke`, `make e2e`, `make integration`. The runbook is `docs/guides/local-stack.md`.
@@ -29,6 +30,7 @@ Stop and ask, in the session, only when: a decision with real alternatives has n
 - Warnings are errors; no suppression without a comment that says why.
 - Package versions live once: `Directory.Packages.props` and `shell/package.json`. Exact pins, at least two weeks old (ADR-0003).
 - Module boundaries (ADR-0001); time through `TimeProvider`, ids through `Ids.New()`, failures through `Result` (ADR-0007); every endpoint declares its permission; state changes write their audit event in the same transaction (ADR-0013); in the shell, no `ag-grid-*` outside the wrapper, every route declares its permission, every string in the catalogue, no colour by value (ADR-0024).
+- Every test names the requirement criteria or the decision it proves, read against the criterion's text: `[Proves("TF-033 AC2")]` in .NET, a title ending `[TF-033 AC2]` in Vitest and Playwright, the step's list in the smoke, or untraced with its reason, never tagged to fit (ADR-0044). `make trace` fails on an identifier that does not exist and on a done slice's criterion without a test or an approved exception.
 
 ## Layers (ADR-0029, ADR-0043)
 
