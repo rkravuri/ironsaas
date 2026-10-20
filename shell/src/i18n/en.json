@@ -1330,7 +1330,8 @@
         "unit": "Unit",
         "scope": "Where it applies",
         "decision": "Decision",
-        "path": "Path"
+        "path": "Path",
+        "conflicts": "Conflicts"
       },
       "scopes": {
         "tenant": "The whole tenant",
@@ -1364,13 +1365,107 @@
       "commentTooLong": "Keep the comment to 500 characters.",
       "closed": "This review is closed. Its decisions stay as they are, and no more can be made.",
       "yours": "About your own access: another reviewer decides it.",
-      "withOwner": "No other reviewer here: the review's owner decides it."
+      "withOwner": "No other reviewer here: the review's owner decides it.",
+      "conflict": "Takes part in a conflict: {{rules}}",
+      "noConflict": "None"
     },
     "units": {
       "label": "Units of this review",
       "none": "No items for you here",
       "noneText": "None of the units of this review is one where you review.",
       "escalated": "Overdue reviewers were reported on {{date}} to {{targets}}."
+    }
+  },
+  "conflicts": {
+    "title": "Conflict rules",
+    "description": "Pairs of rights one person should not hold over the same unit. A rule that blocks refuses the grant or delegation that would complete the pair; a rule that warns allows it and lists it in the report.",
+    "rules": {
+      "title": "Rules",
+      "add": "Add a rule",
+      "edit": "Change",
+      "remove": "Remove",
+      "sides": "{{first}}, and {{second}}",
+      "columns": {
+        "name": "Rule",
+        "sides": "Keeps apart",
+        "mode": "What it does",
+        "reason": "Why",
+        "owner": "Owner"
+      }
+    },
+    "modes": {
+      "block": "Blocks",
+      "warn": "Warns"
+    },
+    "modeHints": {
+      "block": "A grant or delegation that would give one person both sides is refused, with the rule named.",
+      "warn": "The grant or delegation goes ahead, and the conflict is listed in the report."
+    },
+    "editor": {
+      "createTitle": "Add a conflict rule",
+      "editTitle": "Change {{name}}",
+      "submitCreate": "Add the rule",
+      "submitEdit": "Save the rule",
+      "name": "Name",
+      "nameRequired": "Enter a name for the rule.",
+      "nameTooLong": "Use 200 characters or fewer for the name.",
+      "first": "The first side",
+      "second": "The second side",
+      "kinds": {
+        "permission": "A permission",
+        "role": "A role"
+      },
+      "permission": "Permission",
+      "role": "Role",
+      "sideRequired": "Choose this side of the rule.",
+      "nothingFound": "Nothing matches. Try other words.",
+      "mode": "What the rule does",
+      "reason": "Why the rule exists",
+      "reasonHint": "People see this when the rule refuses or warns about a grant.",
+      "reasonTooLong": "Use 1000 characters or fewer for the reason.",
+      "owner": "Owner",
+      "ownerHint": "The person who answers for the rule. Leave it empty to be the owner yourself.",
+      "noCatalogue": "The permissions could not be loaded. Close the dialog and open it again."
+    },
+    "remove": {
+      "title": "Remove {{name}}",
+      "message": "Grants and delegations are no longer checked against this rule, and its conflicts leave the report when it next runs.",
+      "confirm": "Remove the rule"
+    },
+    "report": {
+      "title": "Report",
+      "run": "Run the report now",
+      "never": "The report has not run yet. It runs every day, or now with Run the report now.",
+      "last_one": "Last run {{when}} ({{how}}): {{count}} conflict across {{rules}} rules.",
+      "last_other": "Last run {{when}} ({{how}}): {{count}} conflicts across {{rules}} rules.",
+      "daily": "the daily run",
+      "onDemand": "run by hand",
+      "wholeTenant": "The whole organisation",
+      "columns": {
+        "person": "Person",
+        "rule": "Rule",
+        "mode": "What it does",
+        "first": "One side",
+        "second": "The other side",
+        "unit": "Where both apply"
+      }
+    },
+    "grant": {
+      "unit": "{{role}} at {{unit}}",
+      "unitWithChildren": "{{role}} at {{unit}} and the units below it",
+      "record": "{{role}} on one record",
+      "tenant": "{{role}} across the whole organisation",
+      "delegated": "{{grant}}, by delegation"
+    },
+    "preview": {
+      "blockTitle": "The conflict rules refuse this grant",
+      "blockHint": "Choose another role or unit, or ask the rule's owner about it.",
+      "warnTitle": "This grant creates a conflict",
+      "warnHint": "You can still grant it. The conflict appears in the report.",
+      "line": "{{rule}}: {{name}} already holds {{grant}}, so would hold both sides {{where}}.",
+      "atUnit": "at {{unit}}",
+      "wholeTenant": "across the whole organisation",
+      "reason": "Why the rule exists: {{reason}}"
     }
   }
 }
