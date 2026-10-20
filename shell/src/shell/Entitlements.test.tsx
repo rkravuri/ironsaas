@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -71,7 +71,20 @@ function renderShell(route = "/") {
   );
 }
 
+// The page's visibility as the browser reports it; react-query's focus is this, and the shell's refresh follows it.
+let visibility: DocumentVisibilityState = "visible";
+
+beforeAll(() => {
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility });
+});
+
+function setVisibility(state: DocumentVisibilityState) {
+  visibility = state;
+  document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+}
+
 afterEach(() => {
+  visibility = "visible";
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -112,5 +125,42 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
 
     await screen.findByRole("navigation", { name: "Main navigation" });
     await waitFor(() => expect(screen.getByTestId("transfer")).toHaveTextContent("unavailable read only"));
+  });
+
+  it("reads /me/context only while its tab is visible: a hidden tab asks nothing, however long it stays hidden", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(permissions)), "GET /api/v1/me/context": () => json(context("enabled", "enabled")) });
+    const reads = () => calls.filter((call) => call.key === "GET /api/v1/me/context").length;
+    renderShell();
+    await waitFor(() => expect(reads()).toBe(1));
+
+    setVisibility("hidden");
+    await vi.advanceTimersByTimeAsync(95_000);
+    expect(reads()).toBe(1);
+
+    // Visible again, the 30-second reads go on.
+    setVisibility("visible");
+    await waitFor(() => expect(reads()).toBe(2));
+    await vi.advanceTimersByTimeAsync(30_000);
+    await waitFor(() => expect(reads()).toBe(3));
+  });
+
+  it("reads /me/context at once when the tab becomes visible again, even within 30 seconds of the last read", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let answer = context("enabled", "enabled");
+    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(permissions)), "GET /api/v1/me/context": () => json(answer) });
+    const reads = () => calls.filter((call) => call.key === "GET /api/v1/me/context").length;
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("transfer")).toHaveTextContent("available writable"));
+    expect(reads()).toBe(1);
+
+    // The plan changes while the person looks at another tab for ten seconds.
+    setVisibility("hidden");
+    answer = context("enabled", "read_only");
+    await vi.advanceTimersByTimeAsync(10_000);
+    setVisibility("visible");
+
+    await waitFor(() => expect(reads()).toBe(2));
+    await waitFor(() => expect(screen.getByTestId("transfer")).toHaveTextContent("available read only"));
   });
 });
