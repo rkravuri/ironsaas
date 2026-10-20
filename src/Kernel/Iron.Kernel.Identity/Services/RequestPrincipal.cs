@@ -24,7 +24,8 @@ public sealed record SignedInPrincipal(
     DateTimeOffset IdleExpiresAt,
     AuthenticationKind Kind = AuthenticationKind.Session,
     Guid? HomeUnitId = null,
-    DateTimeOffset? SessionStartedAt = null);
+    DateTimeOffset? SessionStartedAt = null,
+    Guid? ActingForId = null);
 
 /// <summary>
 /// The current principal (TF-010): the signed-in principal of the request, nobody when the request has no valid session,
@@ -36,6 +37,9 @@ public sealed class RequestPrincipal(IHttpContextAccessor accessor) : ICurrentPr
     public const string ItemKey = "Iron.SignedInPrincipal";
 
     public Guid Id => Current?.Id ?? (accessor.HttpContext is null ? SystemPrincipal.SystemId : Guid.Empty);
+
+    /// <summary>The delegator a shell session acts for (ADR-0037); never for a token.</summary>
+    public Guid? ActingForId => Current is { Kind: AuthenticationKind.Session } signedIn ? signedIn.ActingForId : null;
 
     public SignedInPrincipal? Current
     {

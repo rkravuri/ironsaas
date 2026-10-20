@@ -15,6 +15,8 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
 
     public DbSet<OrganisationUnit> OrganisationUnits => Set<OrganisationUnit>();
 
+    public DbSet<Delegation> Delegations => Set<Delegation>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Role>(role =>
@@ -53,6 +55,17 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
             unit.HasIndex(u => u.Depth).IsUnique().HasFilter("depth = 0").HasDatabaseName("ux_organisation_units_root");
             unit.Ignore(u => u.IsRoot);
             unit.Ignore(u => u.IsActive);
+        });
+
+        modelBuilder.Entity<Delegation>(delegation =>
+        {
+            delegation.ToTable("delegations");
+            delegation.Property(d => d.Reason).HasMaxLength(Delegation.ReasonMaxLength);
+            delegation.Property(d => d.EndReason).HasMaxLength(Delegation.ReasonMaxLength);
+            delegation.HasIndex(d => new { d.DelegatorId, d.EndsAt });
+            delegation.HasIndex(d => new { d.DelegateId, d.EndsAt });
+            delegation.Ignore(d => d.Until);
+            delegation.Ignore(d => d.CoversAll);
         });
     }
 }

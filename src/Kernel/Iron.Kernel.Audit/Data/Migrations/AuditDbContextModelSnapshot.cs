@@ -60,6 +60,10 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("impersonator_id");
 
+                    b.Property<Guid?>("OnBehalfOfId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("on_behalf_of_id");
+
                     b.Property<string>("Outcome")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -105,6 +109,9 @@ namespace Iron.Kernel.Audit.Data.Migrations
 
                     b.HasIndex("EventType")
                         .HasDatabaseName("ix_events_event_type");
+
+                    b.HasIndex("OnBehalfOfId")
+                        .HasDatabaseName("ix_events_on_behalf_of_id");
 
                     b.HasIndex("RecordType", "RecordId")
                         .HasDatabaseName("ix_events_record_type_record_id");

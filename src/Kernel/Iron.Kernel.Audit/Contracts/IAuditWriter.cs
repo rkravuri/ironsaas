@@ -13,7 +13,8 @@ public sealed record AuditEvent(
     IReadOnlyDictionary<string, string>? Details = null,
     string? RecordType = null,
     Guid? RecordId = null,
-    string? Reason = null);
+    string? Reason = null,
+    Guid? OnBehalfOfId = null);
 
 public static class AuditOutcome
 {

@@ -197,5 +197,28 @@
       "maximum": null,
       "whole_number": false
     }
+  ],
+  "duties": [
+    {
+      "code": "all",
+      "module": "kernel",
+      "name": "all duties",
+      "description": "Everything the person may do, at every scope they may do it.",
+      "permissions": []
+    },
+    {
+      "code": "identity.user_administration",
+      "module": "identity",
+      "name": "user administration",
+      "description": "Reading and managing people: their accounts, their invitations, and the roles they hold where.",
+      "permissions": [
+        "authz.assignments.manage",
+        "authz.assignments.read",
+        "authz.roles.read",
+        "authz.units.read",
+        "identity.users.manage",
+        "identity.users.read"
+      ]
+    }
   ]
 }

@@ -5,11 +5,13 @@ using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Data;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Lists;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Audit.Api;
 
@@ -26,8 +28,21 @@ public sealed record AuditEventResponse(
     string? CorrelationId,
     IReadOnlyDictionary<string, string>? Details,
     DateTimeOffset CreatedAt,
-    Guid CreatedBy)
+    Guid CreatedBy,
+    Guid? OnBehalfOfId = null,
+    string? ActorName = null,
+    string? OnBehalfOfName = null)
 {
+    public static AuditEventResponse From(AuditEventRecord record, IReadOnlyDictionary<Guid, string> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        return From(record) with
+        {
+            ActorName = names.GetValueOrDefault(record.ActorId),
+            OnBehalfOfName = record.OnBehalfOfId is { } onBehalfOf ? names.GetValueOrDefault(onBehalfOf) : null,
+        };
+    }
+
     public static AuditEventResponse From(AuditEventRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);
@@ -45,7 +60,8 @@ public sealed record AuditEventResponse(
             record.CorrelationId,
             details,
             record.CreatedAt,
-            record.CreatedBy);
+            record.CreatedBy,
+            record.OnBehalfOfId);
     }
 }
 
@@ -57,6 +73,7 @@ internal static class AuditEventsEndpoints
         .Add("event_type", e => e.EventType)
         .Add("outcome", e => e.Outcome, FieldUse.Select | FieldUse.Filter)
         .Add("actor_id", e => e.ActorId, FieldUse.Select | FieldUse.Filter)
+        .Add("on_behalf_of_id", e => e.OnBehalfOfId, FieldUse.Select | FieldUse.Filter)
         .Add("source", e => e.Source, FieldUse.Select | FieldUse.Filter)
         .Add("target", e => e.Target, FieldUse.Select)
         .Add("record_type", e => e.RecordType, FieldUse.Select | FieldUse.Filter)
@@ -84,6 +101,16 @@ internal static class AuditEventsEndpoints
 
         var query = parsed.Value;
         var page = await context.Events.AsNoTracking().ApplyListQuery(query, Fields).ToPageAsync(query.Page, cancellationToken);
-        return ApiResults.List(page.Map(AuditEventResponse.From), http, query);
+
+        // Both people by name, the actor and the one acted for (TF-037 AC3), so a reader does not look the ids up. A host
+        // without Identity, such as the audit tests' own, answers the ids alone.
+        IReadOnlyDictionary<Guid, string> names = new Dictionary<Guid, string>();
+        if (http.RequestServices.GetService<IPrincipals>() is { } principals)
+        {
+            var ids = page.Items.Select(e => e.ActorId).Concat(page.Items.Where(e => e.OnBehalfOfId is not null).Select(e => e.OnBehalfOfId!.Value)).Distinct().ToList();
+            names = (await principals.FindAsync(ids, cancellationToken)).ToDictionary(p => p.Key, p => p.Value.DisplayName);
+        }
+
+        return ApiResults.List(page.Map(record => AuditEventResponse.From(record, names)), http, query);
     }
 }

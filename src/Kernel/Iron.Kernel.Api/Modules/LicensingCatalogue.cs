@@ -70,8 +70,18 @@ public sealed record SettingEntry(
     }
 }
 
+/// <summary>A duty as the catalogue lists it (ADR-0037): its code, the module that declares it, its name, what it is, and the permissions it covers.</summary>
+public sealed record DutyEntry(string Code, string Module, string Name, string Description, IReadOnlyList<string> Permissions)
+{
+    public static DutyEntry From(Duty duty, string module)
+    {
+        ArgumentNullException.ThrowIfNull(duty);
+        return new DutyEntry(duty.Code, module, duty.Name, duty.Description, [.. duty.Permissions.Select(p => p.Name).Order(StringComparer.Ordinal)]);
+    }
+}
+
 /// <summary>
-/// What a build can license and switch (ADR-0034, ADR-0035), and the settings it declares (ADR-0036): the licensed modules, the features and the flags its
+/// What a build can license and switch (ADR-0034, ADR-0035), and the settings (ADR-0036) and duties (ADR-0037) it declares: the licensed modules, the features and the flags its
 /// modules declare in code, with the kernel's kill switches. AddModules builds it from the host's modules; the control
 /// plane reads the same catalogue from the file the unit host writes (<c>make catalogue</c>), so a plan or a flag rule is
 /// checked against the build the units run, without the control plane loading Business or Products modules.
@@ -96,7 +106,7 @@ public sealed class LicensingCatalogue
     private readonly Dictionary<string, FeatureEntry> _features;
     private readonly Dictionary<string, FlagEntry> _flags;
 
-    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null)
+    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null, IEnumerable<DutyEntry>? duties = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
         ArgumentNullException.ThrowIfNull(features);
@@ -141,6 +151,16 @@ public sealed class LicensingCatalogue
         Features = [.. _features.Values];
         Flags = [.. _flags.Values];
         Settings = [.. (settings ?? []).OrderBy(s => s.Key, StringComparer.Ordinal)];
+        var codes = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var duty in duties ?? [])
+        {
+            if (!codes.Add(duty.Code))
+            {
+                throw new InvalidOperationException($"The duty '{duty.Code}' is declared twice.");
+            }
+        }
+
+        Duties = [.. (duties ?? []).OrderBy(d => d.Code, StringComparer.Ordinal)];
     }
 
     public static LicensingCatalogue Empty { get; } = new([], []);
@@ -159,6 +179,9 @@ public sealed class LicensingCatalogue
 
     /// <summary>Settings by key.</summary>
     public IReadOnlyList<SettingEntry> Settings { get; }
+
+    /// <summary>Duties by code, the kernel's <c>all</c> among them.</summary>
+    public IReadOnlyList<DutyEntry> Duties { get; }
 
     public LicensedModuleEntry? FindModule(string code) => _modules.GetValueOrDefault(code);
 
@@ -179,6 +202,7 @@ public sealed class LicensingCatalogue
         var platform = new List<string>();
         var flags = KillSwitches.All.Select(flag => FlagEntry.From(flag, KernelModule)).ToList();
         var settings = new List<SettingEntry>();
+        var duties = new List<DutyEntry> { DutyEntry.From(KernelDuties.All, KernelModule) };
         foreach (var module in modules)
         {
             if (module.Licence is { } licence)
@@ -202,9 +226,10 @@ public sealed class LicensingCatalogue
             }
 
             settings.AddRange(module.Settings.Select(setting => SettingEntry.From(setting, module.Name)));
+            duties.AddRange(module.Duties.Select(duty => DutyEntry.From(duty, module.Name)));
         }
 
-        return new LicensingCatalogue(licensed, features, platform, flags, settings);
+        return new LicensingCatalogue(licensed, features, platform, flags, settings, duties);
     }
 
     /// <summary>
@@ -215,7 +240,7 @@ public sealed class LicensingCatalogue
     {
         ArgumentNullException.ThrowIfNull(file);
         var retired = file.Flags.Where(f => f.Status == FlagStatus.Retired && FindFlag(f.Key) is null);
-        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings);
+        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings, Duties);
     }
 
     /// <summary>
@@ -244,7 +269,7 @@ public sealed class LicensingCatalogue
     }
 
     /// <summary>The file form: indented JSON with a format version, ending in a newline, so a diff shows what a build adds.</summary>
-    public string ToJson() => JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, Modules, Features, Flags, Settings), Json) + "\n";
+    public string ToJson() => JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, Modules, Features, Flags, Settings, Duties), Json) + "\n";
 
     public static LicensingCatalogue Parse(string json)
     {
@@ -255,8 +280,8 @@ public sealed class LicensingCatalogue
             throw new InvalidOperationException($"The licensing catalogue has format version {document.FormatVersion}; this build reads version {FormatVersion}.");
         }
 
-        return new LicensingCatalogue(document.Modules ?? [], document.Features ?? [], document.Platform, document.Flags, document.Settings);
+        return new LicensingCatalogue(document.Modules ?? [], document.Features ?? [], document.Platform, document.Flags, document.Settings, document.Duties);
     }
 
-    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings);
+    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings, IReadOnlyList<DutyEntry>? Duties);
 }

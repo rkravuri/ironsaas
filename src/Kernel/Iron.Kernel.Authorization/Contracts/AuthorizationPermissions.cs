@@ -15,7 +15,13 @@ public static class AuthorizationPermissions
 
     public static readonly Permission UnitsManage = new("authz.units.manage", "Create, rename, move and deactivate organisation units", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage];
+    public static readonly Permission DelegationsManage = new("authz.delegations.manage", "Create and end delegations of duties for other people, and see them", Risk.High);
+
+    public static readonly Permission ReviewsManage = new("authz.reviews.manage", "Start and close access review campaigns", Risk.Medium);
+
+    public static readonly Permission ReviewsDecide = new("authz.reviews.decide", "Confirm or revoke the role assignments of a unit in an access review", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage, DelegationsManage, ReviewsManage, ReviewsDecide];
 }
 
 /// <summary>
@@ -66,6 +72,20 @@ public static class AuthorizationErrors
     public const string UnitIsRoot = "authz.unit.is_root";
     public const string UnitTooDeep = "authz.unit.too_deep";
     public const string UnitHasActiveChildren = "authz.unit.has_active_children";
+    public const string DelegationSelf = "authz.delegation.self";
+    public const string DelegationServiceAccount = "authz.delegation.service_account";
+    public const string DelegationOverlap = "authz.delegation.overlap";
+    public const string DelegationCycle = "authz.delegation.cycle";
+    public const string DelegationOnward = "authz.delegation.onward";
+    public const string DelegationPeriod = "authz.delegation.period";
+    public const string DelegationDutyUnknown = "authz.delegation.duty_unknown";
+    public const string DelegationNotFound = "authz.delegation.not_found";
+    public const string DelegationNotRunning = "authz.delegation.not_running";
+    public const string ReviewNotFound = "authz.review.not_found";
+    public const string ReviewClosed = "authz.review.closed";
+    public const string ReviewUnitsRequired = "authz.review.units_required";
+    public const string ReviewItemNotFound = "authz.review.item_not_found";
+    public const string ReviewItemDecided = "authz.review.item_decided";
 }
 
 /// <summary>Audit event types raised by Authorization (TF-060).</summary>
@@ -81,4 +101,10 @@ public static class AuthorizationAuditEvents
     public const string UnitRenamed = "authz.unit_renamed";
     public const string UnitMoved = "authz.unit_moved";
     public const string UnitDeactivated = "authz.unit_deactivated";
+    public const string DelegationCreated = "authz.delegation_created";
+    public const string DelegationEnded = "authz.delegation_ended";
+    public const string ReviewStarted = "authz.review_started";
+    public const string ReviewDecided = "authz.review_decided";
+    public const string ReviewClosed = "authz.review_closed";
+    public const string ReviewEscalated = "authz.review_escalated";
 }

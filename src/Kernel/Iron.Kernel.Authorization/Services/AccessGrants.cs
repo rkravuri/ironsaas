@@ -29,6 +29,13 @@ public sealed class PrincipalGrants
 
     public bool HasUnitGrants { get; }
 
+    /// <summary>The same grants with only these permissions left in them: a delegator's grants seen through the duties delegated.</summary>
+    public PrincipalGrants LimitedTo(IReadOnlySet<string> permissions)
+    {
+        ArgumentNullException.ThrowIfNull(permissions);
+        return new PrincipalGrants([.. Grants.Select(g => g with { Permissions = [.. g.Permissions.Where(permissions.Contains)] })]);
+    }
+
     /// <summary>
     /// The pure rule (ADR-0030): tenant-wide grants apply everywhere; a unit grant applies to its unit; a grant with
     /// children applies to its unit and every unit below it; a record grant applies to its record. <paramref name="unitPath"/>
@@ -101,9 +108,10 @@ public sealed class PrincipalGrants
 /// <summary>
 /// Loads a principal's assignments with their roles' permissions, caches them for at most 60 seconds (ADR-0012), and
 /// answers for a scope or for a list (ADR-0030). A record or unit check reads one unit's path by its key; a list check
-/// runs one query over the units, whatever the list's length.
+/// runs one query over the units, whatever the list's length. The request's principal acting for someone (ADR-0037)
+/// gets the delegator's grants limited to the delegated duties, here, so every check, list and grant rule follows.
 /// </summary>
-public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache cache, PermissionCacheOptions options, TimeProvider time)
+public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache cache, PermissionCacheOptions options, TimeProvider time, ActingScope acting)
 {
     /// <summary>Entries are kept in the memory cache for a while; the window itself is checked against Foundation's clock.</summary>
     private static readonly TimeSpan Retention = TimeSpan.FromMinutes(10);
@@ -111,6 +119,18 @@ public sealed class AccessGrants(AuthorizationDbContext context, IMemoryCache ca
     public static string CacheKey(Guid principalId) => $"authz:grants:{principalId:N}";
 
     public async Task<PrincipalGrants> OfAsync(Guid principalId, CancellationToken cancellationToken)
+    {
+        if (await acting.ForAsync(principalId, cancellationToken).ConfigureAwait(false) is { } substitution)
+        {
+            var delegators = await LoadAsync(substitution.DelegatorId, cancellationToken).ConfigureAwait(false);
+            return substitution.Limit is null ? delegators : delegators.LimitedTo(substitution.Limit);
+        }
+
+        return await LoadAsync(principalId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>A principal's own grants, from the cache when it is fresh.</summary>
+    private async Task<PrincipalGrants> LoadAsync(Guid principalId, CancellationToken cancellationToken)
     {
         var key = CacheKey(principalId);
         var now = time.GetUtcNow();

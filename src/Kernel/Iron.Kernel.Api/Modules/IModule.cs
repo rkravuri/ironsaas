@@ -38,6 +38,12 @@ public interface IModule
     /// </summary>
     IReadOnlyList<SettingDefinition> Settings => [];
 
+    /// <summary>
+    /// The duties a person may hand to someone else for a while (TF-037, ADR-0037), each with the permissions it covers.
+    /// The kernel's <c>all</c> is every host's; a module never declares it.
+    /// </summary>
+    IReadOnlyList<Duty> Duties => [];
+
     void AddServices(IServiceCollection services, IConfiguration configuration);
 
     void MapEndpoints(IEndpointRouteBuilder endpoints);

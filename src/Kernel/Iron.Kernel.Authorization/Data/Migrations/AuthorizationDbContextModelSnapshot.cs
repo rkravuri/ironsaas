@@ -24,6 +24,85 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.Delegation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("DelegateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delegate_id");
+
+                    b.Property<Guid>("DelegatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delegator_id");
+
+                    b.PrimitiveCollection<List<string>>("Duties")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("duties");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("end_reason");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<Guid?>("EndedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ended_by");
+
+                    b.Property<DateTimeOffset>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_delegations");
+
+                    b.HasIndex("DelegateId", "EndsAt")
+                        .HasDatabaseName("ix_delegations_delegate_id_ends_at");
+
+                    b.HasIndex("DelegatorId", "EndsAt")
+                        .HasDatabaseName("ix_delegations_delegator_id_ends_at");
+
+                    b.ToTable("delegations", "kernel_authz");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.OrganisationUnit", b =>
                 {
                     b.Property<Guid>("Id")

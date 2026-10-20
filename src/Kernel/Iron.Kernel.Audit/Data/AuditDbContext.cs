@@ -25,6 +25,7 @@ public sealed class AuditDbContext(DbContextOptions<AuditDbContext> options) : M
             record.Property(e => e.Details).HasColumnType("jsonb");
             record.HasIndex(e => e.CreatedAt);
             record.HasIndex(e => e.ActorId);
+            record.HasIndex(e => e.OnBehalfOfId);
             record.HasIndex(e => e.EventType);
             record.HasIndex(e => e.CorrelationId);
             record.HasIndex(e => new { e.RecordType, e.RecordId });

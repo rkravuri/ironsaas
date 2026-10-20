@@ -144,6 +144,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("ActingForId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("acting_for_id");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
