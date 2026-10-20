@@ -18,7 +18,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A4 Entitlements | done | main | merged 2026-10-20 (94ad0d3); seven commits after the prompt (8879856), 33bcea1 to 465c70e; ADR-0034; the refresh question closed: 30 seconds, accepted; the shell reads /me/context only while its tab is visible; acme, bravo and echo on the Enterprise plan, smoke 11 of 11 and e2e 14 of 14 on echo at review |
 | A5 Feature flags | done | main | merged 2026-10-20 (999abbf); six commits after the prompt (adccccb), 67031f7 to 83bbd1b; ADR-0035; the permission names accepted (`tenancy.flags.*`, `tenancy.kill_switches.manage`); a kill switch is on wherever any applicable rule says so, and a rule that says false is refused; the last-known rows of flags and entitlements are one upsert each; the import kill switch on echo worked both ways within a minute at review, smoke 11 of 11 and e2e 15 of 15 on echo |
 | A6 Settings | done | main | merged 2026-10-20 (04408a4); six commits after the prompt (ce511f5), 891a27a to ce0564a; ADR-0036; the permission names kept (`settings.values.read`, `settings.values.manage`); an invitation is valid for 3 days by default, TF-018's 72 hours; the control plane and acme, bravo and echo carry A6, smoke 11 of 11 and e2e 18 of 18 on echo |
-| A7 Delegation and access reviews | in progress | slice/s2-a7 | ADR-0037; delegations, acting for the delegator with both names on every event, access reviews with the daily escalation pass, and the shell pages are built; the browser test on echo and the laptop run are next |
+| A7 Delegation and access reviews | built, waiting for review | slice/s2-a7 | ADR-0037; six commits after the prompt (1726056), 80094ad to the status commit; `make up-control` now migrates and seeds the control plane before it starts; the control plane, acme, bravo and echo carry A7, smoke 11 of 11 and e2e 19 of 19 on echo, with the delegation and review path |
 | A8 Cross-organisation access and lifecycle | | | |
 | A9 Explanation and segregation of duties | | | |
 | S2-close | | | |
@@ -30,7 +30,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 ## Later items
 
 - Before S2 closes: each e2e run creates its own child unit named after the run and checks only inside it, so leftovers never affect a later run. Today every run adds invited accounts to echo's one `E2E branch`, and a check that lists the unit must accept every kind a test ever left there.
-- Before S2 closes: the shell test suite passes reliably on a loaded machine. Find the slow tests, bound the workers, and keep explicit timeouts only where a test renders something heavy; today a test can time out at 5 seconds when `make shell-check` runs right after `make test`.
+- Before S2 closes: the shell test suite passes reliably on a loaded machine. Find the slow tests, bound the workers, and keep explicit timeouts only where a test renders something heavy; today a test can time out at 5 seconds when `make shell-check` runs right after `make test`, or beside the running stack: at A7's end the login page, role import and invite dialog tests timed out in `make shell-check`, and all 200 passed bounded to 8 workers.
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
