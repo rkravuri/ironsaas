@@ -6,7 +6,7 @@ import { renderWithProviders, stubFetch } from "@/test/render";
 import GalleryPage from "./GalleryPage";
 
 describe("the gallery", () => {
-  it("shows every section in the scheme and density the URL asks for, with every contrast pair passing", async () => {
+  it("shows every section in the scheme and density the URL asks for, with every contrast pair passing [ADR-0025, ADR-0026]", async () => {
     stubFetch({});
     renderWithProviders(
       <Routes>

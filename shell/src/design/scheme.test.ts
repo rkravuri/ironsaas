@@ -32,18 +32,18 @@ afterEach(() => {
 });
 
 describe("the scheme script", () => {
-  it("follows the operating system when the viewer has not chosen", () => {
+  it("follows the operating system when the viewer has not chosen [ADR-0025]", () => {
     expect(schemeFor({ dark: true })).toBe("dark");
     expect(schemeFor({ dark: false })).toBe("light");
     expect(schemeFor({ dark: true, stored: "auto" })).toBe("dark");
   });
 
-  it("follows the viewer's stored choice over the operating system", () => {
+  it("follows the viewer's stored choice over the operating system [ADR-0025]", () => {
     expect(schemeFor({ dark: true, stored: "light" })).toBe("light");
     expect(schemeFor({ dark: false, stored: "dark" })).toBe("dark");
   });
 
-  it("still answers when the storage refuses", () => {
+  it("still answers when the storage refuses [ADR-0025]", () => {
     expect(schemeFor({ dark: true, storageThrows: true })).toBe("dark");
   });
 });

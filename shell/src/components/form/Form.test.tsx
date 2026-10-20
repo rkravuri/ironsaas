@@ -25,7 +25,7 @@ function Sample({ onSubmit }: { onSubmit: (values: Values) => Promise<void> }) {
 }
 
 describe("the form", () => {
-  it("validates a field after its first blur and keeps the primary action last", async () => {
+  it("validates a field after its first blur and keeps the primary action last [ADR-0027]", async () => {
     stubFetch({});
     const user = userEvent.setup();
     renderWithProviders(<Sample onSubmit={() => Promise.resolve()} />);
@@ -37,7 +37,7 @@ describe("the form", () => {
     expect(buttons.map((button) => button.textContent)).toEqual(["Cancel", "Save"]);
   });
 
-  it("puts the API's field problems on the fields and the rest at the top with the correlation id", async () => {
+  it("puts the API's field problems on the fields and the rest at the top with the correlation id [TF-171 AC3, ADR-0027]", async () => {
     stubFetch({});
     const user = userEvent.setup();
     const problem = ProblemSchema.parse({

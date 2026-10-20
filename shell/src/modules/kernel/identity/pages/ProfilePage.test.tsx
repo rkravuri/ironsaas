@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe("My profile", () => {
-  it("sits on the record template: name, login identifier, home unit and status, with details, access and session", async () => {
+  it("sits on the record template: name, login identifier, home unit and status, with details, access and session [ADR-0027, ADR-0033]", async () => {
     stubFetch({
       "GET /api/v1/me": () =>
         json({
@@ -73,7 +73,7 @@ describe("My profile", () => {
     expect(within(panel).getByRole("button", { name: "Sign out" })).toBeInTheDocument();
   });
 
-  it("offers the preferences that follow the person, and says the tenant's session limits", async () => {
+  it("offers the preferences that follow the person, and says the tenant's session limits [ADR-0033, ADR-0036]", async () => {
     window.localStorage.clear();
     stubFetch({
       "GET /api/v1/me": () => json(me([])),
@@ -108,7 +108,8 @@ describe("My profile", () => {
     );
   });
 
-  it("says what will appear when the person holds no role yet", async () => {
+  // Untraced: an empty state on My profile's Access tab; no criterion or ADR states it.
+  it("says what will appear when the person holds no role yet [untraced]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me([])), "GET /api/v1/role-assignments/mine": () => json({ data: [] }) });
     renderWithProviders(<ProfilePage />);
     await userEvent.setup().click(await screen.findByRole("tab", { name: "Access" }));

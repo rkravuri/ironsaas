@@ -19,7 +19,7 @@ const tenantRole = roles.find((role) => role.code === "operations-lead")!;
 const systemRole = roles.find((role) => role.code === "tenant-administrator")!;
 
 for (const scheme of schemes) {
-  test(`the roles list and the role editor in the ${scheme} scheme: a permission by keyboard, a system role read only, and no WCAG 2.1 AA violation`, async ({
+  test(`the roles list and the role editor in the ${scheme} scheme: a permission by keyboard, a system role read only, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0031]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

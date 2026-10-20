@@ -49,7 +49,9 @@ async function scan(page: Page): Promise<string[]> {
 
 for (const scheme of schemes) {
   for (const density of densities) {
-    test(`the gallery in the ${scheme} scheme at ${density} density has no WCAG 2.1 AA violation`, async ({ page }) => {
+    test(`the gallery in the ${scheme} scheme at ${density} density has no WCAG 2.1 AA violation [TF-172 AC1, ADR-0025]`, async ({
+      page,
+    }) => {
       await prepare(page, scheme);
       await page.goto(`/gallery?scheme=${scheme}&density=${density}`);
       await expect(page.locator("[data-gallery-ready='true']")).toBeAttached();
@@ -66,7 +68,7 @@ for (const scheme of schemes) {
   }
 
   for (const tenant of tenants) {
-    test(`the login page of ${tenant} in the ${scheme} scheme keeps the form above the fold and has no WCAG 2.1 AA violation`, async ({
+    test(`the login page of ${tenant} in the ${scheme} scheme keeps the form above the fold and has no WCAG 2.1 AA violation [TF-172 AC1, ADR-0026]`, async ({
       page,
     }) => {
       // The smallest desktop the brief names: the form must be in view without scrolling.

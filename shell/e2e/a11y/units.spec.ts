@@ -6,7 +6,7 @@ const schemes = ["light", "dark"] as const;
 const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
 for (const scheme of schemes) {
-  test(`the organisation units page in the ${scheme} scheme: the tree by keyboard, the record follows, a dialog opens, and no WCAG 2.1 AA violation`, async ({
+  test(`the organisation units page in the ${scheme} scheme: the tree by keyboard, the record follows, a dialog opens, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

@@ -54,7 +54,8 @@ const page = (route: string) =>
   );
 
 describe("the role editor", () => {
-  it("groups the permissions by module and shows each risk as a word", async () => {
+  // Untraced: the editor groups by module, while TF-030 AC2 asks for permissions grouped by resource; risk in words is in no criterion.
+  it("groups the permissions by module and shows each risk as a word [untraced]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
@@ -72,7 +73,7 @@ describe("the role editor", () => {
     expect(screen.getByText("Tenant role")).toBeInTheDocument();
   });
 
-  it("creates a role with its code, type and permissions, and shows the API's refusal at the top", async () => {
+  it("creates a role with its code, type and permissions, and shows the API's refusal at the top [ADR-0031]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
@@ -102,7 +103,7 @@ describe("the role editor", () => {
     });
   });
 
-  it("keeps a system role read only and says why", async () => {
+  it("keeps a system role read only and says why [ADR-0031]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
@@ -125,7 +126,8 @@ describe("the role editor", () => {
     expect(screen.getByRole("checkbox", { name: "List and view roles and their permissions" })).toBeDisabled();
   });
 
-  it("deletes a tenant role behind a confirmation and goes back to the list", async () => {
+  // Untraced: deleting a tenant role behind a confirmation; no criterion or ADR states this flow.
+  it("deletes a tenant role behind a confirmation and goes back to the list [untraced]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),

@@ -28,7 +28,7 @@ afterEach(() => {
 
 /** The grid itself is AG Grid's; these tests cover what the wrapper adds: the query it asks for, and how it shows problems and the cap. */
 describe("the DataGrid wrapper", () => {
-  it("asks the API for the first page with the default sort", async () => {
+  it("asks the API for the first page with the default sort [ADR-0021]", async () => {
     const fetchPage = vi.fn((query: string): Promise<ListResult<Row>> => {
       void query;
       return Promise.resolve({ data: [{ id: "1", name: "one" }], meta: meta() });
@@ -52,7 +52,7 @@ describe("the DataGrid wrapper", () => {
     expect(query.get("sort")).toBe("name");
   });
 
-  it("shows the API's problem with its correlation id when a page fails", async () => {
+  it("shows the API's problem with its correlation id when a page fails [ADR-0021]", async () => {
     const fetchPage = vi.fn((): Promise<ListResult<Row>> =>
       Promise.reject(
         new ApiError(
@@ -78,7 +78,7 @@ describe("the DataGrid wrapper", () => {
     expect(alert).toHaveTextContent("corr-grid");
   });
 
-  it("tells the user when the API capped the page size", async () => {
+  it("tells the user when the API capped the page size [TF-171 AC4, ADR-0021]", async () => {
     const fetchPage = vi.fn((): Promise<ListResult<Row>> =>
       Promise.resolve({ data: [], meta: meta({ page_size: 200, page_size_capped: true, total_count: 0 }) }),
     );

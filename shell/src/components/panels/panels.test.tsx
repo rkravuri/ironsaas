@@ -14,7 +14,7 @@ import {
 } from "./index";
 
 describe("the empty and loading states", () => {
-  it("carry their drawing beside the words", () => {
+  it("carry their drawing beside the words [ADR-0026, ADR-0027]", () => {
     stubFetch({});
     renderWithProviders(
       <>
@@ -36,7 +36,7 @@ describe("the empty and loading states", () => {
 });
 
 describe("the dialogs", () => {
-  it("ask a question with one primary answer and a way out", async () => {
+  it("ask a question with one primary answer and a way out [ADR-0027]", async () => {
     stubFetch({});
     const user = userEvent.setup();
     const onConfirm = vi.fn();
@@ -60,7 +60,7 @@ describe("the dialogs", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it("frame a form without adding a second primary", async () => {
+  it("frame a form without adding a second primary [ADR-0027]", async () => {
     stubFetch({});
     renderWithProviders(
       <FormDialog opened title="Rename" onClose={() => undefined}>
@@ -76,7 +76,7 @@ describe("the dialogs", () => {
 });
 
 describe("the attachment panel", () => {
-  it("lists the files, downloads one, uploads one and removes one", async () => {
+  it("lists the files, downloads one, uploads one and removes one [ADR-0027]", async () => {
     stubFetch({});
     const user = userEvent.setup();
     const onUpload = vi.fn(() => Promise.resolve());
@@ -103,7 +103,7 @@ describe("the attachment panel", () => {
     expect(onUpload).toHaveBeenCalledOnce();
   });
 
-  it("says when there is nothing and stays read-only without the callbacks", () => {
+  it("says when there is nothing and stays read-only without the callbacks [ADR-0027]", () => {
     stubFetch({});
     renderWithProviders(<AttachmentPanel attachments={[]} />);
     expect(screen.getByText("No attachments yet.")).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe("the attachment panel", () => {
 });
 
 describe("the history, approval and comment panels", () => {
-  it("show the events, the steps with their state in words, and the comments with a composer", async () => {
+  it("show the events, the steps with their state in words, and the comments with a composer [TF-172 AC3, ADR-0027]", async () => {
     stubFetch({});
     const user = userEvent.setup();
     const onAdd = vi.fn(() => Promise.resolve());

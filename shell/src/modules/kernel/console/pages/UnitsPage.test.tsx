@@ -59,7 +59,7 @@ const item = (label: string) =>
   within(screen.getByRole("tree")).getByText(label).closest<HTMLElement>("[role=treeitem]")!;
 
 describe("the quick action Add a unit", () => {
-  it("chooses the person's home unit and opens its dialog for a new unit there", async () => {
+  it("chooses the person's home unit and opens its dialog for a new unit there [ADR-0033]", async () => {
     stubFetch({
       "GET /api/v1/me": () =>
         json({
@@ -77,7 +77,7 @@ describe("the quick action Add a unit", () => {
 });
 
 describe("the organisation units page", () => {
-  it("shows the tree with the root chosen, and an inactive unit says so in words", async () => {
+  it("shows the tree with the root chosen, and an inactive unit says so in words [TF-172 AC3]", async () => {
     stub(["authz.units.read", "authz.units.manage"]);
     renderWithProviders(<UnitsPage />);
 
@@ -91,7 +91,7 @@ describe("the organisation units page", () => {
     expect(screen.queryByRole("button", { name: "Move" })).toBeNull();
   });
 
-  it("follows the keyboard: the record shows the unit the arrow keys reach", async () => {
+  it("follows the keyboard: the record shows the unit the arrow keys reach [ADR-0024]", async () => {
     stub(["authz.units.read"]);
     renderWithProviders(<UnitsPage />);
 
@@ -104,7 +104,7 @@ describe("the organisation units page", () => {
     expect(item("Finance")).toHaveAttribute("aria-selected", "true");
   });
 
-  it("creates a unit under the chosen one and puts a taken code on its field", async () => {
+  it("creates a unit under the chosen one and puts a taken code on its field [TF-171 AC3]", async () => {
     const { calls } = stub(["authz.units.read", "authz.units.manage"], {
       "POST /api/v1/organisation-units/root/children": () =>
         problem(409, {
@@ -125,7 +125,7 @@ describe("the organisation units page", () => {
     expect(JSON.parse(post?.init?.body as string)).toEqual({ name: "Legal", code: "finance", kind: "unit" });
   });
 
-  it("offers the actions where the principal may manage the chosen unit, and not elsewhere", async () => {
+  it("offers the actions where the principal may manage the chosen unit, and not elsewhere [ADR-0031]", async () => {
     // Held anywhere, so navigation shows the page; at the root only reading, at Sales managing too (ADR-0031).
     stubFetch({
       "GET /api/v1/me": () => json(me([], ["authz.units.read", "authz.units.manage"])),
@@ -143,7 +143,7 @@ describe("the organisation units page", () => {
     expect(await screen.findByRole("button", { name: "Rename" })).toBeInTheDocument();
   });
 
-  it("is read only without the manage permission", async () => {
+  it("is read only without the manage permission [ADR-0031]", async () => {
     stub(["authz.units.read"]);
     renderWithProviders(<UnitsPage />);
 
@@ -209,7 +209,7 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     ],
   };
 
-  it("reactivates a deactivated unit", async () => {
+  it("reactivates a deactivated unit [ADR-0038]", async () => {
     const { calls } = stub(manage, {
       "POST /api/v1/organisation-units/closed/reactivate": () => json(unit("closed", "Closed", "root")),
     });
@@ -224,7 +224,7 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     );
   });
 
-  it("shows what the modules need of the unit, item by item in words, and whether it is ready", async () => {
+  it("shows what the modules need of the unit, item by item in words, and whether it is ready [ADR-0038]", async () => {
     stub(manage, {
       "GET /api/v1/organisation-units/root/readiness": () =>
         json({
@@ -243,7 +243,7 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     expect(screen.getByText("To do: A fiscal calendar")).toBeInTheDocument();
   });
 
-  it("says a unit is ready when no module asks anything of it", async () => {
+  it("says a unit is ready when no module asks anything of it [ADR-0038]", async () => {
     stub(manage, {
       "GET /api/v1/organisation-units/root/readiness": () => json({ unit_id: "root", ready: true, items: [] }),
     });
@@ -253,7 +253,7 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     expect(screen.getByText("No module asks anything of a new unit yet.")).toBeInTheDocument();
   });
 
-  it("previews a merge by kind, in words with what stays behind, and merges only when asked", async () => {
+  it("previews a merge by kind, in words with what stays behind, and merges only when asked [ADR-0038]", async () => {
     const { calls } = stub(manage, {
       "GET /api/v1/organisation-units/sales/merge-preview?into=finance": () => json(preview),
       "POST /api/v1/organisation-units/sales/merge": () =>
@@ -292,7 +292,7 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     expect(JSON.parse(post?.init?.body as string)).toEqual({ into_id: "finance" });
   });
 
-  it("says why a merge is not possible, with the correlation id, and merges nothing", async () => {
+  it("says why a merge is not possible, with the correlation id, and merges nothing [ADR-0020, ADR-0038]", async () => {
     const { calls } = stub(manage, {
       "GET /api/v1/organisation-units/sales/merge-preview?into=finance": () =>
         problem(
@@ -320,7 +320,7 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     expect(calls.some((call) => call.key === "POST /api/v1/organisation-units/sales/merge")).toBe(false);
   });
 
-  it("says a merged unit was merged and where, and offers no way back", async () => {
+  it("says a merged unit was merged and where, and offers no way back [ADR-0038]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(manage)),
       "GET /api/v1/organisation-units": () =>

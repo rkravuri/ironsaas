@@ -55,7 +55,7 @@ function openTab(route = "/users") {
 }
 
 describe("the session warning", () => {
-  it("takes focus two minutes before the idle end, and one click on Stay signed in extends the session", async () => {
+  it("takes focus two minutes before the idle end, and one click on Stay signed in extends the session [ADR-0033]", async () => {
     let session = sessionTimes({ idleIn: 90_000 });
     const { calls } = stubFetch({ "GET /api/v1/me": () => json({ ...me(["identity.users.read"]), session }) });
     openTab();
@@ -74,7 +74,7 @@ describe("the session warning", () => {
     expect(screen.getByText("the users page")).toBeInTheDocument();
   });
 
-  it("closes in every tab when one tab extends the session", async () => {
+  it("closes in every tab when one tab extends the session [ADR-0033]", async () => {
     let session = sessionTimes({ idleIn: 90_000 });
     stubFetch({ "GET /api/v1/me": () => json({ ...me(["identity.users.read"]), session }) });
     openTab();
@@ -88,7 +88,7 @@ describe("the session warning", () => {
     await waitFor(() => expect(screen.queryAllByRole("alertdialog")).toHaveLength(0));
   });
 
-  it("says plainly near the absolute limit that the session cannot be extended", async () => {
+  it("says plainly near the absolute limit that the session cannot be extended [ADR-0033]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json({ ...me(["identity.users.read"]), session: sessionTimes({ endsIn: 100_000 }) }),
     });
@@ -102,7 +102,7 @@ describe("the session warning", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 
-  it("signs out when the idle end passes, says why on the login page, and returns to the same page after signing in", async () => {
+  it("signs out when the idle end passes, says why on the login page, and returns to the same page after signing in [ADR-0033]", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let signedIn = true;
     const { calls } = stubFetch({
@@ -140,7 +140,7 @@ describe("the session warning", () => {
     expect(await screen.findByText("the users page")).toBeInTheDocument();
   });
 
-  it("takes every tab to the login page when one tab signs out, and each says why", async () => {
+  it("takes every tab to the login page when one tab signs out, and each says why [ADR-0033]", async () => {
     let signedIn = true;
     stubFetch({
       "GET /api/v1/me": () =>

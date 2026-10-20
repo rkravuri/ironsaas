@@ -10,7 +10,7 @@ afterEach(() => {
 });
 
 describe("the login page", () => {
-  it("signs in, re-reads /me and moves on", async () => {
+  it("signs in, re-reads /me and moves on [TF-011 AC1, ADR-0020, ADR-0033]", async () => {
     let signedIn = false;
     const { calls } = stubFetch({
       "GET /api/v1/me": () =>
@@ -39,7 +39,7 @@ describe("the login page", () => {
     expect(calls.some((c) => c.key === "POST /auth/login")).toBe(true);
   });
 
-  it("shows the fixed message and the correlation id when the login is refused", async () => {
+  it("shows the fixed message and the correlation id when the login is refused [ADR-0020]", async () => {
     stubFetch({
       "GET /api/v1/me": () => problem(401, { title: "Unauthorized", error_code: "auth.unauthenticated" }),
       "POST /auth/login": () =>

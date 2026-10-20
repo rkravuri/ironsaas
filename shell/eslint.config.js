@@ -3,7 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
-import { ironPlugin } from "./lint/suite-imports.js";
+import { ironPlugin } from "./lint/plugin.js";
 
 // The grid rule (S1 plan 3.10): nothing imports ag-grid except the DataGrid wrapper, so the Enterprise switch is one place.
 const gridWrapper = ["src/components/data-grid/**"];
@@ -227,6 +227,13 @@ export default tseslint.config(
     rules: { "iron/suite-imports": "error" },
   },
   {
+    // What a test proves (ADR-0044): every Vitest and Playwright test's title ends with the criteria or decisions it
+    // proves, which make trace reads.
+    files: ["src/**/*.test.{ts,tsx}", "e2e/**/*.spec.ts"],
+    plugins: { iron: ironPlugin },
+    rules: { "iron/test-proves": "error" },
+  },
+  {
     // Everything under src, except where the values are defined and where they are mapped into the grid.
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/design/**", "src/components/data-grid/theme.ts"],
@@ -235,8 +242,12 @@ export default tseslint.config(
   {
     files: [
       "eslint.config.js",
+      "lint/plugin.js",
+      "lint/plugin.d.ts",
       "lint/suite-imports.js",
       "lint/suite-imports.d.ts",
+      "lint/test-proves.js",
+      "lint/test-proves.d.ts",
       "vite.config.ts",
       "playwright.config.ts",
       "playwright.a11y.config.ts",

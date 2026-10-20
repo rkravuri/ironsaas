@@ -6,7 +6,7 @@ const loginCell = (grid: Locator, value: string) =>
   grid.locator('[role="gridcell"][col-id="login_id"]', { hasText: value });
 
 test.describe("the Users grid", () => {
-  test("lists the tenant's users from the API with server paging and sorting", async ({ page }) => {
+  test("lists the tenant's users from the API with server paging and sorting [ADR-0021]", async ({ page }) => {
     await signIn(page);
     // Register the wait before loading the page, so the first request cannot be missed.
     const firstPage = page.waitForResponse(
@@ -34,7 +34,7 @@ test.describe("the Users grid", () => {
     await sorted;
   });
 
-  test("a filter becomes a filter term in the query", async ({ page }) => {
+  test("a filter becomes a filter term in the query [ADR-0021]", async ({ page }) => {
     await signIn(page);
     await open(page, "/users");
     const grid = page.getByRole("region", { name: "Users" });
@@ -58,7 +58,7 @@ test.describe("the Users grid", () => {
 });
 
 test.describe("the Users grid by keyboard", () => {
-  test("selects a row with Space and Enter, opens it with Ctrl+Enter, and the density switch changes the row height", async ({
+  test("selects a row with Space and Enter, opens it with Ctrl+Enter, and the density switch changes the row height [TF-172 AC2, ADR-0025, ADR-0027, ADR-0036]", async ({
     page,
   }) => {
     await signIn(page);

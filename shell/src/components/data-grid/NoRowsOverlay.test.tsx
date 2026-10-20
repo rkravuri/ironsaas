@@ -8,7 +8,7 @@ const params = (filtered: boolean) =>
   ({ api: { isAnyFilterPresent: () => filtered } }) as unknown as INoRowsOverlayParams;
 
 describe("the grid's empty state", () => {
-  it("shows the empty box and says nothing yet when no filter is set", () => {
+  it("shows the empty box and says nothing yet when no filter is set [ADR-0024, ADR-0026]", () => {
     render(
       <MantineProvider>
         <NoRowsOverlay {...params(false)} />
@@ -18,7 +18,7 @@ describe("the grid's empty state", () => {
     expect(document.querySelector("svg[data-drawing='nothingYet']")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("shows the magnifier and says nothing matches when a filter is set", () => {
+  it("shows the magnifier and says nothing matches when a filter is set [ADR-0024]", () => {
     render(
       <MantineProvider>
         <NoRowsOverlay {...params(true)} />

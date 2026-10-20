@@ -71,7 +71,7 @@ test.describe("settings on a unit (ADR-0036)", () => {
     await page.context().close();
   });
 
-  test("a child unit's invitation validity, set on the Settings page, is what an invitation into it takes", async ({
+  test("a child unit's invitation validity, set on the Settings page, is what an invitation into it takes [TF-057 AC1, TF-059 AC2, ADR-0036]", async ({
     page,
   }) => {
     await signIn(page);
@@ -111,7 +111,10 @@ test.describe("settings on a unit (ADR-0036)", () => {
     await page.screenshot({ path: "test-results/settings-invitation-echo.png" });
   });
 
-  test("the tenant's idle limit set to 30 minutes is what a new sign-in's session takes", async ({ page, browser }) => {
+  test("the tenant's idle limit set to 30 minutes is what a new sign-in's session takes [TF-059 AC2, ADR-0036]", async ({
+    page,
+    browser,
+  }) => {
     await signIn(page);
     await open(page, "/console/settings");
     const row = page.getByRole("article", { name: "A session ends without activity after" });
@@ -132,7 +135,10 @@ test.describe("settings on a unit (ADR-0036)", () => {
     await fresh.context().close();
   });
 
-  test("a colour scheme chosen in one browser applies in another after sign-in", async ({ page, browser }) => {
+  test("a colour scheme chosen in one browser applies in another after sign-in [ADR-0036]", async ({
+    page,
+    browser,
+  }) => {
     await signIn(page);
     await open(page, "/me");
     await page.getByRole("tab", { name: "Preferences" }).click();

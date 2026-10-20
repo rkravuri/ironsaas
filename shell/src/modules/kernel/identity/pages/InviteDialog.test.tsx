@@ -72,7 +72,8 @@ afterEach(() => {
 });
 
 describe("inviting a person", () => {
-  it("creates the user in the unit picked on the tree, shows the link once with a copy button, then opens the record", async () => {
+  // Untraced: the invite flow (the link shown once, copied, the record opened) is the S2 brief's, not a criterion's or an ADR's; TF-010 AC1 and TF-018 are the API's.
+  it("creates the user in the unit picked on the tree, shows the link once with a copy button, then opens the record [untraced]", async () => {
     const { calls } = openUsers("/users", {
       "POST /api/v1/users": () =>
         json(
@@ -124,7 +125,7 @@ describe("inviting a person", () => {
     expect(screen.queryByText(/secret-token/)).not.toBeInTheDocument();
   });
 
-  it("puts the API's field problems on their fields", async () => {
+  it("puts the API's field problems on their fields [TF-171 AC3]", async () => {
     openUsers("/users", {
       "POST /api/v1/users": () =>
         problem(409, {
@@ -149,7 +150,7 @@ describe("inviting a person", () => {
     );
   });
 
-  it("refuses a unit where /me/access does not allow managing users, before asking the API", async () => {
+  it("refuses a unit where /me/access does not allow managing users, before asking the API [ADR-0031]", async () => {
     const { calls } = openUsers("/users");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Invite a person" }));
@@ -163,12 +164,12 @@ describe("inviting a person", () => {
     expect(calls.some((call) => call.key === "POST /api/v1/users")).toBe(false);
   });
 
-  it("opens from the quick action's address", async () => {
+  it("opens from the quick action's address [ADR-0033]", async () => {
     openUsers("/users?invite=1");
     expect(await screen.findByRole("dialog", { name: "Invite a person" })).toBeInTheDocument();
   });
 
-  it("offers nothing to a reader who manages nobody", async () => {
+  it("offers nothing to a reader who manages nobody [ADR-0031]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])) });
     renderWithProviders(<UsersPage />, { route: "/?invite=1" });
     await screen.findByRole("heading", { name: "Users" });
@@ -213,7 +214,7 @@ describe("the Users page and the invite dialog follow the unit you work for (ADR
         },
       });
 
-  it("says the list keeps to the unit, and a person invited joins it unless another is chosen", async () => {
+  it("says the list keeps to the unit, and a person invited joins it unless another is chosen [ADR-0038]", async () => {
     openUsers("/users", { "GET /api/v1/me": working("finance", "Finance") });
     const user = userEvent.setup();
 
@@ -223,7 +224,7 @@ describe("the Users page and the invite dialog follow the unit you work for (ADR
     expect(await within(dialog).findByText("Acme / Finance")).toBeInTheDocument();
   });
 
-  it("says the list shows all your units, and a person invited joins your home unit", async () => {
+  it("says the list shows all your units, and a person invited joins your home unit [ADR-0038]", async () => {
     openUsers("/users", { "GET /api/v1/me": working("branch", "Branch", true) });
     const user = userEvent.setup();
 

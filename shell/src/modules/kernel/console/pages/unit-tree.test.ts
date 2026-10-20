@@ -35,7 +35,7 @@ const kinds: Kinds = {
 };
 
 describe("the unit tree", () => {
-  it("starts at the units whose parent the reader cannot see (ADR-0031)", () => {
+  it("starts at the units whose parent the reader cannot see (ADR-0031) [ADR-0031]", () => {
     // A reader of Sales with its children gets Sales and below; Sales's parent is not in the list.
     const tree = toTreeData(units.filter((candidate) => ["sales", "north", "city"].includes(candidate.id)));
     expect(tree.map((node) => node.value)).toEqual(["sales"]);
@@ -43,7 +43,8 @@ describe("the unit tree", () => {
     expect(pathLabel(units.slice(2, 5), "city")).toBe("Sales / North / City");
   });
 
-  it("nests the API's list under its parents and keeps the sibling order", () => {
+  // Untraced: how the shell nests the API's list into a tree for display; no criterion or ADR states it.
+  it("nests the API's list under its parents and keeps the sibling order [untraced]", () => {
     const tree = toTreeData(units);
     expect(tree.map((node) => node.value)).toEqual(["root"]);
     expect(tree[0]?.children?.map((node) => node.value)).toEqual(["finance", "sales", "closed"]);
@@ -51,18 +52,20 @@ describe("the unit tree", () => {
     expect(tree[0]?.children?.[0]?.children).toBeUndefined();
   });
 
-  it("finds a unit's subtree and its path of names", () => {
+  // Untraced: display helpers (a subtree's ids, a path of names) that no criterion or ADR states.
+  it("finds a unit's subtree and its path of names [untraced]", () => {
     expect([...subtreeIds(units, "sales")]).toEqual(["sales", "north", "city"]);
     expect(pathLabel(units, "city")).toBe("Acme / Sales / North / City");
   });
 
-  it("offers as move targets the active units outside the subtree, never the present parent", () => {
+  it("offers as move targets the active units outside the subtree, never the present parent [ADR-0030]", () => {
     const north = units.find((u) => u.id === "north")!;
     expect(moveTargets(units, north, kinds).map((u) => u.id)).toEqual(["root", "finance"]);
     expect(moveTargets(units, units[0]!, kinds)).toEqual([]);
   });
 
-  it("offers as child kinds what the parent's kind may hold", () => {
+  // Untraced: which child kinds a parent's kind may hold comes from the kinds provider; no criterion or ADR states the rule for creating a unit.
+  it("offers as child kinds what the parent's kind may hold [untraced]", () => {
     expect(childKinds(kinds, "root").map((k) => k.code)).toEqual(["unit"]);
     expect(childKinds(kinds, "nothing")).toEqual([]);
   });

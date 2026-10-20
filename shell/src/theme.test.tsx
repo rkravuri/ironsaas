@@ -11,7 +11,7 @@ const mount = (ui: React.ReactNode) =>
   );
 
 describe("the theme", () => {
-  it("puts the display family on a display title of order 1 or 2 and nowhere else", () => {
+  it("puts the display family on a display title of order 1 or 2 and nowhere else [ADR-0025]", () => {
     mount(
       <>
         <Title order={2} variant="display">
@@ -28,7 +28,7 @@ describe("the theme", () => {
     expect(screen.getByRole("heading", { name: "Work" }).style.fontFamily).not.toContain("Fraunces");
   });
 
-  it("knows the colours by their meaning", () => {
+  it("knows the colours by their meaning [ADR-0025]", () => {
     mount(
       <Alert color="danger" title="Failed">
         The record was not saved.

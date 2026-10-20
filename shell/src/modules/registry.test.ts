@@ -29,7 +29,7 @@ const manifests: ModuleManifest[] = [
 ];
 
 describe("the module registry", () => {
-  it("shows routes and navigation by the permissions from /me", () => {
+  it("shows routes and navigation by the permissions from /me [TF-170 AC3, ADR-0020]", () => {
     const routes = routesFor(manifests, ["identity.users.read"], { strict: true });
     expect(routes.map((r) => r.path)).toEqual(["/users", "/me"]);
 
@@ -41,11 +41,11 @@ describe("the module registry", () => {
     expect(navigation[0]?.entries.map((e) => e.path)).toEqual(["/users", "/me"]);
   });
 
-  it("declares every route for the router whatever the permissions, since the check happens at render time", () => {
+  it("declares every route for the router whatever the permissions, since the check happens at render time [ADR-0020]", () => {
     expect(declaredRoutes(manifests, { strict: true }).map((r) => r.path)).toEqual(["/users", "/me"]);
   });
 
-  it("throws in development for a route without a declared permission, and hides it in production", () => {
+  it("throws in development for a route without a declared permission, and hides it in production [TF-170 AC4, ADR-0020]", () => {
     const careless: ModuleManifest[] = [
       { name: "careless", titleKey: "x", routes: [{ path: "/oops", element: null, titleKey: "x" }], navigation: [] },
     ];
@@ -56,7 +56,8 @@ describe("the module registry", () => {
     expect(routesFor(careless, ["anything"], { strict: false })).toEqual([]);
   });
 
-  it("reports a path declared twice", () => {
+  // Untraced: no criterion or ADR says a route path declared twice is reported
+  it("reports a path declared twice [untraced]", () => {
     const twice: ModuleManifest[] = [
       {
         name: "twice",
@@ -98,7 +99,7 @@ describe("what the home page and the search read from the manifests (ADR-0033)",
     },
   ];
 
-  it("opens each module the principal may open, with as many first entries as its opener asks", () => {
+  it("opens each module the principal may open, with as many first entries as its opener asks [ADR-0033]", () => {
     const openers = openersFor(modules, ["identity.users.read", "authz.units.read"], { strict: true });
     expect(
       openers.map((opening) => [opening.module, opening.opener?.accent, opening.entries.map((entry) => entry.path)]),
@@ -109,20 +110,21 @@ describe("what the home page and the search read from the manifests (ADR-0033)",
     expect(openersFor(modules, [], { strict: true }).map((opening) => opening.module)).toEqual(["identity"]);
   });
 
-  it("offers a quick action only where its permission is held somewhere; /me/access decides the rest", () => {
+  it("offers a quick action only where its permission is held somewhere; /me/access decides the rest [ADR-0033]", () => {
     expect(quickActionsFor(modules, ["identity.users.manage"]).map((action) => [action.module, action.id])).toEqual([
       ["identity", "invite"],
     ]);
     expect(quickActionsFor(modules, ["identity.users.read"])).toEqual([]);
   });
 
-  it("finds the route a path belongs to, parameters included", () => {
+  // Untraced: a lookup helper behind the recent pages and the help keys; no criterion or ADR states a rule it decides
+  it("finds the route a path belongs to, parameters included [untraced]", () => {
     expect(routeAt(modules, "/users/42")?.path).toBe("/users/:id");
     expect(routeAt(modules, "/console/units")?.module).toBe("console");
     expect(routeAt(modules, "/nowhere")).toBeUndefined();
   });
 
-  it("refuses a quick action without a permission", () => {
+  it("refuses a quick action without a permission [ADR-0020, ADR-0033]", () => {
     const careless: ModuleManifest[] = [
       {
         name: "careless",
@@ -157,7 +159,7 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
   ];
   const permissions = ["identity.users.read", "sourcing.events.read"];
 
-  it("hides its navigation, routes, opener and quick actions while it is not entitled, whatever the permissions", () => {
+  it("hides its navigation, routes, opener and quick actions while it is not entitled, whatever the permissions [TF-040 AC1, TF-170 AC1, ADR-0034]", () => {
     const none = () => false;
     expect(navigationFor(licensed, permissions, { strict: true }, none).map((g) => g.module)).toEqual(["identity"]);
     expect(routesFor(licensed, permissions, { strict: true }, none).map((r) => r.path)).toEqual(["/users", "/me"]);
@@ -165,7 +167,7 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
     expect(quickActionsFor(licensed, permissions, none)).toEqual([]);
   });
 
-  it("shows them once it is entitled, and a caller that does not say what is entitled hides them", () => {
+  it("shows them once it is entitled, and a caller that does not say what is entitled hides them [ADR-0034]", () => {
     const sourcing = (licence: string) => licence === "sourcing";
     expect(navigationFor(licensed, permissions, { strict: true }, sourcing).map((g) => g.module)).toEqual([
       "identity",
@@ -175,7 +177,7 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
     expect(navigationFor(licensed, permissions, { strict: true }).map((g) => g.module)).toEqual(["identity"]);
   });
 
-  it("groups the openers by suite, the Foundation's first, whatever order the list gives", () => {
+  it("groups the openers by suite, the Foundation's first, whatever order the list gives [ADR-0043]", () => {
     const suites: ModuleManifest[] = [
       {
         name: "orders",
@@ -217,7 +219,7 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
     ]);
   });
 
-  it("carries the licence on its routes, so the route guard can check it on a link typed by hand", () => {
+  it("carries the licence on its routes, so the route guard can check it on a link typed by hand [ADR-0020, ADR-0034]", () => {
     expect(declaredRoutes(licensed, { strict: true }).find((r) => r.path === "/sourcing/events")?.licence).toBe(
       "sourcing",
     );

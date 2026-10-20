@@ -17,7 +17,7 @@ const mount = (name: (typeof illustrationNames)[number], props: IllustrationProp
 };
 
 describe("the illustrations", () => {
-  it("each has an accessible name from the catalogue", () => {
+  it("each has an accessible name from the catalogue [ADR-0026]", () => {
     for (const name of illustrationNames) {
       const { svg, unmount } = mount(name);
       expect(svg).toHaveAttribute("role", "img");
@@ -28,7 +28,7 @@ describe("the illustrations", () => {
     }
   });
 
-  it("each can be decorative, hidden from assistive technology", () => {
+  it("each can be decorative, hidden from assistive technology [ADR-0026]", () => {
     for (const name of illustrationNames) {
       const { svg, unmount } = mount(name, { decorative: true });
       expect(svg).toHaveAttribute("aria-hidden", "true");
@@ -38,7 +38,7 @@ describe("the illustrations", () => {
     }
   });
 
-  it("comes in three named sizes that keep the box's proportions", () => {
+  it("comes in three named sizes that keep the box's proportions [ADR-0026]", () => {
     const { svg: small, unmount: unmountSmall } = mount("welcome", { size: "sm" });
     expect(small).toHaveAttribute("width", String(drawingSizes.sm));
     expect(small).toHaveAttribute("height", "90");
@@ -52,7 +52,7 @@ describe("the illustrations", () => {
     unmountMedium();
   });
 
-  it("is drawn in one hand: the stroke, the caps, the joins, and tints as the only fills", () => {
+  it("is drawn in one hand: the stroke, the caps, the joins, and tints as the only fills [ADR-0026]", () => {
     for (const name of illustrationNames) {
       const { svg, unmount } = mount(name);
       expect(svg).toHaveAttribute("stroke-width", String(hand.stroke));
@@ -82,7 +82,7 @@ describe("the figure", () => {
     success: "holding",
   };
 
-  it("draws every person the same way: a head with a cap line and no face, a tinted torso, limbs that bend, feet", () => {
+  it("draws every person the same way: a head with a cap line and no face, a tinted torso, limbs that bend, feet [ADR-0026]", () => {
     for (const [name, pose] of Object.entries(people)) {
       const { svg, unmount } = mount(name as (typeof illustrationNames)[number]);
       const group = svg.querySelector(`[data-figure='${pose}']`);
@@ -97,7 +97,7 @@ describe("the figure", () => {
     }
   });
 
-  it("changes the posture, not the person, between the three drawings", () => {
+  it("changes the posture, not the person, between the three drawings [ADR-0026]", () => {
     const limbsOf = (name: (typeof illustrationNames)[number], pose: string) => {
       const { svg, unmount } = mount(name);
       const limbs = [...(svg.querySelector(`[data-figure='${pose}']`)?.querySelectorAll("path") ?? [])].map((path) =>

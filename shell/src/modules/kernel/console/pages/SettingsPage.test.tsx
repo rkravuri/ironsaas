@@ -121,7 +121,7 @@ afterEach(() => {
 });
 
 describe("the console's settings page (TF-058, ADR-0036)", () => {
-  it("shows the settings by module, each with its value here, its default and where the value comes from", async () => {
+  it("shows the settings by module, each with its value here, its default and where the value comes from [ADR-0036]", async () => {
     open();
 
     expect(await screen.findByRole("heading", { level: 3, name: "Sign-in and invitations" })).toBeInTheDocument();
@@ -137,7 +137,7 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     expect(idle.getByRole("button", { name: "Reset: A session ends without activity after" })).toBeInTheDocument();
   });
 
-  it("shows a unit's values with the unit above they are inherited from, when a unit is picked on the tree", async () => {
+  it("shows a unit's values with the unit above they are inherited from, when a unit is picked on the tree [ADR-0036]", async () => {
     const user = userEvent.setup();
     const { calls } = open();
     await screen.findByRole("article", { name: "An invitation link stays valid for" });
@@ -154,7 +154,7 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     expect(calls.some((call) => call.key === `GET /api/v1/settings?scope=unit&unit=${warehouse.id}`)).toBe(true);
   });
 
-  it("changes a value in a form dialog and shows the server's rule on the field when it refuses", async () => {
+  it("changes a value in a form dialog and shows the server's rule on the field when it refuses [TF-057 AC2, TF-171 AC3]", async () => {
     const user = userEvent.setup();
     const { calls } = open(administrator, {
       "PUT /api/v1/settings/identity.session.idle_minutes": () =>
@@ -184,7 +184,7 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     expect(JSON.parse(sent?.init?.body as string)).toEqual({ scope: "tenant", unit_id: null, value: 5 });
   });
 
-  it("resets a value behind a confirmation and shows the inherited value afterwards", async () => {
+  it("resets a value behind a confirmation and shows the inherited value afterwards [TF-058 AC2]", async () => {
     const user = userEvent.setup();
     let list = tenantList;
     const { calls } = open(administrator, {
@@ -213,7 +213,7 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     expect(after.getByText("60 minutes")).toBeInTheDocument();
   });
 
-  it("shows the history of a setting in words, newest first", async () => {
+  it("shows the history of a setting in words, newest first [ADR-0036]", async () => {
     const user = userEvent.setup();
     open(administrator, {
       "GET /api/v1/settings/identity.session.idle_minutes/history?scope=tenant&page_size=50": () =>
@@ -259,7 +259,7 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     expect(within(history).getByText("Set to 45 minutes")).toBeInTheDocument();
   });
 
-  it("offers no change and no reset to a reader without settings.values.manage", async () => {
+  it("offers no change and no reset to a reader without settings.values.manage [ADR-0036]", async () => {
     open(reader);
     const idle = await row("A session ends without activity after");
 

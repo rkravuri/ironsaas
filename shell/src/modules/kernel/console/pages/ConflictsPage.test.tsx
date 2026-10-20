@@ -117,7 +117,7 @@ afterEach(() => {
 
 describe("the conflict rules page (TF-036, ADR-0039)", () => {
   it(
-    "lists the rules with Add, and Change and Remove waiting for a rule to be chosen",
+    "lists the rules with Add, and Change and Remove waiting for a rule to be chosen [ADR-0039]",
     async () => {
       const { calls } = show(["authz.sod.read", "authz.sod.manage"]);
 
@@ -131,7 +131,7 @@ describe("the conflict rules page (TF-036, ADR-0039)", () => {
   );
 
   it(
-    "says when the report last ran and how, in words, and runs it on demand",
+    "says when the report last ran and how, in words, and runs it on demand [ADR-0039]",
     async () => {
       const { calls } = show(["authz.sod.read", "authz.sod.manage"]);
 
@@ -147,7 +147,7 @@ describe("the conflict rules page (TF-036, ADR-0039)", () => {
   );
 
   it(
-    "adds a rule between a permission and a role that warns, with its reason",
+    "adds a rule between a permission and a role that warns, with its reason [ADR-0039]",
     async () => {
       const { calls } = show(["authz.sod.read", "authz.sod.manage"]);
 
@@ -192,7 +192,7 @@ describe("the conflict rules page (TF-036, ADR-0039)", () => {
   );
 
   it(
-    "offers a reader without authz.sod.manage the rules and the report, and nothing that changes them",
+    "offers a reader without authz.sod.manage the rules and the report, and nothing that changes them [ADR-0039]",
     async () => {
       show(["authz.sod.read"]);
 

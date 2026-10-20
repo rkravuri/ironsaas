@@ -8,7 +8,7 @@ const schemes: Scheme[] = ["light", "dark"];
 const pure = ["#000000", "#ffffff"];
 
 describe("the tokens", () => {
-  it("meet every contrast pair Mantine renders from them, in both schemes", () => {
+  it("meet every contrast pair Mantine renders from them, in both schemes [ADR-0025]", () => {
     const resolved = resolveCssVariables();
     const failures: string[] = [];
     for (const scheme of schemes) {
@@ -33,7 +33,7 @@ describe("the tokens", () => {
     expect(failures).toEqual([]);
   });
 
-  it("use no pure black or white anywhere", () => {
+  it("use no pure black or white anywhere [ADR-0024, ADR-0025]", () => {
     const values = [
       tokens.ink.light,
       tokens.ink.dark,
@@ -46,7 +46,7 @@ describe("the tokens", () => {
     expect(values.filter((value) => pure.includes(value))).toEqual([]);
   });
 
-  it("name a meaning for every accent in the catalogue", () => {
+  it("name a meaning for every accent in the catalogue [ADR-0024]", () => {
     const meanings = en.design.accents as Record<string, string>;
     for (const name of accentNames) {
       expect(tokens.accents[name].meaningKey).toBe(`design.accents.${name}`);
@@ -54,13 +54,13 @@ describe("the tokens", () => {
     }
   });
 
-  it("have six type sizes from 12 to 32 pixels, the display sizes at 24 and above", () => {
+  it("have six type sizes from 12 to 32 pixels, the display sizes at 24 and above [ADR-0025]", () => {
     const sizes = Object.values(tokens.type.sizes).map((size) => size.px);
     expect(sizes).toEqual([12, 14, 16, 20, 24, 32]);
     expect(tokens.type.sizes.xl.px).toBeGreaterThanOrEqual(24);
   });
 
-  it("keep the motion short", () => {
+  it("keep the motion short [ADR-0025]", () => {
     expect(tokens.motion.duration.quick).toBe(150);
     expect(tokens.motion.duration.calm).toBe(250);
   });

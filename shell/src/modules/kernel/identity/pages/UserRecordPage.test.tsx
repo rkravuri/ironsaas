@@ -86,7 +86,7 @@ const openAccess = async () => {
 };
 
 describe("the user record page", () => {
-  it("shows the user's details on the record template", async () => {
+  it("shows the user's details on the record template [ADR-0027]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])), "GET /api/v1/users/u1": () => json(user) });
     page();
 
@@ -97,7 +97,7 @@ describe("the user record page", () => {
     expect(screen.getByText("Never")).toBeInTheDocument();
   });
 
-  it("says not found for a user outside the reader's scope, as for one that does not exist", async () => {
+  it("says not found for a user outside the reader's scope, as for one that does not exist [ADR-0031]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(["identity.users.read"])),
       "GET /api/v1/users/u1": () => problem(404, { error_code: "identity.user.not_found" }),
@@ -108,7 +108,7 @@ describe("the user record page", () => {
     expect(screen.getByRole("link", { name: "Back to users" })).toHaveAttribute("href", "/users");
   });
 
-  it("lists the assignments with their role, scope and unit path, and removes one behind a confirmation", async () => {
+  it("lists the assignments with their role, scope and unit path, and removes one behind a confirmation [ADR-0031]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me([], granter)),
       "GET /api/v1/users/u1": () => json(user),
@@ -144,7 +144,7 @@ describe("the user record page", () => {
     await waitFor(() => expect(calls.some((call) => call.key === "DELETE /api/v1/role-assignments/a1")).toBe(true));
   });
 
-  it("shows no Remove on a unit-and-below row to a manager of that unit alone, and Remove on a one-unit row", async () => {
+  it("shows no Remove on a unit-and-below row to a manager of that unit alone, and Remove on a one-unit row [ADR-0031]", async () => {
     // Assignments are managed at Sales and at North alone: nothing reaches every unit below Sales (ADR-0031).
     const atOneUnit = granter.filter((permission) => permission !== "authz.assignments.manage");
     stubFetch({
@@ -170,7 +170,7 @@ describe("the user record page", () => {
     expect(within(rows[1]!).queryByRole("button")).toBeNull();
   });
 
-  it("grants a role at a unit chosen on the tree, with the units below it", async () => {
+  it("grants a role at a unit chosen on the tree, with the units below it [ADR-0031]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me([], granter)),
       "GET /api/v1/users/u1": () => json(user),
@@ -234,7 +234,7 @@ describe("the user record page", () => {
     });
   });
 
-  it("says in words, before the confirm, that a conflict rule refuses the grant, and shows the refusal naming the rule (TF-036)", async () => {
+  it("says in words, before the confirm, that a conflict rule refuses the grant, and shows the refusal naming the rule (TF-036) [TF-036 AC1, ADR-0039]", async () => {
     const refusal =
       "The conflict rule 'Payments apart' blocks this: Ada Lovelace would hold both sides of it at East. One person should not raise and approve a payment.";
     const { calls } = stubFetch({
@@ -313,7 +313,7 @@ describe("the user record page", () => {
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(refusal);
   });
 
-  it("hides the access for a reader without the permission to read assignments", async () => {
+  it("hides the access for a reader without the permission to read assignments [ADR-0031]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])), "GET /api/v1/users/u1": () => json(user) });
     page();
 

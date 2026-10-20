@@ -26,7 +26,7 @@ async function choose(page: Page, field: ReturnType<Page["getByRole"]>, typed: s
 }
 
 for (const scheme of schemes) {
-  test(`the explanation of access in the ${scheme} scheme: the person, the action and the unit by keyboard, a denial with its first failing check, an allowance with its role, and no WCAG 2.1 AA violation`, async ({
+  test(`the explanation of access in the ${scheme} scheme: the person, the action and the unit by keyboard, a denial with its first failing check, an allowance with its role, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });

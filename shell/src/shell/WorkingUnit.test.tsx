@@ -66,7 +66,7 @@ afterEach(() => {
 });
 
 describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
-  it("is not in the header with one unit to choose", async () => {
+  it("is not in the header with one unit to choose [ADR-0038]", async () => {
     renderControl({
       "GET /api/v1/me": () => json(meWith({ units: [choice([acme, sales, north])], available: false })),
     });
@@ -74,13 +74,13 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
     expect(screen.queryByRole("button", { name: /Choose the unit you work for/ })).toBeNull();
   });
 
-  it("is not there while the person acts for someone, whose rights in full the lists show", async () => {
+  it("is not there while the person acts for someone, whose rights in full the lists show [ADR-0038]", async () => {
     renderControl({ "GET /api/v1/me": () => json(meWith({ acting: true })) });
     await waitFor(() => expect(screen.getByTestId("working")).toHaveTextContent("North"));
     expect(screen.queryByRole("button", { name: /Choose the unit you work for/ })).toBeNull();
   });
 
-  it("names the unit, lists the units on the tree with the current one chosen, and switches", async () => {
+  it("names the unit, lists the units on the tree with the current one chosen, and switches [ADR-0038]", async () => {
     const { calls } = renderControl({
       "GET /api/v1/me": () => json(meWith({})),
       "POST /api/v1/me/working-unit": () => json(meWith({ working: finance })),
@@ -106,7 +106,7 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
     expect(JSON.parse(posted?.init?.body as string)).toEqual({ unit_id: finance.id });
   });
 
-  it("offers All my units only where a role reaches several units at once, and chooses it", async () => {
+  it("offers All my units only where a role reaches several units at once, and chooses it [ADR-0038]", async () => {
     const { calls } = renderControl({
       "GET /api/v1/me": () => json(meWith({})),
       "POST /api/v1/me/working-unit": () => json(meWith({ all: true })),
@@ -124,7 +124,7 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
     expect(JSON.parse(posted?.init?.body as string)).toEqual({ all_units: true });
   });
 
-  it("has no All my units when no role reaches several units", async () => {
+  it("has no All my units when no role reaches several units [ADR-0038]", async () => {
     renderControl({ "GET /api/v1/me": () => json(meWith({ available: false })) });
     const user = userEvent.setup();
 
@@ -133,7 +133,7 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
     expect(screen.queryByRole("menuitem", { name: /All my units/, hidden: true })).toBeNull();
   });
 
-  it("says why a choice failed, with the correlation id, and keeps the unit", async () => {
+  it("says why a choice failed, with the correlation id, and keeps the unit [ADR-0020]", async () => {
     renderControl({
       "GET /api/v1/me": () => json(meWith({})),
       "POST /api/v1/me/working-unit": () =>
@@ -159,7 +159,7 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
 });
 
 describe("the choices on the tree", () => {
-  it("indents a unit under the choices above it, and writes the path above a unit with none", () => {
+  it("indents a unit under the choices above it, and writes the path above a unit with none [ADR-0038]", () => {
     const placed = placeChoices(choices);
 
     expect(placed.map((p) => [p.unit.name, p.indent, p.above])).toEqual([

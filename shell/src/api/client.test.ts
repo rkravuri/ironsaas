@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe("the API client", () => {
-  it("sends JSON with the session cookie and validates the answer", async () => {
+  it("sends JSON with the session cookie and validates the answer [ADR-0020]", async () => {
     const { calls } = stubFetch({ "POST /auth/login": () => json({ ok: true }) });
 
     const result = await request("/auth/login", {
@@ -22,7 +22,7 @@ describe("the API client", () => {
     expect(calls[0]?.init?.body).toBe(JSON.stringify({ login_id: "a", password: "b" }));
   });
 
-  it("turns a problem into an ApiError with the error code and the correlation id", async () => {
+  it("turns a problem into an ApiError with the error code and the correlation id [ADR-0020]", async () => {
     stubFetch({
       "GET /api/v1/users": () =>
         problem(
@@ -42,7 +42,7 @@ describe("the API client", () => {
     expect(apiError.message).toBe("Unknown field 'nope'.");
   });
 
-  it("reads the list envelope as Iron.Kernel.Api writes it", async () => {
+  it("reads the list envelope as Iron.Kernel.Api writes it [ADR-0009, ADR-0020]", async () => {
     stubFetch({
       "GET /api/v1/things": () =>
         json({
@@ -74,7 +74,7 @@ describe("the API client", () => {
     expect(list.links.next).toBeNull();
   });
 
-  it("takes the correlation id from the header when the body has none, and tells listeners about a 401", async () => {
+  it("takes the correlation id from the header when the body has none, and tells listeners about a 401 [ADR-0020]", async () => {
     stubFetch({
       "GET /api/v1/me": () => new Response("", { status: 401, headers: { "X-Correlation-Id": "from-header" } }),
     });
@@ -90,7 +90,7 @@ describe("the API client", () => {
     expect(listener).toHaveBeenCalledWith(error);
   });
 
-  it("tells the session clock about every answer, with the server's clock from the Date header", async () => {
+  it("tells the session clock about every answer, with the server's clock from the Date header [ADR-0033]", async () => {
     stubFetch({
       "GET /api/v1/users": () => json({}, 200, { Date: "Mon, 19 Oct 2026 08:00:00 GMT" }),
       "GET /api/v1/roles": () => problem(403, { title: "Forbidden", error_code: "authz.forbidden" }),

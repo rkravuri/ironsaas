@@ -66,7 +66,7 @@ test.describe("delegation and access reviews", () => {
     "make e2e sets up the child unit's data first",
   );
 
-  test("the administrator delegates user administration, the delegate acts for them with both names in the audit, and a review on the child unit revokes a role at once", async ({
+  test("the administrator delegates user administration, the delegate acts for them with both names in the audit, and a review on the child unit revokes a role at once [TF-037 AC3, TF-038 AC2, ADR-0037]", async ({
     page,
     browser,
   }, testInfo) => {

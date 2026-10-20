@@ -16,7 +16,7 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`a person's own delegations in My profile in the ${scheme} scheme: in words with their status, the create dialog by keyboard, and no WCAG 2.1 AA violation`, async ({
+  test(`a person's own delegations in My profile in the ${scheme} scheme: in words with their status, the create dialog by keyboard, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0037]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -51,7 +51,7 @@ for (const scheme of schemes) {
     await expect(open).toBeFocused();
   });
 
-  test(`the console's delegations page for administrators in the ${scheme} scheme: others' delegations in the grid, delegating for someone, and no WCAG 2.1 AA violation`, async ({
+  test(`the console's delegations page for administrators in the ${scheme} scheme: others' delegations in the grid, delegating for someone, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0037]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -76,7 +76,7 @@ for (const scheme of schemes) {
     await expect(dialog).toBeHidden();
   });
 
-  test(`the Acting for control and its band in the ${scheme} scheme: the choice in the header, whose rights until when, how to stop, and no WCAG 2.1 AA violation`, async ({
+  test(`the Acting for control and its band in the ${scheme} scheme: the choice in the header, whose rights until when, how to stop, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0037]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -105,7 +105,7 @@ for (const scheme of schemes) {
     await expect(band).toBeHidden();
   });
 
-  test(`the access review pages in the ${scheme} scheme: the campaigns with their progress, a campaign's items to decide, the revoke dialog, and no WCAG 2.1 AA violation`, async ({
+  test(`the access review pages in the ${scheme} scheme: the campaigns with their progress, a campaign's items to decide, the revoke dialog, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0037]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });

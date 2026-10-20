@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { ESLint, Linter } from "eslint";
-import { ironPlugin } from "../lint/suite-imports.js";
+import { ironPlugin } from "../lint/plugin.js";
 
 // Every stylesheet under src, read at transform time; src/design is where values are allowed to live.
 const stylesheets = import.meta.glob<string>(["/src/**/*.css", "!/src/design/**"], {
@@ -31,7 +31,7 @@ async function rawColoursInStylesheet(eslint: ESLint, css: string): Promise<stri
 
 describe("the lint rules", () => {
   /** The grid rule (S1 plan 3.10): a raw ag-grid import anywhere but the wrapper fails lint. */
-  it("refuse an ag-grid import in a page and allow it in the wrapper", async () => {
+  it("refuse an ag-grid import in a page and allow it in the wrapper [TF-171 AC1, ADR-0021]", async () => {
     const eslint = new ESLint();
     const source = 'import { AgGridReact } from "ag-grid-react";\nexport const grid = AgGridReact;\n';
 
@@ -61,7 +61,7 @@ describe("the lint rules", () => {
       );
     };
 
-    it("refuses business and suite imports in a kernel module, by alias and by relative path", async () => {
+    it("refuses business and suite imports in a kernel module, by alias and by relative path [ADR-0029, ADR-0043]", async () => {
       const eslint = new ESLint();
       const refused = [
         "@/modules/business/organisations/manifest",
@@ -84,7 +84,7 @@ describe("the lint rules", () => {
       );
     }, 60_000);
 
-    it("refuses suite imports in a business module and allows the kernel", async () => {
+    it("refuses suite imports in a business module and allows the kernel [ADR-0029, ADR-0043]", async () => {
       const eslint = new ESLint();
       const businessPage = "src/modules/business/organisations/pages/UnitsPage.tsx";
 
@@ -94,7 +94,7 @@ describe("the lint rules", () => {
       expect(await refusedBy(eslint, businessPage, "@/modules/business/items/manifest")).toBe(false);
     }, 60_000);
 
-    it("keeps the grid rule inside the layers and leaves the suites and the module list free of layer patterns", async () => {
+    it("keeps the grid rule inside the layers and leaves the suites and the module list free of layer patterns [ADR-0021, ADR-0043]", async () => {
       const eslint = new ESLint();
       const ruleFor = async (path: string): Promise<{ group?: string[]; regex?: string }[]> => {
         const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
@@ -140,7 +140,7 @@ describe("the lint rules", () => {
         { filename },
       );
 
-    it("refuses an import from another suite by alias and by relative path, and allows the suite's own and the layers below", () => {
+    it("refuses an import from another suite by alias and by relative path, and allows the suite's own and the layers below [ADR-0043]", () => {
       const ordersPage = "src/modules/suites/procurement/orders/pages/OrdersPage.ts";
       const refused = [
         "@/modules/suites/school/pupils/manifest",
@@ -166,7 +166,7 @@ describe("the lint rules", () => {
       );
     });
 
-    it("knows the suite from the path whether it is relative to the shell or absolute", () => {
+    it("knows the suite from the path whether it is relative to the shell or absolute [ADR-0043]", () => {
       // As ESLint itself passes it: absolute, under the shell's root.
       const absolute = `${process.cwd()}/src/modules/suites/school/pupils/manifest.ts`;
       expect(verify(absolute, ["@/modules/suites/procurement/orders/manifest"])).toHaveLength(1);
@@ -176,7 +176,7 @@ describe("the lint rules", () => {
       expect(verify("src/modules/index.ts", ["@/modules/suites/procurement/orders/manifest"])).toEqual([]);
     });
 
-    it("is on for every file under modules/suites and nowhere else", async () => {
+    it("is on for every file under modules/suites and nowhere else [ADR-0043]", async () => {
       const eslint = new ESLint();
       const ruleFor = async (path: string): Promise<unknown> => {
         const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
@@ -188,9 +188,82 @@ describe("the lint rules", () => {
     }, 60_000);
   });
 
+  /** What a test proves (ADR-0044): a Vitest or Playwright test's title ends with the criteria or decisions it proves. */
+  describe("the test rule", () => {
+    const testRule = "iron/test-proves";
+    const verify = (lines: string[]): Linter.LintMessage[] =>
+      new Linter().verify(
+        `${lines.join("\n")}\n`,
+        [{ files: ["**/*.ts"], plugins: { iron: ironPlugin }, rules: { [testRule]: "error" } }],
+        { filename: "src/probe.test.ts" },
+      );
+
+    it("refuses a title without the list, with an identifier out of form, untraced beside an identifier, or not a literal [ADR-0044]", () => {
+      const messages = verify([
+        'it("works", () => {});',
+        'test("says [tf-033 ac2]", () => {});',
+        'it.skip("waits [TF-33 AC2, ADR-29]", () => {});',
+        "it(`in the ${scheme} scheme`, () => {});",
+        'it("proves nothing and something [untraced, TF-033 AC2]", () => {});',
+        "it(title, () => {});",
+        'it.each([1, 2])("row %s", () => {});',
+      ]);
+
+      expect(messages.map((message) => [message.line, message.messageId])).toEqual([
+        [1, "missing"],
+        [2, "malformed"],
+        [3, "malformed"],
+        [3, "malformed"],
+        [4, "missing"],
+        [5, "untracedAlone"],
+        [6, "notLiteral"],
+        [7, "missing"],
+      ]);
+      expect(messages.every((message) => message.ruleId === testRule)).toBe(true);
+    });
+
+    it("allows criteria, requirements, decisions and untraced, in strings and at the end of templates [ADR-0044]", () => {
+      const messages = verify([
+        'it("a child-unit administrator sees only its users [TF-033 AC2]", () => {});',
+        'test.fixme("proves two [TF-033 AC1, TF-033 AC3, ADR-0030]", async () => {});',
+        "test(`in the ${scheme} scheme [TF-172 AC1]`, async () => {});",
+        'it.each([1, 2])("row %s [REQ-012 AC1]", () => {});',
+        'it("draws a pattern [untraced]", () => {});',
+        'it("a whole requirement [TF-101]", () => {});',
+      ]);
+
+      expect(messages).toEqual([]);
+    });
+
+    it("leaves describe, step, hooks and Playwright's conditional skip alone [ADR-0044]", () => {
+      const messages = verify([
+        'describe("a group", () => {});',
+        'test.describe("a group", () => {});',
+        'test.skip(process.env.CI === undefined, "needs the stack");',
+        "test.beforeEach(async () => {});",
+        'test.step("a step", async () => {});',
+        'expect("text").toBe("text");',
+      ]);
+
+      expect(messages).toEqual([]);
+    });
+
+    it("is on for the shell's tests and browser specs and nowhere else [ADR-0044]", async () => {
+      const eslint = new ESLint();
+      const ruleFor = async (path: string): Promise<unknown> => {
+        const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
+        return config.rules?.[testRule];
+      };
+      expect(await ruleFor("src/auth/LoginPage.test.tsx")).toEqual([2]);
+      expect(await ruleFor("e2e/login.spec.ts")).toEqual([2]);
+      expect(await ruleFor("e2e/a11y/users.spec.ts")).toEqual([2]);
+      expect(await ruleFor(pagePath)).toBeUndefined();
+    }, 60_000);
+  });
+
   /** The colour rule (ADR-0024 item 8): a page names a meaning, never a hue or a value. */
   describe("the colour rule", () => {
-    it("refuses hex, rgb(), hsl(), palette and CSS colour names in the style and colour props of a page", async () => {
+    it("refuses hex, rgb(), hsl(), palette and CSS colour names in the style and colour props of a page [ADR-0025]", async () => {
       const eslint = new ESLint();
       const source = [
         'import { Alert, Text } from "@mantine/core";',
@@ -210,7 +283,7 @@ describe("the lint rules", () => {
       expect(messages.every((message) => message.message.includes("Colour by value"))).toBe(true);
     }, 60_000);
 
-    it("allows theme colour names, dimmed, tokens and variables", async () => {
+    it("allows theme colour names, dimmed, tokens and variables [ADR-0025]", async () => {
       const eslint = new ESLint();
       const source = [
         'import { Alert, Text } from "@mantine/core";',
@@ -228,7 +301,7 @@ describe("the lint rules", () => {
       expect(findings(result, colourRule)).toEqual([]);
     }, 60_000);
 
-    it("leaves the design folder and the grid theme out", async () => {
+    it("leaves the design folder and the grid theme out [ADR-0025]", async () => {
       const eslint = new ESLint();
       const ruleFor = async (path: string): Promise<unknown> => {
         const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
@@ -242,19 +315,19 @@ describe("the lint rules", () => {
 
   /** The stylesheets get the same rule through this test, since the build has no CSS linter (ADR-0025). */
   describe("the CSS guard", () => {
-    it("refuses a hex, an rgb() and a colour name in a declaration value", async () => {
+    it("refuses a hex, an rgb() and a colour name in a declaration value [ADR-0025]", async () => {
       const eslint = new ESLint();
       const css = ".a { color: #333; border: 1px solid rgb(1, 2, 3); }\n.b:hover { background: Red }";
       expect(await rawColoursInStylesheet(eslint, css)).toEqual(["#333", "1px solid rgb(1, 2, 3)", "Red"]);
     }, 60_000);
 
-    it("allows variables, non-colour keywords and a selector that is a colour name", async () => {
+    it("allows variables, non-colour keywords and a selector that is a colour name [ADR-0025]", async () => {
       const eslint = new ESLint();
       const css = ".red { display: flex; color: var(--mantine-color-red-6); transition: none; }";
       expect(await rawColoursInStylesheet(eslint, css)).toEqual([]);
     }, 60_000);
 
-    it("finds no colour by value in the stylesheets under src outside src/design", async () => {
+    it("finds no colour by value in the stylesheets under src outside src/design [ADR-0025]", async () => {
       const eslint = new ESLint();
       const files = Object.entries(stylesheets).sort(([first], [second]) => first.localeCompare(second));
       for (const [file, css] of files) {

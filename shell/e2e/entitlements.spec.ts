@@ -62,7 +62,7 @@ test.describe("a plan changed in the control plane reaches the shell and the API
     await applyPlan("enterprise");
   });
 
-  test("Enterprise to Standard removes role export and import, and back to Enterprise restores them", async ({
+  test("Enterprise to Standard removes role export and import, and back to Enterprise restores them [TF-043 AC1, TF-046 AC1, TF-046 AC2, ADR-0034]", async ({
     page,
   }) => {
     await applyPlan("enterprise");
@@ -99,7 +99,7 @@ test.describe("a plan changed in the control plane reaches the shell and the API
 
 test.describe("the console's Subscription page on a unit", () => {
   for (const scheme of ["light", "dark"] as const) {
-    test(`shows the tenant's plan and role transfer included, in the ${scheme} scheme`, async ({ page }) => {
+    test(`shows the tenant's plan and role transfer included, in the ${scheme} scheme [ADR-0034]`, async ({ page }) => {
       await signIn(page);
       await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
       await page.goto("/console/subscription");

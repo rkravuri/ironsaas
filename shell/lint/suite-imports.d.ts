@@ -1,4 +1,4 @@
-import type { ESLint } from "eslint";
+import type { Rule } from "eslint";
 
-/** The shell's own lint rules (ADR-0043): "iron/suite-imports" refuses an import from one suite's folder into another's. */
-export declare const ironPlugin: ESLint.Plugin;
+/** The suite rule (ADR-0043): a module of one suite never imports from another suite's folder. */
+export declare const suiteImports: Rule.RuleModule;

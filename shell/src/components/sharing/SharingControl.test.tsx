@@ -44,7 +44,7 @@ afterEach(() => {
 });
 
 describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
-  it("says who sees the record in words for each mode", async () => {
+  it("says who sees the record in words for each mode [ADR-0038]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       [`GET ${path}`]: () => json(sharing("shared", { units: ["finance", "sales"], mayChange: false })),
@@ -59,7 +59,7 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
     expect(screen.queryByRole("button", { name: "Change who sees this" })).toBeNull();
   });
 
-  it("says a private record is its unit's, and a tenant one the whole organisation's", async () => {
+  it("says a private record is its unit's, and a tenant one the whole organisation's [ADR-0038]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       [`GET ${path}`]: () => json(sharing("private")),
@@ -80,7 +80,7 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
     ).toBeInTheDocument();
   });
 
-  it("shares with units chosen on the tree, a unit never choosing those below it, and asks for one at least", async () => {
+  it("shares with units chosen on the tree, a unit never choosing those below it, and asks for one at least [ADR-0038]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me()),
       [`GET ${path}`]: () => json(sharing("private")),
@@ -112,7 +112,7 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
     ).toBeInTheDocument();
   });
 
-  it("puts the units in lists nested as the tree is, and keeps the record's own unit in its place in words", async () => {
+  it("puts the units in lists nested as the tree is, and keeps the record's own unit in its place in words [ADR-0038]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me()), [`GET ${path}`]: () => json(sharing("private")) });
     renderWithProviders(<SharingControl recordType="sales_order" recordId="o1" />);
 
@@ -135,7 +135,7 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
     expect(level(own)).toBe(3);
   });
 
-  it("opens to the whole organisation with no units listed", async () => {
+  it("opens to the whole organisation with no units listed [ADR-0038]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me()),
       [`GET ${path}`]: () => json(sharing("shared", { units: ["finance"] })),

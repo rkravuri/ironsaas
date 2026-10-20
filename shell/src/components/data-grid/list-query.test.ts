@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildListQuery, filtersFromGrid, pageFromRows, sortFromGrid } from "./list-query";
 
 describe("the ListQuery mapping", () => {
-  it("builds page, sort and filters in the API's grammar", () => {
+  it("builds page, sort and filters in the API's grammar [ADR-0021]", () => {
     const query = buildListQuery({
       pageNumber: 2,
       pageSize: 50,
@@ -22,14 +22,14 @@ describe("the ListQuery mapping", () => {
     expect(new URLSearchParams(query).getAll("filter")).toEqual(["status:eq:active", "login_id:contains:ravi"]);
   });
 
-  it("caps the page size at the API's maximum", () => {
+  it("caps the page size at the API's maximum [ADR-0021]", () => {
     expect(buildListQuery({ pageNumber: 1, pageSize: 500, sort: [], filters: [] })).toBe("page_number=1&page_size=200");
     expect(pageFromRows(400, 600)).toEqual({ pageNumber: 3, pageSize: 200 });
     expect(pageFromRows(0, 50)).toEqual({ pageNumber: 1, pageSize: 50 });
     expect(pageFromRows(100, 150)).toEqual({ pageNumber: 3, pageSize: 50 });
   });
 
-  it("maps the grid's sort model in order and drops unsorted columns", () => {
+  it("maps the grid's sort model in order and drops unsorted columns [ADR-0021]", () => {
     expect(
       sortFromGrid([
         { colId: "a", sort: "desc" },
@@ -42,7 +42,7 @@ describe("the ListQuery mapping", () => {
     ]);
   });
 
-  it("maps text, number and date filter models and drops what the grammar cannot say", () => {
+  it("maps text, number and date filter models and drops what the grammar cannot say [ADR-0021]", () => {
     const filters = filtersFromGrid({
       login_id: { filterType: "text", type: "contains", filter: "ravi" },
       display_name: { filterType: "text", type: "startsWith", filter: "R" },

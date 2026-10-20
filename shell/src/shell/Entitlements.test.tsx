@@ -92,7 +92,7 @@ afterEach(() => {
 });
 
 describe("entitlements in the shell (TF-043, ADR-0034)", () => {
-  it("reads /me/context with the session and again within 30 seconds, and the navigation follows without a new sign-in", async () => {
+  it("reads /me/context with the session and again within 30 seconds, and the navigation follows without a new sign-in [TF-170 AC1, ADR-0034]", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let answer = context("enabled", "enabled");
     const { calls } = stubFetch({
@@ -119,7 +119,7 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
     expect(calls.filter((call) => call.key === "GET /api/v1/me/context").length).toBeGreaterThan(reads);
   });
 
-  it("answers a link to a module that is not entitled with the subscription's words, not the permission's", async () => {
+  it("answers a link to a module that is not entitled with the subscription's words, not the permission's [ADR-0020, ADR-0034]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(permissions)),
       "GET /api/v1/me/context": () => json(context("disabled", "disabled")),
@@ -131,7 +131,7 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
     expect(screen.queryByText("the sourcing page")).not.toBeInTheDocument();
   });
 
-  it("hides what is licensed while /me/context does not answer, and shows it once it does", async () => {
+  it("hides what is licensed while /me/context does not answer, and shows it once it does [ADR-0034]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me(permissions)) });
     renderShell();
 
@@ -139,7 +139,7 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
     await waitFor(() => expect(screen.getByTestId("transfer")).toHaveTextContent("unavailable read only"));
   });
 
-  it("reads /me/context only while its tab is visible: a hidden tab asks nothing, however long it stays hidden", async () => {
+  it("reads /me/context only while its tab is visible: a hidden tab asks nothing, however long it stays hidden [ADR-0034]", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(permissions)),
@@ -160,7 +160,7 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
     await waitFor(() => expect(reads()).toBe(3));
   });
 
-  it("reads /me/context at once when the tab becomes visible again, even within 30 seconds of the last read", async () => {
+  it("reads /me/context at once when the tab becomes visible again, even within 30 seconds of the last read [ADR-0034]", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let answer = context("enabled", "enabled");
     const { calls } = stubFetch({

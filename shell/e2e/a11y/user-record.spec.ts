@@ -16,7 +16,7 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the user record page in the ${scheme} scheme: the Access tab and the grant dialog by keyboard, and no WCAG 2.1 AA violation`, async ({
+  test(`the user record page in the ${scheme} scheme: the Access tab and the grant dialog by keyboard, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0027]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

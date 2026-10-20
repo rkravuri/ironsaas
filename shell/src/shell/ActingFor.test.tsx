@@ -50,7 +50,7 @@ afterEach(() => {
 });
 
 describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
-  it("is not there for a person who holds no active delegation", async () => {
+  it("is not there for a person who holds no active delegation [ADR-0037]", async () => {
     renderShell({ "GET /api/v1/me": () => json(meWith({})) });
 
     expect(await screen.findByText("Admin")).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
     expect(screen.queryByText(/you are acting for/i)).not.toBeInTheDocument();
   });
 
-  it("appears with a delegation, acts for the delegator, shows the band, and stops", async () => {
+  it("appears with a delegation, acts for the delegator, shows the band, and stops [ADR-0037]", async () => {
     const { calls } = renderShell({
       "GET /api/v1/me": () => json(meWith({ holds: true })),
       "POST /api/v1/me/acting-for": () => json(meWith({ holds: true, acting: true })),
@@ -83,7 +83,7 @@ describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
     expect(screen.getByRole("button", { name: "Act for someone who delegated duties to you" })).toBeInTheDocument();
   });
 
-  it("says so when the delegation ended while acting, and the person acts as themselves again", async () => {
+  it("says so when the delegation ended while acting, and the person acts as themselves again [ADR-0037]", async () => {
     let mine = 0;
     let context = 0;
     // The answer that says the delegation ended waits until the test has seen the band, so the order is the test's.
