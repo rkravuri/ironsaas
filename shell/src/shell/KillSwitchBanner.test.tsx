@@ -5,8 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import type { KillSwitch } from "@/api/flags";
 import { SessionProvider } from "@/auth/session";
-import { json, me, stubFetch } from "@/test/render";
+import { json, me, renderWithProviders, stubFetch } from "@/test/render";
 import { cssVariablesResolver, theme } from "@/theme";
+import { KillSwitchBanner } from "./KillSwitchBanner";
 import { Layout } from "./Layout";
 
 const administrator = ["authz.roles.manage", "authz.roles.read"];
@@ -61,11 +62,10 @@ describe("the kill-switch banner (TF-055, ADR-0035)", () => {
   });
 
   it("shows nothing when the answer has no kill switches, as it is for a person who is not an administrator", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])), "GET /api/v1/me/context": () => json(context([])) });
-    renderShell();
+    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])), "GET /api/v1/me/context": () => json(context([])) });
+    renderWithProviders(<KillSwitchBanner />);
 
-    expect(await screen.findByRole("heading", { name: "The page's work" })).toBeInTheDocument();
-    await screen.findByRole("navigation", { name: "Main navigation" });
+    await waitFor(() => expect(calls.some((call) => call.key === "GET /api/v1/me/context")).toBe(true));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -73,7 +73,7 @@ describe("the kill-switch banner (TF-055, ADR-0035)", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let answer = context([{ ...killed, reason: null }]);
     stubFetch({ "GET /api/v1/me": () => json(me(administrator)), "GET /api/v1/me/context": () => json(answer) });
-    renderShell();
+    renderWithProviders(<KillSwitchBanner />);
 
     expect(await screen.findByRole("status")).toHaveTextContent("The operator gave no reason.");
 

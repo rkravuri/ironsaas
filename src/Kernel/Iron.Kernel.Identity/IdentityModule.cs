@@ -28,6 +28,8 @@ public sealed class IdentityModule : IModule
 
     public IReadOnlyList<SettingDefinition> Settings => IdentitySettings.All;
 
+    public IReadOnlyList<Duty> Duties => IdentityDuties.All;
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);

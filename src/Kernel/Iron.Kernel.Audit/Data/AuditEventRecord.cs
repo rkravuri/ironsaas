@@ -26,7 +26,8 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
         Guid? recordId,
         string? reason,
         string? details,
-        string? correlationId)
+        string? correlationId,
+        Guid? onBehalfOfId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType);
         ArgumentException.ThrowIfNullOrWhiteSpace(outcome);
@@ -41,6 +42,7 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
         Reason = Trim(reason, ReasonMaxLength);
         Details = details;
         CorrelationId = correlationId;
+        OnBehalfOfId = onBehalfOfId;
     }
 
     public string EventType { get; private set; }
@@ -50,8 +52,14 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
     /// <summary>The principal the event is about. Equal to created_by in a request; the system principal writes on behalf of others in jobs.</summary>
     public Guid ActorId { get; private set; }
 
-    /// <summary>Who was impersonating the actor, when anyone was (S2).</summary>
+    /// <summary>Who was impersonating the actor, when anyone was. Reserved for support impersonation; acting for someone is <see cref="OnBehalfOfId"/>.</summary>
     public Guid? ImpersonatorId { get; private set; }
+
+    /// <summary>
+    /// The person the actor acted for with a delegation (TF-037 AC3, ADR-0037): the actor did it, with that person's
+    /// rights for the delegated duties. Null when the actor acted as themselves.
+    /// </summary>
+    public Guid? OnBehalfOfId { get; private set; }
 
     public string Source { get; private set; }
 

@@ -157,3 +157,151 @@ export const grantRole = (body: { principal_id: string; role_id: string; scope_k
   request(assignments, { method: "POST", body, schema: AssignmentSchema });
 
 export const removeAssignment = (id: string) => request(`${assignments}/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** A duty a person may hand to someone for a while (TF-037, ADR-0037): its code, its words, and what it covers. */
+export const DutySchema = z.object({ code: z.string(), module: z.string(), name: z.string(), description: z.string(), permissions: z.array(z.string()) });
+export type Duty = z.infer<typeof DutySchema>;
+export const DutiesSchema = z.object({ data: z.array(DutySchema) });
+
+export const fetchDuties = (signal?: AbortSignal) => request("/api/v1/duties", { schema: DutiesSchema, ...(signal ? { signal } : {}) });
+
+export const DelegationStatusSchema = z.enum(["scheduled", "active", "ended", "expired"]);
+export type DelegationStatus = z.infer<typeof DelegationStatusSchema>;
+
+const PersonSchema = z.object({ id: z.string(), name: z.string() });
+
+/** A delegation as its people and administrators see it: who, to whom, which duties, when, why, and where it stands. */
+export const DelegationSchema = z.object({
+  id: z.string(),
+  delegator: PersonSchema,
+  delegate: PersonSchema,
+  duties: z.array(z.object({ code: z.string(), name: z.string() })),
+  starts_at: z.string(),
+  ends_at: z.string(),
+  reason: z.string(),
+  status: DelegationStatusSchema,
+  ended_at: z.string().nullable(),
+  end_reason: z.string().nullable(),
+  created_by: z.string(),
+  created_at: z.string(),
+});
+export type Delegation = z.infer<typeof DelegationSchema>;
+export const MyDelegationsSchema = z.object({ data: z.array(DelegationSchema) });
+export const DelegationListSchema = listSchema(DelegationSchema);
+
+const delegations = "/api/v1/delegations";
+
+/** The delegations you give and hold: a handful, not a paged list. */
+export const fetchMyDelegations = (signal?: AbortSignal) => request(`${delegations}/mine`, { schema: MyDelegationsSchema, ...(signal ? { signal } : {}) });
+
+/** Others' delegations, for administrators: those whose delegator's home unit you hold authz.delegations.manage at. */
+export const fetchManagedDelegations = (query: string, signal?: AbortSignal) =>
+  request(`${delegations}${query ? `?${query}` : ""}`, { schema: DelegationListSchema, ...(signal ? { signal } : {}) });
+
+export interface NewDelegation {
+  /** Left out for your own; someone else's needs authz.delegations.manage at their home unit. */
+  delegator_id?: string;
+  delegate_id: string;
+  duties: string[];
+  starts_at: string;
+  ends_at: string;
+  reason: string;
+}
+
+export const createDelegation = (body: NewDelegation) => request(delegations, { method: "POST", body, schema: DelegationSchema });
+
+export const endDelegation = (id: string, reason?: string) =>
+  request(`${delegations}/${encodeURIComponent(id)}/end`, { method: "POST", body: { reason: reason ?? null }, schema: DelegationSchema });
+
+/** Access reviews (TF-038). */
+export const ReviewStatusSchema = z.enum(["open", "closed"]);
+export const ReviewDecisionSchema = z.enum(["confirm", "revoke"]);
+export type ReviewDecision = z.infer<typeof ReviewDecisionSchema>;
+
+export const ReviewProgressSchema = z.object({ total: z.number(), decided: z.number(), confirmed: z.number(), revoked: z.number(), open: z.number(), overdue: z.number() });
+export type ReviewProgress = z.infer<typeof ReviewProgressSchema>;
+
+export const ReviewSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  due_on: z.string(),
+  status: ReviewStatusSchema,
+  overdue: z.boolean(),
+  started_at: z.string(),
+  progress: ReviewProgressSchema,
+});
+export type ReviewSummary = z.infer<typeof ReviewSummarySchema>;
+export const ReviewListSchema = listSchema(ReviewSummarySchema);
+
+const EscalationSchema = z.object({ at: z.string(), days_overdue: z.number(), open_items: z.number(), reviewers: z.array(PersonSchema), targets: z.array(PersonSchema) });
+
+/** One campaign with the progress of what the reader may see, per unit, and the escalations of late units. */
+export const ReviewSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  due_on: z.string(),
+  status: ReviewStatusSchema,
+  overdue: z.boolean(),
+  owner: PersonSchema,
+  units: z.array(z.object({ unit_id: z.string(), name: z.string(), includes_children: z.boolean() })),
+  started_at: z.string(),
+  closed_at: z.string().nullable(),
+  progress: ReviewProgressSchema,
+  by_unit: z.array(z.object({ unit_id: z.string(), unit_name: z.string(), unit_path: z.array(z.string()), progress: ReviewProgressSchema, escalation: EscalationSchema.nullable() })),
+  can_manage: z.boolean(),
+});
+export type Review = z.infer<typeof ReviewSchema>;
+
+/** One assignment to decide, as it stood when the campaign started, with its decision once there is one. */
+export const ReviewItemSchema = z.object({
+  id: z.string(),
+  review_id: z.string(),
+  assignment_id: z.string(),
+  principal_id: z.string(),
+  principal_name: z.string(),
+  role_id: z.string(),
+  role_code: z.string(),
+  role_name: z.string(),
+  scope_kind: ScopeKindSchema,
+  unit_id: z.string(),
+  unit_name: z.string(),
+  unit_path: z.array(z.object({ id: z.string(), name: z.string() })),
+  decision: z
+    .object({ decision: ReviewDecisionSchema, comment: z.string().nullable(), decided_by: PersonSchema, decided_at: z.string(), assignment_removed: z.boolean() })
+    .nullable(),
+  /** About the reader's own access: another reviewer decides it (ADR-0037). */
+  yours: z.boolean(),
+  /** Nobody but its own person may review its unit: the campaign's owner decides it. */
+  with_owner: z.boolean(),
+});
+export type ReviewItem = z.infer<typeof ReviewItemSchema>;
+export const ReviewItemListSchema = listSchema(ReviewItemSchema);
+
+export type ItemState = "open" | "decided" | "all";
+
+const reviews = "/api/v1/access-reviews";
+
+export const fetchReviews = (query: string, signal?: AbortSignal) => request(`${reviews}${query ? `?${query}` : ""}`, { schema: ReviewListSchema, ...(signal ? { signal } : {}) });
+
+export const fetchReview = (id: string, signal?: AbortSignal) => request(`${reviews}/${encodeURIComponent(id)}`, { schema: ReviewSchema, ...(signal ? { signal } : {}) });
+
+export const fetchReviewItems = (id: string, state: ItemState, query: string, signal?: AbortSignal) =>
+  request(`${reviews}/${encodeURIComponent(id)}/items?state=${state}${query ? `&${query}` : ""}`, { schema: ReviewItemListSchema, ...(signal ? { signal } : {}) });
+
+export interface NewReview {
+  name: string;
+  due_on: string;
+  units: { unit_id: string; include_children: boolean }[];
+}
+
+export const startReview = (body: NewReview) => request(reviews, { method: "POST", body, schema: ReviewSchema });
+
+export const closeReview = (id: string) => request(`${reviews}/${encodeURIComponent(id)}/close`, { method: "POST", schema: ReviewSchema });
+
+export const decideItem = (review: string, item: string, decision: ReviewDecision, comment?: string) =>
+  request(`${reviews}/${encodeURIComponent(review)}/items/${encodeURIComponent(item)}/decision`, { method: "POST", body: { decision, comment: comment ?? null }, schema: ReviewItemSchema });
+
+export const ConfirmManySchema = z.object({ confirmed: z.number(), already_decided: z.number() });
+
+export const confirmItems = (review: string, itemIds: string[], comment?: string) =>
+  request(`${reviews}/${encodeURIComponent(review)}/confirm`, { method: "POST", body: { item_ids: itemIds, comment: comment ?? null }, schema: ConfirmManySchema });

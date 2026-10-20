@@ -149,6 +149,9 @@ public sealed class TestPrincipals : IPrincipals
 
     public Task<IReadOnlyDictionary<Guid, PrincipalSummary>> FindAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyDictionary<Guid, PrincipalSummary>>(ids.Where(_known.ContainsKey).ToDictionary(id => id, id => _known[id]));
+
+    public Task<IReadOnlyList<Guid>> HomedAtAsync(IReadOnlyCollection<Guid> unitIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Guid>>([.. _known.Values.Where(p => p.HomeUnitId is { } unit && unitIds.Contains(unit)).Select(p => p.Id)]);
 }
 
 /// <summary>A test principal taken from a request header; Identity provides the real one.</summary>

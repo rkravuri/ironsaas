@@ -214,6 +214,40 @@ A setting is something the tenant decides: a limit, a validity, a template, a pr
 
 The console's page and the API check the permission at the place changed (`settings.values.manage` tenant-wide or at the unit); a module adds nothing for that. Tests: `tests/Kernel/Iron.Kernel.Settings.Tests` declares a probe module with a setting for every scope and a secret reference; a module's own tests read its settings through a host that lists the Settings module, as Identity's do.
 
+## Delegating and reviewing access (A7, ADR-0037)
+
+A **duty** is a set of permissions a person may hand to someone else for a while: approval while on leave, receiving during a trip. A module declares its duties next to its permissions, and lists them in its `IModule`:
+
+```csharp
+public static class ReceivingDuties
+{
+    public static readonly Duty Receiving = new(
+        "receiving.goods_in",
+        "receiving goods",
+        "Booking deliveries in and recording what arrived.",
+        [ReceivingPermissions.DeliveriesRead, ReceivingPermissions.DeliveriesBook]);
+
+    public static IReadOnlyList<Duty> All => [Receiving];
+}
+
+// in ReceivingModule
+public IReadOnlyList<Duty> Duties => ReceivingDuties.All;
+```
+
+The code is dotted lowercase words starting with the module's name; the name is the words the delegation dialog shows; the permissions are the module's own or those its pages need. `all` is the kernel's: every permission the person holds. Run `make catalogue`, which lists the duties with their permissions, and commit the catalogue.
+
+What a module gets for nothing:
+
+- **Acting for someone.** While a delegate acts for a delegator, `ICurrentPrincipal.Id` stays the delegate and `ICurrentPrincipal.ActingForId` is the delegator. Every permission check, every list's row filter (`IRecordAccess`, record policies) and the no-escalation rule use the delegator's rights for the delegated duties, at the delegator's scopes. Do not read `ActingForId` to decide access; it is already decided. Read it only to say in words who acts for whom.
+- **Both names in the audit.** The audit writer fills `on_behalf_of_id` from the request; an event a module writes names both people without a line of its own.
+- **A token never acts.** A service account's or an API client's request is always its own.
+
+A module that must not be done while acting (an action only the person themselves may take) checks `current.ActingForId is not null` and refuses with its own error code; say why in its ADR.
+
+**Access reviews** need nothing from a module: they review role assignments, wherever the roles come from. A reviewer holds `authz.reviews.decide` at a unit; a revoke goes through the assignments' removal path. A business module that knows the reviewers' managers replaces `IReviewEscalation` (Authorization's Contracts) so the daily pass names them; the kernel's default names the campaign's owner.
+
+Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/DelegationTests.cs` declares a probe module with three duties and shows each refusal and acting with exactly the delegator's rights; `ReviewTests.cs` covers the snapshot, the reviewers' units, the revoke and the guard, and the escalation on a fake clock; `tests/Kernel/Iron.Kernel.Identity.Tests/ActingForTests.cs` follows acting through the session, `/me` and the audit list.
+
 ## Write an ADR
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).
@@ -339,7 +373,7 @@ The app role cannot change or delete audit rows; PostgreSQL refuses it. `make mi
 
 ## Who is acting (T10)
 
-`ICurrentPrincipal` is the signed-in principal of the request (from the `iron.session` cookie), nobody when there is no valid session, and the system principal in jobs and commands. Endpoints declare one of three things: `.RequirePermission(x)`, `.RequireSignedIn()` (any signed-in principal: me, logout) or `.AllowAnonymous()` (health, login, invitation acceptance). The filter answers 401 `auth.not_authenticated` for nobody, 401 `auth.session_expired` for a cookie whose session ran out, and 403 `authz.permission_denied` for the wrong somebody.
+`ICurrentPrincipal` is the signed-in principal of the request (from the `iron.session` cookie), nobody when there is no valid session, and the system principal in jobs and commands. `ActingForId` is the person a shell session acts for by delegation (ADR-0037), and null otherwise. Endpoints declare one of three things: `.RequirePermission(x)`, `.RequireSignedIn()` (any signed-in principal: me, logout) or `.AllowAnonymous()` (health, login, invitation acceptance). The filter answers 401 `auth.not_authenticated` for nobody, 401 `auth.session_expired` for a cookie whose session ran out, and 403 `authz.permission_denied` for the wrong somebody.
 
 On the laptop: `make migrate`, then `make seed` creates the system roles and the first administrator `admin@dev.localhost` in Invited status; the invitation token is in the seed output. Accept it with `POST /auth/invitations/<token>/accept` and a password of at least 12 characters, then `POST /auth/login`; the response sets the cookie and `GET /api/v1/me` shows the permissions and the session expiry.
 
@@ -384,6 +418,14 @@ The fleet worker needs nothing else: it runs the steps of the job's kind in orde
 6. `make shell-check`: a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper and a colour by value fail lint. A new component gets its tile in the gallery, and `make shell-a11y` scans it.
 
 A page reads the signed-in principal with `useSession()`; it never checks a permission itself beyond what the manifest declares, since the API's answer is the one that counts. Errors from `request()` are `ApiError` with the correlation id; the error views show it.
+
+A page's tests stay fast on a loaded machine (A7; `make shell-check` passes beside the running stack):
+
+- Put text into a field with `fill(user, field, text)` from `@/test/render`, one paste, not `user.type`, which renders the page again for every key. Keep `user.type` for a test about keys.
+- Render what the test is about with `renderWithProviders`, not the whole `Layout`, unless the test is about where something sits in the frame.
+- A timer the page sets (a session clock, a 30-second refresh) is advanced with `vi.useFakeTimers({ shouldAdvanceTime: true })` and `vi.advanceTimersByTimeAsync`, never waited for in real time, and `vi.useRealTimers()` in `afterEach`.
+- When the order of two answers matters, hold one in the stub until the test has seen the first, rather than racing them.
+- An explicit timeout only where a test renders something heavy: the grid, the gallery, the lint test. Vitest's workers are bounded in `vite.config.ts` (half the cores, at most 8).
 
 ## Styling a page (D1, ADR-0024, ADR-0025)
 

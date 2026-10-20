@@ -121,6 +121,13 @@ for (const scheme of schemes) {
     await page.screenshot({ path: `test-results/profile-access-${scheme}.png` });
     await expectNoViolation(page);
 
+    // Delegations (A7): the person's own, both ways, in words with their status.
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("list", { name: "Your delegations" })).toContainText("You hand user administration to Linus Pauling");
+    await expect(page.getByRole("tabpanel", { name: "Delegations" })).toContainText("Over");
+    await page.screenshot({ path: `test-results/profile-delegations-${scheme}.png` });
+    await expectNoViolation(page);
+
     // Preferences (A6): the colour scheme and the density, which follow the person.
     await page.keyboard.press("ArrowRight");
     const preferences = page.getByRole("tabpanel", { name: "Preferences" });

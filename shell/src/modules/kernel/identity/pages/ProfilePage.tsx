@@ -15,6 +15,7 @@ import { RecordPage } from "@/components/templates";
 import { densities, setDensity, useDensity, type Density } from "@/design/density";
 import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 import { unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
+import { PersonalDelegations } from "@/modules/kernel/console/pages/PersonalDelegations";
 import { userStatus } from "./user-status";
 
 const when = (value: string | number) => new Date(value).toLocaleString();
@@ -46,6 +47,7 @@ export function ProfilePage() {
       tabs={[
         { value: "details", label: t("profile.tabs.details"), panel: <Details me={me} /> },
         { value: "access", label: t("profile.tabs.access"), panel: <MyAccess /> },
+        { value: "delegations", label: t("profile.tabs.delegations"), panel: <PersonalDelegations /> },
         { value: "preferences", label: t("profile.tabs.preferences"), panel: <MyPreferences /> },
         { value: "session", label: t("profile.tabs.session"), panel: <MySession me={me} /> },
       ]}

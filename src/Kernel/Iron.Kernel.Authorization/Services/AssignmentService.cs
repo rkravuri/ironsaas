@@ -195,6 +195,28 @@ public sealed class AssignmentService(
             return refusal;
         }
 
+        return await RemoveCheckedAsync(assignment, role, scope, reviewId: null, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The removal an access review's revoke makes (TF-038 AC2): the reviewer's right is <c>authz.reviews.decide</c> at the
+    /// item's unit, which the review checked, so <c>authz.assignments.manage</c> is not asked; everything else is the same
+    /// path, the last-administrator guard included. Joins the caller's transaction, which records the decision with it.
+    /// </summary>
+    internal async Task<Result> RemoveForReviewAsync(Guid id, Guid reviewId, CancellationToken cancellationToken)
+    {
+        var assignment = await context.RoleAssignments.SingleOrDefaultAsync(a => a.Id == id, cancellationToken).ConfigureAwait(false);
+        if (assignment is null)
+        {
+            return Error.NotFound(AuthorizationErrors.AssignmentNotFound, "There is no role assignment with this id.");
+        }
+
+        var role = await context.Roles.AsNoTracking().SingleAsync(r => r.Id == assignment.RoleId, cancellationToken).ConfigureAwait(false);
+        return await RemoveCheckedAsync(assignment, role, assignment.ToScope(), reviewId, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Result> RemoveCheckedAsync(RoleAssignment assignment, Role role, RoleScope scope, Guid? reviewId, CancellationToken cancellationToken)
+    {
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         if (role.Code == SystemRoles.TenantAdministrator && scope.Kind == RoleScopeKind.Tenant)
         {
@@ -208,7 +230,7 @@ public sealed class AssignmentService(
 
         context.RoleAssignments.Remove(assignment);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await WriteAsync(AuthorizationAuditEvents.RoleUnassigned, AuditOutcome.Success, assignment.Id, role, assignment.PrincipalId, scope, cancellationToken).ConfigureAwait(false);
+        await WriteAsync(AuthorizationAuditEvents.RoleUnassigned, AuditOutcome.Success, assignment.Id, role, assignment.PrincipalId, scope, cancellationToken, reviewId).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         grants.Forget(assignment.PrincipalId);
         return Result.Success();
@@ -257,7 +279,7 @@ public sealed class AssignmentService(
         }
     }
 
-    private Task WriteAsync(string action, string outcome, Guid assignmentId, Role role, Guid principalId, RoleScope scope, CancellationToken cancellationToken)
+    private Task WriteAsync(string action, string outcome, Guid assignmentId, Role role, Guid principalId, RoleScope scope, CancellationToken cancellationToken, Guid? reviewId = null)
     {
         var details = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -266,6 +288,10 @@ public sealed class AssignmentService(
             ["scope"] = scope.ToString(),
             ["permissions"] = string.Join(',', role.Permissions),
         };
+        if (reviewId is { } review)
+        {
+            details["access_review_id"] = review.ToString("D");
+        }
         return audit.WriteAsync(new AuditEvent(action, outcome, actor.Id, role.Code, details, RecordType, assignmentId), cancellationToken);
     }
 

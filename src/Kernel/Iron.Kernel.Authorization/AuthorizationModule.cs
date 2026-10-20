@@ -17,7 +17,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Iron.Kernel.Authorization;
 
 /// <summary>
-/// Permissions, roles, scoped assignments and the organisation tree (TF-030 to TF-034). Needs Iron.Kernel.Audit's writer
+/// Permissions, roles, scoped assignments and the organisation tree (TF-030 to TF-034), delegations of duties and acting
+/// for a delegator (TF-037), and access reviews (TF-038). Needs Iron.Kernel.Audit's writer
 /// for denial and change events, so hosts list the Audit module before this one.
 /// </summary>
 public sealed class AuthorizationModule : IModule
@@ -47,6 +48,7 @@ public sealed class AuthorizationModule : IModule
         // The kinds are an extension point (ADR-0029): a business module replaces this default.
         services.TryAddSingleton<IOrganisationKinds, DefaultOrganisationKinds>();
 
+        services.AddScoped<ActingScope>();
         services.AddScoped<AccessGrants>();
         services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
         services.AddScoped<IRoleAssignments, RoleAssignments>();
@@ -57,6 +59,18 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<ISeeder, AuthorizationSeeder>();
         services.AddScoped<RoleService>();
         services.AddScoped<AssignmentService>();
+        services.AddScoped<DelegationService>();
+        services.AddScoped<IDelegations, DelegationQueries>();
+        services.AddScoped<ReviewService>();
+        services.AddScoped<UnitReviewers>();
+        services.AddScoped<ReviewEscalationPass>();
+
+        // Who hears of late reviewers is an extension point (ADR-0037): a business module that knows managers replaces it.
+        services.TryAddScoped<IReviewEscalation, CampaignOwnerEscalation>();
+        services.AddScoped<IValidator<StartReviewRequest>, StartReviewRequestValidator>();
+        services.AddScoped<IValidator<DecideItemRequest>, DecideItemRequestValidator>();
+        services.AddScoped<IValidator<ConfirmItemsRequest>, ConfirmItemsRequestValidator>();
+        services.AddScoped<IValidator<CreateDelegationRequest>, CreateDelegationRequestValidator>();
         services.AddScoped<IValidator<GrantRoleRequest>, GrantRoleRequestValidator>();
         services.AddScoped<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
         services.AddScoped<IValidator<UpdateRoleRequest>, UpdateRoleRequestValidator>();
@@ -72,5 +86,7 @@ public sealed class AuthorizationModule : IModule
         RolesEndpoints.Map(endpoints);
         RoleAssignmentsEndpoints.Map(endpoints);
         OrganisationUnitsEndpoints.Map(endpoints);
+        DelegationsEndpoints.Map(endpoints);
+        AccessReviewsEndpoints.Map(endpoints);
     }
 }

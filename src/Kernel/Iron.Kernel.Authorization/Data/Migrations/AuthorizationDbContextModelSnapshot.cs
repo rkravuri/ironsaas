@@ -24,6 +24,384 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly>("DueOn")
+                        .HasColumnType("date")
+                        .HasColumnName("due_on");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_access_reviews");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_access_reviews_status");
+
+                    b.ToTable("access_reviews", "kernel_authz");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewDecision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AssignmentRemoved")
+                        .HasColumnType("boolean")
+                        .HasColumnName("assignment_removed");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("comment");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("decision");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<Guid>("ReviewId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("review_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_access_review_decisions");
+
+                    b.HasIndex("ItemId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_access_review_decisions_item_id");
+
+                    b.HasIndex("ReviewId")
+                        .HasDatabaseName("ix_access_review_decisions_review_id");
+
+                    b.ToTable("access_review_decisions", "kernel_authz", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewEscalation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("DaysOverdue")
+                        .HasColumnType("integer")
+                        .HasColumnName("days_overdue");
+
+                    b.Property<int>("OpenItems")
+                        .HasColumnType("integer")
+                        .HasColumnName("open_items");
+
+                    b.Property<Guid>("ReviewId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("review_id");
+
+                    b.PrimitiveCollection<List<Guid>>("Reviewers")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("reviewers");
+
+                    b.PrimitiveCollection<List<Guid>>("Targets")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("targets");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_access_review_escalations");
+
+                    b.HasIndex("ReviewId", "UnitId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_access_review_escalations_review_id_unit_id");
+
+                    b.ToTable("access_review_escalations", "kernel_authz", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AssignmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("PrincipalName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("principal_name");
+
+                    b.Property<Guid>("ReviewId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("review_id");
+
+                    b.Property<string>("RoleCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("role_code");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("role_name");
+
+                    b.Property<string>("ScopeKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("scope_kind");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.Property<string>("UnitName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("unit_name");
+
+                    b.PrimitiveCollection<List<Guid>>("UnitPathIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("unit_path_ids");
+
+                    b.PrimitiveCollection<List<string>>("UnitPathNames")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("unit_path_names");
+
+                    b.HasKey("Id")
+                        .HasName("pk_access_review_items");
+
+                    b.HasIndex("ReviewId", "AssignmentId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_access_review_items_review_id_assignment_id");
+
+                    b.HasIndex("ReviewId", "UnitId")
+                        .HasDatabaseName("ix_access_review_items_review_id_unit_id");
+
+                    b.ToTable("access_review_items", "kernel_authz", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IncludesChildren")
+                        .HasColumnType("boolean")
+                        .HasColumnName("includes_children");
+
+                    b.Property<Guid>("ReviewId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("review_id");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_access_review_units");
+
+                    b.HasIndex("ReviewId", "UnitId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_access_review_units_review_id_unit_id");
+
+                    b.ToTable("access_review_units", "kernel_authz", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.Delegation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("DelegateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delegate_id");
+
+                    b.Property<Guid>("DelegatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("delegator_id");
+
+                    b.PrimitiveCollection<List<string>>("Duties")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("duties");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("end_reason");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<Guid?>("EndedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ended_by");
+
+                    b.Property<DateTimeOffset>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_delegations");
+
+                    b.HasIndex("DelegateId", "EndsAt")
+                        .HasDatabaseName("ix_delegations_delegate_id_ends_at");
+
+                    b.HasIndex("DelegatorId", "EndsAt")
+                        .HasDatabaseName("ix_delegations_delegator_id_ends_at");
+
+                    b.ToTable("delegations", "kernel_authz");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.OrganisationUnit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -249,6 +627,46 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("PrincipalId", "RoleId", "ScopeKind", "ScopeId", "ScopeRecordType"), false);
 
                     b.ToTable("role_assignments", "kernel_authz");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewDecision", b =>
+                {
+                    b.HasOne("Iron.Kernel.Authorization.Data.AccessReviewItem", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_access_review_decisions_access_review_items_item_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewEscalation", b =>
+                {
+                    b.HasOne("Iron.Kernel.Authorization.Data.AccessReview", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_access_review_escalations_access_reviews_review_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewItem", b =>
+                {
+                    b.HasOne("Iron.Kernel.Authorization.Data.AccessReview", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_access_review_items_access_reviews_review_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Authorization.Data.AccessReviewUnit", b =>
+                {
+                    b.HasOne("Iron.Kernel.Authorization.Data.AccessReview", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_access_review_units_access_reviews_review_id");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Authorization.Data.OrganisationUnit", b =>

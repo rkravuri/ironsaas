@@ -1,6 +1,6 @@
 # Iron.Host.Worker
 
-The worker host of one tenant unit: background jobs, outbox, retention. No API besides `/health`. Records a `worker.heartbeat` span with the tenant id at start and every interval.
+The worker host of one tenant unit: background jobs, outbox, retention. No API besides `/health`. Records a `worker.heartbeat` span with the tenant id at start and every interval. Runs the daily pass that escalates access reviews 7 days overdue (`AddAccessReviewEscalation`, ADR-0037): a minute after it starts, then every 24 hours; the API hosts do not run it.
 
 A host composes modules; it holds no business logic of its own. Modules are listed explicitly in `Program.cs` (no assembly scanning), so a reader can see what runs in this process.
 

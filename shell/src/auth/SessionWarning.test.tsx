@@ -8,10 +8,11 @@ import { LoginPage } from "./LoginPage";
 import { SessionProvider } from "./session";
 import { SessionWarning } from "./SessionWarning";
 import { RedirectIfSignedIn, RequireSession } from "@/shell/Guards";
-import { json, me, problem, sessionTimes, stubFetch } from "@/test/render";
+import { fill, json, me, problem, sessionTimes, stubFetch } from "@/test/render";
 import { cssVariablesResolver, theme } from "@/theme";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -100,6 +101,7 @@ describe("the session warning", () => {
   });
 
   it("signs out when the idle end passes, says why on the login page, and returns to the same page after signing in", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     let signedIn = true;
     const { calls } = stubFetch({
       "GET /api/v1/me": () => (signedIn ? json({ ...me(["identity.users.read"]), session: sessionTimes({ idleIn: 1_000 }) }) : problem(401, { error_code: "auth.not_authenticated" })),
@@ -113,14 +115,16 @@ describe("the session warning", () => {
       },
     });
     openTab();
+    await screen.findByText("the users page");
+    await vi.advanceTimersByTimeAsync(1_500);
 
-    const reason = await screen.findByRole("status", {}, { timeout: 4_000 });
+    const reason = await screen.findByRole("status");
     expect(reason).toHaveTextContent("You were signed out because nothing happened for a while.");
     expect(calls.some((call) => call.key === "POST /auth/logout")).toBe(true);
 
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText(/login identifier/i), "admin@acme.localhost");
-    await user.type(screen.getByLabelText(/^password/i), "correct horse battery staple");
+    await fill(user, screen.getByLabelText(/login identifier/i), "admin@acme.localhost");
+    await fill(user, screen.getByLabelText(/^password/i), "correct horse battery staple");
     // Signed in again, the next /me must not end at once: the far idle end of a fresh session.
     stubFetch({
       "GET /api/v1/me": () => json(me(["identity.users.read"])),

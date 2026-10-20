@@ -214,8 +214,14 @@ up-ci: env ## Start the slim platform plus the collector and Tempo (what the pip
 	@bash $(COMPOSE_DIR)/scripts/init-store.sh
 	@sh $(COMPOSE_DIR)/scripts/wait-ready.sh tempo
 
-up-control: env ## Run the control plane API and the fleet worker as containers from the images (make images first; secret with container hosts)
+up-control: env ## Run the control plane API and the fleet worker as containers from the images, migrated and seeded first (make images first; secret with container hosts)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob $(COMPOSE_DIR)/scripts/write-control-secret.sh
+	@# As the pipeline does: a new image may bring a migration or a permission, and the API must not start without them.
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps control-api migrate
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps \
+	  -e Seed__ServiceAccounts__0__ClientId=operator -e Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) -e Seed__ServiceAccounts__0__Role=tenant-administrator -e "Seed__ServiceAccounts__0__DisplayName=Local operator" \
+	  -e Seed__ServiceAccounts__1__ClientId=smoke-reader -e Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) -e Seed__ServiceAccounts__1__Role=service-default -e "Seed__ServiceAccounts__1__DisplayName=Smoke reader (denial case)" \
+	  control-api seed
 	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control up --detach --wait --force-recreate control-api fleet
 
 down-control: env ## Stop the containerised control plane (make secret-control again before make run-control)

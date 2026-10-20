@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { LoginPage } from "./LoginPage";
-import { json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
+import { fill, json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -28,8 +28,8 @@ describe("the login page", () => {
     );
 
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText(/login identifier/i), "admin@acme.localhost");
-    await user.type(screen.getByLabelText(/^password/i), "correct horse battery staple");
+    await fill(user, await screen.findByLabelText(/login identifier/i), "admin@acme.localhost");
+    await fill(user, screen.getByLabelText(/^password/i), "correct horse battery staple");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     await screen.findByText("home");
@@ -49,8 +49,8 @@ describe("the login page", () => {
     );
 
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText(/login identifier/i), "admin@acme.localhost");
-    await user.type(screen.getByLabelText(/^password/i), "wrong");
+    await fill(user, await screen.findByLabelText(/login identifier/i), "admin@acme.localhost");
+    await fill(user, screen.getByLabelText(/^password/i), "wrong");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
 
     const alert = await screen.findByRole("alert");

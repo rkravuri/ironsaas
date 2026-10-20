@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { render } from "@testing-library/react";
+import type { UserEvent } from "@testing-library/user-event";
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
@@ -19,6 +20,15 @@ export function renderWithProviders(ui: ReactNode, { route = "/" }: { route?: st
       </QueryClientProvider>
     </MantineProvider>,
   );
+}
+
+/**
+ * Puts text into a field as a paste does: one input event. Typing key by key renders the page again for every character,
+ * which is what made the form tests slow, and then late, on a loaded machine. Keep user.type for a test about keys.
+ */
+export async function fill(user: UserEvent, field: HTMLElement, text: string): Promise<void> {
+  await user.click(field);
+  await user.paste(text);
 }
 
 /** A fetch that answers from a table of handlers, one per method and path. */

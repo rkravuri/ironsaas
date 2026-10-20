@@ -8,4 +8,10 @@ namespace Iron.Kernel;
 public interface ICurrentPrincipal
 {
     Guid Id { get; }
+
+    /// <summary>
+    /// The person whose delegated duties this principal is acting with, when they chose to act for someone (TF-037,
+    /// ADR-0037); null otherwise, and always for a token or a job. The actor stays <see cref="Id"/>: the audit names both.
+    /// </summary>
+    Guid? ActingForId => null;
 }

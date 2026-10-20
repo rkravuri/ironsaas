@@ -107,12 +107,12 @@ public sealed class IdentityFixture : IAsyncLifetime
     }
 
     /// <summary>A new Active user with a known password, ready to log in.</summary>
-    public static async Task<Principal> CreateActiveUserAsync(IServiceProvider scope, string loginId, string password)
+    public static async Task<Principal> CreateActiveUserAsync(IServiceProvider scope, string loginId, string password, string? displayName = null)
     {
         var context = scope.GetRequiredService<IdentityDbContext>();
         var hasher = scope.GetRequiredService<IPasswordHasher>();
         var user = new Principal(loginId, PrincipalType.User, "Test User", loginId);
-        user.AcceptInvitation(hasher.Hash(password), null);
+        user.AcceptInvitation(hasher.Hash(password), displayName);
         context.Principals.Add(user);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return user;

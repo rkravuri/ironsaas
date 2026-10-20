@@ -1,6 +1,9 @@
-import { IconAdjustments, IconKey, IconReceipt, IconSitemap, IconSquarePlus } from "@tabler/icons-react";
-import { gridShortcuts, treeShortcuts } from "@/components/shortcuts";
+import { IconAdjustments, IconClipboardCheck, IconKey, IconReceipt, IconSitemap, IconSquarePlus, IconUserShare } from "@tabler/icons-react";
+import { gridShortcuts, tabShortcuts, treeShortcuts } from "@/components/shortcuts";
 import type { ModuleManifest } from "@/modules/registry";
+import { DelegationsPage } from "./pages/DelegationsPage";
+import { ReviewRecordPage } from "./pages/ReviewRecordPage";
+import { ReviewsPage } from "./pages/ReviewsPage";
 import { RoleEditorPage } from "./pages/RoleEditorPage";
 import { RolesPage } from "./pages/RolesPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -10,7 +13,8 @@ import { UnitsPage } from "./pages/UnitsPage";
 /**
  * The tenant console (kernel layer, ADR-0029): the administration of the kernel's mechanisms. A1 brought the
  * organisation tree, A2 the roles, A4 the subscription (read only: plans are the operator's), A6 the settings of the
- * tenant and its units. Flag rules are the operator's, in the control plane (ADR-0035).
+ * tenant and its units, A7 others' delegations (for their administrators; a person's own are in My profile) and access
+ * reviews (for their reviewers, ADR-0037). Flag rules are the operator's, in the control plane (ADR-0035).
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -22,12 +26,17 @@ export const consoleManifest: ModuleManifest = {
     { path: "/console/roles/:id", permission: "authz.roles.read", element: <RoleEditorPage />, titleKey: "modules.console.roles" },
     { path: "/console/subscription", permission: "entitlements.subscription.read", element: <SubscriptionPage />, titleKey: "modules.console.subscription" },
     { path: "/console/settings", permission: "settings.values.read", element: <SettingsPage />, titleKey: "modules.console.settings" },
+    { path: "/console/delegations", permission: "authz.delegations.manage", element: <DelegationsPage />, titleKey: "modules.console.delegations", shortcuts: gridShortcuts },
+    { path: "/console/access-reviews", permission: "authz.reviews.decide", element: <ReviewsPage />, titleKey: "modules.console.accessReviews", shortcuts: gridShortcuts },
+    { path: "/console/access-reviews/:id", permission: "authz.reviews.decide", element: <ReviewRecordPage />, titleKey: "modules.console.accessReviews", shortcuts: tabShortcuts },
   ],
   navigation: [
     { labelKey: "modules.console.units", path: "/console/units", permission: "authz.units.read", icon: <IconSitemap size={16} /> },
     { labelKey: "modules.console.roles", path: "/console/roles", permission: "authz.roles.read", icon: <IconKey size={16} /> },
     { labelKey: "modules.console.subscription", path: "/console/subscription", permission: "entitlements.subscription.read", icon: <IconReceipt size={16} /> },
     { labelKey: "modules.console.settings", path: "/console/settings", permission: "settings.values.read", icon: <IconAdjustments size={16} /> },
+    { labelKey: "modules.console.delegations", path: "/console/delegations", permission: "authz.delegations.manage", icon: <IconUserShare size={16} /> },
+    { labelKey: "modules.console.accessReviews", path: "/console/access-reviews", permission: "authz.reviews.decide", icon: <IconClipboardCheck size={16} /> },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },
   // The Units page opens its dialog for a new unit under the person's home unit from ?add (D4).

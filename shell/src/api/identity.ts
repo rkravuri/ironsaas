@@ -12,9 +12,28 @@ export const SessionSchema = z.object({
 /** The home unit as /me names it (TF-034); the tree has the rest. */
 export const HomeUnitSchema = z.object({ id: z.string(), name: z.string(), code: z.string() });
 
+const DutyNameSchema = z.object({ code: z.string(), name: z.string() });
+
+/** Whom the session acts for (ADR-0037): their rights for these duties, until then. */
+export const ActingForSchema = z.object({ id: z.string(), name: z.string(), duties: z.array(DutyNameSchema), until: z.string() });
+export type ActingFor = z.infer<typeof ActingForSchema>;
+
+/** An active delegation as /me shows it, either way. */
+export const ActiveDelegationSchema = z.object({
+  delegator_id: z.string(),
+  delegator_name: z.string(),
+  delegate_id: z.string(),
+  delegate_name: z.string(),
+  duties: z.array(DutyNameSchema),
+  until: z.string(),
+});
+export type ActiveDelegation = z.infer<typeof ActiveDelegationSchema>;
+
 /**
  * GET /api/v1/me: who is signed in, what they may do, their home unit, and when the session ends. `permissions` are
- * held for the whole tenant; `permissions_anywhere` at any scope, which the navigation follows (ADR-0031).
+ * held for the whole tenant; `permissions_anywhere` at any scope, which the navigation follows (ADR-0031). While the
+ * session acts for someone, both are that person's for the delegated duties (ADR-0037), and `acting_for` names them;
+ * `delegations` are the active ones the person gives and holds.
  */
 export const MeSchema = z.object({
   id: z.string(),
@@ -25,6 +44,8 @@ export const MeSchema = z.object({
   permissions_anywhere: z.array(z.string()),
   session: SessionSchema,
   home_unit: HomeUnitSchema.nullable().optional(),
+  acting_for: ActingForSchema.nullable().optional(),
+  delegations: z.object({ given: z.array(ActiveDelegationSchema), received: z.array(ActiveDelegationSchema) }).optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 
@@ -60,6 +81,24 @@ export type Access = z.infer<typeof AccessSchema>;
 export type AccessTarget = { unit: string; includeChildren?: boolean } | { recordType: string; recordId: string; unit?: string };
 
 export const fetchMe = (signal?: AbortSignal) => request("/api/v1/me", { schema: MeSchema, ...(signal ? { signal } : {}) });
+
+/** Act for someone whose delegation to you is active; answers /me as it is now. */
+export const actFor = (principalId: string) => request("/api/v1/me/acting-for", { method: "POST", body: { principal_id: principalId }, schema: MeSchema });
+
+/** Act as yourself again; answers /me. */
+export const stopActing = () => request("/api/v1/me/acting-for", { method: "DELETE", schema: MeSchema });
+
+/** A person as the delegate picker offers them (ADR-0037): a display name, a home unit's name, and the id to choose them by. */
+export const DirectoryEntrySchema = z.object({ id: z.string(), display_name: z.string(), home_unit: z.string().nullable() });
+export type DirectoryEntry = z.infer<typeof DirectoryEntrySchema>;
+export const DirectoryPageSchema = listSchema(DirectoryEntrySchema);
+
+/** How many people the picker offers at once; more matches ask for more of the name. */
+export const directoryPageSize = 20;
+
+/** The first page of the active people whose name or login contains the search (two characters at least). */
+export const searchDirectory = (search: string, signal?: AbortSignal) =>
+  request(`/api/v1/directory?search=${encodeURIComponent(search)}&page_size=${directoryPageSize}`, { schema: DirectoryPageSchema, ...(signal ? { signal } : {}) });
 
 export function accessQuery(target: AccessTarget): string {
   const params = new URLSearchParams();

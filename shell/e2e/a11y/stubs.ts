@@ -146,7 +146,7 @@ export async function stubConsole(target: Page): Promise<void> {
 }
 
 /** The tenant administrator's permissions, as /me lists them. */
-const administrator = [
+export const administrator = [
   "authz.assignments.manage",
   "authz.assignments.read",
   "authz.roles.manage",
@@ -275,6 +275,29 @@ export async function stubHome(target: Page, who: Who, session = sessionFromNow(
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
   await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: principal.permissions_anywhere } }));
   await target.route("**/api/v1/role-assignments/mine", (route) => route.fulfill({ json: { data: mine[who] } }));
+  // The person's own delegations (A7): one given and over, so /me holds no active one and the header has no control.
+  await target.route("**/api/v1/delegations/mine", (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            id: "01a17f00-0000-7000-8000-000000000001",
+            delegator: { id: principal.id, name: principal.display_name },
+            delegate: { id: "01a17f00-0000-7000-8000-0000000000a3", name: "Linus Pauling" },
+            duties: [{ code: "identity.user_administration", name: "user administration" }],
+            starts_at: "2026-09-21T07:00:00Z",
+            ends_at: "2026-10-01T00:00:00Z",
+            reason: "Annual leave.",
+            status: "expired",
+            ended_at: null,
+            end_reason: null,
+            created_by: principal.id,
+            created_at: "2026-09-20T09:00:00Z",
+          },
+        ],
+      },
+    }),
+  );
 }
 
 /** The console stubs plus the roles, the catalogue, one user record and its assignments: the A2 pages without a stack. */

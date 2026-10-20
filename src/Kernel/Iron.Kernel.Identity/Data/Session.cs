@@ -56,6 +56,12 @@ public sealed class Session : AuditedEntity
     /// <summary>The idle limit the session started with, in minutes; null for a session from before A6, which keeps the configured one.</summary>
     public int? IdleMinutes { get; private set; }
 
+    /// <summary>
+    /// The person this session acts for with their delegated duties (TF-037, ADR-0037), chosen by its principal; null when
+    /// it acts as itself. Cleared on the first request after the delegation ends.
+    /// </summary>
+    public Guid? ActingForId { get; private set; }
+
     public DateTimeOffset? EndedAt { get; private set; }
 
     public string? EndReason { get; private set; }
@@ -92,6 +98,10 @@ public sealed class Session : AuditedEntity
     }
 
     public void Touch(DateTimeOffset now) => LastActivityAt = now;
+
+    public void ActFor(Guid delegatorId) => ActingForId = delegatorId;
+
+    public void StopActing() => ActingForId = null;
 
     public void End(DateTimeOffset now, string reason)
     {

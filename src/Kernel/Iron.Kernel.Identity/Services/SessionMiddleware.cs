@@ -11,6 +11,9 @@ namespace Iron.Kernel.Identity.Services;
 /// </summary>
 public sealed class SessionMiddleware(RequestDelegate next, IdentityOptions options)
 {
+    /// <summary>On the first answer after a delegation ended while its delegate acted with it: the shell says so (ADR-0037).</summary>
+    public const string ActingEndedHeader = "Iron-Acting-Ended";
+
     public async Task InvokeAsync(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -23,6 +26,10 @@ public sealed class SessionMiddleware(RequestDelegate next, IdentityOptions opti
             if (resolution.IsAlive)
             {
                 RequestPrincipal.Set(context, resolution.Principal!);
+                if (resolution.ActingEndedFor is { } delegator)
+                {
+                    context.Response.Headers[ActingEndedHeader] = delegator.ToString("D");
+                }
             }
             else
             {

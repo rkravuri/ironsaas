@@ -26,6 +26,15 @@ public static class IdentityErrors
     public const string UserNotFound = "identity.user.not_found";
     public const string HomeUnitNotFound = "identity.home_unit.not_found";
     public const string HomeUnitInactive = "identity.home_unit.inactive";
+
+    /// <summary>A bearer token asked to act for someone: only a person signed in to the shell acts for anyone (ADR-0037).</summary>
+    public const string ActingToken = "identity.acting.token";
+
+    /// <summary>No delegation from that person to the asker is active now.</summary>
+    public const string ActingNoDelegation = "identity.acting.no_delegation";
+
+    /// <summary>A directory search shorter than two characters: it would list the tenant's people one page at a time.</summary>
+    public const string DirectorySearchTooShort = "identity.directory.search_too_short";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -39,6 +48,15 @@ public static class IdentityAuditEvents
     public const string InvitationAccepted = "identity.invitation_accepted";
     public const string TokenIssued = "identity.token_issued";
     public const string TokenRefused = "identity.token_refused";
+
+    /// <summary>A person chose to act for a delegator (ADR-0037); the event names both.</summary>
+    public const string ActingStarted = "identity.acting_started";
+
+    /// <summary>A person stopped acting for a delegator.</summary>
+    public const string ActingStopped = "identity.acting_stopped";
+
+    /// <summary>The delegation behind a session's acting ended, and the next request cleared it.</summary>
+    public const string ActingEnded = "identity.acting_ended";
 
     /// <summary>The seed was given a different secret for an existing service account and set it (ADR-0028: a healed unit).</summary>
     public const string ServiceAccountSecretChanged = "identity.service_account_secret_changed";

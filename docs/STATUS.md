@@ -18,7 +18,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A4 Entitlements | done | main | merged 2026-10-20 (94ad0d3); seven commits after the prompt (8879856), 33bcea1 to 465c70e; ADR-0034; the refresh question closed: 30 seconds, accepted; the shell reads /me/context only while its tab is visible; acme, bravo and echo on the Enterprise plan, smoke 11 of 11 and e2e 14 of 14 on echo at review |
 | A5 Feature flags | done | main | merged 2026-10-20 (999abbf); six commits after the prompt (adccccb), 67031f7 to 83bbd1b; ADR-0035; the permission names accepted (`tenancy.flags.*`, `tenancy.kill_switches.manage`); a kill switch is on wherever any applicable rule says so, and a rule that says false is refused; the last-known rows of flags and entitlements are one upsert each; the import kill switch on echo worked both ways within a minute at review, smoke 11 of 11 and e2e 15 of 15 on echo |
 | A6 Settings | done | main | merged 2026-10-20 (04408a4); six commits after the prompt (ce511f5), 891a27a to ce0564a; ADR-0036; the permission names kept (`settings.values.read`, `settings.values.manage`); an invitation is valid for 3 days by default, TF-018's 72 hours; the control plane and acme, bravo and echo carry A6, smoke 11 of 11 and e2e 18 of 18 on echo |
-| A7 Delegation and access reviews | next | | |
+| A7 Delegation and access reviews | built, waiting for review | slice/s2-a7 | ADR-0037; six commits after the prompt (1726056), 80094ad to the status commit; `make up-control` now migrates and seeds the control plane before it starts; the control plane, acme, bravo and echo carry A7, smoke 11 of 11 and e2e 19 of 19 on echo, with the delegation and review path |
 | A8 Cross-organisation access and lifecycle | | | |
 | A9 Explanation and segregation of duties | | | |
 | S2-close | | | |
@@ -30,7 +30,6 @@ None.
 ## Later items
 
 - Before S2 closes: each e2e run creates its own child unit named after the run and checks only inside it, so leftovers never affect a later run. Today every run adds invited accounts to echo's one `E2E branch`, and a check that lists the unit must accept every kind a test ever left there.
-- Before S2 closes: the shell test suite passes reliably on a loaded machine. Find the slow tests, bound the workers, and keep explicit timeouts only where a test renders something heavy; today a test can time out at 5 seconds when `make shell-check` runs right after `make test`.
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
@@ -67,4 +66,9 @@ None.
 - Each unit process reads all of the tenant's settings twice a minute. Fine for the handful of settings today; with many thousands of values, read only what changed since the last read (ADR-0036).
 - A setting's name on the console comes from the shell's catalogue (`settings.names`); a setting a module declares without one shows its key until it is named.
 - Each `make e2e` invites one more person (`validity-...`) into echo's `E2E branch` to prove the unit's invitation validity; those accounts stay Invited, as the home test's do, and the child-unit test accepts both.
+- A record-scoped assignment is not in an access review: a record's people are decided where the record is (ADR-0037). The shell starts a campaign over one unit with or without its children; the API takes several.
+- The escalation of late reviewers is recorded and audited, not sent: the message is S4, and the reviewer's manager comes from a business module's `IReviewEscalation` (ADR-0037).
+- TF-037 AC1 (a workflow assigns the delegate too) is S5. Approval, receiving and evaluation are declared as duties by the slices that build them.
+- The directory (`/api/v1/directory`) shows the names and home units of active people to everyone signed in, for choosing a delegate. Revisit if a tenant needs people hidden from each other.
+- A delegator who loses a role loses it for their delegate at once in the process that changed it, and within the grants cache's 60 seconds in the others (ADR-0012, ADR-0037).
 - Since A6 the density follows the person, so the Users grid's browser test starts from comfortable and removes the administrator's density at the end; a test that changes a preference cleans it up the same way.

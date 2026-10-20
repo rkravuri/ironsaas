@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { renderWithProviders, stubFetch } from "@/test/render";
+import { fill, renderWithProviders, stubFetch } from "@/test/render";
 import { ApprovalPanel, AttachmentPanel, CommentPanel, ConfirmDialog, EmptyState, FormDialog, HistoryPanel, LoadingState } from "./index";
 
 describe("the empty and loading states", () => {
@@ -95,7 +95,7 @@ describe("the history, approval and comment panels", () => {
     expect(screen.getByText("Pending")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
     expect(screen.getByText("Looks right.")).toBeInTheDocument();
-    await user.type(screen.getByLabelText("Your comment"), "Agreed.");
+    await fill(user, screen.getByLabelText("Your comment"), "Agreed.");
     await user.click(screen.getByRole("button", { name: "Add the comment" }));
     expect(onAdd).toHaveBeenCalledWith("Agreed.");
   });

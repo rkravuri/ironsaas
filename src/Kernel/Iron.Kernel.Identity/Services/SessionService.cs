@@ -1,4 +1,5 @@
 using Iron.Kernel.Audit.Contracts;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Settings.Contracts;
@@ -11,7 +12,7 @@ namespace Iron.Kernel.Identity.Services;
 /// Sessions (TF-020, TF-021, TF-029): start, resolve on every request, touch, end. A new session takes the tenant's
 /// limits (<see cref="IdentitySettings"/>, ADR-0036), or the configured ones while the tenant has set none.
 /// </summary>
-public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
+public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, IDelegations delegations, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
 {
     /// <summary>
     /// Creates the session row and returns the token for the cookie. The token is never stored. <paramref name="beforeSave"/>
@@ -47,7 +48,53 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     {
         ArgumentNullException.ThrowIfNull(principal);
         ArgumentNullException.ThrowIfNull(session);
-        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt);
+        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt, session.ActingForId);
+    }
+
+    /// <summary>
+    /// Makes the session act for a delegator (ADR-0037): only while a delegation from them to this principal is active, and
+    /// only a shell session. Audited with both people.
+    /// </summary>
+    public async Task<Result<SignedInPrincipal>> ActForAsync(SignedInPrincipal principal, Guid delegatorId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.Kind == AuthenticationKind.Token)
+        {
+            return Error.Forbidden(IdentityErrors.ActingToken, "A token never acts for anyone. Sign in to the shell to act for someone who delegated duties to you.");
+        }
+
+        if (delegatorId == principal.Id || await delegations.ActiveAsync(delegatorId, principal.Id, cancellationToken).ConfigureAwait(false) is null)
+        {
+            return Error.Conflict(IdentityErrors.ActingNoDelegation, "No delegation from that person to you is active now, so you cannot act for them.");
+        }
+
+        var session = await context.Sessions.SingleAsync(s => s.Id == principal.SessionId, cancellationToken).ConfigureAwait(false);
+        var before = session.ActingForId;
+        session.ActFor(delegatorId);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (before is { } previous && previous != delegatorId)
+        {
+            await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.ActingStopped, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "session", RecordId: session.Id, OnBehalfOfId: previous), cancellationToken).ConfigureAwait(false);
+        }
+
+        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.ActingStarted, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "session", RecordId: session.Id, OnBehalfOfId: delegatorId), cancellationToken).ConfigureAwait(false);
+        return principal with { ActingForId = delegatorId };
+    }
+
+    /// <summary>The session acts as its own principal again. Nothing to do when it was not acting.</summary>
+    public async Task<SignedInPrincipal> StopActingAsync(SignedInPrincipal principal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.Kind == AuthenticationKind.Token || principal.ActingForId is not { } delegator)
+        {
+            return principal;
+        }
+
+        var session = await context.Sessions.SingleAsync(s => s.Id == principal.SessionId, cancellationToken).ConfigureAwait(false);
+        session.StopActing();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.ActingStopped, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "session", RecordId: session.Id, OnBehalfOfId: delegator), cancellationToken).ConfigureAwait(false);
+        return principal with { ActingForId = null };
     }
 
     /// <summary>
@@ -86,13 +133,24 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
             return SessionResolution.Expired(reason);
         }
 
+        // Acting for someone holds only while a delegation from them is active. When it is not, this request runs as the
+        // person themselves, the session forgets it, and the answer says so (ADR-0037).
+        Guid? actingEnded = null;
+        if (found.Session.ActingForId is { } delegator && await delegations.ActiveAsync(delegator, found.Principal.Id, cancellationToken).ConfigureAwait(false) is null)
+        {
+            found.Session.StopActing();
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.ActingEnded, AuditOutcome.Success, found.Principal.Id, found.Principal.LoginId, RecordType: "session", RecordId: found.Session.Id, OnBehalfOfId: delegator), cancellationToken).ConfigureAwait(false);
+            actingEnded = delegator;
+        }
+
         if (now - found.Session.LastActivityAt >= options.Session.Touch)
         {
             found.Session.Touch(now);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        return SessionResolution.Alive(Describe(found.Principal, found.Session));
+        return SessionResolution.Alive(Describe(found.Principal, found.Session), actingEnded);
     }
 
     /// <summary>Ends the session now (TF-029 AC3: nothing is served on it afterwards).</summary>
@@ -124,7 +182,7 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     }
 }
 
-public sealed record SessionResolution(SignedInPrincipal? Principal, string? ExpiryReason)
+public sealed record SessionResolution(SignedInPrincipal? Principal, string? ExpiryReason, Guid? ActingEndedFor = null)
 {
     public static readonly SessionResolution Unknown = new(null, null);
 
@@ -132,7 +190,7 @@ public sealed record SessionResolution(SignedInPrincipal? Principal, string? Exp
 
     public bool IsExpired => ExpiryReason is not null;
 
-    public static SessionResolution Alive(SignedInPrincipal principal) => new(principal, null);
+    public static SessionResolution Alive(SignedInPrincipal principal, Guid? actingEndedFor = null) => new(principal, null, actingEndedFor);
 
     public static SessionResolution Expired(string reason) => new(null, reason);
 }

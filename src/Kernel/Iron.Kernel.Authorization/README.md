@@ -1,13 +1,13 @@
 # Iron.Kernel.Authorization
 
-Kernel module (ADR-0029). Schema `kernel_authz`. Permissions, roles, scoped role assignments and the organisation tree (TF-030 to TF-034; ADR-0012, ADR-0030).
+Kernel module (ADR-0029). Schema `kernel_authz`. Permissions, roles, scoped role assignments and the organisation tree (TF-030 to TF-034; ADR-0012, ADR-0030), delegations of duties and acting for the delegator (TF-037), and access reviews (TF-038; ADR-0037).
 
 | Folder | Holds |
 |---|---|
-| `Contracts/` | `AuthorizationFeatures` (`authorization.role_transfer`, role export and import, which a plan licenses: ADR-0034), `AuthorizationPermissions` (`authz.roles.read`, `authz.roles.manage`, `authz.assignments.read`, `authz.assignments.manage`, `authz.units.read`, `authz.units.manage`), `SystemRoles`, `AuthorizationErrors`, `AuthorizationAuditEvents`; `IRoleAssignments` (the trusted path for the seed and other modules: assign for a `RoleScope`, permissions at an `AccessScope`), `IOrganisationUnits` (the root and a unit, for Identity), `IPrincipals` with `PrincipalKind` and `PrincipalSummary` (a principal's kind, name and home unit, implemented by Identity), and the extension point `IOrganisationKinds` with `OrganisationKind` |
-| `Data/` | `AuthorizationDbContext`, `Role` (code, name, description, principal kind, permissions as a text array), `RoleAssignment` (scope kind, scope id, record type), `OrganisationUnit` (name, code, kind code, parent, path, depth, status), the design-time factory, generated `Migrations/` |
-| `Services/` | `AccessGrants` (a principal's assignments, cached for 60 seconds, answered per scope and per list), `PermissionEvaluator` (fail closed, denial audit with the scope, `authz.denials` metric), `RoleAssignments`, `RoleService` (tenant roles, export and import), `AssignmentService` (grants and removals through the API, under ADR-0031), `RecordAccessService` (implements `IRecordAccess` of Iron.Kernel.Data, the scope rule that record policies apply first, ADR-0032), `OrganisationUnitService` (the tree and its writes), `OrganisationUnitCheck` (the data layer's owning-unit check), `DefaultOrganisationKinds`, `AuthorizationSeeder` (system roles, the root unit), `PermissionCacheOptions` |
-| `Api/` | the roles, the permission catalogue and the role assignments (below), and the organisation tree |
+| `Contracts/` | `AuthorizationFeatures` (`authorization.role_transfer`, role export and import, which a plan licenses: ADR-0034), `AuthorizationPermissions` (`authz.roles.read`, `authz.roles.manage`, `authz.assignments.read`, `authz.assignments.manage`, `authz.units.read`, `authz.units.manage`, `authz.delegations.manage`, `authz.reviews.manage`, `authz.reviews.decide`), `SystemRoles`, `AuthorizationErrors`, `AuthorizationAuditEvents`; `IDelegations` with `ActiveDelegation` and `DelegationStatus` (the active delegations, for Identity's session and `/me`); the extension point `IReviewEscalation` with `OverdueReview`, `ReviewStatus` and `ReviewDecision`; `IRoleAssignments` (the trusted path for the seed and other modules: assign for a `RoleScope`, permissions at an `AccessScope`), `IOrganisationUnits` (the root and a unit, for Identity), `IPrincipals` with `PrincipalKind` and `PrincipalSummary` (a principal's kind, name and home unit, and who is homed at a set of units; implemented by Identity), and the extension point `IOrganisationKinds` with `OrganisationKind` |
+| `Data/` | `AuthorizationDbContext`, `Role` (code, name, description, principal kind, permissions as a text array), `RoleAssignment` (scope kind, scope id, record type), `OrganisationUnit` (name, code, kind code, parent, path, depth, status), `Delegation` (delegator, delegate, duties, period, reason, an early end), `AccessReview` with `AccessReviewUnit`, `AccessReviewItem`, `AccessReviewDecision` and `AccessReviewEscalation` (the last four append-only), the design-time factory, generated `Migrations/` |
+| `Services/` | `AccessGrants` (a principal's assignments, cached for 60 seconds, answered per scope and per list), `PermissionEvaluator` (fail closed, denial audit with the scope, `authz.denials` metric), `RoleAssignments`, `RoleService` (tenant roles, export and import), `AssignmentService` (grants and removals through the API, under ADR-0031), `RecordAccessService` (implements `IRecordAccess` of Iron.Kernel.Data, the scope rule that record policies apply first, ADR-0032), `OrganisationUnitService` (the tree and its writes), `OrganisationUnitCheck` (the data layer's owning-unit check), `DefaultOrganisationKinds`, `AuthorizationSeeder` (system roles, the root unit), `PermissionCacheOptions`, `ActingScope` (whom the request's principal acts for, and the duties' permissions), `DelegationService` and `DelegationQueries`, `ReviewService`, `ReviewEscalationPass` with `ReviewEscalationWorker` and the default `CampaignOwnerEscalation` |
+| `Api/` | the roles, the permission catalogue and the role assignments (below), the organisation tree, the duties and delegations, and the access reviews |
 
 ## The organisation tree (TF-034, ADR-0030)
 
@@ -60,6 +60,38 @@ Each change writes `authz.role_created`, `authz.role_changed` or `authz.role_del
 | Remove | `DELETE /api/v1/role-assignments/{id}` | `authz.assignments.manage` over the assignment's scope |
 
 The rules, each with its error code: a grant needs every permission of the role over the scope (`authz.assignment.escalation`, 403; rule 1); the principal must exist (`authz.principal.not_found`) and be of the role's kind (`authz.assignment.principal_type`); the last tenant-wide `tenant-administrator` assignment stays (`authz.assignment.last_administrator`, 409; rule 3, behind an advisory lock). A grant or removal writes `authz.role_assigned` or `authz.role_unassigned` in the same transaction and clears the principal's cached grants on this node at once; a refusal is audited as a denial with what was missing. Granting what is granted already answers the existing assignment.
+
+## Delegations and acting for the delegator (TF-037, ADR-0037)
+
+A module declares its duties in `IModule.Duties` (a code, a name in words, a description, the permissions it covers); the kernel declares `all`. A delegation hands duties for a period with a reason; the delegate acts for the delegator by choosing it, and their requests then carry the delegator's rights for those duties only, at the delegator's scopes: `AccessGrants` answers the delegator's grants, limited to the duties' permissions, for the acting principal (`ActingScope`). Identity keeps the choice on the session and clears it on the first request after the delegation ends.
+
+| Operation | Endpoint | Permission, checked at |
+|---|---|---|
+| The duties, with their permissions | `GET /api/v1/duties` | any signed-in principal |
+| Your delegations, both ways | `GET /api/v1/delegations/mine` | any signed-in principal |
+| Others' delegations, a paged list | `GET /api/v1/delegations` | `authz.delegations.manage`; every row tenant-wide, otherwise the delegations of the people homed at units where the reader holds it |
+| Delegate | `POST /api/v1/delegations` with `delegate_id`, `duties`, `starts_at`, `ends_at`, `reason`, and `delegator_id` for someone else | your own: none; someone else's: `authz.delegations.manage` at their home unit |
+| End early | `POST /api/v1/delegations/{id}/end` with an optional `reason` | the delegator, the delegate, or `authz.delegations.manage` at the delegator's home unit |
+
+Refused, each with its code under `authz.delegation.`: `self`, `service_account` (either side), `overlap` (the same delegator and a shared duty in overlapping periods; `all` shares every duty), `cycle` (of any length, among delegations overlapping the period), `onward` (while acting, or a duty the delegator holds by an overlapping delegation to them), `period` (ended, or ends before it starts), `duty_unknown`, `not_found`, `not_running` (ending one that has ended). Creation takes an advisory lock. `authz.delegation_created` and `authz.delegation_ended` are audited with both people and the duties.
+
+## Access reviews (TF-038, ADR-0037)
+
+A campaign covers units, each with or without the units below it, and has a due date. Starting it writes its items: one per unit assignment in those units (and tenant-wide assignment, at the root, when the root is covered), with the principal, the role, the scope and the unit's path. A reviewer is whoever holds `authz.reviews.decide` at an item's unit.
+
+| Operation | Endpoint | Permission, checked at |
+|---|---|---|
+| The campaigns, a paged list with progress | `GET /api/v1/access-reviews` | managers (`authz.reviews.manage` tenant-wide) see all; reviewers those with items at their units; anyone else 403, audited |
+| One campaign, with progress per unit and escalations | `GET /api/v1/access-reviews/{id}` | as the list |
+| Start | `POST /api/v1/access-reviews` with `name`, `due_on`, `units` (`unit_id`, `include_children`) | `authz.reviews.manage`, tenant |
+| The items to decide, a paged list; `state=open` or `decided` narrows it | `GET /api/v1/access-reviews/{id}/items` | the rows at units where the reader holds `authz.reviews.decide`, and for the campaign's owner the rows nobody but their own person may review; anyone else 403, audited. Each row says `yours` and `with_owner` |
+| Decide one | `POST /api/v1/access-reviews/{id}/items/{itemId}/decision` with `decision` (`confirm`, `revoke`) and an optional `comment` | `authz.reviews.decide` at the item's unit, or the owner for a row nobody else may review; never a row about the reader's own access |
+| Confirm a page | `POST /api/v1/access-reviews/{id}/confirm` with `item_ids` (at most 200) and an optional `comment` | as one decision, for every item |
+| Close | `POST /api/v1/access-reviews/{id}/close` | `authz.reviews.manage`, tenant |
+
+A decision is written once (`authz.review.item_decided` for a second). A revoke removes the assignment through `AssignmentService`'s removal path in the same transaction, without asking `authz.assignments.manage`, and the last tenant administrator stays (`authz.assignment.last_administrator`, 409, nothing recorded). Nobody decides their own access (`authz.review.own_item`, 403): such an item stays with the other reviewers of its unit and of the units above it (`UnitReviewers`), and goes to the campaign's owner when there is none. Other codes under `authz.review.`: `not_found`, `closed`, `units_required`, `due_passed`, `item_not_found`. Events: `authz.review_started`, `authz.review_decided` (one per item), `authz.review_closed`, `authz.review_escalated`; a revoke also writes `authz.role_unassigned` with the campaign's id.
+
+Overdue reviewers: the unit's worker host calls `AddAccessReviewEscalation()`, which runs `ReviewEscalationPass` a minute after it starts and then daily. Each unit of an open campaign 7 days past its due date with items open is escalated once, to the targets `IReviewEscalation` names: the kernel's default names the campaign's owner; a business module replaces it with `services.Replace(ServiceDescriptor.Scoped<IReviewEscalation, MyEscalation>())`. Sending the message is S4.
 
 Configuration: `Authorization:CacheSeconds` (default and maximum 60; 0 reads the database on every check); `Seed:RootUnit:Name` and `Seed:RootUnit:Code`.
 
