@@ -1,25 +1,35 @@
 # Version updates for everything the build pins (ADR-0003, ADR-0022): the actions, the .NET packages, the shell's
 # packages and the base images. One pull request per ecosystem per week; CI tells whether the bump is safe.
+# A version must be at least two weeks old before it is proposed (ADR-0003), and a major version comes on its own, out
+# of the groups, since it usually needs work of its own.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
   - package-ecosystem: nuget
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     groups:
       dotnet:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: npm
     directory: /shell
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     groups:
       shell:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: docker
     directories:
       - /src/Hosts/Iron.Host.Api
@@ -29,3 +39,5 @@ updates:
       - /shell
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
