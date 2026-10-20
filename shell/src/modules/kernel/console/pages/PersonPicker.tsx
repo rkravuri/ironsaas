@@ -46,6 +46,10 @@ export function PersonPicker({ exclude = [], ...props }: PersonPickerProps) {
     [entries, exclude, t],
   );
 
+  // The list opens only when it has people: a list without options is not a list (WCAG, aria-required-children). How
+  // the search stands is said under the field instead.
+  const state = debounced.length < 2 ? undefined : found.isFetching ? t("people.searching") : data.length === 0 ? t("people.nobody") : undefined;
+  const { description, ...rest } = props;
   return (
     <Select
       searchable
@@ -54,8 +58,16 @@ export function PersonPicker({ exclude = [], ...props }: PersonPickerProps) {
       onSearchChange={setSearch}
       filter={({ options }) => options}
       data={data}
-      nothingFoundMessage={debounced.length < 2 ? t("people.typeMore") : found.isFetching ? t("people.searching") : t("people.nobody")}
-      {...props}
+      {...rest}
+      description={
+        state === undefined ? (
+          description
+        ) : (
+          <>
+            {description} {state}
+          </>
+        )
+      }
       onChange={(value, option) => {
         setChosen(value ? entries.get(value) : undefined);
         props.onChange?.(value, option);

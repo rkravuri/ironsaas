@@ -11,20 +11,18 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the delegations page in the ${scheme} scheme: yours in words with their status, others' for an administrator, the create dialog by keyboard, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`a person's own delegations in My profile in the ${scheme} scheme: in words with their status, the create dialog by keyboard, and no WCAG 2.1 AA violation`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubDelegations(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
-    await page.goto("/console/delegations");
+    await page.goto("/me");
 
-    await expect(page.getByRole("heading", { level: 2, name: "Delegations" })).toBeVisible();
+    await page.getByRole("tab", { name: "Delegations" }).click();
     const yours = page.getByRole("list", { name: "Your delegations" });
     await expect(yours).toContainText("Ada Lovelace hands you user administration");
     await expect(yours).toContainText("You hand user administration to Grace Hopper");
     await expect(yours.getByText("Scheduled")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Others' delegations" })).toBeVisible();
-    await expect(page.getByRole("gridcell", { name: "Linus Pauling" }).first()).toBeVisible();
-    await page.screenshot({ path: `test-results/delegations-${scheme}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/my-delegations-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
     // Keyboard only: the dialog opens on Enter, takes focus, offers duties in words, and closes with Escape back to its button.
@@ -39,11 +37,34 @@ for (const scheme of schemes) {
     await page.getByRole("option", { name: "Grace Hopper, North" }).click();
     await dialog.getByRole("checkbox", { name: "user administration" }).check();
     await dialog.getByRole("textbox", { name: "Reason" }).fill("Annual leave.");
-    await page.screenshot({ path: `test-results/delegations-create-${scheme}.png` });
+    await page.screenshot({ path: `test-results/my-delegations-create-${scheme}.png` });
     await expectNoViolation(page);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(open).toBeFocused();
+  });
+
+  test(`the console's delegations page for administrators in the ${scheme} scheme: others' delegations in the grid, delegating for someone, and no WCAG 2.1 AA violation`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await stubDelegations(page);
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+    await page.goto("/console/delegations");
+
+    await expect(page.getByRole("heading", { level: 2, name: "Delegations" })).toBeVisible();
+    await expect(page.getByRole("gridcell", { name: "Linus Pauling" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "End the chosen delegation" })).toBeDisabled();
+    await page.screenshot({ path: `test-results/delegations-${scheme}.png`, fullPage: true });
+    await expectNoViolation(page);
+
+    await page.getByRole("button", { name: "Delegate for someone" }).click();
+    const dialog = page.getByRole("dialog", { name: "Delegate someone's duties" });
+    await expect(dialog.getByRole("combobox", { name: "Whose duties" })).toBeVisible();
+    await expect(dialog.getByRole("combobox", { name: "To whom" })).toBeVisible();
+    await page.screenshot({ path: `test-results/delegations-create-${scheme}.png` });
+    await expectNoViolation(page);
+    // The focus starts in the person picker, which keeps Escape for its own list; Cancel closes the dialog.
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
   });
 
   test(`the Acting for control and its band in the ${scheme} scheme: the choice in the header, whose rights until when, how to stop, and no WCAG 2.1 AA violation`, async ({ page }) => {

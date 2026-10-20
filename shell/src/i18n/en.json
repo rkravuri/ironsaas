@@ -177,9 +177,6 @@
       "unknown": "Not known",
       "limits": "Your organisation ends a session after {{idle}} minutes without activity, and after {{hours}} hours at most.",
       "explain": "Every request you make keeps the session alive, up to its latest end. Two minutes before it ends you are asked whether to stay signed in. Signing out here signs you out in every tab of this browser."
-    },
-    "delegations": {
-      "open": "Open Delegations"
     }
   },
   "grid": {
@@ -1002,7 +999,7 @@
   },
   "delegations": {
     "title": "Delegations",
-    "description": "Hand your duties to someone for a while, for leave or a trip, and act for the people who handed theirs to you.",
+    "description": "The delegations of the people whose home unit you administer: who hands which duties to whom, and until when. Your own are in My profile.",
     "failed": "Your delegations could not be loaded. Try again in a moment.",
     "period": "From {{from}} to {{until}}.",
     "reason": "Reason: {{reason}}",
@@ -1015,7 +1012,6 @@
     },
     "yours": {
       "title": "Your delegations",
-      "description": "The duties you hand to others, and the duties others hand to you.",
       "intro": "While a delegation to you is active, choose Act for to use that person's rights for those duties. Your own rights wait until you act as yourself again.",
       "none": "No delegations yet",
       "noneText": "When you go on leave, delegate your duties to someone, for the days you are away and with a reason.",
@@ -1056,12 +1052,6 @@
       "message": "{{delegate}} stops acting for {{delegator}} at once, and cannot choose to again. The delegation stays in the history.",
       "confirm": "End now"
     },
-    "others": {
-      "title": "Others' delegations",
-      "description": "The delegations of the people whose home unit you administer.",
-      "endSelected": "End the chosen delegation",
-      "create": "Delegate for someone"
-    },
     "columns": {
       "delegator": "From",
       "delegate": "To",
@@ -1070,7 +1060,9 @@
       "until": "Last day",
       "status": "Status",
       "reason": "Reason"
-    }
+    },
+    "endSelected": "End the chosen delegation",
+    "createForSomeone": "Delegate for someone"
   },
   "reviews": {
     "title": "Access reviews",

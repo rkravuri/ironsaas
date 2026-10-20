@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The browser test's data on a tenant, through the API (A2): a child unit, a user created in it with a role that
-reads users at the unit and its children, and a colleague in the same unit. Since A7 the child user also reviews the
-unit's access (authz.reviews.decide there), and a role exists for the test to grant while acting for the administrator
-and to revoke in a review. Safe to run again: what exists is reused.
+reads users at the unit and its children, and a colleague in the same unit. Since A7 two more roles exist: one that
+reviews a unit's access, which the delegation test gives the child user while it runs, and one for the test to grant
+while acting for the administrator and to revoke in a review. Safe to run again: what exists is reused.
 
 Reads E2E_TENANT, E2E_ADMIN_PASSWORD and STORE_TOKEN (and E2E_INGRESS, E2E_STORE) from the environment, keeps the
 child administrator's login id and password at secret/tenants/<tenant>/e2e, and prints shell exports for make e2e.
@@ -135,8 +135,7 @@ def main():
         colleague_id = colleagues[0]["id"]
 
     api("POST", "/api/v1/role-assignments", admin, {"principal_id": child_id, "role_id": role["id"], "scope_kind": "unit_with_children", "unit_id": child["id"]}, expect=(200, 201))
-    api("POST", "/api/v1/role-assignments", admin, {"principal_id": child_id, "role_id": reviewer["id"], "scope_kind": "unit_with_children", "unit_id": child["id"]}, expect=(200, 201))
-    log(f"{child_login} reads the users of {UNIT_NAME} and below, and reviews their access.")
+    log(f"{child_login} reads the users of {UNIT_NAME} and below.")
 
     exports = {
         "E2E_CHILD_LOGIN_ID": child_login,
@@ -147,6 +146,7 @@ def main():
         "E2E_CHILD_ID": child_id,
         "E2E_COLLEAGUE_ID": colleague_id,
         "E2E_REVOCABLE_ROLE_ID": revocable["id"],
+        "E2E_REVIEWER_ROLE_ID": reviewer["id"],
     }
     for name, value in exports.items():
         print(f"export {name}={shlex.quote(value)}")

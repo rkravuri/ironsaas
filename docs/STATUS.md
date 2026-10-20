@@ -72,5 +72,4 @@ The running state of the current slice, kept current by Claude Code at the end o
 - TF-037 AC1 (a workflow assigns the delegate too) is S5. Approval, receiving and evaluation are declared as duties by the slices that build them.
 - The directory (`/api/v1/directory`) shows the names and home units of active people to everyone signed in, for choosing a delegate. Revisit if a tenant needs people hidden from each other.
 - A delegator who loses a role loses it for their delegate at once in the process that changed it, and within the grants cache's 60 seconds in the others (ADR-0012, ADR-0037).
-- Since A7 the console's navigation and its opener show Delegations to everyone, since anyone may delegate; the console's administration pages stay with their permissions.
 - Since A6 the density follows the person, so the Users grid's browser test starts from comfortable and removes the administrator's density at the end; a test that changes a preference cleans it up the same way.

@@ -25,7 +25,7 @@ describe("the guards and the navigation", () => {
     );
 
     expect(await screen.findByText("The users")).toBeInTheDocument();
-    expect(screen.getByTestId("navigation").textContent).toBe("/users /me /console/delegations"); // anyone may delegate their duties (ADR-0037)
+    expect(screen.getByTestId("navigation").textContent).toBe("/users /me");
   });
 
   it("remove the Users page for a role without identity.users.read, and the page answers no access", async () => {
@@ -40,7 +40,7 @@ describe("the guards and the navigation", () => {
     );
 
     // The navigation waits for /me; the guard says no access before and after it.
-    await waitFor(() => expect(screen.getByTestId("navigation").textContent).toBe("/me /console/units /console/delegations"));
+    await waitFor(() => expect(screen.getByTestId("navigation").textContent).toBe("/me /console/units"));
     expect(screen.getByText("No access")).toBeInTheDocument();
     expect(screen.queryByText("The users")).toBeNull();
   });

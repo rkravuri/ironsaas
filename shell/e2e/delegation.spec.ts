@@ -3,8 +3,9 @@ import { loginId, open, signIn } from "./helpers";
 
 /**
  * Delegation and access reviews against a real unit (A7, ADR-0037). `make e2e` sets up the data first
- * (infra/compose/scripts/e2e-data.py): the child-unit user, who reviews the unit's access, a colleague beside them, and
- * a role to grant and to revoke. The administrator delegates user administration to the child-unit user, who acts for
+ * (infra/compose/scripts/e2e-data.py): the child-unit user, a colleague beside them, a role that reviews a unit's
+ * access, and a role to grant and to revoke. The child-unit user reviews their unit only while this test runs, so the
+ * other tests see a person with no console page. The administrator delegates user administration to the child-unit user, who acts for
  * them, sees their users, and grants the role, which the audit records with both names. Then a campaign on the child
  * unit, decided by its reviewer: a revoke ends the role at once. The delegation is ended and the campaign closed at the
  * end, whatever happens, so the next run starts clean.
@@ -15,6 +16,7 @@ const childId = process.env.E2E_CHILD_ID ?? "";
 const childUnitId = process.env.E2E_CHILD_UNIT_ID ?? "";
 const colleagueId = process.env.E2E_COLLEAGUE_ID ?? "";
 const revocableRoleId = process.env.E2E_REVOCABLE_ROLE_ID ?? "";
+const reviewerRoleId = process.env.E2E_REVIEWER_ROLE_ID ?? "";
 const run = Date.now().toString(36);
 
 interface Answer<T> {
@@ -57,11 +59,13 @@ async function endDelegations(page: Page): Promise<void> {
   }
 }
 
-/** The colleague's assignments of the role the test grants and revokes. */
-async function revocableAssignments(page: Page): Promise<{ id: string }[]> {
-  const assignments = await call<{ data: { id: string; role_id: string }[] }>(page, "GET", `/api/v1/role-assignments?filter=principal_id:eq:${colleagueId}&page_size=100`);
-  return assignments.body.data.filter((assignment) => assignment.role_id === revocableRoleId);
+/** A person's assignments of one role. */
+async function assignmentsOf(page: Page, principal: string, role: string): Promise<{ id: string }[]> {
+  const assignments = await call<{ data: { id: string; role_id: string }[] }>(page, "GET", `/api/v1/role-assignments?filter=principal_id:eq:${principal}&page_size=100`);
+  return assignments.body.data.filter((assignment) => assignment.role_id === role);
 }
+
+const revocableAssignments = (page: Page) => assignmentsOf(page, colleagueId, revocableRoleId);
 
 /** A day as the date input takes it, in this machine's time zone, as the browser's. */
 function day(offset: number): string {
@@ -72,7 +76,7 @@ function day(offset: number): string {
 const loginCells = (grid: Locator) => grid.locator('[role="gridcell"][col-id="login_id"]');
 
 test.describe("delegation and access reviews", () => {
-  test.skip(child.loginId === "" || colleagueId === "" || revocableRoleId === "", "make e2e sets up the child unit's data first");
+  test.skip(child.loginId === "" || colleagueId === "" || revocableRoleId === "" || reviewerRoleId === "", "make e2e sets up the child unit's data first");
 
   test("the administrator delegates user administration, the delegate acts for them with both names in the audit, and a review on the child unit revokes a role at once", async ({ page, browser }, testInfo) => {
     test.setTimeout(180_000);
@@ -82,13 +86,16 @@ test.describe("delegation and access reviews", () => {
     for (const leftover of await revocableAssignments(page)) {
       await call(page, "DELETE", `/api/v1/role-assignments/${leftover.id}`);
     }
+    const reviews = await call(page, "POST", "/api/v1/role-assignments", { principal_id: childId, role_id: reviewerRoleId, scope_kind: "unit_with_children", unit_id: childUnitId });
+    expect([200, 201]).toContain(reviews.status);
 
     const childContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL, ignoreHTTPSErrors: true });
     const childPage = await childContext.newPage();
     let reviewId: string | undefined;
     try {
-      // The administrator delegates in the console's dialog: the person by their login, the duty in words, a reason.
-      await open(page, "/console/delegations");
+      // The administrator delegates in My profile: the person by their login, the duty in words, a reason.
+      await open(page, "/me");
+      await page.getByRole("tab", { name: "Delegations" }).click();
       await page.getByRole("button", { name: "Delegate your duties" }).click();
       const dialog = page.getByRole("dialog", { name: "Delegate your duties" });
       await dialog.getByRole("combobox", { name: "To whom" }).fill(child.loginId);
@@ -163,6 +170,9 @@ test.describe("delegation and access reviews", () => {
       await childPage.screenshot({ path: "test-results/e2e/review-decided.png", fullPage: true });
     } finally {
       await endDelegations(page);
+      for (const reviewing of await assignmentsOf(page, childId, reviewerRoleId)) {
+        await call(page, "DELETE", `/api/v1/role-assignments/${reviewing.id}`);
+      }
       if (reviewId) {
         await call(page, "POST", `/api/v1/access-reviews/${reviewId}/close`);
       }

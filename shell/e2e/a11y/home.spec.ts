@@ -6,8 +6,7 @@ const schemes = ["light", "dark"] as const;
 const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const people: { who: Who; label: string; openers: string[] }[] = [
   { who: "administrator", label: "tenant administrator", openers: ["Identity", "Console"] },
-  // Delegations is the console's page for everyone (ADR-0037), so the child's home has the Console opener too.
-  { who: "child", label: "child-unit administrator", openers: ["Identity", "Console"] },
+  { who: "child", label: "child-unit administrator", openers: ["Identity"] },
 ];
 
 async function expectNoViolation(page: Page): Promise<void> {
