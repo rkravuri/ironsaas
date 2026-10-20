@@ -2,7 +2,7 @@
 
 Documents and processes with their own life cycles (ADR-0029): supplier onboarding, purchase requests, purchase orders, advanced shipment notices, goods and service receipts, invoicing, sourcing (RFx), auctions, contracts, projects and tasks as a product, forms and surveys, expenses. The supplier portal is a surface, not a product: each product contributes its supplier views.
 
-No projects yet. Product work starts after slice S2 (PRD section 7), from one PRD per product.
+No projects yet. Each product has its PRD in `docs/prd/products/` (the five later products a one-page scope), and the technical PRD's section 7 proposes their slices, PR1 to PR8.
 
 ## The placement test
 
@@ -17,6 +17,7 @@ A master that a second product turns out to need moves down to Business; a produ
 ## The rule
 
 - Products may use Business and Kernel, always through their Contracts projects. A product never references another product's implementation.
+- Products depend on each other in the process order (ADR-0042): Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing. A later product may use an earlier one's Contracts project; an earlier one hears from a later one only through domain events. The supplier portal is above them all: each product's supplier views obey its rules, such as supplier ownership (SPX-006).
 - Every entity is a `BusinessRecord` (owning organisation and sharing mode) or marked `ITenantWide` (TF-220); the architecture tests check it.
 - A product is licensed per module, in its own code (ADR-0034): its `IModule` declares its licence code and subscription type, and its features; the architecture test refuses one without a licence. A plan then includes it, and until a tenant's plan does, its endpoints answer `entitlements.module_disabled` and the shell hides it (the developer guide's "Licensing a module or feature").
 - Permission names, audit events, error codes, routes and configuration sections name the product, not the layer: `<product>.<resource>.<action>`, never `products.<product>...`.

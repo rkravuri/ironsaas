@@ -5,16 +5,16 @@
 | Item | Value |
 |---|---|
 | Document title | Foundation, the IronSaaS enterprise SaaS platform: Technical Foundation Product Requirements Document |
-| Code namespace | `Iron.*` in three layers (ADR-0029): Kernel (`Iron.Kernel`, `Iron.Kernel.*`, for example `Iron.Kernel.Identity`), Business (`Iron.Business.*`), Products (`Iron.Products.*`). Database schemas carry the layer prefix and the module name (for example `kernel_identity`, `kernel_tenancy`, `kernel_audit`). Module names elsewhere in this document (section 2.1 and the requirements) are the S1 names; ADR-0029 maps them to today's, and section 3.5 shows the structure. |
-| Version | 1.2 DRAFT for review (decisions of 2026-10-17, second round, applied) |
-| Date | 2026-10-17 |
+| Code namespace | `Iron.*` in three layers (ADR-0029): Kernel (`Iron.Kernel`, `Iron.Kernel.*`, for example `Iron.Kernel.Identity`), Business (`Iron.Business.*`), Products (`Iron.Products.*`). Database schemas carry the layer prefix and the module name (for example `kernel_identity`, `kernel_tenancy`, `kernel_audit`). Section 2.1 lists the kernel's modules by today's names; ADR-0029 maps the S1 names the ADRs before it use, and section 3.5 shows the structure. |
+| Version | 1.3 DRAFT for review (the PRD split of 2026-10-20 applied) |
+| Date | 2026-10-20 |
 | Status | Draft. Written for joint development. Decisions confirmed on 2026-10-17 are listed in section 8.1; remaining open points are in section 8.2. |
 | Inputs | The anonymised reverse-engineered PRD of the current procurement platform (its cross-cutting services, defects and gaps), the IronSaaS build rules (simplicity, plain layers, open-source first, Linux runtime, Python for AI), the product owner's decisions of 2026-10-17, and current SaaS platform practice (OWASP ASVS, NIST 800-63, OpenTelemetry, OpenFeature, SOC 2, ISO 27001, GDPR, India DPDP, 21 CFR Part 11). Nothing of Foundation exists yet; this is a fresh start. |
 | Readers | You (product owner and architect), the developers who will build Foundation, security and compliance reviewers, and the product teams who will build business products (first: procure-to-pay) on top of Foundation. |
-| Companion document | Functional Foundation PRD for procure-to-pay (same folder). It assumes everything in this document exists. |
+| Companion documents | The Business Foundation PRD, the product PRDs, the supplier portal surface and the product method, one per layer and product (ADR-0041), listed in this folder's README. They assume everything in this document exists. The Functional Foundation PRD they replace is archived, with a map from its identifiers. |
 | Tags | `[Core]` must exist before the first business product ships. `[Extended]` can follow in a later slice. `[Decision]` a choice you must confirm. `[Carried]` behaviour carried over from the current product. `[Gap]` a gap or defect found in the current product that Foundation must close. |
 
-Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped. 2026-10-19 (task A3): TF-035 AC1 follows ADR-0032: another supplier's order by identifier answers not found, so a link reveals nothing. 2026-10-20 (task A5): TF-050 AC3 follows ADR-0035: the last known value comes before the default in code, so a kill switch that is on stays on while the flag service is unavailable.
+Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped. 2026-10-19 (task A3): TF-035 AC1 follows ADR-0032: another supplier's order by identifier answers not found, so a link reveals nothing. 2026-10-20 (task A5): TF-050 AC3 follows ADR-0035: the last known value comes before the default in code, so a kill switch that is on stays on while the flag service is unavailable. 2026-10-20 (the PRD split, ADR-0041): six criteria that are error cases carry the marker `(error case)`, as the one form of acceptance criteria asks (TF-004 AC2, TF-007 AC1, TF-021 AC1, TF-029 AC2, TF-040 AC2, TF-046 AC1); the CSV is written from this document, gains the column `was`, and so also carries the three criteria amended in S2 (TF-032 AC3, TF-035 AC1, TF-050 AC3), which had reached only this document. 1.3 DRAFT, 2026-10-20 (the PRD split, ADR-0041 and ADR-0042): section 2.1 lists the kernel's modules by today's names, built and planned, and retires `Iron.Organisations`, which S2 built inside Authorization, Data and Settings, its business meaning now the Business PRD's; three requirements are new, TF-241 (content visibility and visibility tags), TF-242 (the forms engine) and TF-243 (approvals, tasks and notifications respect access, the design session's answer to the archived FF-184); TF-099 and TF-166 name the business configuration that uses them; TF-218 traces the identifiers of every PRD to tests; section 5a points to each product PRD's records and signatures; section 7 schedules TF-241 before the first business slice, proposes the business and product slices, and puts S7's requirements back in S7's row, from which a missing cell had moved them into S9's; sections 3.3 and 6 name `Iron.Kernel.Files` and `Iron.Kernel.Security`. 2026-10-20 (the split's review): TF-242 is built in S4, and section 7.2's order is accepted in principle.
 
 ## 1. Vision and principles
 
@@ -54,42 +54,46 @@ Close (all `[Gap]`): 242 of 1,231 operations had no authorisation requirement an
 
 ## 2. Scope
 
-### 2.1 Foundation modules
+### 2.1 The kernel's modules
 
-| Module (namespace, schema) | Responsibility | Tag |
-|---|---|---|
-| `Iron.Core` (no schema) | Shared primitives: result types, errors, validation, time, ids, money, paging, tenant context, correlation | Core |
-| `Iron.Tenancy` (`tenancy`, control plane) | Tenant registry, provisioning, lifecycle, isolation, data residency, tenant-level settings and limits | Core |
-| `Iron.Identity` (`identity`) | Accounts, credentials, password policy, MFA, SSO (OIDC, SAML), SCIM, sessions, tokens, service accounts, API keys, impersonation | Core |
-| `Iron.Authorization` (`authz`) | Permission catalogue, roles, role assignments with scope, record-level policies, segregation of duties, delegation | Core |
-| `Iron.Entitlements` (`entitlements`) | Module and feature licensing, limits and quotas, read-only and expiry modes, usage metering | Core |
-| `Iron.Flags` (`flags`) | Feature flags: global, tenant, user, percentage, kill switches; OpenFeature provider | Core |
-| `Iron.Settings` (`settings`) | Typed settings with a hierarchy (system, tenant, organisation unit, user), validation, effective-value API, audit | Core |
-| `Iron.Audit` (`audit`) | Append-only audit log, change history, electronic signatures, hash chaining, retention, export | Core |
-| `Iron.Security` (no schema) | Secrets access, encryption services, key rotation, request hardening (headers, CORS, CSRF, rate limits, anti-automation), vulnerability process | Core |
-| `Iron.Data` (no schema) | Database conventions, tenant-scoped data access, migrations, soft delete, optimistic concurrency, outbox, bulk load, reference data seeding | Core |
-| `Iron.Api` (no schema) | REST conventions, versioning, envelope, errors, paging, filtering, idempotency, ETags, OpenAPI, SDK generation, partner API gateway behaviour | Core |
-| `Iron.Events` (`events`) | Domain events, outbox, in-process dispatch, webhooks with signatures and retries, event catalogue | Core |
-| `Iron.Jobs` (`jobs`) | Scheduled and queued background work, retries, dead letter, per-tenant fairness, job console | Core |
-| `Iron.Telemetry` (no schema) | OpenTelemetry traces, metrics, logs; correlation; SLIs; health; PII scrubbing | Core |
-| `Iron.Localization` (`localization`) | UI strings, translation workflow, multi-language master data, locale formats, timezones | Core |
-| `Iron.Notifications` (`notifications`) | Templates, channels (email, in-app, SMS, webhook, push later), preferences, mandates, digests, delivery tracking | Core |
-| `Iron.Files` (`files`) | Object storage abstraction, virus scan, type and size rules, signed links, retention, document rendering, signature capture | Core |
-| `Iron.Workflow` (`workflow`) | Generic approval chains, state machine framework, SLA timers, delegation, escalation, reminders | Core |
-| `Iron.Extensibility` (`extensibility`) | Custom fields, custom lookups, plugin hooks, export definitions, saved views | Core |
-| `Iron.Search` (no schema; uses PostgreSQL full text) | Unified search index and query across modules with permission filtering | Extended |
-| `Iron.Shell` (UI package) | React application shell, navigation by entitlement and permission, design system on Mantine, grid, forms, accessibility, theming, white label | Core |
-| `Iron.Console` (UI and API) | Operator console (control plane) and tenant administration console | Core |
-| `Iron.Integration` (`integration`) | Import and export framework, file templates, connector pattern for ERP and HR systems | Core |
-| `Iron.Billing` (`billing`, control plane) | Plans, subscriptions per user and per module, subscription invoices, transaction tracking for later pricing | Core |
-| `Iron.Fleet` (control plane) | Per-tenant deployment units, release waves, migration orchestration, server-level backups with per-tenant restore, placement and density, cost attribution | Core |
-| `Iron.Organisations` (`organisations`) | Owning organisation on every record, sharing modes, unit-scoped configuration, cross-unit access rules, unit lifecycle | Core |
-| `Iron.Compliance` (`compliance`) | Validation evidence, signature manifestation, audit trail review, control mapping and evidence packs for regulated tenants | Core |
-| `Iron.Mobile` (API surface) | Companion app readiness: native authentication flows, push channel, lightweight approval and expense operations | Extended |
-| `Iron.Network` (`network`, Supplier Network plane) | Global supplier identity and organisation registry, supplier-to-tenant relationships and invitations, cross-tenant action index and inbox, delegated access to tenant units, supplier profile propagation, network console | Core |
-| `Iron.Scale` (no schema; patterns and tooling) | Scale-out patterns for one tenant: horizontal API and worker scaling, connection pooling, read replicas, partitioning, dedicated deployments, load test harness | Core |
+The kernel as it is after S2, by today's names (ADR-0029), then the modules planned. Each module owns its schema, named with the layer prefix.
 
-Business products add their own modules and schemas on the same pattern (for example `Procurement` with schema `procurement`).
+| Module (namespace, schema) | Responsibility | Tag | State |
+|---|---|---|---|
+| `Iron.Kernel` (no schema) | The vocabulary, one namespace: results and errors, ids, time, money, paging, tenant context, principals, permissions, correlation (ADR-0007) | Core | Built (S1, L1) |
+| `Iron.Kernel.Data` (`kernel_data`) | Database conventions, tenant-scoped access, migrations, soft delete, optimistic concurrency; business records with their owning unit and sharing mode, the record shares and the filters of record policies (ADR-0008, ADR-0032, ADR-0038) | Core | Built (S1, S2) |
+| `Iron.Kernel.Api` (no schema) | REST conventions, envelope, problems, paging and filtering, the permission every endpoint declares (ADR-0009) | Core | Built (S1) |
+| `Iron.Kernel.Telemetry` (no schema) | OpenTelemetry traces, metrics and logs, correlation, scrubbing (ADR-0010) | Core | Built (S1) |
+| `Iron.Kernel.Security` (no schema) | Secrets from the store at start, security headers, CORS, signing keys (ADR-0010, ADR-0016) | Core | Built (S1) |
+| `Iron.Kernel.Identity` (`kernel_identity`) | Principals, passwords, sessions, invitations, access tokens and service accounts, a principal's home unit (ADR-0014, ADR-0015) | Core | Built (S1, A1) |
+| `Iron.Kernel.Authorization` (`kernel_authz`) | Permission catalogue, roles and scoped assignments; the unit tree, its kinds as an extension point, scopes (ADR-0030, ADR-0031); record policies (ADR-0032); delegation of duties and access reviews (ADR-0037); cross-unit access, the working unit and the unit lifecycle (ADR-0038); explaining access and conflict rules (ADR-0039) | Core | Built (S1, S2) |
+| `Iron.Kernel.Audit` (`kernel_audit`) | The append-only audit trail in the unit of work, the cross-unit read audit (ADR-0013, ADR-0038) | Core | Built (S1, A8) |
+| `Iron.Kernel.Files` (`kernel_files`) | Object storage behind one interface and file metadata (ADR-0016); later the upload rules, rendering, numbering and signature capture (TF-161 to TF-166) | Core | Built in part (S1); the rest S4 |
+| `Iron.Kernel.Tenancy` (`kernel_tenancy`, control plane) | The tenant registry and the control plane API, plans and tenant entitlements, flag rules and kill switches (ADR-0017, ADR-0034, ADR-0035) | Core | Built (S1, S2) |
+| `Iron.Kernel.Fleet` (`kernel_fleet`, control plane) | Provisioning as resumable steps, units on Compose, updates that heal (ADR-0018, ADR-0019, ADR-0028) | Core | Built (S1, P1) |
+| `Iron.Kernel.Entitlements` (`kernel_entitlements`) | Licensed modules and features in the unit, seats, the store as the channel (ADR-0034) | Core | Built (A4) |
+| `Iron.Kernel.Flags` (`kernel_flags`) | Feature flags with scopes, kill switches, OpenFeature (ADR-0035) | Core | Built (A5) |
+| `Iron.Kernel.Settings` (`kernel_settings`) | Typed settings with the hierarchy person, unit, tenant and default (ADR-0036) | Core | Built (A6) |
+| The shell (`shell/`) and the consoles | The React shell and design system, navigation by entitlement, permission and flag, the tenant console's pages (ADR-0020, ADR-0024 to ADR-0027, ADR-0033); the operator console later | Core | Built in part (S1, S2); the operator console S6 |
+| `Iron.Kernel.Visibility` (`kernel_visibility`) | Visibility tags on records and people, the filter after roles and units (TF-241) | Core | Planned, before the first business slice (section 7) |
+| `Iron.Kernel.Events` (`kernel_events`) | Domain events, the outbox, in-process dispatch, webhooks with signatures and retries, the event catalogue (TF-085, TF-105, TF-110 to TF-114) | Core | Planned (S4) |
+| `Iron.Kernel.Jobs` (`kernel_jobs`) | Scheduled and queued work, retries, dead letters, per-tenant fairness, the job console (TF-120 to TF-124) | Core | Planned (S4) |
+| `Iron.Kernel.Localization` (`kernel_localization`) | UI strings, translation workflow, locale formats, timezones (TF-140 to TF-145) | Core | Planned (S4) |
+| `Iron.Kernel.Notifications` (`kernel_notifications`) | Templates, channels, preferences, mandates, digests, delivery tracking (TF-150 to TF-156) | Core | Planned (S4) |
+| `Iron.Kernel.Workflow` (`kernel_workflow`) | Approval chains, the state machine framework, SLA timers, escalation, tasks, comments, the business calendar (TF-090 to TF-099); approvals, tasks and notifications respect access (TF-243) | Core | Planned (S5) |
+| `Iron.Kernel.Forms` (`kernel_forms`) | Form templates, instances on records, scored and signed responses (TF-242) | Core | Planned (S4) |
+| `Iron.Kernel.Extensibility` (`kernel_extensibility`) | Custom fields, custom lookups, plugin hooks, saved views, export definitions (TF-200 to TF-203) | Core | Planned (S5) |
+| `Iron.Kernel.Search` (no schema; PostgreSQL full text) | Unified search across record types with permission filtering (TF-204) | Extended | Planned (S5) |
+| `Iron.Kernel.Integration` (`kernel_integration`) | The import and export framework, file templates, connectors for ERP and HR systems (TF-205, TF-206, TF-114) | Core | Planned (S5, S7) |
+| `Iron.Kernel.Billing` (`kernel_billing`, control plane) | Plans with prices, subscriptions per user and per module, subscription invoices (TF-207) | Core | Planned (S6) |
+| `Iron.Kernel.Compliance` (`kernel_compliance`) | Validation evidence, signature manifestation, audit trail review, evidence packs (TF-067, TF-218, TF-219) | Core | Planned (S3) |
+| `Iron.Kernel.Mobile` (API surface) | Companion app readiness: native authentication, push, compact operations (TF-224) | Extended | Planned (S7) |
+| `Iron.Kernel.Network` (`network`, Supplier Network plane) | Supplier identity and registry, relationships, the action index and inbox, delegated access to tenant units, profile propagation, the network console (TF-230 to TF-239) | Core | Planned (S8) |
+| `Iron.Kernel.Scale` (no schema; patterns and tooling) | Scale-out for one tenant: horizontal scaling, pooling, replicas, partitioning, dedicated deployments, load tests (TF-225 to TF-229) | Core | Planned (S9) |
+
+Retired: `Iron.Organisations` (owning organisation on every record, sharing modes, unit-scoped configuration, cross-unit access, unit lifecycle). S2 built it inside `Iron.Kernel.Authorization` (the tree, scopes, cross-unit access, the lifecycle), `Iron.Kernel.Data` (the owning unit and sharing mode of business records, the record shares) and `Iron.Kernel.Settings` (the unit scope); its business meaning, legal entities, the kinds of unit and purchasing groups, is `Iron.Business.Organisations` in the Business PRD.
+
+The business layer and the products are not listed here: their modules are in the Business PRD (its section 9) and in each product PRD (its section 13), all listed in this folder's README.
 
 ### 2.2 Out of scope for Foundation
 
@@ -175,7 +179,7 @@ Chosen model, stated plainly:
 
 - Cloud: Microsoft Azure (decided), in the company's own subscriptions. On-premises is out of scope. Until the team has enough confidence, everything is built and run on a developer laptop; nothing in the design may depend on Azure to run locally.
 - Local stack (laptop): containers with Compose for PostgreSQL, MinIO (object storage), OpenBao in development mode (secrets), the telemetry stack (OpenTelemetry collector, Grafana, Prometheus, Loki, Tempo), the control plane, the fleet orchestrator in single-node mode, two or three tenant units and the Supplier Network. One command starts it; one command provisions a tenant. A laptop with 32 GB of memory is the reference machine.
-- Azure stack (later, same images): Azure Kubernetes Service for the clusters, Azure Database for PostgreSQL Flexible Server (one server per deployment with many tenant databases; dedicated servers for large tenants), Azure Blob Storage behind the Iron.Files interface (MinIO stays for local), Azure Key Vault behind the Iron.Security secrets interface (OpenBao stays for local), Azure Container Registry, the same Grafana stack on the cluster (Azure Monitor optional), Microsoft Entra ID as a common identity provider for tenants that use it. Every Azure service is reached through a Foundation interface with a local implementation, so the code is cloud-neutral.
+- Azure stack (later, same images): Azure Kubernetes Service for the clusters, Azure Database for PostgreSQL Flexible Server (one server per deployment with many tenant databases; dedicated servers for large tenants), Azure Blob Storage behind the `Iron.Kernel.Files` interface (MinIO stays for local), Azure Key Vault behind the `Iron.Kernel.Security` secrets interface (OpenBao stays for local), Azure Container Registry, the same Grafana stack on the cluster (Azure Monitor optional), Microsoft Entra ID as a common identity provider for tenants that use it. Every Azure service is reached through a Foundation interface with a local implementation, so the code is cloud-neutral.
 - A deployment (also called a cell) is one cluster with one database server or cluster, one storage account, one telemetry stack and one secrets store, hosting many tenant units. A region may have several deployments; a tenant lives in exactly one. A dedicated deployment hosts exactly one tenant.
 - Images: one image per surface (API, worker, UI, control plane API, fleet orchestrator, network API, supplier portal UI). The fleet may run at most two application versions at once during a release wave.
 - Environments: local (laptop), integration, UAT and production. UAT mirrors production topology at smaller scale. A tenant has the same identifier in UAT and production.
@@ -324,7 +328,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Acceptance criteria:**
 
 - AC1 Given a tenant set to ReadOnly, When a user tries a write, Then it is refused with a read-only message and reads still work.
-- AC2 Given a decommission request, When confirmed by a second operator, Then the tenant is frozen, a final export is produced, and data is deleted after the retention hold; a single operator cannot complete it. (error case for single approval)
+- AC2 Given a decommission request, When confirmed by a second operator, Then the tenant is frozen, a final export is produced, and data is deleted after the retention hold; a single operator cannot complete it. (error case)
 - AC3 Given a hostname removed, When a user opens it, Then the neutral error page is shown.
 
 *Depends on:* TF-001, TF-181
@@ -369,7 +373,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given a tenant at its hard API limit, When another request arrives, Then it is refused with a rate-limit response and a retry-after hint.
+- AC1 Given a tenant at its hard API limit, When another request arrives, Then it is refused with a rate-limit response and a retry-after hint. (error case)
 - AC2 Given a tenant at 80% of storage, When measured, Then an alert and an in-console warning are raised.
 - AC3 Given limits changed by an operator, When saved, Then they apply within one minute without restart.
 
@@ -589,7 +593,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given 60 minutes without activity, When the next request arrives, Then it is refused with a session-expired signal and the UI returns to login.
+- AC1 Given 60 minutes without activity, When the next request arrives, Then it is refused with a session-expired signal and the UI returns to login. (error case)
 - AC2 Given a limit of one concurrent session, When a second login happens, Then the first session is ended and the user informed. (edge)
 - AC3 Given a session at 12 hours, When active, Then it ends and re-authentication is required.
 
@@ -711,7 +715,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Acceptance criteria:**
 
 - AC1 Given a tenant-wide revocation, When executed, Then every session and refresh token is invalid within one minute.
-- AC2 Given a revoked access token still within its 15 minutes, When used on a sensitive operation, Then it is refused because the session check runs on every request.
+- AC2 Given a revoked access token still within its 15 minutes, When used on a sensitive operation, Then it is refused because the session check runs on every request. (error case)
 - AC3 Given logout, When the back button is used, Then no protected page is served. (edge)
 
 *Depends on:* TF-020
@@ -883,7 +887,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Acceptance criteria:**
 
 - AC1 Given a module Disabled, When a user opens the application, Then its menu is absent and its operations are refused.
-- AC2 Given a module in ReadOnly, When a write is attempted, Then it is refused with a read-only message and reads work.
+- AC2 Given a module in ReadOnly, When a write is attempted, Then it is refused with a read-only message and reads work. (error case)
 - AC3 Given a subscription end date passed, When evaluated, Then the status is Expired and treated as Disabled with a grace period configurable per plan. (edge)
 
 *Depends on:* TF-001
@@ -973,7 +977,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given a feature disabled, When its operation is called, Then it is refused with a not-entitled code.
+- AC1 Given a feature disabled, When its operation is called, Then it is refused with a not-entitled code. (error case)
 - AC2 Given a feature enabled, When the UI loads, Then the related controls appear.
 - AC3 Given a feature of a disabled module, When enabled alone, Then it is still unavailable because the module governs. (edge)
 
@@ -1749,6 +1753,8 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* TF-092
 
+**Notes:** A kernel requirement, confirmed by the PRD split. The business layer's approval configurations (BF-141) count their stage targets in its working time, per unit, and so will the due dates of tasks.
+
 ### 4.12 API platform (TF-100 to TF-109, 10 requirements)
 
 #### TF-100 REST API conventions  
@@ -2481,6 +2487,8 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* TF-084
 
+**Notes:** A kernel requirement, confirmed by the PRD split. The business layer's number series (BF-163) configure it per document type and unit, with a legal entity's numbering initials as a dynamic prefix (BF-001).
+
 ### 4.19 UI shell and design system (TF-170 to TF-175, 6 requirements)
 
 #### TF-170 Application shell  
@@ -3093,7 +3101,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### TF-218 Validation support for regulated tenants  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Regulated-industry controls
 
-**Requirement:** Foundation shall support computer system validation: requirement identifiers traceable to automated tests and their results per release, release documentation (version, changes, risk assessment, test evidence), controlled configuration with versioned seeds, environment qualification records (installation verified against the infrastructure code), and a validation pack per release downloadable by tenants.
+**Requirement:** Foundation shall support computer system validation: requirement identifiers traceable to automated tests and their results per release, release documentation (version, changes, risk assessment, test evidence), controlled configuration with versioned seeds, environment qualification records (installation verified against the infrastructure code), and a validation pack per release downloadable by tenants. The requirement identifiers of every PRD, the kernel's (TF), the business layer's (BF), the product method's (PM), the supplier portal's (SPX) and each product's prefix, are traced to tests the same way, by identifier and criterion (`REQ-012 AC2`, ADR-0041).
 
 **Why:** 21 CFR Part 11 and EU Annex 11 tenants must validate the system they use.
 
@@ -3433,6 +3441,70 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* TF-231, TF-025, TF-180
 
 
+### 4.29 Visibility and access (TF-241 and TF-243, 2 requirements)
+
+#### TF-241 Content visibility and visibility tags  
+*Priority:* **Must** · *Tag:* `[Core]` `[New]` · *Area:* Visibility and access
+
+**Requirement:** Visibility tags shall narrow what a person sees, by six rules: (1) administrators define the visibility tags; (2) master data and transactions can carry tags, and a record without tags is visible to everyone who passes roles and units; (3) a person can hold tags, and a person without tags sees every record; (4) a person sees a tagged record when they share at least one tag with it; (5) a person can only put tags they hold on a record; (6) transactions may take their tags from their master, and each product says how. The filter applies after roles, permissions and units, inside the same query, and only narrows (ADR-0032); changes of tags on records and on people are audited; the access explanation shows the tags as a check (ADR-0039); access reviews cover who holds which tags.
+
+**Why:** Carried: the current product's content groups. Roles and units decide what a person may do and where; tags decide which of those records they see, without a unit or a role for every region, programme or category.
+
+**Acceptance criteria:**
+
+- AC1 Given a record tagged APAC and LATAM and a person holding only APAC, When the person lists the records, Then the record is shown (rule 4).
+- AC2 Given a record tagged LATAM and a person holding only APAC, When the person opens it by identifier, Then it answers not found, and the explanation of the person's access names the tag check. (error case)
+- AC3 Given a record without tags, When a person who passes roles and units lists the records, Then it is shown (rule 2).
+- AC4 Given a person who holds no tags, When they list records they pass roles and units for, Then tagged and untagged records are shown (rule 3).
+- AC5 Given a person holding only APAC, When they put LATAM on a record, Then it is refused naming the tag (rule 5). (error case)
+- AC6 Given 100 records of which the person may see 40 by their tags, When the list is paged, Then the total and the pages count the 40.
+- AC7 Given a tag added to a person or a record, When saved, Then the audit records the change with before and after, and the next access review lists the person's tags.
+- AC8 Given a transaction created from a master with tags and a product rule that the transaction takes them, When it is saved, Then it carries the master's tags (rule 6).
+
+*Depends on:* TF-033, TF-035, TF-038, TF-039, TF-060, TF-220
+
+**Notes:** Also called content groups, the current product's name. Scheduled before the first business slice (section 7), because every business record type needs it from its first day. The Business PRD says which masters carry tags (its section 5.10); each product says how its transactions take theirs (its section 10).
+
+#### TF-243 Approvals, tasks and notifications respect access  
+*Priority:* **Must** · *Tag:* `[Core]` `[New]` · *Area:* Visibility and access
+
+**Requirement:** An approval step, a task or a notification shall go only to a person who can read the record it concerns, by scope, record policy and visibility tags; a configured approver who cannot read the record is reported as a configuration error and the approval configuration's fallback applies (TF-091); a notification never contains data its reader may not read.
+
+**Why:** Organisation separation and visibility tags would mean little if an approval, a task or an email showed a record to someone the record's own page refuses. The archived Functional Foundation PRD asked it for organisations (its FF-184).
+
+**Acceptance criteria:**
+
+- AC1 Given an approval configuration whose approver has no scope over the record's unit, When the chain is built, Then the step is not given to that approver, a configuration error names the configuration, the step and the approver, and the configuration's fallback applies. (error case)
+- AC2 Given a task about a record its intended assignee cannot read, When it is assigned, Then it is refused naming the missing access. (error case)
+- AC3 Given a daily digest that would list a record tagged LATAM for a reader holding only APAC, When the digest is built, Then that record is left out.
+- AC4 Given an approver who can read the record, When the chain is built, Then the step is given to them as configured.
+
+*Depends on:* TF-035, TF-091, TF-097, TF-151, TF-222, TF-241
+
+**Notes:** Written at the PRD split's checkpoint, the design session's answer to FF-184's clause that approvals, tasks and notifications respect the same access (`requirements-map.md`).
+
+### 4.30 Forms engine (TF-242, 1 requirement)
+
+#### TF-242 Forms engine  
+*Priority:* **Should** · *Tag:* `[Core]` `[New]` · *Area:* Forms engine
+
+**Requirement:** The kernel shall provide forms: form templates with sections, questions of typed answers, validation, conditional questions, scoring and weights, and versions; instances of a template attached to a record; responses audited, with an optional electronic signature (TF-063). Supplier questionnaires, onboarding and supplier information forms, surveys and sourcing evaluations use it.
+
+**Why:** Four products need structured questions with answers that can be scored and signed; one engine keeps them alike and saves building it four times.
+
+**Acceptance criteria:**
+
+- AC1 Given a question shown only when an earlier answer is yes, When the earlier answer is no, Then the question is hidden and not required.
+- AC2 Given a required number question answered with text, When the response is submitted, Then it is refused naming the question. (error case)
+- AC3 Given a template with scored questions and weights, When a response is scored, Then its score is the weighted sum and is stored with the response.
+- AC4 Given a template changed after an instance was sent, When the instance is opened, Then it shows the version it was sent with.
+- AC5 Given a template that requires a signature, When a response is submitted without the re-authentication the tenant requires, Then it is refused. (error case)
+- AC6 Given a response submitted, When the audit is searched for its record, Then the submitter, the time and the answers are there.
+
+*Depends on:* TF-060, TF-063, TF-094
+
+**Notes:** Decided 2026-10-20: built in S4, before supplier questionnaires (SUP-042) and onboarding forms (SUP-002) need it; surveys and sourcing come later. Its module is `Iron.Kernel.Forms` (section 2.1).
+
 ## 5. Non-functional targets
 
 | Area | Target | Measured by |
@@ -3471,6 +3543,8 @@ All five frameworks are in scope for every tenant (operator decision). The table
 | 21 CFR Part 11 and EU Annex 11 | Validation of systems, audit trails, record integrity, electronic signatures, signature manifestation, controls for identification codes and passwords, record retention and retrieval | TF-060 to TF-065, TF-012, TF-013, TF-029, TF-218, TF-219, TF-064, TF-066 |
 | All | Evidence on demand | TF-067 |
 
+Each product PRD lists, in its section 9, the records it signs, the audit-trail reviews it needs and their retention class; the controls themselves are the requirements above.
+
 ## 6. Technology decisions (open source first) `[Decision]`
 
 | Concern | Choice | Licence | Note |
@@ -3494,7 +3568,7 @@ All five frameworks are in scope for every tenant (operator decision). The table
 | Logging | Serilog with OpenTelemetry sink; structured JSON | Apache 2.0 | PII scrubbing enricher |
 | Email | MailKit | MIT | Any SMTP provider |
 | SMS | Provider adapter interface; first adapter chosen per region | n/a | |
-| Object storage | Azure Blob Storage in Azure; MinIO (S3 API) on the laptop; both behind the `Iron.Files` interface | AGPL (MinIO) | Provider chosen by configuration |
+| Object storage | Azure Blob Storage in Azure; MinIO (S3 API) on the laptop; both behind the `Iron.Kernel.Files` interface | AGPL (MinIO) | Provider chosen by configuration |
 | Virus scanning | ClamAV | GPL | Called over its network protocol |
 | PDF and document rendering | Headless Chromium through Playwright for .NET to print HTML templates as the default; commercial libraries to be reviewed when document rendering is built (decided) | Apache 2.0 | HTML templates are easier for product teams; the rendering engine sits behind one interface |
 | Spreadsheets and CSV | ClosedXML (MIT) and CsvHelper (MS-PL/Apache) | MIT / Apache | |
@@ -3514,19 +3588,46 @@ Excluded on licence grounds: Duende IdentityServer, Hangfire Pro, Z.EntityFramew
 
 Each slice is a thin end-to-end increment that can be demonstrated. Numbers in brackets are requirement IDs delivered by the slice.
 
-| Slice | Demonstrable outcome | Requirements |
-|---|---|---|
-| S1 Walking skeleton | Repository, module layout, hosts, one tenant provisioned by the control plane as its own deployment unit (namespace, containers, database, bucket, secrets path), login with password, one protected API operation, one shell page with the grid component, traces visible, deployed to integration by pipeline | TF-001, 002, 003, 010, 011, 020, 021, 030, 031, 060, 070, 080, 100, 101, 130, 160, 170, 171, 180, 190, 209, 210, 220 |
-| S2 Access control and organisations | Permission catalogue, roles, assignments with scope, deny by default check at start-up, record policies, entitlements and flags evaluated, settings hierarchy, organisation ownership and sharing pattern on records, unit-scoped configuration | TF-032 to 039, 040 to 046, 050 to 056, 057 to 059, 221 to 223 |
-| S3 Trust and compliance | MFA, SSO (OIDC), sessions console, password policy and lockout, audit log with chain, change history, secrets from the store, security headers, rate limits, vulnerability pipeline | TF-012 to 019, 022 to 029, 061 to 069, 071 to 079, 218, 219 |
-| S4 Platform services | Files with virus scan, notifications with templates and preferences, jobs with console, outbox and webhooks, import and export framework, localisation with a second language | TF-081 to 089, 110 to 114, 120 to 124, 131 to 136, 140 to 142, 145, 150 to 156, 161 to 166 |
-| S5 Workflow and extensibility | Generic approval engine, SLA timers, delegation, custom fields and lookups, plugin hooks, saved views, unified search | TF-090 to 099, 200 to 205, 208 |
-| S6 Fleet and operations | Operator console, tenant console, release waves with canary tenants, fleet migration orchestrator, server-level backups with per-tenant restore drill, placement and density, cost attribution, subscription billing, SLO dashboards and alerts, status page, privacy requests, retention jobs | TF-004 to 009, 171 to 175, 181 to 183, 191 to 199, 207, 211 to 217 |
-| S7 Partner and companion surfaces | Partner API gateway behaviour, SCIM, SAML, API keys, SDK generation, connectors, mobile companion readiness, later localisation of data |
-| S8 Supplier Network | Network identity and registry, invitations and relationships, action index and inbox, delegated access to tenant units, profile propagation, network console; two tenant units and one supplier on the laptop | TF-230 to TF-239 |
-| S9 Scale proof | Horizontal scaling of one tenant unit, connection pooling, read replicas, partitioning, dedicated deployment path, load test at the largest-tenant targets on Azure | TF-225 to TF-229 | TF-102 to 109, 143, 144, 206, 224 |
+### 7.1 The kernel's slices
 
-The first business product (procure-to-pay) starts its own slices after S2 and runs in parallel with S3 to S5; its supplier-facing slices (P2 onwards) depend on S8. S9 runs when the first Azure deployment exists; until then scale patterns are designed in and tested at laptop size. There is no time pressure on the market (owner decision); Foundation strength comes before product speed.
+| Slice | Demonstrable outcome | Requirements | State |
+|---|---|---|---|
+| S1 Walking skeleton | Repository, module layout, hosts, one tenant provisioned by the control plane as its own deployment unit (namespace, containers, database, bucket, secrets path), login with password, one protected API operation, one shell page with the grid component, traces visible, deployed to integration by pipeline | TF-001, 002, 003, 010, 011, 020, 021, 030, 031, 060, 070, 080, 100, 101, 130, 160, 170, 171, 180, 190, 209, 210, 220 | Done |
+| S2 Access control and organisations | Permission catalogue, roles, assignments with scope, deny by default check at start-up, record policies, entitlements and flags evaluated, settings hierarchy, organisation ownership and sharing pattern on records, unit-scoped configuration | TF-032 to 039, 040 to 046, 050 to 056, 057 to 059, 221 to 223 | Done |
+| V Content visibility | Visibility tags on records and people, the filter inside the query after roles and units, the explanation and the reviews | TF-241 | Before the first business slice |
+| S3 Trust and compliance | MFA, SSO (OIDC), sessions console, password policy and lockout, audit log with chain, change history, secrets from the store, security headers, rate limits, vulnerability pipeline | TF-012 to 019, 022 to 029, 061 to 069, 071 to 079, 218, 219 | Next |
+| S4 Platform services | Files with virus scan, notifications with templates and preferences, jobs with console, outbox and webhooks, import and export framework, localisation with a second language, the forms engine | TF-081 to 089, 110 to 114, 120 to 124, 131 to 136, 140 to 142, 145, 150 to 156, 161 to 166, 242 | |
+| S5 Workflow and extensibility | Generic approval engine, SLA timers, delegation, custom fields and lookups, plugin hooks, saved views, unified search; access in what is sent | TF-090 to 099, 200 to 205, 208, 243 | |
+| S6 Fleet and operations | Operator console, tenant console, release waves with canary tenants, fleet migration orchestrator, server-level backups with per-tenant restore drill, placement and density, cost attribution, subscription billing, SLO dashboards and alerts, status page, privacy requests, retention jobs | TF-004 to 009, 171 to 175, 181 to 183, 191 to 199, 207, 211 to 217 | |
+| S7 Partner and companion surfaces | Partner API gateway behaviour, SCIM, SAML, API keys, SDK generation, connectors, mobile companion readiness, later localisation of data | TF-102 to 109, 143, 144, 206, 224 | |
+| S8 Supplier Network | Network identity and registry, invitations and relationships, action index and inbox, delegated access to tenant units, profile propagation, network console; two tenant units and one supplier on the laptop | TF-230 to TF-239 | |
+| S9 Scale proof | Horizontal scaling of one tenant unit, connection pooling, read replicas, partitioning, dedicated deployment path, load test at the largest-tenant targets on Azure | TF-225 to TF-229 | |
+
+S9 runs when the first Azure deployment exists; until then scale patterns are designed in and tested at laptop size. There is no time pressure on the market (owner decision); Foundation strength comes before product speed.
+
+### 7.2 The business and product slices (accepted in principle, 2026-10-20)
+
+The order stands in principle; its interleaving with S3 to S5 comes with S3's tasks. It follows the dependencies of the requirements. TF-241 comes before the first business slice, because every business record type needs visibility tags from its first day. A business slice follows the kernel slices it needs: approval configurations after the workflow engine (S5), notification templates after notifications (S4), lookups after custom lookups (S5). A product slice follows the business slices and the earlier products it calls (ADR-0042), and supplier questionnaires follow the forms engine (TF-242). Each module's first slice follows its process reference pack (PM-001), which a slice P0 prepares beside the kernel's slices. A requirement whose part needs a later kernel slice is built in two steps: the translations of item names (TF-143) and the ERP sync of masters (TF-206) come with S7, and every supplier-facing part waits for the Supplier Network (S8).
+
+| Order | Slice | Builds | Needs |
+|---|---|---|---|
+| 1 | P0 Process reference packs | PM-001 to PM-003, and PM-021 and PM-022 as each product's models and measures arrive | Beside the kernel's slices, before each module's first slice |
+| 2 | B1 Organisations, finance and masters | BF-001 to BF-004, BF-006, BF-041 to BF-044, BF-061 to BF-073, BF-075, BF-081 to BF-083, BF-101 to BF-108 (BF-103's portal users with S8), BF-181, BF-207 | V, S4, S5 |
+| 3 | B2 People and lookups | BF-007, BF-021 to BF-024, BF-026, BF-121, BF-122 | B1 |
+| 4 | B3 Documents and setup | BF-005, BF-074, BF-161 to BF-164, BF-202 to BF-206 (BF-206's ERP sync with S7) | B2 |
+| 5 | B4 Approvals | BF-141 to BF-143, BF-201 | B3 |
+| 6 | PR1 Supplier management in the tenant | SUP-003, SUP-004, SUP-006, SUP-021 to SUP-024, SUP-041, SUP-043, SUP-061 | B4 |
+| 7 | PR2 Requests | REQ-001 to REQ-009, REQ-041, REQ-042, REQ-061 | PR1 |
+| 8 | PR3 Orders | REQ-021 to REQ-023; ORD-001 to ORD-007, ORD-021 to ORD-023, ORD-041, ORD-042, ORD-081 | PR2, S4 (rendering) |
+| 9 | PR4 Receiving | RCV-021 to RCV-028 (RCV-028's supplier view with S8), RCV-041 to RCV-046, RCV-061, RCV-081 to RCV-083, RCV-101; and ORD-009, ORD-043, ORD-061, ORD-082 and ORD-121, which hear from Receiving | PR3 |
+| 10 | PR5 Invoicing | INV-001 to INV-008, INV-010, INV-021 to INV-027, INV-041 to INV-045, INV-061, INV-062, INV-081 to INV-085 (INV-081's supplier list with S8) | PR4 |
+| 11 | PR6 Contracts and catalogue | CON-001 to CON-006, CON-021, CON-022, CON-041; CAT-001 to CAT-007, CAT-021 to CAT-023, CAT-041; ORD-008, ORD-062 | PR3 |
+| 12 | PR7 Supplier performance and capture | SUP-062, SUP-063, INV-009 | PR5 |
+| 13 | PR8 The supplier side | SUP-001, SUP-002, SUP-005, SUP-042 (with TF-242), SUP-101, SUP-102; SPX-001 to SPX-006, SPX-021 to SPX-028; CAT-061, CON-061, ORD-101, RCV-001, RCV-002, RCV-121, RCV-122, INV-101 | S8, PR1 to PR7 |
+
+Every business and product requirement is in one row, and no requirement depends on one in a later row, except through an event. Change orders come with Orders, because the supplier's acknowledgement accepts a proposal as a change order (ORD-021 on ORD-023); the archived plan had them apart (its P2 and P5).
+
+The names P1 to P6 of the archived functional PRD's build plan are kept in the product PRDs' slices sections, which show where each requirement sat; this table replaces that plan.
 
 ## 8. Decisions, open points and risks
 

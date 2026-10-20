@@ -48,6 +48,8 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0038](0038-sharing-read-audit-working-unit-and-unit-lifecycle.md) | Record sharing, the cross-unit read audit, the working unit, and the unit lifecycle | Accepted |
 | [0039](0039-explaining-access-and-segregation-of-duties.md) | Explaining access, and segregation of duties by overlapping scope | Accepted |
 | [0040](0040-prettier-formats-the-shell.md) | Prettier formats the shell | Accepted |
+| [0041](0041-one-requirements-document-per-layer-and-product.md) | One requirements document per layer and product | Accepted |
+| [0042](0042-dependencies-down-the-layers-and-along-the-process.md) | Dependencies go down the layers, and along the process between products | Accepted |
 
 ## Reading order
 

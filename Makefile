@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check format catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -33,6 +33,15 @@ test: ## Run every test project (Microsoft Testing Platform, see global.json) on
 
 check: ## Run only the architecture checks (module boundaries, layout)
 	dotnet test --project tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj --configuration $(CONFIG)
+
+# The requirement documents in docs/prd (ADR-0041): every identifier once, every FF identifier in the map, criteria in
+# the Given, When, Then form with an error case, the product PRDs' sections, and each CSV equal to its markdown.
+prd-check: ## Check the requirement documents, their CSVs and the map (ADR-0041); the check's own tests first
+	python3 tools/prd_check_test.py
+	python3 tools/prd_check.py
+
+prd-csv: ## Write every requirement document's CSV, and the map's, from its markdown
+	python3 tools/prd_check.py --write-csv
 
 format: shell-node ## Apply the code style: dotnet format from .editorconfig, Prettier in the shell (ADR-0040)
 	dotnet format Foundation.slnx

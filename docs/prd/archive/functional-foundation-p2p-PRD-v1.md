@@ -1,3 +1,5 @@
+> Superseded on 2026-10-20 by the split into one document per layer and product (ADR-0041). Every requirement below has a new home and identifier; the map is [`../requirements-map.md`](../requirements-map.md).
+
 # Foundation: Functional Foundation PRD for Procure-to-Pay
 
 ## 0. Document control

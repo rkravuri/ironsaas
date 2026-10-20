@@ -4,7 +4,7 @@ The third slice (PRD section 7): MFA, single sign-on with OpenID Connect, the se
 
 ## 1. Before S3 starts
 
-- The Business PRD and the product PRDs are split in the design session before any business slice (ADR-0029). S3 is kernel work and does not wait for the split, but its tasks name modules by layer (`Iron.Kernel.<Module>`), and the PRD's requirement texts still carry the S1 module names until the split renames them.
+- The requirements are split into one document per layer and product (ADR-0041, task PRD-split). S3 is kernel work and names modules by layer (`Iron.Kernel.<Module>`), as the technical PRD's section 2.1 now does. S3's tests name what they prove by identifier and criterion (TF-218), in every PRD's identifiers.
 - The design session settles the requirements the PRD lists in two slices: SAML (TF-015), SCIM (TF-016) and API keys (TF-024) are in S3's range and in S7's description; data retention (TF-066) is in S3's range and in S6's retention jobs.
 - What S2 carried into S3 is in the S2 plan's closing notes (`docs/slices/S2-access-control-organisations-and-design.md`, section 7); the items that are S3 requirements are named in the table below.
 
