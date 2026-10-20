@@ -4,6 +4,8 @@
 **Date:** 2026-10-19
 **Decided by:** Product owner and architect
 
+The third layer became Suite in ADR-0043.
+
 ## Context
 
 S1 and the first S2 tasks built technical mechanisms. The Functional Foundation PRD mixes two different things: the shared business masters that every product needs, and the products themselves with their own documents and life cycles. Without a rule, business meaning drifts into technical modules (an organisation unit that knows what a legal entity is) and products start to own masters that other products need. A1 is about to build organisation units, which the owner places partly in the functional foundation, so the layers are made explicit in names, folders, schemas and build checks before any further module is added.
