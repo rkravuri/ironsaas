@@ -1,21 +1,22 @@
 namespace Iron.Kernel.Data.Entities;
 
-/// <summary>How a record is visible across the organisations of a tenant (TF-220).</summary>
+/// <summary>Who sees a record beyond its owning unit (TF-220, TF-222, ADR-0038).</summary>
 public enum SharingMode
 {
-    /// <summary>Only the owning organisation sees it.</summary>
+    /// <summary>Its owning unit, and whoever's scope covers that unit.</summary>
     Private = 0,
 
-    /// <summary>The owning organisation and the organisations it is shared with see it (sharing lists arrive in S2).</summary>
+    /// <summary>As private, and also the units listed on the record (<c>kernel_data.record_shares</c>).</summary>
     Shared = 1,
 
-    /// <summary>Every organisation of the tenant sees it.</summary>
-    Global = 2,
+    /// <summary>Every unit of the tenant: anyone who may read the record type anywhere.</summary>
+    Tenant = 2,
 }
 
 /// <summary>
 /// Base of every business and master record (TF-220, decision D-13): it belongs to one organisation unit of the tenant
-/// and has a sharing mode. The data layer filters lists and reads by the user's organisation access from S2 on.
+/// and has a sharing mode. Lists and reads by id go through the record type's policy, which follows the mode in the
+/// query (ADR-0032, ADR-0038). The mode changes only through <c>IRecordSharing</c>, which asks the policy and audits.
 /// </summary>
 public abstract class BusinessRecord : AuditedEntity
 {
@@ -37,7 +38,10 @@ public abstract class BusinessRecord : AuditedEntity
 
     public Guid OwningOrganisationId { get; private set; }
 
-    public SharingMode SharingMode { get; protected set; } = SharingMode.Private;
+    public SharingMode SharingMode { get; private set; } = SharingMode.Private;
+
+    /// <summary>Through <c>IRecordSharing</c> only, which asks the policy, keeps the listed units and audits the change.</summary>
+    internal void ChangeSharing(SharingMode mode) => SharingMode = mode;
 
     private static Guid RequireOrganisation(Guid owningOrganisationId)
     {

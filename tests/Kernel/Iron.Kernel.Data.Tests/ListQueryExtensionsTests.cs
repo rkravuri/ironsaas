@@ -59,7 +59,7 @@ public class ListQueryExtensionsRuleTests
     [Fact]
     public void InMatchesAnyOfTheValuesIncludingEnums()
     {
-        var query = ListQuery.Default with { Filters = [new FilterTerm("sharing_mode", FilterOperator.In, "private,global")] };
+        var query = ListQuery.Default with { Filters = [new FilterTerm("sharing_mode", FilterOperator.In, "private,tenant")] };
 
         Assert.Equal(4, Widgets().ApplyListQuery(query, Fields).Count());
     }

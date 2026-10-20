@@ -59,12 +59,12 @@ public static class SamplePolicies
                 RecordRules.UnitVisibility<Proposal>(SamplePermissions.ProposalsRead),
                 RecordRules.OwnerWhile<Proposal>(p => p.Status == ProposalStatus.Draft, RecordActions.Update)));
 
-    /// <summary>Widgets: seen in the reader's units, changed where the reader may manage them.</summary>
+    /// <summary>Widgets: seen in the reader's units, changed and shared where the reader may manage them.</summary>
     public static IServiceCollection AddWidgetPolicy(this IServiceCollection services) =>
         services.AddRecordPolicy(
             WidgetType,
             SamplePermissions.WidgetsRead,
-            RecordRules.UnitVisibility<Widget>(SamplePermissions.WidgetsRead, (RecordActions.Update, SamplePermissions.WidgetsManage)));
+            RecordRules.UnitVisibility<Widget>(SamplePermissions.WidgetsRead, (RecordActions.Update, SamplePermissions.WidgetsManage), (RecordActions.Share, SamplePermissions.WidgetsManage)));
 }
 
 /// <summary>A context whose business records carry the markers of other entities, for the model check's refusal (ADR-0032).</summary>

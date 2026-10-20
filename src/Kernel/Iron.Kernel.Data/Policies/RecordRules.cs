@@ -1,6 +1,5 @@
 using System.Linq.Expressions;
 using Iron.Kernel.Data.Entities;
-using Iron.Kernel.Data.Lists;
 
 namespace Iron.Kernel.Data.Policies;
 
@@ -58,17 +57,19 @@ public static class RecordRules
     private sealed class UnitVisibilityPolicy<T>(Permission read, IReadOnlyDictionary<string, Permission> actions) : IRecordPolicy<T>
         where T : BusinessRecord
     {
+        // Reading follows the record's sharing mode (ADR-0038); every other action needs its permission over the record's
+        // own unit, because sharing a record lets other units see it, not change it.
         public async Task<Expression<Func<T, bool>>> ReadableAsync(PolicySubject subject, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(subject);
-            return RecordAccessExtensions.Predicate<T>(await subject.ReachAsync(read, cancellationToken).ConfigureAwait(false));
+            return subject.Visibility.Predicate<T>(await subject.ReachAsync(read, cancellationToken).ConfigureAwait(false));
         }
 
         public async Task<PolicyDecision> DecideAsync(T record, string action, PolicySubject subject, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(record);
             ArgumentNullException.ThrowIfNull(subject);
-            var visible = (await subject.ReachAsync(read, cancellationToken).ConfigureAwait(false)).Allows(record.OwningOrganisationId, record.Id);
+            var visible = await subject.Visibility.ReasonAsync(record, await subject.ReachAsync(read, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false) is not null;
             if (!visible)
             {
                 return PolicyDecision.NotVisible;

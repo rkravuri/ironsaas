@@ -14,4 +14,16 @@ public interface ICurrentPrincipal
     /// ADR-0037); null otherwise, and always for a token or a job. The actor stays <see cref="Id"/>: the audit names both.
     /// </summary>
     Guid? ActingForId => null;
+
+    /// <summary>
+    /// The unit a person signed in to the shell works for (TF-222, ADR-0038): the one they chose, else their home unit.
+    /// New records take it as their owning unit by default, and settings resolve from it. Null for a token or a job.
+    /// </summary>
+    Guid? WorkingUnitId => null;
+
+    /// <summary>
+    /// The consolidated view (TF-222 AC1): lists show everything the person's scopes cover rather than the working unit
+    /// and the units below it. Always false for a token or a job, whose lists are never narrowed anyway.
+    /// </summary>
+    bool AllUnits => false;
 }
