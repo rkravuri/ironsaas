@@ -4,7 +4,7 @@ Foundation is the technical base for a family of enterprise SaaS products by Iro
 
 Code lives in three layers (ADR-0029): Kernel, the technical mechanisms (`Iron.Kernel`, `Iron.Kernel.*`); Business, the shared business masters (`Iron.Business.*`); Products, the documents and processes with their own life cycles (`Iron.Products.*`). Database schemas carry the layer prefix and the module name: `kernel_identity`.
 
-The requirements live in `docs/prd/`. The build plan is in slices (PRD section 7). Slice S1, the walking skeleton, and slice S2, access control, organisations and the design system, are complete: each plan in `docs/slices/` says what the slice proves, how it was built and what it carries into the next. S2 was built with Claude Code from `docs/prompts/S2.md` (ADR-0023) in the design language of ADR-0024. Slice S3, trust and compliance, is next: `docs/slices/S3-trust-and-compliance.md` holds its requirements, and its tasks are written in the design session.
+The requirements live in `docs/prd/`, one document per layer and product (ADR-0041): the Technical Foundation PRD for the kernel, the Business Foundation PRD, one PRD per product, the supplier portal surface and the product method. The build plan is in slices (the technical PRD's section 7). Slice S1, the walking skeleton, and slice S2, access control, organisations and the design system, are complete: each plan in `docs/slices/` says what the slice proves, how it was built and what it carries into the next. S2 was built with Claude Code from `docs/prompts/S2.md` (ADR-0023) in the design language of ADR-0024. Slice S3, trust and compliance, is next: `docs/slices/S3-trust-and-compliance.md` holds its requirements, and its tasks are written in the design session.
 
 ## What works today
 
@@ -96,7 +96,7 @@ src/
     Iron.Kernel.Entitlements/  .Flags/  .Settings/                    tenant modules (S2)
     Iron.Kernel.Tenancy/  .Fleet/                                     control plane modules
       Api/  Services/  Data/  Contracts/  README.md                   inside every module
-  Business/                  shared business masters (empty until the Business PRD; README)
+  Business/                  shared business masters (empty until the first business slice; README)
   Products/                  products with their own documents and life cycles (empty; README)
   Hosts/
     Iron.Host.Api/  Iron.Host.Worker/            tenant unit hosts (+ Dockerfiles)
@@ -120,19 +120,20 @@ docs/                        prd/, adr/, guides/, slices/
 - No Foundation assembly reads the system clock directly; time comes from an injected `TimeProvider`.
 - Every module DbContext passes the model rules, its schema carries its layer's prefix, and its migrations match its model; the schema check runs over the migrated schema.
 - Every endpoint declares a permission, `RequireSignedIn` or `AllowAnonymous`; a host does not start otherwise, and the anonymous list is fixed by a test.
+- The requirement documents: every identifier once, every old identifier in the map, criteria in the Given, When, Then form with an error case, each CSV equal to its markdown, and dependencies down the layers and along the process order between products (`make prd-check`, ADR-0041, ADR-0042).
 - In the shell, nothing imports `ag-grid-*` outside the DataGrid wrapper, a module imports from its own layer or a lower one only, every route declares its permission, no colour is given by value, and Prettier's check passes (ADR-0040).
 
 ## Documentation
 
 - `docs/slices/` the slice plans, each with its requirement coverage, its task table and its closing notes; S3's is a skeleton
-- `docs/adr/` forty architecture decision records, one per decision, with an index and a reading order
+- `docs/adr/` forty-two architecture decision records, one per decision, with an index and a reading order
 - `docs/guides/developer-guide.md` how to work on the repository: add a module, an entity, an endpoint with a permission and its checks, a licence, a flag, a setting, a shell page, a provisioning step
 - `docs/guides/local-stack.md` the runbook of the laptop platform
 - `docs/guides/definition-of-done.md` what a change needs before it is merged
 - `docs/design/design-language.md` the brief every page is judged against
 - `docs/prompts/` the instruction files Claude Code builds from, one per slice
 - `CLAUDE.md` the standing rules Claude Code reads on every task
-- `docs/prd/` the Technical Foundation PRD and the Functional Foundation PRD
+- `docs/prd/` the requirements: one PRD per layer and product with a CSV beside each, the map from the archived Functional Foundation PRD, and their README on how to cite and change them (ADR-0041, ADR-0042)
 
 ## Versions decided for Foundation
 

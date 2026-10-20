@@ -69,6 +69,15 @@ The messages name the project file or the assembly and the forbidden reference.
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).
 
+## Requirements (ADR-0041, ADR-0042)
+
+The requirements are in `docs/prd/`, one markdown document per layer and product with a CSV beside it; `docs/prd/README.md` lists them. The markdown is the source: edit it, run `make prd-csv` to write its CSV, and `make prd-check` before committing (CI runs it).
+
+- A new requirement takes the next free identifier in its area's block of twenty, is tagged `[New]`, and has criteria `AC1 Given ..., When ..., Then ...` with at least one marked `(error case)`. A rule nobody has decided is tagged `[Decision]` with the question and a proposed default in its notes.
+- An identifier is never reused, and a moved requirement starts its notes with what it was ("Was FF-022."); `requirements-map.md` says where every requirement of the archived Functional Foundation PRD went.
+- A dependency points down the layers (kernel, business, products, the supplier portal surface); between products it points to an earlier one, or to a later one only as an event, written `RCV-081 (event)`. The check refuses anything else.
+- A test names what it proves by identifier and criterion, `REQ-012 AC2`, so the validation pack can trace it (TF-218).
+
 ## Add a module
 
 Start with the placement test (ADR-0029). It has no business meaning: Kernel. Two or more products would need to own it: Business. One product owns it: Products. Write the answer and the reason in the module's README; a reviewer reads it first.
@@ -81,7 +90,7 @@ Example: a new kernel module `Iron.Kernel.Settings` (typed settings know nothing
 4. Add both projects to `Foundation.slnx` under a new folder `/src/Kernel/Iron.Kernel.Settings/`.
 5. Add both projects to the references of `tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj`, so the private-namespace check can read their assemblies. The test tells you when you forget.
 6. Reference the module from the hosts that run it (`src/Hosts/Iron.Host.*`).
-7. Write `src/Kernel/Iron.Kernel.Settings/README.md`: its layer and why, one paragraph on the module's responsibility, taken from PRD section 2.1, and its schema name (`kernel_settings`).
+7. Write `src/Kernel/Iron.Kernel.Settings/README.md`: its layer and why, one paragraph on the module's responsibility, taken from the technical PRD's section 2.1 (a business module's from the Business PRD's section 9, a product's from its PRD's section 13), and its schema name (`kernel_settings`).
 8. Run `make check`. It confirms the layers, the layout and the references.
 9. Then follow the module pattern (from T7): the module class, its permissions, its DbContext with `[Schema("kernel_settings")]` and migrations, its endpoints, its tests in `tests/Kernel/Iron.Kernel.Settings.Tests/`.
 
@@ -91,7 +100,7 @@ When a kernel module needs something only a business module can supply (the orga
 
 ## Add a business module or a product
 
-The same steps under `src/Business/Iron.Business.<Module>/` (layer `Business`, schema `business_<module>`) or `src/Products/Iron.Products.<Product>/` (layer `Products`, schema `products_<product>`), with tests in `tests/Business/` or `tests/Products/`. Every entity is a `BusinessRecord` or marked `ITenantWide` (TF-220). A business module may use the kernel; a product may use Business and the kernel; both only through Contracts projects. The two layer READMEs (`src/Business/README.md`, `src/Products/README.md`) have the naming table.
+The same steps under `src/Business/Iron.Business.<Module>/` (layer `Business`, schema `business_<module>`) or `src/Products/Iron.Products.<Product>/` (layer `Products`, schema `products_<product>`), with tests in `tests/Business/` or `tests/Products/`. Every entity is a `BusinessRecord` or marked `ITenantWide` (TF-220). A business module may use the kernel; a product may use Business and the kernel; both only through Contracts projects. Business never depends on a product: where it must hear from one, it declares an extension point the product implements. Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product may use an earlier one's Contracts, and an earlier one hears from a later one only through domain events (ADR-0042). The two layer READMEs (`src/Business/README.md`, `src/Products/README.md`) have the naming table, and the module's PRD names its schema, its permissions and its dependencies.
 
 ## Hosts and unit commands (ADR-0011)
 

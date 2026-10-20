@@ -19,6 +19,7 @@ Stop and ask, in the session, only when: a decision with real alternatives has n
 
 - `.NET`: `make build`, `make test` (the data tests start PostgreSQL, Azurite and OpenBao with Testcontainers, so Docker must run), `make check`, `make format` (CI verifies).
 - Shell: `make shell-install` once, `make shell-check` (lint, type check, tests, build), `make shell-a11y` (the gallery scan), `make shell-dev`.
+- Requirements: `make prd-check` (CI runs it); after editing a requirements document, `make prd-csv` writes its CSV.
 - Migrations: `make ef-add MODULE=<Module> NAME=<WhatChanged>` after an entity change (`MODULE` is the last segment of the module's name: `Identity` for `Iron.Kernel.Identity`); commit the generated files; never edit a committed migration.
 - The stack: `make up`, `make images`, `make provision TENANT=x`, `make update-unit TENANT=x`, `make smoke`, `make e2e`, `make integration`. The runbook is `docs/guides/local-stack.md`.
 - Work in WSL: every git, dotnet, npm and docker command runs inside the Linux file system, never through a Windows path.
@@ -41,4 +42,4 @@ Code lives in one of three layers: Kernel (`Iron.Kernel`, `Iron.Kernel.*`), Busi
 
 ## Documentation
 
-A decision not already in an ADR gets one (`docs/adr/0000-template.md`, then the index). Behaviour that changed is in the developer guide, the runbook or the module README. Every font, image or dataset has its licence in `docs/licences.md`. The definition of done is `docs/guides/definition-of-done.md`.
+The requirements are in `docs/prd/`, one document per layer and product (ADR-0041, its README): cite a requirement by its identifier, and a test names what it proves by identifier and criterion (`REQ-012 AC2`). Requirements depend down the layers and along the process order between products (ADR-0042). A decision not already in an ADR gets one (`docs/adr/0000-template.md`, then the index). Behaviour that changed is in the developer guide, the runbook or the module README. Every font, image or dataset has its licence in `docs/licences.md`. The definition of done is `docs/guides/definition-of-done.md`.

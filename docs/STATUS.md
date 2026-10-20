@@ -27,7 +27,7 @@ S2 is done: every task merged, the done-when of the plan's section 1 proven, the
 
 ## Slice S3
 
-S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the tasks are written in the design session, into `docs/prompts/S3.md` and this table, after the Business PRD and the product PRDs are split (ADR-0029).
+S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the tasks are written in the design session, into `docs/prompts/S3.md` and this table, once the PRD split (ADR-0041) is reviewed.
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
@@ -39,9 +39,9 @@ The Functional Foundation PRD split into one document per layer and product (ADR
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
-| PRD split | at the checkpoint after step 4, waiting for the design session | slice/prd-split | ADR-0041; the map (172 rows: 157 moved, 6 split, 9 covered, none merged or retired); the Business PRD, seven product PRDs, the supplier portal surface and the product method with the moved requirements (176) and their outlines; the five scope pages as headings; the archived PRD; `make prd-check` with its tests, in CI. Steps 5 to 10 follow the design session's answer |
+| PRD split | done on the branch, waiting for review | slice/prd-split | ADR-0041 and ADR-0042; steps 1 to 4, the checkpoint, the design session's seven answers, then steps 5 to 10. The map has 172 rows: 154 moved, 9 split, 9 covered by the kernel, none merged or retired. The documents hold 206 business and product requirements (Business 60, Supplier management 18, Contracts 9, Catalogue 12, Requests 14, Orders 21, Receiving 23, Invoicing 30, supplier portal 14, product method 5) and the kernel 207, with TF-241 to TF-243 new; 25 business and receiving requirements and 3 kernel ones are new in the split. The five later products have their scope pages. `make prd-check` (the check and its 16 tests) runs in CI's Compose files job |
 
-The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing group is a business master, not a unit kind, because it serves several units and owns no records. `src/Business/README.md` and the comment on `IOrganisationKinds` still list it among the kinds; they follow after the checkpoint.
+The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing group is a business master, not a unit kind, because it serves several units and owns no records (BF-007). `src/Business/README.md` and the comment on `IOrganisationKinds` say so too.
 
 ## Maintenance
 
@@ -51,13 +51,11 @@ The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing
 
 ## Open questions
 
-For the design session at the PRD split's checkpoint (each is also in the document it concerns):
+For the design session's review of the PRD split. Each is marked `[Decision]` where it stands, with its proposed default:
 
-- The two rows placed by the test: item imports with the Business item master (FF-049), and each product's operational reports in that product (FF-160).
-- Four Business requirements depend on product requirements (BF-108 on SUP-004, BF-202 on SUP-005, BF-204 on INV-010, BF-205 on INV-043); code may not depend upward.
-- Products that depend on each other: Requests and Orders, Orders and Contracts, Receiving and Invoicing; Catalogue on Contracts.
-- Module names: `Iron.Products.SupplierManagement` beside `Iron.Business.Suppliers`, and a name for Contracts other than `Iron.Products.Contracts`, whose public project would be `Iron.Products.Contracts.Contracts`.
-- INV-027 (nightly reconciliation) recomputes counters of three modules; FF-184's clause that approvals, tasks and notifications respect organisation access has no kernel requirement.
+- Twelve requirements tagged `[Decision]`: TF-242 (the forms engine's slice), BF-006 (which kind of unit may hold which), BF-007 (what purchasing groups are used for), BF-022 (an order among job grades), BF-025 (the default unit beside the home and working units), BF-074 (where an HSN or SAC code is required), BF-075 (what a project's budget link does), BF-122 (the seeded lookup values), BF-142 (overlapping rows and other currencies in the delegation of authority), BF-164 (the starter notification templates), BF-181 (the tags of a new master), RCV-042 (who records a service entry).
+- Proposals in the documents' sections: how each product's transactions take their visibility tags (each product's section 10); the business modules (the Business PRD's section 9) and every module's permission names; re-authentication by default for bank account verification and payment release; when a supplier's records close for retention; a supplier view of contracts; the business and product slices (the technical PRD's section 7.2); the five later products' places in the process order.
+- How the answers were applied where a choice remained: BF-207 is the one extension point found where Business must hear from the products (the use of masters, for deletions in use and narrowed sharing); converting a cart and a request into a later product's documents is event-driven, so the drafts appear when the later product handles the event; Orders keeps its received and invoiced quantities from Receiving's bucket events (ORD-121) beside the buckets that atomic checks read; the 360 view's tabs for later products are contributed by their shell modules.
 
 ## Later items
 
@@ -86,7 +84,7 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Testing Library names a tree item from all its content, the items below it included (Mantine's Tree gives the item no label of its own); check a parent item with a screen reader before the tree pattern spreads. jsdom hides Mantine's menus, so unit tests query them hidden or not and the browser specs prove what is visible.
 - Chromium reads a visually hidden word with a space before it ("North , chosen"); the browser specs match either spacing.
 - No module has a spot drawing of its own yet: the opener's slot stays empty until a module brings one through the illustration checklist.
-- PRD section 2.1 and the requirement texts keep the S1 module names, pointed to ADR-0029 from the document control; the PRD split in the design session renames them and divides `Iron.Organisations` between the kernel tree and `Iron.Business.Organisations`.
+- The ADRs and prompts before ADR-0041 cite the archived FF identifiers; `docs/prd/requirements-map.md` translates them. The tests S3 tags with what they prove use every PRD's identifiers (TF-218).
 - No API disables a person or deletes a unit: each browser test run leaves its inactive `E2E run <run>` unit with its people, and each smoke run its inactive `Smoke <run>` unit with one person.
 - The browser test that moves echo between Standard and Enterprise takes about a minute and a quarter and leaves echo on Enterprise, also when it fails; the smoke's `plan-change` step leaves a tenant on the plan it had.
 - Since S2-close the `smoke` tenant is provisioned again on the laptop (on Standard), beside acme, bravo and echo; their administrators' invitations are in `secret/tenants/<slug>/fleet`.
