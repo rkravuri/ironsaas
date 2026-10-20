@@ -22,11 +22,21 @@ interface DrawingProps extends IllustrationProps {
  * The frame every illustration is drawn in: the hand's stroke, caps and joins, the viewBox, the named size, and the
  * accessible name from the catalogue or `aria-hidden` when the drawing is decoration beside its own words.
  */
-export function Drawing({ name, decorative = false, size = "md", ink = hand.ink, accent = hand.accent, className, children }: DrawingProps) {
+export function Drawing({
+  name,
+  decorative = false,
+  size = "md",
+  ink = hand.ink,
+  accent = hand.accent,
+  className,
+  children,
+}: DrawingProps) {
   const { t } = useTranslation();
   const width = drawingSizes[size];
   const height = Math.round((width * hand.height) / hand.width);
-  const accessibility = decorative ? { "aria-hidden": true as const } : { role: "img" as const, "aria-label": t(`illustrations.${name}`) };
+  const accessibility = decorative
+    ? { "aria-hidden": true as const }
+    : { role: "img" as const, "aria-label": t(`illustrations.${name}`) };
   return (
     <svg
       {...accessibility}

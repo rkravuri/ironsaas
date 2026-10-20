@@ -13,7 +13,10 @@ describe("the login page", () => {
   it("signs in, re-reads /me and moves on", async () => {
     let signedIn = false;
     const { calls } = stubFetch({
-      "GET /api/v1/me": () => (signedIn ? json(me(["identity.users.read"])) : problem(401, { title: "Unauthorized", error_code: "auth.unauthenticated" })),
+      "GET /api/v1/me": () =>
+        signedIn
+          ? json(me(["identity.users.read"]))
+          : problem(401, { title: "Unauthorized", error_code: "auth.unauthenticated" }),
       "POST /auth/login": () => {
         signedIn = true;
         return json({ principal: {}, session: {} });
@@ -39,7 +42,16 @@ describe("the login page", () => {
   it("shows the fixed message and the correlation id when the login is refused", async () => {
     stubFetch({
       "GET /api/v1/me": () => problem(401, { title: "Unauthorized", error_code: "auth.unauthenticated" }),
-      "POST /auth/login": () => problem(401, { title: "Unauthorized", detail: "The login identifier or the password is wrong.", error_code: "auth.login_failed" }, "corr-login"),
+      "POST /auth/login": () =>
+        problem(
+          401,
+          {
+            title: "Unauthorized",
+            detail: "The login identifier or the password is wrong.",
+            error_code: "auth.login_failed",
+          },
+          "corr-login",
+        ),
     });
     renderWithProviders(
       <Routes>

@@ -44,7 +44,9 @@ describe("the tenant mark", () => {
 
 describe("the mandala's draw-in", () => {
   it("animates when asked and the viewer allows motion", () => {
-    const { container } = render(<Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed="draw" size={40} animate />);
+    const { container } = render(
+      <Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed="draw" size={40} animate />,
+    );
     expect(container.querySelector("path.iron-draw-in")).not.toBeNull();
   });
 
@@ -59,7 +61,9 @@ describe("the mandala's draw-in", () => {
       removeEventListener: vi.fn(),
       dispatchEvent: () => false,
     }));
-    const { container } = render(<Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed="still" size={40} animate />);
+    const { container } = render(
+      <Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed="still" size={40} animate />,
+    );
     expect(container.querySelector("path.iron-draw-in")).toBeNull();
   });
 });

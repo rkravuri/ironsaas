@@ -9,7 +9,8 @@ import { signIn } from "./helpers";
  */
 const controlUrl = process.env.E2E_CONTROL_URL ?? "http://localhost:5200";
 const operatorSecret = process.env.E2E_OPERATOR_SECRET ?? "";
-const tenant = process.env.E2E_TENANT ?? new URL(process.env.E2E_BASE_URL ?? "https://smoke.localhost").hostname.split(".")[0];
+const tenant =
+  process.env.E2E_TENANT ?? new URL(process.env.E2E_BASE_URL ?? "https://smoke.localhost").hostname.split(".")[0];
 const minute = 60_000;
 const reason = "The browser test checks the import kill switch; it is off again in a minute.";
 
@@ -42,7 +43,10 @@ async function killImports(on: boolean): Promise<number> {
  */
 async function importAnswer(page: Page): Promise<string> {
   return page.evaluate(async () => {
-    const exported = await fetch("/api/v1/roles/export", { credentials: "same-origin", headers: { Accept: "application/json" } });
+    const exported = await fetch("/api/v1/roles/export", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
     if (!exported.ok) {
       return `export ${exported.status}`;
     }

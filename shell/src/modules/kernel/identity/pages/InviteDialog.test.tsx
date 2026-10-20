@@ -17,10 +17,21 @@ const unit = (id: string, name: string, parent: string | null) => ({
   updated_at: "2026-10-19T08:00:00Z",
   version: 1,
 });
-const tree = { data: [unit("root", "Acme", null), unit("branch", "Branch", "root"), unit("finance", "Finance", "root")] };
+const tree = {
+  data: [unit("root", "Acme", null), unit("branch", "Branch", "root"), unit("finance", "Finance", "root")],
+};
 const emptyList = {
   data: [],
-  meta: { page_number: 1, page_size: 50, total_count: 0, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 },
+  meta: {
+    page_number: 1,
+    page_size: 50,
+    total_count: 0,
+    total_pages: 1,
+    has_previous: false,
+    has_next: false,
+    page_size_capped: false,
+    max_page_size: 200,
+  },
   links: { self: "", first: "", previous: null, next: null, last: "" },
 };
 const manager = ["authz.units.read", "identity.users.manage", "identity.users.read"];
@@ -33,7 +44,8 @@ function Record() {
 /** The Users page with the API from memory: the person manages users at Branch and nowhere else. */
 function openUsers(route: string, extra: Record<string, () => Response> = {}) {
   const fetch = stubFetch({
-    "GET /api/v1/me": () => json({ ...me(["identity.users.read"], manager), home_unit: { id: "branch", name: "Branch", code: "branch" } }),
+    "GET /api/v1/me": () =>
+      json({ ...me(["identity.users.read"], manager), home_unit: { id: "branch", name: "Branch", code: "branch" } }),
     "GET /api/v1/organisation-units": () => json(tree),
     "GET /api/v1/me/access?unit=branch": () => json({ scope: "unit:branch", permissions: manager }),
     "GET /api/v1/me/access?unit=finance": () => json({ scope: "unit:finance", permissions: ["identity.users.read"] }),
@@ -95,11 +107,17 @@ describe("inviting a person", () => {
     await user.click(within(dialog).getByRole("button", { name: "Invite" }));
 
     const done = await screen.findByRole("dialog", { name: "Grace Hopper is invited" });
-    expect(within(done).getByLabelText("Invitation link")).toHaveValue(`${window.location.origin}/invitations/secret-token`);
+    expect(within(done).getByLabelText("Invitation link")).toHaveValue(
+      `${window.location.origin}/invitations/secret-token`,
+    );
     expect(within(done).getByRole("button", { name: "Copy the link" })).toBeInTheDocument();
     expect(done).toHaveTextContent(/Email delivery comes later: send this link to them yourself/);
     const sent = calls.find((call) => call.key === "POST /api/v1/users");
-    expect(JSON.parse(sent?.init?.body as string)).toEqual({ display_name: "Grace Hopper", login_id: "grace@acme.localhost", home_unit_id: "branch" });
+    expect(JSON.parse(sent?.init?.body as string)).toEqual({
+      display_name: "Grace Hopper",
+      login_id: "grace@acme.localhost",
+      home_unit_id: "branch",
+    });
 
     await user.click(within(done).getByRole("button", { name: "Open their record" }));
     expect(await screen.findByText("the record of new-1")).toBeInTheDocument();
@@ -124,7 +142,11 @@ describe("inviting a person", () => {
     await within(dialog).findByText("Acme / Branch");
     await user.click(within(dialog).getByRole("button", { name: "Invite" }));
 
-    await waitFor(() => expect(within(dialog).getByLabelText(/^Login identifier/)).toHaveAccessibleDescription(/Another account has this login id/));
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText(/^Login identifier/)).toHaveAccessibleDescription(
+        /Another account has this login id/,
+      ),
+    );
   });
 
   it("refuses a unit where /me/access does not allow managing users, before asking the API", async () => {

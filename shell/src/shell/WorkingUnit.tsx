@@ -34,7 +34,13 @@ export function WorkingUnitControl({ choice }: { choice: WorkingUnitState }) {
           variant="subtle"
           size="xs"
           loading={choice.busy}
-          leftSection={currentCode !== undefined ? <UnitMark code={currentCode} size={18} /> : <IconStack2 size={16} aria-hidden="true" />}
+          leftSection={
+            currentCode !== undefined ? (
+              <UnitMark code={currentCode} size={18} />
+            ) : (
+              <IconStack2 size={16} aria-hidden="true" />
+            )
+          }
           rightSection={<IconChevronDown size={14} aria-hidden="true" />}
           aria-label={t("workingUnit.control", { name })}
           data-working-unit={all ? "all" : current?.id}
@@ -99,7 +105,14 @@ export function WorkingUnitFailure({ choice }: { choice: WorkingUnitState }) {
     return null;
   }
   return (
-    <Alert role="alert" color="danger" mb="md" withCloseButton closeButtonLabel={t("dialog.close")} onClose={choice.clearFailure}>
+    <Alert
+      role="alert"
+      color="danger"
+      mb="md"
+      withCloseButton
+      closeButtonLabel={t("dialog.close")}
+      onClose={choice.clearFailure}
+    >
       <Text size="sm">{choice.failure.error?.message ?? t("errors.unexpected")}</Text>
       {choice.failure.error?.correlationId !== undefined && (
         <Text size="xs" c="dimmed" mt={4}>

@@ -139,7 +139,13 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   const correlationId = response.headers.get("X-Correlation-Id") ?? undefined;
   const date = Date.parse(response.headers.get("Date") ?? "");
   const actingEnded = response.headers.get(actingEndedHeader) ?? undefined;
-  const info: ResponseInfo = { path, status: response.status, serverDate: Number.isNaN(date) ? undefined : date, receivedAt: Date.now(), ...(actingEnded ? { actingEnded } : {}) };
+  const info: ResponseInfo = {
+    path,
+    status: response.status,
+    serverDate: Number.isNaN(date) ? undefined : date,
+    receivedAt: Date.now(),
+    ...(actingEnded ? { actingEnded } : {}),
+  };
   for (const listener of responseListeners) {
     listener(info);
   }

@@ -8,7 +8,10 @@ import { fill, renderWithProviders, stubFetch } from "@/test/render";
 import { Form } from "./Form";
 import { useZodForm } from "./useZodForm";
 
-const schema = z.object({ displayName: z.string().min(1, "Enter a display name."), email: z.string().email("Enter an email address.") });
+const schema = z.object({
+  displayName: z.string().min(1, "Enter a display name."),
+  email: z.string().email("Enter an email address."),
+});
 type Values = z.infer<typeof schema>;
 
 function Sample({ onSubmit }: { onSubmit: (values: Values) => Promise<void> }) {

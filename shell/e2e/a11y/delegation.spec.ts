@@ -8,12 +8,17 @@ const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 async function expectNoViolation(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
   expect(
-    results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`),
+    results.violations.map(
+      (violation) =>
+        `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`,
+    ),
   ).toEqual([]);
 }
 
 for (const scheme of schemes) {
-  test(`a person's own delegations in My profile in the ${scheme} scheme: in words with their status, the create dialog by keyboard, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`a person's own delegations in My profile in the ${scheme} scheme: in words with their status, the create dialog by keyboard, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubDelegations(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -46,7 +51,9 @@ for (const scheme of schemes) {
     await expect(open).toBeFocused();
   });
 
-  test(`the console's delegations page for administrators in the ${scheme} scheme: others' delegations in the grid, delegating for someone, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the console's delegations page for administrators in the ${scheme} scheme: others' delegations in the grid, delegating for someone, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubDelegations(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -69,7 +76,9 @@ for (const scheme of schemes) {
     await expect(dialog).toBeHidden();
   });
 
-  test(`the Acting for control and its band in the ${scheme} scheme: the choice in the header, whose rights until when, how to stop, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the Acting for control and its band in the ${scheme} scheme: the choice in the header, whose rights until when, how to stop, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubDelegations(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -96,7 +105,9 @@ for (const scheme of schemes) {
     await expect(band).toBeHidden();
   });
 
-  test(`the access review pages in the ${scheme} scheme: the campaigns with their progress, a campaign's items to decide, the revoke dialog, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the access review pages in the ${scheme} scheme: the campaigns with their progress, a campaign's items to decide, the revoke dialog, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubReviews(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -112,8 +123,12 @@ for (const scheme of schemes) {
     await expect(page.getByRole("heading", { name: "Quarterly review, Operations" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "Marie Curie" })).toBeVisible();
     // The viewer's own row says who decides it, and the page's confirmation leaves it out.
-    await expect(page.getByRole("gridcell", { name: "About your own access: another reviewer decides it." })).toBeVisible();
-    await expect(page.getByRole("gridcell", { name: "No other reviewer here: the review's owner decides it." })).toBeVisible();
+    await expect(
+      page.getByRole("gridcell", { name: "About your own access: another reviewer decides it." }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("gridcell", { name: "No other reviewer here: the review's owner decides it." }),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "Confirm the 4 items on this page" })).toBeEnabled();
     await page.screenshot({ path: `test-results/a11y/review-record-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);

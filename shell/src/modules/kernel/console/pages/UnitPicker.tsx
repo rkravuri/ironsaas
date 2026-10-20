@@ -66,7 +66,9 @@ export function UnitPicker({ label, units, value, onChange, error, disabled }: U
                     tree.toggleExpanded(node.value);
                   }}
                 >
-                  {hasChildren && <IconChevronRight size={14} style={{ transform: expanded ? "rotate(90deg)" : "none" }} />}
+                  {hasChildren && (
+                    <IconChevronRight size={14} style={{ transform: expanded ? "rotate(90deg)" : "none" }} />
+                  )}
                 </Box>
                 <Text size="sm" truncate fw={selected ? 600 : 400} {...(off ? { c: "dimmed" } : {})}>
                   {node.label}

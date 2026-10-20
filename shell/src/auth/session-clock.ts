@@ -42,7 +42,12 @@ export type SessionPhase =
  * one answer can show less than the whole span and never more: the largest seen for the session is kept. When the idle
  * end is the absolute limit, the answer says nothing about the span.
  */
-export function timesFromMe(session: MeSession, receivedAt: number, serverOffset: number, previous?: SessionTimes): SessionTimes {
+export function timesFromMe(
+  session: MeSession,
+  receivedAt: number,
+  serverOffset: number,
+  previous?: SessionTimes,
+): SessionTimes {
   const endsAt = Date.parse(session.expires_at) - serverOffset;
   const idleEndsAt = Math.min(Date.parse(session.idle_expires_at) - serverOffset, endsAt);
   const shown = idleEndsAt - receivedAt;
@@ -73,7 +78,11 @@ export function merge(mine: SessionTimes | undefined, theirs: SessionTimes): Ses
   if (theirs.idleEndsAt <= mine.idleEndsAt) {
     return mine;
   }
-  return { ...mine, idleEndsAt: Math.min(theirs.idleEndsAt, mine.endsAt), idleSpan: Math.max(mine.idleSpan, theirs.idleSpan) };
+  return {
+    ...mine,
+    idleEndsAt: Math.min(theirs.idleEndsAt, mine.endsAt),
+    idleSpan: Math.max(mine.idleSpan, theirs.idleSpan),
+  };
 }
 
 /** Where the session stands at `now`. Near the absolute limit the warning is the final one, whatever the idle end says. */

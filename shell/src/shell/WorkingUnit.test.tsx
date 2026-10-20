@@ -11,7 +11,12 @@ const acme = step("u-acme", "Acme");
 const sales = step("u-sales", "Sales");
 const north = step("u-north", "North");
 const finance = step("u-finance", "Finance");
-const choice = (path: { id: string; name: string }[]) => ({ ...path.at(-1)!, code: path.at(-1)!.name.toLowerCase(), depth: path.length - 1, path });
+const choice = (path: { id: string; name: string }[]) => ({
+  ...path.at(-1)!,
+  code: path.at(-1)!.name.toLowerCase(),
+  depth: path.length - 1,
+  path,
+});
 
 /** The choices of a person homed at North with a role at Sales and its units, and one at Finance alone. */
 const choices = [choice([acme, sales]), choice([acme, sales, north]), choice([acme, finance])];
@@ -62,7 +67,9 @@ afterEach(() => {
 
 describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
   it("is not in the header with one unit to choose", async () => {
-    renderControl({ "GET /api/v1/me": () => json(meWith({ units: [choice([acme, sales, north])], available: false })) });
+    renderControl({
+      "GET /api/v1/me": () => json(meWith({ units: [choice([acme, sales, north])], available: false })),
+    });
     await waitFor(() => expect(screen.getByTestId("working")).toHaveTextContent("North"));
     expect(screen.queryByRole("button", { name: /Choose the unit you work for/ })).toBeNull();
   });
@@ -91,7 +98,9 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
 
     await user.click(items[2]!);
 
-    expect(await screen.findByRole("button", { name: "Working for Finance. Choose the unit you work for" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Working for Finance. Choose the unit you work for" }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("working")).toHaveTextContent("Finance");
     const posted = calls.find((call) => call.key === "POST /api/v1/me/working-unit");
     expect(JSON.parse(posted?.init?.body as string)).toEqual({ unit_id: finance.id });
@@ -107,7 +116,9 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
     await user.click(await screen.findByRole("button", { name: /Choose the unit you work for/ }));
     await user.click(await screen.findByRole("menuitem", { name: /All my units/, hidden: true }));
 
-    expect(await screen.findByRole("button", { name: "Working for All my units. Choose the unit you work for" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Working for All my units. Choose the unit you work for" }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("working")).toHaveTextContent("all");
     const posted = calls.find((call) => call.key === "POST /api/v1/me/working-unit");
     expect(JSON.parse(posted?.init?.body as string)).toEqual({ all_units: true });
@@ -126,7 +137,14 @@ describe("the choice of the unit you work for (TF-222, ADR-0038)", () => {
     renderControl({
       "GET /api/v1/me": () => json(meWith({})),
       "POST /api/v1/me/working-unit": () =>
-        problem(403, { error_code: "identity.working_unit.not_yours", detail: "You may not work for that unit. Choose your home unit or a unit where you hold a role." }, "corr-unit"),
+        problem(
+          403,
+          {
+            error_code: "identity.working_unit.not_yours",
+            detail: "You may not work for that unit. Choose your home unit or a unit where you hold a role.",
+          },
+          "corr-unit",
+        ),
     });
     const user = userEvent.setup();
 

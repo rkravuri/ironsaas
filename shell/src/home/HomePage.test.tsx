@@ -41,19 +41,26 @@ describe("the home page", () => {
     signIn({ anywhere: administrator, atHome: administrator, unit: root });
     renderWithProviders(<HomePage />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), Admin$/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening), Admin$/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /A small building with its flag up/ })).toBeInTheDocument();
     expect(screen.getByText(/Your home unit is Acme Corporation/)).toBeInTheDocument();
 
     expect(within(opener("Identity")).getByRole("link", { name: "Users" })).toHaveAttribute("href", "/users");
     expect(within(opener("Identity")).getByText(/people and service accounts/)).toBeInTheDocument();
-    expect(within(opener("Console")).getByRole("link", { name: "Organisation units" })).toHaveAttribute("href", "/console/units");
+    expect(within(opener("Console")).getByRole("link", { name: "Organisation units" })).toHaveAttribute(
+      "href",
+      "/console/units",
+    );
     expect(within(opener("Console")).getByRole("link", { name: "Roles" })).toBeInTheDocument();
 
     const actions = await screen.findByRole("region", { name: "Quick actions" });
     expect(within(actions).getByRole("link", { name: "Invite a person" })).toHaveAttribute("href", "/users?invite=1");
     expect(within(actions).getByRole("link", { name: "Add a unit" })).toHaveAttribute("href", "/console/units?add=1");
-    expect(screen.getByRole("region", { name: "Recently opened" })).toHaveTextContent(/The last five pages you open in this browser will appear here/);
+    expect(screen.getByRole("region", { name: "Recently opened" })).toHaveTextContent(
+      /The last five pages you open in this browser will appear here/,
+    );
   });
 
   it("shows a child-unit administrator only the openers it may open, and no quick action it cannot perform", async () => {
@@ -68,7 +75,11 @@ describe("the home page", () => {
   });
 
   it("asks /me/access at the home unit: a permission held elsewhere does not make a quick action here", async () => {
-    signIn({ anywhere: ["identity.users.read", "identity.users.manage"], atHome: ["identity.users.read"], unit: branch });
+    signIn({
+      anywhere: ["identity.users.read", "identity.users.manage"],
+      atHome: ["identity.users.read"],
+      unit: branch,
+    });
     renderWithProviders(<HomePage />);
 
     await screen.findByRole("article", { name: "Identity" });
@@ -79,7 +90,12 @@ describe("the home page", () => {
     rememberPage(principal, { path: "/console/roles", titleKey: "modules.console.roles", module: "console", at: 1 });
     rememberPage(principal, { path: "/users", titleKey: "modules.identity.users", module: "identity", at: 2 });
     rememberPage(principal, { path: "/users/42", titleKey: "modules.identity.users", module: "identity", at: 3 });
-    window.localStorage.setItem(recentStorageKey(principal), JSON.stringify(readRecent(principal).map((page) => (page.path === "/users/42" ? { ...page, label: "Ada Lovelace" } : page))));
+    window.localStorage.setItem(
+      recentStorageKey(principal),
+      JSON.stringify(
+        readRecent(principal).map((page) => (page.path === "/users/42" ? { ...page, label: "Ada Lovelace" } : page)),
+      ),
+    );
     signIn({ anywhere: ["identity.users.read"], atHome: ["identity.users.read"], unit: branch });
     renderWithProviders(<HomePage />);
 
@@ -105,7 +121,15 @@ describe("the home page", () => {
 
 describe("the greeting", () => {
   it("names the part of the day", () => {
-    expect([4, 5, 11, 12, 17, 18, 23].map(dayPart)).toEqual(["evening", "morning", "morning", "afternoon", "afternoon", "evening", "evening"]);
+    expect([4, 5, 11, 12, 17, 18, 23].map(dayPart)).toEqual([
+      "evening",
+      "morning",
+      "morning",
+      "afternoon",
+      "afternoon",
+      "evening",
+      "evening",
+    ]);
   });
 });
 
@@ -115,7 +139,13 @@ describe("the recent pages", () => {
       rememberPage(principal, { path: `/users/${n}`, titleKey: "modules.identity.users", module: "identity", at: n });
     }
     rememberPage(principal, { path: "/users/5", titleKey: "modules.identity.users", module: "identity", at: 8 });
-    expect(readRecent(principal).map((page) => page.path)).toEqual(["/users/5", "/users/7", "/users/6", "/users/4", "/users/3"]);
+    expect(readRecent(principal).map((page) => page.path)).toEqual([
+      "/users/5",
+      "/users/7",
+      "/users/6",
+      "/users/4",
+      "/users/3",
+    ]);
     expect(readRecent("someone-else")).toEqual([]);
 
     window.localStorage.setItem(recentStorageKey(principal), "not json");

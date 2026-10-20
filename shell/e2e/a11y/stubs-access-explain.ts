@@ -178,7 +178,12 @@ const rules = [
   },
 ];
 
-const grant = (role: string, scope: string, unit: (typeof units)[number] | null, source: "assignment" | "delegation" = "assignment") => ({
+const grant = (
+  role: string,
+  scope: string,
+  unit: (typeof units)[number] | null,
+  source: "assignment" | "delegation" = "assignment",
+) => ({
   assignment_id: source === "assignment" ? "01a17e00-0000-7000-8000-0000000000f2" : null,
   delegation_id: source === "delegation" ? "01a17e00-0000-7000-8000-0000000000f3" : null,
   role,
@@ -261,7 +266,9 @@ export async function stubExplainAndConflicts(target: Page): Promise<void> {
       },
     }),
   );
-  await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: explainer } }));
+  await target.route("**/api/v1/me/access?**", (route) =>
+    route.fulfill({ json: { scope: "unit", permissions: explainer } }),
+  );
   await target.route("**/api/v1/directory?**", (route) =>
     route.fulfill({
       json: listOf([
@@ -280,7 +287,9 @@ export async function stubExplainAndConflicts(target: Page): Promise<void> {
   await target.route("**/api/v1/conflict-rules?**", (route) => route.fulfill({ json: listOf(rules) }));
   await target.route("**/api/v1/conflict-report?**", (route) => route.fulfill({ json: listOf(entries) }));
   await target.route("**/api/v1/conflict-report/runs/latest", (route) => route.fulfill({ json: { run } }));
-  await target.route("**/api/v1/conflict-report/runs", (route) => route.fulfill({ status: 201, json: { ...run, trigger: "on_demand" } }));
+  await target.route("**/api/v1/conflict-report/runs", (route) =>
+    route.fulfill({ status: 201, json: { ...run, trigger: "on_demand" } }),
+  );
   await target.route("**/api/v1/role-assignments/conflicts", (route) => route.fulfill({ json: grantConflicts }));
 }
 

@@ -7,7 +7,12 @@ const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
 async function expectNoViolation(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
-  expect(results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => node.target.map(String).join(" ")).join("; ")}`)).toEqual([]);
+  expect(
+    results.violations.map(
+      (violation) =>
+        `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => node.target.map(String).join(" ")).join("; ")}`,
+    ),
+  ).toEqual([]);
 }
 
 for (const scheme of schemes) {
@@ -25,8 +30,12 @@ for (const scheme of schemes) {
     await expect(idle).toContainText("30 minutes");
     await expect(idle).toContainText("Default: 60 minutes");
     await expect(idle).toContainText(/Set here by Ravi Ravuri on /);
-    await expect(page.getByRole("article", { name: "An invitation link stays valid for" })).toContainText("The default: nobody has set a value.");
-    await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" })).toBeVisible();
+    await expect(page.getByRole("article", { name: "An invitation link stays valid for" })).toContainText(
+      "The default: nobody has set a value.",
+    );
+    await expect(
+      page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Settings" }),
+    ).toBeVisible();
     await page.screenshot({ path: `test-results/a11y/settings-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 

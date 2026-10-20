@@ -17,12 +17,17 @@ export interface QuickActions {
  */
 export function useQuickActions(): QuickActions {
   const session = useSession();
-  const candidates = useMemo(() => quickActionsFor(manifests, session.permissions, session.entitlements.entitled), [session.permissions, session.entitlements]);
+  const candidates = useMemo(
+    () => quickActionsFor(manifests, session.permissions, session.entitlements.entitled),
+    [session.permissions, session.entitlements],
+  );
   const home = session.me?.home_unit?.id;
   const access = useAccessAt(
     home !== undefined ? { unit: home } : undefined,
     candidates.map((action) => action.permission),
   );
-  const actions = candidates.filter((action) => (home !== undefined ? access.can(action.permission) : session.tenantPermissions.includes(action.permission)));
+  const actions = candidates.filter((action) =>
+    home !== undefined ? access.can(action.permission) : session.tenantPermissions.includes(action.permission),
+  );
   return { pending: access.pending, actions };
 }

@@ -16,7 +16,9 @@ describe("the ListQuery mapping", () => {
       ],
     });
 
-    expect(query).toBe("page_number=2&page_size=50&sort=-created_at%2Clogin_id&filter=status%3Aeq%3Aactive&filter=login_id%3Acontains%3Aravi");
+    expect(query).toBe(
+      "page_number=2&page_size=50&sort=-created_at%2Clogin_id&filter=status%3Aeq%3Aactive&filter=login_id%3Acontains%3Aravi",
+    );
     expect(new URLSearchParams(query).getAll("filter")).toEqual(["status:eq:active", "login_id:contains:ravi"]);
   });
 

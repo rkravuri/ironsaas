@@ -27,9 +27,14 @@ const received = delegation("01a17c00-0000-7000-8000-0000000000d2", ada, admin, 
 
 function show(acting = false) {
   const stub = stubFetch({
-    "GET /api/v1/me": () => json({ ...me(), acting_for: acting ? { id: ada.id, name: ada.name, duties: received.duties, until: received.ends_at } : null }),
+    "GET /api/v1/me": () =>
+      json({
+        ...me(),
+        acting_for: acting ? { id: ada.id, name: ada.name, duties: received.duties, until: received.ends_at } : null,
+      }),
     "GET /api/v1/delegations/mine": () => json({ data: [given, received] }),
-    [`POST /api/v1/delegations/${given.id}/end`]: () => json({ ...given, status: "ended", ended_at: "2026-10-20T10:00:00Z" }),
+    [`POST /api/v1/delegations/${given.id}/end`]: () =>
+      json({ ...given, status: "ended", ended_at: "2026-10-20T10:00:00Z" }),
   });
   renderWithProviders(<PersonalDelegations />, { route: "/me" });
   return stub;
@@ -58,7 +63,11 @@ describe("a person's own delegations in My profile (TF-037)", () => {
 
     await user.click(screen.getAllByRole("button", { name: "End now" })[0] as HTMLElement);
     const dialog = await screen.findByRole("dialog", { name: "End this delegation" });
-    expect(within(dialog).getByText("Grace Hopper stops acting for Admin at once, and cannot choose to again. The delegation stays in the history.")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Grace Hopper stops acting for Admin at once, and cannot choose to again. The delegation stays in the history.",
+      ),
+    ).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "End now" }));
 
     await waitFor(() => expect(calls.map((call) => call.key)).toContain(`POST /api/v1/delegations/${given.id}/end`));

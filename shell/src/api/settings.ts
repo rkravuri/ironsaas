@@ -68,13 +68,21 @@ export type ContextSettings = z.infer<typeof ContextSettingsSchema>;
 /** A place the console reads and changes: the whole tenant, or one unit. A person's own place is "user". */
 export type SettingPlace = { scope: "tenant" } | { scope: "unit"; unitId: string } | { scope: "user" };
 
-const placeQuery = (place: SettingPlace) => (place.scope === "unit" ? `scope=unit&unit=${encodeURIComponent(place.unitId)}` : `scope=${place.scope}`);
+const placeQuery = (place: SettingPlace) =>
+  place.scope === "unit" ? `scope=unit&unit=${encodeURIComponent(place.unitId)}` : `scope=${place.scope}`;
 
 export const fetchSettings = (place: { scope: "tenant" } | { scope: "unit"; unitId: string }, signal?: AbortSignal) =>
   request(`/api/v1/settings?${placeQuery(place)}`, { schema: SettingsListSchema, ...(signal ? { signal } : {}) });
 
-export const fetchSettingHistory = (key: string, place: { scope: "tenant" } | { scope: "unit"; unitId: string }, signal?: AbortSignal) =>
-  request(`/api/v1/settings/${encodeURIComponent(key)}/history?${placeQuery(place)}&page_size=50`, { schema: listSchema(SettingChangeSchema), ...(signal ? { signal } : {}) });
+export const fetchSettingHistory = (
+  key: string,
+  place: { scope: "tenant" } | { scope: "unit"; unitId: string },
+  signal?: AbortSignal,
+) =>
+  request(`/api/v1/settings/${encodeURIComponent(key)}/history?${placeQuery(place)}&page_size=50`, {
+    schema: listSchema(SettingChangeSchema),
+    ...(signal ? { signal } : {}),
+  });
 
 /** Sets a value at a place; the answer is the setting there, now set. A broken rule comes back on the field `value`. */
 export const saveSetting = (key: string, place: SettingPlace, value: unknown) =>
@@ -85,4 +93,8 @@ export const saveSetting = (key: string, place: SettingPlace, value: unknown) =>
   });
 
 /** Removes the value at a place (TF-058 AC2); the answer is the setting there with the inherited value. */
-export const resetSetting = (key: string, place: SettingPlace) => request(`/api/v1/settings/${encodeURIComponent(key)}?${placeQuery(place)}`, { method: "DELETE", schema: SettingViewSchema });
+export const resetSetting = (key: string, place: SettingPlace) =>
+  request(`/api/v1/settings/${encodeURIComponent(key)}?${placeQuery(place)}`, {
+    method: "DELETE",
+    schema: SettingViewSchema,
+  });

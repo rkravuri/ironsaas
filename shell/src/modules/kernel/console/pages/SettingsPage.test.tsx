@@ -18,8 +18,24 @@ const root = {
   updated_at: "2026-10-19T09:00:00Z",
   version: 1,
 };
-const operations = { ...root, id: "01a15100-0000-7000-8000-0000000000c2", name: "Operations", code: "operations", kind: "unit", parent_id: root.id, depth: 1 };
-const warehouse = { ...root, id: "01a15100-0000-7000-8000-0000000000c3", name: "Warehouse", code: "warehouse", kind: "unit", parent_id: operations.id, depth: 2 };
+const operations = {
+  ...root,
+  id: "01a15100-0000-7000-8000-0000000000c2",
+  name: "Operations",
+  code: "operations",
+  kind: "unit",
+  parent_id: root.id,
+  depth: 1,
+};
+const warehouse = {
+  ...root,
+  id: "01a15100-0000-7000-8000-0000000000c3",
+  name: "Warehouse",
+  code: "warehouse",
+  kind: "unit",
+  parent_id: operations.id,
+  depth: 2,
+};
 const ravi = { id: "01a15100-0000-7000-8000-0000000000d1", name: "Ravi" };
 const notSet = { level: "default", unit: null, changed_by: null, changed_at: null };
 
@@ -45,8 +61,19 @@ const tenantList = {
   scope: "tenant",
   unit: null,
   data: [
-    view("identity.invitation.valid_days", "identity", { requirement: "A whole number from 1 to 30.", minimum: 1, maximum: 30, scopes: ["tenant", "unit"], default: 3, value: 3 }),
-    view("identity.session.idle_minutes", "identity", { value: 30, set_here: true, source: { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" } }),
+    view("identity.invitation.valid_days", "identity", {
+      requirement: "A whole number from 1 to 30.",
+      minimum: 1,
+      maximum: 30,
+      scopes: ["tenant", "unit"],
+      default: 3,
+      value: 3,
+    }),
+    view("identity.session.idle_minutes", "identity", {
+      value: 30,
+      set_here: true,
+      source: { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" },
+    }),
   ],
 };
 
@@ -61,12 +88,20 @@ const warehouseList = {
       scopes: ["tenant", "unit"],
       default: 3,
       value: 14,
-      source: { level: "unit", unit: { id: operations.id, name: "Operations", path: "Acme / Operations" }, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" },
+      source: {
+        level: "unit",
+        unit: { id: operations.id, name: "Operations", path: "Acme / Operations" },
+        changed_by: ravi,
+        changed_at: "2026-10-19T10:00:00Z",
+      },
     }),
   ],
 };
 
-function open(permissions = administrator, handlers: Record<string, (init: RequestInit | undefined) => Response | Promise<Response>> = {}) {
+function open(
+  permissions = administrator,
+  handlers: Record<string, (init: RequestInit | undefined) => Response | Promise<Response>> = {},
+) {
   const stub = stubFetch({
     "GET /api/v1/me": () => json(me(permissions)),
     "GET /api/v1/settings?scope=tenant": () => json(tenantList),
@@ -140,7 +175,11 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     await user.type(value, "5");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(within(dialog).getByText("A whole number from 15 to 480.", { selector: ".mantine-InputWrapper-error" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        within(dialog).getByText("A whole number from 15 to 480.", { selector: ".mantine-InputWrapper-error" }),
+      ).toBeInTheDocument(),
+    );
     const sent = calls.find((call) => call.key === "PUT /api/v1/settings/identity.session.idle_minutes");
     expect(JSON.parse(sent?.init?.body as string)).toEqual({ scope: "tenant", unit_id: null, value: 5 });
   });
@@ -164,7 +203,11 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     expect(calls.some((call) => call.key.startsWith("DELETE"))).toBe(false);
     await user.click(within(confirm).getByRole("button", { name: "Reset" }));
 
-    await waitFor(() => expect(calls.some((call) => call.key === "DELETE /api/v1/settings/identity.session.idle_minutes?scope=tenant")).toBe(true));
+    await waitFor(() =>
+      expect(
+        calls.some((call) => call.key === "DELETE /api/v1/settings/identity.session.idle_minutes?scope=tenant"),
+      ).toBe(true),
+    );
     const after = await row("A session ends without activity after");
     await waitFor(() => expect(after.getByText("The default: nobody has set a value.")).toBeInTheDocument());
     expect(after.getByText("60 minutes")).toBeInTheDocument();
@@ -176,10 +219,35 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
       "GET /api/v1/settings/identity.session.idle_minutes/history?scope=tenant&page_size=50": () =>
         json({
           data: [
-            { id: "h2", kind: "set", before: 45, after: 30, changed_by_id: ravi.id, changed_by_name: "Ravi", changed_at: "2026-10-19T10:00:00Z" },
-            { id: "h1", kind: "set", before: null, after: 45, changed_by_id: ravi.id, changed_by_name: "Ravi", changed_at: "2026-10-18T10:00:00Z" },
+            {
+              id: "h2",
+              kind: "set",
+              before: 45,
+              after: 30,
+              changed_by_id: ravi.id,
+              changed_by_name: "Ravi",
+              changed_at: "2026-10-19T10:00:00Z",
+            },
+            {
+              id: "h1",
+              kind: "set",
+              before: null,
+              after: 45,
+              changed_by_id: ravi.id,
+              changed_by_name: "Ravi",
+              changed_at: "2026-10-18T10:00:00Z",
+            },
           ],
-          meta: { page_number: 1, page_size: 50, total_count: 2, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 },
+          meta: {
+            page_number: 1,
+            page_size: 50,
+            total_count: 2,
+            total_pages: 1,
+            has_previous: false,
+            has_next: false,
+            page_size_capped: false,
+            max_page_size: 200,
+          },
           links: { self: "/x", first: "/x", previous: null, next: null, last: "/x" },
         }),
     });

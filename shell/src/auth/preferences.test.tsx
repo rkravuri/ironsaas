@@ -10,7 +10,14 @@ import { json, me, stubFetch } from "@/test/render";
 import { cssVariablesResolver, theme } from "@/theme";
 import { usePreferenceSync } from "./preferences";
 
-const entitlements = { revision: 1, plan: "enterprise", confirmed_at: "2026-10-20T09:00:00Z", stale: false, modules: [], features: [] };
+const entitlements = {
+  revision: 1,
+  plan: "enterprise",
+  confirmed_at: "2026-10-20T09:00:00Z",
+  stale: false,
+  modules: [],
+  features: [],
+};
 type Level = "default" | "user";
 const context = (scheme: [string, Level], density: [string, Level]) => ({
   entitlements,
@@ -39,7 +46,12 @@ function Probe() {
 function renderSynced() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MantineProvider theme={theme} defaultColorScheme="auto" colorSchemeManager={colorSchemeManager} cssVariablesResolver={cssVariablesResolver}>
+    <MantineProvider
+      theme={theme}
+      defaultColorScheme="auto"
+      colorSchemeManager={colorSchemeManager}
+      cssVariablesResolver={cssVariablesResolver}
+    >
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <Probe />
@@ -50,7 +62,9 @@ function renderSynced() {
 }
 
 const saves = (calls: { key: string; init: RequestInit | undefined }[]) =>
-  calls.filter((call) => call.key.startsWith("PUT /api/v1/settings/")).map((call) => `${call.key.slice("PUT /api/v1/settings/".length)} ${call.init?.body as string}`);
+  calls
+    .filter((call) => call.key.startsWith("PUT /api/v1/settings/"))
+    .map((call) => `${call.key.slice("PUT /api/v1/settings/".length)} ${call.init?.body as string}`);
 
 /** The setting as the API answers a save. */
 const saved = (key: string, value: string) => ({
@@ -82,7 +96,10 @@ afterEach(() => {
 
 describe("a person's preferences follow them to another browser (ADR-0036)", () => {
   it("applies the person's own values after sign-in and keeps them as this browser's copy for the next first paint", async () => {
-    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me()), "GET /api/v1/me/context": () => json(context(["dark", "user"], ["compact", "user"])) });
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      "GET /api/v1/me/context": () => json(context(["dark", "user"], ["compact", "user"])),
+    });
     renderSynced();
 
     await waitFor(() => expect(screen.getByTestId("local")).toHaveTextContent("dark compact"));
@@ -108,8 +125,12 @@ describe("a person's preferences follow them to another browser (ADR-0036)", () 
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Light" }));
 
-    await waitFor(() => expect(saves(calls)).toEqual(['shell.colour_scheme {"scope":"user","unit_id":null,"value":"light"}']));
-    await waitFor(() => expect(calls.filter((call) => call.key === "GET /api/v1/me/context").length).toBeGreaterThan(1));
+    await waitFor(() =>
+      expect(saves(calls)).toEqual(['shell.colour_scheme {"scope":"user","unit_id":null,"value":"light"}']),
+    );
+    await waitFor(() =>
+      expect(calls.filter((call) => call.key === "GET /api/v1/me/context").length).toBeGreaterThan(1),
+    );
     expect(screen.getByTestId("local")).toHaveTextContent("light comfortable");
   });
 
@@ -122,7 +143,9 @@ describe("a person's preferences follow them to another browser (ADR-0036)", () 
     });
     renderSynced();
 
-    await waitFor(() => expect(saves(calls)).toEqual(['shell.colour_scheme {"scope":"user","unit_id":null,"value":"dark"}']));
+    await waitFor(() =>
+      expect(saves(calls)).toEqual(['shell.colour_scheme {"scope":"user","unit_id":null,"value":"dark"}']),
+    );
     expect(screen.getByTestId("local")).toHaveTextContent("dark comfortable");
   });
 });

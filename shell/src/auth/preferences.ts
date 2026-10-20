@@ -8,8 +8,10 @@ import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 import { contextQueryKey } from "./entitlements";
 import { useSession } from "./session-context";
 
-const isScheme = (value: unknown): value is SchemeChoice => typeof value === "string" && (schemeChoices as readonly string[]).includes(value);
-const isDensity = (value: unknown): value is Density => typeof value === "string" && (densities as readonly string[]).includes(value);
+const isScheme = (value: unknown): value is SchemeChoice =>
+  typeof value === "string" && (schemeChoices as readonly string[]).includes(value);
+const isDensity = (value: unknown): value is Density =>
+  typeof value === "string" && (densities as readonly string[]).includes(value);
 
 /**
  * A person's colour scheme and density follow them to every browser they sign in on (ADR-0036). The browser keeps its
@@ -26,7 +28,12 @@ export function usePreferenceSync(): void {
   useSyncedPreference("shell.density", density, setDensity, isDensity);
 }
 
-function useSyncedPreference<T extends string>(key: SettingKey, local: T, apply: (value: T) => void, accepts: (value: unknown) => value is T): void {
+function useSyncedPreference<T extends string>(
+  key: SettingKey,
+  local: T,
+  apply: (value: T) => void,
+  accepts: (value: unknown) => value is T,
+): void {
   const session = useSession();
   const queryClient = useQueryClient();
   const entry = session.settings.get(key);

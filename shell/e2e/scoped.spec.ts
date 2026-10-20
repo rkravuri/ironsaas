@@ -15,7 +15,9 @@ test.describe("a child-unit administrator", () => {
   test.skip(child.loginId === "", "make e2e sets up the child unit's data first");
 
   for (const scheme of ["light", "dark"] as const) {
-    test(`sees only that unit's users in the ${scheme} scheme, and a user outside is not found by URL`, async ({ page }) => {
+    test(`sees only that unit's users in the ${scheme} scheme, and a user outside is not found by URL`, async ({
+      page,
+    }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await signIn(page, child);
 

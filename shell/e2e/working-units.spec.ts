@@ -27,14 +27,18 @@ interface Unit {
 test.describe("working across units", () => {
   test.skip(two.loginId === "", "make e2e sets up the data first");
 
-  test("a person with roles in two units chooses the unit they work for, and the Users page follows", async ({ page }) => {
+  test("a person with roles in two units chooses the unit they work for, and the Users page follows", async ({
+    page,
+  }) => {
     await signIn(page, two);
     await open(page, "/users");
     const grid = page.getByRole("region", { name: "Users" });
 
     // Signed in, they work for their home unit: its people only.
     await expect(page.getByRole("button", { name: control(secondUnit) })).toBeVisible();
-    await expect(page.getByText(`The list keeps to ${secondUnit} and the units below it.`, { exact: false })).toBeVisible();
+    await expect(
+      page.getByText(`The list keeps to ${secondUnit} and the units below it.`, { exact: false }),
+    ).toBeVisible();
     await expect(loginCells(grid).filter({ hasText: two.loginId })).toBeVisible();
     for (const cell of await loginCells(grid).all()) {
       await expect(cell).toHaveText(/^(two-units|second-colleague)-[0-9a-z]+@/);
@@ -48,7 +52,9 @@ test.describe("working across units", () => {
       .click();
 
     await expect(page.getByRole("button", { name: control(thirdUnit) })).toBeVisible();
-    await expect(page.getByText(`The list keeps to ${thirdUnit} and the units below it.`, { exact: false })).toBeVisible();
+    await expect(
+      page.getByText(`The list keeps to ${thirdUnit} and the units below it.`, { exact: false }),
+    ).toBeVisible();
     await expect(loginCells(grid).filter({ hasText: /^third-colleague-/ })).toBeVisible();
     await expect(loginCells(grid).filter({ hasText: two.loginId })).toHaveCount(0);
     for (const cell of await loginCells(grid).all()) {
@@ -65,13 +71,23 @@ test.describe("working across units", () => {
     await expect(page.getByRole("button", { name: control(secondUnit) })).toBeVisible();
   });
 
-  test("an administrator previews a merge of two units, merges them, and the person homed at one is homed at the other", async ({ page }) => {
+  test("an administrator previews a merge of two units, merges them, and the person homed at one is homed at the other", async ({
+    page,
+  }) => {
     await signIn(page);
     const from = `E2E merge from ${run}`;
     const into = `E2E merge into ${run}`;
     expect(runUnitId).not.toBe("");
-    const intoUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, { name: into, code: `e2e-into-${run}`, kind: "unit" });
-    const fromUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, { name: from, code: `e2e-from-${run}`, kind: "unit" });
+    const intoUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, {
+      name: into,
+      code: `e2e-into-${run}`,
+      kind: "unit",
+    });
+    const fromUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, {
+      name: from,
+      code: `e2e-from-${run}`,
+      kind: "unit",
+    });
     const person = await call<{ user: { id: string } }>(page, "POST", "/api/v1/users", {
       login_id: `merged-${run}@${tenant}.localhost`,
       display_name: `Merged person ${run}`,

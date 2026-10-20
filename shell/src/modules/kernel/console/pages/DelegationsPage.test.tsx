@@ -5,7 +5,16 @@ import { DelegationsPage } from "./DelegationsPage";
 
 const emptyList = {
   data: [],
-  meta: { page_number: 1, page_size: 50, total_count: 0, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 },
+  meta: {
+    page_number: 1,
+    page_size: 50,
+    total_count: 0,
+    total_pages: 1,
+    has_previous: false,
+    has_next: false,
+    page_size_capped: false,
+    max_page_size: 200,
+  },
   links: { self: "x", first: "x", previous: null, next: null, last: "x" },
 };
 

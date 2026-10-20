@@ -13,8 +13,12 @@ test.describe("home and the header (D4)", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Good (morning|afternoon|evening), /);
     await expect(page.getByRole("article", { name: "Identity" })).toBeVisible();
     await expect(page.getByRole("article", { name: "Console" })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Quick actions" }).getByRole("link", { name: "Invite a person" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link").first()).toHaveAccessibleName("Home");
+    await expect(
+      page.getByRole("region", { name: "Quick actions" }).getByRole("link", { name: "Invite a person" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Main navigation" }).getByRole("link").first(),
+    ).toHaveAccessibleName("Home");
     await page.screenshot({ path: "test-results/e2e/home-administrator.png", fullPage: true });
   });
 

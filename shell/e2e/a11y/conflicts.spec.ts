@@ -8,7 +8,10 @@ const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 async function expectNoViolation(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
   expect(
-    results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`),
+    results.violations.map(
+      (violation) =>
+        `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`,
+    ),
   ).toEqual([]);
 }
 
@@ -23,7 +26,9 @@ async function choose(page: Page, field: ReturnType<Page["getByRole"]>, typed: s
 }
 
 for (const scheme of schemes) {
-  test(`the conflict rules in the ${scheme} scheme: the rules in words, the editor by keyboard, the report, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the conflict rules in the ${scheme} scheme: the rules in words, the editor by keyboard, the report, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubExplainAndConflicts(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -49,7 +54,12 @@ for (const scheme of schemes) {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("textbox", { name: "Name" })).toBeFocused();
     await page.keyboard.type("Grant or shape");
-    await choose(page, dialog.getByRole("combobox", { name: "Permission" }).first(), "Assign roles", "Assign roles to principals and remove assignments (authz.assignments.manage)");
+    await choose(
+      page,
+      dialog.getByRole("combobox", { name: "Permission" }).first(),
+      "Assign roles",
+      "Assign roles to principals and remove assignments (authz.assignments.manage)",
+    );
     const second = dialog.getByRole("radiogroup", { name: "The second side" });
     await second.getByRole("radio", { name: "A permission" }).focus();
     await page.keyboard.press("ArrowRight");
@@ -86,7 +96,9 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`the grant dialog in the ${scheme} scheme: a conflict rule that refuses the grant, said in words before the confirm, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the grant dialog in the ${scheme} scheme: a conflict rule that refuses the grant, said in words before the confirm, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubExplainAndConflicts(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });

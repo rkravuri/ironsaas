@@ -18,7 +18,9 @@ test.describe("explaining access and conflict rules", () => {
   test.skip(childId === "" || colleagueId === "", "make e2e sets up the child unit's data first");
 
   for (const scheme of ["light", "dark"] as const) {
-    test(`names the first failing check of a child-unit person's role import in the ${scheme} scheme`, async ({ page }) => {
+    test(`names the first failing check of a child-unit person's role import in the ${scheme} scheme`, async ({
+      page,
+    }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await signIn(page);
 
@@ -36,7 +38,11 @@ test.describe("explaining access and conflict rules", () => {
 
       // Echo's plan has role transfer and the import kill switch is off, so the permission is what refuses: the
       // child holds nothing for the whole organisation.
-      await expect(page.getByRole("heading", { name: /^Child administrator cannot: Compare a role export .* The system answers 403\.$/ })).toBeVisible();
+      await expect(
+        page.getByRole("heading", {
+          name: /^Child administrator cannot: Compare a role export .* The system answers 403\.$/,
+        }),
+      ).toBeVisible();
       await expect(page.getByText("The first check that refuses it: The permission.")).toBeVisible();
       const checks = page.getByRole("list", { name: "The checks, in order" }).getByRole("listitem");
       await expect(checks).toHaveCount(5);
@@ -44,19 +50,27 @@ test.describe("explaining access and conflict rules", () => {
       await expect(checks.nth(1)).toContainText("The subscription: passed");
       await expect(checks.nth(2)).toContainText("Flags and kill switches: passed");
       await expect(checks.nth(3)).toContainText("The permission: refused");
-      await expect(checks.nth(3)).toContainText('Child administrator does not hold the permission "Create, change and delete tenant roles" for the whole organisation.');
+      await expect(checks.nth(3)).toContainText(
+        'Child administrator does not hold the permission "Create, change and delete tenant roles" for the whole organisation.',
+      );
       await expect(checks.nth(4)).toContainText("The record's policy: not reached");
       await page.screenshot({ path: `test-results/e2e/explain-child-${scheme}.png`, fullPage: true });
 
       // The API answers the same.
-      const answer = await call<{ allowed: boolean; status: number; checks: { check: string; result: string }[] }>(page, "GET", `/api/v1/access/explain?principal=${childId}&action=ImportRoles`);
+      const answer = await call<{ allowed: boolean; status: number; checks: { check: string; result: string }[] }>(
+        page,
+        "GET",
+        `/api/v1/access/explain?principal=${childId}&action=ImportRoles`,
+      );
       expect(answer.status).toBe(200);
       expect(answer.body.allowed).toBe(false);
       expect(answer.body.status).toBe(403);
       expect(answer.body.checks.find((check) => check.result === "failed")?.check).toBe("permission");
     });
 
-    test(`refuses a grant that a blocking conflict rule forbids, with the rule named, in the ${scheme} scheme`, async ({ page }) => {
+    test(`refuses a grant that a blocking conflict rule forbids, with the rule named, in the ${scheme} scheme`, async ({
+      page,
+    }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await signIn(page);
       const stamp = `${Date.now().toString(36)}${scheme[0]}`;
@@ -75,7 +89,12 @@ test.describe("explaining access and conflict rules", () => {
           made.roles.push(role.body.id);
         }
         const [first, second] = made.roles as [string, string];
-        const held = await call<Created>(page, "POST", "/api/v1/role-assignments", { principal_id: colleagueId, role_id: first, scope_kind: "unit", unit_id: childUnitId });
+        const held = await call<Created>(page, "POST", "/api/v1/role-assignments", {
+          principal_id: colleagueId,
+          role_id: first,
+          scope_kind: "unit",
+          unit_id: childUnitId,
+        });
         expect(held.status).toBe(201);
         made.assignments.push(held.body.id);
         const ruleName = `E2E keep apart ${stamp}`;
@@ -109,12 +128,20 @@ test.describe("explaining access and conflict rules", () => {
         await page.screenshot({ path: `test-results/e2e/grant-refused-${scheme}.png` });
 
         // Nothing was granted.
-        const assignments = await call<{ data: { id: string; role_id: string }[] }>(page, "GET", `/api/v1/role-assignments?filter=principal_id:eq:${colleagueId}&page_size=100`);
+        const assignments = await call<{ data: { id: string; role_id: string }[] }>(
+          page,
+          "GET",
+          `/api/v1/role-assignments?filter=principal_id:eq:${colleagueId}&page_size=100`,
+        );
         expect(assignments.body.data.filter((assignment) => assignment.role_id === second)).toEqual([]);
       } finally {
         // Whatever happened above, the colleague keeps no role of this test and the rule goes.
         if (made.roles.length > 0) {
-          const assignments = await call<{ data: { id: string; role_id: string }[] }>(page, "GET", `/api/v1/role-assignments?filter=principal_id:eq:${colleagueId}&page_size=100`);
+          const assignments = await call<{ data: { id: string; role_id: string }[] }>(
+            page,
+            "GET",
+            `/api/v1/role-assignments?filter=principal_id:eq:${colleagueId}&page_size=100`,
+          );
           for (const assignment of assignments.body.data.filter((row) => made.roles.includes(row.role_id))) {
             await call(page, "DELETE", `/api/v1/role-assignments/${assignment.id}`);
           }

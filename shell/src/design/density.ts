@@ -9,7 +9,8 @@ export const densityStorageKey = "iron.density";
 const listeners = new Set<() => void>();
 let current: Density | undefined;
 
-const isDensity = (value: unknown): value is Density => typeof value === "string" && (densities as readonly string[]).includes(value);
+const isDensity = (value: unknown): value is Density =>
+  typeof value === "string" && (densities as readonly string[]).includes(value);
 
 /** A blocked storage (a private window, cleared site data) means no stored choice, nothing worse. */
 function storedDensity(): string | null {

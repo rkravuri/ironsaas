@@ -35,7 +35,8 @@ export interface FigureParts {
 }
 
 type Point = readonly [number, number];
-const line = (points: readonly Point[]): string => points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x} ${y}`).join(" ");
+const line = (points: readonly Point[]): string =>
+  points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x} ${y}`).join(" ");
 
 /** Shoulder, elbow, hand; hip, knee, foot: the joints of each pose relative to the centre of the head. */
 const poses: Record<FigurePose, { arms: readonly (readonly Point[])[]; legs: readonly (readonly Point[])[] }> = {

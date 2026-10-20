@@ -17,7 +17,9 @@ export function GrantConflictNotice({ name, conflicts }: { name: string; conflic
   const lines = (group: readonly GrantConflict[]) => (
     <List size="sm" spacing={4} mt={4}>
       {group.map((conflict) => (
-        <List.Item key={`${conflict.rule_id}:${conflict.with.assignment_id ?? conflict.with.delegation_id ?? ""}:${conflict.unit_id ?? ""}`}>
+        <List.Item
+          key={`${conflict.rule_id}:${conflict.with.assignment_id ?? conflict.with.delegation_id ?? ""}:${conflict.unit_id ?? ""}`}
+        >
           {grantConflictWords(t, name, conflict)}
           {conflict.reason !== "" && (
             <Text size="xs" c="dimmed">
@@ -31,13 +33,25 @@ export function GrantConflictNotice({ name, conflicts }: { name: string; conflic
   return (
     <>
       {blocks.length > 0 && (
-        <Alert role="status" color="danger" icon={<IconBan size={18} aria-hidden="true" />} title={t("conflicts.preview.blockTitle")} data-conflict="block">
+        <Alert
+          role="status"
+          color="danger"
+          icon={<IconBan size={18} aria-hidden="true" />}
+          title={t("conflicts.preview.blockTitle")}
+          data-conflict="block"
+        >
           <Text size="sm">{t("conflicts.preview.blockHint")}</Text>
           {lines(blocks)}
         </Alert>
       )}
       {warns.length > 0 && (
-        <Alert role="status" color="warning" icon={<IconAlertTriangle size={18} aria-hidden="true" />} title={t("conflicts.preview.warnTitle")} data-conflict="warn">
+        <Alert
+          role="status"
+          color="warning"
+          icon={<IconAlertTriangle size={18} aria-hidden="true" />}
+          title={t("conflicts.preview.warnTitle")}
+          data-conflict="warn"
+        >
           <Text size="sm">{t("conflicts.preview.warnHint")}</Text>
           {lines(warns)}
         </Alert>

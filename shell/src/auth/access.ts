@@ -24,5 +24,8 @@ export function useAccessAt(target: AccessTarget | undefined, permissions: reado
     staleTime: 30_000,
   });
   const granted = query.data?.permissions ?? none;
-  return { pending: relevant && target !== undefined && query.isPending, can: (permission) => granted.includes(permission) };
+  return {
+    pending: relevant && target !== undefined && query.isPending,
+    can: (permission) => granted.includes(permission),
+  };
 }

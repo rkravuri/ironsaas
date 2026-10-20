@@ -64,7 +64,9 @@ describe("the illustrations", () => {
       for (const element of filled) {
         expect(element.getAttribute("fill-opacity")).toBe(String(hand.fillOpacity));
       }
-      const widths = new Set([...svg.querySelectorAll("[stroke-width]")].map((element) => element.getAttribute("stroke-width")));
+      const widths = new Set(
+        [...svg.querySelectorAll("[stroke-width]")].map((element) => element.getAttribute("stroke-width")),
+      );
       for (const width of widths) {
         expect([String(hand.detail), String(hand.stroke)]).toContain(width);
       }
@@ -74,7 +76,11 @@ describe("the illustrations", () => {
 });
 
 describe("the figure", () => {
-  const people: Record<string, "reading" | "waving" | "holding"> = { lost: "reading", welcome: "waving", success: "holding" };
+  const people: Record<string, "reading" | "waving" | "holding"> = {
+    lost: "reading",
+    welcome: "waving",
+    success: "holding",
+  };
 
   it("draws every person the same way: a head with a cap line and no face, a tinted torso, limbs that bend, feet", () => {
     for (const [name, pose] of Object.entries(people)) {
@@ -94,7 +100,9 @@ describe("the figure", () => {
   it("changes the posture, not the person, between the three drawings", () => {
     const limbsOf = (name: (typeof illustrationNames)[number], pose: string) => {
       const { svg, unmount } = mount(name);
-      const limbs = [...(svg.querySelector(`[data-figure='${pose}']`)?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("d"));
+      const limbs = [...(svg.querySelector(`[data-figure='${pose}']`)?.querySelectorAll("path") ?? [])].map((path) =>
+        path.getAttribute("d"),
+      );
       unmount();
       return limbs;
     };

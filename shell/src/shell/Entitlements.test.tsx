@@ -41,7 +41,9 @@ const context = (sourcing: "enabled" | "disabled", transfer: "enabled" | "read_o
 
 function Probe() {
   const transfer = useFeature("authorization.role_transfer");
-  return <p data-testid="transfer">{`${transfer.available ? "available" : "unavailable"} ${transfer.writable ? "writable" : "read only"}`}</p>;
+  return (
+    <p data-testid="transfer">{`${transfer.available ? "available" : "unavailable"} ${transfer.writable ? "writable" : "read only"}`}</p>
+  );
 }
 
 function renderShell(route = "/") {
@@ -93,11 +95,16 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
   it("reads /me/context with the session and again within 30 seconds, and the navigation follows without a new sign-in", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let answer = context("enabled", "enabled");
-    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(permissions)), "GET /api/v1/me/context": () => json(answer) });
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me(permissions)),
+      "GET /api/v1/me/context": () => json(answer),
+    });
     renderShell();
 
     const navigation = await screen.findByRole("navigation", { name: "Main navigation" });
-    await waitFor(() => expect(within(navigation).getByRole("link", { name: "Organisation units" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(navigation).getByRole("link", { name: "Organisation units" })).toBeInTheDocument(),
+    );
     expect(screen.getByTestId("transfer")).toHaveTextContent("available writable");
     const reads = calls.filter((call) => call.key === "GET /api/v1/me/context").length;
 
@@ -105,13 +112,18 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
     answer = context("disabled", "read_only");
     await vi.advanceTimersByTimeAsync(30_000);
 
-    await waitFor(() => expect(within(navigation).queryByRole("link", { name: "Organisation units" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(navigation).queryByRole("link", { name: "Organisation units" })).not.toBeInTheDocument(),
+    );
     expect(screen.getByTestId("transfer")).toHaveTextContent("available read only");
     expect(calls.filter((call) => call.key === "GET /api/v1/me/context").length).toBeGreaterThan(reads);
   });
 
   it("answers a link to a module that is not entitled with the subscription's words, not the permission's", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me(permissions)), "GET /api/v1/me/context": () => json(context("disabled", "disabled")) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me(permissions)),
+      "GET /api/v1/me/context": () => json(context("disabled", "disabled")),
+    });
     renderShell("/sourcing");
 
     expect(await screen.findByRole("heading", { name: "Not in your subscription" })).toBeInTheDocument();
@@ -129,7 +141,10 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
 
   it("reads /me/context only while its tab is visible: a hidden tab asks nothing, however long it stays hidden", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(permissions)), "GET /api/v1/me/context": () => json(context("enabled", "enabled")) });
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me(permissions)),
+      "GET /api/v1/me/context": () => json(context("enabled", "enabled")),
+    });
     const reads = () => calls.filter((call) => call.key === "GET /api/v1/me/context").length;
     renderShell();
     await waitFor(() => expect(reads()).toBe(1));
@@ -148,7 +163,10 @@ describe("entitlements in the shell (TF-043, ADR-0034)", () => {
   it("reads /me/context at once when the tab becomes visible again, even within 30 seconds of the last read", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let answer = context("enabled", "enabled");
-    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(permissions)), "GET /api/v1/me/context": () => json(answer) });
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me(permissions)),
+      "GET /api/v1/me/context": () => json(answer),
+    });
     const reads = () => calls.filter((call) => call.key === "GET /api/v1/me/context").length;
     renderShell();
     await waitFor(() => expect(screen.getByTestId("transfer")).toHaveTextContent("available writable"));

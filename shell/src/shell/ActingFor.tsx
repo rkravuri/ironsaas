@@ -4,7 +4,8 @@ import { IconCheck, IconChevronDown, IconUserShare } from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
 import { dutyList, type ActingChoice } from "./acting";
 
-const until = (iso: string, language: string) => new Date(iso).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
+const until = (iso: string, language: string) =>
+  new Date(iso).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
 
 /**
  * The header's "Acting for" control (TF-037, ADR-0037): only while the person holds an active delegation, or still acts
@@ -40,7 +41,11 @@ export function ActingForControl({ choice }: { choice: ActingChoice }) {
       </Menu.Target>
       {/* Only items in the menu: a label among them is not a menu item, and assistive technology reads the button's name. */}
       <Menu.Dropdown miw={280} aria-label={t("acting.control.title")}>
-        <Menu.Item onClick={() => void choice.choose(null)} rightSection={acting === null ? <IconCheck size={16} aria-hidden="true" /> : undefined} data-current={acting === null ? "true" : undefined}>
+        <Menu.Item
+          onClick={() => void choice.choose(null)}
+          rightSection={acting === null ? <IconCheck size={16} aria-hidden="true" /> : undefined}
+          data-current={acting === null ? "true" : undefined}
+        >
           {t("acting.control.myself")}
           {acting === null && <VisuallyHidden>{t("acting.control.current")}</VisuallyHidden>}
         </Menu.Item>
@@ -58,7 +63,10 @@ export function ActingForControl({ choice }: { choice: ActingChoice }) {
                 {current && <VisuallyHidden>{t("acting.control.current")}</VisuallyHidden>}
               </Text>
               <Text span size="xs" c="dimmed" display="block">
-                {t("acting.control.duties", { duties: dutyList(delegation.duties, i18n.language), until: until(delegation.until, i18n.language) })}
+                {t("acting.control.duties", {
+                  duties: dutyList(delegation.duties, i18n.language),
+                  until: until(delegation.until, i18n.language),
+                })}
               </Text>
             </Menu.Item>
           );
@@ -81,10 +89,24 @@ export function ActingBand({ choice }: { choice: ActingChoice }) {
   return (
     <>
       {acting && (
-        <Alert role="status" variant="light" color="info" mb="md" icon={<IconUserShare size={18} aria-hidden="true" />} title={t("acting.band.title", { name: acting.name })} data-acting-band>
+        <Alert
+          role="status"
+          variant="light"
+          color="info"
+          mb="md"
+          icon={<IconUserShare size={18} aria-hidden="true" />}
+          title={t("acting.band.title", { name: acting.name })}
+          data-acting-band
+        >
           <Group justify="space-between" align="flex-end" gap="sm">
             <Stack gap={2} maw={720}>
-              <Text size="sm">{t("acting.band.rights", { name: acting.name, duties: dutyList(acting.duties, i18n.language), until: until(acting.until, i18n.language) })}</Text>
+              <Text size="sm">
+                {t("acting.band.rights", {
+                  name: acting.name,
+                  duties: dutyList(acting.duties, i18n.language),
+                  until: until(acting.until, i18n.language),
+                })}
+              </Text>
               <Text size="sm">{t("acting.band.both")}</Text>
             </Stack>
             <Button variant="default" size="xs" loading={choice.busy} onClick={() => void choice.choose(null)}>
@@ -94,12 +116,30 @@ export function ActingBand({ choice }: { choice: ActingChoice }) {
         </Alert>
       )}
       {actingEnded !== undefined && !acting && (
-        <Alert role="status" variant="light" color="info" mb="md" withCloseButton closeButtonLabel={t("acting.ended.dismiss")} onClose={dismissActingEnded} data-acting-ended>
-          <Text size="sm">{actingEnded ? t("acting.ended.named", { name: actingEnded }) : t("acting.ended.unnamed")}</Text>
+        <Alert
+          role="status"
+          variant="light"
+          color="info"
+          mb="md"
+          withCloseButton
+          closeButtonLabel={t("acting.ended.dismiss")}
+          onClose={dismissActingEnded}
+          data-acting-ended
+        >
+          <Text size="sm">
+            {actingEnded ? t("acting.ended.named", { name: actingEnded }) : t("acting.ended.unnamed")}
+          </Text>
         </Alert>
       )}
       {choice.failure && (
-        <Alert role="alert" color="danger" mb="md" withCloseButton closeButtonLabel={t("dialog.close")} onClose={choice.clearFailure}>
+        <Alert
+          role="alert"
+          color="danger"
+          mb="md"
+          withCloseButton
+          closeButtonLabel={t("dialog.close")}
+          onClose={choice.clearFailure}
+        >
           <Text size="sm">{choice.failure.error?.message ?? t("errors.unexpected")}</Text>
           {choice.failure.error?.correlationId !== undefined && (
             <Text size="xs" c="dimmed" mt={4}>

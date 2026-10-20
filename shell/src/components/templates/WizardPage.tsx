@@ -25,7 +25,17 @@ export interface WizardPageProps {
 }
 
 /** A wizard: numbered steps, the current step's fields, the summary beside them, back and next (TF-170). */
-export function WizardPage({ title, description, steps, active, onBack, onNext, busy = false, summary, children }: WizardPageProps) {
+export function WizardPage({
+  title,
+  description,
+  steps,
+  active,
+  onBack,
+  onNext,
+  busy = false,
+  summary,
+  children,
+}: WizardPageProps) {
   const { t } = useTranslation();
   const last = active >= steps.length - 1;
   return (
@@ -33,7 +43,11 @@ export function WizardPage({ title, description, steps, active, onBack, onNext, 
       <PageOpener title={title} {...(description !== undefined ? { description } : {})} />
       <Stepper active={active} size="sm">
         {steps.map((step) => (
-          <Stepper.Step key={step.label} label={step.label} {...(step.description !== undefined ? { description: step.description } : {})} />
+          <Stepper.Step
+            key={step.label}
+            label={step.label}
+            {...(step.description !== undefined ? { description: step.description } : {})}
+          />
         ))}
       </Stepper>
       <Flex gap="lg" direction={{ base: "column", md: "row" }} align="flex-start">

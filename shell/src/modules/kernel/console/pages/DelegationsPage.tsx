@@ -58,10 +58,32 @@ export function DelegationsPage() {
   const columns: DataGridColumn<Delegation>[] = [
     { field: "delegator", headerKey: "delegations.columns.delegator", flex: 2, format: (row) => row.delegator.name },
     { field: "delegate", headerKey: "delegations.columns.delegate", flex: 2, format: (row) => row.delegate.name },
-    { field: "duties", headerKey: "delegations.columns.duties", flex: 2, format: (row) => dutyList(row.duties, i18n.language) },
-    { field: "starts_at", headerKey: "delegations.columns.from", sortable: true, width: 150, format: (row) => periodLabel(row.starts_at, row.ends_at, i18n.language).from },
-    { field: "ends_at", headerKey: "delegations.columns.until", sortable: true, width: 150, format: (row) => periodLabel(row.starts_at, row.ends_at, i18n.language).until },
-    { field: "status", headerKey: "delegations.columns.status", width: 140, format: (row) => t(`delegations.status.${row.status}`) },
+    {
+      field: "duties",
+      headerKey: "delegations.columns.duties",
+      flex: 2,
+      format: (row) => dutyList(row.duties, i18n.language),
+    },
+    {
+      field: "starts_at",
+      headerKey: "delegations.columns.from",
+      sortable: true,
+      width: 150,
+      format: (row) => periodLabel(row.starts_at, row.ends_at, i18n.language).from,
+    },
+    {
+      field: "ends_at",
+      headerKey: "delegations.columns.until",
+      sortable: true,
+      width: 150,
+      format: (row) => periodLabel(row.starts_at, row.ends_at, i18n.language).until,
+    },
+    {
+      field: "status",
+      headerKey: "delegations.columns.status",
+      width: 140,
+      format: (row) => t(`delegations.status.${row.status}`),
+    },
     { field: "reason", headerKey: "delegations.columns.reason", flex: 2, hidden: true },
   ];
 
@@ -70,10 +92,16 @@ export function DelegationsPage() {
       <ListPage
         title={t("delegations.title")}
         description={t("delegations.description")}
-        drawing={<Mandala symmetry={12} rings={2} stroke={2} density={0.5} seed="delegations" size={56} accent="console" />}
+        drawing={
+          <Mandala symmetry={12} rings={2} stroke={2} density={0.5} seed="delegations" size={56} accent="console" />
+        }
         actions={
           <>
-            <Button variant="default" disabled={!selected || !isRunning(selected.status)} onClick={() => selected && setEnding(selected)}>
+            <Button
+              variant="default"
+              disabled={!selected || !isRunning(selected.status)}
+              onClick={() => selected && setEnding(selected)}
+            >
               {t("delegations.endSelected")}
             </Button>
             <Button leftSection={<IconPlus size={16} aria-hidden="true" />} onClick={() => setCreating(true)}>
@@ -84,7 +112,14 @@ export function DelegationsPage() {
         {...(failure
           ? {
               filters: (
-                <Alert color="danger" role="alert" w="100%" withCloseButton closeButtonLabel={t("dialog.close")} onClose={() => setFailure(undefined)}>
+                <Alert
+                  color="danger"
+                  role="alert"
+                  w="100%"
+                  withCloseButton
+                  closeButtonLabel={t("dialog.close")}
+                  onClose={() => setFailure(undefined)}
+                >
                   {failure.message}
                   {failure.correlationId !== undefined && (
                     <Text size="xs" c="dimmed" mt={4}>
@@ -96,7 +131,14 @@ export function DelegationsPage() {
             }
           : {})}
       >
-        <DataGrid<Delegation> columns={columns} fetchPage={fetchPage} defaultSort={managedSort} label={t("delegations.title")} refreshKey={refreshKey} onSelectionChange={setSelected} />
+        <DataGrid<Delegation>
+          columns={columns}
+          fetchPage={fetchPage}
+          defaultSort={managedSort}
+          label={t("delegations.title")}
+          refreshKey={refreshKey}
+          onSelectionChange={setSelected}
+        />
       </ListPage>
       <DelegationDialog
         opened={creating}
@@ -107,7 +149,12 @@ export function DelegationsPage() {
           await changed();
         }}
       />
-      <EndDelegationDialog delegation={ending} busy={busy} onConfirm={() => void end()} onCancel={() => setEnding(undefined)} />
+      <EndDelegationDialog
+        delegation={ending}
+        busy={busy}
+        onConfirm={() => void end()}
+        onCancel={() => setEnding(undefined)}
+      />
     </>
   );
 }

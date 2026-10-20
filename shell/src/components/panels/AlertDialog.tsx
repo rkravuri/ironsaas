@@ -27,7 +27,12 @@ export function AlertDialog({ opened, title, message, actions, children }: Alert
   return (
     <Portal>
       <Overlay fixed zIndex={layer} backgroundOpacity={0.45} />
-      <Box pos="fixed" inset={0} p="md" style={{ zIndex: layer + 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box
+        pos="fixed"
+        inset={0}
+        p="md"
+        style={{ zIndex: layer + 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
         <FocusTrap active>
           <Paper
             role="alertdialog"

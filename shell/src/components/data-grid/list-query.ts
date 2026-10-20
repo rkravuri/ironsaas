@@ -40,7 +40,9 @@ export type GridFilterModel =
   | { filterType: "date"; type: string; dateFrom?: string | null; dateTo?: string | null };
 
 export function sortFromGrid(model: readonly GridSortModelItem[]): SortTerm[] {
-  return model.filter((item) => item.sort === "asc" || item.sort === "desc").map((item) => ({ field: item.colId, direction: item.sort as "asc" | "desc" }));
+  return model
+    .filter((item) => item.sort === "asc" || item.sort === "desc")
+    .map((item) => ({ field: item.colId, direction: item.sort as "asc" | "desc" }));
 }
 
 const textOperators: Record<string, FilterOperator> = {

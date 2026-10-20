@@ -1,13 +1,28 @@
-import { Anchor, createTheme, DEFAULT_THEME, defaultCssVariablesResolver, mergeMantineTheme, rem, Title, type CSSVariablesResolver } from "@mantine/core";
+import {
+  Anchor,
+  createTheme,
+  DEFAULT_THEME,
+  defaultCssVariablesResolver,
+  mergeMantineTheme,
+  rem,
+  Title,
+  type CSSVariablesResolver,
+} from "@mantine/core";
 import { accentNames, tokens, type Scheme, type TypeSize } from "@/design/tokens";
 
 /** A heading level in the type scale: the size and its line height as the unitless ratio Mantine wants. */
-const heading = (size: TypeSize) => ({ fontSize: rem(tokens.type.sizes[size].px), lineHeight: String(tokens.type.sizes[size].lineHeight / tokens.type.sizes[size].px) });
+const heading = (size: TypeSize) => ({
+  fontSize: rem(tokens.type.sizes[size].px),
+  lineHeight: String(tokens.type.sizes[size].lineHeight / tokens.type.sizes[size].px),
+});
 
 const sizeKeys = Object.keys(tokens.type.sizes) as TypeSize[];
 const fontSizes = Object.fromEntries(sizeKeys.map((size) => [size, rem(tokens.type.sizes[size].px)]));
-const lineHeights = Object.fromEntries(sizeKeys.map((size) => [size, String(tokens.type.sizes[size].lineHeight / tokens.type.sizes[size].px)]));
-const scale = (values: Record<string, number>) => Object.fromEntries(Object.entries(values).map(([key, value]) => [key, rem(value)]));
+const lineHeights = Object.fromEntries(
+  sizeKeys.map((size) => [size, String(tokens.type.sizes[size].lineHeight / tokens.type.sizes[size].px)]),
+);
+const scale = (values: Record<string, number>) =>
+  Object.fromEntries(Object.entries(values).map(([key, value]) => [key, rem(value)]));
 
 /**
  * The theme every tenant gets, built from the tokens (ADR-0025): ink and paper as black and white, the accents by
@@ -35,7 +50,14 @@ export const theme = createTheme({
   headings: {
     fontFamily: tokens.type.reading.family,
     fontWeight: "600",
-    sizes: { h1: heading("xxl"), h2: heading("xl"), h3: heading("lg"), h4: heading("md"), h5: heading("sm"), h6: heading("xs") },
+    sizes: {
+      h1: heading("xxl"),
+      h2: heading("xl"),
+      h3: heading("lg"),
+      h4: heading("md"),
+      h5: heading("sm"),
+      h6: heading("xs"),
+    },
   },
   fontSizes,
   lineHeights,
@@ -47,7 +69,10 @@ export const theme = createTheme({
   components: {
     // The display family is opt-in and only at 24 px or above: a moment's title says variant="display".
     Title: Title.extend({
-      styles: (_theme, props) => (props.variant === "display" && (props.order ?? 1) <= 2 ? { root: { fontFamily: tokens.type.display.family } } : {}),
+      styles: (_theme, props) =>
+        props.variant === "display" && (props.order ?? 1) <= 2
+          ? { root: { fontFamily: tokens.type.display.family } }
+          : {},
     }),
     // A link told apart by colour alone fails WCAG 1.4.1.
     Anchor: Anchor.extend({ defaultProps: { underline: "always" } }),

@@ -6,7 +6,9 @@ const schemes = ["light", "dark"] as const;
 const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
 for (const scheme of schemes) {
-  test(`the Users page in the ${scheme} scheme: the grid by keyboard, the density switch, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the Users page in the ${scheme} scheme: the grid by keyboard, the density switch, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await stubSignedIn(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -50,6 +52,11 @@ for (const scheme of schemes) {
     await expect.poll(async () => (await row(0).boundingBox())?.height).toBe(32);
 
     const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
-    expect(results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => node.target.map(String).join(" ")).join("; ")}`)).toEqual([]);
+    expect(
+      results.violations.map(
+        (violation) =>
+          `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => node.target.map(String).join(" ")).join("; ")}`,
+      ),
+    ).toEqual([]);
   });
 }

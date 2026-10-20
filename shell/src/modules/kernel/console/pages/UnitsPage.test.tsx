@@ -18,7 +18,12 @@ const unit = (id: string, name: string, parent: string | null, extra: Record<str
 });
 
 const tree = {
-  data: [unit("root", "Acme", null), unit("finance", "Finance", "root"), unit("sales", "Sales", "root"), unit("closed", "Closed", "root", { status: "inactive" })],
+  data: [
+    unit("root", "Acme", null),
+    unit("finance", "Finance", "root"),
+    unit("sales", "Sales", "root"),
+    unit("closed", "Closed", "root", { status: "inactive" }),
+  ],
 };
 
 const kinds = {
@@ -31,7 +36,12 @@ const kinds = {
 
 /** /me/access for every unit of the tree: the same permissions at each, unless a unit has its own. */
 const access = (permissions: string[], perUnit: Record<string, string[]> = {}) =>
-  Object.fromEntries(tree.data.map((unit) => [`GET /api/v1/me/access?unit=${unit.id}`, () => json({ scope: `unit:${unit.id}`, permissions: perUnit[unit.id] ?? permissions })]));
+  Object.fromEntries(
+    tree.data.map((unit) => [
+      `GET /api/v1/me/access?unit=${unit.id}`,
+      () => json({ scope: `unit:${unit.id}`, permissions: perUnit[unit.id] ?? permissions }),
+    ]),
+  );
 
 const stub = (permissions: string[], extra = {}, perUnit: Record<string, string[]> = {}) =>
   stubFetch({
@@ -45,12 +55,17 @@ const stub = (permissions: string[], extra = {}, perUnit: Record<string, string[
 const record = () => screen.getByText("Path").closest("table")!.parentElement!;
 
 /** A tree item by its own label: an item's accessible name also holds the names of the items below it. */
-const item = (label: string) => within(screen.getByRole("tree")).getByText(label).closest<HTMLElement>("[role=treeitem]")!;
+const item = (label: string) =>
+  within(screen.getByRole("tree")).getByText(label).closest<HTMLElement>("[role=treeitem]")!;
 
 describe("the quick action Add a unit", () => {
   it("chooses the person's home unit and opens its dialog for a new unit there", async () => {
     stubFetch({
-      "GET /api/v1/me": () => json({ ...me(["authz.units.read", "authz.units.manage"]), home_unit: { id: "finance", name: "Finance", code: "finance" } }),
+      "GET /api/v1/me": () =>
+        json({
+          ...me(["authz.units.read", "authz.units.manage"]),
+          home_unit: { id: "finance", name: "Finance", code: "finance" },
+        }),
       "GET /api/v1/organisation-units": () => json(tree),
       "GET /api/v1/organisation-kinds": () => json(kinds),
       ...access(["authz.units.read", "authz.units.manage"]),
@@ -92,7 +107,10 @@ describe("the organisation units page", () => {
   it("creates a unit under the chosen one and puts a taken code on its field", async () => {
     const { calls } = stub(["authz.units.read", "authz.units.manage"], {
       "POST /api/v1/organisation-units/root/children": () =>
-        problem(409, { error_code: "authz.unit.code_taken", errors: [{ field: "code", code: "taken", message: "Another unit has this code. Choose another." }] }),
+        problem(409, {
+          error_code: "authz.unit.code_taken",
+          errors: [{ field: "code", code: "taken", message: "Another unit has this code. Choose another." }],
+        }),
     });
     renderWithProviders(<UnitsPage />);
 
@@ -142,24 +160,68 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     from: unit("sales", "Sales", "root"),
     into: unit("finance", "Finance", "root"),
     parts: [
-      { code: "records", module: "orders", record_type: "sales_order", record_type_name: "Sales orders", count: 3, items: [], conflicts: [] },
-      { code: "people", module: "identity", record_type: null, record_type_name: null, count: 22, items: ["Ada Lovelace", "Grace Hopper"], conflicts: [] },
-      { code: "assignments", module: "authorization", record_type: null, record_type_name: null, count: 1, items: ["Ada Lovelace (Reader)"], conflicts: ["Grace Hopper (Reader)"] },
-      { code: "settings", module: "settings", record_type: null, record_type_name: null, count: 0, items: [], conflicts: ["numbering.prefix"] },
+      {
+        code: "records",
+        module: "orders",
+        record_type: "sales_order",
+        record_type_name: "Sales orders",
+        count: 3,
+        items: [],
+        conflicts: [],
+      },
+      {
+        code: "people",
+        module: "identity",
+        record_type: null,
+        record_type_name: null,
+        count: 22,
+        items: ["Ada Lovelace", "Grace Hopper"],
+        conflicts: [],
+      },
+      {
+        code: "assignments",
+        module: "authorization",
+        record_type: null,
+        record_type_name: null,
+        count: 1,
+        items: ["Ada Lovelace (Reader)"],
+        conflicts: ["Grace Hopper (Reader)"],
+      },
+      {
+        code: "settings",
+        module: "settings",
+        record_type: null,
+        record_type_name: null,
+        count: 0,
+        items: [],
+        conflicts: ["numbering.prefix"],
+      },
       { code: "shares", module: "data", record_type: null, record_type_name: null, count: 0, items: [], conflicts: [] },
-      { code: "children", module: "authorization", record_type: null, record_type_name: null, count: 0, items: [], conflicts: [] },
+      {
+        code: "children",
+        module: "authorization",
+        record_type: null,
+        record_type_name: null,
+        count: 0,
+        items: [],
+        conflicts: [],
+      },
     ],
   };
 
   it("reactivates a deactivated unit", async () => {
-    const { calls } = stub(manage, { "POST /api/v1/organisation-units/closed/reactivate": () => json(unit("closed", "Closed", "root")) });
+    const { calls } = stub(manage, {
+      "POST /api/v1/organisation-units/closed/reactivate": () => json(unit("closed", "Closed", "root")),
+    });
     renderWithProviders(<UnitsPage />);
 
     await screen.findByRole("tree");
     fireEvent.click(within(item("Closed")).getByText("Closed"));
     fireEvent.click(await screen.findByRole("button", { name: "Reactivate" }));
 
-    await waitFor(() => expect(calls.some((call) => call.key === "POST /api/v1/organisation-units/closed/reactivate")).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((call) => call.key === "POST /api/v1/organisation-units/closed/reactivate")).toBe(true),
+    );
   });
 
   it("shows what the modules need of the unit, item by item in words, and whether it is ready", async () => {
@@ -182,7 +244,9 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
   });
 
   it("says a unit is ready when no module asks anything of it", async () => {
-    stub(manage, { "GET /api/v1/organisation-units/root/readiness": () => json({ unit_id: "root", ready: true, items: [] }) });
+    stub(manage, {
+      "GET /api/v1/organisation-units/root/readiness": () => json({ unit_id: "root", ready: true, items: [] }),
+    });
     renderWithProviders(<UnitsPage />);
 
     expect(await screen.findByText("Ready")).toBeInTheDocument();
@@ -192,7 +256,8 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
   it("previews a merge by kind, in words with what stays behind, and merges only when asked", async () => {
     const { calls } = stub(manage, {
       "GET /api/v1/organisation-units/sales/merge-preview?into=finance": () => json(preview),
-      "POST /api/v1/organisation-units/sales/merge": () => json({ ...preview, from: unit("sales", "Sales", "root", { status: "inactive", merged_into_id: "finance" }) }),
+      "POST /api/v1/organisation-units/sales/merge": () =>
+        json({ ...preview, from: unit("sales", "Sales", "root", { status: "inactive", merged_into_id: "finance" }) }),
     });
     renderWithProviders(<UnitsPage />);
 
@@ -208,15 +273,21 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     expect(within(dialog).getByText("What moves from Sales to Finance")).toBeInTheDocument();
     expect(shown).toHaveTextContent("Sales orders: 3 records, from orders");
     expect(shown).not.toHaveTextContent("sales_order");
-    expect(shown).toHaveTextContent("22 people whose home unit becomes Finance: Ada Lovelace, Grace Hopper, and 20 more");
+    expect(shown).toHaveTextContent(
+      "22 people whose home unit becomes Finance: Ada Lovelace, Grace Hopper, and 20 more",
+    );
     expect(shown).toHaveTextContent("1 is held at Finance already, so it is removed: Grace Hopper (Reader)");
     expect(shown).toHaveTextContent("1 is not moved, because Finance has its own value: numbering.prefix");
-    expect(within(within(shown).getByRole("rowheader", { name: "Units below" }).closest("tr")!).getByText("Nothing")).toBeInTheDocument();
+    expect(
+      within(within(shown).getByRole("rowheader", { name: "Units below" }).closest("tr")!).getByText("Nothing"),
+    ).toBeInTheDocument();
     expect(calls.some((call) => call.key === "POST /api/v1/organisation-units/sales/merge")).toBe(false);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Merge Sales into Finance" }));
 
-    await waitFor(() => expect(calls.some((call) => call.key === "POST /api/v1/organisation-units/sales/merge")).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((call) => call.key === "POST /api/v1/organisation-units/sales/merge")).toBe(true),
+    );
     const post = calls.find((call) => call.key === "POST /api/v1/organisation-units/sales/merge");
     expect(JSON.parse(post?.init?.body as string)).toEqual({ into_id: "finance" });
   });
@@ -224,7 +295,11 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
   it("says why a merge is not possible, with the correlation id, and merges nothing", async () => {
     const { calls } = stub(manage, {
       "GET /api/v1/organisation-units/sales/merge-preview?into=finance": () =>
-        problem(400, { error_code: "authz.unit.kind_not_allowed", detail: "A Unit cannot hold a Team. It can hold: none." }, "corr-merge"),
+        problem(
+          400,
+          { error_code: "authz.unit.kind_not_allowed", detail: "A Unit cannot hold a Team. It can hold: none." },
+          "corr-merge",
+        ),
     });
     renderWithProviders(<UnitsPage />);
 
@@ -239,14 +314,22 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     expect(refusal).toHaveTextContent("This merge is not possible");
     expect(refusal).toHaveTextContent("corr-merge");
     fireEvent.click(within(dialog).getByRole("button", { name: "Merge Sales into Finance" }));
-    expect(await within(dialog).findByText("This merge is not possible. Choose another unit, or cancel.")).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText("This merge is not possible. Choose another unit, or cancel."),
+    ).toBeInTheDocument();
     expect(calls.some((call) => call.key === "POST /api/v1/organisation-units/sales/merge")).toBe(false);
   });
 
   it("says a merged unit was merged and where, and offers no way back", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(manage)),
-      "GET /api/v1/organisation-units": () => json({ data: [...tree.data.filter((u) => u.id !== "sales"), unit("sales", "Sales", "root", { status: "inactive", merged_into_id: "finance" })] }),
+      "GET /api/v1/organisation-units": () =>
+        json({
+          data: [
+            ...tree.data.filter((u) => u.id !== "sales"),
+            unit("sales", "Sales", "root", { status: "inactive", merged_into_id: "finance" }),
+          ],
+        }),
       "GET /api/v1/organisation-kinds": () => json(kinds),
       ...access(manage),
     });
@@ -255,7 +338,9 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     await screen.findByRole("tree");
     fireEvent.click(within(item("Sales")).getByText("Sales"));
 
-    expect(await screen.findByText("This unit was merged into Finance. What it held is there now.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("This unit was merged into Finance. What it held is there now."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reactivate" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Merge into another unit" })).toBeNull();
   });

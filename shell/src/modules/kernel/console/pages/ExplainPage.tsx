@@ -5,7 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Box, Button, Flex, Group, List, Paper, Select, Stack, Text, TextInput, Title } from "@mantine/core";
 import { IconCircleCheck, IconCircleDashed, IconCircleMinus, IconCircleX } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
-import { explainAccess, fetchExplainableActions, fetchUnits, type AccessExplanation, type ExplainQuestion, type ExplainResult } from "@/api/authorization";
+import {
+  explainAccess,
+  fetchExplainableActions,
+  fetchUnits,
+  type AccessExplanation,
+  type ExplainQuestion,
+  type ExplainResult,
+} from "@/api/authorization";
 import { useSession } from "@/auth/session-context";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { ListPage } from "@/components/templates";
@@ -38,11 +45,19 @@ export function ExplainPage() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [question, setQuestion] = useState<ExplainQuestion | undefined>();
   const canSeeUnits = session.permissions.includes("authz.units.read");
-  const actions = useQuery({ queryKey: ["authz", "access", "actions"], queryFn: ({ signal }) => fetchExplainableActions(signal) });
-  const units = useQuery({ queryKey: ["authz", "organisation-units"], queryFn: ({ signal }) => fetchUnits(signal), enabled: canSeeUnits });
+  const actions = useQuery({
+    queryKey: ["authz", "access", "actions"],
+    queryFn: ({ signal }) => fetchExplainableActions(signal),
+  });
+  const units = useQuery({
+    queryKey: ["authz", "organisation-units"],
+    queryFn: ({ signal }) => fetchUnits(signal),
+    enabled: canSeeUnits,
+  });
   const answer = useQuery({
     queryKey: ["authz", "access", "explain", question],
-    queryFn: ({ signal }) => (question ? explainAccess(question, signal) : Promise.reject(new Error("No question yet."))),
+    queryFn: ({ signal }) =>
+      question ? explainAccess(question, signal) : Promise.reject(new Error("No question yet.")),
     enabled: question !== undefined,
     retry: false,
   });
@@ -65,7 +80,12 @@ export function ExplainPage() {
   };
 
   return (
-    <ListPage title={t("explain.title")} description={t("explain.description")} drawing={<ModuleMark name="console" accent="console" size={56} />} density={false}>
+    <ListPage
+      title={t("explain.title")}
+      description={t("explain.description")}
+      drawing={<ModuleMark name="console" accent="console" size={56} />}
+      density={false}
+    >
       <Flex direction={{ base: "column", md: "row" }} gap="md" align="flex-start">
         <Paper withBorder p="md" w={{ base: "100%", md: 400 }} style={{ flexShrink: 0 }}>
           <form onSubmit={ask} noValidate>
@@ -74,7 +94,9 @@ export function ExplainPage() {
                 label={t("explain.person")}
                 value={person === "" ? null : person}
                 onChange={(value) => setPerson(value ?? "")}
-                initial={presetId !== "" ? { id: presetId, display_name: presetName || presetId, home_unit: null } : undefined}
+                initial={
+                  presetId !== "" ? { id: presetId, display_name: presetName || presetId, home_unit: null } : undefined
+                }
                 data-autofocus
               />
               <Select
@@ -101,7 +123,13 @@ export function ExplainPage() {
                 ) : (
                   <TextInput
                     key={value.name}
-                    label={value.kind === "record" ? t("explain.record", { type: value.record_type ?? "" }) : value.kind === "unit" ? t("explain.unitId") : t("explain.value", { name: value.name })}
+                    label={
+                      value.kind === "record"
+                        ? t("explain.record", { type: value.record_type ?? "" })
+                        : value.kind === "unit"
+                          ? t("explain.unitId")
+                          : t("explain.value", { name: value.name })
+                    }
                     value={values[value.name] ?? ""}
                     onChange={(event) => {
                       const typed = event.currentTarget.value;
@@ -110,7 +138,13 @@ export function ExplainPage() {
                   />
                 ),
               )}
-              <PersonPicker label={t("explain.actingFor")} description={t("explain.actingForHint")} value={actingFor} onChange={setActingFor} exclude={person === "" ? [] : [person]} />
+              <PersonPicker
+                label={t("explain.actingFor")}
+                description={t("explain.actingForHint")}
+                value={actingFor}
+                onChange={setActingFor}
+                exclude={person === "" ? [] : [person]}
+              />
               <Group justify="flex-end">
                 <Button type="submit" disabled={person === "" || !action || missing}>
                   {t("explain.ask")}
@@ -155,23 +189,37 @@ export function Explanation({ explanation }: { explanation: AccessExplanation })
             ? t("explain.outcome.allowed", { name, action: explanation.action.summary })
             : t("explain.outcome.denied", { name, action: explanation.action.summary, status: explanation.status })}
         </Title>
-        {failed && <Text size="sm">{t("explain.outcome.firstFailed", { check: t(`explain.checks.${failed.check}`) })}</Text>}
+        {failed && (
+          <Text size="sm">{t("explain.outcome.firstFailed", { check: t(`explain.checks.${failed.check}`) })}</Text>
+        )}
         {/* The checks are the endpoint's; a handler may still refuse for its own reasons (ADR-0039), so an allowance says so. */}
         {explanation.allowed && <Text size="sm">{t("explain.outcome.covers")}</Text>}
-        {explanation.acting_for && <Text size="sm">{t("explain.outcome.acting", { name, delegator: explanation.acting_for.name })}</Text>}
+        {explanation.acting_for && (
+          <Text size="sm">{t("explain.outcome.acting", { name, delegator: explanation.acting_for.name })}</Text>
+        )}
       </Stack>
       <Box component="ol" m={0} p={0} style={{ listStyle: "none" }} aria-label={t("explain.checksLabel")}>
         {explanation.checks.map((check) => {
           const Icon = resultIcons[check.result];
           return (
-            <Box component="li" key={check.check} py="xs" style={{ borderTop: "1px solid var(--mantine-color-default-border)" }} data-check={check.check} data-result={check.result}>
+            <Box
+              component="li"
+              key={check.check}
+              py="xs"
+              style={{ borderTop: "1px solid var(--mantine-color-default-border)" }}
+              data-check={check.check}
+              data-result={check.result}
+            >
               <Group gap="sm" wrap="nowrap" align="flex-start">
                 <Icon size={20} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
                 <Stack gap={2} style={{ minWidth: 0 }}>
                   <Text size="sm" fw={600}>
                     {t(`explain.checks.${check.check}`)}: {t(`explain.results.${check.result}`)}
                   </Text>
-                  <Text size="sm" {...(check.result === "not_reached" || check.result === "not_applicable" ? { c: "dimmed" } : {})}>
+                  <Text
+                    size="sm"
+                    {...(check.result === "not_reached" || check.result === "not_applicable" ? { c: "dimmed" } : {})}
+                  >
                     {checkWords(t, check, explanation)}
                   </Text>
                   {check.granted_by.length > 0 && (

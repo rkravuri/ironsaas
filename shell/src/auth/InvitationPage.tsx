@@ -18,7 +18,9 @@ interface InvitationFormValues {
 export function InvitationPage() {
   const { t } = useTranslation();
   const { token = "" } = useParams();
-  const [state, setState] = useState<{ kind: "form" } | { kind: "done" } | { kind: "error"; message: string; correlationId: string | undefined }>({ kind: "form" });
+  const [state, setState] = useState<
+    { kind: "form" } | { kind: "done" } | { kind: "error"; message: string; correlationId: string | undefined }
+  >({ kind: "form" });
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<InvitationFormValues>({
     initialValues: { displayName: "", password: "", confirm: "" },
@@ -35,7 +37,14 @@ export function InvitationPage() {
       setState({ kind: "done" });
     } catch (error) {
       if (error instanceof ApiError) {
-        setState({ kind: "error", message: error.status === 404 || error.status === 400 || error.status === 409 ? t("invitation.invalid") : error.message, correlationId: error.correlationId });
+        setState({
+          kind: "error",
+          message:
+            error.status === 404 || error.status === 400 || error.status === 409
+              ? t("invitation.invalid")
+              : error.message,
+          correlationId: error.correlationId,
+        });
       } else {
         setState({ kind: "error", message: t("errors.unexpected"), correlationId: undefined });
       }
@@ -61,9 +70,23 @@ export function InvitationPage() {
           <form onSubmit={submit} noValidate>
             <Stack>
               <Text size="sm">{t("invitation.intro", { hostname: window.location.hostname })}</Text>
-              <TextInput label={t("invitation.displayName")} autoComplete="name" {...form.getInputProps("displayName")} />
-              <PasswordInput label={t("invitation.password")} autoComplete="new-password" required {...form.getInputProps("password")} />
-              <PasswordInput label={t("invitation.confirm")} autoComplete="new-password" required {...form.getInputProps("confirm")} />
+              <TextInput
+                label={t("invitation.displayName")}
+                autoComplete="name"
+                {...form.getInputProps("displayName")}
+              />
+              <PasswordInput
+                label={t("invitation.password")}
+                autoComplete="new-password"
+                required
+                {...form.getInputProps("password")}
+              />
+              <PasswordInput
+                label={t("invitation.confirm")}
+                autoComplete="new-password"
+                required
+                {...form.getInputProps("confirm")}
+              />
               {state.kind === "error" && (
                 <Alert color="danger" role="alert">
                   {state.message}

@@ -7,11 +7,18 @@ const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
 async function expectNoViolation(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
-  expect(results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => node.target.map(String).join(" ")).join("; ")}`)).toEqual([]);
+  expect(
+    results.violations.map(
+      (violation) =>
+        `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => node.target.map(String).join(" ")).join("; ")}`,
+    ),
+  ).toEqual([]);
 }
 
 for (const scheme of schemes) {
-  test(`the subscription page in the ${scheme} scheme: the plan, modules and features in words, its contents by keyboard, and no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the subscription page in the ${scheme} scheme: the plan, modules and features in words, its contents by keyboard, and no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await stubSubscription(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -28,7 +35,9 @@ for (const scheme of schemes) {
     // Read only for the tenant: nothing on the page changes the plan.
     await expect(page.getByRole("main").getByRole("button")).toHaveCount(0);
     // The page is in the console's navigation.
-    await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Subscription" })).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Subscription" }),
+    ).toBeVisible();
     await page.screenshot({ path: `test-results/a11y/subscription-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
@@ -39,9 +48,16 @@ for (const scheme of schemes) {
     await expect(page).toHaveURL(/#subscription-features$/);
   });
 
-  test(`the subscription page in the ${scheme} scheme warns in words when it cannot be confirmed, with no WCAG 2.1 AA violation`, async ({ page }) => {
+  test(`the subscription page in the ${scheme} scheme warns in words when it cannot be confirmed, with no WCAG 2.1 AA violation`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await stubSubscription(page, { ...subscription, modules: [], stale: true, features: subscription.features.map((feature) => ({ ...feature, status: "disabled", reason: "unknown" })) });
+    await stubSubscription(page, {
+      ...subscription,
+      modules: [],
+      stale: true,
+      features: subscription.features.map((feature) => ({ ...feature, status: "disabled", reason: "unknown" })),
+    });
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
     await page.goto("/console/subscription");
 

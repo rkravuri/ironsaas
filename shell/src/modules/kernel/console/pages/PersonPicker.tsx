@@ -5,7 +5,10 @@ import { Select, type SelectProps } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { searchDirectory, type DirectoryEntry } from "@/api/identity";
 
-export interface PersonPickerProps extends Omit<SelectProps, "data" | "searchable" | "onSearchChange" | "searchValue" | "filter"> {
+export interface PersonPickerProps extends Omit<
+  SelectProps,
+  "data" | "searchable" | "onSearchChange" | "searchValue" | "filter"
+> {
   /** People who cannot be chosen here, such as the person delegating. */
   exclude?: readonly string[];
   /** A person chosen already, such as the one whose record the page was opened from: shown by name before any search. */
@@ -44,14 +47,28 @@ export function PersonPicker({ exclude = [], initial, ...props }: PersonPickerPr
     () =>
       [...entries.values()]
         .filter((entry) => !exclude.includes(entry.id))
-        .map((entry) => ({ value: entry.id, label: entry.home_unit ? t("people.withUnit", { name: entry.display_name, unit: entry.home_unit }) : entry.display_name })),
+        .map((entry) => ({
+          value: entry.id,
+          label: entry.home_unit
+            ? t("people.withUnit", { name: entry.display_name, unit: entry.home_unit })
+            : entry.display_name,
+        })),
     [entries, exclude, t],
   );
 
   // The list opens only when it has people: a list without options is not a list (WCAG, aria-required-children). How
   // the search stands is said under the field instead.
   const more = (found.data?.meta.total_count ?? 0) > (found.data?.data.length ?? 0);
-  const state = debounced.length < 2 ? undefined : found.isFetching ? t("people.searching") : data.length === 0 ? t("people.nobody") : more ? t("people.more") : undefined;
+  const state =
+    debounced.length < 2
+      ? undefined
+      : found.isFetching
+        ? t("people.searching")
+        : data.length === 0
+          ? t("people.nobody")
+          : more
+            ? t("people.more")
+            : undefined;
   const { description, ...rest } = props;
   return (
     <Select

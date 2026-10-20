@@ -19,7 +19,10 @@ export const users = Array.from({ length: 20 }, (_, index) => {
 });
 
 /** A session as /me shows it, from now: idle in an hour and absolute in twelve unless a test moves them (TF-021). */
-export const sessionFromNow = ({ idleIn = 60 * 60_000, endsIn = 12 * 60 * 60_000 }: { idleIn?: number; endsIn?: number } = {}) => ({
+export const sessionFromNow = ({
+  idleIn = 60 * 60_000,
+  endsIn = 12 * 60 * 60_000,
+}: { idleIn?: number; endsIn?: number } = {}) => ({
   id: "01a14e12-0000-7000-8000-000000000001",
   started_at: new Date(Date.now() - 20 * 60_000).toISOString(),
   expires_at: new Date(Date.now() + endsIn).toISOString(),
@@ -87,15 +90,30 @@ export const contextImportsKilled = {
   ...context,
   flags: {
     ...context.flags,
-    values: context.flags.values.map((flag) => (flag.key === "kill.imports" ? { ...flag, value: true, reason: "targeting_match" } : flag)),
-    kill_switches: [{ path: "imports", flag: "kill.imports", since: "2026-10-20T08:30:00Z", reason: "A fault in role import is being fixed; it is back by the afternoon." }],
+    values: context.flags.values.map((flag) =>
+      flag.key === "kill.imports" ? { ...flag, value: true, reason: "targeting_match" } : flag,
+    ),
+    kill_switches: [
+      {
+        path: "imports",
+        flag: "kill.imports",
+        since: "2026-10-20T08:30:00Z",
+        reason: "A fault in role import is being fixed; it is back by the afternoon.",
+      },
+    ],
   },
 };
 
 /** A signed-in administrator who may read users, and the users list from memory; every other call answers 401. */
 export async function stubSignedIn(target: Page): Promise<void> {
   // Playwright tries the routes newest first, so the catch-all goes in first and the specific answers after it.
-  await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
+  await target.route("**/api/**", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/problem+json",
+      body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }),
+    }),
+  );
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: me }));
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
@@ -104,11 +122,23 @@ export async function stubSignedIn(target: Page): Promise<void> {
     const user = users.find((candidate) => route.request().url().endsWith(`/${candidate.id}`));
     return user
       ? route.fulfill({ json: { ...user, home_unit: null } })
-      : route.fulfill({ status: 404, contentType: "application/problem+json", body: JSON.stringify({ status: 404, error_code: "identity.user.not_found" }) });
+      : route.fulfill({
+          status: 404,
+          contentType: "application/problem+json",
+          body: JSON.stringify({ status: 404, error_code: "identity.user.not_found" }),
+        });
   });
 }
 
-const unitRow = (n: number, name: string, code: string, kind: string, parent: string | null, depth: number, status: "active" | "inactive" = "active") => ({
+const unitRow = (
+  n: number,
+  name: string,
+  code: string,
+  kind: string,
+  parent: string | null,
+  depth: number,
+  status: "active" | "inactive" = "active",
+) => ({
   id: `01a15100-0000-7000-8000-${String(n).padStart(12, "0")}`,
   name,
   code,
@@ -144,16 +174,33 @@ export const kinds = {
 
 /** A signed-in administrator who may read and shape the organisation tree, with the tree and its kinds from memory. */
 export async function stubConsole(target: Page): Promise<void> {
-  await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
+  await target.route("**/api/**", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/problem+json",
+      body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }),
+    }),
+  );
   await target.route("**/api/v1/me", (route) =>
-    route.fulfill({ json: { ...me, permissions: administrator, permissions_anywhere: administrator, home_unit: { id: units[0].id, name: units[0].name, code: units[0].code } } }),
+    route.fulfill({
+      json: {
+        ...me,
+        permissions: administrator,
+        permissions_anywhere: administrator,
+        home_unit: { id: units[0].id, name: units[0].name, code: units[0].code },
+      },
+    }),
   );
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
-  await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: administrator } }));
+  await target.route("**/api/v1/me/access?**", (route) =>
+    route.fulfill({ json: { scope: "unit", permissions: administrator } }),
+  );
   await target.route("**/api/v1/organisation-units", (route) => route.fulfill({ json: { data: units } }));
   await target.route("**/api/v1/organisation-kinds", (route) => route.fulfill({ json: kinds }));
   // The kernel's modules ask nothing of a unit (ADR-0038), so each is ready.
-  await target.route("**/api/v1/organisation-units/*/readiness", (route) => route.fulfill({ json: { unit_id: route.request().url().split("/").at(-2), ready: true, items: [] } }));
+  await target.route("**/api/v1/organisation-units/*/readiness", (route) =>
+    route.fulfill({ json: { unit_id: route.request().url().split("/").at(-2), ready: true, items: [] } }),
+  );
 }
 
 /** The tenant administrator's permissions, as /me lists them. */
@@ -173,17 +220,45 @@ export const administrator = [
 
 /** The permission catalogue as GET /api/v1/permissions answers it. */
 export const catalogue = [
-  { name: "authz.assignments.manage", module: "authz", description: "Assign roles to principals and remove assignments", risk: "high" },
+  {
+    name: "authz.assignments.manage",
+    module: "authz",
+    description: "Assign roles to principals and remove assignments",
+    risk: "high",
+  },
   { name: "authz.assignments.read", module: "authz", description: "See who holds which role, and where", risk: "low" },
   { name: "authz.roles.manage", module: "authz", description: "Create, change and delete tenant roles", risk: "high" },
   { name: "authz.roles.read", module: "authz", description: "List and view roles and their permissions", risk: "low" },
-  { name: "authz.units.manage", module: "authz", description: "Create, rename, move and deactivate organisation units", risk: "high" },
+  {
+    name: "authz.units.manage",
+    module: "authz",
+    description: "Create, rename, move and deactivate organisation units",
+    risk: "high",
+  },
   { name: "authz.units.read", module: "authz", description: "View the organisation units of this tenant", risk: "low" },
-  { name: "identity.users.manage", module: "identity", description: "Invite, change, disable and re-enable users", risk: "high" },
-  { name: "identity.users.read", module: "identity", description: "List and view users and service accounts", risk: "low" },
+  {
+    name: "identity.users.manage",
+    module: "identity",
+    description: "Invite, change, disable and re-enable users",
+    risk: "high",
+  },
+  {
+    name: "identity.users.read",
+    module: "identity",
+    description: "List and view users and service accounts",
+    risk: "low",
+  },
 ];
 
-const roleRow = (n: number, code: string, name: string, description: string, system: boolean, type: "user" | "service" | "any", permissions: string[]) => ({
+const roleRow = (
+  n: number,
+  code: string,
+  name: string,
+  description: string,
+  system: boolean,
+  type: "user" | "service" | "any",
+  permissions: string[],
+) => ({
   id: `01a15200-0000-7000-8000-${String(n).padStart(12, "0")}`,
   code,
   name,
@@ -198,7 +273,15 @@ const roleRow = (n: number, code: string, name: string, description: string, sys
 
 /** The roles of a tenant: the three system roles and two of its own. */
 export const roles = [
-  roleRow(4, "operations-lead", "Operations lead", "Shapes the Operations part of the tree and its people.", false, "user", ["authz.units.manage", "authz.units.read", "identity.users.read"]),
+  roleRow(
+    4,
+    "operations-lead",
+    "Operations lead",
+    "Shapes the Operations part of the tree and its people.",
+    false,
+    "user",
+    ["authz.units.manage", "authz.units.read", "identity.users.read"],
+  ),
   roleRow(
     2,
     "read-only",
@@ -231,14 +314,28 @@ export const roles = [
 
 const envelope = <T>(url: string, rows: T[]) => ({
   data: rows,
-  meta: { page_number: 1, page_size: 50, total_count: rows.length, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 },
+  meta: {
+    page_number: 1,
+    page_size: 50,
+    total_count: rows.length,
+    total_pages: 1,
+    has_previous: false,
+    has_next: false,
+    page_size_capped: false,
+    max_page_size: 200,
+  },
   links: { self: url, first: url, previous: null, next: null, last: url },
 });
 
 /** The user the record page shows, with the home unit by name. */
 export const record = { ...users[0], home_unit: { id: units[3].id, name: units[3].name, code: units[3].code } };
 
-const assignmentRow = (n: number, role: (typeof roles)[number], scope: string, unit: (typeof units)[number] | null) => ({
+const assignmentRow = (
+  n: number,
+  role: (typeof roles)[number],
+  scope: string,
+  unit: (typeof units)[number] | null,
+) => ({
   id: `01a15300-0000-7000-8000-${String(n).padStart(12, "0")}`,
   principal_id: record.id,
   principal_name: record.display_name,
@@ -249,11 +346,20 @@ const assignmentRow = (n: number, role: (typeof roles)[number], scope: string, u
   unit_id: unit?.id ?? null,
   record_type: null,
   record_id: null,
-  unit_path: unit === null ? [] : unit.id === units[4].id ? [units[0], units[3], units[4]].map(({ id, name }) => ({ id, name })) : [units[0], units[3]].map(({ id, name }) => ({ id, name })),
+  unit_path:
+    unit === null
+      ? []
+      : unit.id === units[4].id
+        ? [units[0], units[3], units[4]].map(({ id, name }) => ({ id, name }))
+        : [units[0], units[3]].map(({ id, name }) => ({ id, name })),
   created_at: "2026-10-19T10:00:00Z",
 });
 
-export const assignments = [assignmentRow(1, roles[0], "unit_with_children", units[3]), assignmentRow(2, roles[4], "unit", units[4]), assignmentRow(3, roles[1], "tenant", null)];
+export const assignments = [
+  assignmentRow(1, roles[0], "unit_with_children", units[3]),
+  assignmentRow(2, roles[4], "unit", units[4]),
+  assignmentRow(3, roles[1], "tenant", null),
+];
 
 /**
  * The two people of the home page (D4): a tenant administrator at the root, and a child-unit administrator who reads
@@ -281,15 +387,33 @@ export type Who = keyof typeof principals;
 
 /** Each one's own assignments, as GET /api/v1/role-assignments/mine answers them. */
 const mine: Record<Who, unknown[]> = {
-  administrator: [{ ...assignmentRow(10, roles[3], "tenant", null), principal_id: principals.administrator.id, principal_name: "Ada Lovelace" }],
-  child: [{ ...assignmentRow(11, roles[4], "unit_with_children", units[4]), principal_id: principals.child.id, principal_name: "Grace Hopper" }],
+  administrator: [
+    {
+      ...assignmentRow(10, roles[3], "tenant", null),
+      principal_id: principals.administrator.id,
+      principal_name: "Ada Lovelace",
+    },
+  ],
+  child: [
+    {
+      ...assignmentRow(11, roles[4], "unit_with_children", units[4]),
+      principal_id: principals.child.id,
+      principal_name: "Grace Hopper",
+    },
+  ],
 };
 
 /** The pages a person opened before, for the home page's Recently opened: kept per person in the browser. */
 export const recentFor = (who: Who) => ({
   key: `iron.recent.${principals[who].id}`,
   pages: [
-    { path: `/users/${users[1].id}`, titleKey: "modules.identity.users", module: "identity", label: users[1].display_name, at: 3 },
+    {
+      path: `/users/${users[1].id}`,
+      titleKey: "modules.identity.users",
+      module: "identity",
+      label: users[1].display_name,
+      at: 3,
+    },
     { path: "/console/units", titleKey: "modules.console.units", module: "console", at: 2 },
     { path: "/users", titleKey: "modules.identity.users", module: "identity", at: 1 },
   ],
@@ -301,10 +425,18 @@ export const recentFor = (who: Who) => ({
  */
 export async function stubHome(target: Page, who: Who, session = sessionFromNow()): Promise<void> {
   const principal = { ...principals[who], session };
-  await target.route("**/api/**", (route) => route.fulfill({ status: 401, contentType: "application/problem+json", body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }) }));
+  await target.route("**/api/**", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/problem+json",
+      body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }),
+    }),
+  );
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: principal }));
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
-  await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: principal.permissions_anywhere } }));
+  await target.route("**/api/v1/me/access?**", (route) =>
+    route.fulfill({ json: { scope: "unit", permissions: principal.permissions_anywhere } }),
+  );
   await target.route("**/api/v1/role-assignments/mine", (route) => route.fulfill({ json: { data: mine[who] } }));
   // The person's own delegations (A7): one given and over, so /me holds no active one and the header has no control.
   await target.route("**/api/v1/delegations/mine", (route) =>
@@ -339,7 +471,9 @@ export async function stubAccess(target: Page): Promise<void> {
   for (const role of roles) {
     await target.route(`**/api/v1/roles/${role.id}`, (route) => route.fulfill({ json: role }));
   }
-  await target.route("**/api/v1/role-assignments?**", (route) => route.fulfill({ json: envelope(route.request().url(), assignments) }));
+  await target.route("**/api/v1/role-assignments?**", (route) =>
+    route.fulfill({ json: envelope(route.request().url(), assignments) }),
+  );
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
   await target.route(`**/api/v1/users/${record.id}`, (route) => route.fulfill({ json: record }));
 }
@@ -418,7 +552,8 @@ const setting = (key: string, over: Record<string, unknown>) => ({
 
 const idle = (value: number, source: Record<string, unknown>, setHere: boolean) =>
   setting("identity.session.idle_minutes", {
-    description: "How long a session stays open without activity before it ends, in minutes. A new session takes the value; open sessions keep theirs.",
+    description:
+      "How long a session stays open without activity before it ends, in minutes. A new session takes the value; open sessions keep theirs.",
     requirement: "A whole number from 15 to 480.",
     minimum: 15,
     maximum: 480,
@@ -429,7 +564,8 @@ const idle = (value: number, source: Record<string, unknown>, setHere: boolean) 
   });
 
 const absolute = setting("identity.session.absolute_hours", {
-  description: "How long a session may last at most, active or not, in hours. A new session takes the value; open sessions keep theirs.",
+  description:
+    "How long a session may last at most, active or not, in hours. A new session takes the value; open sessions keep theirs.",
   requirement: "A whole number from 1 to 24.",
   minimum: 1,
   maximum: 24,
@@ -439,7 +575,8 @@ const absolute = setting("identity.session.absolute_hours", {
 
 const invitation = (value: number, source: Record<string, unknown>, setHere: boolean) =>
   setting("identity.invitation.valid_days", {
-    description: "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.",
+    description:
+      "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.",
     requirement: "A whole number from 1 to 30.",
     minimum: 1,
     maximum: 30,
@@ -454,14 +591,29 @@ const invitation = (value: number, source: Record<string, unknown>, setHere: boo
 export const tenantSettings = {
   scope: "tenant",
   unit: null,
-  data: [invitation(3, notSet, false), absolute, idle(30, { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" }, true)],
+  data: [
+    invitation(3, notSet, false),
+    absolute,
+    idle(30, { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" }, true),
+  ],
 };
 
 /** North's settings: the invitation validity inherited from Operations, the unit above it. */
 export const northSettings = {
   scope: "unit",
   unit: { id: units[4].id, name: "North", path: "Acme Corporation / Operations / North" },
-  data: [invitation(14, { level: "unit", unit: { id: units[3].id, name: "Operations", path: "Acme Corporation / Operations" }, changed_by: ravi, changed_at: "2026-10-19T11:00:00Z" }, false)],
+  data: [
+    invitation(
+      14,
+      {
+        level: "unit",
+        unit: { id: units[3].id, name: "Operations", path: "Acme Corporation / Operations" },
+        changed_by: ravi,
+        changed_at: "2026-10-19T11:00:00Z",
+      },
+      false,
+    ),
+  ],
 };
 
 /** The console stubs plus the settings of the tenant and of North. */

@@ -15,7 +15,12 @@ export const HomeUnitSchema = z.object({ id: z.string(), name: z.string(), code:
 const DutyNameSchema = z.object({ code: z.string(), name: z.string() });
 
 /** Whom the session acts for (ADR-0037): their rights for these duties, until then. */
-export const ActingForSchema = z.object({ id: z.string(), name: z.string(), duties: z.array(DutyNameSchema), until: z.string() });
+export const ActingForSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  duties: z.array(DutyNameSchema),
+  until: z.string(),
+});
 export type ActingFor = z.infer<typeof ActingForSchema>;
 
 /** An active delegation as /me shows it, either way. */
@@ -33,7 +38,13 @@ export type ActiveDelegation = z.infer<typeof ActiveDelegationSchema>;
 export const UnitStepSchema = z.object({ id: z.string(), name: z.string() });
 
 /** A unit the person may work for (ADR-0038): its depth, and its path from the root with the unit last. */
-export const WorkingUnitChoiceSchema = z.object({ id: z.string(), name: z.string(), code: z.string(), depth: z.number(), path: z.array(UnitStepSchema) });
+export const WorkingUnitChoiceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  code: z.string(),
+  depth: z.number(),
+  path: z.array(UnitStepSchema),
+});
 export type WorkingUnitChoice = z.infer<typeof WorkingUnitChoiceSchema>;
 
 /**
@@ -54,7 +65,9 @@ export const MeSchema = z.object({
   session: SessionSchema,
   home_unit: HomeUnitSchema.nullable().optional(),
   acting_for: ActingForSchema.nullable().optional(),
-  delegations: z.object({ given: z.array(ActiveDelegationSchema), received: z.array(ActiveDelegationSchema) }).optional(),
+  delegations: z
+    .object({ given: z.array(ActiveDelegationSchema), received: z.array(ActiveDelegationSchema) })
+    .optional(),
   working_unit: HomeUnitSchema.nullable().optional(),
   all_units: z.boolean().optional(),
   working_units: z.object({ units: z.array(WorkingUnitChoiceSchema), all_units_available: z.boolean() }).optional(),
@@ -82,7 +95,9 @@ export const UserListSchema = listSchema(UserSchema);
 export type UserList = z.infer<typeof UserListSchema>;
 
 /** GET /api/v1/users/{id}: one user with the home unit by name; a user outside the reader's scope answers 404. */
-export const UserRecordSchema = UserSchema.omit({ home_unit_id: true }).extend({ home_unit: HomeUnitSchema.nullable() });
+export const UserRecordSchema = UserSchema.omit({ home_unit_id: true }).extend({
+  home_unit: HomeUnitSchema.nullable(),
+});
 export type UserRecord = z.infer<typeof UserRecordSchema>;
 
 /** GET /api/v1/me/access: the permissions held at one unit or record. */
@@ -93,21 +108,33 @@ export type Access = z.infer<typeof AccessSchema>;
  * Where to ask about access: a unit, or a unit with every unit below it (what changing an assignment to a unit and
  * below needs, ADR-0031), or a record with the unit it belongs to when the page knows it.
  */
-export type AccessTarget = { unit: string; includeChildren?: boolean } | { recordType: string; recordId: string; unit?: string };
+export type AccessTarget =
+  { unit: string; includeChildren?: boolean } | { recordType: string; recordId: string; unit?: string };
 
-export const fetchMe = (signal?: AbortSignal) => request("/api/v1/me", { schema: MeSchema, ...(signal ? { signal } : {}) });
+export const fetchMe = (signal?: AbortSignal) =>
+  request("/api/v1/me", { schema: MeSchema, ...(signal ? { signal } : {}) });
 
 /** Act for someone whose delegation to you is active; answers /me as it is now. */
-export const actFor = (principalId: string) => request("/api/v1/me/acting-for", { method: "POST", body: { principal_id: principalId }, schema: MeSchema });
+export const actFor = (principalId: string) =>
+  request("/api/v1/me/acting-for", { method: "POST", body: { principal_id: principalId }, schema: MeSchema });
 
 /** Act as yourself again; answers /me. */
 export const stopActing = () => request("/api/v1/me/acting-for", { method: "DELETE", schema: MeSchema });
 
 /** Work for one of your units, or all of them (ADR-0038); answers /me. */
-export const workFor = (choice: WorkFor) => request("/api/v1/me/working-unit", { method: "POST", body: "allUnits" in choice ? { all_units: true } : { unit_id: choice.unitId }, schema: MeSchema });
+export const workFor = (choice: WorkFor) =>
+  request("/api/v1/me/working-unit", {
+    method: "POST",
+    body: "allUnits" in choice ? { all_units: true } : { unit_id: choice.unitId },
+    schema: MeSchema,
+  });
 
 /** A person as the delegate picker offers them (ADR-0037): a display name, a home unit's name, and the id to choose them by. */
-export const DirectoryEntrySchema = z.object({ id: z.string(), display_name: z.string(), home_unit: z.string().nullable() });
+export const DirectoryEntrySchema = z.object({
+  id: z.string(),
+  display_name: z.string(),
+  home_unit: z.string().nullable(),
+});
 export type DirectoryEntry = z.infer<typeof DirectoryEntrySchema>;
 export const DirectoryPageSchema = listSchema(DirectoryEntrySchema);
 
@@ -116,7 +143,10 @@ export const directoryPageSize = 20;
 
 /** The first page of the active people whose name or login contains the search (two characters at least). */
 export const searchDirectory = (search: string, signal?: AbortSignal) =>
-  request(`/api/v1/directory?search=${encodeURIComponent(search)}&page_size=${directoryPageSize}`, { schema: DirectoryPageSchema, ...(signal ? { signal } : {}) });
+  request(`/api/v1/directory?search=${encodeURIComponent(search)}&page_size=${directoryPageSize}`, {
+    schema: DirectoryPageSchema,
+    ...(signal ? { signal } : {}),
+  });
 
 export function accessQuery(target: AccessTarget): string {
   const params = new URLSearchParams();
@@ -133,9 +163,11 @@ export function accessQuery(target: AccessTarget): string {
   return params.toString();
 }
 
-export const fetchAccess = (target: AccessTarget, signal?: AbortSignal) => request(`/api/v1/me/access?${accessQuery(target)}`, { schema: AccessSchema, ...(signal ? { signal } : {}) });
+export const fetchAccess = (target: AccessTarget, signal?: AbortSignal) =>
+  request(`/api/v1/me/access?${accessQuery(target)}`, { schema: AccessSchema, ...(signal ? { signal } : {}) });
 
-export const login = (loginId: string, password: string) => request("/auth/login", { method: "POST", body: { login_id: loginId, password } });
+export const login = (loginId: string, password: string) =>
+  request("/auth/login", { method: "POST", body: { login_id: loginId, password } });
 
 export const logout = () => request("/auth/logout", { method: "POST" });
 
@@ -145,12 +177,18 @@ export const acceptInvitation = (token: string, password: string, displayName: s
     body: { password, display_name: displayName },
   });
 
-export const fetchUsers = (query: string, signal?: AbortSignal) => request(`/api/v1/users${query ? `?${query}` : ""}`, { schema: UserListSchema, ...(signal ? { signal } : {}) });
+export const fetchUsers = (query: string, signal?: AbortSignal) =>
+  request(`/api/v1/users${query ? `?${query}` : ""}`, { schema: UserListSchema, ...(signal ? { signal } : {}) });
 
-export const fetchUser = (id: string, signal?: AbortSignal) => request(`/api/v1/users/${encodeURIComponent(id)}`, { schema: UserRecordSchema, ...(signal ? { signal } : {}) });
+export const fetchUser = (id: string, signal?: AbortSignal) =>
+  request(`/api/v1/users/${encodeURIComponent(id)}`, { schema: UserRecordSchema, ...(signal ? { signal } : {}) });
 
 /** POST /api/v1/users: the user created and the invitation link to pass on by hand until email delivery (S4). */
-export const CreatedUserSchema = z.object({ user: UserSchema, invitation_link: z.string(), invitation_expires_at: z.string() });
+export const CreatedUserSchema = z.object({
+  user: UserSchema,
+  invitation_link: z.string(),
+  invitation_expires_at: z.string(),
+});
 export type CreatedUser = z.infer<typeof CreatedUserSchema>;
 
 export interface NewUser {
@@ -159,4 +197,5 @@ export interface NewUser {
   home_unit_id: string;
 }
 
-export const createUser = (body: NewUser) => request("/api/v1/users", { method: "POST", body, schema: CreatedUserSchema });
+export const createUser = (body: NewUser) =>
+  request("/api/v1/users", { method: "POST", body, schema: CreatedUserSchema });

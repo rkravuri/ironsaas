@@ -59,16 +59,19 @@ export function stream(seed: number): () => number {
 }
 
 const round = (value: number): number => Math.round(value * 100) / 100;
-const point = (radius: number, angle: number): string => `${round(radius * Math.cos(angle))} ${round(radius * Math.sin(angle))}`;
+const point = (radius: number, angle: number): string =>
+  `${round(radius * Math.cos(angle))} ${round(radius * Math.sin(angle))}`;
 
 /** One repeat of a motif at a ring: the path for the wedge that starts at the angle. */
 type Motif = (radius: number, angle: number, halfWidth: number, height: number) => string;
 
 const motifs: readonly Motif[] = [
   // A petal: a curve that bulges outward.
-  (radius, angle, halfWidth, height) => `M${point(radius, angle - halfWidth)} Q${point(radius + height, angle)} ${point(radius, angle + halfWidth)}`,
+  (radius, angle, halfWidth, height) =>
+    `M${point(radius, angle - halfWidth)} Q${point(radius + height, angle)} ${point(radius, angle + halfWidth)}`,
   // A chevron pointing outward.
-  (radius, angle, halfWidth, height) => `M${point(radius - height, angle - halfWidth)} L${point(radius, angle)} L${point(radius - height, angle + halfWidth)}`,
+  (radius, angle, halfWidth, height) =>
+    `M${point(radius - height, angle - halfWidth)} L${point(radius, angle)} L${point(radius - height, angle + halfWidth)}`,
   // A radial tick.
   (radius, angle, _halfWidth, height) => `M${point(radius - height / 2, angle)} L${point(radius + height / 2, angle)}`,
   // A leaf: two curves meeting at a point.
@@ -82,7 +85,8 @@ const motifs: readonly Motif[] = [
   },
 ];
 
-const circle = (radius: number): string => `M${radius} 0 A${radius} ${radius} 0 1 1 ${-radius} 0 A${radius} ${radius} 0 1 1 ${radius} 0`;
+const circle = (radius: number): string =>
+  `M${radius} 0 A${radius} ${radius} 0 1 1 ${-radius} 0 A${radius} ${radius} 0 1 1 ${radius} 0`;
 
 function validate({ symmetry, rings, stroke, density }: MandalaParameters): void {
   if (!symmetries.includes(symmetry)) {
@@ -116,7 +120,12 @@ function draw(parameters: MandalaParameters): MandalaDrawing {
     for (let repeat = 0; repeat < repeats; repeat += 1) {
       parts.push(motif(radius, repeat * ((Math.PI * 2) / repeats), halfWidth, height));
     }
-    result.push({ radius, path: parts.join(" "), accent: index === accentRing, strokeWidth: detail ? stroke / 2 : stroke });
+    result.push({
+      radius,
+      path: parts.join(" "),
+      accent: index === accentRing,
+      strokeWidth: detail ? stroke / 2 : stroke,
+    });
   }
   return { viewBox: mandalaViewBox, rings: result };
 }
@@ -127,7 +136,13 @@ const cache = new Map<string, MandalaDrawing>();
 
 /** The drawing for the parameters: computed once per distinct input, then served from a small cache. */
 export function mandala(parameters: MandalaParameters): MandalaDrawing {
-  const key = JSON.stringify([parameters.symmetry, parameters.rings, parameters.stroke, parameters.density, String(parameters.seed)]);
+  const key = JSON.stringify([
+    parameters.symmetry,
+    parameters.rings,
+    parameters.stroke,
+    parameters.density,
+    String(parameters.seed),
+  ]);
   const cached = cache.get(key);
   if (cached) {
     return cached;

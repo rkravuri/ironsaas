@@ -4,7 +4,13 @@ import { useTranslation } from "react-i18next";
 import { Alert, Badge, Group, Stack, Table, Text } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck, IconCircleMinus, IconEye } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
-import { fetchSubscription, type EntitlementStatus, type Subscription, type SubscriptionFeature, type SubscriptionModule } from "@/api/entitlements";
+import {
+  fetchSubscription,
+  type EntitlementStatus,
+  type Subscription,
+  type SubscriptionFeature,
+  type SubscriptionModule,
+} from "@/api/entitlements";
 import { EmptyState, LoadingState, type StatusTone } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
@@ -13,7 +19,9 @@ const tones: Record<EntitlementStatus, StatusTone> = { enabled: "success", read_
 
 /** A date of the subscription, `yyyy-mm-dd` in UTC, as the person reads dates. */
 function day(date: string | null): string | undefined {
-  return date === null ? undefined : new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { timeZone: "UTC", dateStyle: "medium" });
+  return date === null
+    ? undefined
+    : new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { timeZone: "UTC", dateStyle: "medium" });
 }
 
 /** The status in a word, with an icon beside it: the tone is never the only sign (brief section 5). */
@@ -23,15 +31,29 @@ function StatusLabel({ status }: { status: EntitlementStatus }) {
   const Icon = status === "enabled" ? IconCircleCheck : status === "read_only" ? IconEye : IconCircleMinus;
   return (
     // A table squeezes a cell to its narrowest; the word is the status, so it is never cut.
-    <Badge variant={tone === "neutral" ? "default" : "light"} {...(tone !== "neutral" ? { color: tone } : {})} radius="sm" miw="max-content" leftSection={<Icon size={14} aria-hidden="true" />}>
+    <Badge
+      variant={tone === "neutral" ? "default" : "light"}
+      {...(tone !== "neutral" ? { color: tone } : {})}
+      radius="sm"
+      miw="max-content"
+      leftSection={<Icon size={14} aria-hidden="true" />}
+    >
       {t(`subscription.statuses.${status}`)}
     </Badge>
   );
 }
 
 /** Why it applies as it does, in words: the reason with its dates. */
-function reasonOf(entry: { reason: string; starts_on: string | null; ends_on: string | null; grace_ends_on: string | null }, t: TFunction): string {
-  return t(`subscription.reasons.${entry.reason}`, { defaultValue: entry.reason, starts: day(entry.starts_on) ?? "", ends: day(entry.ends_on) ?? "", grace: day(entry.grace_ends_on) ?? "" });
+function reasonOf(
+  entry: { reason: string; starts_on: string | null; ends_on: string | null; grace_ends_on: string | null },
+  t: TFunction,
+): string {
+  return t(`subscription.reasons.${entry.reason}`, {
+    defaultValue: entry.reason,
+    starts: day(entry.starts_on) ?? "",
+    ends: day(entry.ends_on) ?? "",
+    grace: day(entry.grace_ends_on) ?? "",
+  });
 }
 
 /** A module by its name for people when the catalogue has one, and by its code always. */
@@ -60,7 +82,14 @@ function Until({ entry }: { entry: { ends_on: string | null } }) {
 function ModulesTable({ modules }: { modules: SubscriptionModule[] }) {
   const { t } = useTranslation();
   if (modules.length === 0) {
-    return <EmptyState drawing="nothingYet" size="sm" title={t("subscription.modules.empty")} text={t("subscription.modules.emptyText")} />;
+    return (
+      <EmptyState
+        drawing="nothingYet"
+        size="sm"
+        title={t("subscription.modules.empty")}
+        text={t("subscription.modules.emptyText")}
+      />
+    );
   }
   return (
     <Table.ScrollContainer minWidth={640}>
@@ -92,7 +121,11 @@ function ModulesTable({ modules }: { modules: SubscriptionModule[] }) {
               <Table.Td>
                 {module.seats === null || module.seats.limit === null
                   ? t("subscription.seats.notCounted")
-                  : t("subscription.seats.usage", { assigned: module.seats.assigned, limit: module.seats.limit, remaining: module.seats.remaining ?? 0 })}
+                  : t("subscription.seats.usage", {
+                      assigned: module.seats.assigned,
+                      limit: module.seats.limit,
+                      remaining: module.seats.remaining ?? 0,
+                    })}
               </Table.Td>
             </Table.Tr>
           ))}
@@ -146,12 +179,26 @@ function FeaturesTable({ features }: { features: SubscriptionFeature[] }) {
 
 function PlanSection({ subscription }: { subscription: Subscription }) {
   const { t } = useTranslation();
-  const plan = subscription.plan === null ? t("subscription.plan.none") : t(`subscription.plans.${subscription.plan}`, { defaultValue: subscription.plan });
-  const confirmed = subscription.confirmed_at === null ? undefined : new Date(subscription.confirmed_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const plan =
+    subscription.plan === null
+      ? t("subscription.plan.none")
+      : t(`subscription.plans.${subscription.plan}`, { defaultValue: subscription.plan });
+  const confirmed =
+    subscription.confirmed_at === null
+      ? undefined
+      : new Date(subscription.confirmed_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   return (
     <Stack gap="sm">
       <Group gap="md" wrap="nowrap" align="center">
-        <Mandala symmetry={8} rings={3} stroke={2} density={0.6} seed={`plan-${subscription.plan ?? "none"}`} size={48} accent="console" />
+        <Mandala
+          symmetry={8}
+          rings={3}
+          stroke={2}
+          density={0.6}
+          seed={`plan-${subscription.plan ?? "none"}`}
+          size={48}
+          accent="console"
+        />
         <Stack gap={2}>
           <Text size="lg" fw={600}>
             {plan}
@@ -162,7 +209,12 @@ function PlanSection({ subscription }: { subscription: Subscription }) {
         </Stack>
       </Group>
       {subscription.stale ? (
-        <Alert color="warning" role="alert" icon={<IconAlertTriangle size={18} aria-hidden="true" />} title={t("subscription.stale.title")}>
+        <Alert
+          color="warning"
+          role="alert"
+          icon={<IconAlertTriangle size={18} aria-hidden="true" />}
+          title={t("subscription.stale.title")}
+        >
           {t("subscription.stale.text", { time: confirmed ?? t("subscription.stale.never") })}
         </Alert>
       ) : (
@@ -182,7 +234,11 @@ function PlanSection({ subscription }: { subscription: Subscription }) {
  */
 export function SubscriptionPage() {
   const { t } = useTranslation();
-  const query = useQuery({ queryKey: ["subscription"], queryFn: ({ signal }) => fetchSubscription(signal), staleTime: 30_000 });
+  const query = useQuery({
+    queryKey: ["subscription"],
+    queryFn: ({ signal }) => fetchSubscription(signal),
+    staleTime: 30_000,
+  });
 
   if (query.isPending) {
     return <LoadingState height="60vh" />;
@@ -207,9 +263,24 @@ export function SubscriptionPage() {
       title={t("subscription.title")}
       description={t("subscription.description")}
       sections={[
-        { id: "subscription-plan", title: t("subscription.plan.title"), description: t("subscription.plan.description"), children: <PlanSection subscription={subscription} /> },
-        { id: "subscription-modules", title: t("subscription.modules.title"), description: t("subscription.modules.description"), children: <ModulesTable modules={subscription.modules} /> },
-        { id: "subscription-features", title: t("subscription.features.title"), description: t("subscription.features.description"), children: <FeaturesTable features={subscription.features} /> },
+        {
+          id: "subscription-plan",
+          title: t("subscription.plan.title"),
+          description: t("subscription.plan.description"),
+          children: <PlanSection subscription={subscription} />,
+        },
+        {
+          id: "subscription-modules",
+          title: t("subscription.modules.title"),
+          description: t("subscription.modules.description"),
+          children: <ModulesTable modules={subscription.modules} />,
+        },
+        {
+          id: "subscription-features",
+          title: t("subscription.features.title"),
+          description: t("subscription.features.description"),
+          children: <FeaturesTable features={subscription.features} />,
+        },
       ]}
     />
   );

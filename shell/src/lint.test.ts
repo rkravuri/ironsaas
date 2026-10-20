@@ -3,12 +3,17 @@ import { describe, expect, it } from "vitest";
 import { ESLint, type Linter } from "eslint";
 
 // Every stylesheet under src, read at transform time; src/design is where values are allowed to live.
-const stylesheets = import.meta.glob<string>(["/src/**/*.css", "!/src/design/**"], { query: "?raw", import: "default", eager: true });
+const stylesheets = import.meta.glob<string>(["/src/**/*.css", "!/src/design/**"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
 // A real page path: type-checked linting wants a file that belongs to the project.
 const pagePath = "src/modules/kernel/identity/pages/UsersPage.tsx";
 const colourRule = "no-restricted-syntax";
 
-const findings = (result: ESLint.LintResult | undefined, ruleId: string): Linter.LintMessage[] => (result?.messages ?? []).filter((message) => message.ruleId === ruleId);
+const findings = (result: ESLint.LintResult | undefined, ruleId: string): Linter.LintMessage[] =>
+  (result?.messages ?? []).filter((message) => message.ruleId === ruleId);
 
 /** Every declaration value of a stylesheet, asked the same question the colour rule asks of a style prop. */
 async function rawColoursInStylesheet(eslint: ESLint, css: string): Promise<string[]> {
@@ -45,20 +50,37 @@ describe("the lint rules", () => {
     /** The layer patterns the configuration gives a file, applied to an import source as ESLint applies them. */
     const refusedBy = async (eslint: ESLint, filePath: string, source: string): Promise<boolean> => {
       const config = (await eslint.calculateConfigForFile(filePath)) as { rules?: Record<string, unknown> };
-      const [, options] = (config.rules?.[importRule] ?? []) as [unknown, { patterns?: { regex?: string; caseSensitive?: boolean }[] }?];
-      return (options?.patterns ?? []).some((pattern) => pattern.regex !== undefined && new RegExp(pattern.regex, pattern.caseSensitive ? "u" : "iu").test(source));
+      const [, options] = (config.rules?.[importRule] ?? []) as [
+        unknown,
+        { patterns?: { regex?: string; caseSensitive?: boolean }[] }?,
+      ];
+      return (options?.patterns ?? []).some(
+        (pattern) =>
+          pattern.regex !== undefined && new RegExp(pattern.regex, pattern.caseSensitive ? "u" : "iu").test(source),
+      );
     };
 
     it("refuses business and products imports in a kernel module, by alias and by relative path", async () => {
       const eslint = new ESLint();
-      const refused = ["@/modules/business/organisations/manifest", "../../products/procurement/manifest", "@/modules/products"];
-      const allowed = ["@/modules/kernel/identity/pages/UsersPage", "./products/local", "@/components/data-grid", "@/modules/registry"];
+      const refused = [
+        "@/modules/business/organisations/manifest",
+        "../../products/procurement/manifest",
+        "@/modules/products",
+      ];
+      const allowed = [
+        "@/modules/kernel/identity/pages/UsersPage",
+        "./products/local",
+        "@/components/data-grid",
+        "@/modules/registry",
+      ];
 
       const [result] = await eslint.lintText(probe([...refused, ...allowed]), { filePath: pagePath });
       const messages = findings(result, importRule);
 
       expect(messages.map((message) => message.line)).toEqual([1, 2, 3]);
-      expect(messages.every((message) => message.message.includes("dependencies go downward only (ADR-0029)"))).toBe(true);
+      expect(messages.every((message) => message.message.includes("dependencies go downward only (ADR-0029)"))).toBe(
+        true,
+      );
     }, 60_000);
 
     it("refuses products imports in a business module and allows the kernel", async () => {
@@ -75,17 +97,30 @@ describe("the lint rules", () => {
       const eslint = new ESLint();
       const ruleFor = async (path: string): Promise<{ group?: string[]; regex?: string }[]> => {
         const config = (await eslint.calculateConfigForFile(path)) as { rules?: Record<string, unknown> };
-        const [, options] = (config.rules?.[importRule] ?? []) as [unknown, { patterns?: { group?: string[]; regex?: string }[] }?];
+        const [, options] = (config.rules?.[importRule] ?? []) as [
+          unknown,
+          { patterns?: { group?: string[]; regex?: string }[] }?,
+        ];
         return options?.patterns ?? [];
       };
 
-      for (const path of [pagePath, "src/modules/business/organisations/manifest.tsx", "src/modules/products/procurement/manifest.tsx"]) {
+      for (const path of [
+        pagePath,
+        "src/modules/business/organisations/manifest.tsx",
+        "src/modules/products/procurement/manifest.tsx",
+      ]) {
         expect(
           (await ruleFor(path)).some((pattern) => pattern.group?.includes("ag-grid-*")),
           path,
         ).toBe(true);
       }
-      expect(await refusedBy(eslint, "src/modules/products/procurement/manifest.tsx", "@/modules/business/organisations/manifest")).toBe(false);
+      expect(
+        await refusedBy(
+          eslint,
+          "src/modules/products/procurement/manifest.tsx",
+          "@/modules/business/organisations/manifest",
+        ),
+      ).toBe(false);
       expect(await refusedBy(eslint, "src/modules/index.ts", "@/modules/products/procurement/manifest")).toBe(false);
     }, 60_000);
   });

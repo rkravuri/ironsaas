@@ -30,7 +30,11 @@ interface Delegation {
 async function endDelegations(page: Page): Promise<void> {
   const mine = await call<{ data: Delegation[] }>(page, "GET", "/api/v1/delegations/mine");
   for (const delegation of mine.body.data) {
-    if (delegation.delegator.id === administratorId && delegation.delegate.id === childId && ["scheduled", "active"].includes(delegation.status)) {
+    if (
+      delegation.delegator.id === administratorId &&
+      delegation.delegate.id === childId &&
+      ["scheduled", "active"].includes(delegation.status)
+    ) {
       await call(page, "POST", `/api/v1/delegations/${delegation.id}/end`, { reason: `End of e2e run ${run}` });
     }
   }
@@ -38,7 +42,11 @@ async function endDelegations(page: Page): Promise<void> {
 
 /** A person's assignments of one role. */
 async function assignmentsOf(page: Page, principal: string, role: string): Promise<{ id: string }[]> {
-  const assignments = await call<{ data: { id: string; role_id: string }[] }>(page, "GET", `/api/v1/role-assignments?filter=principal_id:eq:${principal}&page_size=100`);
+  const assignments = await call<{ data: { id: string; role_id: string }[] }>(
+    page,
+    "GET",
+    `/api/v1/role-assignments?filter=principal_id:eq:${principal}&page_size=100`,
+  );
   return assignments.body.data.filter((assignment) => assignment.role_id === role);
 }
 
@@ -53,7 +61,10 @@ function day(offset: number): string {
 const loginCells = (grid: Locator) => grid.locator('[role="gridcell"][col-id="login_id"]');
 
 test.describe("delegation and access reviews", () => {
-  test.skip(child.loginId === "" || colleagueId === "" || revocableRoleId === "" || reviewerRoleId === "", "make e2e sets up the child unit's data first");
+  test.skip(
+    child.loginId === "" || colleagueId === "" || revocableRoleId === "" || reviewerRoleId === "",
+    "make e2e sets up the child unit's data first",
+  );
 
   test("the administrator delegates user administration, the delegate acts for them with both names in the audit, and a review on the child unit revokes a role at once", async ({
     page,
@@ -66,7 +77,12 @@ test.describe("delegation and access reviews", () => {
     for (const leftover of await revocableAssignments(page)) {
       await call(page, "DELETE", `/api/v1/role-assignments/${leftover.id}`);
     }
-    const reviews = await call(page, "POST", "/api/v1/role-assignments", { principal_id: childId, role_id: reviewerRoleId, scope_kind: "unit_with_children", unit_id: childUnitId });
+    const reviews = await call(page, "POST", "/api/v1/role-assignments", {
+      principal_id: childId,
+      role_id: reviewerRoleId,
+      scope_kind: "unit_with_children",
+      unit_id: childUnitId,
+    });
     expect([200, 201]).toContain(reviews.status);
 
     const childContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL, ignoreHTTPSErrors: true });
@@ -84,7 +100,9 @@ test.describe("delegation and access reviews", () => {
       await dialog.getByRole("textbox", { name: "Reason" }).fill(`Annual leave, e2e run ${run}.`);
       await dialog.getByRole("button", { name: "Delegate" }).click();
       await expect(dialog).toBeHidden();
-      await expect(page.getByRole("list", { name: "Your delegations" })).toContainText("You hand user administration to Child administrator");
+      await expect(page.getByRole("list", { name: "Your delegations" })).toContainText(
+        "You hand user administration to Child administrator",
+      );
       await page.screenshot({ path: "test-results/e2e/delegation-created.png", fullPage: true });
 
       // The delegate acts for the administrator from the header, and the band says whose rights, until when.
@@ -102,9 +120,16 @@ test.describe("delegation and access reviews", () => {
       await childPage.screenshot({ path: "test-results/e2e/delegation-acting-users.png" });
 
       // A change made while acting names both people in the audit.
-      const granted = await call<{ id: string }>(childPage, "POST", "/api/v1/role-assignments", { principal_id: colleagueId, role_id: revocableRoleId, scope_kind: "unit", unit_id: childUnitId });
+      const granted = await call<{ id: string }>(childPage, "POST", "/api/v1/role-assignments", {
+        principal_id: colleagueId,
+        role_id: revocableRoleId,
+        scope_kind: "unit",
+        unit_id: childUnitId,
+      });
       expect(granted.status).toBe(201);
-      const events = await call<{ data: { event_type: string; record_id: string; actor_name: string; on_behalf_of_name: string }[] }>(
+      const events = await call<{
+        data: { event_type: string; record_id: string; actor_name: string; on_behalf_of_name: string }[];
+      }>(
         page,
         "GET",
         `/api/v1/audit-events?filter=on_behalf_of_id:eq:${administratorId}&filter=event_type:eq:authz.role_assigned&page_size=20`,
@@ -144,7 +169,9 @@ test.describe("delegation and access reviews", () => {
 
       // The reviewer's own roles in the unit are theirs to read, not to decide: the row says so, and the page has
       // nothing else left for them to confirm.
-      await expect(childPage.getByRole("gridcell", { name: "About your own access: another reviewer decides it." }).first()).toBeVisible();
+      await expect(
+        childPage.getByRole("gridcell", { name: "About your own access: another reviewer decides it." }).first(),
+      ).toBeVisible();
       await expect(childPage.getByRole("button", { name: "Confirm the 0 items on this page" })).toBeDisabled();
       await childPage.screenshot({ path: "test-results/e2e/review-own-rows.png", fullPage: true });
 

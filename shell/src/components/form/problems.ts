@@ -13,7 +13,9 @@ export interface ProblemSummary {
 export function fieldPath(apiField: string): string {
   return apiField
     .split(".")
-    .map((segment) => segment.replace(/\[(\d+)\]/g, ".$1").replace(/_([a-z0-9])/g, (_match, letter: string) => letter.toUpperCase()))
+    .map((segment) =>
+      segment.replace(/\[(\d+)\]/g, ".$1").replace(/_([a-z0-9])/g, (_match, letter: string) => letter.toUpperCase()),
+    )
     .join(".");
 }
 
@@ -21,7 +23,10 @@ export function fieldPath(apiField: string): string {
  * Puts an ApiError's field problems on the form's fields (a field is known when its first path segment is a value of
  * the form) and returns what found no field, with the correlation id, for the top of the form.
  */
-export function applyProblem<Values extends Record<string, unknown>>(form: UseFormReturnType<Values>, error: ApiError): ProblemSummary {
+export function applyProblem<Values extends Record<string, unknown>>(
+  form: UseFormReturnType<Values>,
+  error: ApiError,
+): ProblemSummary {
   const values = form.getValues();
   const unmapped: FieldProblem[] = [];
   const mapped = new Map<string, string[]>();
@@ -37,6 +42,7 @@ export function applyProblem<Values extends Record<string, unknown>>(form: UseFo
   for (const [path, messages] of mapped) {
     form.setFieldError(path, messages.join(" "));
   }
-  const message = unmapped.length > 0 ? unmapped.map((problem) => problem.message).join(" ") : mapped.size > 0 ? "" : error.message;
+  const message =
+    unmapped.length > 0 ? unmapped.map((problem) => problem.message).join(" ") : mapped.size > 0 ? "" : error.message;
   return { message, correlationId: error.correlationId, unmapped };
 }

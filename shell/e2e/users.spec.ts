@@ -2,13 +2,16 @@ import { expect, test, type Locator } from "@playwright/test";
 import { loginId, open, signIn } from "./helpers";
 
 /** The cell of the login column that shows this value; "smoke-client" is also a display name, so the column matters. */
-const loginCell = (grid: Locator, value: string) => grid.locator('[role="gridcell"][col-id="login_id"]', { hasText: value });
+const loginCell = (grid: Locator, value: string) =>
+  grid.locator('[role="gridcell"][col-id="login_id"]', { hasText: value });
 
 test.describe("the Users grid", () => {
   test("lists the tenant's users from the API with server paging and sorting", async ({ page }) => {
     await signIn(page);
     // Register the wait before loading the page, so the first request cannot be missed.
-    const firstPage = page.waitForResponse((response) => response.url().includes("/api/v1/users?") && response.url().includes("page_number=1"));
+    const firstPage = page.waitForResponse(
+      (response) => response.url().includes("/api/v1/users?") && response.url().includes("page_number=1"),
+    );
     await page.goto("/users");
     const response = await firstPage;
     expect(response.url()).toContain("page_size=50");
@@ -22,7 +25,9 @@ test.describe("the Users grid", () => {
     await expect(loginCell(grid, loginId)).toBeVisible();
 
     // A header click is a server round trip with the sort in the query: ascending, then descending.
-    const sorted = page.waitForRequest((request) => request.url().includes("/api/v1/users?") && request.url().includes("sort=-login_id"));
+    const sorted = page.waitForRequest(
+      (request) => request.url().includes("/api/v1/users?") && request.url().includes("sort=-login_id"),
+    );
     const header = grid.locator(".ag-header-cell", { hasText: "Login identifier" });
     await header.getByText("Login identifier", { exact: true }).click();
     await header.getByText("Login identifier", { exact: true }).click();
@@ -39,7 +44,10 @@ test.describe("the Users grid", () => {
     const filtered = page.waitForRequest((request) => request.url().includes("filter=login_id%3Acontains%3Asmoke-"));
     const header = grid.locator(".ag-header-cell", { hasText: "Login identifier" });
     await header.hover();
-    await header.locator(".ag-header-cell-menu-button, .ag-header-icon.ag-filter-icon, [data-ref='eFilterButton']").first().click();
+    await header
+      .locator(".ag-header-cell-menu-button, .ag-header-icon.ag-filter-icon, [data-ref='eFilterButton']")
+      .first()
+      .click();
     await page.locator(".ag-filter input[type='text'], .ag-filter .ag-text-field-input").first().fill("smoke-");
     await page.locator(".ag-filter button", { hasText: /apply/i }).click();
     await filtered;
@@ -50,7 +58,9 @@ test.describe("the Users grid", () => {
 });
 
 test.describe("the Users grid by keyboard", () => {
-  test("selects a row with Space and Enter, opens it with Ctrl+Enter, and the density switch changes the row height", async ({ page }) => {
+  test("selects a row with Space and Enter, opens it with Ctrl+Enter, and the density switch changes the row height", async ({
+    page,
+  }) => {
     await signIn(page);
     await open(page, "/users");
     const grid = page.getByRole("region", { name: "Users" });
@@ -83,12 +93,23 @@ test.describe("the Users grid by keyboard", () => {
     await density.getByText("Comfortable").click();
     await expect.poll(async () => (await row(0).boundingBox())?.height).toBe(40);
     const savedCompact = page.waitForResponse(
-      (response) => response.request().method() === "PUT" && response.url().includes("/api/v1/settings/shell.density") && (response.request().postData() ?? "").includes("compact"),
+      (response) =>
+        response.request().method() === "PUT" &&
+        response.url().includes("/api/v1/settings/shell.density") &&
+        (response.request().postData() ?? "").includes("compact"),
     );
     await density.getByText("Compact").click();
     await expect.poll(async () => (await row(0).boundingBox())?.height).toBe(32);
     // Saved first, then removed, so the removal is the last word.
     expect((await savedCompact).status()).toBe(200);
-    await expect.poll(() => page.evaluate(async () => (await fetch("/api/v1/settings/shell.density?scope=user", { method: "DELETE", credentials: "same-origin" })).status)).toBe(200);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            (await fetch("/api/v1/settings/shell.density?scope=user", { method: "DELETE", credentials: "same-origin" }))
+              .status,
+        ),
+      )
+      .toBe(200);
   });
 });

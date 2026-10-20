@@ -20,7 +20,8 @@ describe("the gallery", () => {
     }
     expect(screen.getByText("acme.localhost")).toBeInTheDocument();
     expect(screen.getByText("bravo.localhost")).toBeInTheDocument();
-    const marks = (hostname: string) => [...document.querySelectorAll(`svg[data-mandala="${hostname}"] path`)].map((path) => path.getAttribute("d"));
+    const marks = (hostname: string) =>
+      [...document.querySelectorAll(`svg[data-mandala="${hostname}"] path`)].map((path) => path.getAttribute("d"));
     expect(marks("acme.localhost")).not.toEqual(marks("bravo.localhost"));
     expect(document.documentElement.getAttribute("data-mantine-color-scheme")).toBe("dark");
     expect(document.documentElement.dataset.density).toBe("compact");

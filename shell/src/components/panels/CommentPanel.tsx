@@ -49,12 +49,23 @@ export function CommentPanel({ comments, onAdd }: CommentPanelProps) {
           </Paper>
         ))
       )}
-      <Textarea label={t("comments.label")} value={text} onChange={(event) => setText(event.currentTarget.value)} disabled={onAdd === undefined} rows={3} />
+      <Textarea
+        label={t("comments.label")}
+        value={text}
+        onChange={(event) => setText(event.currentTarget.value)}
+        disabled={onAdd === undefined}
+        rows={3}
+      />
       <Group justify="space-between">
         <Text size="xs" c="dimmed">
           {onAdd === undefined ? t("comments.later") : ""}
         </Text>
-        <Button size="xs" onClick={() => void add()} disabled={onAdd === undefined || text.trim() === ""} loading={busy}>
+        <Button
+          size="xs"
+          onClick={() => void add()}
+          disabled={onAdd === undefined || text.trim() === ""}
+          loading={busy}
+        >
           {t("comments.add")}
         </Button>
       </Group>

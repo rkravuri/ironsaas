@@ -35,7 +35,11 @@ export function DashboardPage({ title, description, cards, children }: Dashboard
               <Text
                 component="p"
                 m={0}
-                style={{ fontFamily: "var(--iron-font-display)", fontSize: "var(--mantine-font-size-xxl)", lineHeight: 1.25 }}
+                style={{
+                  fontFamily: "var(--iron-font-display)",
+                  fontSize: "var(--mantine-font-size-xxl)",
+                  lineHeight: 1.25,
+                }}
                 {...(card.tone !== undefined && card.tone !== "neutral" ? { c: card.tone } : {})}
               >
                 {card.value}

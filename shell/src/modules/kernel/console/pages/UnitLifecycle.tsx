@@ -5,7 +5,15 @@ import { Alert, Badge, Group, List, Select, Stack, Table, Text, Title } from "@m
 import { IconCircleCheck, IconCircleDashed } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
-import { fetchReadiness, mergePartCodes, mergeUnit, previewMerge, type Merge, type MergePart, type Unit } from "@/api/authorization";
+import {
+  fetchReadiness,
+  mergePartCodes,
+  mergeUnit,
+  previewMerge,
+  type Merge,
+  type MergePart,
+  type Unit,
+} from "@/api/authorization";
 import { Form, useZodForm } from "@/components/form";
 import { FormDialog, LoadingState } from "@/components/panels";
 import { mergeTargets, pathLabel } from "./unit-tree";
@@ -24,7 +32,10 @@ function namesOf(part: MergePart, language: string, more: (count: number) => str
  */
 export function UnitReadiness({ unit }: { unit: Unit }) {
   const { t } = useTranslation();
-  const readiness = useQuery({ queryKey: [...unitsQueryKey, unit.id, "readiness"], queryFn: ({ signal }) => fetchReadiness(unit.id, signal) });
+  const readiness = useQuery({
+    queryKey: [...unitsQueryKey, unit.id, "readiness"],
+    queryFn: ({ signal }) => fetchReadiness(unit.id, signal),
+  });
   if (readiness.isPending) {
     return <LoadingState height={72} />;
   }
@@ -43,7 +54,13 @@ export function UnitReadiness({ unit }: { unit: Unit }) {
         <Title order={3} size="h5">
           {t("units.readiness.title")}
         </Title>
-        <Badge variant="light" color={ready ? "success" : "warning"} leftSection={ready ? <IconCircleCheck size={14} aria-hidden="true" /> : <IconCircleDashed size={14} aria-hidden="true" />}>
+        <Badge
+          variant="light"
+          color={ready ? "success" : "warning"}
+          leftSection={
+            ready ? <IconCircleCheck size={14} aria-hidden="true" /> : <IconCircleDashed size={14} aria-hidden="true" />
+          }
+        >
           {ready ? t("units.readiness.ready") : t("units.readiness.notReady", { count: left })}
         </Badge>
       </Group>
@@ -54,7 +71,16 @@ export function UnitReadiness({ unit }: { unit: Unit }) {
       ) : (
         <List spacing={4} size="sm" listStyleType="none" aria-label={t("units.readiness.title")}>
           {items.map((item) => (
-            <List.Item key={`${item.module}:${item.code}`} icon={item.done ? <IconCircleCheck size={16} aria-hidden="true" /> : <IconCircleDashed size={16} aria-hidden="true" />}>
+            <List.Item
+              key={`${item.module}:${item.code}`}
+              icon={
+                item.done ? (
+                  <IconCircleCheck size={16} aria-hidden="true" />
+                ) : (
+                  <IconCircleDashed size={16} aria-hidden="true" />
+                )
+              }
+            >
               <Text span size="sm">
                 {t(item.done ? "units.readiness.done" : "units.readiness.toDo", { label: item.label })}
               </Text>
@@ -71,7 +97,17 @@ export function UnitReadiness({ unit }: { unit: Unit }) {
  * anything changes, then merge. The preview is the API's own, with its refusal in words when the merge is not possible
  * (the root, a unit below, an inactive unit, a kind the unit that stays cannot hold, a unit you may not manage).
  */
-export function MergeUnitDialog({ unit, units, onClose, onDone }: { unit: Unit; units: readonly Unit[]; onClose: () => void; onDone: (merged: Merge) => Promise<void> }) {
+export function MergeUnitDialog({
+  unit,
+  units,
+  onClose,
+  onDone,
+}: {
+  unit: Unit;
+  units: readonly Unit[];
+  onClose: () => void;
+  onDone: (merged: Merge) => Promise<void>;
+}) {
   const { t } = useTranslation();
   const targets = useMemo(() => mergeTargets(units, unit), [units, unit]);
   const schema = useMemo(() => z.object({ intoId: z.string().min(1, t("units.merge.intoRequired")) }), [t]);
@@ -101,7 +137,11 @@ export function MergeUnitDialog({ unit, units, onClose, onDone }: { unit: Unit; 
       <Form
         form={form}
         onSubmit={submit}
-        submitLabel={intoName !== undefined ? t("units.merge.submit", { from: unit.name, into: intoName }) : t("units.merge.submitPlain")}
+        submitLabel={
+          intoName !== undefined
+            ? t("units.merge.submit", { from: unit.name, into: intoName })
+            : t("units.merge.submitPlain")
+        }
         secondary={{ label: t("dialog.cancel"), onClick: onClose }}
       >
         <Text size="sm">{t("units.merge.intro", { name: unit.name })}</Text>
@@ -153,14 +193,34 @@ export function MergePreview({ merge }: { merge: Merge }) {
         part.count === 0
           ? []
           : code === "records"
-            ? [t("units.merge.parts.recordsOf", { count: part.count, type: part.record_type_name ?? part.record_type ?? "", module: part.module })]
+            ? [
+                t("units.merge.parts.recordsOf", {
+                  count: part.count,
+                  type: part.record_type_name ?? part.record_type ?? "",
+                  module: part.module,
+                }),
+              ]
             : code === "shares"
               ? [t("units.merge.parts.sharesMove", { count: part.count, from, into })]
-              : [t(`units.merge.parts.${code}Move`, { count: part.count, into, names: namesOf(part, i18n.language, more) })];
+              : [
+                  t(`units.merge.parts.${code}Move`, {
+                    count: part.count,
+                    into,
+                    names: namesOf(part, i18n.language, more),
+                  }),
+                ];
       const dropped =
         part.conflicts.length === 0
           ? []
-          : [t(`units.merge.parts.${code}Dropped`, { count: part.conflicts.length, into, names: new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format(part.conflicts) })];
+          : [
+              t(`units.merge.parts.${code}Dropped`, {
+                count: part.conflicts.length,
+                into,
+                names: new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format(
+                  part.conflicts,
+                ),
+              }),
+            ];
       return [...moved, ...dropped];
     });
   };

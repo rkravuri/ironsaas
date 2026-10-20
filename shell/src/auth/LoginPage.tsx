@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
-import { Alert, Box, Button, Container, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import {
+  Alert,
+  Box,
+  Button,
+  Container,
+  Group,
+  Paper,
+  PasswordInput,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { ApiError } from "@/api/client";
 import { login } from "@/api/identity";
@@ -50,7 +62,10 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
       void navigate(returnTo, { replace: true });
     } catch (error) {
       if (error instanceof ApiError) {
-        setProblem({ message: error.status === 401 || error.status === 400 ? t("login.failed") : error.message, correlationId: error.correlationId });
+        setProblem({
+          message: error.status === 401 || error.status === 400 ? t("login.failed") : error.message,
+          correlationId: error.correlationId,
+        });
       } else {
         setProblem({ message: t("errors.unexpected"), correlationId: undefined });
       }
@@ -80,12 +95,28 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
       )}
       {/* The mark as a texture: behind the opaque card at 7 percent, so it never sits under text (brief section 4). */}
       <Box pos="relative">
-        <TenantMark hostname={hostname} size={400} opacity={0.07} style={{ position: "absolute", left: "50%", top: 0, transform: "translateX(-50%)", pointerEvents: "none" }} />
+        <TenantMark
+          hostname={hostname}
+          size={400}
+          opacity={0.07}
+          style={{ position: "absolute", left: "50%", top: 0, transform: "translateX(-50%)", pointerEvents: "none" }}
+        />
         <Paper withBorder shadow="sm" p="lg" pos="relative">
           <form onSubmit={submit} noValidate>
             <Stack>
-              <TextInput label={t("login.loginId")} autoComplete="username" autoFocus={autoFocus} required {...form.getInputProps("loginId")} />
-              <PasswordInput label={t("login.password")} autoComplete="current-password" required {...form.getInputProps("password")} />
+              <TextInput
+                label={t("login.loginId")}
+                autoComplete="username"
+                autoFocus={autoFocus}
+                required
+                {...form.getInputProps("loginId")}
+              />
+              <PasswordInput
+                label={t("login.password")}
+                autoComplete="current-password"
+                required
+                {...form.getInputProps("password")}
+              />
               {problem && (
                 <Alert color="danger" role="alert">
                   {problem.message}

@@ -81,7 +81,10 @@ function UserRecordView({ user }: { user: UserRecord }) {
         title: user.display_name,
         code: user.login_id,
         status: userStatus(user.status, t),
-        meta: [{ label: t("users.type"), value: t(`users.types.${user.type}`, { defaultValue: user.type }) }, ...(user.home_unit ? [{ label: t("users.homeUnit"), value: user.home_unit.name }] : [])],
+        meta: [
+          { label: t("users.type"), value: t(`users.types.${user.type}`, { defaultValue: user.type }) },
+          ...(user.home_unit ? [{ label: t("users.homeUnit"), value: user.home_unit.name }] : []),
+        ],
       }}
       tabs={[
         { value: "details", label: t("users.record.details"), panel: details },

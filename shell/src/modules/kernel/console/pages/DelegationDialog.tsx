@@ -28,7 +28,11 @@ const reasonMax = 500;
 export function DelegationDialog({ opened, forSomeone, onClose, onDone }: DelegationDialogProps) {
   const { t } = useTranslation();
   return (
-    <FormDialog opened={opened} title={t(forSomeone ? "delegations.create.titleForSomeone" : "delegations.create.title")} onClose={onClose}>
+    <FormDialog
+      opened={opened}
+      title={t(forSomeone ? "delegations.create.titleForSomeone" : "delegations.create.title")}
+      onClose={onClose}
+    >
       {opened && <DelegationForm forSomeone={forSomeone} onClose={onClose} onDone={onDone} />}
     </FormDialog>
   );
@@ -37,7 +41,11 @@ export function DelegationDialog({ opened, forSomeone, onClose, onDone }: Delega
 function DelegationForm({ forSomeone, onClose, onDone }: Omit<DelegationDialogProps, "opened">) {
   const { t } = useTranslation();
   const { me } = useSession();
-  const duties = useQuery({ queryKey: ["authz", "duties"], queryFn: ({ signal }) => fetchDuties(signal), staleTime: 5 * 60_000 });
+  const duties = useQuery({
+    queryKey: ["authz", "duties"],
+    queryFn: ({ signal }) => fetchDuties(signal),
+    staleTime: 5 * 60_000,
+  });
   const first = today();
   const schema = useMemo(
     () =>
@@ -54,11 +62,17 @@ function DelegationForm({ forSomeone, onClose, onDone }: Omit<DelegationDialogPr
             .min(1, t("delegations.form.reasonRequired"))
             .max(reasonMax, t("delegations.form.reasonTooLong", { max: reasonMax })),
         })
-        .refine((values) => values.until >= values.from, { path: ["until"], message: t("delegations.form.untilBeforeFrom") })
+        .refine((values) => values.until >= values.from, {
+          path: ["until"],
+          message: t("delegations.form.untilBeforeFrom"),
+        })
         .refine((values) => values.until >= first, { path: ["until"], message: t("delegations.form.untilPassed") }),
     [forSomeone, first, t],
   );
-  const form = useZodForm({ schema, initialValues: { delegator_id: "", delegate_id: "", duties: [] as string[], from: first, until: first, reason: "" } });
+  const form = useZodForm({
+    schema,
+    initialValues: { delegator_id: "", delegate_id: "", duties: [] as string[], from: first, until: first, reason: "" },
+  });
   const delegator = forSomeone ? form.values.delegator_id : me?.id;
 
   const submit = async (values: z.infer<typeof schema>) => {
@@ -75,8 +89,20 @@ function DelegationForm({ forSomeone, onClose, onDone }: Omit<DelegationDialogPr
   };
 
   return (
-    <Form form={form} onSubmit={submit} submitLabel={t("delegations.create.submit")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
-      {forSomeone && <PersonPicker label={t("delegations.form.delegator")} description={t("delegations.form.delegatorHint")} data-autofocus {...form.getInputProps("delegator_id")} />}
+    <Form
+      form={form}
+      onSubmit={submit}
+      submitLabel={t("delegations.create.submit")}
+      secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+    >
+      {forSomeone && (
+        <PersonPicker
+          label={t("delegations.form.delegator")}
+          description={t("delegations.form.delegatorHint")}
+          data-autofocus
+          {...form.getInputProps("delegator_id")}
+        />
+      )}
       <PersonPicker
         label={t("delegations.form.delegate")}
         description={t("delegations.form.delegateHint")}
@@ -87,7 +113,11 @@ function DelegationForm({ forSomeone, onClose, onDone }: Omit<DelegationDialogPr
       {duties.isPending ? (
         <LoadingState height={80} />
       ) : (
-        <Checkbox.Group label={t("delegations.form.duties")} description={t("delegations.form.dutiesHint")} {...form.getInputProps("duties")}>
+        <Checkbox.Group
+          label={t("delegations.form.duties")}
+          description={t("delegations.form.dutiesHint")}
+          {...form.getInputProps("duties")}
+        >
           <Stack gap="xs" mt="xs">
             {(duties.data?.data ?? []).map((duty) => (
               <Checkbox key={duty.code} value={duty.code} label={duty.name} description={duty.description} />
@@ -97,9 +127,21 @@ function DelegationForm({ forSomeone, onClose, onDone }: Omit<DelegationDialogPr
       )}
       <Group grow align="flex-start">
         <TextInput type="date" label={t("delegations.form.from")} min={first} {...form.getInputProps("from")} />
-        <TextInput type="date" label={t("delegations.form.until")} min={form.values.from || first} {...form.getInputProps("until")} />
+        <TextInput
+          type="date"
+          label={t("delegations.form.until")}
+          min={form.values.from || first}
+          {...form.getInputProps("until")}
+        />
       </Group>
-      <Textarea label={t("delegations.form.reason")} description={t("delegations.form.reasonHint")} autosize minRows={2} maxRows={6} {...form.getInputProps("reason")} />
+      <Textarea
+        label={t("delegations.form.reason")}
+        description={t("delegations.form.reasonHint")}
+        autosize
+        minRows={2}
+        maxRows={6}
+        {...form.getInputProps("reason")}
+      />
     </Form>
   );
 }

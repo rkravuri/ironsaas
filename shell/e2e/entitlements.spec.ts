@@ -8,7 +8,8 @@ import { signIn } from "./helpers";
  */
 const controlUrl = process.env.E2E_CONTROL_URL ?? "http://localhost:5200";
 const operatorSecret = process.env.E2E_OPERATOR_SECRET ?? "";
-const tenant = process.env.E2E_TENANT ?? new URL(process.env.E2E_BASE_URL ?? "https://smoke.localhost").hostname.split(".")[0];
+const tenant =
+  process.env.E2E_TENANT ?? new URL(process.env.E2E_BASE_URL ?? "https://smoke.localhost").hostname.split(".")[0];
 const minute = 60_000;
 
 async function applyPlan(plan: "standard" | "enterprise"): Promise<number> {
@@ -23,7 +24,10 @@ async function applyPlan(plan: "standard" | "enterprise"): Promise<number> {
     });
     expect(token.ok(), await token.text()).toBe(true);
     const { access_token: accessToken } = (await token.json()) as { access_token: string };
-    const applied = await control.post(`/api/v1/tenants/${tenant}/plan`, { data: { plan, dry_run: false }, headers: { Authorization: `Bearer ${accessToken}` } });
+    const applied = await control.post(`/api/v1/tenants/${tenant}/plan`, {
+      data: { plan, dry_run: false },
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
     expect(applied.ok(), await applied.text()).toBe(true);
     return Date.now();
   } finally {
@@ -37,7 +41,10 @@ async function applyPlan(plan: "standard" | "enterprise"): Promise<number> {
  */
 async function exportAnswer(page: Page): Promise<string> {
   return page.evaluate(async () => {
-    const response = await fetch("/api/v1/roles/export", { credentials: "same-origin", headers: { Accept: "application/json" } });
+    const response = await fetch("/api/v1/roles/export", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
     if (response.ok) {
       return "ok";
     }
@@ -55,7 +62,9 @@ test.describe("a plan changed in the control plane reaches the shell and the API
     await applyPlan("enterprise");
   });
 
-  test("Enterprise to Standard removes role export and import, and back to Enterprise restores them", async ({ page }) => {
+  test("Enterprise to Standard removes role export and import, and back to Enterprise restores them", async ({
+    page,
+  }) => {
     await applyPlan("enterprise");
     await signIn(page);
     await page.goto("/console/roles");
@@ -68,7 +77,9 @@ test.describe("a plan changed in the control plane reaches the shell and the API
     await expect(exportButton).toBeHidden({ timeout: minute });
     await expect(importButton).toBeHidden();
     const hiddenAfter = Date.now() - toStandard;
-    await expect.poll(() => exportAnswer(page), { timeout: minute, intervals: [2_000] }).toBe("403 entitlements.feature_disabled");
+    await expect
+      .poll(() => exportAnswer(page), { timeout: minute, intervals: [2_000] })
+      .toBe("403 entitlements.feature_disabled");
     // The page stays, without the two actions: nothing else of the roles page needs the feature.
     await expect(page.getByRole("heading", { level: 2, name: "Roles" })).toBeVisible();
 
@@ -96,7 +107,9 @@ test.describe("the console's Subscription page on a unit", () => {
       await expect(page.getByRole("heading", { level: 2, name: "Subscription" })).toBeVisible();
       await expect(page.getByText("Enterprise", { exact: true })).toBeVisible();
       await expect(page.getByText("No licensed modules yet")).toBeVisible();
-      const transfer = page.getByRole("table", { name: "Features" }).getByRole("row", { name: /Export the tenant's roles/ });
+      const transfer = page
+        .getByRole("table", { name: "Features" })
+        .getByRole("row", { name: /Export the tenant's roles/ });
       await expect(transfer).toContainText("Included");
       await expect(transfer).toContainText("In your plan");
       // Beside the browser tests' own output, which each run empties: the page as the unit serves it.

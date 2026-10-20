@@ -35,7 +35,9 @@ function matching(groups: readonly SearchGroup[], query: string): SearchGroup[] 
   return groups
     .map((group) => {
       const byLabel = group.options.filter((option) => option.label.toLowerCase().includes(wanted));
-      const byModule = group.options.filter((option) => !byLabel.includes(option) && option.description.toLowerCase().includes(wanted));
+      const byModule = group.options.filter(
+        (option) => !byLabel.includes(option) && option.description.toLowerCase().includes(wanted),
+      );
       return { ...group, options: [...byLabel, ...byModule] };
     })
     .filter((group) => group.options.length > 0);
@@ -61,16 +63,31 @@ export function Search() {
   const [, redraw] = useState(0);
   const followKeys = () => void Promise.resolve().then(() => redraw((count) => count + 1));
   const listId = `search-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-  const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled), [session.permissions, session.entitlements]);
+  const navigation = useMemo(
+    () => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled),
+    [session.permissions, session.entitlements],
+  );
 
   const groups = useMemo(() => {
     const all: SearchGroup[] = [
       {
         label: t("search.pages"),
         options: [
-          { id: "page:/", label: t("home.title"), description: t("search.shell"), icon: <IconHome size={18} aria-hidden="true" />, open: () => void navigate("/") },
+          {
+            id: "page:/",
+            label: t("home.title"),
+            description: t("search.shell"),
+            icon: <IconHome size={18} aria-hidden="true" />,
+            open: () => void navigate("/"),
+          },
           ...navigation.flatMap((group) =>
-            group.entries.map((entry) => ({ id: `page:${entry.path}`, label: t(entry.labelKey), description: t(group.titleKey), icon: entry.icon, open: () => void navigate(entry.path) })),
+            group.entries.map((entry) => ({
+              id: `page:${entry.path}`,
+              label: t(entry.labelKey),
+              description: t(group.titleKey),
+              icon: entry.icon,
+              open: () => void navigate(entry.path),
+            })),
           ),
         ],
       },
@@ -95,7 +112,9 @@ export function Search() {
   // Spotlight counts the options in the order they are drawn; the same count names each one here.
   const optionId = (index: number) => `${listId}-option-${index}`;
   const count = shown.reduce((sum, group) => sum + group.options.length, 0);
-  const starts = shown.map((_, position) => shown.slice(0, position).reduce((sum, group) => sum + group.options.length, 0));
+  const starts = shown.map((_, position) =>
+    shown.slice(0, position).reduce((sum, group) => sum + group.options.length, 0),
+  );
   const active = selected >= 0 && selected < count ? optionId(selected) : undefined;
 
   return (

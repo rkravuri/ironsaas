@@ -32,10 +32,33 @@ export function ReviewsPage() {
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchReviews(query, signal), []);
   const columns: DataGridColumn<ReviewSummary>[] = [
     { field: "name", headerKey: "reviews.columns.name", sortable: true, filter: "text", flex: 3 },
-    { field: "due_on", headerKey: "reviews.columns.due", sortable: true, width: 160, format: (row) => dueLabel(row.due_on, i18n.language) },
-    { field: "status", headerKey: "reviews.columns.status", width: 140, format: (row) => (row.overdue ? t("reviews.status.overdue") : t(`reviews.status.${row.status}`)) },
-    { field: "progress", headerKey: "reviews.columns.progress", flex: 2, format: (row) => progressLabel(row.progress, t) },
-    { field: "created_at", headerKey: "reviews.columns.started", sortable: true, width: 170, hidden: true, format: (row) => new Date(row.started_at).toLocaleDateString(i18n.language) },
+    {
+      field: "due_on",
+      headerKey: "reviews.columns.due",
+      sortable: true,
+      width: 160,
+      format: (row) => dueLabel(row.due_on, i18n.language),
+    },
+    {
+      field: "status",
+      headerKey: "reviews.columns.status",
+      width: 140,
+      format: (row) => (row.overdue ? t("reviews.status.overdue") : t(`reviews.status.${row.status}`)),
+    },
+    {
+      field: "progress",
+      headerKey: "reviews.columns.progress",
+      flex: 2,
+      format: (row) => progressLabel(row.progress, t),
+    },
+    {
+      field: "created_at",
+      headerKey: "reviews.columns.started",
+      sortable: true,
+      width: 170,
+      hidden: true,
+      format: (row) => new Date(row.started_at).toLocaleDateString(i18n.language),
+    },
   ];
 
   return (
@@ -52,7 +75,13 @@ export function ReviewsPage() {
           )
         }
       >
-        <DataGrid<ReviewSummary> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("reviews.title")} onRowOpen={(row) => void navigate(`/console/access-reviews/${row.id}`)} />
+        <DataGrid<ReviewSummary>
+          columns={columns}
+          fetchPage={fetchPage}
+          defaultSort={defaultSort}
+          label={t("reviews.title")}
+          onRowOpen={(row) => void navigate(`/console/access-reviews/${row.id}`)}
+        />
       </ListPage>
       <FormDialog opened={starting} title={t("reviews.start.title")} onClose={() => setStarting(false)}>
         {starting && (
@@ -91,12 +120,31 @@ function StartReviewForm({ onClose, onDone }: { onClose: () => void; onDone: (re
   return (
     <Form
       form={form}
-      onSubmit={async (values) => onDone(await startReview({ name: values.name.trim(), due_on: values.due_on, units: [{ unit_id: values.unit_id, include_children: values.include_children }] }))}
+      onSubmit={async (values) =>
+        onDone(
+          await startReview({
+            name: values.name.trim(),
+            due_on: values.due_on,
+            units: [{ unit_id: values.unit_id, include_children: values.include_children }],
+          }),
+        )
+      }
       submitLabel={t("reviews.start.submit")}
       secondary={{ label: t("dialog.cancel"), onClick: onClose }}
     >
-      <TextInput label={t("reviews.start.name")} description={t("reviews.start.nameHint")} data-autofocus {...form.getInputProps("name")} />
-      <TextInput type="date" label={t("reviews.start.due")} description={t("reviews.start.dueHint")} min={first} {...form.getInputProps("due_on")} />
+      <TextInput
+        label={t("reviews.start.name")}
+        description={t("reviews.start.nameHint")}
+        data-autofocus
+        {...form.getInputProps("name")}
+      />
+      <TextInput
+        type="date"
+        label={t("reviews.start.due")}
+        description={t("reviews.start.dueHint")}
+        min={first}
+        {...form.getInputProps("due_on")}
+      />
       {units.isPending ? (
         <LoadingState height={120} />
       ) : (
@@ -109,7 +157,11 @@ function StartReviewForm({ onClose, onDone }: { onClose: () => void; onDone: (re
           disabled={(unit) => unit.status !== "active"}
         />
       )}
-      <Checkbox label={t("reviews.start.includeChildren")} description={t("reviews.start.includeChildrenHint")} {...form.getInputProps("include_children", { type: "checkbox" })} />
+      <Checkbox
+        label={t("reviews.start.includeChildren")}
+        description={t("reviews.start.includeChildrenHint")}
+        {...form.getInputProps("include_children", { type: "checkbox" })}
+      />
     </Form>
   );
 }

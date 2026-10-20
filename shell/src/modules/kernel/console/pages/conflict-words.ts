@@ -25,7 +25,10 @@ export function ruleSidesWords(t: TFunction, rule: ConflictRule): string {
 
 /** A conflict a grant would create, in words: the rule, the grant it meets, and where the two would overlap. */
 export function grantConflictWords(t: TFunction, name: string, conflict: GrantConflict): string {
-  const where = conflict.unit_name !== null ? t("conflicts.preview.atUnit", { unit: conflict.unit_name }) : t("conflicts.preview.wholeTenant");
+  const where =
+    conflict.unit_name !== null
+      ? t("conflicts.preview.atUnit", { unit: conflict.unit_name })
+      : t("conflicts.preview.wholeTenant");
   return t("conflicts.preview.line", {
     rule: conflict.rule_name,
     name,

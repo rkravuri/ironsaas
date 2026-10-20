@@ -4,7 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Stack, Tabs, Text } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
-import { deleteConflictRule, fetchConflictRules, fetchConflicts, fetchLatestConflictRun, runConflictReport, type ConflictEntry, type ConflictRule } from "@/api/authorization";
+import {
+  deleteConflictRule,
+  fetchConflictRules,
+  fetchConflicts,
+  fetchLatestConflictRun,
+  runConflictReport,
+  type ConflictEntry,
+  type ConflictRule,
+} from "@/api/authorization";
 import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ConfirmDialog } from "@/components/panels";
@@ -150,10 +158,17 @@ export function ConflictsPage() {
           <Button variant="default" disabled={!selected} onClick={() => selected && setRemoving(selected)}>
             {t("conflicts.rules.remove")}
           </Button>
-          <Button variant="default" disabled={!selected} onClick={() => selected && setEditor({ opened: true, rule: selected })}>
+          <Button
+            variant="default"
+            disabled={!selected}
+            onClick={() => selected && setEditor({ opened: true, rule: selected })}
+          >
             {t("conflicts.rules.edit")}
           </Button>
-          <Button leftSection={<IconPlus size={16} aria-hidden="true" />} onClick={() => setEditor({ opened: true, rule: undefined })}>
+          <Button
+            leftSection={<IconPlus size={16} aria-hidden="true" />}
+            onClick={() => setEditor({ opened: true, rule: undefined })}
+          >
             {t("conflicts.rules.add")}
           </Button>
         </>
@@ -169,12 +184,21 @@ export function ConflictsPage() {
       <ListPage
         title={t("conflicts.title")}
         description={t("conflicts.description")}
-        drawing={<Mandala symmetry={8} rings={3} stroke={2} density={0.55} seed="conflicts" size={56} accent="console" />}
+        drawing={
+          <Mandala symmetry={8} rings={3} stroke={2} density={0.55} seed="conflicts" size={56} accent="console" />
+        }
         actions={actions}
         {...(failure
           ? {
               filters: (
-                <Alert color="danger" role="alert" w="100%" withCloseButton closeButtonLabel={t("dialog.close")} onClose={() => setFailure(undefined)}>
+                <Alert
+                  color="danger"
+                  role="alert"
+                  w="100%"
+                  withCloseButton
+                  closeButtonLabel={t("dialog.close")}
+                  onClose={() => setFailure(undefined)}
+                >
                   {failure.message}
                   {failure.correlationId !== undefined && (
                     <Text size="xs" c="dimmed" mt={4}>
@@ -202,7 +226,14 @@ export function ConflictsPage() {
           {/* A grid inside a tab has no height to fill, so each has its own, as on the review page. */}
           <Tabs.Panel value="rules" pt="md">
             <div style={{ height: 460 }}>
-              <DataGrid<ConflictRule> columns={ruleColumns} fetchPage={fetchRules} defaultSort={ruleSort} label={t("conflicts.rules.title")} refreshKey={refreshKey} onSelectionChange={setSelected} />
+              <DataGrid<ConflictRule>
+                columns={ruleColumns}
+                fetchPage={fetchRules}
+                defaultSort={ruleSort}
+                label={t("conflicts.rules.title")}
+                refreshKey={refreshKey}
+                onSelectionChange={setSelected}
+              />
             </div>
           </Tabs.Panel>
           <Tabs.Panel value="report" pt="md">
@@ -211,7 +242,13 @@ export function ConflictsPage() {
                 {lastRun}
               </Text>
               <div style={{ height: 460 }}>
-                <DataGrid<ConflictEntry> columns={entryColumns} fetchPage={fetchEntries} defaultSort={entrySort} label={t("conflicts.report.title")} refreshKey={refreshKey} />
+                <DataGrid<ConflictEntry>
+                  columns={entryColumns}
+                  fetchPage={fetchEntries}
+                  defaultSort={entrySort}
+                  label={t("conflicts.report.title")}
+                  refreshKey={refreshKey}
+                />
               </div>
             </Stack>
           </Tabs.Panel>

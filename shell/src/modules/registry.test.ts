@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { declaredRoutes, ManifestError, navigationFor, openersFor, quickActionsFor, routeAt, routesFor, validateManifests, type ModuleManifest } from "./registry";
+import {
+  declaredRoutes,
+  ManifestError,
+  navigationFor,
+  openersFor,
+  quickActionsFor,
+  routeAt,
+  routesFor,
+  validateManifests,
+  type ModuleManifest,
+} from "./registry";
 
 const manifests: ModuleManifest[] = [
   {
@@ -34,7 +44,9 @@ describe("the module registry", () => {
   });
 
   it("throws in development for a route without a declared permission, and hides it in production", () => {
-    const careless: ModuleManifest[] = [{ name: "careless", titleKey: "x", routes: [{ path: "/oops", element: null, titleKey: "x" }], navigation: [] }];
+    const careless: ModuleManifest[] = [
+      { name: "careless", titleKey: "x", routes: [{ path: "/oops", element: null, titleKey: "x" }], navigation: [] },
+    ];
     expect(() => validateManifests(careless, { strict: true })).toThrow(ManifestError);
     expect(() => routesFor(careless, ["anything"], { strict: true })).toThrow(/declares no permission/);
 
@@ -62,22 +74,33 @@ describe("what the home page and the search read from the manifests (ADR-0033)",
   const modules: ModuleManifest[] = [
     {
       ...manifests[0]!,
-      routes: [...manifests[0]!.routes, { path: "/users/:id", permission: "identity.users.read", element: null, titleKey: "modules.identity.users" }],
+      routes: [
+        ...manifests[0]!.routes,
+        { path: "/users/:id", permission: "identity.users.read", element: null, titleKey: "modules.identity.users" },
+      ],
       opener: { accent: "identity", lineKey: "modules.identity.line", entries: 1 },
-      quickActions: [{ id: "invite", labelKey: "users.invite.open", permission: "identity.users.manage", path: "/users?invite=1" }],
+      quickActions: [
+        { id: "invite", labelKey: "users.invite.open", permission: "identity.users.manage", path: "/users?invite=1" },
+      ],
     },
     {
       name: "console",
       titleKey: "modules.console.title",
-      routes: [{ path: "/console/units", permission: "authz.units.read", element: null, titleKey: "modules.console.units" }],
+      routes: [
+        { path: "/console/units", permission: "authz.units.read", element: null, titleKey: "modules.console.units" },
+      ],
       navigation: [{ labelKey: "modules.console.units", path: "/console/units", permission: "authz.units.read" }],
-      quickActions: [{ id: "add-unit", labelKey: "units.quick.add", permission: "authz.units.manage", path: "/console/units?add=1" }],
+      quickActions: [
+        { id: "add-unit", labelKey: "units.quick.add", permission: "authz.units.manage", path: "/console/units?add=1" },
+      ],
     },
   ];
 
   it("opens each module the principal may open, with as many first entries as its opener asks", () => {
     const openers = openersFor(modules, ["identity.users.read", "authz.units.read"], { strict: true });
-    expect(openers.map((opening) => [opening.module, opening.opener?.accent, opening.entries.map((entry) => entry.path)])).toEqual([
+    expect(
+      openers.map((opening) => [opening.module, opening.opener?.accent, opening.entries.map((entry) => entry.path)]),
+    ).toEqual([
       ["identity", "identity", ["/users"]],
       ["console", undefined, ["/console/units"]],
     ]);
@@ -85,7 +108,9 @@ describe("what the home page and the search read from the manifests (ADR-0033)",
   });
 
   it("offers a quick action only where its permission is held somewhere; /me/access decides the rest", () => {
-    expect(quickActionsFor(modules, ["identity.users.manage"]).map((action) => [action.module, action.id])).toEqual([["identity", "invite"]]);
+    expect(quickActionsFor(modules, ["identity.users.manage"]).map((action) => [action.module, action.id])).toEqual([
+      ["identity", "invite"],
+    ]);
     expect(quickActionsFor(modules, ["identity.users.read"])).toEqual([]);
   });
 
@@ -96,8 +121,18 @@ describe("what the home page and the search read from the manifests (ADR-0033)",
   });
 
   it("refuses a quick action without a permission", () => {
-    const careless: ModuleManifest[] = [{ name: "careless", titleKey: "x", routes: [], navigation: [], quickActions: [{ id: "oops", labelKey: "x", permission: "", path: "/" }] }];
-    expect(validateManifests(careless, { strict: false })).toEqual(["quick action careless:oops declares no permission"]);
+    const careless: ModuleManifest[] = [
+      {
+        name: "careless",
+        titleKey: "x",
+        routes: [],
+        navigation: [],
+        quickActions: [{ id: "oops", labelKey: "x", permission: "", path: "/" }],
+      },
+    ];
+    expect(validateManifests(careless, { strict: false })).toEqual([
+      "quick action careless:oops declares no permission",
+    ]);
   });
 });
 
@@ -109,9 +144,13 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
       titleKey: "modules.sourcing.title",
       licence: "sourcing",
       routes: [{ path: "/sourcing/events", permission: "sourcing.events.read", element: null, titleKey: "x" }],
-      navigation: [{ labelKey: "modules.sourcing.events", path: "/sourcing/events", permission: "sourcing.events.read" }],
+      navigation: [
+        { labelKey: "modules.sourcing.events", path: "/sourcing/events", permission: "sourcing.events.read" },
+      ],
       opener: { accent: "primary", lineKey: "x" },
-      quickActions: [{ id: "new-event", labelKey: "x", permission: "sourcing.events.read", path: "/sourcing/events?new=1" }],
+      quickActions: [
+        { id: "new-event", labelKey: "x", permission: "sourcing.events.read", path: "/sourcing/events?new=1" },
+      ],
     },
   ];
   const permissions = ["identity.users.read", "sourcing.events.read"];
@@ -126,13 +165,18 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
 
   it("shows them once it is entitled, and a caller that does not say what is entitled hides them", () => {
     const sourcing = (licence: string) => licence === "sourcing";
-    expect(navigationFor(licensed, permissions, { strict: true }, sourcing).map((g) => g.module)).toEqual(["identity", "sourcing"]);
+    expect(navigationFor(licensed, permissions, { strict: true }, sourcing).map((g) => g.module)).toEqual([
+      "identity",
+      "sourcing",
+    ]);
     expect(quickActionsFor(licensed, permissions, sourcing).map((a) => a.id)).toEqual(["new-event"]);
     expect(navigationFor(licensed, permissions, { strict: true }).map((g) => g.module)).toEqual(["identity"]);
   });
 
   it("carries the licence on its routes, so the route guard can check it on a link typed by hand", () => {
-    expect(declaredRoutes(licensed, { strict: true }).find((r) => r.path === "/sourcing/events")?.licence).toBe("sourcing");
+    expect(declaredRoutes(licensed, { strict: true }).find((r) => r.path === "/sourcing/events")?.licence).toBe(
+      "sourcing",
+    );
     expect(routeAt(licensed, "/sourcing/events")?.licence).toBe("sourcing");
     expect(routeAt(licensed, "/users")?.licence).toBeUndefined();
   });

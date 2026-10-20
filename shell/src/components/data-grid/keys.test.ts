@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { rowKeyAction } from "./keys";
 
-const keys = (key: string, modifiers: Partial<Record<"ctrlKey" | "metaKey" | "altKey" | "shiftKey", boolean>> = {}) => ({
+const keys = (
+  key: string,
+  modifiers: Partial<Record<"ctrlKey" | "metaKey" | "altKey" | "shiftKey", boolean>> = {},
+) => ({
   key,
   ctrlKey: false,
   metaKey: false,

@@ -72,7 +72,11 @@ export function SessionWarning() {
     } catch (error) {
       // A 401 has already sent every tab to the login page; anything else stays here, with its correlation id.
       if (!(error instanceof ApiError && error.isUnauthenticated)) {
-        setFailure(error instanceof ApiError ? { message: error.message, correlationId: error.correlationId } : { message: t("errors.unexpected"), correlationId: undefined });
+        setFailure(
+          error instanceof ApiError
+            ? { message: error.message, correlationId: error.correlationId }
+            : { message: t("errors.unexpected"), correlationId: undefined },
+        );
       }
     } finally {
       setExtending(false);

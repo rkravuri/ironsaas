@@ -89,7 +89,9 @@ describe("the session warning", () => {
   });
 
   it("says plainly near the absolute limit that the session cannot be extended", async () => {
-    stubFetch({ "GET /api/v1/me": () => json({ ...me(["identity.users.read"]), session: sessionTimes({ endsIn: 100_000 }) }) });
+    stubFetch({
+      "GET /api/v1/me": () => json({ ...me(["identity.users.read"]), session: sessionTimes({ endsIn: 100_000 }) }),
+    });
     openTab();
 
     const dialog = await screen.findByRole("alertdialog", { name: "This session cannot be extended" });
@@ -104,7 +106,10 @@ describe("the session warning", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let signedIn = true;
     const { calls } = stubFetch({
-      "GET /api/v1/me": () => (signedIn ? json({ ...me(["identity.users.read"]), session: sessionTimes({ idleIn: 1_000 }) }) : problem(401, { error_code: "auth.not_authenticated" })),
+      "GET /api/v1/me": () =>
+        signedIn
+          ? json({ ...me(["identity.users.read"]), session: sessionTimes({ idleIn: 1_000 }) })
+          : problem(401, { error_code: "auth.not_authenticated" }),
       "POST /auth/logout": () => {
         signedIn = false;
         return new Response(null, { status: 204 });
@@ -138,7 +143,10 @@ describe("the session warning", () => {
   it("takes every tab to the login page when one tab signs out, and each says why", async () => {
     let signedIn = true;
     stubFetch({
-      "GET /api/v1/me": () => (signedIn ? json({ ...me(["identity.users.read"]), session: sessionTimes({ idleIn: 90_000 }) }) : problem(401, { error_code: "auth.not_authenticated" })),
+      "GET /api/v1/me": () =>
+        signedIn
+          ? json({ ...me(["identity.users.read"]), session: sessionTimes({ idleIn: 90_000 }) })
+          : problem(401, { error_code: "auth.not_authenticated" }),
       "POST /auth/logout": () => {
         signedIn = false;
         return new Response(null, { status: 204 });

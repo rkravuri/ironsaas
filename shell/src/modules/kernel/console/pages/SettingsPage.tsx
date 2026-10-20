@@ -2,7 +2,21 @@ import { useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Code, Group, Modal, NumberInput, SegmentedControl, Select, Stack, Switch, Text, TextInput, Textarea } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Code,
+  Group,
+  Modal,
+  NumberInput,
+  SegmentedControl,
+  Select,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+  Textarea,
+} from "@mantine/core";
 import { IconHistory, IconPencil, IconRestore } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
@@ -35,21 +49,35 @@ export function SettingsPage() {
   const session = useSession();
   const [mode, setMode] = useState<"tenant" | "unit">("tenant");
   const [unitId, setUnitId] = useState("");
-  const place: Place | undefined = mode === "tenant" ? { scope: "tenant" } : unitId !== "" ? { scope: "unit", unitId } : undefined;
-  const units = useQuery({ queryKey: unitsQueryKey, queryFn: ({ signal }) => fetchUnits(signal), enabled: mode === "unit" });
+  const place: Place | undefined =
+    mode === "tenant" ? { scope: "tenant" } : unitId !== "" ? { scope: "unit", unitId } : undefined;
+  const units = useQuery({
+    queryKey: unitsQueryKey,
+    queryFn: ({ signal }) => fetchUnits(signal),
+    enabled: mode === "unit",
+  });
   const settings = useQuery({
     queryKey: ["settings", place?.scope ?? "none", place?.scope === "unit" ? place.unitId : null],
     queryFn: ({ signal }) => fetchSettings(place as Place, signal),
     enabled: place !== undefined,
   });
   const access = useAccessAt(place?.scope === "unit" ? { unit: place.unitId } : undefined, [manage]);
-  const canManage = place?.scope === "tenant" ? session.tenantPermissions.includes(manage) : !access.pending && access.can(manage);
+  const canManage =
+    place?.scope === "tenant" ? session.tenantPermissions.includes(manage) : !access.pending && access.can(manage);
 
   const where = (
     <Stack gap="sm">
       <Group gap="md" wrap="nowrap" align="center">
         {/* The place's own mark, drawn from its id: it changes with the place, so the eye sees the page moved. */}
-        <Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed={`settings-${place?.scope === "unit" ? place.unitId : "tenant"}`} size={40} accent="console" />
+        <Mandala
+          symmetry={6}
+          rings={3}
+          stroke={2}
+          density={0.5}
+          seed={`settings-${place?.scope === "unit" ? place.unitId : "tenant"}`}
+          size={40}
+          accent="console"
+        />
         <SegmentedControl
           aria-label={t("settings.where.label")}
           value={mode}
@@ -68,14 +96,30 @@ export function SettingsPage() {
             {t("settings.where.unitsFailed")}
           </Alert>
         ) : (
-          <UnitPicker label={t("settings.where.unitLabel")} units={units.data.data} value={unitId} onChange={setUnitId} />
+          <UnitPicker
+            label={t("settings.where.unitLabel")}
+            units={units.data.data}
+            value={unitId}
+            onChange={setUnitId}
+          />
         ))}
     </Stack>
   );
 
-  const sections: ConsoleSection[] = [{ id: "settings-where", title: t("settings.where.title"), description: t("settings.where.description"), children: where }];
+  const sections: ConsoleSection[] = [
+    {
+      id: "settings-where",
+      title: t("settings.where.title"),
+      description: t("settings.where.description"),
+      children: where,
+    },
+  ];
   if (place === undefined) {
-    sections.push({ id: "settings-values", title: t("settings.values"), children: <Text size="sm">{t("settings.where.pickUnit")}</Text> });
+    sections.push({
+      id: "settings-values",
+      title: t("settings.values"),
+      children: <Text size="sm">{t("settings.where.pickUnit")}</Text>,
+    });
   } else if (settings.isPending) {
     sections.push({ id: "settings-values", title: t("settings.values"), children: <LoadingState height={160} /> });
   } else if (settings.isError) {
@@ -95,9 +139,14 @@ export function SettingsPage() {
       ),
     });
   } else if (settings.data.data.length === 0) {
-    sections.push({ id: "settings-values", title: t("settings.values"), children: <EmptyState drawing="nothingYet" size="sm" title={t("settings.empty")} /> });
+    sections.push({
+      id: "settings-values",
+      title: t("settings.values"),
+      children: <EmptyState drawing="nothingYet" size="sm" title={t("settings.empty")} />,
+    });
   } else {
-    const placeLabel = place.scope === "tenant" ? t("settings.where.tenant") : (settings.data.unit?.path ?? t("settings.where.unit"));
+    const placeLabel =
+      place.scope === "tenant" ? t("settings.where.tenant") : (settings.data.unit?.path ?? t("settings.where.unit"));
     for (const [module, group] of byModule(settings.data.data)) {
       sections.push({
         id: `settings-${module}`,
@@ -105,7 +154,13 @@ export function SettingsPage() {
         children: (
           <Stack gap="lg">
             {group.map((setting) => (
-              <SettingRow key={setting.key} setting={setting} place={place} placeLabel={placeLabel} canManage={canManage} />
+              <SettingRow
+                key={setting.key}
+                setting={setting}
+                place={place}
+                placeLabel={placeLabel}
+                canManage={canManage}
+              />
             ))}
           </Stack>
         ),
@@ -124,7 +179,17 @@ function byModule(settings: readonly SettingView[]): Map<string, SettingView[]> 
   return groups;
 }
 
-function SettingRow({ setting, place, placeLabel, canManage }: { setting: SettingView; place: Place; placeLabel: string; canManage: boolean }) {
+function SettingRow({
+  setting,
+  place,
+  placeLabel,
+  canManage,
+}: {
+  setting: SettingView;
+  place: Place;
+  placeLabel: string;
+  canManage: boolean;
+}) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -137,7 +202,10 @@ function SettingRow({ setting, place, placeLabel, canManage }: { setting: Settin
 
   const refresh = async () => {
     // The shell's own values (the session limits) come with /me/context, so it is read again too.
-    await Promise.all([queryClient.invalidateQueries({ queryKey: ["settings"] }), queryClient.invalidateQueries({ queryKey: contextQueryKey })]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["settings"] }),
+      queryClient.invalidateQueries({ queryKey: contextQueryKey }),
+    ]);
   };
 
   const reset = async () => {
@@ -169,16 +237,34 @@ function SettingRow({ setting, place, placeLabel, canManage }: { setting: Settin
         </Stack>
         <Group gap="xs" wrap="nowrap">
           {canManage && (
-            <Button variant="default" size="xs" leftSection={<IconPencil size={14} aria-hidden="true" />} onClick={() => setEditing(true)} aria-label={t("settings.change.label", { name })}>
+            <Button
+              variant="default"
+              size="xs"
+              leftSection={<IconPencil size={14} aria-hidden="true" />}
+              onClick={() => setEditing(true)}
+              aria-label={t("settings.change.label", { name })}
+            >
               {t("settings.change.open")}
             </Button>
           )}
           {canManage && setting.set_here && (
-            <Button variant="default" size="xs" leftSection={<IconRestore size={14} aria-hidden="true" />} onClick={() => setResetting(true)} aria-label={t("settings.reset.label", { name })}>
+            <Button
+              variant="default"
+              size="xs"
+              leftSection={<IconRestore size={14} aria-hidden="true" />}
+              onClick={() => setResetting(true)}
+              aria-label={t("settings.reset.label", { name })}
+            >
               {t("settings.reset.open")}
             </Button>
           )}
-          <Button variant="subtle" size="xs" leftSection={<IconHistory size={14} aria-hidden="true" />} onClick={() => setHistory(true)} aria-label={t("settings.history.label", { name })}>
+          <Button
+            variant="subtle"
+            size="xs"
+            leftSection={<IconHistory size={14} aria-hidden="true" />}
+            onClick={() => setHistory(true)}
+            aria-label={t("settings.history.label", { name })}
+          >
             {t("settings.history.open")}
           </Button>
         </Group>
@@ -208,7 +294,15 @@ function SettingRow({ setting, place, placeLabel, canManage }: { setting: Settin
         </Alert>
       )}
       {/* Mounted while closed too, so a dialog that closes hands focus back to the button that opened it. */}
-      <EditSettingDialog opened={editing} setting={setting} place={place} placeLabel={placeLabel} name={name} onClose={() => setEditing(false)} onSaved={refresh} />
+      <EditSettingDialog
+        opened={editing}
+        setting={setting}
+        place={place}
+        placeLabel={placeLabel}
+        name={name}
+        onClose={() => setEditing(false)}
+        onSaved={refresh}
+      />
       <ConfirmDialog
         opened={resetting}
         title={t("settings.reset.title", { name })}
@@ -238,7 +332,10 @@ const isJson = (text: string) => {
 };
 
 /** The form's value for the setting's type: JSON as text, everything else as it is. */
-const initialValue = (setting: SettingView): unknown => (setting.type === "json" ? JSON.stringify(setting.value, null, 2) : (setting.value ?? (setting.type === "boolean" ? false : "")));
+const initialValue = (setting: SettingView): unknown =>
+  setting.type === "json"
+    ? JSON.stringify(setting.value, null, 2)
+    : (setting.value ?? (setting.type === "boolean" ? false : ""));
 
 function editSchema(setting: SettingView, t: TFunction): z.ZodType<EditValues> {
   // The type only: the rule is the server's, and its words come back on the field (TF-057 AC2).
@@ -295,14 +392,23 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
           />
         );
       case "boolean":
-        return <Switch label={t("settings.edit.on")} description={setting.requirement} {...form.getInputProps("value", { type: "checkbox" })} />;
+        return (
+          <Switch
+            label={t("settings.edit.on")}
+            description={setting.requirement}
+            {...form.getInputProps("value", { type: "checkbox" })}
+          />
+        );
       case "choice":
         return (
           <Select
             label={t("settings.edit.value")}
             description={setting.requirement}
             allowDeselect={false}
-            data={(setting.choices ?? []).map((choice) => ({ value: choice, label: t(`settings.choices.${slug(setting.key)}.${choice}`, { defaultValue: choice }) }))}
+            data={(setting.choices ?? []).map((choice) => ({
+              value: choice,
+              label: t(`settings.choices.${slug(setting.key)}.${choice}`, { defaultValue: choice }),
+            }))}
             {...form.getInputProps("value")}
           />
         );
@@ -318,7 +424,14 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
           />
         );
       default:
-        return <TextInput label={t("settings.edit.value")} description={setting.requirement} data-autofocus {...form.getInputProps("value")} />;
+        return (
+          <TextInput
+            label={t("settings.edit.value")}
+            description={setting.requirement}
+            data-autofocus
+            {...form.getInputProps("value")}
+          />
+        );
     }
   })();
 
@@ -340,7 +453,19 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
   );
 }
 
-function SettingHistory({ opened, setting, place, name, onClose }: { opened: boolean; setting: SettingView; place: Place; name: string; onClose: () => void }) {
+function SettingHistory({
+  opened,
+  setting,
+  place,
+  name,
+  onClose,
+}: {
+  opened: boolean;
+  setting: SettingView;
+  place: Place;
+  name: string;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const history = useQuery({
     queryKey: ["settings", "history", setting.key, place.scope, place.scope === "unit" ? place.unitId : null],
@@ -356,10 +481,20 @@ function SettingHistory({ opened, setting, place, name, onClose }: { opened: boo
         ? t("settings.history.reset", { before: displayValue(setting, change.before, t) })
         : change.before === null || change.before === undefined
           ? t("settings.history.set", { after: displayValue(setting, change.after, t) })
-          : t("settings.history.changed", { before: displayValue(setting, change.before, t), after: displayValue(setting, change.after, t) }),
+          : t("settings.history.changed", {
+              before: displayValue(setting, change.before, t),
+              after: displayValue(setting, change.after, t),
+            }),
   }));
   return (
-    <Modal opened={opened} onClose={onClose} title={t("settings.history.title", { name })} centered size="lg" closeButtonProps={{ "aria-label": t("dialog.close") }}>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={t("settings.history.title", { name })}
+      centered
+      size="lg"
+      closeButtonProps={{ "aria-label": t("dialog.close") }}
+    >
       {history.isPending ? (
         <LoadingState height={120} />
       ) : history.isError ? (

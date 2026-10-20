@@ -20,7 +20,16 @@ const user = {
 
 const list = <T,>(data: T[]) => ({
   data,
-  meta: { page_number: 1, page_size: 100, total_count: data.length, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 },
+  meta: {
+    page_number: 1,
+    page_size: 100,
+    total_count: data.length,
+    total_pages: 1,
+    has_previous: false,
+    has_next: false,
+    page_size_capped: false,
+    max_page_size: 200,
+  },
   links: { self: "", first: "", previous: null, next: null, last: "" },
 });
 
@@ -35,7 +44,9 @@ const assignment = (id: string, scope: string, unit: { id: string; path: string[
   unit_id: unit?.id ?? null,
   record_type: null,
   record_id: null,
-  unit_path: unit ? unit.path.map((name, index) => ({ id: index === unit.path.length - 1 ? unit.id : `p${index}`, name })) : [],
+  unit_path: unit
+    ? unit.path.map((name, index) => ({ id: index === unit.path.length - 1 ? unit.id : `p${index}`, name }))
+    : [],
   created_at: "2026-10-19T09:00:00Z",
 });
 
@@ -53,7 +64,13 @@ const unit = (id: string, name: string, parent: string | null) => ({
 });
 
 const assignments = "GET /api/v1/role-assignments?filter=principal_id:eq:u1&page_size=100";
-const granter = ["identity.users.read", "authz.assignments.read", "authz.assignments.manage", "authz.roles.read", "authz.units.read"];
+const granter = [
+  "identity.users.read",
+  "authz.assignments.read",
+  "authz.assignments.manage",
+  "authz.roles.read",
+  "authz.units.read",
+];
 
 const page = () =>
   renderWithProviders(
@@ -81,7 +98,10 @@ describe("the user record page", () => {
   });
 
   it("says not found for a user outside the reader's scope, as for one that does not exist", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])), "GET /api/v1/users/u1": () => problem(404, { error_code: "identity.user.not_found" }) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me(["identity.users.read"])),
+      "GET /api/v1/users/u1": () => problem(404, { error_code: "identity.user.not_found" }),
+    });
     page();
 
     expect(await screen.findByRole("heading", { name: "This user is not here" })).toBeInTheDocument();
@@ -92,8 +112,15 @@ describe("the user record page", () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me([], granter)),
       "GET /api/v1/users/u1": () => json(user),
-      [assignments]: () => json(list([assignment("a1", "unit_with_children", { id: "sales", path: ["Acme", "Sales"] }), assignment("a2", "tenant", null)])),
-      "GET /api/v1/me/access?unit=sales&include_children=true": () => json({ scope: "unit_with_children:sales", permissions: granter }),
+      [assignments]: () =>
+        json(
+          list([
+            assignment("a1", "unit_with_children", { id: "sales", path: ["Acme", "Sales"] }),
+            assignment("a2", "tenant", null),
+          ]),
+        ),
+      "GET /api/v1/me/access?unit=sales&include_children=true": () =>
+        json({ scope: "unit_with_children:sales", permissions: granter }),
       "DELETE /api/v1/role-assignments/a1": () => new Response(null, { status: 204 }),
     });
     page();
@@ -109,7 +136,9 @@ describe("the user record page", () => {
 
     fireEvent.click(await within(rows[1]!).findByRole("button", { name: "Remove User reader" }));
     const dialog = await screen.findByRole("dialog", { name: "Remove User reader?" });
-    expect(dialog).toHaveTextContent("Ada Lovelace loses User reader (This unit and the units below it: Acme / Sales) at once.");
+    expect(dialog).toHaveTextContent(
+      "Ada Lovelace loses User reader (This unit and the units below it: Acme / Sales) at once.",
+    );
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove role" }));
 
     await waitFor(() => expect(calls.some((call) => call.key === "DELETE /api/v1/role-assignments/a1")).toBe(true));
@@ -121,8 +150,15 @@ describe("the user record page", () => {
     stubFetch({
       "GET /api/v1/me": () => json(me([], granter)),
       "GET /api/v1/users/u1": () => json(user),
-      [assignments]: () => json(list([assignment("a1", "unit_with_children", { id: "sales", path: ["Acme", "Sales"] }), assignment("a2", "unit", { id: "north", path: ["Acme", "Sales", "North"] })])),
-      "GET /api/v1/me/access?unit=sales&include_children=true": () => json({ scope: "unit_with_children:sales", permissions: atOneUnit }),
+      [assignments]: () =>
+        json(
+          list([
+            assignment("a1", "unit_with_children", { id: "sales", path: ["Acme", "Sales"] }),
+            assignment("a2", "unit", { id: "north", path: ["Acme", "Sales", "North"] }),
+          ]),
+        ),
+      "GET /api/v1/me/access?unit=sales&include_children=true": () =>
+        json({ scope: "unit_with_children:sales", permissions: atOneUnit }),
       "GET /api/v1/me/access?unit=north": () => json({ scope: "unit:north", permissions: granter }),
     });
     page();
@@ -154,11 +190,24 @@ describe("the user record page", () => {
               updated_at: "",
               version: 1,
             },
-            { id: "r2", code: "service-default", name: "Service default", description: "", is_system: true, principal_type: "service", permissions: [], created_at: "", updated_at: "", version: 1 },
+            {
+              id: "r2",
+              code: "service-default",
+              name: "Service default",
+              description: "",
+              is_system: true,
+              principal_type: "service",
+              permissions: [],
+              created_at: "",
+              updated_at: "",
+              version: 1,
+            },
           ]),
         ),
-      "GET /api/v1/organisation-units": () => json({ data: [unit("sales", "Sales", "acme"), unit("east", "East", "sales")] }),
-      "POST /api/v1/role-assignments": () => json(assignment("a9", "unit_with_children", { id: "east", path: ["Sales", "East"] }), 201),
+      "GET /api/v1/organisation-units": () =>
+        json({ data: [unit("sales", "Sales", "acme"), unit("east", "East", "sales")] }),
+      "POST /api/v1/role-assignments": () =>
+        json(assignment("a9", "unit_with_children", { id: "east", path: ["Sales", "East"] }), 201),
     });
     page();
 
@@ -177,11 +226,17 @@ describe("the user record page", () => {
 
     await waitFor(() => expect(calls.some((call) => call.key === "POST /api/v1/role-assignments")).toBe(true));
     const post = calls.find((call) => call.key === "POST /api/v1/role-assignments");
-    expect(JSON.parse(post?.init?.body as string)).toEqual({ principal_id: "u1", role_id: "r1", scope_kind: "unit_with_children", unit_id: "east" });
+    expect(JSON.parse(post?.init?.body as string)).toEqual({
+      principal_id: "u1",
+      role_id: "r1",
+      scope_kind: "unit_with_children",
+      unit_id: "east",
+    });
   });
 
   it("says in words, before the confirm, that a conflict rule refuses the grant, and shows the refusal naming the rule (TF-036)", async () => {
-    const refusal = "The conflict rule 'Payments apart' blocks this: Ada Lovelace would hold both sides of it at East. One person should not raise and approve a payment.";
+    const refusal =
+      "The conflict rule 'Payments apart' blocks this: Ada Lovelace would hold both sides of it at East. One person should not raise and approve a payment.";
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me([], granter)),
       "GET /api/v1/users/u1": () => json(user),
@@ -203,7 +258,8 @@ describe("the user record page", () => {
             },
           ]),
         ),
-      "GET /api/v1/organisation-units": () => json({ data: [unit("sales", "Sales", "acme"), unit("east", "East", "sales")] }),
+      "GET /api/v1/organisation-units": () =>
+        json({ data: [unit("sales", "Sales", "acme"), unit("east", "East", "sales")] }),
       "POST /api/v1/role-assignments/conflicts": () =>
         json({
           data: [
@@ -212,13 +268,22 @@ describe("the user record page", () => {
               rule_name: "Payments apart",
               mode: "block",
               reason: "One person should not raise and approve a payment.",
-              with: { assignment_id: "a1", delegation_id: null, role: "Payment approver", scope_kind: "unit_with_children", unit_id: "sales", unit_name: "Sales", source: "assignment" },
+              with: {
+                assignment_id: "a1",
+                delegation_id: null,
+                role: "Payment approver",
+                scope_kind: "unit_with_children",
+                unit_id: "sales",
+                unit_name: "Sales",
+                source: "assignment",
+              },
               unit_id: "east",
               unit_name: "East",
             },
           ],
         }),
-      "POST /api/v1/role-assignments": () => problem(409, { title: "Conflict", detail: refusal, error_code: "authz.sod.conflict" }),
+      "POST /api/v1/role-assignments": () =>
+        problem(409, { title: "Conflict", detail: refusal, error_code: "authz.sod.conflict" }),
     });
     page();
 
@@ -230,10 +295,19 @@ describe("the user record page", () => {
     fireEvent.click(within(within(dialog).getByRole("tree", { name: "Unit" })).getByText("East"));
 
     expect(await within(dialog).findByRole("status")).toHaveTextContent("The conflict rules refuse this grant");
-    expect(within(dialog).getByText("Payments apart: Ada Lovelace already holds Payment approver at Sales and the units below it, so would hold both sides at East.")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Payments apart: Ada Lovelace already holds Payment approver at Sales and the units below it, so would hold both sides at East.",
+      ),
+    ).toBeInTheDocument();
     // The dialog asks again as the grant changes: first at the home unit, last at the unit chosen.
     const asked = calls.findLast((call) => call.key === "POST /api/v1/role-assignments/conflicts");
-    expect(JSON.parse(asked?.init?.body as string)).toEqual({ principal_id: "u1", role_id: "r1", scope_kind: "unit_with_children", unit_id: "east" });
+    expect(JSON.parse(asked?.init?.body as string)).toEqual({
+      principal_id: "u1",
+      role_id: "r1",
+      scope_kind: "unit_with_children",
+      unit_id: "east",
+    });
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Grant role" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(refusal);

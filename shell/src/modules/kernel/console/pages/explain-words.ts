@@ -38,7 +38,10 @@ export function checkWords(t: TFunction, check: ExplainedCheck, explanation: Acc
   if (check.result === "not_reached") {
     return t("explain.reasons.notReached");
   }
-  const reason = check.check === "entitlement" && check.result === "failed" && check.error_code ? (check.error_code.split(".").pop() ?? check.reason) : check.reason;
+  const reason =
+    check.check === "entitlement" && check.result === "failed" && check.error_code
+      ? (check.error_code.split(".").pop() ?? check.reason)
+      : check.reason;
   const facts = check.facts;
   return t(`explain.reasons.${check.check}.${reason}`, {
     defaultValue: check.message,

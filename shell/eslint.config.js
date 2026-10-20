@@ -175,7 +175,10 @@ const cssColourKeywords = [
 ];
 const colourNames = [...cssColourKeywords, "dark", "grape"].join("|");
 // Character classes rather than escapes: the pattern travels inside a selector string, where a backslash is fragile.
-const rawColour = "/#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])" + "|(?<![A-Za-z0-9_-])(?:rgba?|hsla?)[(]" + `|(?<![A-Za-z0-9_.-])(?:${colourNames})(?:[.][0-9]{1,2})?(?![A-Za-z0-9_-])/i`;
+const rawColour =
+  "/#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![0-9a-z])" +
+  "|(?<![A-Za-z0-9_-])(?:rgba?|hsla?)[(]" +
+  `|(?<![A-Za-z0-9_.-])(?:${colourNames})(?:[.][0-9]{1,2})?(?![A-Za-z0-9_-])/i`;
 const colourPositions = "JSXAttribute[name.name=/^(?:style|styles|vars|gradient|c|bg|bd|color|fill|stroke)$/]";
 const colourRule = {
   selector: `${colourPositions} :matches(Literal[value=${rawColour}], TemplateElement[value.raw=${rawColour}])`,
@@ -207,7 +210,9 @@ export default tseslint.config(
   {
     // A later block replaces the rule's options, so the grid pattern is repeated with each layer's.
     files: ["src/modules/kernel/**/*.{ts,tsx}"],
-    rules: { "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("kernel", ["business", "products"])] }] },
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [gridImports, layerImports("kernel", ["business", "products"])] }],
+    },
   },
   {
     files: ["src/modules/business/**/*.{ts,tsx}"],

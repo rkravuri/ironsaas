@@ -24,7 +24,9 @@ describe("the tokens", () => {
         }
         const ratio = contrastRatio(foreground, background);
         if (ratio < pair.minimum) {
-          failures.push(`${scheme}: ${pair.foreground} (${foreground}) on ${pair.background} (${background}) is ${ratio.toFixed(2)}:1, below ${pair.minimum}:1`);
+          failures.push(
+            `${scheme}: ${pair.foreground} (${foreground}) on ${pair.background} (${background}) is ${ratio.toFixed(2)}:1, below ${pair.minimum}:1`,
+          );
         }
       }
     }

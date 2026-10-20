@@ -44,9 +44,16 @@ export function FormSection() {
           submitLabel={t("gallery.form.save")}
           secondary={{ label: t("gallery.form.cancel"), onClick: () => form.reset() }}
         >
-          <TextInput label={t("gallery.form.displayName")} description={t("gallery.form.displayNameHint")} {...form.getInputProps("displayName")} />
+          <TextInput
+            label={t("gallery.form.displayName")}
+            description={t("gallery.form.displayNameHint")}
+            {...form.getInputProps("displayName")}
+          />
           <TextInput label={t("gallery.form.email")} {...form.getInputProps("email")} />
-          <Checkbox label={t("gallery.form.likeTheServer")} {...form.getInputProps("likeTheServer", { type: "checkbox" })} />
+          <Checkbox
+            label={t("gallery.form.likeTheServer")}
+            {...form.getInputProps("likeTheServer", { type: "checkbox" })}
+          />
         </Form>
       </Stack>
     </section>

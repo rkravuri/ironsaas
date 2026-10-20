@@ -9,7 +9,12 @@ describe("the list template", () => {
   it("opens with the title and one line, offers the density switch, and holds the grid", () => {
     stubFetch({});
     renderWithProviders(
-      <ListPage title="Users" description="Everyone who can sign in." actions={<button type="button">New</button>} filters={<input aria-label="Search" />}>
+      <ListPage
+        title="Users"
+        description="Everyone who can sign in."
+        actions={<button type="button">New</button>}
+        filters={<input aria-label="Search" />}
+      >
         <div role="region" aria-label="The grid" />
       </ListPage>,
     );
@@ -28,7 +33,12 @@ describe("the record template", () => {
     const user = userEvent.setup();
     renderWithProviders(
       <RecordPage
-        header={{ title: "Invoice 1042", code: "INV-1042", status: { label: "Approved", tone: "success" }, meta: [{ label: "Owner", value: "Ada" }] }}
+        header={{
+          title: "Invoice 1042",
+          code: "INV-1042",
+          status: { label: "Approved", tone: "success" },
+          meta: [{ label: "Owner", value: "Ada" }],
+        }}
         tabs={[
           { value: "details", label: "Details", panel: <p>The details</p> },
           { value: "history", label: "History", panel: <p>The history</p> },

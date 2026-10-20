@@ -4,7 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box, Button, Checkbox, Group, Paper, Radio, Stack, Text } from "@mantine/core";
 import { IconBuildingCommunity, IconLock, IconShare } from "@tabler/icons-react";
 import { z } from "zod";
-import { changeSharing, fetchSharing, type RecordSharing, type SharingChoice, type SharingMode } from "@/api/authorization";
+import {
+  changeSharing,
+  fetchSharing,
+  type RecordSharing,
+  type SharingChoice,
+  type SharingMode,
+} from "@/api/authorization";
 import { Form, useZodForm } from "@/components/form";
 import { FormDialog, LoadingState } from "@/components/panels";
 
@@ -40,14 +46,26 @@ export function SharingControl({ recordType, recordId }: { recordType: string; r
 }
 
 /** The sharing in words with its mark, and for a reader who may change it, the button to do so. The gallery shows it with sample data. */
-export function SharingPanel({ sharing, onChange }: { sharing: RecordSharing; onChange: (mode: SharingMode, units: string[]) => Promise<void> }) {
+export function SharingPanel({
+  sharing,
+  onChange,
+}: {
+  sharing: RecordSharing;
+  onChange: (mode: SharingMode, units: string[]) => Promise<void>;
+}) {
   const { t, i18n } = useTranslation();
   const [changing, setChanging] = useState(false);
   const Icon = modeIcons[sharing.mode];
   const unit = sharing.owning_unit.name;
-  const listed = new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format(sharing.units.map((shared) => shared.name));
+  const listed = new Intl.ListFormat(i18n.language, { style: "long", type: "conjunction" }).format(
+    sharing.units.map((shared) => shared.name),
+  );
   const words =
-    sharing.mode === "private" ? t("sharing.words.private", { unit }) : sharing.mode === "shared" ? t("sharing.words.shared", { unit, units: listed }) : t("sharing.words.tenant", { unit });
+    sharing.mode === "private"
+      ? t("sharing.words.private", { unit })
+      : sharing.mode === "shared"
+        ? t("sharing.words.shared", { unit, units: listed })
+        : t("sharing.words.tenant", { unit });
 
   return (
     <Stack gap={6} data-sharing={sharing.mode}>
@@ -85,17 +103,31 @@ interface SharingValues extends Record<string, unknown> {
 }
 
 /** The three modes in words, and for "shared" the units to list, on the tree. */
-function SharingDialog({ sharing, onClose, onSave }: { sharing: RecordSharing; onClose: () => void; onSave: (mode: SharingMode, units: string[]) => Promise<void> }) {
+function SharingDialog({
+  sharing,
+  onClose,
+  onSave,
+}: {
+  sharing: RecordSharing;
+  onClose: () => void;
+  onSave: (mode: SharingMode, units: string[]) => Promise<void>;
+}) {
   const { t } = useTranslation();
   const unit = sharing.owning_unit.name;
   const schema = useMemo(
     () =>
       z
         .object({ mode: z.enum(["private", "shared", "tenant"]), units: z.array(z.string()) })
-        .refine((values) => values.mode !== "shared" || values.units.length > 0, { path: ["units"], message: t("sharing.unitsRequired") }),
+        .refine((values) => values.mode !== "shared" || values.units.length > 0, {
+          path: ["units"],
+          message: t("sharing.unitsRequired"),
+        }),
     [t],
   );
-  const form = useZodForm<SharingValues>({ schema, initialValues: { mode: sharing.mode, units: sharing.units.map((shared) => shared.id) } });
+  const form = useZodForm<SharingValues>({
+    schema,
+    initialValues: { mode: sharing.mode, units: sharing.units.map((shared) => shared.id) },
+  });
   const { mode, units } = form.getValues();
 
   return (
@@ -108,9 +140,24 @@ function SharingDialog({ sharing, onClose, onSave }: { sharing: RecordSharing; o
       >
         <Radio.Group label={t("sharing.mode")} {...form.getInputProps("mode")}>
           <Stack gap="sm" mt={6}>
-            <Radio value="private" label={t("sharing.modes.private")} description={t("sharing.modes.privateHint", { unit })} data-autofocus={mode === "private" ? true : undefined} />
-            <Radio value="shared" label={t("sharing.modes.shared")} description={t("sharing.modes.sharedHint", { unit })} data-autofocus={mode === "shared" ? true : undefined} />
-            <Radio value="tenant" label={t("sharing.modes.tenant")} description={t("sharing.modes.tenantHint")} data-autofocus={mode === "tenant" ? true : undefined} />
+            <Radio
+              value="private"
+              label={t("sharing.modes.private")}
+              description={t("sharing.modes.privateHint", { unit })}
+              data-autofocus={mode === "private" ? true : undefined}
+            />
+            <Radio
+              value="shared"
+              label={t("sharing.modes.shared")}
+              description={t("sharing.modes.sharedHint", { unit })}
+              data-autofocus={mode === "shared" ? true : undefined}
+            />
+            <Radio
+              value="tenant"
+              label={t("sharing.modes.tenant")}
+              description={t("sharing.modes.tenantHint")}
+              data-autofocus={mode === "tenant" ? true : undefined}
+            />
           </Stack>
         </Radio.Group>
         {mode === "shared" && (

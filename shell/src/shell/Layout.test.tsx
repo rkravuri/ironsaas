@@ -13,7 +13,13 @@ import { fill, json, me, stubFetch } from "@/test/render";
 import { cssVariablesResolver, theme } from "@/theme";
 import { Layout } from "./Layout";
 
-const administrator = ["authz.roles.read", "authz.units.manage", "authz.units.read", "identity.users.manage", "identity.users.read"];
+const administrator = [
+  "authz.roles.read",
+  "authz.units.manage",
+  "authz.units.read",
+  "identity.users.manage",
+  "identity.users.read",
+];
 const home = { id: "01a15100-0000-7000-8000-000000000001", name: "Acme Corporation", code: "acme" };
 
 function Where() {
@@ -29,7 +35,12 @@ function renderShell({ permissions = administrator, route = "/" }: { permissions
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MantineProvider theme={theme} defaultColorScheme="auto" colorSchemeManager={colorSchemeManager} cssVariablesResolver={cssVariablesResolver}>
+    <MantineProvider
+      theme={theme}
+      defaultColorScheme="auto"
+      colorSchemeManager={colorSchemeManager}
+      cssVariablesResolver={cssVariablesResolver}
+    >
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <MemoryRouter initialEntries={[route]}>
@@ -75,7 +86,9 @@ describe("the header", () => {
     await user.keyboard("{Enter}");
 
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("/console/units"));
-    await waitFor(() => expect(screen.queryByRole("combobox", { name: "Search pages and actions" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: "Search pages and actions" })).not.toBeInTheDocument(),
+    );
   });
 
   it("reaches only what the principal may open: a reader of users finds no console page and no quick action", async () => {
@@ -127,7 +140,9 @@ describe("the header", () => {
     await screen.findByRole("combobox", { name: "Search pages and actions" });
     await user.keyboard("{Escape}");
 
-    await waitFor(() => expect(screen.queryByRole("combobox", { name: "Search pages and actions" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: "Search pages and actions" })).not.toBeInTheDocument(),
+    );
     await waitFor(() => expect(help).toHaveFocus());
   });
 
@@ -171,7 +186,10 @@ describe("the colour scheme", () => {
 
     // The reload: a fresh document on a light device, where scheme.js runs before anything else.
     document.documentElement.removeAttribute("data-mantine-color-scheme");
-    runInNewContext(schemeScript, { window: { localStorage: window.localStorage, matchMedia: () => ({ matches: false }) }, document });
+    runInNewContext(schemeScript, {
+      window: { localStorage: window.localStorage, matchMedia: () => ({ matches: false }) },
+      document,
+    });
     expect(document.documentElement).toHaveAttribute("data-mantine-color-scheme", "dark");
 
     // React mounts on a root that is already dark, and keeps it.

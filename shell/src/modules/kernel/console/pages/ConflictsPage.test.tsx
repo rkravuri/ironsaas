@@ -105,7 +105,10 @@ const fields = (scope: HTMLElement, label: string) =>
 /** An option of the list this field opens: both sides offer the same options. */
 const optionOf = async (input: HTMLElement, name: string) => {
   await waitFor(() => expect(input.getAttribute("aria-controls")).toBeTruthy());
-  return within(document.getElementById(input.getAttribute("aria-controls")!)!).findByRole("option", { name, hidden: true });
+  return within(document.getElementById(input.getAttribute("aria-controls")!)!).findByRole("option", {
+    name,
+    hidden: true,
+  });
 };
 
 afterEach(() => {

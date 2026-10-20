@@ -23,7 +23,10 @@ export function SpaceAndMotionSection() {
               <Text size="xs" c="dimmed" w={120} ff="monospace">
                 {key}: {value}px
               </Text>
-              <div aria-hidden="true" style={{ width: value, height: 12, background: "var(--mantine-primary-color-filled)", borderRadius: 2 }} />
+              <div
+                aria-hidden="true"
+                style={{ width: value, height: 12, background: "var(--mantine-primary-color-filled)", borderRadius: 2 }}
+              />
             </Group>
           ))}
         </Stack>
@@ -31,7 +34,16 @@ export function SpaceAndMotionSection() {
         <Group gap="md">
           {Object.entries(tokens.radius).map(([key, value]) => (
             <Stack key={key} gap={4} align="center">
-              <div aria-hidden="true" style={{ width: 64, height: 64, borderRadius: value, border: "2px solid var(--mantine-color-default-border)", background: "var(--mantine-color-default)" }} />
+              <div
+                aria-hidden="true"
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: value,
+                  border: "2px solid var(--mantine-color-default-border)",
+                  background: "var(--mantine-color-default)",
+                }}
+              />
               <Text size="xs" ff="monospace">
                 {key}: {value}px
               </Text>
@@ -39,7 +51,9 @@ export function SpaceAndMotionSection() {
           ))}
         </Group>
         <Title order={3}>{t("gallery.space.motion")}</Title>
-        <Text size="sm">{t("gallery.space.durations", { quick: tokens.motion.duration.quick, calm: tokens.motion.duration.calm })}</Text>
+        <Text size="sm">
+          {t("gallery.space.durations", { quick: tokens.motion.duration.quick, calm: tokens.motion.duration.calm })}
+        </Text>
         <Group>
           <Button variant="default" onClick={() => setMoved((current) => !current)}>
             {t(moved ? "gallery.space.moveBack" : "gallery.space.move")}

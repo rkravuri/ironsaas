@@ -20,9 +20,25 @@ export interface MandalaProps extends MandalaParameters {
 }
 
 /** A mandala as decoration: hidden from assistive technology, the ink on most rings and the accent on one. */
-export function Mandala({ symmetry, rings, stroke, density, seed, size, accentOpacity = 1, accent = "primary", opacity = 1, animate = false, className, style }: MandalaProps) {
+export function Mandala({
+  symmetry,
+  rings,
+  stroke,
+  density,
+  seed,
+  size,
+  accentOpacity = 1,
+  accent = "primary",
+  opacity = 1,
+  animate = false,
+  className,
+  style,
+}: MandalaProps) {
   // The generator caches by input too; the memo keeps the same object across renders of this element.
-  const drawing = useMemo(() => mandala({ symmetry, rings, stroke, density, seed }), [symmetry, rings, stroke, density, seed]);
+  const drawing = useMemo(
+    () => mandala({ symmetry, rings, stroke, density, seed }),
+    [symmetry, rings, stroke, density, seed],
+  );
   const reduced = usePrefersReducedMotion();
   const drawIn = animate && !reduced;
 

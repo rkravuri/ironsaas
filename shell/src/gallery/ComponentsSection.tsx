@@ -1,6 +1,24 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Anchor, Burger, Button, Checkbox, Code, Group, Loader, Menu, NavLink, Paper, PasswordInput, SimpleGrid, Stack, Text, TextInput, Title } from "@mantine/core";
+import {
+  Alert,
+  Anchor,
+  Burger,
+  Button,
+  Checkbox,
+  Code,
+  Group,
+  Loader,
+  Menu,
+  NavLink,
+  Paper,
+  PasswordInput,
+  SimpleGrid,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconAlertTriangle, IconCheck, IconChevronDown, IconInfoCircle, IconX } from "@tabler/icons-react";
 
@@ -37,7 +55,10 @@ export function ComponentsSection() {
         </Example>
         <Example title={t("gallery.components.inputs")}>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            <TextInput label={t("gallery.components.textLabel")} description={t("gallery.components.textDescription")} />
+            <TextInput
+              label={t("gallery.components.textLabel")}
+              description={t("gallery.components.textDescription")}
+            />
             <TextInput label={t("gallery.components.textLabel")} error={t("gallery.components.textError")} />
             <PasswordInput label={t("gallery.components.passwordLabel")} />
             <Checkbox label={t("gallery.components.checkbox")} defaultChecked />
@@ -97,16 +118,29 @@ export function ComponentsSection() {
           <Loader />
         </Example>
         <Example title={t("gallery.components.burger")}>
-          <Burger opened={burgerOpen} onClick={() => setBurgerOpen((open) => !open)} aria-label={t("app.toggleNavigation")} />
+          <Burger
+            opened={burgerOpen}
+            onClick={() => setBurgerOpen((open) => !open)}
+            aria-label={t("app.toggleNavigation")}
+          />
         </Example>
         <Example title={t("gallery.components.anchor")}>
           <Text>
-            {t("gallery.components.anchorLead")} <Anchor href="#gallery-colour">{t("gallery.components.anchorText")}</Anchor>
+            {t("gallery.components.anchorLead")}{" "}
+            <Anchor href="#gallery-colour">{t("gallery.components.anchorText")}</Anchor>
           </Text>
         </Example>
         <Example title={t("gallery.components.notification")}>
           <Group>
-            <Button variant="light" onClick={() => notifications.show({ title: t("gallery.components.notifyTitle"), message: t("gallery.components.notifyText") })}>
+            <Button
+              variant="light"
+              onClick={() =>
+                notifications.show({
+                  title: t("gallery.components.notifyTitle"),
+                  message: t("gallery.components.notifyText"),
+                })
+              }
+            >
               {t("gallery.components.notify")}
             </Button>
           </Group>

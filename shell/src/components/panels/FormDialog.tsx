@@ -16,7 +16,14 @@ export interface FormDialogProps {
 export function FormDialog({ opened, title, onClose, children, size = "md" }: FormDialogProps) {
   const { t } = useTranslation();
   return (
-    <Modal opened={opened} onClose={onClose} title={title} centered size={size} closeButtonProps={{ "aria-label": t("dialog.close") }}>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={title}
+      centered
+      size={size}
+      closeButtonProps={{ "aria-label": t("dialog.close") }}
+    >
       {children}
     </Modal>
   );
