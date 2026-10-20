@@ -27,7 +27,7 @@ S2 is done: every task merged, the done-when of the plan's section 1 proven, the
 
 ## Slice S3
 
-S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the tasks are written in the design session, into `docs/prompts/S3.md` and this table, once the PRD split (ADR-0041) is reviewed.
+S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the tasks are written in the design session, into `docs/prompts/S3.md` and this table, now that the PRD split is merged.
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
@@ -39,7 +39,7 @@ The Functional Foundation PRD split into one document per layer and product (ADR
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
-| PRD split | done on the branch, waiting for review | slice/prd-split | ADR-0041 and ADR-0042; steps 1 to 4, the checkpoint, the design session's seven answers, then steps 5 to 10. The map has 172 rows: 154 moved, 9 split, 9 covered by the kernel, none merged or retired. The documents hold 206 business and product requirements (Business 60, Supplier management 18, Contracts 9, Catalogue 12, Requests 14, Orders 21, Receiving 23, Invoicing 30, supplier portal 14, product method 5) and the kernel 207, with TF-241 to TF-243 new; 25 business and receiving requirements and 3 kernel ones are new in the split. The five later products have their scope pages. `make prd-check` (the check and its 16 tests) runs in CI's Compose files job |
+| PRD split | done | main | merged 2026-10-20 (9180b07); seventeen commits after the prompt (3012bfb), 61f01b5 to e9054c1; ADR-0041 and ADR-0042. The map has 172 rows: 154 moved, 9 split, 9 covered by the kernel, none merged or retired. The kernel PRD holds 207 requirements, TF-241 to TF-243 new; the business and product documents 208 (Business 59, Supplier management 18, Contracts 10, Catalogue 12, Requests 15, Orders 21, Receiving 23, Invoicing 30, supplier portal 14, product method 5), and five one-page scopes. At the checkpoint the design session answered seven points (Business never depends on a product; products in process order, ADR-0042; the module names; the reconciliation per module; TF-243; bill-to as a location type; portal ownership as SPX-006); at review it decided every `[Decision]` (each marked "decided 2026-10-20"), retired BF-025, accepted the six proposals and section 7.2's order in principle, and corrected ADR-0042: a person's conversion is a call from the later product's screen, only automatic ones are events. `make prd-check` (16 tests, then the check) runs in CI. On main: make prd-check passed, make test 758, make shell-check 229 tests, make format clean |
 
 The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing group is a business master, not a unit kind, because it serves several units and owns no records (BF-007). `src/Business/README.md` and the comment on `IOrganisationKinds` say so too.
 
@@ -51,11 +51,7 @@ The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing
 
 ## Open questions
 
-For the design session's review of the PRD split. Each is marked `[Decision]` where it stands, with its proposed default:
-
-- Twelve requirements tagged `[Decision]`: TF-242 (the forms engine's slice), BF-006 (which kind of unit may hold which), BF-007 (what purchasing groups are used for), BF-022 (an order among job grades), BF-025 (the default unit beside the home and working units), BF-074 (where an HSN or SAC code is required), BF-075 (what a project's budget link does), BF-122 (the seeded lookup values), BF-142 (overlapping rows and other currencies in the delegation of authority), BF-164 (the starter notification templates), BF-181 (the tags of a new master), RCV-042 (who records a service entry).
-- Proposals in the documents' sections: how each product's transactions take their visibility tags (each product's section 10); the business modules (the Business PRD's section 9) and every module's permission names; re-authentication by default for bank account verification and payment release; when a supplier's records close for retention; a supplier view of contracts; the business and product slices (the technical PRD's section 7.2); the five later products' places in the process order.
-- How the answers were applied where a choice remained: BF-207 is the one extension point found where Business must hear from the products (the use of masters, for deletions in use and narrowed sharing); converting a cart and a request into a later product's documents is event-driven, so the drafts appear when the later product handles the event; Orders keeps its received and invoiced quantities from Receiving's bucket events (ORD-121) beside the buckets that atomic checks read; the 360 view's tabs for later products are contributed by their shell modules.
+None.
 
 ## Later items
 
