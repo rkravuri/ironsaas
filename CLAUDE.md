@@ -4,7 +4,7 @@ Foundation is the IronSaaS enterprise SaaS platform (namespace `Iron.*`). Read t
 
 ## How a task runs
 
-1. Create the branch named in the opening message (`slice/<task>`) from `main`, and commit the prompt file alone first (`docs/prompts/<slice>.md` as it stands), so the intent is in history before the work.
+1. Create the branch named in the opening message (`slice/<task>`) from `main`, and commit the prompt file alone first (`docs/prompts/<slice>.md` as it stands), so the intent is in history before the work. If any slice/* branch is not merged into main, stop and say so before branching; tasks are never stacked.
 2. Read what the opening message lists, then the section fully, then the code you will touch.
 3. Write a short plan into the session (ten lines at most: order of work, decisions you take, what you will leave out) and build. Do not wait for approval unless the "When to stop" rule applies.
 4. Commit as you go, in steps that build and test, with messages that say why.

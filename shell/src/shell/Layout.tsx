@@ -4,6 +4,7 @@ import { NavLink as RouterNavLink, Outlet, useLocation } from "react-router";
 import { AppShell, Burger, Group, NavLink, ScrollArea, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconHome } from "@tabler/icons-react";
+import { usePreferenceSync } from "@/auth/preferences";
 import { SessionWarning } from "@/auth/SessionWarning";
 import { useSession } from "@/auth/session-context";
 import { TenantMark } from "@/design/patterns";
@@ -18,7 +19,8 @@ import { Search, SearchButton } from "./Search";
 /**
  * The frame of every signed-in page (S1 plan 3.10, ADR-0033): the header with the tenant's mark, search, help and the
  * profile menu, and nothing that does not work yet; the navigation from the manifests with Home first; the session
- * warning; for administrators, the kill-switch banner above the page (ADR-0035). A notifications bell and an organisation switcher join when S4 and A8 give them something to do.
+ * warning; for administrators, the kill-switch banner above the page (ADR-0035); and the person's colour scheme and
+ * density kept with them across browsers (ADR-0036). A notifications bell and an organisation switcher join when S4 and A8 give them something to do.
  */
 export function Layout() {
   const { t } = useTranslation();
@@ -27,6 +29,7 @@ export function Layout() {
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure();
   useRememberPages();
+  usePreferenceSync();
 
   return (
     <AppShell header={{ height: 56 }} navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !opened } }} padding="md">

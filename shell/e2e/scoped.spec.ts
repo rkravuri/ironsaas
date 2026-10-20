@@ -36,9 +36,9 @@ test.describe("a child-unit administrator", () => {
       await expect(loginCells(grid).filter({ hasText: child.loginId })).toBeVisible();
       await expect(loginCells(grid).filter({ hasText: loginId })).toHaveCount(0);
       // Everyone listed lives in the child unit: the administrator made there, the colleague beside them, and the
-      // people the invitation test (home.spec.ts) invites into it.
+      // people the invitation tests invite into it (home.spec.ts, and settings.spec.ts for the unit's validity).
       for (const cell of await loginCells(grid).all()) {
-        await expect(cell).toHaveText(/^(child-admin|colleague|invited)-[0-9a-z]+@/);
+        await expect(cell).toHaveText(/^(child-admin|colleague|invited|validity)-[0-9a-z]+@/);
       }
       await page.screenshot({ path: `test-results/e2e/users-child-${scheme}.png` });
 

@@ -1,6 +1,9 @@
 namespace Iron.Kernel.Identity.Services;
 
-/// <summary>Bound from the <c>Identity</c> configuration section. Tenant settings take over in S2.</summary>
+/// <summary>
+/// Bound from the <c>Identity</c> configuration section. The session limits and an invitation's validity are tenant
+/// settings since A6 (IdentitySettings, ADR-0036); the session keys here are only the system default.
+/// </summary>
 public sealed class IdentityOptions
 {
     public const string SectionName = "Identity";
@@ -11,17 +14,15 @@ public sealed class IdentityOptions
 
     public Argon2Options Argon2 { get; set; } = new();
 
-    public InvitationOptions Invitation { get; set; } = new();
-
     public sealed class SessionOptions
     {
         /// <summary>The cookie that holds the session token.</summary>
         public string CookieName { get; set; } = "iron.session";
 
-        /// <summary>A session ends after this long without a request (TF-021, default 60 minutes).</summary>
+        /// <summary>The system default of <c>identity.session.idle_minutes</c>: what a session takes while the tenant has set nothing.</summary>
         public int IdleMinutes { get; set; } = 60;
 
-        /// <summary>A session ends this long after login whatever happens (TF-021, default 12 hours).</summary>
+        /// <summary>The system default of <c>identity.session.absolute_hours</c>.</summary>
         public int AbsoluteHours { get; set; } = 12;
 
         /// <summary>last_activity_at is written at most once per this many seconds, to keep one row write per minute, not per request.</summary>
@@ -50,13 +51,5 @@ public sealed class IdentityOptions
         public int Iterations { get; set; } = 3;
 
         public int Parallelism { get; set; } = 1;
-    }
-
-    public sealed class InvitationOptions
-    {
-        /// <summary>TF-018: 72 hours by default.</summary>
-        public int ValidHours { get; set; } = 72;
-
-        public TimeSpan Validity => TimeSpan.FromHours(ValidHours);
     }
 }

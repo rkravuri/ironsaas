@@ -56,6 +56,32 @@ describe("My profile", () => {
     expect(within(panel).getByRole("button", { name: "Sign out" })).toBeInTheDocument();
   });
 
+  it("offers the preferences that follow the person, and says the tenant's session limits", async () => {
+    window.localStorage.clear();
+    stubFetch({
+      "GET /api/v1/me": () => json(me([])),
+      "GET /api/v1/me/context": () =>
+        json({
+          entitlements: { revision: 1, plan: "enterprise", confirmed_at: "2026-10-20T09:00:00Z", stale: false, modules: [], features: [] },
+          settings: { values: [{ key: "identity.session.idle_minutes", value: 30, level: "tenant" }] },
+        }),
+    });
+    renderWithProviders(<ProfilePage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("tab", { name: "Preferences" }));
+    const preferences = await screen.findByRole("tabpanel", { name: "Preferences" });
+    expect(preferences).toHaveTextContent("they follow you to every browser you sign in on");
+    await user.click(within(preferences).getByRole("radio", { name: "Dark" }));
+    await waitFor(() => expect(window.localStorage.getItem("iron.scheme")).toBe("dark"));
+    await user.click(within(preferences).getByRole("radio", { name: "Compact" }));
+    await waitFor(() => expect(document.documentElement.dataset.density).toBe("compact"));
+
+    await user.click(screen.getByRole("tab", { name: "Session" }));
+    const session = await screen.findByRole("tabpanel", { name: "Session" });
+    await waitFor(() => expect(session).toHaveTextContent("ends a session after 30 minutes without activity, and after 12 hours at most"));
+  });
+
   it("says what will appear when the person holds no role yet", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me([])), "GET /api/v1/role-assignments/mine": () => json({ data: [] }) });
     renderWithProviders(<ProfilePage />);

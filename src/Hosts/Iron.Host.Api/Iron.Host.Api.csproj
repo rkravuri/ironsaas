@@ -15,6 +15,7 @@
     <ProjectReference Include="../../Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Entitlements/Iron.Kernel.Entitlements.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Flags/Iron.Kernel.Flags.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Files/Iron.Kernel.Files.csproj" />
   </ItemGroup>
 

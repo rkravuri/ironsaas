@@ -36,6 +36,9 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
     /// <summary>The global and region flag rules every unit reads (ADR-0035): one write for the platform.</summary>
     public const string PlatformFlagsPath = "platform/flags";
 
+    /// <summary>Where the secrets of the tenant's secret-reference settings live (ADR-0036): the unit reads everything below it.</summary>
+    public string SettingsSecretPaths => $"tenants/{Slug}/settings/*";
+
     public string UnitPolicy => $"tenant-{Slug}";
 
     public string ConnectionString(string role, string password) =>

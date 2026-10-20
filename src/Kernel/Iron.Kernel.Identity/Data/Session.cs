@@ -13,7 +13,9 @@ public static class SessionEndReasons
 
 /// <summary>
 /// A server-side session (TF-020). The cookie holds a random token; only its SHA-256 is stored. It starts at
-/// created_at and ends at logout, after the idle period, or at the absolute limit, whichever comes first.
+/// created_at and ends at logout, after the idle period, or at the absolute limit, whichever comes first. Both limits
+/// are the tenant's when the session starts (TF-021, ADR-0036) and stay with the session: a changed setting applies to
+/// new sessions, so nobody's open session shortens under them.
 /// </summary>
 public sealed class Session : AuditedEntity
 {
@@ -22,8 +24,13 @@ public sealed class Session : AuditedEntity
         TokenHash = string.Empty;
     }
 
-    public Session(Guid principalId, string tokenHash, DateTimeOffset now, TimeSpan absoluteLifetime)
+    public Session(Guid principalId, string tokenHash, DateTimeOffset now, TimeSpan absoluteLifetime, TimeSpan idleLimit)
     {
+        if (idleLimit <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(idleLimit), idleLimit, "A session needs an idle limit above zero.");
+        }
+
         if (principalId == Guid.Empty)
         {
             throw new ArgumentException("The principal id is empty.", nameof(principalId));
@@ -34,6 +41,7 @@ public sealed class Session : AuditedEntity
         TokenHash = tokenHash;
         LastActivityAt = now;
         ExpiresAt = now + absoluteLifetime;
+        IdleMinutes = (int)Math.Ceiling(idleLimit.TotalMinutes);
     }
 
     public Guid PrincipalId { get; private set; }
@@ -45,17 +53,30 @@ public sealed class Session : AuditedEntity
     /// <summary>The absolute limit (TF-021 AC3).</summary>
     public DateTimeOffset ExpiresAt { get; private set; }
 
+    /// <summary>The idle limit the session started with, in minutes; null for a session from before A6, which keeps the configured one.</summary>
+    public int? IdleMinutes { get; private set; }
+
     public DateTimeOffset? EndedAt { get; private set; }
 
     public string? EndReason { get; private set; }
 
     public bool HasEnded => EndedAt is not null;
 
-    /// <summary>The moment the session ends without further activity: the idle limit or the absolute limit, whichever is first.</summary>
-    public DateTimeOffset IdleExpiresAt(TimeSpan idle) => LastActivityAt + idle < ExpiresAt ? LastActivityAt + idle : ExpiresAt;
+    /// <summary>The session's own idle limit, or <paramref name="fallback"/> for a session that has none.</summary>
+    public TimeSpan Idle(TimeSpan fallback) => IdleMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : fallback;
+
+    /// <summary>
+    /// The moment the session ends without further activity: the idle limit or the absolute limit, whichever is first.
+    /// <paramref name="fallback"/> is the idle limit of a session from before A6.
+    /// </summary>
+    public DateTimeOffset IdleExpiresAt(TimeSpan fallback)
+    {
+        var idle = Idle(fallback);
+        return LastActivityAt + idle < ExpiresAt ? LastActivityAt + idle : ExpiresAt;
+    }
 
     /// <summary>Null while alive; otherwise the reason it should end at <paramref name="now"/>.</summary>
-    public string? ExpiryReason(DateTimeOffset now, TimeSpan idle)
+    public string? ExpiryReason(DateTimeOffset now, TimeSpan fallback)
     {
         if (HasEnded)
         {
@@ -67,7 +88,7 @@ public sealed class Session : AuditedEntity
             return SessionEndReasons.Absolute;
         }
 
-        return now - LastActivityAt >= idle ? SessionEndReasons.Idle : null;
+        return now - LastActivityAt >= Idle(fallback) ? SessionEndReasons.Idle : null;
     }
 
     public void Touch(DateTimeOffset now) => LastActivityAt = now;

@@ -17,13 +17,16 @@ namespace Iron.Kernel.Identity;
 /// <summary>
 /// Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029).
 /// Replaces the default system principal with the request principal, so hosts list it after Audit and Authorization
-/// and call <c>UseIronIdentity</c> after UseIronTenant.
+/// and call <c>UseIronIdentity</c> after UseIronTenant. The session limits and an invitation's validity are settings
+/// (ADR-0036), so a host that lists Identity lists the Settings module too.
 /// </summary>
 public sealed class IdentityModule : IModule
 {
     public string Name => "identity";
 
     public IReadOnlyList<Permission> Permissions => IdentityPermissions.All;
+
+    public IReadOnlyList<SettingDefinition> Settings => IdentitySettings.All;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {

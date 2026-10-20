@@ -5,12 +5,13 @@ using Iron.Kernel.Entitlements;
 using Iron.Kernel.Files;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Identity;
+using Iron.Kernel.Settings;
 
 namespace Iron.Host.Api;
 
 /// <summary>
 /// The modules a tenant unit runs, in order: Audit first (the others write events through its contract), then
-/// Authorization, then Identity (it replaces the default principal), then Files, Entitlements and Flags. The same list is
+/// Authorization, then Identity (it replaces the default principal), then Files, Entitlements, Flags and Settings. The same list is
 /// the source of the licensing catalogue the control plane carries (ADR-0034), so a module added here is licensable
 /// there once <c>make catalogue</c> has written the file; a host test fails until it has.
 /// </summary>
@@ -18,7 +19,7 @@ public static class UnitModules
 {
     public const string CatalogueCommand = "catalogue";
 
-    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule()];
+    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule()];
 
     public static bool IsCatalogueCommand(string[] args)
     {
@@ -57,6 +58,13 @@ public static class UnitModules
         {
             await File.WriteAllTextAsync(args[1], json).ConfigureAwait(false);
             await Console.Out.WriteLineAsync($"Wrote the catalogue to {args[1]}.").ConfigureAwait(false);
+
+            // The shell's typed setting keys come from the same declarations (ADR-0036), so they are written together.
+            if (args.Length > 2)
+            {
+                await File.WriteAllTextAsync(args[2], ShellSettingKeys.ToTypeScript(catalogue)).ConfigureAwait(false);
+                await Console.Out.WriteLineAsync($"Wrote the shell's setting keys to {args[2]}.").ConfigureAwait(false);
+            }
         }
         else
         {

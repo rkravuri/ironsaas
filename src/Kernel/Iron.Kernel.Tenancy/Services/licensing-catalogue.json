@@ -6,7 +6,8 @@
     "entitlements",
     "files",
     "flags",
-    "identity"
+    "identity",
+    "settings"
   ],
   "modules": [],
   "features": [
@@ -105,6 +106,96 @@
       "remove_by": null,
       "default": false,
       "status": "active"
+    }
+  ],
+  "settings": [
+    {
+      "key": "identity.invitation.valid_days",
+      "module": "identity",
+      "type": "number",
+      "description": "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.",
+      "default": 3,
+      "scopes": [
+        "tenant",
+        "unit"
+      ],
+      "visible_to_shell": false,
+      "requirement": "A whole number from 1 to 30.",
+      "choices": null,
+      "minimum": 1,
+      "maximum": 30,
+      "whole_number": true
+    },
+    {
+      "key": "identity.session.absolute_hours",
+      "module": "identity",
+      "type": "number",
+      "description": "How long a session may last at most, active or not, in hours. A new session takes the value; open sessions keep theirs.",
+      "default": 12,
+      "scopes": [
+        "tenant"
+      ],
+      "visible_to_shell": true,
+      "requirement": "A whole number from 1 to 24.",
+      "choices": null,
+      "minimum": 1,
+      "maximum": 24,
+      "whole_number": true
+    },
+    {
+      "key": "identity.session.idle_minutes",
+      "module": "identity",
+      "type": "number",
+      "description": "How long a session stays open without activity before it ends, in minutes. A new session takes the value; open sessions keep theirs.",
+      "default": 60,
+      "scopes": [
+        "tenant"
+      ],
+      "visible_to_shell": true,
+      "requirement": "A whole number from 15 to 480.",
+      "choices": null,
+      "minimum": 15,
+      "maximum": 480,
+      "whole_number": true
+    },
+    {
+      "key": "shell.colour_scheme",
+      "module": "settings",
+      "type": "choice",
+      "description": "The colour scheme of the shell: light, dark, or the one the device uses (auto).",
+      "default": "auto",
+      "scopes": [
+        "user"
+      ],
+      "visible_to_shell": true,
+      "requirement": "One of: light, dark, auto.",
+      "choices": [
+        "light",
+        "dark",
+        "auto"
+      ],
+      "minimum": null,
+      "maximum": null,
+      "whole_number": false
+    },
+    {
+      "key": "shell.density",
+      "module": "settings",
+      "type": "choice",
+      "description": "How closely grids and record pages set their rows: comfortable, or compact for more on the screen.",
+      "default": "comfortable",
+      "scopes": [
+        "user"
+      ],
+      "visible_to_shell": true,
+      "requirement": "One of: comfortable, compact.",
+      "choices": [
+        "comfortable",
+        "compact"
+      ],
+      "minimum": null,
+      "maximum": null,
+      "whole_number": false
     }
   ]
 }

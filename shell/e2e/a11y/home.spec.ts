@@ -121,6 +121,14 @@ for (const scheme of schemes) {
     await page.screenshot({ path: `test-results/profile-access-${scheme}.png` });
     await expectNoViolation(page);
 
+    // Preferences (A6): the colour scheme and the density, which follow the person.
+    await page.keyboard.press("ArrowRight");
+    const preferences = page.getByRole("tabpanel", { name: "Preferences" });
+    await expect(preferences).toContainText("they follow you to every browser you sign in on");
+    await expect(preferences.getByRole("radio", { name: "Same as the device" })).toBeChecked();
+    await page.screenshot({ path: `test-results/profile-preferences-${scheme}.png` });
+    await expectNoViolation(page);
+
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("tabpanel", { name: "Session" })).toContainText("Ends at the latest at");
     await page.screenshot({ path: `test-results/profile-session-${scheme}.png` });

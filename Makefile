@@ -28,9 +28,10 @@ format: ## Apply the code style from .editorconfig
 	dotnet format Foundation.slnx
 
 CATALOGUE_FILE := src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json
+SETTING_KEYS_FILE := shell/src/api/setting-keys.ts
 
-catalogue: ## Write what the units can license (the modules' licences and features) to the file the control plane carries (ADR-0034)
-	dotnet run --project src/Hosts/Iron.Host.Api --configuration $(CONFIG) -- catalogue $(CURDIR)/$(CATALOGUE_FILE)
+catalogue: ## Write what the units can license, switch and set to the file the control plane carries, and the shell's typed setting keys (ADR-0034, ADR-0036)
+	dotnet run --project src/Hosts/Iron.Host.Api --configuration $(CONFIG) -- catalogue $(CURDIR)/$(CATALOGUE_FILE) $(CURDIR)/$(SETTING_KEYS_FILE)
 
 clean: ## Remove build output (the .NET folders only; shell/node_modules has bin folders of its own)
 	dotnet clean Foundation.slnx

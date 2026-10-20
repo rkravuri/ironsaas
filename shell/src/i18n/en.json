@@ -74,7 +74,8 @@
       "units": "Organisation units",
       "roles": "Roles",
       "line": "The organisation's units and its roles: who may do what, and where.",
-      "subscription": "Subscription"
+      "subscription": "Subscription",
+      "settings": "Settings"
     }
   },
   "users": {
@@ -145,7 +146,12 @@
     "tabs": {
       "details": "Details",
       "access": "Access",
+      "preferences": "Preferences",
       "session": "Session"
+    },
+    "preferences": {
+      "intro": "How the shell looks for you. Your choices are kept with your account, so they follow you to every browser you sign in on.",
+      "densityExplain": "Compact sets the rows of grids and record pages closer together, so more fits on the screen."
     },
     "access": {
       "failed": "Your access could not be loaded.",
@@ -166,6 +172,7 @@
       "idle": "Ends without activity at",
       "absolute": "Ends at the latest at",
       "unknown": "Not known",
+      "limits": "Your organisation ends a session after {{idle}} minutes without activity, and after {{hours}} hours at most.",
       "explain": "Every request you make keeps the session alive, up to its latest end. Two minutes before it ends you are asked whether to stay signed in. Signing out here signs you out in every tab of this browser."
     }
   },
@@ -864,5 +871,97 @@
       "notCounted": "Not counted"
     },
     "moduleNames": {}
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "How the modules behave for the whole organisation, or for one unit and the units below it. A value set lower down wins over one set higher up, and a person's own preferences are theirs, in My profile.",
+    "values": "Values",
+    "failed": "The settings could not be loaded.",
+    "empty": "No setting can be set here.",
+    "none": "Nothing set",
+    "valueHere": "Value here:",
+    "default": "Default: {{value}}",
+    "cancel": "Cancel",
+    "where": {
+      "title": "Where the values apply",
+      "description": "The whole organisation, or one unit: a unit's value applies to it and to every unit below it that sets none.",
+      "label": "Show the values for",
+      "tenant": "The whole organisation",
+      "unit": "One unit",
+      "unitLabel": "Unit",
+      "pickUnit": "Choose a unit on the tree to see its values.",
+      "unitsFailed": "The units could not be loaded, so only the whole organisation's values can be shown. Try again later."
+    },
+    "modules": {
+      "identity": "Sign-in and invitations",
+      "settings": "Preferences"
+    },
+    "names": {
+      "identity_session_idle_minutes": "A session ends without activity after",
+      "identity_session_absolute_hours": "A session ends at the latest after",
+      "identity_invitation_valid_days": "An invitation link stays valid for",
+      "shell_colour_scheme": "Colour scheme",
+      "shell_density": "Density"
+    },
+    "amounts": {
+      "identity_session_idle_minutes_one": "{{count}} minute",
+      "identity_session_idle_minutes_other": "{{count}} minutes",
+      "identity_session_absolute_hours_one": "{{count}} hour",
+      "identity_session_absolute_hours_other": "{{count}} hours",
+      "identity_invitation_valid_days_one": "{{count}} day",
+      "identity_invitation_valid_days_other": "{{count}} days"
+    },
+    "choices": {
+      "shell_colour_scheme": {
+        "light": "Light",
+        "dark": "Dark",
+        "auto": "Same as the device"
+      },
+      "shell_density": {
+        "comfortable": "Comfortable",
+        "compact": "Compact"
+      }
+    },
+    "boolean": {
+      "true": "On",
+      "false": "Off"
+    },
+    "source": {
+      "default": "The default: nobody has set a value.",
+      "here": "Set here by {{name}} on {{date}}.",
+      "unit": "From {{unit}}, set by {{name}} on {{date}}.",
+      "tenant": "From the whole organisation, set by {{name}} on {{date}}.",
+      "someone": "someone"
+    },
+    "change": {
+      "open": "Change",
+      "label": "Change: {{name}}"
+    },
+    "reset": {
+      "open": "Reset",
+      "label": "Reset: {{name}}",
+      "title": "Reset this setting?",
+      "message": "The value set here is removed, and the value from above applies instead: a unit above this one, the whole organisation, or the default. The change is kept in the history.",
+      "confirm": "Reset"
+    },
+    "edit": {
+      "title": "Change: {{name}}",
+      "where": "For {{where}}.",
+      "value": "Value",
+      "on": "On",
+      "save": "Save",
+      "number": "Enter a number.",
+      "required": "Enter a value.",
+      "jsonInvalid": "This is not a JSON document. Check the brackets and the quotes."
+    },
+    "history": {
+      "open": "History",
+      "label": "History: {{name}}",
+      "title": "History: {{name}}",
+      "set": "Set to {{after}}",
+      "changed": "Changed from {{before}} to {{after}}",
+      "reset": "Reset; it was {{before}}",
+      "failed": "The history could not be loaded. Try again later."
+    }
   }
 }

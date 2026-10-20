@@ -156,6 +156,8 @@ const administrator = [
   "entitlements.subscription.read",
   "identity.users.manage",
   "identity.users.read",
+  "settings.values.manage",
+  "settings.values.read",
 ];
 
 /** The permission catalogue as GET /api/v1/permissions answers it. */
@@ -318,4 +320,81 @@ export const subscription = {
 export async function stubSubscription(target: Page, body: unknown = subscription): Promise<void> {
   await stubConsole(target);
   await target.route("**/api/v1/subscription", (route) => route.fulfill({ json: body }));
+}
+
+const ravi = { id: "01a15100-0000-7000-8000-0000000000d1", name: "Ravi Ravuri" };
+const notSet = { level: "default", unit: null, changed_by: null, changed_at: null };
+const setting = (key: string, over: Record<string, unknown>) => ({
+  key,
+  module: "identity",
+  type: "number",
+  description: "",
+  requirement: "",
+  choices: null,
+  minimum: null,
+  maximum: null,
+  whole_number: true,
+  scopes: ["tenant"],
+  default: null,
+  value: null,
+  source: notSet,
+  set_here: false,
+  ...over,
+});
+
+const idle = (value: number, source: Record<string, unknown>, setHere: boolean) =>
+  setting("identity.session.idle_minutes", {
+    description: "How long a session stays open without activity before it ends, in minutes. A new session takes the value; open sessions keep theirs.",
+    requirement: "A whole number from 15 to 480.",
+    minimum: 15,
+    maximum: 480,
+    default: 60,
+    value,
+    source,
+    set_here: setHere,
+  });
+
+const absolute = setting("identity.session.absolute_hours", {
+  description: "How long a session may last at most, active or not, in hours. A new session takes the value; open sessions keep theirs.",
+  requirement: "A whole number from 1 to 24.",
+  minimum: 1,
+  maximum: 24,
+  default: 12,
+  value: 12,
+});
+
+const invitation = (value: number, source: Record<string, unknown>, setHere: boolean) =>
+  setting("identity.invitation.valid_days", {
+    description: "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.",
+    requirement: "A whole number from 1 to 30.",
+    minimum: 1,
+    maximum: 30,
+    scopes: ["tenant", "unit"],
+    default: 3,
+    value,
+    source,
+    set_here: setHere,
+  });
+
+/** The tenant's settings as GET /api/v1/settings answers them: one set by Ravi, two at their defaults (ADR-0036). */
+export const tenantSettings = {
+  scope: "tenant",
+  unit: null,
+  data: [invitation(3, notSet, false), absolute, idle(30, { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" }, true)],
+};
+
+/** North's settings: the invitation validity inherited from Operations, the unit above it. */
+export const northSettings = {
+  scope: "unit",
+  unit: { id: units[4].id, name: "North", path: "Acme Corporation / Operations / North" },
+  data: [invitation(14, { level: "unit", unit: { id: units[3].id, name: "Operations", path: "Acme Corporation / Operations" }, changed_by: ravi, changed_at: "2026-10-19T11:00:00Z" }, false)],
+};
+
+/** The console stubs plus the settings of the tenant and of North. */
+export async function stubSettings(target: Page): Promise<void> {
+  await stubConsole(target);
+  await target.route("**/api/v1/settings?**", (route) => {
+    const url = new URL(route.request().url());
+    return route.fulfill({ json: url.searchParams.get("scope") === "unit" ? northSettings : tenantSettings });
+  });
 }

@@ -33,7 +33,45 @@ public sealed record FlagEntry(string Key, string Module, FlagType Type, FlagKin
 }
 
 /// <summary>
-/// What a build can license and switch (ADR-0034, ADR-0035): the licensed modules, the features and the flags its
+/// A setting as the catalogue lists it (ADR-0036): what its declaration says, in the form the shell's typed keys are
+/// written from. The rule is in words; a function rule cannot travel, its words do.
+/// </summary>
+public sealed record SettingEntry(
+    string Key,
+    string Module,
+    SettingType Type,
+    string Description,
+    JsonElement Default,
+    IReadOnlyList<SettingLevel> Scopes,
+    bool VisibleToShell,
+    string Requirement,
+    IReadOnlyList<string>? Choices,
+    decimal? Minimum,
+    decimal? Maximum,
+    bool WholeNumber)
+{
+    public static SettingEntry From(SettingDefinition setting, string module)
+    {
+        ArgumentNullException.ThrowIfNull(setting);
+        IReadOnlyList<SettingLevel> scopes = [.. new[] { SettingLevel.Tenant, SettingLevel.Unit, SettingLevel.User }.Where(setting.Allows)];
+        return new SettingEntry(
+            setting.Key,
+            module,
+            setting.Type,
+            setting.Description,
+            setting.Default,
+            scopes,
+            setting.VisibleToShell,
+            setting.Requirement,
+            setting.Type == SettingType.Choice ? setting.Choices : null,
+            setting.Rule?.Minimum,
+            setting.Rule?.Maximum,
+            setting.WholeNumber);
+    }
+}
+
+/// <summary>
+/// What a build can license and switch (ADR-0034, ADR-0035), and the settings it declares (ADR-0036): the licensed modules, the features and the flags its
 /// modules declare in code, with the kernel's kill switches. AddModules builds it from the host's modules; the control
 /// plane reads the same catalogue from the file the unit host writes (<c>make catalogue</c>), so a plan or a flag rule is
 /// checked against the build the units run, without the control plane loading Business or Products modules.
@@ -58,7 +96,7 @@ public sealed class LicensingCatalogue
     private readonly Dictionary<string, FeatureEntry> _features;
     private readonly Dictionary<string, FlagEntry> _flags;
 
-    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null)
+    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
         ArgumentNullException.ThrowIfNull(features);
@@ -90,9 +128,19 @@ public sealed class LicensingCatalogue
             }
         }
 
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var setting in settings ?? [])
+        {
+            if (!keys.Add(setting.Key))
+            {
+                throw new InvalidOperationException($"The setting '{setting.Key}' is declared twice.");
+            }
+        }
+
         Modules = [.. _modules.Values];
         Features = [.. _features.Values];
         Flags = [.. _flags.Values];
+        Settings = [.. (settings ?? []).OrderBy(s => s.Key, StringComparer.Ordinal)];
     }
 
     public static LicensingCatalogue Empty { get; } = new([], []);
@@ -108,6 +156,9 @@ public sealed class LicensingCatalogue
 
     /// <summary>Flags by key, the retired ones included.</summary>
     public IReadOnlyList<FlagEntry> Flags { get; }
+
+    /// <summary>Settings by key.</summary>
+    public IReadOnlyList<SettingEntry> Settings { get; }
 
     public LicensedModuleEntry? FindModule(string code) => _modules.GetValueOrDefault(code);
 
@@ -127,6 +178,7 @@ public sealed class LicensingCatalogue
         var features = new List<FeatureEntry>();
         var platform = new List<string>();
         var flags = KillSwitches.All.Select(flag => FlagEntry.From(flag, KernelModule)).ToList();
+        var settings = new List<SettingEntry>();
         foreach (var module in modules)
         {
             if (module.Licence is { } licence)
@@ -148,9 +200,11 @@ public sealed class LicensingCatalogue
 
                 flags.Add(FlagEntry.From(flag, module.Name));
             }
+
+            settings.AddRange(module.Settings.Select(setting => SettingEntry.From(setting, module.Name)));
         }
 
-        return new LicensingCatalogue(licensed, features, platform, flags);
+        return new LicensingCatalogue(licensed, features, platform, flags, settings);
     }
 
     /// <summary>
@@ -161,7 +215,7 @@ public sealed class LicensingCatalogue
     {
         ArgumentNullException.ThrowIfNull(file);
         var retired = file.Flags.Where(f => f.Status == FlagStatus.Retired && FindFlag(f.Key) is null);
-        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired));
+        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings);
     }
 
     /// <summary>
@@ -190,7 +244,7 @@ public sealed class LicensingCatalogue
     }
 
     /// <summary>The file form: indented JSON with a format version, ending in a newline, so a diff shows what a build adds.</summary>
-    public string ToJson() => JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, Modules, Features, Flags), Json) + "\n";
+    public string ToJson() => JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, Modules, Features, Flags, Settings), Json) + "\n";
 
     public static LicensingCatalogue Parse(string json)
     {
@@ -201,8 +255,8 @@ public sealed class LicensingCatalogue
             throw new InvalidOperationException($"The licensing catalogue has format version {document.FormatVersion}; this build reads version {FormatVersion}.");
         }
 
-        return new LicensingCatalogue(document.Modules ?? [], document.Features ?? [], document.Platform, document.Flags);
+        return new LicensingCatalogue(document.Modules ?? [], document.Features ?? [], document.Platform, document.Flags, document.Settings);
     }
 
-    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags);
+    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings);
 }

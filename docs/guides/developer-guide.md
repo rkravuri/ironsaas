@@ -182,6 +182,38 @@ A flag changes behaviour without a deploy: a release turned on for some tenants 
 
 Tests: test hosts register an allow-all gate beside the entitlements one (`AllEntitled` implements `IFlagGate` too); `tests/Kernel/Iron.Kernel.Flags.Tests` proves the evaluation order, the refresh and the kill switch on a real store.
 
+## Declaring a setting (A6, ADR-0036)
+
+A setting is something the tenant decides: a limit, a validity, a template, a preference. It is not a flag (the platform's switch, the operator's) and not an entitlement (what the tenant has paid for).
+
+1. **Declare it in the module's Contracts** as a typed static definition, and list it in its `IModule`:
+
+   ```csharp
+   public static class SourcingSettings
+   {
+       public static readonly Setting<int> QuoteValidDays = Setting.WholeNumber(
+           "sourcing.quote.valid_days", "How long a supplier's quote stays valid, in days.", 30, 1, 365, SettingScopes.Tenant | SettingScopes.Unit);
+
+       public static IReadOnlyList<SettingDefinition> All => [QuoteValidDays];
+   }
+
+   // in SourcingModule
+   public IReadOnlyList<SettingDefinition> Settings => SourcingSettings.All;
+   ```
+
+   The factories are `Text` (with a `SettingRule.Length` or `SettingRule.Matches` and words), `WholeNumber` and `Number` (with their range), `Boolean`, `Choice` (with the words it allows), `Json` (with a `SettingRule.Must` and words), and `Secret`. The scopes say where a value may be set: the tenant, a unit (and the units below it), a person. `visibleToShell: true` sends the effective value to the shell; never for a secret.
+2. **Write the catalogue:** `make catalogue`, and commit `licensing-catalogue.json` and `shell/src/api/setting-keys.ts`. The host test fails until both match the code.
+3. **Read it** through `ISettings` from `Iron.Kernel.Settings.Contracts`, for the context the value is for:
+   - `SettingContext.ForPerson(principalId)`: the person's own value, then their home unit walking up, then the tenant;
+   - `SettingContext.ForUnit(record.OwningOrganisationId)`: for a record, its unit walking up, then the tenant (TF-221);
+   - `SettingContext.Tenant`: for what belongs to nobody in particular.
+
+   `await settings.GetAsync(SourcingSettings.QuoteValidDays, context, ct)` answers an `int`. There is no string overload: a key nobody declared does not compile. A change is seen by every process within 30 seconds, without a restart.
+4. **A secret** is a `Setting.Secret(...)`: its value is a path under `tenants/<slug>/settings/`, never the secret. Read the secret with `ISecretSettings.ReadSecretAsync(setting, context, ct)` where you use it, and do not keep it: the service keeps it five minutes at most, and nothing else may hold it longer, log it or return it.
+5. **In the shell:** `useSetting("sourcing.quote.valid_days")` from `@/auth/settings` answers the effective value for the signed-in person, typed by the generated keys, and the default until `/me/context` answers. Give the setting a name in `src/i18n/en.json` under `settings.names` (the key with its dots as underscores), and, for a number, its amount under `settings.amounts` with `_one` and `_other`; the console's Settings page shows it then by its module.
+
+The console's page and the API check the permission at the place changed (`settings.values.manage` tenant-wide or at the unit); a module adds nothing for that. Tests: `tests/Kernel/Iron.Kernel.Settings.Tests` declares a probe module with a setting for every scope and a secret reference; a module's own tests read its settings through a host that lists the Settings module, as Identity's do.
+
 ## Write an ADR
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).

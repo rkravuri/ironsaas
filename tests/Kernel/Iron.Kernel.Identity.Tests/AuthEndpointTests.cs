@@ -12,6 +12,7 @@ using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Services;
+using Iron.Kernel.Settings;
 using Iron.Kernel.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -44,7 +45,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton(IdentityFixture.Tenant);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

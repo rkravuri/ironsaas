@@ -49,6 +49,7 @@ public static class ModuleExtensions
         services.AddSingleton(new ModuleCollection(modules));
         services.AddSingleton(new PermissionCatalogue(permissions));
         services.AddSingleton(LicensingCatalogue.From(modules));
+        services.AddSingleton(new SettingDeclarations(modules));
         return services;
     }
 

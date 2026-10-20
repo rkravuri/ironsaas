@@ -33,6 +33,8 @@
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

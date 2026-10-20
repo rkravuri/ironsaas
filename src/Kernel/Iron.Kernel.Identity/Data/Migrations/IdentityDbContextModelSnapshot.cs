@@ -165,6 +165,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<int?>("IdleMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("idle_minutes");
+
                     b.Property<DateTimeOffset>("LastActivityAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_activity_at");
