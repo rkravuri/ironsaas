@@ -6,8 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Data.Entities;
 
-/// <summary>The records of one type a unit owns, by id.</summary>
-public sealed record UnitRecords(string RecordType, IReadOnlyList<Guid> RecordIds);
+/// <summary>The records of one type a unit owns, by id: the type's code, and its display name for people to read.</summary>
+public sealed record UnitRecords(string RecordType, string DisplayName, IReadOnlyList<Guid> RecordIds);
 
 /// <summary>
 /// The business records a unit owns, for a merge (TF-223 AC1, ADR-0038): what will move, and moving it to the surviving
@@ -45,7 +45,7 @@ public sealed class ContextRecordOwners<TContext>(TContext context, IEnumerable<
             var ids = await ((Task<List<Guid>>)IdsOf.MakeGenericMethod(type).Invoke(this, [unitId, cancellationToken])!).ConfigureAwait(false);
             if (ids.Count > 0)
             {
-                owned.Add(new UnitRecords(NameOf(type), ids));
+                owned.Add(Records(type, ids));
             }
         }
 
@@ -60,7 +60,7 @@ public sealed class ContextRecordOwners<TContext>(TContext context, IEnumerable<
             var ids = await ((Task<List<Guid>>)MoveOf.MakeGenericMethod(type).Invoke(this, [fromUnitId, toUnitId, cancellationToken])!).ConfigureAwait(false);
             if (ids.Count > 0)
             {
-                moved.Add(new UnitRecords(NameOf(type), ids));
+                moved.Add(Records(type, ids));
             }
         }
 
@@ -70,7 +70,11 @@ public sealed class ContextRecordOwners<TContext>(TContext context, IEnumerable<
     private IEnumerable<Type> RecordTypes() =>
         context.Model.GetEntityTypes().Select(e => e.ClrType).Where(t => typeof(BusinessRecord).IsAssignableFrom(t)).OrderBy(t => t.Name, StringComparer.Ordinal);
 
-    private string NameOf(Type type) => registrations.FirstOrDefault(r => r.RecordType == type)?.Name ?? type.Name;
+    // A type with no policy fails the architecture test; its CLR name stands in so a merge still lists it.
+    private UnitRecords Records(Type type, List<Guid> ids) =>
+        registrations.FirstOrDefault(r => r.RecordType == type) is { } registration
+            ? new UnitRecords(registration.Name, registration.DisplayName, ids)
+            : new UnitRecords(type.Name, type.Name, ids);
 
     private async Task<List<Guid>> IdsAsync<T>(Guid unitId, CancellationToken cancellationToken)
         where T : BusinessRecord =>

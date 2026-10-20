@@ -31,6 +31,6 @@ public sealed class HomeUnitMerge(IdentityDbContext context) : IUnitMergePartici
     private static UnitMergePart Part(IEnumerable<(Guid Id, string Name)> people)
     {
         var ordered = people.OrderBy(p => p.Name, StringComparer.CurrentCulture).ToList();
-        return new UnitMergePart(UnitMergeParts.People, "identity", null, [.. ordered.Select(p => p.Name)], [.. ordered.Select(p => p.Id.ToString("D"))], []);
+        return new UnitMergePart(UnitMergeParts.People, "identity", null, null, [.. ordered.Select(p => p.Name)], [.. ordered.Select(p => p.Id.ToString("D"))], []);
     }
 }

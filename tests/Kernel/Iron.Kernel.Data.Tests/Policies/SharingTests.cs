@@ -294,7 +294,7 @@ public class SharingTests(PostgresFixture fixture)
         var sharesMoved = await shares.MoveAsync(_unitB, _unitA, TestContext.Current.CancellationToken);
 
         Assert.Equal("sample", owners.Module);
-        Assert.Equal([(SamplePolicies.ProposalType, 1), (SamplePolicies.WidgetType, 1)], preview.Select(r => (r.RecordType, r.RecordIds.Count)).Order());
+        Assert.Equal([(SamplePolicies.ProposalType, "Proposals", 1), (SamplePolicies.WidgetType, "Widgets", 1)], preview.Select(r => (r.RecordType, r.DisplayName, r.RecordIds.Count)).Order());
         Assert.Equal(preview.SelectMany(r => r.RecordIds).Order(), moved.SelectMany(r => r.RecordIds).Order());
         Assert.Equal([stays.Id], sharesMoved.Select(s => s.RecordId));
         var context = scope.ServiceProvider.GetRequiredService<SampleDbContext>();

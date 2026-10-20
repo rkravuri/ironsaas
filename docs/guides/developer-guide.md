@@ -257,6 +257,7 @@ To let people share a record, allow the action `share` in its policy, with the p
 ```csharp
 services.AddRecordPolicy(
     OrderRecords.OrderType,
+    "Sales orders",
     OrderPermissions.OrdersRead,
     RecordRules.UnitVisibility<Order>(
         OrderPermissions.OrdersRead,
@@ -278,7 +279,7 @@ What a module gets for nothing:
 services.AddUnitRecordOwners<OrdersDbContext>("orders");
 ```
 
-`ContextRecordOwners<TContext>` finds every business record type of the context with a policy, lists what a unit owns for the preview, and moves it to the surviving unit in one statement per type, deleted records included, in the merge's transaction. A module that keeps something else at a unit (its own per-unit configuration, a counter) implements `IUnitMergeParticipant` from Authorization's Contracts: `PreviewAsync` reads what would move without changing anything, `ApplyAsync` moves it in the caller's transaction and answers what moved, and `MergedAsync` refreshes a cache after the commit. Return one `UnitMergePart` per kind of thing, with its words for the preview, its ids for the audit event, and what is dropped as a conflict. Register it with `services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitMergeParticipant, MyMerge>())`.
+`ContextRecordOwners<TContext>` finds every business record type of the context with a policy, lists what a unit owns for the preview by the type's code and the display name its policy registration gives (the preview shows the name), and moves it to the surviving unit in one statement per type, deleted records included, in the merge's transaction. A module that keeps something else at a unit (its own per-unit configuration, a counter) implements `IUnitMergeParticipant` from Authorization's Contracts: `PreviewAsync` reads what would move without changing anything, `ApplyAsync` moves it in the caller's transaction and answers what moved, and `MergedAsync` refreshes a cache after the commit. Return one `UnitMergePart` per kind of thing, with its words for the preview, its ids for the audit event, and what is dropped as a conflict. Register it with `services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitMergeParticipant, MyMerge>())`.
 
 **A unit's readiness.** A product that needs something in each unit before people work there implements `IUnitReadiness` (Authorization's Contracts) and answers its checklist: one `ReadinessItem` per need, in words, done or not.
 
@@ -375,14 +376,15 @@ Every business record type has a policy; its lists and reads by id go through it
 
 ```csharp
 services.AddRecordPolicy(
-    "purchase_order",                       // the record type name record-scoped assignments use
+    "purchase_order",                       // the record type name record-scoped assignments use, its code
+    "Purchase orders",                      // what people call these records, as a merge preview shows them
     OrdersPermissions.Read,                 // the scope rule for this permission always applies first
     RecordRules.All(
         RecordRules.UnitVisibility<Order>(OrdersPermissions.Read, (OrdersActions.Approve, OrdersPermissions.Approve)),
         RecordRules.OwnerWhile<Order>(o => o.Status == OrderStatus.Draft, RecordActions.Update)));
 ```
 
-`UnitVisibility` reads the units the read permission reaches and allows each action it names where that action's permission reaches; `OwnerWhile` lets the creator perform its actions while the module's condition holds, and does not narrow reading. `All` takes the strictest answer, `Any` the most generous; an action no block has a rule for is denied. The kernel joins the policy to the scope rule with AND, so a policy can hide records and never show more. A policy class of the module's own implements `IRecordPolicy<T>` and registers with `AddRecordPolicy<Order, OrderPolicy>("purchase_order", OrdersPermissions.Read)`.
+`UnitVisibility` reads the units the read permission reaches and allows each action it names where that action's permission reaches; `OwnerWhile` lets the creator perform its actions while the module's condition holds, and does not narrow reading. `All` takes the strictest answer, `Any` the most generous; an action no block has a rule for is denied. The kernel joins the policy to the scope rule with AND, so a policy can hide records and never show more. A policy class of the module's own implements `IRecordPolicy<T>` and registers with `AddRecordPolicy<Order, OrderPolicy>("purchase_order", "Purchase orders", OrdersPermissions.Read)`.
 
 **A list:**
 

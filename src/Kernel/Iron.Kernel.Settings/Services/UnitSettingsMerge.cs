@@ -51,5 +51,5 @@ public sealed class UnitSettingsMerge(SettingsDbContext context, SettingsRefresh
     }
 
     private static UnitMergePart Part(IReadOnlyList<SettingValue> moving, IReadOnlyList<SettingValue> dropping) =>
-        new(UnitMergeParts.Settings, "settings", null, [.. moving.Select(v => v.Key)], [.. moving.Select(v => v.Key)], [.. dropping.Select(v => v.Key)]);
+        new(UnitMergeParts.Settings, "settings", null, null, [.. moving.Select(v => v.Key)], [.. moving.Select(v => v.Key)], [.. dropping.Select(v => v.Key)]);
 }

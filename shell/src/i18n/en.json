@@ -612,8 +612,8 @@
         "children": "Units below"
       },
       "parts": {
-        "recordsOf_one": "{{count}} record of type {{type}}, from {{module}}",
-        "recordsOf_other": "{{count}} records of type {{type}}, from {{module}}",
+        "recordsOf_one": "{{type}}: {{count}} record, from {{module}}",
+        "recordsOf_other": "{{type}}: {{count}} records, from {{module}}",
         "peopleMove_one": "{{count}} person whose home unit becomes {{into}}: {{names}}",
         "peopleMove_other": "{{count}} people whose home unit becomes {{into}}: {{names}}",
         "assignmentsMove_one": "{{count}} moves to {{into}}: {{names}}",
@@ -1088,7 +1088,7 @@
     },
     "units": "Share with",
     "unitsRequired": "Choose at least one unit to share with.",
-    "under": ", under {{parent}}",
+    "ownUnit": "{{unit}}, the record's own unit, sees it whatever you choose",
     "save": "Save",
     "failed": "Who sees this record could not be loaded. Try again in a moment."
   },

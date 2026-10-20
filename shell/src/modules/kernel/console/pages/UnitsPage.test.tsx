@@ -142,12 +142,12 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
     from: unit("sales", "Sales", "root"),
     into: unit("finance", "Finance", "root"),
     parts: [
-      { code: "records", module: "orders", record_type: "sales_order", count: 3, items: [], conflicts: [] },
-      { code: "people", module: "identity", record_type: null, count: 22, items: ["Ada Lovelace", "Grace Hopper"], conflicts: [] },
-      { code: "assignments", module: "authorization", record_type: null, count: 1, items: ["Ada Lovelace (Reader)"], conflicts: ["Grace Hopper (Reader)"] },
-      { code: "settings", module: "settings", record_type: null, count: 0, items: [], conflicts: ["numbering.prefix"] },
-      { code: "shares", module: "data", record_type: null, count: 0, items: [], conflicts: [] },
-      { code: "children", module: "authorization", record_type: null, count: 0, items: [], conflicts: [] },
+      { code: "records", module: "orders", record_type: "sales_order", record_type_name: "Sales orders", count: 3, items: [], conflicts: [] },
+      { code: "people", module: "identity", record_type: null, record_type_name: null, count: 22, items: ["Ada Lovelace", "Grace Hopper"], conflicts: [] },
+      { code: "assignments", module: "authorization", record_type: null, record_type_name: null, count: 1, items: ["Ada Lovelace (Reader)"], conflicts: ["Grace Hopper (Reader)"] },
+      { code: "settings", module: "settings", record_type: null, record_type_name: null, count: 0, items: [], conflicts: ["numbering.prefix"] },
+      { code: "shares", module: "data", record_type: null, record_type_name: null, count: 0, items: [], conflicts: [] },
+      { code: "children", module: "authorization", record_type: null, record_type_name: null, count: 0, items: [], conflicts: [] },
     ],
   };
 
@@ -206,7 +206,8 @@ describe("a unit's life (TF-223, ADR-0038)", () => {
 
     const shown = await within(dialog).findByRole("table");
     expect(within(dialog).getByText("What moves from Sales to Finance")).toBeInTheDocument();
-    expect(shown).toHaveTextContent("3 records of type sales_order, from orders");
+    expect(shown).toHaveTextContent("Sales orders: 3 records, from orders");
+    expect(shown).not.toHaveTextContent("sales_order");
     expect(shown).toHaveTextContent("22 people whose home unit becomes Finance: Ada Lovelace, Grace Hopper, and 20 more");
     expect(shown).toHaveTextContent("1 is held at Finance already, so it is removed: Grace Hopper (Reader)");
     expect(shown).toHaveTextContent("1 is not moved, because Finance has its own value: numbering.prefix");

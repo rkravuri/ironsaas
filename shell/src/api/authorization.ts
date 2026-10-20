@@ -64,11 +64,12 @@ export const fetchReadiness = (id: string, signal?: AbortSignal) =>
 /** The kinds of thing a merge moves, in the order the preview lists them (ADR-0038). */
 export const mergePartCodes = ["records", "people", "assignments", "settings", "shares", "children"] as const;
 
-/** One kind of thing a merge moves: the module, the record type for records, at most 20 in words, all of them counted, and what is dropped. */
+/** One kind of thing a merge moves: the module, for records the type's code and display name, at most 20 in words, all of them counted, and what is dropped. */
 export const MergePartSchema = z.object({
   code: z.string(),
   module: z.string(),
   record_type: z.string().nullable(),
+  record_type_name: z.string().nullable(),
   count: z.number(),
   items: z.array(z.string()),
   conflicts: z.array(z.string()),

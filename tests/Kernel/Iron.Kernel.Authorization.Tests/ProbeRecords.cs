@@ -66,7 +66,7 @@ public static class ProbeRecords
     public static void Add(IServiceCollection services)
     {
         services.AddIronDbContext<ProbeDbContext>(options => options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
-        services.AddRecordPolicy(CrateType, CratesRead, RecordRules.UnitVisibility<Crate>(CratesRead, (RecordActions.Update, CratesManage), (RecordActions.Share, CratesManage)));
+        services.AddRecordPolicy(CrateType, "Crates", CratesRead, RecordRules.UnitVisibility<Crate>(CratesRead, (RecordActions.Update, CratesManage), (RecordActions.Share, CratesManage)));
         services.AddUnitRecordOwners<ProbeDbContext>("probe");
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitReadiness, CrateReadiness>());
     }

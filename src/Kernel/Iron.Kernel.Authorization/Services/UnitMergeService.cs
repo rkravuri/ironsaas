@@ -203,17 +203,17 @@ public sealed class UnitMergeService(
         var roleIds = all.Select(a => a.RoleId).Distinct().ToArray();
         var roles = await context.Roles.AsNoTracking().Where(r => roleIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, r => r.Name, cancellationToken).ConfigureAwait(false);
         string Words(RoleAssignment a) => $"{names.GetValueOrDefault(a.PrincipalId)?.DisplayName ?? a.PrincipalId.ToString("D")} ({roles.GetValueOrDefault(a.RoleId, string.Empty)})";
-        return new UnitMergePart(UnitMergeParts.Assignments, "authorization", null, [.. moving.Select(Words).Order(StringComparer.CurrentCulture)], [.. moving.Select(a => a.Id.ToString("D"))], [.. dropping.Select(Words).Order(StringComparer.CurrentCulture)]);
+        return new UnitMergePart(UnitMergeParts.Assignments, "authorization", null, null, [.. moving.Select(Words).Order(StringComparer.CurrentCulture)], [.. moving.Select(a => a.Id.ToString("D"))], [.. dropping.Select(Words).Order(StringComparer.CurrentCulture)]);
     }
 
     private static UnitMergePart Records(string module, UnitRecords records) =>
-        new(UnitMergeParts.Records, module, records.RecordType, [], [.. records.RecordIds.Select(id => id.ToString("D"))], []);
+        new(UnitMergeParts.Records, module, records.RecordType, records.DisplayName, [], [.. records.RecordIds.Select(id => id.ToString("D"))], []);
 
     private static UnitMergePart Shares(IReadOnlyList<RecordShare> listed) =>
-        new(UnitMergeParts.Shares, "data", null, [.. listed.Select(s => s.RecordType).Distinct().Order(StringComparer.Ordinal)], [.. listed.Select(s => $"{s.RecordType}/{s.RecordId:D}")], []);
+        new(UnitMergeParts.Shares, "data", null, null, [.. listed.Select(s => s.RecordType).Distinct().Order(StringComparer.Ordinal)], [.. listed.Select(s => $"{s.RecordType}/{s.RecordId:D}")], []);
 
     private static UnitMergePart Children(IReadOnlyList<OrganisationUnit> children) =>
-        new(UnitMergeParts.Children, "authorization", null, [.. children.Select(c => c.Name)], [.. children.Select(c => c.Id.ToString("D"))], []);
+        new(UnitMergeParts.Children, "authorization", null, null, [.. children.Select(c => c.Name)], [.. children.Select(c => c.Id.ToString("D"))], []);
 
     private static List<UnitMergePart> Ordered(IEnumerable<UnitMergePart> parts) =>
         [.. parts.OrderBy(p => Array.IndexOf(PartOrder, p.Code) is var index and >= 0 ? index : PartOrder.Length).ThenBy(p => p.Module, StringComparer.Ordinal).ThenBy(p => p.RecordType, StringComparer.Ordinal)];

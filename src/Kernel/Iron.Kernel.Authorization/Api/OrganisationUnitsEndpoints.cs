@@ -37,15 +37,15 @@ public sealed record UnitResponse(
 /// <summary>A unit's checklist from the modules (TF-223): ready when every item is done, or when no module asks anything.</summary>
 public sealed record UnitReadinessResponse(Guid UnitId, bool Ready, IReadOnlyList<ReadinessItem> Items);
 
-/// <summary>What one kind of thing a merge moves: at most twenty items in words, and the count of all of them.</summary>
-public sealed record MergePartResponse(string Code, string Module, string? RecordType, int Count, IReadOnlyList<string> Items, IReadOnlyList<string> Conflicts)
+/// <summary>What one kind of thing a merge moves: for records the type's code and display name, at most twenty items in words, and the count of all of them.</summary>
+public sealed record MergePartResponse(string Code, string Module, string? RecordType, string? RecordTypeName, int Count, IReadOnlyList<string> Items, IReadOnlyList<string> Conflicts)
 {
     public const int ItemsShown = 20;
 
     public static MergePartResponse From(UnitMergePart part)
     {
         ArgumentNullException.ThrowIfNull(part);
-        return new MergePartResponse(part.Code, part.Module, part.RecordType, part.Count, [.. part.Items.Take(ItemsShown)], part.Conflicts);
+        return new MergePartResponse(part.Code, part.Module, part.RecordType, part.RecordTypeName, part.Count, [.. part.Items.Take(ItemsShown)], part.Conflicts);
     }
 }
 

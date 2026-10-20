@@ -25,11 +25,11 @@ public static class UnitMergeParts
 }
 
 /// <summary>
-/// One kind of thing a merge moves from a unit into another (TF-223 AC1, ADR-0038): the module, the record type for
-/// records, what to show of each one in words, their ids (keys for settings) for the audit event, and what is dropped
-/// rather than moved because the surviving unit has its own.
+/// One kind of thing a merge moves from a unit into another (TF-223 AC1, ADR-0038): the module, for records the record
+/// type's code and its display name, what to show of each one in words, their ids (keys for settings) for the audit
+/// event, and what is dropped rather than moved because the surviving unit has its own.
 /// </summary>
-public sealed record UnitMergePart(string Code, string Module, string? RecordType, IReadOnlyList<string> Items, IReadOnlyList<string> Ids, IReadOnlyList<string> Conflicts)
+public sealed record UnitMergePart(string Code, string Module, string? RecordType, string? RecordTypeName, IReadOnlyList<string> Items, IReadOnlyList<string> Ids, IReadOnlyList<string> Conflicts)
 {
     public int Count => Ids.Count;
 }

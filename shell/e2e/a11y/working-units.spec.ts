@@ -82,12 +82,12 @@ for (const scheme of schemes) {
           from: sales,
           into: operations,
           parts: [
-            { code: "records", module: "orders", record_type: "sales_order", count: 128, items: [], conflicts: [] },
-            { code: "people", module: "identity", record_type: null, count: 14, items: ["Ada Lovelace", "Grace Hopper", "Linus Pauling"], conflicts: [] },
-            { code: "assignments", module: "authorization", record_type: null, count: 2, items: ["Ada Lovelace (Sales lead)", "Grace Hopper (Reader)"], conflicts: ["Marie Curie (Reader)"] },
-            { code: "settings", module: "settings", record_type: null, count: 1, items: ["orders.numbering.prefix"], conflicts: ["ui.theme"] },
-            { code: "shares", module: "data", record_type: null, count: 3, items: ["sales_order"], conflicts: [] },
-            { code: "children", module: "authorization", record_type: null, count: 2, items: ["Enterprise", "Partners"], conflicts: [] },
+            { code: "records", module: "orders", record_type: "sales_order", record_type_name: "Sales orders", count: 128, items: [], conflicts: [] },
+            { code: "people", module: "identity", record_type: null, record_type_name: null, count: 14, items: ["Ada Lovelace", "Grace Hopper", "Linus Pauling"], conflicts: [] },
+            { code: "assignments", module: "authorization", record_type: null, record_type_name: null, count: 2, items: ["Ada Lovelace (Sales lead)", "Grace Hopper (Reader)"], conflicts: ["Marie Curie (Reader)"] },
+            { code: "settings", module: "settings", record_type: null, record_type_name: null, count: 1, items: ["orders.numbering.prefix"], conflicts: ["ui.theme"] },
+            { code: "shares", module: "data", record_type: null, record_type_name: null, count: 3, items: ["sales_order"], conflicts: [] },
+            { code: "children", module: "authorization", record_type: null, record_type_name: null, count: 2, items: ["Enterprise", "Partners"], conflicts: [] },
           ],
         },
       }),
@@ -101,14 +101,22 @@ for (const scheme of schemes) {
     await expect(page.getByText("No module asks anything of a new unit yet.")).toBeVisible();
     await page.screenshot({ path: `test-results/units-readiness-${scheme}.png` });
 
-    await page.getByRole("button", { name: "Merge into another unit" }).click();
+    // Keyboard only: the button opens the dialog on Enter, the choice of unit takes the focus, typing narrows it, and the
+    // arrow and Enter choose.
+    await page.getByRole("button", { name: "Merge into another unit" }).focus();
+    await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Merge Sales into another unit" });
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("Merge into").click();
-    await page.getByRole("option", { name: "Acme Corporation / Operations", exact: true }).click();
+    const into = dialog.getByLabel("Merge into");
+    await expect(into).toBeFocused();
+    await page.keyboard.type("Operations");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(into).toHaveValue("Acme Corporation / Operations");
     const preview = dialog.getByRole("table");
     await expect(dialog.getByRole("heading", { name: "What moves from Sales to Operations" })).toBeVisible();
     await expect(preview.getByRole("rowheader", { name: "People" })).toBeVisible();
+    await expect(preview).toContainText("Sales orders: 128 records, from orders");
     await expect(preview).toContainText("14 people whose home unit becomes Operations: Ada Lovelace, Grace Hopper, Linus Pauling, and 11 more");
     await expect(preview).toContainText("1 is not moved, because Operations has its own value: ui.theme");
     await expect(dialog.getByRole("button", { name: "Merge Sales into Operations" })).toBeVisible();
@@ -138,12 +146,29 @@ for (const scheme of schemes) {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("radio", { name: "Shared with chosen units" })).toBeChecked();
     const units = dialog.getByRole("group", { name: "Share with" });
-    await expect(units.getByRole("checkbox", { name: /^Finance\s*, under Acme$/ })).toBeChecked();
-    await units.getByRole("checkbox", { name: /^South\s*, under Sales$/ }).check();
+    await expect(units.getByRole("checkbox", { name: "Finance" })).toBeChecked();
+    // The tree in nested lists: South sits in the list inside Sales's item, beside North, the record's own unit, in words.
+    const salesItem = units.getByRole("checkbox", { name: "Sales", exact: true }).locator("xpath=ancestor::li[1]");
+    await expect(salesItem.getByRole("list").getByRole("checkbox", { name: "South" })).toBeVisible();
+    await expect(salesItem.getByRole("list")).toContainText("North, the record's own unit, sees it whatever you choose");
+
+    // Keyboard only: Tab from the chosen mode to the units, Space ticks one, and Tab and Enter save.
+    const south = units.getByRole("checkbox", { name: "South" });
+    for (let presses = 0; presses < 8 && !(await south.evaluate((element) => element === document.activeElement)); presses += 1) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(south).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(south).toBeChecked();
     await page.screenshot({ path: `test-results/sharing-dialog-${scheme}.png` });
     await expectNoViolation(page);
 
-    await dialog.getByRole("button", { name: "Save" }).click();
+    const save = dialog.getByRole("button", { name: "Save" });
+    for (let presses = 0; presses < 8 && !(await save.evaluate((element) => element === document.activeElement)); presses += 1) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(save).toBeFocused();
+    await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
     await expect(record.getByText("Belongs to North and is shared with South and Finance: the people whose roles cover any of them see it.")).toBeVisible();
   });

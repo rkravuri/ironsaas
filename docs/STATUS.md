@@ -73,12 +73,11 @@ None.
 - Since A6 the density follows the person, so the Users grid's browser test starts from comfortable and removes the administrator's density at the end; a test that changes a preference cleans it up the same way.
 - A share lists units one by one; a share with a unit and the units below it waits until a product asks (ADR-0038).
 - A merge runs in one transaction under the tree's lock. Fine for a tenant's units today; a unit that owns millions of records needs the merge as a job (ADR-0038).
-- The merge preview names a module's records by their record type (`sales_order`); records named in words wait for the first module with business records.
 - An access review campaign that names a merged unit keeps naming it, and its open items stay as they were.
 - Each `make e2e` adds two units to echo's tree for the merge test (`E2E merge from` and `E2E merge into`, with the run's stamp), the first merged and inactive, and an invited person homed at the second. Together with the item on the child unit, the e2e data wants a unit of its own per run before S2 closes. The Users grid's browser test no longer looks for the smoke client's row on screen, which the accounts added by every run had pushed out of the rows the grid draws; it reads it in the API's answer.
 - Echo's e2e data since A8: `E2E second branch` and `E2E third branch`, each with a colleague, and a person homed at the second who reads the users of both. They hold no role in `E2E branch`, whose access review the delegation test runs: a role there would be an item of it.
 - The header's choice of unit is hidden while acting for someone, whose rights in full the lists then show (ADR-0038).
 - Whoever may share a record sees the names of the tenant's active units to share it with, though they may not read the tree otherwise (ADR-0038).
 - Chromium reads a visually hidden word with a space before it ("North , chosen"), as it does for "Myself , chosen" since A7, because a visually hidden element is positioned absolutely; a screen reader reads it the same. The browser specs match either spacing.
-- The sharing control lists the units as checkboxes indented on the tree, not on Mantine's Tree, whose check takes the units below with it: a share lists each unit on its own.
+- The sharing control lists the units as checkboxes in lists nested as the tree is, not on Mantine's Tree, whose check takes the units below with it: a share lists each unit on its own.
 - Settings follow the unit a person works for when they are resolved for the signed-in person; a page that resolves for someone else uses that person's home unit (ADR-0038).

@@ -223,6 +223,13 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
         var head = await CreateAsync(root, "Head office");
         var branch = await CreateAsync(root, "Branch");
         await CreateAsync(branch, "Desk");
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var probe = scope.ServiceProvider.GetRequiredService<ProbeDbContext>();
+            probe.Crates.Add(new Crate(branch, "at the branch"));
+            await probe.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
         var manager = Ids.New();
         await AssignAsync(manager, RoleScope.Unit(branch, includeChildren: true));
 
@@ -240,6 +247,8 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
             Assert.Equal((branch, head), (body.RootElement.GetProperty("from").GetProperty("id").GetGuid(), body.RootElement.GetProperty("into").GetProperty("id").GetGuid()));
             var children = body.RootElement.GetProperty("parts").EnumerateArray().Single(p => p.GetProperty("code").GetString() == UnitMergeParts.Children);
             Assert.Equal((1, "Desk"), (children.GetProperty("count").GetInt32(), children.GetProperty("items")[0].GetString()));
+            var records = body.RootElement.GetProperty("parts").EnumerateArray().Single(p => p.GetProperty("code").GetString() == UnitMergeParts.Records);
+            Assert.Equal((ProbeRecords.CrateType, "Crates", 1), (records.GetProperty("record_type").GetString(), records.GetProperty("record_type_name").GetString(), records.GetProperty("count").GetInt32()));
         }
 
         Assert.Equal(HttpStatusCode.OK, merged.StatusCode);

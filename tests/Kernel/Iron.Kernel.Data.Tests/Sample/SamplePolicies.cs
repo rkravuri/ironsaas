@@ -54,6 +54,7 @@ public static class SamplePolicies
     public static IServiceCollection AddProposalPolicy(this IServiceCollection services) =>
         services.AddRecordPolicy(
             ProposalType,
+            "Proposals",
             SamplePermissions.ProposalsRead,
             RecordRules.All(
                 RecordRules.UnitVisibility<Proposal>(SamplePermissions.ProposalsRead),
@@ -63,6 +64,7 @@ public static class SamplePolicies
     public static IServiceCollection AddWidgetPolicy(this IServiceCollection services) =>
         services.AddRecordPolicy(
             WidgetType,
+            "Widgets",
             SamplePermissions.WidgetsRead,
             RecordRules.UnitVisibility<Widget>(SamplePermissions.WidgetsRead, (RecordActions.Update, SamplePermissions.WidgetsManage), (RecordActions.Share, SamplePermissions.WidgetsManage)));
 }

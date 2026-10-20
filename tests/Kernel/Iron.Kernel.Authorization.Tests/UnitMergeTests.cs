@@ -27,7 +27,7 @@ public class UnitMergeTests(AuthorizationFixture fixture)
         var parts = preview.Value.Parts;
         Assert.Equal([UnitMergeParts.Records, UnitMergeParts.Assignments, UnitMergeParts.Shares, UnitMergeParts.Children], parts.Select(p => p.Code));
         var records = parts.Single(p => p.Code == UnitMergeParts.Records);
-        Assert.Equal(("probe", ProbeRecords.CrateType, 2), (records.Module, records.RecordType, records.Count));
+        Assert.Equal(("probe", ProbeRecords.CrateType, "Crates", 2), (records.Module, records.RecordType, records.RecordTypeName, records.Count));
         var assignments = parts.Single(p => p.Code == UnitMergeParts.Assignments);
         Assert.Equal(1, assignments.Count);
         Assert.Single(assignments.Conflicts);

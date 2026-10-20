@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Checkbox, Group, Paper, Radio, Stack, Text, VisuallyHidden } from "@mantine/core";
+import { Box, Button, Checkbox, Group, Paper, Radio, Stack, Text } from "@mantine/core";
 import { IconBuildingCommunity, IconLock, IconShare } from "@tabler/icons-react";
 import { z } from "zod";
 import { changeSharing, fetchSharing, type RecordSharing, type SharingChoice, type SharingMode } from "@/api/authorization";
@@ -96,8 +96,6 @@ function SharingDialog({ sharing, onClose, onSave }: { sharing: RecordSharing; o
   );
   const form = useZodForm<SharingValues>({ schema, initialValues: { mode: sharing.mode, units: sharing.units.map((shared) => shared.id) } });
   const { mode, units } = form.getValues();
-  // The record's own unit sees it whatever the mode, so it is not offered.
-  const choices = sharing.choices.filter((choice) => choice.id !== sharing.owning_unit.id);
 
   return (
     <FormDialog opened title={t("sharing.title")} onClose={onClose}>
@@ -112,7 +110,8 @@ function SharingDialog({ sharing, onClose, onSave }: { sharing: RecordSharing; o
         {mode === "shared" && (
           <UnitChecklist
             label={t("sharing.units")}
-            choices={choices}
+            choices={sharing.choices}
+            ownUnitId={sharing.owning_unit.id}
             value={units}
             onChange={(next) => form.setFieldValue("units", next)}
             error={typeof form.errors.units === "string" ? form.errors.units : undefined}
@@ -124,34 +123,62 @@ function SharingDialog({ sharing, onClose, onSave }: { sharing: RecordSharing; o
 }
 
 /**
- * Several units chosen on the tree: a checkbox each, indented under its parent, its parent named for assistive
- * technology. A share lists each unit on its own, so choosing a unit never chooses the units below it.
+ * Several units chosen on the tree (ADR-0038): a checkbox each, in lists nested as the tree is, so assistive technology
+ * announces each unit's level and the units it sits in. A share lists each unit on its own, so choosing a unit never
+ * chooses the units below it. The record's own unit sees it whatever the mode: it stays in the tree, in words, without
+ * a checkbox, so the units below it keep their place.
  */
-export function UnitChecklist({ label, choices, value, onChange, error }: { label: string; choices: readonly SharingChoice[]; value: string[]; onChange: (units: string[]) => void; error?: string | undefined }) {
+export function UnitChecklist({
+  label,
+  choices,
+  ownUnitId,
+  value,
+  onChange,
+  error,
+}: {
+  label: string;
+  choices: readonly SharingChoice[];
+  ownUnitId: string;
+  value: string[];
+  onChange: (units: string[]) => void;
+  error?: string | undefined;
+}) {
   const { t } = useTranslation();
-  const byId = useMemo(() => new Map(choices.map((choice) => [choice.id, choice])), [choices]);
-  const top = choices.reduce((least, choice) => Math.min(least, choice.depth), Number.POSITIVE_INFINITY);
+  const children = useMemo(() => {
+    const present = new Set(choices.map((choice) => choice.id));
+    const below = new Map<string | null, SharingChoice[]>();
+    for (const choice of choices) {
+      // A unit whose parent is not offered starts a branch of its own; the API sends tree order, kept here.
+      const parent = choice.parent_id !== null && present.has(choice.parent_id) ? choice.parent_id : null;
+      below.set(parent, [...(below.get(parent) ?? []), choice]);
+    }
+    return below;
+  }, [choices]);
+
+  const branch = (parent: string | null, level: number): ReactNode => {
+    const units = children.get(parent) ?? [];
+    return units.length === 0 ? null : (
+      <Box component="ul" m={0} p={0} pl={level === 0 ? 0 : 24} style={{ listStyle: "none" }}>
+        {units.map((unit) => (
+          <Box component="li" key={unit.id} mt={6}>
+            {unit.id === ownUnitId ? (
+              <Text size="sm" c="dimmed" data-own-unit>
+                {t("sharing.ownUnit", { unit: unit.name })}
+              </Text>
+            ) : (
+              <Checkbox value={unit.id} label={unit.name} />
+            )}
+            {branch(unit.id, level + 1)}
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
   return (
     <Checkbox.Group label={label} value={value} onChange={onChange} error={error}>
-      <Paper withBorder p="xs" mt={6} mah={260} style={{ overflow: "auto" }}>
-        <Stack gap={6}>
-          {choices.map((choice) => {
-            const parent = choice.parent_id !== null ? byId.get(choice.parent_id) : undefined;
-            return (
-              <Checkbox
-                key={choice.id}
-                value={choice.id}
-                pl={(choice.depth - top) * 20}
-                label={
-                  <>
-                    {choice.name}
-                    {parent && <VisuallyHidden component="span">{t("sharing.under", { parent: parent.name })}</VisuallyHidden>}
-                  </>
-                }
-              />
-            );
-          })}
-        </Stack>
+      <Paper withBorder p="xs" pt={0} mt={6} mah={260} style={{ overflow: "auto" }}>
+        {branch(null, 0)}
       </Paper>
     </Checkbox.Group>
   );

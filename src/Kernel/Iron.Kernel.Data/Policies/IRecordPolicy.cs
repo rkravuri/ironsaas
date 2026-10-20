@@ -110,5 +110,9 @@ public static class RecordAnswers
     public const string Forbidden = "forbidden";
 }
 
-/// <summary>One record type's policy as registered: the entity, the record type name record-scoped assignments use, and the permission that reads it.</summary>
-public sealed record RecordPolicyRegistration(Type RecordType, string Name, Permission Read);
+/// <summary>
+/// One record type's policy as registered: the entity, the record type name record-scoped assignments use (its code), the
+/// permission that reads it, and its display name, what people call these records ("Purchase orders"), which a merge
+/// preview shows (ADR-0038).
+/// </summary>
+public sealed record RecordPolicyRegistration(Type RecordType, string Name, Permission Read, string DisplayName);

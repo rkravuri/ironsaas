@@ -153,7 +153,7 @@ export function MergePreview({ merge }: { merge: Merge }) {
         part.count === 0
           ? []
           : code === "records"
-            ? [t("units.merge.parts.recordsOf", { count: part.count, type: part.record_type ?? "", module: part.module })]
+            ? [t("units.merge.parts.recordsOf", { count: part.count, type: part.record_type_name ?? part.record_type ?? "", module: part.module })]
             : code === "shares"
               ? [t("units.merge.parts.sharesMove", { count: part.count, from, into })]
               : [t(`units.merge.parts.${code}Move`, { count: part.count, into, names: namesOf(part, i18n.language, more) })];

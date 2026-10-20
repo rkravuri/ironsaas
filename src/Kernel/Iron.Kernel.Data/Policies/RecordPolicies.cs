@@ -215,28 +215,29 @@ public static partial class RecordPolicyServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the policy of a business record type (ADR-0032): the record type name that record-scoped assignments
-    /// use (snake_case), the permission that reads it, and the policy, built from <see cref="RecordRules"/>. One per type.
+    /// use (snake_case, its code), what people call these records (plural, as a list heading names them: "Purchase
+    /// orders"), the permission that reads it, and the policy, built from <see cref="RecordRules"/>. One per type.
     /// </summary>
-    public static IServiceCollection AddRecordPolicy<T>(this IServiceCollection services, string recordType, Permission read, IRecordPolicy<T> policy)
+    public static IServiceCollection AddRecordPolicy<T>(this IServiceCollection services, string recordType, string displayName, Permission read, IRecordPolicy<T> policy)
         where T : BusinessRecord
     {
         ArgumentNullException.ThrowIfNull(policy);
-        Register<T>(services, recordType, read);
+        Register<T>(services, recordType, displayName, read);
         services.AddSingleton(policy);
         return services;
     }
 
     /// <summary>The same with a policy class of the module's own, resolved per request so it may use the module's services.</summary>
-    public static IServiceCollection AddRecordPolicy<T, TPolicy>(this IServiceCollection services, string recordType, Permission read)
+    public static IServiceCollection AddRecordPolicy<T, TPolicy>(this IServiceCollection services, string recordType, string displayName, Permission read)
         where T : BusinessRecord
         where TPolicy : class, IRecordPolicy<T>
     {
-        Register<T>(services, recordType, read);
+        Register<T>(services, recordType, displayName, read);
         services.AddScoped<IRecordPolicy<T>, TPolicy>();
         return services;
     }
 
-    private static void Register<T>(IServiceCollection services, string recordType, Permission read)
+    private static void Register<T>(IServiceCollection services, string recordType, string displayName, Permission read)
         where T : BusinessRecord
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -246,12 +247,17 @@ public static partial class RecordPolicyServiceCollectionExtensions
             throw new ArgumentException($"'{recordType}' is not a record type name. Use snake_case of at most 100 characters, for example purchase_order.", nameof(recordType));
         }
 
+        if (string.IsNullOrWhiteSpace(displayName) || displayName.Trim().Length > 100)
+        {
+            throw new ArgumentException($"{typeof(T).Name} needs a display name of 1 to 100 characters: what people call these records, for example Purchase orders.", nameof(displayName));
+        }
+
         if (services.Any(d => d.ServiceType == typeof(RecordPolicyRegistration) && d.ImplementationInstance is RecordPolicyRegistration r && r.RecordType == typeof(T)))
         {
             throw new InvalidOperationException($"{typeof(T).Name} has a record policy already; a record type has one policy (ADR-0032).");
         }
 
-        services.AddSingleton(new RecordPolicyRegistration(typeof(T), recordType, read));
+        services.AddSingleton(new RecordPolicyRegistration(typeof(T), recordType, read, displayName.Trim()));
         services.TryAddScoped<IRecordPolicies, RecordPolicies>();
     }
 
