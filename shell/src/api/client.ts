@@ -100,7 +100,12 @@ export interface ResponseInfo {
   serverDate: number | undefined;
   /** This browser's time when the answer arrived. */
   receivedAt: number;
+  /** The delegator whose delegation ended while this session acted for them, on the first answer after (ADR-0037). */
+  actingEnded?: string;
 }
+
+/** The header the API sets on the first answer after a delegation the session acted with has ended. */
+export const actingEndedHeader = "Iron-Acting-Ended";
 
 type ResponseListener = (info: ResponseInfo) => void;
 const responseListeners = new Set<ResponseListener>();
@@ -133,7 +138,8 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   const response = await fetch(path, init);
   const correlationId = response.headers.get("X-Correlation-Id") ?? undefined;
   const date = Date.parse(response.headers.get("Date") ?? "");
-  const info: ResponseInfo = { path, status: response.status, serverDate: Number.isNaN(date) ? undefined : date, receivedAt: Date.now() };
+  const actingEnded = response.headers.get(actingEndedHeader) ?? undefined;
+  const info: ResponseInfo = { path, status: response.status, serverDate: Number.isNaN(date) ? undefined : date, receivedAt: Date.now(), ...(actingEnded ? { actingEnded } : {}) };
   for (const listener of responseListeners) {
     listener(info);
   }

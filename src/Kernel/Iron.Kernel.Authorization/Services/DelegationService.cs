@@ -189,37 +189,25 @@ public sealed class DelegationService(
     }
 
     /// <summary>
-    /// The delegations an administrator may see (those whose delegator's home unit they hold <c>authz.delegations.manage</c>
-    /// at), newest first. Null when they hold it nowhere.
+    /// The delegations an administrator may see, for a paged list: every one with <c>authz.delegations.manage</c>
+    /// tenant-wide; otherwise those whose delegator's home unit is a unit where they hold it. Null when they hold it
+    /// nowhere. Read straight from the grants: a row left out is not a denial, so nothing is audited for it.
     /// </summary>
-    public async Task<IReadOnlyList<DelegationView>?> ManagedAsync(CancellationToken cancellationToken)
+    public async Task<IQueryable<Delegation>?> ManagedAsync(CancellationToken cancellationToken)
     {
-        if (!await HoldsAsync(AccessScope.Anywhere, cancellationToken).ConfigureAwait(false))
+        var access = await grants.AccessibleAsync(current.Id, AuthorizationPermissions.DelegationsManage, RecordType, cancellationToken).ConfigureAwait(false);
+        if (access.IsEverything)
+        {
+            return context.Delegations.AsNoTracking();
+        }
+
+        if (access.Units.Count == 0)
         {
             return null;
         }
 
-        var rows = await context.Delegations.AsNoTracking().OrderByDescending(d => d.StartsAt).Take(500).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var people = await principals.FindAsync([.. rows.Select(d => d.DelegatorId).Distinct()], cancellationToken).ConfigureAwait(false);
-        var byUnit = new Dictionary<Guid, bool>();
-        var visible = new List<Delegation>();
-        foreach (var row in rows)
-        {
-            // Read straight from the grants: a row left out is not a denial, so nothing is audited for it.
-            var home = people.GetValueOrDefault(row.DelegatorId)?.HomeUnitId ?? Guid.Empty;
-            if (!byUnit.TryGetValue(home, out var holds))
-            {
-                holds = await HoldsAsync(home == Guid.Empty ? AccessScope.Tenant : AccessScope.Unit(home), cancellationToken).ConfigureAwait(false);
-                byUnit[home] = holds;
-            }
-
-            if (holds)
-            {
-                visible.Add(row);
-            }
-        }
-
-        return await DescribeAsync(visible, cancellationToken).ConfigureAwait(false);
+        var people = await principals.HomedAtAsync(access.Units, cancellationToken).ConfigureAwait(false);
+        return context.Delegations.AsNoTracking().Where(d => people.Contains(d.DelegatorId));
     }
 
     public async Task<IReadOnlyList<DelegationView>> DescribeAsync(IReadOnlyList<Delegation> rows, CancellationToken cancellationToken)

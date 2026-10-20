@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { Link } from "react-router";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { RecordPage } from "@/components/templates";
 import { densities, setDensity, useDensity, type Density } from "@/design/density";
 import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 import { unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
+import { DelegationList } from "@/modules/kernel/console/pages/DelegationsPage";
 import { userStatus } from "./user-status";
 
 const when = (value: string | number) => new Date(value).toLocaleString();
@@ -46,6 +48,7 @@ export function ProfilePage() {
       tabs={[
         { value: "details", label: t("profile.tabs.details"), panel: <Details me={me} /> },
         { value: "access", label: t("profile.tabs.access"), panel: <MyAccess /> },
+        { value: "delegations", label: t("profile.tabs.delegations"), panel: <MyDelegations /> },
         { value: "preferences", label: t("profile.tabs.preferences"), panel: <MyPreferences /> },
         { value: "session", label: t("profile.tabs.session"), panel: <MySession me={me} /> },
       ]}
@@ -131,6 +134,19 @@ function MyAccess() {
 
 const where = (assignment: Assignment, t: TFunction): string =>
   t(`profile.access.scopes.${assignment.scope_kind}`, { unit: unitPathLabel(assignment) });
+
+/** The person's delegations both ways (TF-037), with Act for on an active one; delegating and ending are on their own page. */
+function MyDelegations() {
+  const { t } = useTranslation();
+  return (
+    <Stack gap="md" align="flex-start">
+      <DelegationList />
+      <Button component={Link} to="/console/delegations" variant="default">
+        {t("profile.delegations.open")}
+      </Button>
+    </Stack>
+  );
+}
 
 /**
  * The person's preferences (ADR-0036): the colour scheme and the density, saved with the person, so they follow them to

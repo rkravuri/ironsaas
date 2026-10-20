@@ -113,6 +113,8 @@ export function contrastPairs(): readonly ContrastPair[] {
     { foreground: "--mantine-primary-color-filled", background: variable("body"), minimum: uiMinimum },
     { foreground: variable("black"), background: variable("gray-1"), minimum: textMinimum, scheme: "light" },
     { foreground: variable("white"), background: variable("dark-5"), minimum: textMinimum, scheme: "dark" },
+    // A menu item under the pointer or the focus: Mantine's dark default (dark-4) falls just short, the theme sets it.
+    { foreground: variable("text"), background: "--menu-item-hover", minimum: textMinimum },
   );
   return pairs;
 }

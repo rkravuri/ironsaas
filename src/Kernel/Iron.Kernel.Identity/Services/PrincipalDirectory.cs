@@ -23,4 +23,15 @@ public sealed class PrincipalDirectory(IdentityDbContext context) : IPrincipals
             p => p.Id,
             p => new PrincipalSummary(p.Id, p.Type == PrincipalType.User ? PrincipalKind.User : PrincipalKind.Service, p.DisplayName, p.HomeUnitId));
     }
+
+    public async Task<IReadOnlyList<Guid>> HomedAtAsync(IReadOnlyCollection<Guid> unitIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(unitIds);
+        var units = unitIds.Distinct().ToArray();
+        return await context.Principals.AsNoTracking()
+            .Where(p => p.HomeUnitId != null && units.Contains(p.HomeUnitId.Value))
+            .Select(p => p.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

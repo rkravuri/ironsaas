@@ -22,4 +22,10 @@ public interface IPrincipals
 {
     /// <summary>The principals with these ids that exist; an unknown id is left out.</summary>
     Task<IReadOnlyDictionary<Guid, PrincipalSummary>> FindAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The ids of the principals whose home unit is one of these: the people an administrator of those units looks
+    /// after, such as whose delegations they see (ADR-0037).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> HomedAtAsync(IReadOnlyCollection<Guid> unitIds, CancellationToken cancellationToken);
 }

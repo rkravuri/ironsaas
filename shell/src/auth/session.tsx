@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, onResponse, onUnauthenticated } from "@/api/client";
 import { fetchContext } from "@/api/entitlements";
-import { fetchMe, logout as logoutCall, type Me } from "@/api/identity";
+import { actFor as actForCall, fetchMe, logout as logoutCall, stopActing as stopActingCall, type Me } from "@/api/identity";
 import type { KillSwitch } from "@/api/flags";
 import { contextQueryKey, contextRefreshMs, entitlementsFrom } from "./entitlements";
 import { flagProvider } from "./flags";
@@ -27,6 +27,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [watch] = useState(() => new SessionWatch());
   const channel = useRef<SessionChannel | undefined>(undefined);
   const [ended, setEnded] = useState<SessionEnd | undefined>();
+  const [actingEnded, setActingEnded] = useState<string | undefined>();
   const query = useQuery({
     queryKey: meQueryKey,
     queryFn: ({ signal }) => fetchMe(signal),
@@ -89,6 +90,47 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // A 401 from any call: a session that was here has ended on the server (TF-021 AC1), and the login page says so.
   useEffect(() => onUnauthenticated(() => end("expired", true)), [end]);
   useEffect(() => onResponse((info) => watch.response(info)), [watch]);
+
+  /**
+   * After acting for someone or as oneself again: /me as the API answered it, and every other answer read again, since
+   * what the person may see has changed with whose rights they use (ADR-0037).
+   */
+  const actingChanged = useCallback(
+    async (next: Me) => {
+      queryClient.setQueryData(meQueryKey, next);
+      await queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== meQueryKey[0] });
+    },
+    [queryClient],
+  );
+
+  // The first answer after the delegation behind the acting ended says so: this tab says it too, by the name it knew, and
+  // reads /me and the rest again as the person themselves.
+  useEffect(
+    () =>
+      onResponse((info) => {
+        if (info.actingEnded === undefined) {
+          return;
+        }
+        const known = queryClient.getQueryData<Me | null>(meQueryKey)?.acting_for;
+        setActingEnded(known?.id === info.actingEnded ? known.name : "");
+        void queryClient.invalidateQueries();
+      }),
+    [queryClient],
+  );
+
+  const actFor = useCallback(
+    async (delegatorId: string) => {
+      setActingEnded(undefined);
+      await actingChanged(await actForCall(delegatorId));
+    },
+    [actingChanged],
+  );
+
+  const stopActing = useCallback(async () => {
+    await actingChanged(await stopActingCall());
+  }, [actingChanged]);
+
+  const dismissActingEnded = useCallback(() => setActingEnded(undefined), []);
 
   // Each /me answer sets the times, on this browser's clock, from the moment it arrived.
   const me = query.data ?? undefined;
@@ -161,8 +203,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A failure that is not "not signed in" still shows the login page, with the error noted by the boundary later.
       status = query.isPending ? "loading" : "signed-out";
     }
-    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], entitlements, killSwitches, settings, settingsKnown, ended, refresh, signedIn, extend, signOut, expire, forget };
-  }, [me, query.error, query.isPending, entitlements, killSwitches, settings, settingsKnown, ended, refresh, signedIn, extend, signOut, expire, forget]);
+    return {
+      status,
+      me,
+      permissions: me?.permissions_anywhere ?? [],
+      tenantPermissions: me?.permissions ?? [],
+      entitlements,
+      killSwitches,
+      settings,
+      settingsKnown,
+      ended,
+      actingEnded,
+      refresh,
+      signedIn,
+      extend,
+      signOut,
+      expire,
+      forget,
+      actFor,
+      stopActing,
+      dismissActingEnded,
+    };
+  }, [me, query.error, query.isPending, entitlements, killSwitches, settings, settingsKnown, ended, actingEnded, refresh, signedIn, extend, signOut, expire, forget, actFor, stopActing, dismissActingEnded]);
 
   return (
     <SessionWatchContext.Provider value={watch}>

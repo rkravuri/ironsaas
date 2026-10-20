@@ -179,6 +179,9 @@ public sealed class TestPrincipals : IPrincipals
         IReadOnlyDictionary<Guid, PrincipalSummary> found = ids.Where(_principals.ContainsKey).Distinct().ToDictionary(id => id, id => _principals[id]);
         return Task.FromResult(found);
     }
+
+    public Task<IReadOnlyList<Guid>> HomedAtAsync(IReadOnlyCollection<Guid> unitIds, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Guid>>([.. _principals.Values.Where(p => p.HomeUnitId is { } unit && unitIds.Contains(unit)).Select(p => p.Id)]);
 }
 
 public sealed class RecordingAuditWriter : IAuditWriter

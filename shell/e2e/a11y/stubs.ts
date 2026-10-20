@@ -146,7 +146,7 @@ export async function stubConsole(target: Page): Promise<void> {
 }
 
 /** The tenant administrator's permissions, as /me lists them. */
-const administrator = [
+export const administrator = [
   "authz.assignments.manage",
   "authz.assignments.read",
   "authz.roles.manage",

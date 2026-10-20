@@ -2,6 +2,7 @@ using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Iron.Kernel.Authorization.Tests;
@@ -125,7 +126,9 @@ public class DelegationTests(AuthorizationFixture fixture)
             var created = await CreateAsync(scope, ada, grace, [Approval]);
             Assert.True(created.IsSuccess, created.IsFailure ? created.Error.Message : null);
             Assert.Equal((ada, administrator), (created.Value.Delegator.Id, created.Value.CreatedBy));
-            Assert.Contains(await scope.Get<DelegationService>().ManagedAsync(TestContext.Current.CancellationToken) ?? [], d => d.Id == created.Value.Id);
+            var managed = await scope.Get<DelegationService>().ManagedAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(managed);
+            Assert.Equal([created.Value.Id], await managed.Select(d => d.Id).ToListAsync(TestContext.Current.CancellationToken));
         }
 
         await using (var scope = fixture.Scope(stranger))

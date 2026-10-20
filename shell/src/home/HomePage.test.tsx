@@ -52,7 +52,9 @@ describe("the home page", () => {
     renderWithProviders(<HomePage />);
 
     expect(await screen.findByRole("article", { name: "Identity" })).toBeInTheDocument();
-    expect(screen.queryByRole("article", { name: "Console" })).not.toBeInTheDocument();
+    // The console's one page for everyone is Delegations (ADR-0037); its administration pages stay away.
+    const opener = screen.getByRole("article", { name: "Console" });
+    expect(within(opener).getAllByRole("link").map((link) => link.textContent)).toEqual(["Delegations"]);
     expect(screen.queryByRole("region", { name: "Quick actions" })).not.toBeInTheDocument();
     // Nothing to ask: no quick action's permission is held anywhere.
     expect(calls.some((call) => call.key.startsWith("GET /api/v1/me/access"))).toBe(false);

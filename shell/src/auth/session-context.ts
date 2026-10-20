@@ -25,6 +25,11 @@ export interface Session {
   settingsKnown: boolean;
   /** Why the last session ended, for the sentence on the login page; undefined when nothing ended it here. */
   ended: SessionEnd | undefined;
+  /**
+   * The delegator's name when the delegation this session acted with has ended and the API said so (ADR-0037); an empty
+   * string when this tab did not know the name; undefined when nothing ended.
+   */
+  actingEnded: string | undefined;
   /** Re-reads /me. */
   refresh: () => Promise<void>;
   /** After a login: re-reads /me and tells the other tabs, so one still on the login page follows. */
@@ -37,6 +42,12 @@ export interface Session {
   expire: (reason: EndReason) => void;
   /** Forgets the session here, after a 401 from any call. */
   forget: () => void;
+  /** Acts for someone whose delegation to this person is active: their rights for the delegated duties (ADR-0037). */
+  actFor: (delegatorId: string) => Promise<void>;
+  /** Acts as oneself again. */
+  stopActing: () => Promise<void>;
+  /** The person read the notice that the acting ended. */
+  dismissActingEnded: () => void;
 }
 
 export const SessionContext = createContext<Session | undefined>(undefined);

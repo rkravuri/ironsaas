@@ -75,7 +75,9 @@
       "roles": "Roles",
       "line": "The organisation's units and its roles: who may do what, and where.",
       "subscription": "Subscription",
-      "settings": "Settings"
+      "settings": "Settings",
+      "delegations": "Delegations",
+      "accessReviews": "Access reviews"
     }
   },
   "users": {
@@ -147,7 +149,8 @@
       "details": "Details",
       "access": "Access",
       "preferences": "Preferences",
-      "session": "Session"
+      "session": "Session",
+      "delegations": "Delegations"
     },
     "preferences": {
       "intro": "How the shell looks for you. Your choices are kept with your account, so they follow you to every browser you sign in on.",
@@ -174,6 +177,9 @@
       "unknown": "Not known",
       "limits": "Your organisation ends a session after {{idle}} minutes without activity, and after {{hours}} hours at most.",
       "explain": "Every request you make keeps the session alive, up to its latest end. Two minutes before it ends you are asked whether to stay signed in. Signing out here signs you out in every tab of this browser."
+    },
+    "delegations": {
+      "open": "Open Delegations"
     }
   },
   "grid": {
@@ -962,6 +968,216 @@
       "changed": "Changed from {{before}} to {{after}}",
       "reset": "Reset; it was {{before}}",
       "failed": "The history could not be loaded. Try again later."
+    }
+  },
+  "people": {
+    "withUnit": "{{name}}, {{unit}}",
+    "typeMore": "Type two letters or more of a name or login.",
+    "searching": "Looking for people",
+    "nobody": "Nobody active has a name or login like that."
+  },
+  "acting": {
+    "control": {
+      "label": "Act for someone who delegated duties to you",
+      "actingFor": "Acting for {{name}}. Choose whose rights you use",
+      "short": "Acting for {{name}}",
+      "open": "Act for",
+      "title": "Whose rights you use",
+      "myself": "Myself",
+      "current": ", chosen",
+      "for": "{{name}}",
+      "duties": "{{duties}}, until {{until}}"
+    },
+    "band": {
+      "title": "You are acting for {{name}}",
+      "rights": "You use {{name}}'s rights for {{duties}} until {{until}}. Your own rights are not in use while you do.",
+      "both": "Everything you do is recorded with both your names.",
+      "stop": "Act as myself"
+    },
+    "ended": {
+      "named": "The delegation from {{name}} has ended, so you act as yourself again.",
+      "unnamed": "The delegation you acted with has ended, so you act as yourself again.",
+      "dismiss": "Close this note"
+    }
+  },
+  "delegations": {
+    "title": "Delegations",
+    "description": "Hand your duties to someone for a while, for leave or a trip, and act for the people who handed theirs to you.",
+    "failed": "Your delegations could not be loaded. Try again in a moment.",
+    "period": "From {{from}} to {{until}}.",
+    "reason": "Reason: {{reason}}",
+    "actFor": "Act for {{name}}",
+    "status": {
+      "scheduled": "Scheduled",
+      "active": "Active",
+      "ended": "Ended early",
+      "expired": "Over"
+    },
+    "yours": {
+      "title": "Your delegations",
+      "description": "The duties you hand to others, and the duties others hand to you.",
+      "intro": "While a delegation to you is active, choose Act for to use that person's rights for those duties. Your own rights wait until you act as yourself again.",
+      "none": "No delegations yet",
+      "noneText": "When you go on leave, delegate your duties to someone, for the days you are away and with a reason.",
+      "whileActing": "You are acting for someone, so you cannot delegate now: rights you hold by delegation are not yours to hand on. Act as yourself first.",
+      "given": "You hand {{duties}} to {{name}}",
+      "received": "{{name}} hands you {{duties}}"
+    },
+    "create": {
+      "open": "Delegate your duties",
+      "title": "Delegate your duties",
+      "titleForSomeone": "Delegate someone's duties",
+      "submit": "Delegate"
+    },
+    "form": {
+      "delegator": "Whose duties",
+      "delegatorHint": "A person whose home unit you administer.",
+      "delegatorRequired": "Choose whose duties these are.",
+      "delegate": "To whom",
+      "delegateHint": "Type two letters or more of their name. They act for you only when they choose to.",
+      "delegateRequired": "Choose who takes the duties.",
+      "duties": "Duties",
+      "dutiesHint": "They get your rights for these duties only, as you hold them on each day.",
+      "dutiesRequired": "Choose at least one duty.",
+      "from": "From",
+      "fromRequired": "Choose the first day.",
+      "until": "Until",
+      "untilRequired": "Choose the last day.",
+      "untilBeforeFrom": "The last day comes on or after the first.",
+      "untilPassed": "The last day has passed. Choose today or a later day.",
+      "reason": "Reason",
+      "reasonHint": "The delegate and the auditors read it.",
+      "reasonRequired": "Say why, for example annual leave.",
+      "reasonTooLong": "Keep the reason to {{max}} characters."
+    },
+    "end": {
+      "open": "End now",
+      "title": "End this delegation",
+      "message": "{{delegate}} stops acting for {{delegator}} at once, and cannot choose to again. The delegation stays in the history.",
+      "confirm": "End now"
+    },
+    "others": {
+      "title": "Others' delegations",
+      "description": "The delegations of the people whose home unit you administer.",
+      "endSelected": "End the chosen delegation",
+      "create": "Delegate for someone"
+    },
+    "columns": {
+      "delegator": "From",
+      "delegate": "To",
+      "duties": "Duties",
+      "from": "First day",
+      "until": "Last day",
+      "status": "Status",
+      "reason": "Reason"
+    }
+  },
+  "reviews": {
+    "title": "Access reviews",
+    "description": "Check, unit by unit, that people still need the roles they hold. A reviewer decides the units where they may review.",
+    "columns": {
+      "name": "Name",
+      "due": "Due",
+      "status": "Status",
+      "progress": "Progress",
+      "started": "Started"
+    },
+    "status": {
+      "open": "Open",
+      "closed": "Closed",
+      "overdue": "Overdue"
+    },
+    "progress": {
+      "decided": "{{decided}} of {{total}} decided.",
+      "overdue_one": "{{count}} is overdue.",
+      "overdue_other": "{{count}} are overdue."
+    },
+    "start": {
+      "open": "Start a review",
+      "title": "Start an access review",
+      "name": "Name",
+      "nameHint": "Reviewers see it, for example Quarterly review, North.",
+      "nameRequired": "Name the review.",
+      "nameTooLong": "Keep the name to 200 characters.",
+      "due": "Due",
+      "dueHint": "The last day to decide. Reviewers still deciding a week after it are reported.",
+      "dueRequired": "Choose the last day to decide.",
+      "duePassed": "That day has passed. Choose today or a later day.",
+      "unit": "Unit",
+      "unitRequired": "Choose the unit to review.",
+      "includeChildren": "Include the units below it",
+      "includeChildrenHint": "The roles held at every unit below the chosen one are reviewed too.",
+      "submit": "Start the review"
+    },
+    "record": {
+      "failed": "This review could not be loaded.",
+      "due": "Due",
+      "owner": "Started by",
+      "progress": "Progress",
+      "close": "Close the review",
+      "closeTitle": "Close this review",
+      "closeMessage_one": "No more decisions can be made. {{open}} item is still open and stays open in the record.",
+      "closeMessage_other": "No more decisions can be made. {{open}} items are still open and stay open in the record.",
+      "closeConfirm": "Close the review",
+      "tabs": {
+        "items": "Items to decide",
+        "units": "Units"
+      }
+    },
+    "items": {
+      "label": "Items of this review",
+      "intro": "Each row is a role someone held when the review started. Confirm keeps it; revoke ends it at once.",
+      "which": "Which items",
+      "states": {
+        "open": "To decide",
+        "decided": "Decided",
+        "all": "All"
+      },
+      "columns": {
+        "principal": "Person",
+        "role": "Role",
+        "unit": "Unit",
+        "scope": "Where it applies",
+        "decision": "Decision",
+        "path": "Path"
+      },
+      "scopes": {
+        "tenant": "The whole tenant",
+        "unit": "This unit only",
+        "unit_with_children": "This unit and below",
+        "record": "One record"
+      },
+      "toDecide": "To decide",
+      "confirmedBy": "Confirmed by {{name}}",
+      "revokedBy": "Revoked by {{name}}",
+      "confirm": "Confirm",
+      "revoke": "Revoke",
+      "confirmPage_one": "Confirm the {{count}} item on this page",
+      "confirmPage_other": "Confirm the {{count}} items on this page",
+      "confirmPageTitle": "Confirm this page",
+      "confirmPageMessage_one": "The {{count}} item still to decide on this page keeps its access, and your decision is recorded.",
+      "confirmPageMessage_other": "The {{count}} items still to decide on this page keep their access, and your decision is recorded for each.",
+      "confirmPageConfirm_one": "Confirm {{count}} item",
+      "confirmPageConfirm_other": "Confirm {{count}} items",
+      "confirmed": "Confirmed: {{name}} keeps {{role}}.",
+      "confirmedMany_one": "Confirmed {{count}} item.",
+      "confirmedMany_other": "Confirmed {{count}} items.",
+      "confirmedManyWithDecided_one": "Confirmed {{count}} item. {{decided}} had been decided by someone else meanwhile and was left as it was.",
+      "confirmedManyWithDecided_other": "Confirmed {{count}} items. {{decided}} had been decided by someone else meanwhile and were left as they were.",
+      "revoked": "Revoked: {{name}} no longer holds {{role}}.",
+      "revokeTitle": "Revoke this role",
+      "revokeMessage": "{{name}} loses {{role}} at {{unit}} at once. Undo it by granting the role again.",
+      "revokeConfirm": "Revoke now",
+      "comment": "Comment",
+      "commentHint": "Optional. Kept with your decision.",
+      "commentTooLong": "Keep the comment to 500 characters.",
+      "closed": "This review is closed. Its decisions stay as they are, and no more can be made."
+    },
+    "units": {
+      "label": "Units of this review",
+      "none": "No items for you here",
+      "noneText": "None of the units of this review is one where you review.",
+      "escalated": "Overdue reviewers were reported on {{date}} to {{targets}}."
     }
   }
 }

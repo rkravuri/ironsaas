@@ -56,7 +56,8 @@ export const theme = createTheme({
 
 /**
  * The tokens as CSS variables, next to Mantine's own: `--iron-*` for what pages, drawings and the grid read, and the
- * few Mantine variables whose defaults name a hue (error, success) or fall short of AA (placeholder).
+ * few Mantine variables whose defaults name a hue (error, success) or fall short of AA (placeholder, and the dark
+ * scheme's menu item under the pointer or the focus).
  */
 export const cssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
@@ -76,6 +77,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--mantine-color-error": "var(--mantine-color-danger-6)",
     "--mantine-color-success": "var(--mantine-color-success-6)",
     "--mantine-color-placeholder": "var(--mantine-color-dimmed)",
+    "--menu-item-hover": "var(--mantine-color-gray-1)",
   },
   dark: {
     "--iron-ink": tokens.ink.dark,
@@ -83,6 +85,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--mantine-color-error": "var(--mantine-color-danger-4)",
     "--mantine-color-success": "var(--mantine-color-success-4)",
     "--mantine-color-placeholder": "var(--mantine-color-dimmed)",
+    "--menu-item-hover": "var(--mantine-color-dark-5)",
   },
 });
 
