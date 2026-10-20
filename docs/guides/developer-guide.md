@@ -318,14 +318,14 @@ public interface IMyGate
 }
 ```
 
-Then add its check to `AccessExplainer` in its place in the order. A check a handler makes on its own is not explained, so a handler that refuses for its own reason says why in the error's words.
+Then add its check to `AccessExplainer` in its place in the order. A check a handler makes on its own is not explained (an allowance says the action may still refuse for its own reasons), so a handler that refuses for its own reason says why in the error's words.
 
 **Conflict rules** need no code in a module: a rule's sides are its permissions and roles, which the tenant's administrators choose in the console's **Conflict rules**. What a module should know:
 
 - A grant that would complete a blocking rule is refused with `authz.sod.conflict` (409), through the API and through `IRoleAssignments.AssignAsync`, the trusted path a seed or another module uses. A module that grants roles itself handles that error.
-- A rule's role side counts only when the grant gives every permission of the role. Adding a permission to a role can complete a pair for its holders; the daily report finds it, the grant is not refused.
+- A rule's role side counts only when the grant gives every permission of the role. A change of a role's permissions is checked for everyone who holds it: a blocking rule refuses it with the rule named and the number of people affected. System roles follow the catalogue when the seed runs, unchecked: a new module's permissions in a system role show in the next report.
 - Conflicts are by overlapping scope: a tenant grant meets every unit, a unit grant with its children meets its subtree, two unrelated units never meet.
-- The report runs in the worker host (`AddConflictReport()`, daily and two minutes after start); a grant, a removal and a delegation refresh that person's rows at once.
+- The report runs in the worker host (`AddConflictReport()`, daily and two minutes after start); a grant, a removal and a delegation refresh that person's rows at once, and a role's change its holders' rows.
 
 Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/ExplainAccessTests.cs` holds the matrix that compares each explanation with the real call (licensed module, feature, kill switch, scope, acting, record policy), and the audit; `ConflictDetectorTests.cs` covers the overlap rule alone; `ConflictTests.cs` covers each mode on assignments and delegations, unrelated units, the report on a fake clock after a rule's change, and the review marker; `tests/Kernel/Iron.Kernel.Identity.Tests/ScopedUsersTests.cs` shows that a person of another tenant cannot be explained.
 

@@ -183,6 +183,65 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ARoleChangeThatWouldCreateAConflictUnderABlockRuleIsRefusedWithTheRuleAndTheNumberOfPeople()
+    {
+        var counter = await RoleAsync("Stock counter", [AuthorizationPermissions.UnitsRead.Name]);
+        await RuleAsync("Count stock and read roles", Role(counter), Permission(AuthorizationPermissions.RolesRead.Name), ConflictModes.Block, "Counters do not read the role book.");
+        var emmy = fixture.Principals.Add(homeUnit: _tree.North.Id, name: "Emmy Noether");
+        var lise = fixture.Principals.Add(homeUnit: _tree.Finance.Id, name: "Lise Meitner");
+        Assert.Equal(HttpStatusCode.Created, (await GrantAsync(emmy, counter, "unit", _tree.North.Id)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await GrantAsync(lise, counter, "unit", _tree.Finance.Id)).StatusCode);
+
+        // Each holder's one grant would hold both sides once the role reads roles.
+        using var refused = await ChangeRoleAsync(counter, "Stock counter", [AuthorizationPermissions.UnitsRead.Name, AuthorizationPermissions.RolesRead.Name]);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        using (var problem = await JsonAsync(refused))
+        {
+            Assert.Equal(AuthorizationErrors.SodConflict, problem.RootElement.GetProperty("error_code").GetString());
+            Assert.Equal(
+                "The conflict rule 'Count stock and read roles' blocks this change to 'Stock counter': 2 people would hold both sides of it. Counters do not read the role book.",
+                problem.RootElement.GetProperty("detail").GetString());
+        }
+
+        using (var role = await JsonAsync(await SendAsync(HttpMethod.Get, $"/api/v1/roles/{counter}", null)))
+        {
+            Assert.Equal(new[] { AuthorizationPermissions.UnitsRead.Name }, role.RootElement.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()));
+        }
+
+        // A change the rule does not concern is saved.
+        using var saved = await ChangeRoleAsync(counter, "Stock counter", [AuthorizationPermissions.UnitsRead.Name, AuthorizationPermissions.AssignmentsRead.Name]);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+    }
+
+    [Fact]
+    public async Task ARoleChangeUnderAWarnRuleIsSavedAndTheReportListsItsNewConflictsAtOnce()
+    {
+        var keeper = await RoleAsync("Shelf keeper", [AuthorizationPermissions.UnitsRead.Name]);
+        await RuleAsync("Keep shelves and read roles", Role(keeper), Permission(AuthorizationPermissions.RolesRead.Name), ConflictModes.Warn, "Watched by internal audit.");
+        var rosalind = fixture.Principals.Add(homeUnit: _tree.Sales.Id, name: "Rosalind Franklin");
+        var barbara = fixture.Principals.Add(homeUnit: _tree.North.Id, name: "Barbara McClintock");
+        Assert.Equal(HttpStatusCode.Created, (await GrantAsync(rosalind, keeper, "unit_with_children", _tree.Sales.Id)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await GrantAsync(barbara, keeper, "unit", _tree.North.Id)).StatusCode);
+
+        using var saved = await ChangeRoleAsync(keeper, "Shelf keeper", [AuthorizationPermissions.UnitsRead.Name, AuthorizationPermissions.RolesRead.Name]);
+
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        foreach (var (person, unit) in new[] { (rosalind, "Sales"), (barbara, "North") })
+        {
+            using var report = await JsonAsync(await SendAsync(HttpMethod.Get, $"/api/v1/conflict-report?filter=principal_id:eq:{person}", null));
+            var entry = Assert.Single(report.RootElement.GetProperty("data").EnumerateArray());
+            Assert.Equal(("Keep shelves and read roles", "warn", unit), (entry.GetProperty("rule_name").GetString(), entry.GetProperty("mode").GetString(), entry.GetProperty("unit_name").GetString()));
+        }
+
+        // Taking the permission away again ends both conflicts, and the report says so at once.
+        using var back = await ChangeRoleAsync(keeper, "Shelf keeper", [AuthorizationPermissions.UnitsRead.Name]);
+        Assert.Equal(HttpStatusCode.OK, back.StatusCode);
+        Assert.Empty(await EntriesAsync(_app!.Services, rosalind));
+        Assert.Empty(await EntriesAsync(_app!.Services, barbara));
+    }
+
+    [Fact]
     public async Task TheReportShowsTheConflictsOfARuleWithinADayOfItsChangeOnAFakeClock()
     {
         var creator = await RoleAsync("Invoice creator", [AuthorizationPermissions.UnitsRead.Name]);
@@ -300,6 +359,9 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
 
     private Task<HttpResponseMessage> GrantAsync(Guid principal, Guid role, string scopeKind, Guid unit) =>
         SendAsync(HttpMethod.Post, "/api/v1/role-assignments", Grant(principal, role, scopeKind, unit));
+
+    private Task<HttpResponseMessage> ChangeRoleAsync(Guid role, string name, IReadOnlyList<string> permissions) =>
+        SendAsync(HttpMethod.Put, $"/api/v1/roles/{role}", new { name, description = string.Empty, principal_type = "user", permissions });
 
     private Task<HttpResponseMessage> DelegateAsync(Guid delegateTo, string duty) =>
         SendAsync(HttpMethod.Post, "/api/v1/delegations", new { delegate_id = delegateTo, duties = new[] { duty }, starts_at = DateTimeOffset.UtcNow.AddMinutes(-1), ends_at = DateTimeOffset.UtcNow.AddHours(2), reason = "Covering for a week." });

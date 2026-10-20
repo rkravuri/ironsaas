@@ -162,6 +162,8 @@ export function Explanation({ explanation }: { explanation: AccessExplanation })
             : t("explain.outcome.denied", { name, action: explanation.action.summary, status: explanation.status })}
         </Title>
         {failed && <Text size="sm">{t("explain.outcome.firstFailed", { check: t(`explain.checks.${failed.check}`) })}</Text>}
+        {/* The checks are the endpoint's; a handler may still refuse for its own reasons (ADR-0039), so an allowance says so. */}
+        {explanation.allowed && <Text size="sm">{t("explain.outcome.covers")}</Text>}
         {explanation.acting_for && <Text size="sm">{t("explain.outcome.acting", { name, delegator: explanation.acting_for.name })}</Text>}
       </Stack>
       <Box component="ol" m={0} p={0} style={{ listStyle: "none" }} aria-label={t("explain.checksLabel")}>

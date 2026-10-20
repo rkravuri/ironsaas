@@ -12,6 +12,9 @@ namespace Iron.Kernel.Authorization.Services;
 /// <summary>A rule as an administrator writes it.</summary>
 public sealed record ConflictRuleInput(string Name, ConflictSide First, ConflictSide Second, string Mode, string? Reason, Guid? OwnerId);
 
+/// <summary>A conflict a role's change would create for one person who holds the role, by an assignment or a delegation.</summary>
+public sealed record RoleChangeConflict(Guid PrincipalId, Conflict Conflict);
+
 /// <summary>
 /// Segregation of duties (TF-036, ADR-0039): the tenant's conflict rules, the conflicts a grant or a delegation would
 /// create, and the report of those that exist. A person holds both sides of a rule when some unit lies within the scope
@@ -106,7 +109,7 @@ public sealed class ConflictService(
             return [];
         }
 
-        var held = (await HeldAsync([principalId], cancellationToken).ConfigureAwait(false)).GetValueOrDefault(principalId) ?? [];
+        var held = (await HeldAsync([principalId], null, cancellationToken).ConfigureAwait(false)).GetValueOrDefault(principalId) ?? [];
         var paths = await PathsAsync(scope.UnitId is { } unit ? [unit] : [], cancellationToken).ConfigureAwait(false);
         var candidate = new HeldGrant(null, null, role.Id, role.Name, role.Permissions, role.Permissions, scope.Kind, scope.UnitId ?? scope.RecordId, scope.RecordType, scope.UnitId is { } id ? paths.GetValueOrDefault(id, []) : [], IsNew: true);
         return ConflictDetector.Find(rules, [.. held, candidate], onlyNew: true);
@@ -125,11 +128,69 @@ public sealed class ConflictService(
             return [];
         }
 
-        var held = (await HeldAsync([delegateId], cancellationToken).ConfigureAwait(false)).GetValueOrDefault(delegateId) ?? [];
-        var delegators = await OwnAsync([delegatorId], cancellationToken).ConfigureAwait(false);
+        var held = (await HeldAsync([delegateId], null, cancellationToken).ConfigureAwait(false)).GetValueOrDefault(delegateId) ?? [];
+        var delegators = await OwnAsync([delegatorId], null, cancellationToken).ConfigureAwait(false);
         var handed = Delegated(delegators.GetValueOrDefault(delegatorId) ?? [], duties.PermissionsOf(dutyCodes), Guid.Empty, isNew: true);
         return ConflictDetector.Find(rules, [.. held, .. handed], onlyNew: true);
     }
+
+    /// <summary>
+    /// The conflicts changing roles' permissions would create (TF-036, ADR-0039): for everyone who holds one of the roles,
+    /// by an assignment or through a delegation from someone who does, the conflicts found with the new permissions and
+    /// not with the present ones. The changes are taken together, as an import applies them, so a pair that only two
+    /// changes complete is found too.
+    /// </summary>
+    public async Task<IReadOnlyList<RoleChangeConflict>> ForRoleChangesAsync(IReadOnlyDictionary<Guid, IReadOnlyCollection<string>> changes, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        var rules = await RulesAsync(cancellationToken).ConfigureAwait(false);
+        if (rules.Count == 0 || changes.Count == 0)
+        {
+            return [];
+        }
+
+        var people = await HoldersAsync([.. changes.Keys], cancellationToken).ConfigureAwait(false);
+        var before = await HeldAsync(people, null, cancellationToken).ConfigureAwait(false);
+        var after = await HeldAsync(people, changes, cancellationToken).ConfigureAwait(false);
+        var found = new List<RoleChangeConflict>();
+        foreach (var person in people)
+        {
+            var existing = ConflictDetector.Find(rules, before.GetValueOrDefault(person) ?? [], onlyNew: false).Select(KeyOf).ToHashSet(StringComparer.Ordinal);
+            found.AddRange(ConflictDetector.Find(rules, after.GetValueOrDefault(person) ?? [], onlyNew: false).Where(c => !existing.Contains(KeyOf(c))).Select(c => new RoleChangeConflict(person, c)));
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// The words of a refusal of a role's change by block rules: each rule by name, the changed roles it concerns, how
+    /// many people would hold both of its sides, and its reason.
+    /// </summary>
+    public static string RoleChangeRefusal(IReadOnlyCollection<RoleChangeConflict> blocking, IReadOnlyCollection<Guid> changedRoles)
+    {
+        ArgumentNullException.ThrowIfNull(blocking);
+        ArgumentNullException.ThrowIfNull(changedRoles);
+        return string.Join(' ', blocking.GroupBy(c => c.Conflict.Rule.Id).Select(group =>
+        {
+            var rule = group.First().Conflict.Rule;
+            var roles = group.SelectMany(c => new[] { c.Conflict.First, c.Conflict.Second })
+                .Where(grant => changedRoles.Contains(grant.RoleId))
+                .Select(grant => $"'{grant.RoleName}'")
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal);
+            var count = group.Select(c => c.PrincipalId).Distinct().Count();
+            var people = count == 1 ? "1 person" : $"{count.ToString(CultureInfo.InvariantCulture)} people";
+            var reason = string.IsNullOrWhiteSpace(rule.Reason) ? string.Empty : $" {rule.Reason}";
+            return $"The conflict rule '{rule.Name}' blocks this change to {string.Join(" and ", roles)}: {people} would hold both sides of it.{reason}";
+        }));
+    }
+
+    /// <summary>
+    /// The entries of everyone holding these roles, computed again in the caller's transaction after a change the rules
+    /// allowed: the conflicts a warn rule lets through are listed at once, and those the change ended no longer are.
+    /// </summary>
+    public async Task RefreshHoldersAsync(IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken) =>
+        await RefreshAsync(await HoldersAsync(roleIds, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// The report, computed now for everyone (TF-036 AC3): every entry replaced, the run written and audited, in one
@@ -170,18 +231,7 @@ public sealed class ConflictService(
     /// One person's entries, computed again after their rights changed, in the caller's transaction: a grant or a
     /// delegation a warn rule allowed is listed at once (TF-036 AC2), and a removed one no longer is.
     /// </summary>
-    public async Task RefreshPrincipalAsync(Guid principalId, CancellationToken cancellationToken)
-    {
-        var rules = await RulesAsync(cancellationToken).ConfigureAwait(false);
-        await context.ConflictReportEntries.Where(e => e.PrincipalId == principalId).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-        if (rules.Count == 0)
-        {
-            return;
-        }
-
-        context.ConflictReportEntries.AddRange(await EntriesAsync(rules, [principalId], time.GetUtcNow(), cancellationToken).ConfigureAwait(false));
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
+    public Task RefreshPrincipalAsync(Guid principalId, CancellationToken cancellationToken) => RefreshAsync([principalId], cancellationToken);
 
     /// <summary>The words of a refusal by a block rule: the person, the rule by name, where, and the rule's reason (TF-036 AC1).</summary>
     public async Task<string> RefusalAsync(Conflict conflict, Guid principalId, CancellationToken cancellationToken)
@@ -195,9 +245,47 @@ public sealed class ConflictService(
         return $"The conflict rule '{conflict.Rule.Name}' blocks this: {principalName ?? "this person"} would hold both sides of it {where}.{reason}";
     }
 
+    /// <summary>These people's entries, replaced by what the rules find now, in the caller's transaction.</summary>
+    private async Task RefreshAsync(IReadOnlyCollection<Guid> people, CancellationToken cancellationToken)
+    {
+        if (people.Count == 0)
+        {
+            return;
+        }
+
+        var rules = await RulesAsync(cancellationToken).ConfigureAwait(false);
+        var ids = people.ToArray();
+        await context.ConflictReportEntries.Where(e => ids.Contains(e.PrincipalId)).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        if (rules.Count == 0)
+        {
+            return;
+        }
+
+        context.ConflictReportEntries.AddRange(await EntriesAsync(rules, people, time.GetUtcNow(), cancellationToken).ConfigureAwait(false));
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Everyone holding one of these roles: by an assignment, or through a delegation, active or to come, from someone who does.</summary>
+    private async Task<List<Guid>> HoldersAsync(IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
+    {
+        var roles = roleIds.ToArray();
+        var now = time.GetUtcNow();
+        var holders = await context.RoleAssignments.AsNoTracking().Where(a => roles.Contains(a.RoleId)).Select(a => a.PrincipalId).Distinct().ToArrayAsync(cancellationToken).ConfigureAwait(false);
+        var delegates = await context.Delegations.AsNoTracking()
+            .Where(d => holders.Contains(d.DelegatorId) && d.EndsAt > now && (d.EndedAt == null || d.EndedAt > now))
+            .Select(d => d.DelegateId)
+            .Distinct()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return [.. holders.Union(delegates)];
+    }
+
+    /// <summary>One key per conflict, the same before and after a change: the rule and the two grants.</summary>
+    private static string KeyOf(Conflict conflict) => $"{conflict.Rule.Id:N}|{conflict.First.Key}|{conflict.Second.Key}";
+
     private async Task<List<ConflictReportEntry>> EntriesAsync(IReadOnlyList<ConflictRuleView> rules, IReadOnlyCollection<Guid> people, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var held = await HeldAsync(people, cancellationToken).ConfigureAwait(false);
+        var held = await HeldAsync(people, null, cancellationToken).ConfigureAwait(false);
         var found = held.SelectMany(p => ConflictDetector.Find(rules, p.Value, onlyNew: false).Select(c => (Principal: p.Key, Conflict: c))).ToList();
         if (found.Count == 0)
         {
@@ -229,17 +317,20 @@ public sealed class ConflictService(
             now))];
     }
 
-    /// <summary>Each person's own grants and the delegated grants of the delegations to them that are active or still to come.</summary>
-    private async Task<Dictionary<Guid, List<HeldGrant>>> HeldAsync(IReadOnlyCollection<Guid> people, CancellationToken cancellationToken)
+    /// <summary>
+    /// Each person's own grants and the delegated grants of the delegations to them that are active or still to come;
+    /// with <paramref name="changes"/>, as they would be with those roles' permissions replaced.
+    /// </summary>
+    private async Task<Dictionary<Guid, List<HeldGrant>>> HeldAsync(IReadOnlyCollection<Guid> people, IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? changes, CancellationToken cancellationToken)
     {
-        var own = await OwnAsync(people, cancellationToken).ConfigureAwait(false);
+        var own = await OwnAsync(people, changes, cancellationToken).ConfigureAwait(false);
         var now = time.GetUtcNow();
         var ids = people.ToArray();
         var delegations = await context.Delegations.AsNoTracking()
             .Where(d => ids.Contains(d.DelegateId) && d.EndsAt > now && (d.EndedAt == null || d.EndedAt > now))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var delegators = await OwnAsync([.. delegations.Select(d => d.DelegatorId).Distinct()], cancellationToken).ConfigureAwait(false);
+        var delegators = await OwnAsync([.. delegations.Select(d => d.DelegatorId).Distinct()], changes, cancellationToken).ConfigureAwait(false);
         var result = people.Distinct().ToDictionary(p => p, p => own.GetValueOrDefault(p) ?? []);
         foreach (var delegation in delegations)
         {
@@ -249,8 +340,8 @@ public sealed class ConflictService(
         return result;
     }
 
-    /// <summary>The assignments of these people with their roles and their units' paths, in two queries.</summary>
-    private async Task<Dictionary<Guid, List<HeldGrant>>> OwnAsync(IReadOnlyCollection<Guid> people, CancellationToken cancellationToken)
+    /// <summary>The assignments of these people with their roles (or the roles' changed permissions) and their units' paths, in two queries.</summary>
+    private async Task<Dictionary<Guid, List<HeldGrant>>> OwnAsync(IReadOnlyCollection<Guid> people, IReadOnlyDictionary<Guid, IReadOnlyCollection<string>>? changes, CancellationToken cancellationToken)
     {
         var ids = people.ToArray();
         var rows = await context.RoleAssignments.AsNoTracking()
@@ -266,7 +357,8 @@ public sealed class ConflictService(
             {
                 var kind = Scopes.KindOf(r.ScopeKind);
                 var path = kind is RoleScopeKind.Unit or RoleScopeKind.UnitWithChildren ? paths.GetValueOrDefault(r.ScopeId!.Value, []) : [];
-                return new HeldGrant(r.Id, null, r.RoleId, r.Name, r.Permissions, r.Permissions, kind, r.ScopeId, r.ScopeRecordType, path, IsNew: false);
+                IReadOnlyCollection<string> permissions = changes is not null && changes.TryGetValue(r.RoleId, out var changed) ? changed : r.Permissions;
+                return new HeldGrant(r.Id, null, r.RoleId, r.Name, permissions, permissions, kind, r.ScopeId, r.ScopeRecordType, path, IsNew: false);
             }).ToList());
     }
 

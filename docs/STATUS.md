@@ -81,8 +81,8 @@ None.
 - Chromium reads a visually hidden word with a space before it ("North , chosen"), as it does for "Myself , chosen" since A7, because a visually hidden element is positioned absolutely; a screen reader reads it the same. The browser specs match either spacing.
 - The sharing control lists the units as checkboxes in lists nested as the tree is, not on Mantine's Tree, whose check takes the units below with it: a share lists each unit on its own.
 - Settings follow the unit a person works for when they are resolved for the signed-in person; a page that resolves for someone else uses that person's home unit (ADR-0038).
-- The explanation covers the checks an endpoint declares; checks a handler makes on its own (a move's new parent, a merge's target, the no-escalation rule of a grant) are not explained, so an allowance means the request reaches the handler (ADR-0039).
-- A role's change is not checked against the conflict rules when it is made: a role that gains a permission can complete a pair for its holders, and the next daily run (or one on demand) lists it (ADR-0039).
+- The explanation covers the checks an endpoint declares; checks a handler makes on its own (a move's new parent, a merge's target, the no-escalation rule of a grant) are not explained, and an allowance says in words that the action may still refuse for its own reasons (ADR-0039).
+- System roles follow the permission catalogue when the seed runs, unchecked by the conflict rules: a new module's permissions in a system role show in the next report run, not as a refusal. A tenant role's change is checked at once for everyone holding it (ADR-0039).
 - A rule's change appears in the conflicts report at the next run, within a day, or at once with Run the report now; the report is not computed again for one rule on its own.
 - A record-scoped grant meets only a tenant grant or a grant on the same record in the conflict rules, not a grant at the record's owning unit (ADR-0039).
 - The grant dialog's conflict preview is not shown when the preview call fails; the grant is still checked by the API, which refuses a blocked one with the rule named.

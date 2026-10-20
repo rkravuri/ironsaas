@@ -1128,6 +1128,7 @@
     },
     "outcome": {
       "allowed": "{{name}} can: {{action}}",
+      "covers": "The checks of this action pass. The action itself may still refuse a request for its own reasons, such as a unit you may not manage.",
       "denied": "{{name}} cannot: {{action}} The system answers {{status}}.",
       "firstFailed": "The first check that refuses it: {{check}}.",
       "acting": "As if {{name}} acted for {{delegator}}."

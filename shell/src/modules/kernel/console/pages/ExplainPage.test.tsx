@@ -93,6 +93,7 @@ describe("explaining access (TF-039, ADR-0039)", () => {
     ]);
     expect(checks[1]).toHaveTextContent("The feature authorization.role_transfer is not part of the subscription.");
     expect(checks[3]).toHaveTextContent("Not checked: an earlier check refuses the request.");
+    expect(screen.queryByText(/^The checks of this action pass\./)).not.toBeInTheDocument();
     expect(calls.some((call) => call.key === "GET /api/v1/access/explain?principal=p1&action=ImportRoles")).toBe(true);
   });
 
@@ -114,6 +115,7 @@ describe("explaining access (TF-039, ADR-0039)", () => {
     fireEvent.click(explain);
 
     expect(await screen.findByRole("heading", { name: "Grace Hopper can: Rename a unit." })).toBeInTheDocument();
+    expect(screen.getByText("The checks of this action pass. The action itself may still refuse a request for its own reasons, such as a unit you may not manage.")).toBeInTheDocument();
     expect(screen.getByText('Grace Hopper holds the permission "Create, rename and move units" at North.')).toBeInTheDocument();
     expect(within(screen.getByRole("list", { name: "Granted by" })).getByRole("listitem")).toHaveTextContent("Units manager, at Sales and the units below it");
   });
