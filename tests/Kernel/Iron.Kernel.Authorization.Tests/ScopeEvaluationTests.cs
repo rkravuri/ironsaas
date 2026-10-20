@@ -17,6 +17,7 @@ public class ScopeEvaluationTests(AuthorizationFixture fixture)
     private static readonly Permission ReadUnits = AuthorizationPermissions.UnitsRead;
 
     [Fact]
+    [Proves("TF-033 AC1", "ADR-0030")]
     public async Task ARoleScopedToAUnitResolvesForThatUnitsRecordsAndNotForOthers()
     {
         await using var provider = Services();
@@ -33,6 +34,7 @@ public class ScopeEvaluationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-033 AC3")]
     public async Task ARoleWithChildrenResolvesForTheSubtree()
     {
         await using var provider = Services();
@@ -48,6 +50,7 @@ public class ScopeEvaluationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-034 AC1", "ADR-0030")]
     public async Task AnAssignmentFollowsItsUnitWhenTheUnitMoves()
     {
         await using var provider = Services();
@@ -66,6 +69,7 @@ public class ScopeEvaluationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task ARecordScopedRoleResolvesForThatRecordOnly()
     {
         await using var provider = Services();
@@ -81,6 +85,7 @@ public class ScopeEvaluationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-033 AC4")]
     public async Task AnAssignmentToAUnitThatDoesNotExistOrIsInactiveIsRefused()
     {
         await using var provider = Services();
@@ -98,6 +103,7 @@ public class ScopeEvaluationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AScopedCheckOverAListIsOneQueryWhateverTheNumberOfRows()
     {
         await using var provider = Services();
@@ -121,6 +127,7 @@ public class ScopeEvaluationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-033 AC2", "ADR-0030")]
     public async Task ATenantWideGrantReachesEverythingWithoutAQuery()
     {
         await using var provider = Services();

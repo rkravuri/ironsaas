@@ -68,6 +68,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-011 AC1", "TF-021 AC1", "TF-029 AC3", "ADR-0014", "ADR-0033")]
     public async Task TheFullSessionLifeOverHttp()
     {
         var loginId = $"http-{Ids.New():N}@acme.test";
@@ -128,6 +129,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0014")]
     public async Task WithoutACookieProtectedEndpointsAnswerNotAuthenticated()
     {
         using var me = await Get("/api/v1/me", cookie: null);
@@ -137,6 +139,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-018 AC1", "ADR-0014")]
     public async Task AnInvitationIsAcceptedOverHttpAndTheAccountCanLogIn()
     {
         string token;

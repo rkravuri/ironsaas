@@ -70,6 +70,7 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
     }
 
     [Fact]
+    [Proves("ADR-0012", "ADR-0031")]
     public async Task NobodySignedInGets401AndSomebodyWithoutTheReadPermissionGets403()
     {
         using var anonymous = await SendAsync(HttpMethod.Get, "/api/v1/role-assignments", null);
@@ -80,6 +81,7 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
     }
 
     [Fact]
+    [Untraced("Granting, listing by principal or unit and removing an assignment over HTTP is TF-033's requirement text; no criterion or ADR rule states it.")]
     public async Task TheAdministratorGrantsAtAUnitWithChildrenListsTheGrantForThePrincipalAndRemovesIt()
     {
         var root = await RootIdAsync();
@@ -115,6 +117,7 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
     }
 
     [Fact]
+    [Proves("ADR-0031", "ADR-0033")]
     public async Task EveryoneReadsTheirOwnAssignmentsAndNobodyElses()
     {
         var root = await RootIdAsync();
@@ -148,6 +151,7 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public async Task AUnitScopeWithoutAUnitAnswers400WithTheField()
     {
         using var response = await SendAsync(HttpMethod.Post, "/api/v1/role-assignments", _administrator, $$"""{"principal_id":"{{fixture.Principals.Add()}}","role_id":"{{await RoleIdAsync(SystemRoles.ReadOnly)}}","scope_kind":"unit"}""");
@@ -156,6 +160,7 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AGranterWithoutTheRolesPermissionsAnswers403AndTheLastAdministratorAnswers409()
     {
         var root = await RootIdAsync();

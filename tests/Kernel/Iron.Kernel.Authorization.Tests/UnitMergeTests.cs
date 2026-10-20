@@ -16,6 +16,7 @@ namespace Iron.Kernel.Authorization.Tests;
 public class UnitMergeTests(AuthorizationFixture fixture)
 {
     [Fact]
+    [Proves("TF-223 AC1", "ADR-0038")]
     public async Task ThePreviewListsWhatWouldMoveByModuleAndTheMergeMovesItAllInOneAuditedTransaction()
     {
         await using var admin = fixture.Scope(SystemPrincipal.SystemId);
@@ -75,6 +76,7 @@ public class UnitMergeTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task TheRootAUnitBelowItselfAndAnInactiveUnitAreRefusedAndNothingMoves()
     {
         await using var admin = fixture.Scope(SystemPrincipal.SystemId);
@@ -102,6 +104,7 @@ public class UnitMergeTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task ADeactivatedUnitIsReactivatedUnderAnActiveParentAndAudited()
     {
         await using var admin = fixture.Scope(SystemPrincipal.SystemId);

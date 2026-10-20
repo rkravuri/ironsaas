@@ -3,6 +3,7 @@ namespace Iron.Kernel.Tests;
 public class MoneyTests
 {
     [Fact]
+    [Proves("ADR-0007")]
     public void AddsAndSubtractsInTheSameCurrency()
     {
         var a = new Money(100.50m, Currency.Inr);
@@ -16,6 +17,7 @@ public class MoneyTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void RefusesToMixCurrencies()
     {
         var rupees = new Money(10m, Currency.Inr);
@@ -26,6 +28,7 @@ public class MoneyTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void RoundsHalfAwayFromZero()
     {
         Assert.Equal(new Money(2.35m, Currency.Eur), new Money(2.345m, Currency.Eur).Round(2));
@@ -34,6 +37,7 @@ public class MoneyTests
     }
 
     [Fact]
+    [Untraced("The text form of Money and its zero and negative checks are stated in no criterion or ADR.")]
     public void PrintsWithTwoDecimalsAndTheCode()
     {
         Assert.Equal("1234.50 INR", new Money(1234.5m, Currency.Inr).ToString());
@@ -42,6 +46,7 @@ public class MoneyTests
     }
 
     [Theory]
+    [Untraced("ADR-0007 decides Currency as a value type but states no code format, and no criterion states one.")]
     [InlineData("INR", "INR")]
     [InlineData("usd", "USD")]
     [InlineData("Eur", "EUR")]
@@ -52,6 +57,7 @@ public class MoneyTests
     }
 
     [Theory]
+    [Untraced("ADR-0007 decides Currency as a value type but states no code format, and no criterion states one.")]
     [InlineData("")]
     [InlineData("IN")]
     [InlineData("INRR")]

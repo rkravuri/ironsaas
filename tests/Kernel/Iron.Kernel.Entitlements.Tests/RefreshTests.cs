@@ -21,6 +21,7 @@ public class RefreshTests(EntitlementsFixture fixture)
     private static readonly string RoleTransfer = AuthorizationFeatures.RoleTransfer.Code;
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task TheUnitReadsTheStoreEveryThirtySecondsAndLearnsAChangeWithoutARestart()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
@@ -52,6 +53,7 @@ public class RefreshTests(EntitlementsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-043 AC3", "ADR-0034")]
     public async Task TheLastKnownAnswerStandsFor24HoursThenEverythingLicensedIsDisabledAndTheAlertIsRaised()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
@@ -93,6 +95,7 @@ public class RefreshTests(EntitlementsFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task ARestartWhileTheStoreIsDownKnowsTheLastAnswerUntilItIs24HoursOld()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
@@ -119,6 +122,7 @@ public class RefreshTests(EntitlementsFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task NothingPublishedMeansNothingLicensedAndRaisesNoAlert()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
@@ -193,6 +197,7 @@ public class RefreshTests(EntitlementsFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task TwoWritersAtOnceKeepOneLastKnownRowAndNeitherFails()
     {
         var ct = TestContext.Current.CancellationToken;

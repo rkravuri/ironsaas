@@ -19,6 +19,7 @@ namespace Iron.Kernel.Settings.Tests;
 public class UnitChangeTests(SettingsFixture fixture)
 {
     [Fact]
+    [Proves("TF-223 AC3", "ADR-0038")]
     public async Task AUnitKeepsItsOwnSettingsWhenItMovesAndTakesTheRestFromItsNewParent()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -45,6 +46,7 @@ public class UnitChangeTests(SettingsFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AMergeMovesTheUnitsValuesAndDropsThoseTheSurvivingUnitHasItsOwnOf()
     {
         var ct = TestContext.Current.CancellationToken;

@@ -59,9 +59,14 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <!-- xUnit.net v3 (Apache-2.0). Runs on Microsoft Testing Platform v2; the runner is selected in global.json. -->
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <!-- xUnit's extension points for a library (Apache-2.0), the version xunit.v3 brings: Iron.Testing's attributes
+         that say what a test proves are traits (ADR-0044). -->
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2" />
     <!-- The C# compiler as a library (MIT), so a test proves that paging a raw business record query does not compile
          (ADR-0032). The version Entity Framework's design package already brings, so the graph keeps one Roslyn. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <!-- Iron.Testing.Analyzers is built against the same Roslyn: the analyzer that refuses a test without what it proves
+         (ADR-0044) loads into the SDK's compiler, which must be as new as the version it was built against. -->
     <!-- Throw-away PostgreSQL containers for integration tests (MIT). -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
     <PackageVersion Include="Testcontainers" Version="4.15.0" />

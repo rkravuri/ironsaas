@@ -67,6 +67,7 @@ public class FilesEndpointTests(FilesFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-160 AC1", "ADR-0016")]
     public async Task TheAdministratorUploadsReadsDownloadsAndDeletesAFile()
     {
         var alice = Ids.New();
@@ -105,6 +106,7 @@ public class FilesEndpointTests(FilesFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task AReaderCannotUploadAndNobodyGetsNothing()
     {
         var reader = Ids.New();

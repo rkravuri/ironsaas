@@ -8,6 +8,7 @@ namespace Iron.Kernel.Api.Tests;
 public class ListQueryParserTests
 {
     [Fact]
+    [Proves("ADR-0009")]
     public void ParsesEveryPartOfTheGrammar()
     {
         var query = Query(("page_number", "2"), ("page_size", "25"), ("sort", "-weight,name"), ("filter", "status:eq:active"), ("filter", "weight:in:10,20"), ("fields", "id,name"));
@@ -27,6 +28,7 @@ public class ListQueryParserTests
     }
 
     [Fact]
+    [Untraced("The parser's answer to an empty query string, the default page and no terms, is stated in no criterion or ADR.")]
     public void AnEmptyQueryIsTheDefaultListQuery()
     {
         var result = ListQueryParser.Parse(Query(), Things.Fields);
@@ -39,6 +41,7 @@ public class ListQueryParserTests
     }
 
     [Theory]
+    [Proves("ADR-0009")]
     [InlineData("page_number", "0", "invalid_number")]
     [InlineData("page_size", "many", "invalid_number")]
     [InlineData("sort", "colour", "unknown_field")]
@@ -63,6 +66,7 @@ public class ListQueryParserTests
     }
 
     [Fact]
+    [Untraced("Reporting every list query problem in one answer is stated in no criterion or ADR.")]
     public void CollectsEveryProblemAtOnce()
     {
         var result = ListQueryParser.Parse(Query(("sort", "colour"), ("filter", "colour:eq:red"), ("fields", "colour")), Things.Fields);

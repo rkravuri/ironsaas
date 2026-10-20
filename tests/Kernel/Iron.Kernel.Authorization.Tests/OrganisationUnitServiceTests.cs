@@ -14,6 +14,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     private readonly RecordingAuditWriter _audit = new();
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AUnitIsCreatedUnderItsParentWithItsPathAndAnAuditEvent()
     {
         await using var provider = Services();
@@ -33,6 +34,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Untraced("Which kinds a parent may hold is in the module README; ADR-0029 names the kinds extension point, but no criterion or ADR states the refusal.")]
     public async Task AKindTheProviderDoesNotKnowOrDoesNotAllowThereIsRefused()
     {
         await using var provider = Services();
@@ -49,6 +51,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Untraced("A unit code unique in the tenant is in the module README, not in a criterion or ADR.")]
     public async Task ACodeIsUniqueInTheTenant()
     {
         await using var provider = Services();
@@ -66,6 +69,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AMoveCarriesTheSubtreeAndKeepsEveryPathInStepWithItsParents()
     {
         await using var provider = Services();
@@ -94,6 +98,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AMoveUnderItselfOrADescendantIsACycleAndChangesNothing()
     {
         await using var provider = Services();
@@ -117,6 +122,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-034 AC2")]
     public async Task AUnitWithActiveChildrenIsNotDeactivatedAndALeafIs()
     {
         await using var provider = Services();
@@ -143,6 +149,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Untraced("Renaming a unit and the audit of its old and new name are in the module README, not in a criterion or ADR.")]
     public async Task ARenameIsAuditedWithTheOldAndTheNewName()
     {
         await using var provider = Services();
@@ -160,6 +167,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Untraced("The tree's depth-first order is in the module README, not in a criterion or ADR.")]
     public async Task TheTreeIsReadDepthFirstFromTheRoot()
     {
         await using var provider = Services();

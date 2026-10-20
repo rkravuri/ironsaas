@@ -57,4 +57,15 @@
     <AssemblyMetadata Include="IronSuite" Value="$(IronSuite)" />
   </ItemGroup>
 
+  <!--
+    Every test project (a Test project that runs, Exe under xUnit v3) compiles with the analyzer that refuses a test
+    method without what it proves (ADR-0044, IRON0005 to IRON0007), so no test project can leave it out. The analyzer is
+    built first and loaded by the compiler; nothing of it reaches the test's own references.
+  -->
+  <ItemGroup Condition="'$(IronLayer)' == 'Test' and '$(OutputType)' == 'Exe'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tests/Iron.Testing.Analyzers/Iron.Testing.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

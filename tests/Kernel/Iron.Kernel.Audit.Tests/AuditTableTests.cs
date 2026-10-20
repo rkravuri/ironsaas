@@ -15,6 +15,7 @@ namespace Iron.Kernel.Audit.Tests;
 public class ModelTests
 {
     [Fact]
+    [Proves("ADR-0012")]
     public void TheModelHasNoChangesWithoutAMigration()
     {
         using var context = new AuditDbContext(DesignTime.OptionsFor<AuditDbContext>());
@@ -29,6 +30,7 @@ public class ModelTests
 public class AuditTableTests(AuditFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0008", "ADR-0013")]
     public async Task TheMigratedSchemaPassesTheSchemaCheck()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -37,6 +39,7 @@ public class AuditTableTests(AuditFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-060 AC2", "ADR-0013")]
     public async Task TheAppRoleWritesAndReadsEventsButCanNeverChangeOrDeleteThem()
     {
         var actor = Ids.New();
@@ -58,6 +61,7 @@ public class AuditTableTests(AuditFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0013")]
     public async Task AWrittenEventCarriesActorSourceDetailsAndCorrelation()
     {
         var actor = Ids.New();
@@ -96,6 +100,7 @@ public class AuditTableTests(AuditFixture fixture)
     }
 
     [Fact]
+    [Untraced("Checks that an over-long reason and target are cut to the column length; no requirement or ADR states that audit text is trimmed rather than refused")]
     public async Task AReasonLongerThanTheColumnIsTrimmedNotRefused()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));

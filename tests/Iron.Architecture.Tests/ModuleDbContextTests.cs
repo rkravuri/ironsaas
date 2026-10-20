@@ -14,6 +14,7 @@ namespace Iron.Architecture.Tests;
 public class ModuleDbContextTests
 {
     [Fact]
+    [Proves("ADR-0008", "ADR-0029", "ADR-0043")]
     public void EveryModuleDbContextPassesTheModelCheck()
     {
         var projects = ProjectCatalog.Load(Repository.Root)
@@ -46,6 +47,7 @@ public class ModuleDbContextTests
     }
 
     [Theory]
+    [Proves("ADR-0029", "ADR-0043")]
     [InlineData("kernel_identity", ProjectLayer.Kernel, null, true)]
     [InlineData("business_items", ProjectLayer.Business, null, true)]
     [InlineData("procurement_purchasing", ProjectLayer.Suite, "Procurement", true)]

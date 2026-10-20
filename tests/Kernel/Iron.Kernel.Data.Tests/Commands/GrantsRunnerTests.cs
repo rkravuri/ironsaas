@@ -15,6 +15,7 @@ public class GrantsRunnerTests(PostgresFixture fixture)
     private const string Password = "sample";
 
     [Fact]
+    [Proves("ADR-0013")]
     public void StatementsGiveReadWriteOnOrdinaryTablesAndReadInsertOnAppendOnlyTables()
     {
         using var context = new SampleDbContext(DesignTime.OptionsFor<SampleDbContext>());
@@ -30,6 +31,7 @@ public class GrantsRunnerTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Untraced("Checks the guard on the role name the grant command puts into SQL; no requirement or ADR states which database role names are accepted")]
     public void RefusesARoleNameThatIsNotAnIdentifier()
     {
         Assert.False(GrantsRunner.IsValidRole("acme-app"));
@@ -39,6 +41,7 @@ public class GrantsRunnerTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-060 AC2", "ADR-0013")]
     public async Task TheAppRoleCannotChangeOrDeleteAppendOnlyRows()
     {
         await CreateRoleAsync();

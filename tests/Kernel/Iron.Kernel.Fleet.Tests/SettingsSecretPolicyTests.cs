@@ -14,6 +14,7 @@ namespace Iron.Kernel.Fleet.Tests;
 public class SettingsSecretPolicyTests(FleetFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0036")]
     public async Task TheUnitsTokenReadsItsOwnSettingsSecretsAndNoOtherTenants()
     {
         var ct = TestContext.Current.CancellationToken;

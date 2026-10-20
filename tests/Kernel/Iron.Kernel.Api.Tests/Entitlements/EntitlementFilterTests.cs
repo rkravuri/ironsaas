@@ -59,6 +59,7 @@ public class EntitlementFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task ALicensedModulesEndpointAsksTheGateWithItsLicenceAndWhetherItWrites()
     {
         using var read = await Send(HttpMethod.Get, "/api/v1/widgets", Alice);
@@ -79,6 +80,7 @@ public class EntitlementFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task ARefusalAnswers403WithTheGatesCodeAndThePermissionIsNeverAsked()
     {
         _gate.Answer = EntitlementDecision.Refuse(EntitlementErrors.ReadOnly, "Widgets are read only for your organisation.", EntitlementReasons.Licensed, "widgets");
@@ -95,6 +97,7 @@ public class EntitlementFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task NobodySignedInHears401BeforeAnyEntitlementIsChecked()
     {
         _gate.Answer = EntitlementDecision.Refuse(EntitlementErrors.ModuleDisabled, "Off.", EntitlementReasons.NotLicensed, "widgets");
@@ -106,6 +109,7 @@ public class EntitlementFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task AFeatureOnAPlatformEndpointIsCheckedAndOtherPlatformEndpointsAreNot()
     {
         using var plain = await Send(HttpMethod.Get, "/api/v1/gadgets", Alice);
@@ -123,6 +127,7 @@ public class EntitlementFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-043 AC2", "ADR-0034")]
     public async Task AnAnonymousEndpointOfALicensedModuleIsCheckedOnceWithoutAPrincipal()
     {
         _gate.Answer = EntitlementDecision.Refuse(EntitlementErrors.ModuleDisabled, "Off.", EntitlementReasons.NotLicensed, "widgets");
@@ -136,6 +141,7 @@ public class EntitlementFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public void TheHostsCatalogueListsTheLicensedModuleAndBothFeatures()
     {
         var catalogue = _app!.Services.GetRequiredService<LicensingCatalogue>();

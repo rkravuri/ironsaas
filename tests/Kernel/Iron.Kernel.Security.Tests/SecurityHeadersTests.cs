@@ -6,6 +6,7 @@ namespace Iron.Kernel.Security.Tests;
 public class SecurityHeadersTests(SecurityFixture fixture)
 {
     [Fact]
+    [Proves("TF-070 AC1", "ADR-0010")]
     public async Task EveryResponseCarriesTheSecurityHeaders()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/ok", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -25,6 +26,7 @@ public class SecurityHeadersTests(SecurityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public async Task HstsIsNotSentOverPlainHttp()
     {
         using var response = await fixture.Client.GetAsync(new Uri("http://localhost/ok"), TestContext.Current.CancellationToken);
@@ -34,6 +36,7 @@ public class SecurityHeadersTests(SecurityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public async Task ApiResponsesAreNeverCached()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -42,6 +45,7 @@ public class SecurityHeadersTests(SecurityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public async Task ExemptPathsGetNoContentSecurityPolicy()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/docs/page", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -51,6 +55,7 @@ public class SecurityHeadersTests(SecurityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public async Task CookiesAreSecureHttpOnlyAndStrict()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/cookie", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -62,6 +67,7 @@ public class SecurityHeadersTests(SecurityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-070 AC2", "ADR-0010")]
     public async Task AConfiguredOriginIsAllowedAndOthersAreNot()
     {
         using var allowed = new HttpRequestMessage(HttpMethod.Get, new Uri("/ok", UriKind.Relative));

@@ -8,18 +8,21 @@ public class RepositoryLayoutTests
     private static readonly IReadOnlyList<ProjectInfo> Projects = ProjectCatalog.Load(Repository.Root);
 
     [Fact]
+    [Proves("ADR-0029", "ADR-0043")]
     public void EveryProjectDeclaresTheLayerItLivesIn()
     {
         ArchitectureAssert.NoViolations("Layers (ADR-0029)", LayerRules.Check(Projects));
     }
 
     [Fact]
+    [Proves("ADR-0001", "ADR-0029", "ADR-0043")]
     public void EveryProjectReferenceFollowsTheModuleBoundaryRules()
     {
         ArchitectureAssert.NoViolations("Module boundary rules (ADR-0001, ADR-0029)", ModuleBoundaryRules.Check(Projects));
     }
 
     [Fact]
+    [Untraced("Checks no two project files share a name; no criterion or ADR states project-name uniqueness")]
     public void ProjectNamesAreUnique()
     {
         var duplicates = Projects
@@ -32,6 +35,7 @@ public class RepositoryLayoutTests
     }
 
     [Fact]
+    [Proves("ADR-0001", "ADR-0029")]
     public void EveryProjectLivesInAFolderWithItsOwnName()
     {
         // src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj and src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj
@@ -50,6 +54,7 @@ public class RepositoryLayoutTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void EveryContractsProjectLivesInsideItsModule()
     {
         var violations = new List<string>();
@@ -67,6 +72,7 @@ public class RepositoryLayoutTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void EveryModuleHasAContractsProject()
     {
         var contracts = Projects.Where(p => p.Kind == ProjectKind.Contracts).Select(p => p.ModuleName).ToHashSet(StringComparer.Ordinal);
@@ -80,6 +86,7 @@ public class RepositoryLayoutTests
     }
 
     [Fact]
+    [Proves("ADR-0029", "ADR-0043")]
     public void ProjectsUnderSrcUseTheIronPrefix()
     {
         var violations = Projects
@@ -92,6 +99,7 @@ public class RepositoryLayoutTests
     }
 
     [Theory]
+    [Untraced("Checks the top-level folders exist; no criterion or ADR decides the top-level layout")]
     [InlineData("src")]
     [InlineData("tests")]
     [InlineData("tools")]
@@ -104,6 +112,7 @@ public class RepositoryLayoutTests
     }
 
     [Theory]
+    [Proves("ADR-0029", "ADR-0043")]
     [InlineData("src/Kernel")]
     [InlineData("src/Business")]
     [InlineData("src/Suites")]
@@ -115,6 +124,7 @@ public class RepositoryLayoutTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void EveryFolderUnderTheSuitesIsASuite()
     {
         var wrong = Directory.EnumerateDirectories(Path.Combine(Repository.Root, "src", "Suites"))
@@ -128,6 +138,7 @@ public class RepositoryLayoutTests
     }
 
     [Fact]
+    [Proves("ADR-0029", "ADR-0043")]
     public void NothingButTheLayerFoldersSitsInSource()
     {
         string[] expected = ["Business", "Hosts", "Kernel", "Suites"];

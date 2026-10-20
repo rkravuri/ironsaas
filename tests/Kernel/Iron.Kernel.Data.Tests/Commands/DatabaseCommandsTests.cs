@@ -10,6 +10,7 @@ namespace Iron.Kernel.Data.Tests.Commands;
 public class DatabaseCommandsTests(PostgresFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0011")]
     public void RecognisesItsCommandsAndStripsThemForTheHostBuilder()
     {
         Assert.True(DatabaseCommands.IsCommand(["migrate"]));
@@ -22,6 +23,7 @@ public class DatabaseCommandsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task MigrateRunsOverEveryRegisteredContextAndOwnsAHistoryTablePerSchema()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -36,6 +38,7 @@ public class DatabaseCommandsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task SchemaCheckPassesForTheSampleSchema()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -46,6 +49,7 @@ public class DatabaseCommandsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task SeedRunsEverySeederLowestOrderFirst()
     {
         var log = new List<string>();
@@ -63,6 +67,7 @@ public class DatabaseCommandsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task SeedWithoutSeedersSucceedsAndDoesNothing()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));

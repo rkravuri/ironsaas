@@ -20,6 +20,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     private static readonly string Evaluation = DutyProbeModule.Evaluation.Code;
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task APersonDelegatesTheirOwnDutiesForAPeriodWithAReasonAndTheChangeIsAudited()
     {
         var (ada, grace) = (fixture.Principals.Add(), fixture.Principals.Add());
@@ -35,6 +36,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task ADelegationToOneselfToOrFromAServiceAccountOrForAPeriodThatHasEndedIsRefusedEachWithItsCode()
     {
         var ada = fixture.Principals.Add();
@@ -48,6 +50,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task TheSameDelegatorAndDutyInOverlappingPeriodsIsRefusedAndAllSharesEveryDuty()
     {
         var (ada, grace, linus) = (fixture.Principals.Add(), fixture.Principals.Add(), fixture.Principals.Add());
@@ -63,6 +66,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-037 AC2", "ADR-0037")]
     public async Task ACircleOfAnyLengthInAnOverlappingPeriodIsRefused()
     {
         var (a, b, c) = (fixture.Principals.Add(), fixture.Principals.Add(), fixture.Principals.Add());
@@ -89,6 +93,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task DelegatedRightsCannotBeDelegatedAgainNeitherWhileActingNorAsADutyHeldByDelegation()
     {
         var (ada, grace, linus) = (fixture.Principals.Add(), fixture.Principals.Add(), fixture.Principals.Add());
@@ -108,6 +113,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task AnAdministratorDelegatesForSomeoneWithTheManagePermissionAtTheirHomeUnitAndNobodyElseDoes()
     {
         var unit = await UnitAsync("Delegation desk");
@@ -138,6 +144,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task TheDelegatorTheDelegateOrAnAdministratorEndsADelegationEarlyAndAStrangerCannot()
     {
         var (ada, grace, stranger) = (fixture.Principals.Add(), fixture.Principals.Add(), fixture.Principals.Add());
@@ -162,6 +169,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task ADelegateActingForTheDelegatorHoldsExactlyTheDelegatorsRightsForTheDutiesAtTheDelegatorsScopes()
     {
         var unit = await UnitAsync("Acting desk");
@@ -191,6 +199,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task AllIsEverythingTheDelegatorHoldsAndADelegatorWhoLosesARoleTakesItFromTheDelegateAtOnce()
     {
         var ada = await HolderAsync([AuthorizationPermissions.UnitsRead.Name, AuthorizationPermissions.RolesRead.Name], RoleScope.Tenant);
@@ -219,6 +228,7 @@ public class DelegationTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task WhenTheDelegationEndsActingGivesNothingAndTheEvaluatorDenies()
     {
         var ada = await HolderAsync([AuthorizationPermissions.UnitsRead.Name], RoleScope.Tenant);

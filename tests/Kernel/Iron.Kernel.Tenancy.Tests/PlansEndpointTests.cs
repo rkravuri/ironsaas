@@ -72,6 +72,7 @@ public class PlansEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task TheSeedHasStandardWithoutRoleTransferAndEnterpriseWithIt()
     {
         using var standard = await JsonAsync(await SendAsync(HttpMethod.Get, "/api/v1/plans/standard"));
@@ -85,6 +86,7 @@ public class PlansEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-042 AC1", "ADR-0034")]
     public async Task APlanIsPreviewedWithoutAChangeThenAppliedInOneTransactionAndAudited()
     {
         var slug = await CreateTenantAsync();
@@ -130,6 +132,7 @@ public class PlansEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-042 AC3", "ADR-0034")]
     public async Task APlanWithAnUnknownFeatureOrAPlatformModuleIsRefusedWhenSavedAndWhenApplied()
     {
         using var unknown = await SendAsync(HttpMethod.Put, "/api/v1/plans/premium", new { name = "Premium", grace_days = 7, features = new[] { RoleTransfer, "authorization.mind_reading" } });
@@ -173,6 +176,7 @@ public class PlansEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-045 AC1", "TF-045 AC2", "TF-045 AC3", "ADR-0034")]
     public async Task TheHistoryListsEveryChangeInOrderWithOperatorBeforeAndAfterAndCannotBeEdited()
     {
         var slug = await CreateTenantAsync();
@@ -215,6 +219,7 @@ public class PlansEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task ATenantStartsWithItsPlanAndAnUnknownPlanRefusesIt()
     {
         var slug = $"plan-{Ids.New():N}"[..16];
@@ -232,6 +237,7 @@ public class PlansEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-180 AC1")]
     public async Task AReaderSeesPlansAndHistoryButCannotSaveOrApply()
     {
         var reader = await GrantAsync(SystemRoles.ReadOnly);

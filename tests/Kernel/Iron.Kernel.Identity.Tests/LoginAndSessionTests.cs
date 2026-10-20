@@ -14,6 +14,7 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     private const string Password = "correct horse battery staple";
 
     [Fact]
+    [Proves("TF-011 AC2", "ADR-0014")]
     public async Task AWrongPasswordGetsTheFixedMessageCountsTheAttemptAndIsAudited()
     {
         var time = new FakeTimeProvider();
@@ -37,6 +38,7 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0014")]
     public async Task AnUnknownLoginAndAnInvitedAccountGetTheSameMessage()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider());
@@ -53,6 +55,7 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-011 AC1", "ADR-0014")]
     public async Task ACorrectLoginCreatesASessionRowAndAnAuditEventInOneTransaction()
     {
         var time = new FakeTimeProvider();
@@ -76,6 +79,7 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Untraced("A regression for a version conflict between a login and a concurrent failed attempt; no criterion or ADR says how a login meets that race.")]
     public async Task ALoginThatRacesAnotherAttemptOnTheSameAccountStillSucceeds()
     {
         // While this login verifies the password, another attempt (a wrong one) saves its stamp on the same row.
@@ -119,6 +123,7 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-021 AC1", "ADR-0014")]
     public async Task ASessionEndsAfterSixtyIdleMinutesAndTheExpiryIsAudited()
     {
         var time = new FakeTimeProvider();
@@ -148,6 +153,7 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-021 AC3", "ADR-0014")]
     public async Task ASessionEndsAtTwelveHoursHoweverActiveItWas()
     {
         var time = new FakeTimeProvider();
@@ -171,6 +177,7 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0014")]
     public async Task AnUnknownTokenIsNeitherAliveNorExpired()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider());

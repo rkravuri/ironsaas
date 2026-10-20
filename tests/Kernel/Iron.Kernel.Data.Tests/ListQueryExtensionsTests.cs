@@ -31,6 +31,7 @@ public class ListQueryExtensionsRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void FiltersCombineWithAnd()
     {
         var query = ListQuery.Default with
@@ -46,6 +47,7 @@ public class ListQueryExtensionsRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void TextFiltersIgnoreCase()
     {
         var query = ListQuery.Default with { Filters = [new FilterTerm("name", FilterOperator.StartsWith, "A")] };
@@ -57,6 +59,7 @@ public class ListQueryExtensionsRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void InMatchesAnyOfTheValuesIncludingEnums()
     {
         var query = ListQuery.Default with { Filters = [new FilterTerm("sharing_mode", FilterOperator.In, "private,tenant")] };
@@ -65,6 +68,7 @@ public class ListQueryExtensionsRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void TheDefaultSortAppliesWhenNoneIsGiven()
     {
         var names = Widgets().ApplyListQuery(ListQuery.Default, Fields).Select(w => w.Name).ToList();
@@ -74,6 +78,7 @@ public class ListQueryExtensionsRuleTests
     }
 
     [Fact]
+    [Proves("TF-101 AC3")]
     public void SortTermsApplyInOrder()
     {
         var query = ListQuery.Default with
@@ -87,6 +92,7 @@ public class ListQueryExtensionsRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void AFieldOutsideTheListIsRefused()
     {
         var query = ListQuery.Default with { Filters = [new FilterTerm("colour", FilterOperator.Equals, "red")] };
@@ -105,6 +111,7 @@ public class ListQueryExtensionsDatabaseTests(PostgresFixture fixture)
 
     /// <summary>Tenant-wide data pages directly; a business record pages through its policy (RecordPolicyTests).</summary>
     [Fact]
+    [Proves("ADR-0009")]
     public async Task ToPageAsyncReturnsOnePageWithTheTotal()
     {
         var run = Ids.New().ToString("N")[..8];

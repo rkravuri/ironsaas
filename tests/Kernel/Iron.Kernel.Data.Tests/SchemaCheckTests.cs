@@ -18,6 +18,7 @@ public class SchemaCheckRuleTests
     ];
 
     [Fact]
+    [Proves("ADR-0008")]
     public void AWellFormedTableHasNoViolations()
     {
         var table = new TableInfo("kernel_identity", "principals", null, [.. AuditedColumns, new("login_id", "text", false)], ["id"]);
@@ -26,6 +27,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public void AnAppendOnlyTableNeedsOnlyTheCreatedColumns()
     {
         var table = new TableInfo(
@@ -39,6 +41,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("TF-080 AC1")]
     public void MissingStandardColumnsAreNamed()
     {
         var table = new TableInfo("kernel_identity", "sessions", null, [new("id", SchemaCheck.Uuid, false)], ["id"]);
@@ -50,6 +53,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public void WrongTypesNullabilityAndKeysAreNamed()
     {
         var columns = new List<ColumnInfo>(AuditedColumns);
@@ -65,6 +69,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public void NamesThatAreNotSnakeCaseAreNamed()
     {
         var table = new TableInfo("kernel_identity", "Principals", null, [.. AuditedColumns, new("LoginId", "text", false)], ["id"]);
@@ -76,6 +81,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("TF-080 AC1")]
     public void SoftDeleteColumnsMustComeTogether()
     {
         var table = new TableInfo("kernel_identity", "principals", null, [.. AuditedColumns, new("is_deleted", SchemaCheck.Boolean, false)], ["id"]);
@@ -87,6 +93,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("TF-080 AC2")]
     public void AForeignKeyIntoAnotherSchemaIsNamed()
     {
         var foreignKey = new ForeignKeyInfo("fk_orders_supplier", "procurement_orders", "orders", "kernel_identity", "principals");
@@ -97,6 +104,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void ASuitesPrefixCountsOnlyWhenTheCallerNamesTheSuite()
     {
         // The kernel names no suite (ADR-0043): without the caller's list, a suite's schema has no known prefix.
@@ -107,6 +115,7 @@ public class SchemaCheckRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public void TheMigrationsHistoryTableIsIgnored()
     {
         var table = new TableInfo("kernel_identity", "__ef_migrations_history", null, [new("migration_id", "text", false)], ["migration_id"]);
@@ -115,6 +124,7 @@ public class SchemaCheckRuleTests
     }
 
     [Theory]
+    [Proves("ADR-0029", "ADR-0043")]
     [InlineData("kernel_identity", true)]
     [InlineData("business_items", true)]
     [InlineData("procurement_orders", true)]
@@ -142,6 +152,7 @@ public class SchemaCheckRuleTests
     }
 
     [Theory]
+    [Proves("ADR-0008")]
     [InlineData("principals", true)]
     [InlineData("login_id2", true)]
     [InlineData("Principals", false)]
@@ -158,6 +169,7 @@ public class SchemaCheckRuleTests
 public class SchemaCheckDatabaseTests(PostgresFixture fixture)
 {
     [Fact]
+    [Proves("TF-080 AC1", "TF-080 AC2", "ADR-0008", "ADR-0029")]
     public async Task ReportsRealTablesThatBreakTheConventions()
     {
         await using var connection = await fixture.DataSource.OpenConnectionAsync(TestContext.Current.CancellationToken);
@@ -194,6 +206,7 @@ public class SchemaCheckDatabaseTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public void AContextWithoutASchemaAttributeFailsClearly()
     {
         var options = new DbContextOptionsBuilder<ContextWithoutSchema>()

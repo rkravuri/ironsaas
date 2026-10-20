@@ -3,6 +3,7 @@ namespace Iron.Kernel.Tests;
 public class IdsTests
 {
     [Fact]
+    [Proves("ADR-0007")]
     public void NewIdsAreVersionSevenAndUnique()
     {
         var first = Ids.New();
@@ -13,6 +14,7 @@ public class IdsTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void IdsOrderByTheTimeTheyWereCreated()
     {
         var earlier = Ids.New(new FixedTimeProvider(new DateTimeOffset(2026, 10, 18, 10, 0, 0, TimeSpan.Zero)));
@@ -23,6 +25,7 @@ public class IdsTests
     }
 
     [Fact]
+    [Untraced("An argument guard against a programmer error; no criterion or ADR states this check.")]
     public void RejectsANullTimeProvider()
     {
         Assert.Throws<ArgumentNullException>(() => Ids.New(null!));

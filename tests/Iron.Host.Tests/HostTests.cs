@@ -32,6 +32,7 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("ADR-0011", "ADR-0012")]
     public async Task TheApiHostStartsBoundToItsTenantAndServesNothingProtectedToNobody()
     {
         await using var factory = Production<Iron.Host.Api.ApiHost>();
@@ -51,6 +52,7 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("ADR-0011", "ADR-0012")]
     public async Task TheControlPlaneHostStartsBoundToTheControlTenant()
     {
         await using var factory = Production<Iron.Host.ControlPlane.ControlPlaneHost>();
@@ -64,6 +66,7 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("ADR-0010", "ADR-0011")]
     public async Task TheWorkerHostsStartAndServeOnlyHealth()
     {
         await using var worker = Production<Iron.Host.Worker.WorkerHost>();
@@ -80,8 +83,8 @@ public class HostTests
         Assert.Equal(HttpStatusCode.NotFound, noRoles.StatusCode);
     }
 
-    /// <summary>TF-030 AC3: the anonymous list is health, login, invitation acceptance, the token endpoint and the public keys, and nothing else. Adding to it is a reviewed change.</summary>
     [Fact]
+    [Proves("ADR-0034", "ADR-0035")]
     public void TheControlPlaneCarriesTheLicensingCatalogueOfTheUnitsModules()
     {
         // ADR-0034: one source. The control plane checks plans and flag rules against the file make catalogue writes from
@@ -97,6 +100,7 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void TheShellsTypedSettingKeysAreTheUnitsSettings()
     {
         // ADR-0036: useSetting takes only the keys this file declares, so it is held to the code as the catalogue is.
@@ -120,7 +124,9 @@ public class HostTests
         throw new InvalidOperationException("Foundation.slnx was not found above the test's folder.");
     }
 
+    /// <summary>TF-030 AC3: the anonymous list is health, login, invitation acceptance, the token endpoint and the public keys, and nothing else. Adding to it is a reviewed change.</summary>
     [Fact]
+    [Proves("TF-030 AC3", "ADR-0014")]
     public async Task TheAnonymousAllowListIsFixedOutsideDevelopment()
     {
         await using var api = Production<Iron.Host.Api.ApiHost>();
@@ -137,6 +143,7 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("ADR-0009", "ADR-0012")]
     public async Task InDevelopmentOnlyTheApiBrowserJoinsTheAnonymousList()
     {
         await using var api = new WebApplicationFactory<Iron.Host.Api.ApiHost>().WithWebHostBuilder(host => host.UseEnvironment(Environments.Development));

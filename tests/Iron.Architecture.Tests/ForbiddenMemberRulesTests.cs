@@ -3,6 +3,7 @@ namespace Iron.Architecture.Tests;
 public class ForbiddenMemberRulesTests
 {
     [Fact]
+    [Proves("ADR-0007")]
     public void ReportsDirectReadsOfTheSystemClock()
     {
         var members = new List<(string Namespace, string TypeName, string MemberName)>
@@ -23,6 +24,7 @@ public class ForbiddenMemberRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void ReadsMemberReferencesFromACompiledAssembly()
     {
         var members = ForbiddenMemberRules.ReadReferencedMembers(typeof(ForbiddenMemberRules).Assembly.Location);
@@ -31,6 +33,7 @@ public class ForbiddenMemberRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void NoFoundationAssemblyReadsTheSystemClockDirectly()
     {
         var projects = ProjectCatalog.Load(Repository.Root).Where(p => p.Kind is not (ProjectKind.Test or ProjectKind.Tool or ProjectKind.Unknown));

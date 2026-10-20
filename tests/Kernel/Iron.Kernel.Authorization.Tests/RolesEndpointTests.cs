@@ -57,6 +57,7 @@ public class RolesEndpointTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task NobodySignedInGets401()
     {
         using var response = await Send(null);
@@ -66,6 +67,7 @@ public class RolesEndpointTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-031 AC1", "ADR-0012")]
     public async Task APrincipalWithoutThePermissionGets403AndAnAuditEvent()
     {
         var nobody = Ids.New();
@@ -81,6 +83,7 @@ public class RolesEndpointTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0009", "ADR-0012")]
     public async Task TheTenantAdministratorListsTheSystemRolesInTheEnvelope()
     {
         var alice = Ids.New();

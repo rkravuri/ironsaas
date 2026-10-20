@@ -61,6 +61,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Untraced("Creating, reading, changing and deleting a tenant role over HTTP is TF-032's requirement text; no criterion or ADR rule states it.")]
     public async Task TheAdministratorCreatesReadsChangesAndDeletesARole()
     {
         var code = RoleServiceTests.Code();
@@ -91,6 +92,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Proves("TF-032 AC2", "ADR-0031")]
     public async Task ASystemRoleAnswers409AndABadCodeAnswers400WithTheField()
     {
         var readOnly = await RoleIdAsync(SystemRoles.ReadOnly);
@@ -103,6 +105,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AUnitAdministratorReadsRolesAndTheCatalogueButChangesNoRole()
     {
         var unitAdministrator = Ids.New();
@@ -123,6 +126,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Untraced("The export format and a dry run that changes nothing are in the module README; TF-032 AC3 and ADR-0031 cover only unknown permissions and system roles.")]
     public async Task TheExportImportsAsADryRunThatChangesNothing()
     {
         var code = RoleServiceTests.Code();

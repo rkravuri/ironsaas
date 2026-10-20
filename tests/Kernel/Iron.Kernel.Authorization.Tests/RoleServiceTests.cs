@@ -13,6 +13,7 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     private static readonly string[] Reading = [AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.UnitsRead.Name];
 
     [Fact]
+    [Untraced("The audit of role changes with the permissions before and after is in the module README only; no criterion of TF-032 or ADR states it.")]
     public async Task ARoleIsCreatedChangedAndDeletedWithThePermissionsBeforeAndAfterInTheAudit()
     {
         await using var administrator = await AsAdministratorAsync();
@@ -38,6 +39,7 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-032 AC2", "ADR-0031")]
     public async Task ASystemRoleIsReadOnly()
     {
         await using var administrator = await AsAdministratorAsync();
@@ -53,6 +55,7 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task ARoleStillAssignedIsNotDeleted()
     {
         await using var administrator = await AsAdministratorAsync();
@@ -69,6 +72,7 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task UnknownPermissionsATakenCodeAndARoleForBothTypesAreRefused()
     {
         await using var administrator = await AsAdministratorAsync();
@@ -88,6 +92,7 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task ARoleIsSavedOnlyWithPermissionsItsEditorHoldsTenantWide()
     {
         var editor = Ids.New();

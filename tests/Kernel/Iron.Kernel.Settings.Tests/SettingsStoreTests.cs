@@ -22,6 +22,7 @@ namespace Iron.Kernel.Settings.Tests;
 public class SettingsStoreTests(SettingsFixture fixture)
 {
     [Fact]
+    [Proves("TF-058 AC1", "TF-058 AC2", "ADR-0036")]
     public async Task ASaveAndAResetWriteTheHistoryAndTheAuditWithBeforeAfterActorAndTime()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -59,6 +60,7 @@ public class SettingsStoreTests(SettingsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-059 AC2", "ADR-0036")]
     public async Task AChangeReachesAnotherProcessWithinThirtySecondsWithoutARestart()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -83,6 +85,7 @@ public class SettingsStoreTests(SettingsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-059 AC4", "ADR-0036")]
     public async Task AFailedRefreshKeepsTheLastValuesAndTheAlertComesAfterFiveMinutes()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -115,6 +118,7 @@ public class SettingsStoreTests(SettingsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-057 AC1", "TF-058 AC2", "TF-221 AC2", "ADR-0036")]
     public async Task AUnitTwoLevelsUpAppliesToAPersonInTheUnitBelowItAndTheirOwnValueWins()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -149,6 +153,7 @@ public class SettingsStoreTests(SettingsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-222 AC3", "ADR-0038")]
     public async Task APersonsSettingsFollowTheUnitTheyWorkForAndAnotherPersonsTheirHomeUnit()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -182,6 +187,7 @@ public class SettingsStoreTests(SettingsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-059 AC3", "ADR-0036")]
     public async Task ASecretReferenceStoresAPathTheSecretIsReadFromTheStoreAndKeptFiveMinutesAtMost()
     {
         var ct = TestContext.Current.CancellationToken;

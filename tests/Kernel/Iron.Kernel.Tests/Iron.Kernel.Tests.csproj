@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Iron.Testing" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../Iron.Testing/Iron.Testing.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
   </ItemGroup>
 

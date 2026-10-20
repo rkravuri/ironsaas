@@ -41,6 +41,7 @@ public sealed class OpenBaoCollection : ICollectionFixture<OpenBaoFixture>
 public class SecretStoreTests(OpenBaoFixture openBao)
 {
     [Fact]
+    [Proves("ADR-0016")]
     public async Task WritesReadsAndReportsMissingSecrets()
     {
         using var store = new OpenBaoSecretStore(openBao.Options());
@@ -57,6 +58,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public async Task TheUnitSecretBecomesConfigurationAtStart()
     {
         using var store = new OpenBaoSecretStore(openBao.Options("tenants/bravo"));
@@ -79,6 +81,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public void WithoutAStoreConfiguredNothingChanges()
     {
         var configuration = new ConfigurationBuilder()
@@ -90,6 +93,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public void AMissingUnitSecretStopsTheHostWithAClearMessage()
     {
         var builder = new ConfigurationBuilder()
@@ -109,6 +113,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public void AnUnreachableStoreStopsTheHostWithTheAddress()
     {
         var builder = new ConfigurationBuilder()
@@ -126,6 +131,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
     }
 
     [Fact]
+    [Untraced("Checks the store client raises an error for an invalid token; no criterion or ADR states it")]
     public async Task AWrongTokenIsRefusedByTheStore()
     {
         using var store = new OpenBaoSecretStore(new SecretStoreOptions { Address = openBao.Address, Token = "not-the-token", Path = "tenants/acme" });

@@ -5,6 +5,7 @@ public class ResultTests
     private static readonly Error SampleError = Error.NotFound("tests.sample.missing", "The sample is missing.");
 
     [Fact]
+    [Proves("ADR-0007")]
     public void ASuccessHasNoError()
     {
         var result = Result.Success();
@@ -15,6 +16,7 @@ public class ResultTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void AFailureCarriesItsError()
     {
         var result = Result.Failure(SampleError);
@@ -24,6 +26,7 @@ public class ResultTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void AValueConvertsToASuccessfulResult()
     {
         Result<int> result = 42;
@@ -33,6 +36,7 @@ public class ResultTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void AnErrorConvertsToAFailedResult()
     {
         Result<int> result = SampleError;
@@ -43,6 +47,7 @@ public class ResultTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void AFailedPlainResultCanBeMadeFromAnError()
     {
         Result result = SampleError;
@@ -52,6 +57,7 @@ public class ResultTests
     }
 
     [Fact]
+    [Untraced("Match is a convenience of the result type; no criterion or ADR states it.")]
     public void MatchPicksTheSideThatApplies()
     {
         var success = Result<int>.Success(2);
@@ -62,6 +68,7 @@ public class ResultTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void FailureRejectsANullError()
     {
         Assert.Throws<ArgumentNullException>(() => Result.Failure(null!));

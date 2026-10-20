@@ -70,6 +70,7 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-020 AC2", "TF-023 AC1", "ADR-0015")]
     public async Task TheSmokeClientGetsATokenAndListsUsersUntilTheTokenExpires()
     {
         using var response = await RequestToken(IdentityFixture.SmokeClientId, IdentityFixture.SmokeClientSecret);
@@ -102,6 +103,7 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0015")]
     public async Task AWrongSecretOrGrantIsRefusedInTheOAuthShapeAndAudited()
     {
         using var wrongSecret = await RequestToken(IdentityFixture.SmokeClientId, "not the secret");
@@ -122,6 +124,7 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-003 AC1", "ADR-0015")]
     public async Task ATokenForAnotherTenantIsRefused()
     {
         string token;
@@ -143,6 +146,7 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task ATokenWorksForNoUnit()
     {
         using var response = await RequestToken(IdentityFixture.SmokeClientId, IdentityFixture.SmokeClientSecret);
@@ -162,6 +166,7 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0015")]
     public async Task TheKeysAreOnTheJwksEndpointAndOpenApiNamesThePermission()
     {
         using var jwks = await _client.GetAsync(new Uri("/.well-known/jwks.json", UriKind.Relative), TestContext.Current.CancellationToken);

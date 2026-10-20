@@ -11,6 +11,7 @@ public class ListFieldsTests
     private sealed record Item(Guid Id, string Name, int Count, decimal Price, DateTimeOffset CreatedAt, bool Active, Colour Colour, int? Rank);
 
     [Fact]
+    [Proves("ADR-0009")]
     public void OperatorsFollowTheFieldType()
     {
         var fields = new ListFields<Item>()
@@ -34,6 +35,7 @@ public class ListFieldsTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void UsesLimitWhatAFieldMayDo()
     {
         var fields = new ListFields<Item>()
@@ -49,6 +51,7 @@ public class ListFieldsTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void NamesMustBeSnakeCaseAndUnique()
     {
         var fields = new ListFields<Item>().Add("name", i => i.Name);
@@ -59,6 +62,7 @@ public class ListFieldsTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void TheDefaultSortMustBeASortableField()
     {
         var fields = new ListFields<Item>()
@@ -71,6 +75,7 @@ public class ListFieldsTests
     }
 
     [Theory]
+    [Proves("ADR-0009")]
     [InlineData(typeof(int), "42", true)]
     [InlineData(typeof(int), "4.2", false)]
     [InlineData(typeof(int?), "7", true)]
@@ -97,6 +102,7 @@ public class ListFieldsTests
     }
 
     [Theory]
+    [Proves("ADR-0009")]
     [InlineData("created_at", true)]
     [InlineData("a1_b2", true)]
     [InlineData("CreatedAt", false)]
@@ -108,6 +114,7 @@ public class ListFieldsTests
     }
 
     [Theory]
+    [Proves("ADR-0009")]
     [InlineData("purchase-orders", true)]
     [InlineData("users", true)]
     [InlineData("purchase_orders", false)]

@@ -87,8 +87,9 @@ public static class LayerRules
         ProjectLayer.Kernel => ("src/Kernel/", name == ProjectCatalog.Vocabulary || name.StartsWith("Iron.Kernel.", StringComparison.Ordinal), "named Iron.Kernel or Iron.Kernel.*"),
         ProjectLayer.Business => ("src/Business/", name.StartsWith("Iron.Business.", StringComparison.Ordinal), "named Iron.Business.*"),
         ProjectLayer.Host => ("src/Hosts/", name.StartsWith("Iron.Host.", StringComparison.Ordinal), "named Iron.Host.*"),
-        // A test project, or a library the test projects share (the platform services they run on: tests/Iron.Testing).
-        ProjectLayer.Test => ("tests/", name.EndsWith(".Tests", StringComparison.Ordinal) || name.EndsWith(".Testing", StringComparison.Ordinal), "named *.Tests, or *.Testing for a library the tests share"),
+        // A test project, a library the test projects share (the platform services they run on and what a test proves:
+        // tests/Iron.Testing), or the analyzers that check them (tests/Iron.Testing.Analyzers, ADR-0044).
+        ProjectLayer.Test => ("tests/", name.EndsWith(".Tests", StringComparison.Ordinal) || name.EndsWith(".Testing", StringComparison.Ordinal) || name.EndsWith(".Testing.Analyzers", StringComparison.Ordinal), "named *.Tests, *.Testing for a library the tests share, or *.Testing.Analyzers for the analyzers that check them"),
         ProjectLayer.Tool => ("tools/", true, "any name"),
         _ => throw new ArgumentOutOfRangeException(nameof(layer), layer, "Every layer but Suite has an expectation here; Suite has its own."),
     };

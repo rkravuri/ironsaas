@@ -14,6 +14,7 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
     private static AccessRequest ReadRoles(Guid principal) => new(principal, AuthorizationPermissions.RolesRead, "GET /api/v1/roles", "/api/v1/roles");
 
     [Fact]
+    [Proves("TF-031 AC1")]
     public async Task APrincipalWithoutARoleIsDeniedAndTheDenialIsAudited()
     {
         var audit = new RecordingAuditWriter();
@@ -35,6 +36,7 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0012", "ADR-0031")]
     public async Task TheTenantAdministratorRoleGrantsEveryPermissionAndAssigningTwiceIsHarmless()
     {
         var audit = new RecordingAuditWriter();
@@ -63,6 +65,7 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Untraced("Refusing an unknown role code on the trusted assignment path is stated by no criterion or ADR.")]
     public async Task AnUnknownRoleCannotBeAssigned()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
@@ -76,6 +79,7 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-031 AC2")]
     public async Task AGrantMadeBehindTheCacheShowsWithinSixtySeconds()
     {
         var time = new FakeTimeProvider();
@@ -105,6 +109,7 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task WhenTheDatabaseIsUnavailableAccessIsDenied()
     {
         var audit = new RecordingAuditWriter();

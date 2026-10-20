@@ -11,6 +11,7 @@ public class PasswordHasherTests
     });
 
     [Fact]
+    [Proves("TF-011 AC3", "ADR-0014")]
     public void ProducesAnArgon2idPhcStringWithTheParameters()
     {
         var hash = Hasher.Hash("correct horse battery staple");
@@ -21,6 +22,7 @@ public class PasswordHasherTests
     }
 
     [Fact]
+    [Proves("ADR-0014")]
     public void VerifiesTheRightPasswordAndRefusesOthers()
     {
         var hash = Hasher.Hash("correct horse battery staple");
@@ -31,12 +33,14 @@ public class PasswordHasherTests
     }
 
     [Fact]
+    [Proves("TF-011 AC3", "ADR-0014")]
     public void SaltsEveryHashDifferently()
     {
         Assert.NotEqual(Hasher.Hash("same password"), Hasher.Hash("same password"));
     }
 
     [Theory]
+    [Untraced("How the verifier treats a malformed or non-Argon2id stored value is stated neither by TF-011 nor by ADR-0014.")]
     [InlineData("")]
     [InlineData("plain-text")]
     [InlineData("$argon2i$v=19$m=8192,t=1,p=1$c2FsdHNhbHRzYWx0c2FsdA$aGFzaA")]
@@ -48,6 +52,7 @@ public class PasswordHasherTests
     }
 
     [Fact]
+    [Proves("ADR-0014")]
     public void ReadsTheParametersFromTheHashNotFromTheOptions()
     {
         var hash = Hasher.Hash("a password of some length");

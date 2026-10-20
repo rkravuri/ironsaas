@@ -5,6 +5,7 @@ public class LayerRulesTests
     private const string Identity = "src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj";
 
     [Theory]
+    [Proves("ADR-0029")]
     [InlineData(null)]
     [InlineData("")]
     public void AProjectWithoutALayerIsRefused(string? layer)
@@ -16,6 +17,7 @@ public class LayerRulesTests
     }
 
     [Theory]
+    [Proves("ADR-0029")]
     [InlineData("Kernal")]
     [InlineData("kernel")]
     [InlineData(" Kernel ")]
@@ -29,6 +31,7 @@ public class LayerRulesTests
     }
 
     [Theory]
+    [Proves("ADR-0029")]
     [InlineData("src/Kernel/Iron.Kernel/Iron.Kernel.csproj", "Kernel")]
     [InlineData("src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj", "Kernel")]
     [InlineData("src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj", "Kernel")]
@@ -37,6 +40,7 @@ public class LayerRulesTests
     [InlineData("tests/Kernel/Iron.Kernel.Identity.Tests/Iron.Kernel.Identity.Tests.csproj", "Test")]
     [InlineData("tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj", "Test")]
     [InlineData("tests/Iron.Testing/Iron.Testing.csproj", "Test")]
+    [InlineData("tests/Iron.Testing.Analyzers/Iron.Testing.Analyzers.csproj", "Test")]
     [InlineData("tools/Iron.Smoke/Iron.Smoke.csproj", "Tool")]
     public void EveryLayerAcceptsItsOwnProjects(string relativePath, string layer)
     {
@@ -44,6 +48,7 @@ public class LayerRulesTests
     }
 
     [Theory]
+    [Proves("ADR-0029")]
     [InlineData("src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj", "Business")]
     [InlineData("src/Business/Iron.Business.Items/Iron.Business.Items.csproj", "Kernel")]
     [InlineData("src/Business/Iron.Kernel.Items/Iron.Kernel.Items.csproj", "Business")]
@@ -52,6 +57,7 @@ public class LayerRulesTests
     [InlineData("src/Kernel/Iron.Kernel.Identity.Tests/Iron.Kernel.Identity.Tests.csproj", "Test")]
     [InlineData("tests/Iron.Fixtures/Iron.Fixtures.csproj", "Test")]
     [InlineData("src/Kernel/Iron.Kernel.Testing/Iron.Kernel.Testing.csproj", "Test")]
+    [InlineData("tests/Iron.Analyzers/Iron.Analyzers.csproj", "Test")]
     public void ALayerMustAgreeWithTheNameAndTheFolder(string relativePath, string layer)
     {
         var violation = Assert.Single(LayerRules.Check([Fixture.Declaring(relativePath, layer)]));
@@ -61,6 +67,7 @@ public class LayerRulesTests
     }
 
     [Theory]
+    [Proves("ADR-0043")]
     [InlineData("src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj")]
     [InlineData("src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Contracts/Iron.Suites.Procurement.Purchasing.Contracts.csproj")]
     [InlineData("src/Suites/School/Iron.Suites.School.Pupils/Iron.Suites.School.Pupils.csproj")]
@@ -70,6 +77,7 @@ public class LayerRulesTests
     }
 
     [Theory]
+    [Proves("ADR-0043")]
     // The suite in IronSuite, the name and the folder must be one suite.
     [InlineData("src/Suites/Procurement/Iron.Suites.School.Pupils/Iron.Suites.School.Pupils.csproj", "Procurement")]
     [InlineData("src/Suites/School/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj", "Procurement")]
@@ -86,6 +94,7 @@ public class LayerRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void ASuiteProjectWithoutASuiteIsRefused()
     {
         const string path = "src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj";
@@ -96,6 +105,7 @@ public class LayerRulesTests
     }
 
     [Theory]
+    [Proves("ADR-0043")]
     [InlineData("procurement")]
     [InlineData("Kernel")]
     [InlineData("Business")]
@@ -111,6 +121,7 @@ public class LayerRulesTests
     }
 
     [Theory]
+    [Proves("ADR-0043")]
     [InlineData("src/Business/Iron.Business.Items/Iron.Business.Items.csproj", "Business")]
     [InlineData("src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj", "Kernel")]
     [InlineData("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", "Host")]

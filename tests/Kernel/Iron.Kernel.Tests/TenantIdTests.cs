@@ -3,6 +3,7 @@ namespace Iron.Kernel.Tests;
 public class TenantIdTests
 {
     [Theory]
+    [Proves("ADR-0007")]
     [InlineData("acme")]
     [InlineData("acme-uk")]
     [InlineData("tenant42")]
@@ -15,6 +16,7 @@ public class TenantIdTests
     }
 
     [Theory]
+    [Proves("ADR-0007")]
     [InlineData("")]
     [InlineData("ab")]
     [InlineData("a234567890123456789012345678901")]
@@ -34,6 +36,7 @@ public class TenantIdTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void RejectsNull()
     {
         Assert.False(TenantId.IsValid(null));
@@ -41,6 +44,7 @@ public class TenantIdTests
     }
 
     [Fact]
+    [Untraced("Value equality and the text form of a tenant id are stated in no criterion or ADR.")]
     public void EqualIdsAreEqual()
     {
         Assert.Equal(TenantId.Parse("acme"), TenantId.Parse("acme"));
@@ -49,6 +53,7 @@ public class TenantIdTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void TheDefaultValueIsEmpty()
     {
         TenantId id = default;

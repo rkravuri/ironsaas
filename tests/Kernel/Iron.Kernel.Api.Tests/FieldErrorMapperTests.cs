@@ -5,6 +5,7 @@ namespace Iron.Kernel.Api.Tests;
 public class FieldErrorMapperTests
 {
     [Theory]
+    [Proves("ADR-0009")]
     [InlineData("Name", "name")]
     [InlineData("UnitPrice", "unit_price")]
     [InlineData("Items[0].UnitPrice", "items[0].unit_price")]
@@ -16,6 +17,7 @@ public class FieldErrorMapperTests
     }
 
     [Theory]
+    [Proves("ADR-0009")]
     [InlineData("NotEmptyValidator", "not_empty")]
     [InlineData("GreaterThanOrEqualValidator", "greater_than_or_equal")]
     [InlineData("MaximumLengthValidator", "maximum_length")]

@@ -14,6 +14,7 @@ namespace Iron.Kernel.Authorization.Tests;
 public class WorkingUnitTests(AuthorizationFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0038")]
     public async Task APersonMayWorkForTheirHomeUnitAndTheActiveUnitsOfTheirOwnRoles()
     {
         await using var admin = fixture.Scope(SystemPrincipal.SystemId);
@@ -36,6 +37,7 @@ public class WorkingUnitTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AllMyUnitsIsOfferedWhereARoleReachesAParentWithChildrenOrTheWholeTenant()
     {
         await using var admin = fixture.Scope(SystemPrincipal.SystemId);
@@ -63,6 +65,7 @@ public class WorkingUnitTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-035 AC2", "TF-222 AC1", "ADR-0038")]
     public async Task ListsKeepToTheWorkingUnitAndItsChildrenAndTheConsolidatedViewShowsEverythingTheRolesReach()
     {
         Guid person;
@@ -99,6 +102,7 @@ public class WorkingUnitTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task WhileActingForSomeoneListsAreNotNarrowedByTheWorkingUnit()
     {
         await using var admin = fixture.Scope(SystemPrincipal.SystemId);

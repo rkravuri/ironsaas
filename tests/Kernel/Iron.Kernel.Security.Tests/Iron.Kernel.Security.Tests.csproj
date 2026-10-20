@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Iron.Testing" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,6 +11,7 @@ namespace Iron.Kernel.Identity.Tests;
 public class TokenTests(IdentityFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0015")]
     public async Task AnIssuedTokenValidatesWithItsClaims()
     {
         var time = new FakeTimeProvider();
@@ -32,6 +33,7 @@ public class TokenTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-020 AC2", "ADR-0015")]
     public async Task AnExpiredTokenIsRefusedWithZeroSkew()
     {
         var time = new FakeTimeProvider();
@@ -51,6 +53,7 @@ public class TokenTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-003 AC1", "ADR-0015")]
     public async Task ATokenOfAnotherTenantIsRefusedEvenWithTheSameKey()
     {
         var time = new FakeTimeProvider();
@@ -69,6 +72,7 @@ public class TokenTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0015")]
     public async Task ATokenSignedWithAnotherKeyOrTamperedIsRefused()
     {
         var time = new FakeTimeProvider();

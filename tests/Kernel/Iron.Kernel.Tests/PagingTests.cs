@@ -3,6 +3,7 @@ namespace Iron.Kernel.Tests;
 public class PagingTests
 {
     [Fact]
+    [Untraced("The default page of fifty is stated in no criterion or ADR.")]
     public void TheDefaultRequestIsTheFirstPageOfFifty()
     {
         var request = PageRequest.Default;
@@ -14,6 +15,7 @@ public class PagingTests
     }
 
     [Fact]
+    [Proves("TF-101 AC2")]
     public void APageSizeAboveTheMaximumIsCappedAndReported()
     {
         var request = new PageRequest(3, 500);
@@ -24,6 +26,7 @@ public class PagingTests
     }
 
     [Theory]
+    [Untraced("Raising a page number below one to one is stated in no criterion or ADR.")]
     [InlineData(0, 1)]
     [InlineData(-5, 1)]
     [InlineData(7, 7)]
@@ -33,6 +36,7 @@ public class PagingTests
     }
 
     [Fact]
+    [Untraced("The defaults for missing paging values are stated in no criterion or ADR.")]
     public void MissingQueryValuesTakeTheDefaults()
     {
         var request = PageRequest.From(null, null);
@@ -42,6 +46,7 @@ public class PagingTests
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public void APageKnowsItsNeighbours()
     {
         var page = new Page<string>(["a", "b"], new PageRequest(2, 2), 5);
@@ -55,6 +60,7 @@ public class PagingTests
     }
 
     [Fact]
+    [Untraced("Mapping a page's items while keeping its paging facts is stated in no criterion or ADR.")]
     public void MapKeepsThePagingAndConvertsTheItems()
     {
         var page = new Page<int>([1, 2, 3], new PageRequest(1, 3), 10);
@@ -68,6 +74,7 @@ public class PagingTests
     }
 
     [Fact]
+    [Untraced("Keeping the cap flag through Map helps TF-101 AC2, but the test checks no page size and no response, and no ADR states it.")]
     public void MapKeepsTheCapFlag()
     {
         var capped = new Page<int>([], new PageRequest(1, 999), 0);
@@ -76,12 +83,14 @@ public class PagingTests
     }
 
     [Fact]
+    [Untraced("An argument guard against a programmer error; no criterion or ADR states it.")]
     public void ANegativeTotalIsRejected()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new Page<int>([], PageRequest.Default, -1));
     }
 
     [Fact]
+    [Untraced("The default list query is stated in no criterion or ADR.")]
     public void TheDefaultListQueryHasNoTerms()
     {
         var query = ListQuery.Default;

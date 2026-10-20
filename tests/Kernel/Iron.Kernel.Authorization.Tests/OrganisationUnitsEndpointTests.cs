@@ -62,6 +62,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task NobodySignedInGets401AndSomebodyWithoutTheRoleGets403()
     {
         using var anonymous = await SendAsync(HttpMethod.Get, "/api/v1/organisation-units", null);
@@ -72,6 +73,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task TheAdministratorReadsTheTreeAndTheKinds()
     {
         using var tree = await SendAsync(HttpMethod.Get, "/api/v1/organisation-units", _administrator);
@@ -89,6 +91,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Untraced("Creating a unit over HTTP with its audit event is in the module README, not in a criterion or ADR.")]
     public async Task AUnitIsCreatedUnderItsParentAndAudited()
     {
         var root = await RootIdAsync();
@@ -104,6 +107,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AKindTheParentDoesNotAllowAndACycleAreRefusedOnTheirFields()
     {
         var root = await RootIdAsync();
@@ -118,6 +122,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AManagerOfAUnitShapesThatSubtreeAndNothingElse()
     {
         var root = await RootIdAsync();
@@ -139,6 +144,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AReaderOfASubtreeGetsThatPartOfTheTreeWithItsTopFirstAndTheKinds()
     {
         var root = await RootIdAsync();
@@ -161,6 +167,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("TF-034 AC2")]
     public async Task AUnitWithActiveChildrenAnswers409()
     {
         var root = await RootIdAsync();
@@ -175,6 +182,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task ADeactivatedUnitIsReactivatedOverHttp()
     {
         var root = await RootIdAsync();
@@ -193,6 +201,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task ANewUnitShowsTheModulesChecklistAndIsReadyWhenEveryItemIsDone()
     {
         var root = await RootIdAsync();
@@ -217,6 +226,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AMergeNeedsTheManagePermissionAtBothUnitsAndAnswersWhatMoved()
     {
         var root = await RootIdAsync();
@@ -258,6 +268,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AMergeIntoAUnitBelowIsRefusedOnTheIntoField()
     {
         var root = await RootIdAsync();

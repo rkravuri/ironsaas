@@ -60,6 +60,7 @@ public class TenantsEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-001 AC2", "ADR-0017")]
     public async Task TheOperatorRegistersATenantAndRequestsProvisioning()
     {
         var operatorId = await Grant(SystemRoles.TenantAdministrator);
@@ -104,6 +105,7 @@ public class TenantsEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0017")]
     public async Task AReaderSeesTenantsButCannotCreateOrProvision()
     {
         var reader = await Grant(SystemRoles.ReadOnly);

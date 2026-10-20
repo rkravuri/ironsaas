@@ -10,6 +10,7 @@ public class EntitlementRulesTests
     private static readonly DateOnly End = new(2026, 6, 30);
 
     [Theory]
+    [Proves("TF-040 AC3", "ADR-0034")]
     [InlineData("2025-12-31", EntitlementStatus.Disabled, EntitlementReasons.NotStarted)]
     [InlineData("2026-01-01", EntitlementStatus.Enabled, EntitlementReasons.Licensed)]
     [InlineData("2026-06-30", EntitlementStatus.Enabled, EntitlementReasons.Licensed)]
@@ -24,6 +25,7 @@ public class EntitlementRulesTests
     }
 
     [Fact]
+    [Proves("TF-040 AC3", "ADR-0034")]
     public void ReadOnlyStaysReadOnlyInGraceAndASwitchedOffEntitlementIsDisabledWithItsReason()
     {
         Assert.Equal(new Entitlement(EntitlementStatus.ReadOnly, EntitlementReasons.InGrace), EntitlementRules.Evaluate(EntitlementStatus.ReadOnly, Start, End, 14, End.AddDays(1)));
@@ -32,6 +34,7 @@ public class EntitlementRulesTests
     }
 
     [Fact]
+    [Proves("TF-046 AC3")]
     public void AFeatureOfAModuleThatIsNotAvailableIsUnavailableWhateverItsOwnStatus()
     {
         var document = Documents.With(1, [Documents.Fixture(EntitlementStatus.Disabled)], [Documents.Feature(FixtureModule.Bulk.Code)]);
@@ -44,6 +47,7 @@ public class EntitlementRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public void AFeatureOfAReadOnlyModuleIsReadOnlyAndAFeatureOutsideThePlanIsNotLicensed()
     {
         var document = Documents.With(1, [Documents.Fixture(EntitlementStatus.ReadOnly)], [Documents.Feature(FixtureModule.Bulk.Code)]);
@@ -55,6 +59,7 @@ public class EntitlementRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public void TheDocumentRoundTripsAndAFormatThisBuildDoesNotKnowIsRefused()
     {
         var document = Documents.With(7, [Documents.Fixture(endsOn: End)], [Documents.Feature("authorization.role_transfer")]);

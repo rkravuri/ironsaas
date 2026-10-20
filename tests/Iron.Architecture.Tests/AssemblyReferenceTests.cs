@@ -4,6 +4,7 @@ namespace Iron.Architecture.Tests;
 public class AssemblyReferenceTests
 {
     [Fact]
+    [Proves("ADR-0001", "ADR-0029")]
     public void NoAssemblyUsesAnotherModulesPrivateTypes()
     {
         var projects = ProjectCatalog.Load(Repository.Root);

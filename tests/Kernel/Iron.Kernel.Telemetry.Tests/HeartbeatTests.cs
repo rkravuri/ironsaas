@@ -15,6 +15,7 @@ namespace Iron.Kernel.Telemetry.Tests;
 public class HeartbeatTests
 {
     [Fact]
+    [Proves("ADR-0011")]
     public async Task TheHeartbeatSpanCarriesTheTenantAndIsARootSpan()
     {
         var exported = new List<Activity>();
@@ -34,6 +35,7 @@ public class HeartbeatTests
     }
 
     [Fact]
+    [Untraced("Checks the heartbeat span does not join an ambient activity; no criterion or ADR states it")]
     public async Task AHeartbeatDoesNotJoinAnAmbientActivity()
     {
         var exported = new List<Activity>();

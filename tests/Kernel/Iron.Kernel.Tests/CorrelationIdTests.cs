@@ -5,6 +5,7 @@ namespace Iron.Kernel.Tests;
 public class CorrelationIdTests
 {
     [Fact]
+    [Proves("ADR-0007")]
     public void ANewIdIsThirtyTwoLowercaseHexCharacters()
     {
         var id = CorrelationId.New();
@@ -15,6 +16,7 @@ public class CorrelationIdTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void CurrentUsesTheActiveTrace()
     {
         using var activity = new Activity("test").Start();
@@ -25,6 +27,7 @@ public class CorrelationIdTests
     }
 
     [Fact]
+    [Untraced("The fallback to a new random id when no trace is active is stated in no criterion or ADR; ADR-0007 covers the id of an active trace only.")]
     public void CurrentMakesANewIdWhenNoTraceIsActive()
     {
         Assert.Null(Activity.Current);
@@ -36,6 +39,7 @@ public class CorrelationIdTests
     }
 
     [Theory]
+    [Untraced("Parsing a correlation id from text is stated in no criterion or ADR, and no client-supplied id is accepted (ADR-0010).")]
     [InlineData("0af7651916cd43dd8448eb211c80319c", true)]
     [InlineData("0AF7651916CD43DD8448EB211C80319C", true)]
     [InlineData("0af7651916cd43dd8448eb211c80319", false)]

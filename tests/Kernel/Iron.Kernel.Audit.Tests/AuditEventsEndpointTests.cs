@@ -56,6 +56,7 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-031 AC1", "TF-064 AC3", "ADR-0013")]
     public async Task ADenialBecomesARowThatTheAdministratorFindsByCorrelationId()
     {
         var alice = Ids.New();
@@ -84,6 +85,7 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task NobodySignedInGets401()
     {
         using var response = await Send(null, "/api/v1/audit-events");

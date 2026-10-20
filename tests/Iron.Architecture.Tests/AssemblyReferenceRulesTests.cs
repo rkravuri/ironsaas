@@ -3,6 +3,7 @@ namespace Iron.Architecture.Tests;
 public class AssemblyReferenceRulesTests
 {
     [Fact]
+    [Proves("ADR-0001")]
     public void ReportsTypesInAnotherModulesPrivateNamespaces()
     {
         var referencedTypes = new List<(string Namespace, string Name)>
@@ -29,6 +30,7 @@ public class AssemblyReferenceRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void AHostMayUseModuleRootAndContractsTypesOnly()
     {
         var referencedTypes = new List<(string Namespace, string Name)>
@@ -50,6 +52,7 @@ public class AssemblyReferenceRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0029")]
     public void AModuleOfALowerLayerIsPrivateToo()
     {
         var referencedTypes = new List<(string Namespace, string Name)>
@@ -73,6 +76,7 @@ public class AssemblyReferenceRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void TheSharedDataLibraryIsNotMistakenForAModuleDataNamespace()
     {
         var referencedTypes = new List<(string Namespace, string Name)>
@@ -91,6 +95,7 @@ public class AssemblyReferenceRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void ReadsTypeReferencesFromACompiledAssembly()
     {
         var types = AssemblyReferenceRules.ReadReferencedTypes(typeof(AssemblyReferenceRules).Assembly.Location);

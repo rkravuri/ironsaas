@@ -73,6 +73,7 @@ public class KillSwitchTests(FlagsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task TheImportKillSwitchStopsRoleImportWithItsOwnCodeTheReasonAndARetryTimeAndIsAudited()
     {
         await PublishAsync(Rules.Set(10, [Rules.Global(Imports, true, reason: "A bad import file is going round; imports wait for the fix.")]));
@@ -105,6 +106,7 @@ public class KillSwitchTests(FlagsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task TheGatesDecisionForAnExplanationIsTheChecksAnswerAndWritesNothing()
     {
         await PublishAsync(Rules.Set(15, [Rules.Global(Imports, true, reason: "Imports wait for a fix.")]));
@@ -126,6 +128,7 @@ public class KillSwitchTests(FlagsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task ATenantsOwnKillSwitchStopsThatTenantOnly()
     {
         await PublishAsync(Rules.Set(12, [], 12, [Rules.Tenant(Imports, "acme", true, reason: "Acme asked for it.")]));
@@ -138,6 +141,7 @@ public class KillSwitchTests(FlagsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task TheContextGivesEveryoneTheFlagsAndOnlyAnAdministratorTheKillSwitchesWithTheReason()
     {
         await PublishAsync(Rules.Set(14, [Rules.Global(Imports, true, reason: "Imports wait for a fix."), Rules.Global(ExampleFlags.Tone.Key, "warm")]));

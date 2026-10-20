@@ -5,6 +5,7 @@ public class TenantContextTests
     private static readonly TenantId Acme = TenantId.Parse("acme");
 
     [Fact]
+    [Untraced("Hostname normalisation and the first hostname as the primary are stated in no criterion or ADR.")]
     public void NormalisesHostnamesAndKeepsTheFirstAsPrimary()
     {
         var context = new TenantContext(Acme, ["Acme.localhost:443", "acme.example.com", "acme.localhost"]);
@@ -15,6 +16,7 @@ public class TenantContextTests
     }
 
     [Theory]
+    [Proves("ADR-0011")]
     [InlineData("acme.localhost", true)]
     [InlineData("ACME.LOCALHOST", true)]
     [InlineData("acme.localhost:443", true)]
@@ -30,6 +32,7 @@ public class TenantContextTests
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public void RejectsAnEmptyTenantOrNoHostnames()
     {
         Assert.Throws<ArgumentException>(() => new TenantContext(default, ["acme.localhost"]));
@@ -38,6 +41,7 @@ public class TenantContextTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void KnowsWhenItIsTheControlPlane()
     {
         Assert.True(new TenantContext(TenantId.ControlPlane, ["control.localhost"]).IsControlPlane);
@@ -45,6 +49,7 @@ public class TenantContextTests
     }
 
     [Fact]
+    [Untraced("Host normalisation of IPv6 literals, case, spaces and ports is stated in no criterion or ADR.")]
     public void NormaliseHostKeepsAnIpv6LiteralIntact()
     {
         Assert.Equal("[::1]:443", TenantContext.NormaliseHost("[::1]:443"));

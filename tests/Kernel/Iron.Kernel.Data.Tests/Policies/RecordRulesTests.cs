@@ -33,6 +33,7 @@ public class RecordRulesTests
     private static readonly Guid Reader = Ids.New();
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task UnitVisibilityReadsTheUnitsAndRecordsTheReadPermissionReaches()
     {
         var inA = new Widget(UnitA, "in a");
@@ -49,6 +50,7 @@ public class RecordRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task UnitVisibilityAllowsAnActionWhereItsPermissionReachesAndHasNoRuleForOthers()
     {
         var inA = new Widget(UnitA, "in a");
@@ -65,6 +67,7 @@ public class RecordRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task OwnerWhileLetsTheCreatorActWhileTheConditionHoldsAndDoesNotNarrowReading()
     {
         var mine = Created(new Proposal(UnitA, "mine"), Reader);
@@ -82,6 +85,7 @@ public class RecordRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task AllReadsWhatEveryPolicyReadsAndTakesTheStrictestAnswer()
     {
         var inA = new Widget(UnitA, "anvil");
@@ -99,6 +103,7 @@ public class RecordRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task AnyReadsWhatOnePolicyReadsAndTakesTheMostGenerousAnswerSkippingNoRule()
     {
         var anvil = new Widget(UnitA, "anvil");
@@ -116,6 +121,7 @@ public class RecordRulesTests
     }
 
     [Fact]
+    [Untraced("Checks the argument guards of the policy building blocks; no requirement or ADR states that a block without actions or policies is refused")]
     public void ABlockNeedsWhatItWorksWith()
     {
         Assert.Throws<ArgumentException>(() => RecordRules.OwnerWhile<Proposal>(p => true));
