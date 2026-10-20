@@ -1,7 +1,10 @@
 namespace Iron.Kernel.Authorization.Contracts;
 
-/// <summary>A unit a person may work for, with its path of names from the root, for the header's menu on the tree.</summary>
-public sealed record WorkingUnitChoice(Guid Id, string Name, string Code, int Depth, IReadOnlyList<string> Path);
+/// <summary>One unit on a path from the root.</summary>
+public sealed record UnitPathStep(Guid Id, string Name);
+
+/// <summary>A unit a person may work for, with its path from the root (the unit last), for the header's menu on the tree.</summary>
+public sealed record WorkingUnitChoice(Guid Id, string Name, string Code, int Depth, IReadOnlyList<UnitPathStep> Path);
 
 /// <summary>
 /// The units a person may choose to work for (TF-222, ADR-0038): their home unit and the units of their own

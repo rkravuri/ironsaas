@@ -22,7 +22,8 @@ interface InviteValues extends Record<string, unknown> {
 }
 
 /**
- * Invite a person (D4, TF-018): a name, the login identifier and the home unit on the tree. The unit must be one where
+ * Invite a person (D4, TF-018): a name, the login identifier and the home unit on the tree, the unit the inviter works
+ * for unless they choose another (ADR-0038; their home unit in the view of all their units). The unit must be one where
  * /me/access allows `identity.users.manage`; the API checks it again, and its field problems land on their fields. The
  * answer shows the invitation link once, to copy and send by hand until email delivery (S4); closing it opens the new
  * user's record.
@@ -35,6 +36,7 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
   const canSeeUnits = session.permissions.includes("authz.units.read");
   const units = useQuery({ queryKey: ["authz", "organisation-units"], queryFn: ({ signal }) => fetchUnits(signal), enabled: canSeeUnits });
   const home = session.me?.home_unit ?? null;
+  const working = (session.me?.all_units ? null : session.me?.working_unit) ?? home;
   const schema = useMemo(
     () =>
       z.object({
@@ -44,7 +46,7 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
       }),
     [t],
   );
-  const form = useZodForm<InviteValues>({ schema, initialValues: { displayName: "", loginId: "", homeUnitId: home?.id ?? "" } });
+  const form = useZodForm<InviteValues>({ schema, initialValues: { displayName: "", loginId: "", homeUnitId: working?.id ?? "" } });
   const unit = form.getValues().homeUnitId;
   const access = useAccessAt(unit !== "" ? { unit } : undefined, [manage]);
   const refused = unit !== "" && !access.pending && !access.can(manage);
@@ -74,7 +76,7 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
           <TextInput label={t("users.displayName")} data-autofocus {...form.getInputProps("displayName")} />
           <TextInput label={t("users.loginId")} description={t("users.invite.loginHint")} autoComplete="off" {...form.getInputProps("loginId")} />
           {!canSeeUnits ? (
-            <TextInput label={t("users.homeUnit")} value={home?.name ?? ""} readOnly description={t("users.invite.ownUnit")} error={unitError} />
+            <TextInput label={t("users.homeUnit")} value={working?.name ?? ""} readOnly description={t("users.invite.ownUnit")} error={unitError} />
           ) : units.isPending ? (
             <LoadingState height={120} />
           ) : (

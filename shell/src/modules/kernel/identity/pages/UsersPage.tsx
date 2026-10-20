@@ -7,6 +7,7 @@ import { fetchUsers, type User } from "@/api/identity";
 import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ListPage } from "@/components/templates";
+import { workingScope } from "@/shell/working-unit";
 import { InviteDialog } from "./InviteDialog";
 
 const defaultSort = [{ field: "login_id", direction: "asc" as const }];
@@ -14,7 +15,9 @@ const defaultSort = [{ field: "login_id", direction: "asc" as const }];
 /**
  * The users the reader may see (TF-101 through the grid, ADR-0031) on the list template; a row opens the user's record.
  * "Invite a person" shows where the reader manages users somewhere; the dialog asks /me/access at the unit it picks.
- * The quick action of the home page and the search arrives as ?invite, which opens the dialog once.
+ * The quick action of the home page and the search arrives as ?invite, which opens the dialog once. For a person with
+ * several units, the list keeps to the unit they work for and the units below it, or shows all of them, and the
+ * description says which (ADR-0038); choosing another unit in the header reads the list again.
  */
 export function UsersPage() {
   const { t } = useTranslation();
@@ -33,6 +36,8 @@ export function UsersPage() {
     }
   }, [params, setParams]);
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchUsers(query, signal), []);
+  const scope = workingScope(session.me);
+  const scopeWords = scope === undefined ? undefined : scope.kind === "all" ? t("users.scope.all") : t("users.scope.unit", { unit: scope.name });
   // Type and status in the catalogue's words, as the record page shows them; a filter that offers those words is a later item.
   const columns: DataGridColumn<User>[] = [
     { field: "login_id", headerKey: "users.loginId", sortable: true, filter: "text", flex: 2 },
@@ -47,7 +52,7 @@ export function UsersPage() {
   return (
     <ListPage
       title={t("users.title")}
-      description={t("users.description")}
+      description={scopeWords === undefined ? t("users.description") : `${t("users.description")} ${scopeWords}`}
       actions={
         canInvite ? (
           <Button leftSection={<IconUserPlus size={16} aria-hidden="true" />} onClick={() => setRequested(true)}>
@@ -56,7 +61,14 @@ export function UsersPage() {
         ) : undefined
       }
     >
-      <DataGrid<User> columns={columns} fetchPage={fetchPage} defaultSort={defaultSort} label={t("users.title")} onRowOpen={(user) => void navigate(`/users/${user.id}`)} />
+      <DataGrid<User>
+        columns={columns}
+        fetchPage={fetchPage}
+        defaultSort={defaultSort}
+        label={t("users.title")}
+        refreshKey={`${session.me?.working_unit?.id ?? ""}:${String(session.me?.all_units ?? false)}`}
+        onRowOpen={(user) => void navigate(`/users/${user.id}`)}
+      />
       {inviting && <InviteDialog onClose={() => setRequested(false)} />}
     </ListPage>
   );

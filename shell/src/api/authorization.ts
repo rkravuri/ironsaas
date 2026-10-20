@@ -13,6 +13,8 @@ export const UnitSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   version: z.number(),
+  /** The unit this one was merged into (ADR-0038); a merged unit stays inactive. */
+  merged_into_id: z.string().nullable().optional(),
 });
 export type Unit = z.infer<typeof UnitSchema>;
 
@@ -45,6 +47,75 @@ export const moveUnit = (id: string, parentId: string) =>
   request(`${units}/${encodeURIComponent(id)}/move`, { method: "POST", body: { parent_id: parentId }, schema: UnitSchema });
 
 export const deactivateUnit = (id: string) => request(`${units}/${encodeURIComponent(id)}/deactivate`, { method: "POST", schema: UnitSchema });
+
+export const reactivateUnit = (id: string) => request(`${units}/${encodeURIComponent(id)}/reactivate`, { method: "POST", schema: UnitSchema });
+
+/** GET .../readiness: what the modules need of a unit before people work in it (TF-223); ready when every item is done. */
+export const ReadinessSchema = z.object({
+  unit_id: z.string(),
+  ready: z.boolean(),
+  items: z.array(z.object({ module: z.string(), code: z.string(), label: z.string(), done: z.boolean() })),
+});
+export type Readiness = z.infer<typeof ReadinessSchema>;
+
+export const fetchReadiness = (id: string, signal?: AbortSignal) =>
+  request(`${units}/${encodeURIComponent(id)}/readiness`, { schema: ReadinessSchema, ...(signal ? { signal } : {}) });
+
+/** The kinds of thing a merge moves, in the order the preview lists them (ADR-0038). */
+export const mergePartCodes = ["records", "people", "assignments", "settings", "shares", "children"] as const;
+
+/** One kind of thing a merge moves: the module, the record type for records, at most 20 in words, all of them counted, and what is dropped. */
+export const MergePartSchema = z.object({
+  code: z.string(),
+  module: z.string(),
+  record_type: z.string().nullable(),
+  count: z.number(),
+  items: z.array(z.string()),
+  conflicts: z.array(z.string()),
+});
+export type MergePart = z.infer<typeof MergePartSchema>;
+
+/** A merge of one unit into another, previewed (nothing changed) or done (what moved). */
+export const MergeSchema = z.object({ from: UnitSchema, into: UnitSchema, parts: z.array(MergePartSchema) });
+export type Merge = z.infer<typeof MergeSchema>;
+
+export const previewMerge = (id: string, into: string, signal?: AbortSignal) =>
+  request(`${units}/${encodeURIComponent(id)}/merge-preview?into=${encodeURIComponent(into)}`, { schema: MergeSchema, ...(signal ? { signal } : {}) });
+
+export const mergeUnit = (id: string, into: string) => request(`${units}/${encodeURIComponent(id)}/merge`, { method: "POST", body: { into_id: into }, schema: MergeSchema });
+
+/** Who sees a business record beyond its unit (TF-222, ADR-0038). */
+export const SharingModeSchema = z.enum(["private", "shared", "tenant"]);
+export type SharingMode = z.infer<typeof SharingModeSchema>;
+
+const SharingUnitSchema = z.object({ id: z.string(), name: z.string(), code: z.string() });
+export type SharingUnit = z.infer<typeof SharingUnitSchema>;
+
+/** A unit the record may be shared with, placed on the tree. */
+export const SharingChoiceSchema = SharingUnitSchema.extend({ parent_id: z.string().nullable(), depth: z.number() });
+export type SharingChoice = z.infer<typeof SharingChoiceSchema>;
+
+/**
+ * GET /api/v1/record-sharing/{type}/{id}: the record's unit, the mode, the units it is shared with, whether the reader
+ * may change it and, if so, the active units to choose from in tree order.
+ */
+export const RecordSharingSchema = z.object({
+  record_type: z.string(),
+  record_id: z.string(),
+  owning_unit: SharingUnitSchema,
+  mode: SharingModeSchema,
+  units: z.array(SharingUnitSchema),
+  may_change: z.boolean(),
+  choices: z.array(SharingChoiceSchema),
+});
+export type RecordSharing = z.infer<typeof RecordSharingSchema>;
+
+const sharingPath = (recordType: string, id: string) => `/api/v1/record-sharing/${encodeURIComponent(recordType)}/${encodeURIComponent(id)}`;
+
+export const fetchSharing = (recordType: string, id: string, signal?: AbortSignal) => request(sharingPath(recordType, id), { schema: RecordSharingSchema, ...(signal ? { signal } : {}) });
+
+export const changeSharing = (recordType: string, id: string, body: { mode: SharingMode; units: string[] }) =>
+  request(sharingPath(recordType, id), { method: "PUT", body, schema: RecordSharingSchema });
 
 /** Who a role is for (TF-032): people, service accounts, or both (only the tenant administrator system role). */
 export const PrincipalKindSchema = z.enum(["user", "service", "any"]);

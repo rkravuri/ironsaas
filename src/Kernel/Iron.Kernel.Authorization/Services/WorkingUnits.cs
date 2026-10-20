@@ -34,7 +34,7 @@ public sealed class WorkingUnits(AuthorizationDbContext context) : IWorkingUnits
         var pathIds = units.SelectMany(u => OrganisationUnit.PathIds(u.Path)).Distinct().ToArray();
         var names = await context.OrganisationUnits.AsNoTracking().Where(u => pathIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Name, cancellationToken).ConfigureAwait(false);
         var choices = OrganisationUnitService.InTreeOrder(units)
-            .Select(u => new WorkingUnitChoice(u.Id, u.Name, u.Code, u.Depth, [.. OrganisationUnit.PathIds(u.Path).Select(id => names.GetValueOrDefault(id, string.Empty))]))
+            .Select(u => new WorkingUnitChoice(u.Id, u.Name, u.Code, u.Depth, [.. OrganisationUnit.PathIds(u.Path).Select(id => new UnitPathStep(id, names.GetValueOrDefault(id, string.Empty)))]))
             .ToList();
 
         var withChildren = assignments.Where(a => a.ScopeKind == Scopes.UnitWithChildren).Select(a => a.ScopeId!.Value).ToArray();

@@ -3,7 +3,9 @@ using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
 using Iron.Kernel.Api.Validation;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
+using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Sharing;
 using Microsoft.AspNetCore.Builder;
@@ -16,11 +18,16 @@ namespace Iron.Kernel.Authorization.Api;
 /// <summary>A unit as the sharing control names it.</summary>
 public sealed record SharingUnitResponse(Guid Id, string Name, string Code);
 
+/// <summary>A unit the record may be shared with, placed on the tree.</summary>
+public sealed record SharingChoiceResponse(Guid Id, string Name, string Code, Guid? ParentId, int Depth);
+
 /// <summary>
 /// A record's sharing (TF-222, ADR-0038): its own unit, the mode, the units it is listed for when shared, and whether
-/// the reader may change it, so the record page shows the control to change or only the words.
+/// the reader may change it, so the record page shows the control to change or only the words. For a reader who may
+/// change it, the active units of the tenant in tree order, to choose from: whoever may share a record may see the
+/// names of the units it can be shared with, though they may not read the tree otherwise.
 /// </summary>
-public sealed record RecordSharingResponse(string RecordType, Guid RecordId, SharingUnitResponse OwningUnit, SharingMode Mode, IReadOnlyList<SharingUnitResponse> Units, bool MayChange);
+public sealed record RecordSharingResponse(string RecordType, Guid RecordId, SharingUnitResponse OwningUnit, SharingMode Mode, IReadOnlyList<SharingUnitResponse> Units, bool MayChange, IReadOnlyList<SharingChoiceResponse> Choices);
 
 public sealed record ChangeSharingRequest(SharingMode Mode, IReadOnlyList<Guid>? Units);
 
@@ -65,6 +72,13 @@ internal static class RecordSharingEndpoints
         var ids = view.Units.Append(view.OwningUnitId).ToArray();
         var units = await context.OrganisationUnits.AsNoTracking().Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, cancellationToken);
         SharingUnitResponse Named(Guid unitId) => units.TryGetValue(unitId, out var unit) ? new SharingUnitResponse(unit.Id, unit.Name, unit.Code) : new SharingUnitResponse(unitId, string.Empty, string.Empty);
-        return new RecordSharingResponse(view.RecordType, view.RecordId, Named(view.OwningUnitId), view.Mode, [.. view.Units.Select(Named).OrderBy(u => u.Name, StringComparer.CurrentCulture)], view.MayChange);
+        IReadOnlyList<SharingChoiceResponse> choices = [];
+        if (view.MayChange)
+        {
+            var active = await context.OrganisationUnits.AsNoTracking().Where(u => u.Status == UnitStatus.Active).ToListAsync(cancellationToken);
+            choices = [.. OrganisationUnitService.InTreeOrder(active).Select(u => new SharingChoiceResponse(u.Id, u.Name, u.Code, u.ParentId, u.Depth))];
+        }
+
+        return new RecordSharingResponse(view.RecordType, view.RecordId, Named(view.OwningUnitId), view.Mode, [.. view.Units.Select(Named).OrderBy(u => u.Name, StringComparer.CurrentCulture)], view.MayChange, choices);
     }
 }

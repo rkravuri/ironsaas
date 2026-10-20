@@ -1,11 +1,36 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Stack, Table } from "@mantine/core";
+import { Button, Divider, Stack, Table } from "@mantine/core";
+import type { RecordSharing } from "@/api/authorization";
 import { ApprovalPanel, AttachmentPanel, CommentPanel, HistoryPanel } from "@/components/panels";
+import { SharingPanel } from "@/components/sharing";
 import { RecordPage } from "@/components/templates";
+
+const unit = (n: number, name: string, parent: number | null, depth: number) => ({
+  id: `01a18000-0000-7000-8000-${String(n).padStart(12, "0")}`,
+  name,
+  code: name.toLowerCase(),
+  parent_id: parent === null ? null : `01a18000-0000-7000-8000-${String(parent).padStart(12, "0")}`,
+  depth,
+});
+const tree = [unit(1, "Acme", null, 0), unit(2, "Sales", 1, 1), unit(3, "North", 2, 2), unit(4, "South", 2, 2), unit(5, "Finance", 1, 1), unit(6, "Operations", 1, 1)];
+const named = (choice: (typeof tree)[number]) => ({ id: choice.id, name: choice.name, code: choice.code });
+
+/** The sample order's sharing: North's, shared with Finance, changed here in memory only. */
+const sampleSharing: RecordSharing = {
+  record_type: "sales_order",
+  record_id: "01a18000-0000-7000-8000-000000001042",
+  owning_unit: named(tree[2]!),
+  mode: "shared",
+  units: [named(tree[4]!)],
+  may_change: true,
+  choices: tree,
+};
 
 /** The sample record page: every panel behind its tab, on a made-up order. */
 export function RecordSample() {
   const { t } = useTranslation();
+  const [sharing, setSharing] = useState(sampleSharing);
   const at = (day: number) => new Date(Date.UTC(2026, 9, day, 9, 30)).toISOString();
   return (
     <div id="gallery-record-page">
@@ -30,20 +55,30 @@ export function RecordSample() {
             value: "details",
             label: t("gallery.record.tabs.details"),
             panel: (
-              <Table variant="vertical">
-                <Table.Tbody>
-                  {[
-                    [t("gallery.record.customer"), "Orbit Logistics"],
-                    [t("gallery.record.total"), "12,480.00"],
-                    [t("gallery.record.due"), new Date(at(28)).toLocaleDateString()],
-                  ].map(([label, value]) => (
-                    <Table.Tr key={label}>
-                      <Table.Th w={180}>{label}</Table.Th>
-                      <Table.Td>{value}</Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+              <>
+                <Table variant="vertical">
+                  <Table.Tbody>
+                    {[
+                      [t("gallery.record.customer"), "Orbit Logistics"],
+                      [t("gallery.record.total"), "12,480.00"],
+                      [t("gallery.record.due"), new Date(at(28)).toLocaleDateString()],
+                    ].map(([label, value]) => (
+                      <Table.Tr key={label}>
+                        <Table.Th w={180}>{label}</Table.Th>
+                        <Table.Td>{value}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+                <Divider my="md" />
+                <SharingPanel
+                  sharing={sharing}
+                  onChange={(mode, units) => {
+                    setSharing({ ...sharing, mode, units: tree.filter((choice) => units.includes(choice.id)).map(named) });
+                    return Promise.resolve();
+                  }}
+                />
+              </>
             ),
           },
           {

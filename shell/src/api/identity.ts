@@ -29,11 +29,20 @@ export const ActiveDelegationSchema = z.object({
 });
 export type ActiveDelegation = z.infer<typeof ActiveDelegationSchema>;
 
+/** One unit on a path from the root. */
+export const UnitStepSchema = z.object({ id: z.string(), name: z.string() });
+
+/** A unit the person may work for (ADR-0038): its depth, and its path from the root with the unit last. */
+export const WorkingUnitChoiceSchema = z.object({ id: z.string(), name: z.string(), code: z.string(), depth: z.number(), path: z.array(UnitStepSchema) });
+export type WorkingUnitChoice = z.infer<typeof WorkingUnitChoiceSchema>;
+
 /**
  * GET /api/v1/me: who is signed in, what they may do, their home unit, and when the session ends. `permissions` are
  * held for the whole tenant; `permissions_anywhere` at any scope, which the navigation follows (ADR-0031). While the
  * session acts for someone, both are that person's for the delegated duties (ADR-0037), and `acting_for` names them;
- * `delegations` are the active ones the person gives and holds.
+ * `delegations` are the active ones the person gives and holds. `working_unit` is the unit new records and settings
+ * follow, and lists keep to with the units below it, unless `all_units` is the consolidated view; `working_units` are
+ * the units the person may choose (ADR-0038). A token has no working unit.
  */
 export const MeSchema = z.object({
   id: z.string(),
@@ -46,8 +55,14 @@ export const MeSchema = z.object({
   home_unit: HomeUnitSchema.nullable().optional(),
   acting_for: ActingForSchema.nullable().optional(),
   delegations: z.object({ given: z.array(ActiveDelegationSchema), received: z.array(ActiveDelegationSchema) }).optional(),
+  working_unit: HomeUnitSchema.nullable().optional(),
+  all_units: z.boolean().optional(),
+  working_units: z.object({ units: z.array(WorkingUnitChoiceSchema), all_units_available: z.boolean() }).optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
+
+/** One unit to work for, or all of them. */
+export type WorkFor = { unitId: string } | { allUnits: true };
 
 export const UserSchema = z.object({
   id: z.string(),
@@ -87,6 +102,10 @@ export const actFor = (principalId: string) => request("/api/v1/me/acting-for", 
 
 /** Act as yourself again; answers /me. */
 export const stopActing = () => request("/api/v1/me/acting-for", { method: "DELETE", schema: MeSchema });
+
+/** Work for one of your units, or all of them (ADR-0038); answers /me. */
+export const workFor = (choice: WorkFor) =>
+  request("/api/v1/me/working-unit", { method: "POST", body: "allUnits" in choice ? { all_units: true } : { unit_id: choice.unitId }, schema: MeSchema });
 
 /** A person as the delegate picker offers them (ADR-0037): a display name, a home unit's name, and the id to choose them by. */
 export const DirectoryEntrySchema = z.object({ id: z.string(), display_name: z.string(), home_unit: z.string().nullable() });

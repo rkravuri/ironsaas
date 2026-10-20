@@ -30,7 +30,7 @@ public class WorkingUnitTests(AuthorizationFixture fixture)
         var options = await admin.Get<IWorkingUnits>().OptionsAsync(person, finance.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(new[] { north.Id, finance.Id }.Order(), options.Units.Select(u => u.Id).Order());
-        Assert.Equal([root.Name, "Sales", "North"], options.Units.Single(u => u.Id == north.Id).Path);
+        Assert.Equal([root.Name, "Sales", "North"], options.Units.Single(u => u.Id == north.Id).Path.Select(step => step.Name));
         Assert.Equal(2, options.Units.Single(u => u.Id == north.Id).Depth);
         Assert.False(options.AllUnitsAvailable, "two units on their own: one at a time, no consolidated view");
     }

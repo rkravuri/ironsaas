@@ -63,7 +63,7 @@ public sealed record MeResponse(
     WorkingUnitsResponse WorkingUnits);
 
 /// <summary>A unit the person may work for, with its depth and its path of names, for the header's menu on the tree.</summary>
-public sealed record WorkingUnitChoiceResponse(Guid Id, string Name, string Code, int Depth, IReadOnlyList<string> Path);
+public sealed record WorkingUnitChoiceResponse(Guid Id, string Name, string Code, int Depth, IReadOnlyList<UnitPathStep> Path);
 
 /// <summary>
 /// The units the person may work for (ADR-0038), and whether the consolidated view is open to them. The header shows its

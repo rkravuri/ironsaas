@@ -78,6 +78,9 @@ public class RecordSharingEndpointTests(AuthorizationFixture fixture) : IAsyncLi
             Assert.Equal(("private", true), (before.RootElement.GetProperty("mode").GetString(), before.RootElement.GetProperty("may_change").GetBoolean()));
             Assert.Equal("North", before.RootElement.GetProperty("owning_unit").GetProperty("name").GetString());
             Assert.Empty(before.RootElement.GetProperty("units").EnumerateArray());
+            var choices = before.RootElement.GetProperty("choices").EnumerateArray().Select(c => c.GetProperty("id").GetGuid()).ToList();
+            Assert.Contains(south, choices);
+            Assert.Contains(west, choices);
         }
 
         using (var hidden = await SendAsync(HttpMethod.Get, path, southReader))
@@ -95,6 +98,7 @@ public class RecordSharingEndpointTests(AuthorizationFixture fixture) : IAsyncLi
         using (var seen = await JsonAsync(await SendAsync(HttpMethod.Get, path, southReader)))
         {
             Assert.Equal(("shared", false), (seen.RootElement.GetProperty("mode").GetString(), seen.RootElement.GetProperty("may_change").GetBoolean()));
+            Assert.Empty(seen.RootElement.GetProperty("choices").EnumerateArray());
         }
 
         using (var refused = await SendAsync(HttpMethod.Put, path, southReader, new { mode = "tenant" }))

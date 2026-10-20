@@ -122,7 +122,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
             Assert.False(me.RootElement.GetProperty("all_units").GetBoolean());
             var choices = me.RootElement.GetProperty("working_units");
             Assert.Equal(new[] { sales, east, marketing }.Order(), choices.GetProperty("units").EnumerateArray().Select(u => u.GetProperty("id").GetGuid()).Order());
-            Assert.Equal(["Sales", "East"], choices.GetProperty("units").EnumerateArray().Single(u => u.GetProperty("id").GetGuid() == east).GetProperty("path").EnumerateArray().Skip(1).Select(p => p.GetString()));
+            Assert.Equal(["Sales", "East"], choices.GetProperty("units").EnumerateArray().Single(u => u.GetProperty("id").GetGuid() == east).GetProperty("path").EnumerateArray().Skip(1).Select(p => p.GetProperty("name").GetString()));
             Assert.True(choices.GetProperty("all_units_available").GetBoolean(), "a role at Sales with the units below it");
         }
 

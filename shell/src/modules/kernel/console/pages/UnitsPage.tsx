@@ -5,20 +5,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Badge, Box, Button, Flex, Group, Paper, Stack, Table, Text, Tree, getTreeExpandedState, useTree } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
-import { deactivateUnit, fetchKinds, fetchUnits, type Kinds, type Unit } from "@/api/authorization";
+import { deactivateUnit, fetchKinds, fetchUnits, reactivateUnit, type Kinds, type Merge, type Unit } from "@/api/authorization";
 import { useAccessAt } from "@/auth/access";
 import { useSession } from "@/auth/session-context";
 import { ConfirmDialog, EmptyState, LoadingState, RecordHeader } from "@/components/panels";
 import { ListPage } from "@/components/templates";
 import { ModuleMark } from "@/design/patterns";
 import { CreateUnitDialog, MoveUnitDialog, RenameUnitDialog } from "./UnitDialogs";
+import { MergeUnitDialog, UnitReadiness } from "./UnitLifecycle";
 import { childKinds, kindOf, pathLabel, toTreeData } from "./unit-tree";
 
 const manage = "authz.units.manage";
 const unitsQueryKey = ["authz", "organisation-units"] as const;
 const kindsQueryKey = ["authz", "organisation-kinds"] as const;
 
-type DialogName = "create" | "rename" | "move" | "deactivate";
+type DialogName = "create" | "rename" | "move" | "deactivate" | "merge";
 
 interface Failure {
   message: string;
@@ -28,7 +29,11 @@ interface Failure {
 const failureOf = (error: unknown, fallback: string): Failure =>
   error instanceof ApiError ? { message: error.message, correlationId: error.correlationId } : { message: fallback, correlationId: undefined };
 
-/** The organisation tree of the tenant (TF-034): the tree on the left, the chosen unit's record on the right. */
+/**
+ * The organisation tree of the tenant (TF-034, TF-223): the tree on the left, the chosen unit's record on the right, with
+ * what the modules need of it before people work in it, and its life: add, rename, move, deactivate and reactivate, and
+ * merge into another unit after a preview of what moves (ADR-0038).
+ */
 export function UnitsPage() {
   const { t } = useTranslation();
   const units = useQuery({ queryKey: unitsQueryKey, queryFn: ({ signal }) => fetchUnits(signal) });
@@ -141,6 +146,24 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
       setBusy(false);
     }
   };
+  const reactivate = async () => {
+    if (!selected) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await done(await reactivateUnit(selected.id));
+    } catch (error) {
+      setFailure(failureOf(error, t("errors.unexpected")));
+    } finally {
+      setBusy(false);
+    }
+  };
+  // After a merge the unit that stays is the one to look at: it holds what the other held.
+  const merged = async (merge: Merge) => {
+    await queryClient.invalidateQueries({ queryKey: ["authz"] });
+    await done(merge.into);
+  };
   // Selection follows the keyboard: the arrow keys move the focus through the tree, and the record follows it.
   const followFocus = (event: FocusEvent<HTMLUListElement>) => {
     const value = (event.target as HTMLElement).closest("[role=treeitem]")?.getAttribute("data-value");
@@ -191,7 +214,7 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
       </Paper>
       <Paper withBorder p="md" style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
         {selected ? (
-          <UnitRecord unit={selected} units={units} kinds={kinds} canManage={canManage} failure={failure} onAction={setDialog} />
+          <UnitRecord unit={selected} units={units} kinds={kinds} canManage={canManage} failure={failure} busy={busy} onAction={setDialog} onReactivate={() => void reactivate()} />
         ) : (
           <EmptyState drawing="nothingFound" size="sm" title={t("units.select")} />
         )}
@@ -199,6 +222,7 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
       {selected && shown === "create" && <CreateUnitDialog unit={selected} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />}
       {selected && dialog === "rename" && <RenameUnitDialog unit={selected} onClose={close} onDone={(unit) => done(unit)} />}
       {selected && dialog === "move" && <MoveUnitDialog unit={selected} units={units} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />}
+      {selected && dialog === "merge" && <MergeUnitDialog unit={selected} units={units} onClose={close} onDone={merged} />}
       {selected && (
         <ConfirmDialog
           opened={dialog === "deactivate"}
@@ -222,18 +246,24 @@ function UnitRecord({
   kinds,
   canManage,
   failure,
+  busy,
   onAction,
+  onReactivate,
 }: {
   unit: Unit;
   units: readonly Unit[];
   kinds: Kinds | undefined;
   canManage: boolean;
   failure: Failure | undefined;
+  busy: boolean;
   onAction: (dialog: DialogName) => void;
+  onReactivate: () => void;
 }) {
   const { t } = useTranslation();
   const isRoot = unit.parent_id === null;
   const active = unit.status === "active";
+  const mergedInto = unit.merged_into_id ? units.find((candidate) => candidate.id === unit.merged_into_id) : undefined;
+  const merged = Boolean(unit.merged_into_id);
   const below = units.filter((candidate) => candidate.parent_id === unit.id).length;
   const canHoldUnits = active && childKinds(kinds, unit.kind).length > 0;
   const when = (value: string) => new Date(value).toLocaleString();
@@ -264,7 +294,22 @@ function UnitRecord({
               {t("units.actions.deactivate")}
             </Button>
           )}
+          {!active && !merged && (
+            <Button variant="default" loading={busy} onClick={onReactivate}>
+              {t("units.actions.reactivate")}
+            </Button>
+          )}
+          {!isRoot && !merged && (
+            <Button variant="default" onClick={() => onAction("merge")}>
+              {t("units.actions.merge")}
+            </Button>
+          )}
         </Group>
+      )}
+      {merged && (
+        <Alert color="info" variant="light">
+          {mergedInto ? t("units.mergedInto", { name: mergedInto.name }) : t("units.mergedElsewhere")}
+        </Alert>
       )}
       {failure && (
         <Alert color="danger" role="alert">
@@ -297,6 +342,7 @@ function UnitRecord({
           {t("units.rootNote")}
         </Text>
       )}
+      {!merged && <UnitReadiness unit={unit} />}
     </Stack>
   );
 }

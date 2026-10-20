@@ -202,7 +202,7 @@ public sealed class UnitMergeService(
         var names = await principals.FindAsync([.. all.Select(a => a.PrincipalId).Distinct()], cancellationToken).ConfigureAwait(false);
         var roleIds = all.Select(a => a.RoleId).Distinct().ToArray();
         var roles = await context.Roles.AsNoTracking().Where(r => roleIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, r => r.Name, cancellationToken).ConfigureAwait(false);
-        string Words(RoleAssignment a) => $"{names.GetValueOrDefault(a.PrincipalId)?.DisplayName ?? a.PrincipalId.ToString("D")}: {roles.GetValueOrDefault(a.RoleId, string.Empty)}";
+        string Words(RoleAssignment a) => $"{names.GetValueOrDefault(a.PrincipalId)?.DisplayName ?? a.PrincipalId.ToString("D")} ({roles.GetValueOrDefault(a.RoleId, string.Empty)})";
         return new UnitMergePart(UnitMergeParts.Assignments, "authorization", null, [.. moving.Select(Words).Order(StringComparer.CurrentCulture)], [.. moving.Select(a => a.Id.ToString("D"))], [.. dropping.Select(Words).Order(StringComparer.CurrentCulture)]);
     }
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, onResponse, onUnauthenticated } from "@/api/client";
 import { fetchContext } from "@/api/entitlements";
-import { actFor as actForCall, fetchMe, logout as logoutCall, stopActing as stopActingCall, type Me } from "@/api/identity";
+import { actFor as actForCall, fetchMe, logout as logoutCall, stopActing as stopActingCall, workFor as workForCall, type Me, type WorkFor } from "@/api/identity";
 import type { KillSwitch } from "@/api/flags";
 import { contextQueryKey, contextRefreshMs, entitlementsFrom } from "./entitlements";
 import { flagProvider } from "./flags";
@@ -92,8 +92,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => onResponse((info) => watch.response(info)), [watch]);
 
   /**
-   * After acting for someone or as oneself again: /me as the API answered it, and every other answer read again, since
-   * what the person may see has changed with whose rights they use (ADR-0037).
+   * After acting for someone or as oneself again, or choosing another unit to work for: /me as the API answered it, and
+   * every other answer read again, since what the person sees has changed with whose rights they use (ADR-0037) or with
+   * the unit the lists keep to (ADR-0038).
    */
   const actingChanged = useCallback(
     async (next: Me) => {
@@ -129,6 +130,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const stopActing = useCallback(async () => {
     await actingChanged(await stopActingCall());
   }, [actingChanged]);
+
+  const workFor = useCallback(
+    async (choice: WorkFor) => {
+      await actingChanged(await workForCall(choice));
+    },
+    [actingChanged],
+  );
 
   const dismissActingEnded = useCallback(() => setActingEnded(undefined), []);
 
@@ -222,9 +230,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       forget,
       actFor,
       stopActing,
+      workFor,
       dismissActingEnded,
     };
-  }, [me, query.error, query.isPending, entitlements, killSwitches, settings, settingsKnown, ended, actingEnded, refresh, signedIn, extend, signOut, expire, forget, actFor, stopActing, dismissActingEnded]);
+  }, [me, query.error, query.isPending, entitlements, killSwitches, settings, settingsKnown, ended, actingEnded, refresh, signedIn, extend, signOut, expire, forget, actFor, stopActing, workFor, dismissActingEnded]);
 
   return (
     <SessionWatchContext.Provider value={watch}>
