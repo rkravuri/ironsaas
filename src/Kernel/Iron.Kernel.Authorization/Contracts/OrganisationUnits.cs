@@ -6,7 +6,9 @@ public sealed record OrganisationKind(string Code, string Name, IReadOnlyList<st
 /// <summary>
 /// The kinds of organisation unit (ADR-0029, extension point). The tree knows no business meaning: the kernel offers
 /// <c>root</c> and <c>unit</c>, and <c>Iron.Business.Organisations</c> replaces this service with legal entity, business
-/// unit, purchasing group, department and team (<c>services.Replace(ServiceDescriptor.Singleton&lt;IOrganisationKinds, ...&gt;())</c>).
+/// unit, department and team (<c>services.Replace(ServiceDescriptor.Singleton&lt;IOrganisationKinds, ...&gt;())</c>). A
+/// purchasing group is not a kind: it serves several units and owns no records, so it is a business master of its own
+/// (the Business PRD, section 5.1).
 /// </summary>
 public interface IOrganisationKinds
 {
