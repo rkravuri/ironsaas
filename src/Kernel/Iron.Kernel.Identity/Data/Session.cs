@@ -62,6 +62,15 @@ public sealed class Session : AuditedEntity
     /// </summary>
     public Guid? ActingForId { get; private set; }
 
+    /// <summary>
+    /// The unit the person chose to work for (TF-222, ADR-0038); null for their home unit. New records and settings
+    /// follow it, and lists keep to it and the units below it.
+    /// </summary>
+    public Guid? WorkingUnitId { get; private set; }
+
+    /// <summary>The consolidated view: lists show everything the person's scopes cover (TF-222 AC1).</summary>
+    public bool AllUnits { get; private set; }
+
     public DateTimeOffset? EndedAt { get; private set; }
 
     public string? EndReason { get; private set; }
@@ -102,6 +111,13 @@ public sealed class Session : AuditedEntity
     public void ActFor(Guid delegatorId) => ActingForId = delegatorId;
 
     public void StopActing() => ActingForId = null;
+
+    /// <summary>One unit, or all of them; the home unit is a null unit.</summary>
+    public void WorkFor(Guid? unitId, bool allUnits)
+    {
+        WorkingUnitId = allUnits ? null : unitId;
+        AllUnits = allUnits;
+    }
 
     public void End(DateTimeOffset now, string reason)
     {

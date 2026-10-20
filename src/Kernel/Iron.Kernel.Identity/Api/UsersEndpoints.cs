@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Identity.Api;
 
@@ -114,6 +115,15 @@ internal static class UsersEndpoints
 
         var query = parsed.Value;
         var visible = await VisibleAsync(context, access, reader, cancellationToken);
+
+        // The list keeps to the unit the person works for and the units below it, unless they see all their units
+        // (ADR-0038). A user opened by id is not narrowed: a link works from any unit the reader may see.
+        if (http.RequestServices.GetService<IUnitReach>() is { } units && await units.WorkingUnitsAsync(reader.Id, cancellationToken) is { } working)
+        {
+            var workingIds = working.ToArray();
+            visible = visible.Where(p => p.HomeUnitId != null && workingIds.Contains(p.HomeUnitId.Value));
+        }
+
         var page = await visible.ApplyListQuery(query, Fields).ToPageAsync(query.Page, cancellationToken);
         return ApiResults.List(page.Map(UserResponse.From), http, query);
     }

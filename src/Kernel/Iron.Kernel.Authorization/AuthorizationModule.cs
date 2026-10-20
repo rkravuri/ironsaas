@@ -54,6 +54,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IRoleAssignments, RoleAssignments>();
         services.AddScoped<IRecordAccess, RecordAccessService>();
         services.AddScoped<IUnitReach, UnitReach>();
+        services.AddScoped<IWorkingUnits, WorkingUnits>();
         services.AddScoped<OrganisationUnitService>();
         services.AddScoped<IOrganisationUnits>(provider => provider.GetRequiredService<OrganisationUnitService>());
         services.AddScoped<IOrganisationUnitCheck, OrganisationUnitCheck>();

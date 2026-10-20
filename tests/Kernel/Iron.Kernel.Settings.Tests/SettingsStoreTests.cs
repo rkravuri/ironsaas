@@ -149,6 +149,39 @@ public class SettingsStoreTests(SettingsFixture fixture)
     }
 
     [Fact]
+    public async Task APersonsSettingsFollowTheUnitTheyWorkForAndAnotherPersonsTheirHomeUnit()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var people = new TestPrincipals();
+        var actor = new FixedPrincipal(Ids.New());
+        await using var provider = fixture.BuildServices(time, people, actor);
+        var region = await SettingsFixture.UnitAsync(provider, "Region");
+        var branch = await SettingsFixture.UnitAsync(provider, "Branch", region);
+        var subsidiary = await SettingsFixture.UnitAsync(provider, "Subsidiary");
+        var ada = people.Add("Ada", branch);
+        var grace = people.Add("Grace", branch);
+        actor.Id = ada;
+
+        await using var scope = provider.CreateAsyncScope();
+        var writer = scope.ServiceProvider.GetRequiredService<SettingsWriter>();
+        var settings = scope.ServiceProvider.GetRequiredService<ISettings>();
+        var set = await writer.SetAsync(ProbeSettings.Tone.Key, SettingPlace.Unit(region), Json("\"brief\""), ct);
+        Assert.True(set.IsSuccess, set.IsFailure ? set.Error.Message : null);
+        set = await writer.SetAsync(ProbeSettings.Tone.Key, SettingPlace.Unit(subsidiary), Json("\"warm\""), ct);
+        Assert.True(set.IsSuccess, set.IsFailure ? set.Error.Message : null);
+
+        var atHome = await settings.GetAsync(ProbeSettings.Tone, SettingContext.ForPerson(ada), ct);
+        actor.WorkingUnitId = subsidiary;
+        var atWork = await settings.GetAsync(ProbeSettings.Tone, SettingContext.ForPerson(ada), ct);
+        var colleague = await settings.GetAsync(ProbeSettings.Tone, SettingContext.ForPerson(grace), ct);
+
+        Assert.Equal(("brief", "warm", "brief"), (atHome, atWork, colleague));
+        Assert.True((await writer.ResetAsync(ProbeSettings.Tone.Key, SettingPlace.Unit(region), ct)).IsSuccess);
+        Assert.True((await writer.ResetAsync(ProbeSettings.Tone.Key, SettingPlace.Unit(subsidiary), ct)).IsSuccess);
+    }
+
+    [Fact]
     public async Task ASecretReferenceStoresAPathTheSecretIsReadFromTheStoreAndKeptFiveMinutesAtMost()
     {
         var ct = TestContext.Current.CancellationToken;

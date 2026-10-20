@@ -25,7 +25,13 @@ public sealed record SignedInPrincipal(
     AuthenticationKind Kind = AuthenticationKind.Session,
     Guid? HomeUnitId = null,
     DateTimeOffset? SessionStartedAt = null,
-    Guid? ActingForId = null);
+    Guid? ActingForId = null,
+    Guid? ChosenWorkingUnitId = null,
+    bool AllUnits = false)
+{
+    /// <summary>The unit the person works for: the one chosen, else the home unit; the home unit in the consolidated view.</summary>
+    public Guid? WorkingUnitId => Kind == AuthenticationKind.Session ? (AllUnits ? HomeUnitId : ChosenWorkingUnitId ?? HomeUnitId) : null;
+}
 
 /// <summary>
 /// The current principal (TF-010): the signed-in principal of the request, nobody when the request has no valid session,
@@ -40,6 +46,12 @@ public sealed class RequestPrincipal(IHttpContextAccessor accessor) : ICurrentPr
 
     /// <summary>The delegator a shell session acts for (ADR-0037); never for a token.</summary>
     public Guid? ActingForId => Current is { Kind: AuthenticationKind.Session } signedIn ? signedIn.ActingForId : null;
+
+    /// <summary>The unit a shell session works for (ADR-0038); never for a token.</summary>
+    public Guid? WorkingUnitId => Current?.WorkingUnitId;
+
+    /// <summary>The consolidated view of a shell session.</summary>
+    public bool AllUnits => Current is { Kind: AuthenticationKind.Session, AllUnits: true };
 
     public SignedInPrincipal? Current
     {

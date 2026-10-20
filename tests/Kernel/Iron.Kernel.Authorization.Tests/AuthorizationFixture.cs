@@ -30,6 +30,7 @@ public sealed class AuthorizationFixture : IAsyncLifetime
         await using var provider = BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        await ProbeRecords.CreateTablesAsync(provider);
     }
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
@@ -48,6 +49,7 @@ public sealed class AuthorizationFixture : IAsyncLifetime
         await using var provider = BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter(), connectionString);
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        await ProbeRecords.CreateTablesAsync(provider);
         return connectionString;
     }
 
@@ -63,6 +65,13 @@ public sealed class AuthorizationFixture : IAsyncLifetime
     {
         var audit = new RecordingAuditWriter();
         return new TestScope(BuildServices(time ?? new FakeTimeProvider(), new FixedPrincipal(principal, actingFor), audit), audit);
+    }
+
+    /// <summary>A scope of a principal working for a unit, or for all their units (ADR-0038).</summary>
+    public TestScope WorkingScope(Guid principal, Guid? workingUnit, bool allUnits = false)
+    {
+        var audit = new RecordingAuditWriter();
+        return new TestScope(BuildServices(new FakeTimeProvider(), new FixedPrincipal(principal, workingUnit: workingUnit, allUnits: allUnits), audit), audit);
     }
 
     /// <summary>A scope of a principal on the given clock.</summary>
@@ -93,11 +102,15 @@ public sealed class AuthorizationCollection : ICollectionFixture<AuthorizationFi
     public const string Name = "authorization";
 }
 
-public sealed class FixedPrincipal(Guid id, Guid? actingFor = null) : ICurrentPrincipal
+public sealed class FixedPrincipal(Guid id, Guid? actingFor = null, Guid? workingUnit = null, bool allUnits = false) : ICurrentPrincipal
 {
     public Guid Id => id;
 
     public Guid? ActingForId => actingFor;
+
+    public Guid? WorkingUnitId => workingUnit;
+
+    public bool AllUnits => allUnits;
 }
 
 /// <summary>
@@ -114,13 +127,11 @@ public sealed class DutyProbeModule : IModule
 
     public string Name => "probe";
 
-    public IReadOnlyList<Permission> Permissions => [];
+    public IReadOnlyList<Permission> Permissions => [ProbeRecords.CratesRead, ProbeRecords.CratesManage];
 
     public IReadOnlyList<Duty> Duties => [Approval, Receiving, Evaluation];
 
-    public void AddServices(IServiceCollection services, IConfiguration configuration)
-    {
-    }
+    public void AddServices(IServiceCollection services, IConfiguration configuration) => ProbeRecords.Add(services);
 
     public void MapEndpoints(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints)
     {

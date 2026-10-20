@@ -6,11 +6,12 @@ using Iron.Kernel.Settings.Contracts;
 namespace Iron.Kernel.Settings.Services;
 
 /// <summary>
-/// The one effective-value service (TF-057, TF-221, ADR-0036): the values from the cache, the person's home unit from
-/// Identity (through <see cref="IPrincipals"/>), and the units above it from the tree's materialised path, one read.
-/// The tree is asked only when a value is set at some unit for the key, so a tenant-wide setting costs no query.
+/// The one effective-value service (TF-057, TF-221, ADR-0036): the values from the cache, the person's unit, and the
+/// units above it from the tree's materialised path, one read. The person's unit is the one they work for when it is
+/// the request's person (ADR-0038), else their home unit from Identity (through <see cref="IPrincipals"/>). The tree is
+/// asked only when a value is set at some unit for the key, so a tenant-wide setting costs no query.
 /// </summary>
-public sealed class SettingsService(SettingsCache cache, IOrganisationUnits? units = null, IPrincipals? principals = null) : ISettings
+public sealed class SettingsService(SettingsCache cache, IOrganisationUnits? units = null, IPrincipals? principals = null, ICurrentPrincipal? current = null) : ISettings
 {
     public async Task<T> GetAsync<T>(Setting<T> setting, SettingContext context, CancellationToken cancellationToken)
     {
@@ -32,9 +33,11 @@ public sealed class SettingsService(SettingsCache cache, IOrganisationUnits? uni
     private async Task<IReadOnlyList<Guid>> UnitsNearestFirstAsync(SettingContext context, CancellationToken cancellationToken)
     {
         var unit = context.UnitId;
-        if (!context.UnitKnown && context.PrincipalId is { } person && principals is not null)
+        if (!context.UnitKnown && context.PrincipalId is { } person)
         {
-            unit = (await principals.FindAsync([person], cancellationToken).ConfigureAwait(false)).GetValueOrDefault(person)?.HomeUnitId;
+            unit = current is not null && current.Id == person && current.WorkingUnitId is { } working
+                ? working
+                : principals is null ? null : (await principals.FindAsync([person], cancellationToken).ConfigureAwait(false)).GetValueOrDefault(person)?.HomeUnitId;
         }
 
         if (unit is not { } start || units is null)

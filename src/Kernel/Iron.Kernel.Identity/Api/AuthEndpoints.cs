@@ -57,7 +57,22 @@ public sealed record MeResponse(
     SessionResponse Session,
     HomeUnitResponse? HomeUnit,
     ActingForResponse? ActingFor,
-    MeDelegations Delegations);
+    MeDelegations Delegations,
+    HomeUnitResponse? WorkingUnit,
+    bool AllUnits,
+    WorkingUnitsResponse WorkingUnits);
+
+/// <summary>A unit the person may work for, with its depth and its path of names, for the header's menu on the tree.</summary>
+public sealed record WorkingUnitChoiceResponse(Guid Id, string Name, string Code, int Depth, IReadOnlyList<string> Path);
+
+/// <summary>
+/// The units the person may work for (ADR-0038), and whether the consolidated view is open to them. The header shows its
+/// control only when there is more than one unit to choose.
+/// </summary>
+public sealed record WorkingUnitsResponse(IReadOnlyList<WorkingUnitChoiceResponse> Units, bool AllUnitsAvailable);
+
+/// <summary>One unit to work for, or all of them.</summary>
+public sealed record WorkForRequest(Guid? UnitId, bool AllUnits);
 
 /// <summary>A duty by its code and its words.</summary>
 public sealed record DutyName(string Code, string Name);
@@ -124,6 +139,7 @@ internal static class AuthEndpoints
 
         endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
         endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
+        endpoints.MapPost("/api/v1/me/working-unit", WorkForAsync).RequireSignedIn().WithTags("me").WithName("WorkFor").WithSummary("Choose the unit you work for, among your home unit and the units of your roles, or all of them where your roles reach several; answers /me.");
         endpoints.MapDelete("/api/v1/me/acting-for", StopActingAsync).RequireSignedIn().WithTags("me").WithName("StopActing").WithSummary("Act as yourself again; answers /me.");
         endpoints.MapGet("/api/v1/directory", DirectoryAsync).RequireSignedIn().WithTags("me").WithName("Directory").WithSummary("A page of the active people of this tenant whose name or login contains the search (two characters at least), for choosing a delegate: display name and home unit name only.");
         endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=), over a unit and the units below it (&include_children=true), or at a record (?record_type=&record_id=, with &unit= for the record's unit).");
@@ -196,7 +212,50 @@ internal static class AuthEndpoints
         var acting = current.ActingForId is { } delegator && received.FirstOrDefault(d => d.DelegatorId == delegator) is { } held
             ? new ActingForResponse(held.DelegatorId, held.DelegatorName, held.Duties, held.Until)
             : null;
-        return new MeResponse(current.Id, current.LoginId, current.DisplayName, current.Type, permissions, anywhere, Session(current.SessionId, current.SessionStartedAt, current.SessionExpiresAt, current.IdleExpiresAt), homeUnit, acting, new MeDelegations(given, received));
+
+        // The units the person may work for. A chosen unit the person no longer may choose (a role removed since) falls
+        // back to the home unit, and the session forgets it, as it forgets an idle minute: no event of its own.
+        var options = current.Kind == AuthenticationKind.Session
+            ? await services.GetRequiredService<IWorkingUnits>().OptionsAsync(current.Id, current.HomeUnitId, cancellationToken)
+            : new WorkingUnitOptions([], false);
+        var allUnits = current.AllUnits && options.AllUnitsAvailable;
+        var stale = (current.ChosenWorkingUnitId is { } chosen && options.Units.All(u => u.Id != chosen)) || (current.AllUnits && !allUnits);
+        if (stale)
+        {
+            await services.GetRequiredService<SessionService>().ForgetWorkingUnitAsync(current.SessionId, cancellationToken);
+            current = current with { ChosenWorkingUnitId = null, AllUnits = false };
+        }
+
+        var working = current.WorkingUnitId is { } workingId ? options.Units.FirstOrDefault(u => u.Id == workingId) : null;
+        var workingUnit = working is null ? homeUnit : new HomeUnitResponse(working.Id, working.Name, working.Code);
+        var choices = new WorkingUnitsResponse([.. options.Units.Select(u => new WorkingUnitChoiceResponse(u.Id, u.Name, u.Code, u.Depth, u.Path))], options.AllUnitsAvailable);
+        return new MeResponse(
+            current.Id,
+            current.LoginId,
+            current.DisplayName,
+            current.Type,
+            permissions,
+            anywhere,
+            Session(current.SessionId, current.SessionStartedAt, current.SessionExpiresAt, current.IdleExpiresAt),
+            homeUnit,
+            acting,
+            new MeDelegations(given, received),
+            current.Kind == AuthenticationKind.Session ? workingUnit : null,
+            allUnits,
+            choices);
+    }
+
+    private static async Task<IResult> WorkForAsync(WorkForRequest request, HttpContext http, RequestPrincipal principal, SessionService sessions, CancellationToken cancellationToken)
+    {
+        var result = await sessions.WorkForAsync(principal.Current!, request.UnitId, request.AllUnits, cancellationToken);
+        if (result.IsFailure)
+        {
+            return ApiResults.Problem(result.Error, http);
+        }
+
+        // The rest of this request, /me's answer included, works for the chosen unit already.
+        RequestPrincipal.Set(http, result.Value);
+        return TypedResults.Ok(await DescribeAsync(http, result.Value, cancellationToken));
     }
 
     private static async Task<IResult> ActForAsync(ActForRequest request, HttpContext http, RequestPrincipal principal, SessionService sessions, CancellationToken cancellationToken)

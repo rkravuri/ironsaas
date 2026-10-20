@@ -34,9 +34,9 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
         var administrator = roles.Single(r => r.Code == SystemRoles.TenantAdministrator);
         Assert.Equal("Tenant administrator", administrator.Name);
         Assert.Equal(PrincipalKind.Any, administrator.PrincipalType);
-        Assert.Equal(AuthorizationPermissions.All.Select(p => p.Name).Order(StringComparer.Ordinal), administrator.Permissions);
+        Assert.Equal(AuthorizationPermissions.All.Concat(new DutyProbeModule().Permissions).Select(p => p.Name).Order(StringComparer.Ordinal), administrator.Permissions);
         var readOnly = roles.Single(r => r.Code == SystemRoles.ReadOnly);
-        Assert.Equal([AuthorizationPermissions.AssignmentsRead.Name, AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.UnitsRead.Name], readOnly.Permissions);
+        Assert.Equal([AuthorizationPermissions.AssignmentsRead.Name, AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.UnitsRead.Name, ProbeRecords.CratesRead.Name], readOnly.Permissions);
         Assert.Equal(PrincipalKind.Service, roles.Single(r => r.Code == SystemRoles.ServiceDefault).PrincipalType);
     }
 

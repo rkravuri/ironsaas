@@ -12,7 +12,7 @@ namespace Iron.Kernel.Identity.Services;
 /// Sessions (TF-020, TF-021, TF-029): start, resolve on every request, touch, end. A new session takes the tenant's
 /// limits (<see cref="IdentitySettings"/>, ADR-0036), or the configured ones while the tenant has set none.
 /// </summary>
-public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, IDelegations delegations, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
+public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, IDelegations delegations, IWorkingUnits workingUnits, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
 {
     /// <summary>
     /// Creates the session row and returns the token for the cookie. The token is never stored. <paramref name="beforeSave"/>
@@ -48,7 +48,7 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     {
         ArgumentNullException.ThrowIfNull(principal);
         ArgumentNullException.ThrowIfNull(session);
-        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt, session.ActingForId);
+        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt, session.ActingForId, session.WorkingUnitId, session.AllUnits);
     }
 
     /// <summary>
@@ -79,6 +79,47 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
 
         await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.ActingStarted, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "session", RecordId: session.Id, OnBehalfOfId: delegatorId), cancellationToken).ConfigureAwait(false);
         return principal with { ActingForId = delegatorId };
+    }
+
+    /// <summary>
+    /// The unit the person works for (TF-222, ADR-0038): one of the units they may choose, or all of them where the
+    /// consolidated view is open to them. Only a shell session works for a unit. Audited.
+    /// </summary>
+    public async Task<Result<SignedInPrincipal>> WorkForAsync(SignedInPrincipal principal, Guid? unitId, bool allUnits, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.Kind == AuthenticationKind.Token)
+        {
+            return Error.Forbidden(IdentityErrors.WorkingUnitToken, "A token works for no unit: it sees what its scopes cover. Sign in to the shell to choose a unit.");
+        }
+
+        var options = await workingUnits.OptionsAsync(principal.Id, principal.HomeUnitId, cancellationToken).ConfigureAwait(false);
+        var allowed = allUnits ? options.AllUnitsAvailable : unitId is { } chosen && options.Units.Any(u => u.Id == chosen);
+        if (!allowed)
+        {
+            return Error.Forbidden(
+                IdentityErrors.WorkingUnitNotYours,
+                allUnits ? "Your roles do not reach several units at once, so there is no view of all your units." : "You may not work for that unit. Choose your home unit or a unit where you hold a role.");
+        }
+
+        var stored = allUnits || unitId == principal.HomeUnitId ? null : unitId;
+        var session = await context.Sessions.SingleAsync(s => s.Id == principal.SessionId, cancellationToken).ConfigureAwait(false);
+        session.WorkFor(stored, allUnits);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["working_unit"] = allUnits ? "all" : unitId!.Value.ToString("D") };
+        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.WorkingUnitChosen, AuditOutcome.Success, principal.Id, principal.LoginId, details, "session", session.Id), cancellationToken).ConfigureAwait(false);
+        return principal with { ChosenWorkingUnitId = stored, AllUnits = allUnits };
+    }
+
+    /// <summary>The session works for the home unit again: housekeeping when the chosen unit may no longer be chosen.</summary>
+    public async Task ForgetWorkingUnitAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        var session = await context.Sessions.SingleOrDefaultAsync(s => s.Id == sessionId, cancellationToken).ConfigureAwait(false);
+        if (session is not null)
+        {
+            session.WorkFor(null, allUnits: false);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>The session acts as its own principal again. Nothing to do when it was not acting.</summary>

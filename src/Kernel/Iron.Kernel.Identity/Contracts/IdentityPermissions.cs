@@ -35,6 +35,12 @@ public static class IdentityErrors
 
     /// <summary>A directory search shorter than two characters: it would list the tenant's people one page at a time.</summary>
     public const string DirectorySearchTooShort = "identity.directory.search_too_short";
+
+    /// <summary>A bearer token asked for a working unit: a token sees what its scopes cover and works for no unit (ADR-0038).</summary>
+    public const string WorkingUnitToken = "identity.working_unit.token";
+
+    /// <summary>A unit the person may not work for, or "All my units" for a person who may not choose it.</summary>
+    public const string WorkingUnitNotYours = "identity.working_unit.not_yours";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -57,6 +63,9 @@ public static class IdentityAuditEvents
 
     /// <summary>The delegation behind a session's acting ended, and the next request cleared it.</summary>
     public const string ActingEnded = "identity.acting_ended";
+
+    /// <summary>A person chose the unit they work for, or all their units (ADR-0038).</summary>
+    public const string WorkingUnitChosen = "identity.working_unit_chosen";
 
     /// <summary>The seed was given a different secret for an existing service account and set it (ADR-0028: a healed unit).</summary>
     public const string ServiceAccountSecretChanged = "identity.service_account_secret_changed";

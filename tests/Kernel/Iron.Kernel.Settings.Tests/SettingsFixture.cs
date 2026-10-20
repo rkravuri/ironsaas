@@ -129,9 +129,11 @@ public sealed class TestPrincipals : IPrincipals
 }
 
 /// <summary>A principal the test sets: who saves a value.</summary>
-public sealed class FixedPrincipal(Guid id) : ICurrentPrincipal
+public sealed class FixedPrincipal(Guid id, Guid? workingUnit = null) : ICurrentPrincipal
 {
     public Guid Id { get; set; } = id;
+
+    public Guid? WorkingUnitId { get; set; } = workingUnit;
 }
 
 /// <summary>A test principal taken from a request header; Identity provides the real one.</summary>
