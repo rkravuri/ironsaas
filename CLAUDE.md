@@ -1,6 +1,6 @@
-# Foundation: standing rules for Claude Code
+# IronSaaS Foundation: standing rules for Claude Code
 
-Foundation is the IronSaaS enterprise SaaS platform (namespace `Iron.*`). Read this file first, then `.claude/rules/backend.md` and `.claude/rules/frontend.md` for the side you touch, then `docs/STATUS.md`. The task is a section of `docs/prompts/<slice>.md`; its opening message is what you were given.
+IronSaaS Foundation is the enterprise SaaS platform for regulated industries, and the eProcurement Suite is the first suite built on it (namespace `Iron.*`, ADR-0043). Read this file first, then `.claude/rules/backend.md` and `.claude/rules/frontend.md` for the side you touch, then `docs/STATUS.md`. The task is a section of `docs/prompts/<slice>.md`; its opening message is what you were given.
 
 ## How a task runs
 
@@ -30,9 +30,9 @@ Stop and ask, in the session, only when: a decision with real alternatives has n
 - Package versions live once: `Directory.Packages.props` and `shell/package.json`. Exact pins, at least two weeks old (ADR-0003).
 - Module boundaries (ADR-0001); time through `TimeProvider`, ids through `Ids.New()`, failures through `Result` (ADR-0007); every endpoint declares its permission; state changes write their audit event in the same transaction (ADR-0013); in the shell, no `ag-grid-*` outside the wrapper, every route declares its permission, every string in the catalogue, no colour by value (ADR-0024).
 
-## Layers (ADR-0029)
+## Layers (ADR-0029, ADR-0043)
 
-Code lives in one of three layers: Kernel (`Iron.Kernel`, `Iron.Kernel.*`), Business (`Iron.Business.*`), Products (`Iron.Products.*`). Before creating a module, apply the placement test: no business meaning is Kernel; needed by two or more products is Business; owned by one product is Products. Every project declares `<IronLayer>`. Dependencies go downward only, and between modules only through a Contracts project. When the kernel needs something only Business can supply, the kernel declares an interface in its Contracts and Business implements it. Schemas carry the layer prefix: `kernel_`, `business_`, `products_`. Permission names, audit events, error codes, routes and configuration sections name the module, not the layer.
+Code lives in one of three layers: Kernel (`Iron.Kernel`, `Iron.Kernel.*`) and Business (`Iron.Business.*`), which together are IronSaaS Foundation, and Suite (`Iron.Suites.<Suite>.*`, one folder per suite: `src/Suites/Procurement/` for the eProcurement Suite). Before creating a module, apply the placement test: no business meaning is Kernel; needed by enterprise products of any kind, or by the products of two or more suites, is Business; needed by two or more products of one suite is that suite's shared master; owned by one product is that product. Every project declares `<IronLayer>`, a suite's project `<IronSuite>` too. Dependencies go downward only, and between modules only through a Contracts project; a suite never references another suite, and the Foundation never references a suite. When the kernel needs something only Business can supply, the kernel declares an interface in its Contracts and Business implements it. Schemas carry the layer prefix or the suite's short name: `kernel_`, `business_`, `procurement_`. Permission names, audit events, error codes, routes and configuration sections name the module, not the layer or the suite.
 
 ## Writing rules
 

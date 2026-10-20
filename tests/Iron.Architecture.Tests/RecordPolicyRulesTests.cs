@@ -48,9 +48,9 @@ public class RecordPolicyRulesTests
     [Fact]
     public void TheRuleNamesEveryRecordWithoutAPolicy()
     {
-        var violations = RecordPolicyRules.Unpoliced("Iron.Products.Sample", [typeof(PolicedRecord), typeof(UnpolicedRecord)], [typeof(PolicedRecord)]);
+        var violations = RecordPolicyRules.Unpoliced("Iron.Suites.Procurement.Sample", [typeof(PolicedRecord), typeof(UnpolicedRecord)], [typeof(PolicedRecord)]);
 
-        Assert.Equal(["Iron.Products.Sample: UnpolicedRecord is a business record with no record policy. Register one in the module's AddServices with AddRecordPolicy (TF-035, ADR-0032)."], violations);
+        Assert.Equal(["Iron.Suites.Procurement.Sample: UnpolicedRecord is a business record with no record policy. Register one in the module's AddServices with AddRecordPolicy (TF-035, ADR-0032)."], violations);
     }
 }
 
