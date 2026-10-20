@@ -1,3 +1,5 @@
+using Iron.Kernel;
+
 namespace Iron.Architecture.Tests;
 
 /// <summary>Applies the layout and reference rules to the real repository.</summary>
@@ -104,17 +106,31 @@ public class RepositoryLayoutTests
     [Theory]
     [InlineData("src/Kernel")]
     [InlineData("src/Business")]
-    [InlineData("src/Products")]
+    [InlineData("src/Suites")]
+    [InlineData("src/Suites/Procurement")]
     [InlineData("src/Hosts")]
     public void SourceHasAFolderPerLayerAndOneForTheHosts(string folder)
     {
-        Assert.True(Directory.Exists(Path.Combine(Repository.Root, folder)), $"Folder '{folder}' is missing (ADR-0029).");
+        Assert.True(Directory.Exists(Path.Combine(Repository.Root, folder)), $"Folder '{folder}' is missing (ADR-0029, ADR-0043).");
+    }
+
+    [Fact]
+    public void EveryFolderUnderTheSuitesIsASuite()
+    {
+        var wrong = Directory.EnumerateDirectories(Path.Combine(Repository.Root, "src", "Suites"))
+            .Select(directory => Path.GetFileName(directory))
+            .Where(name => !SuiteName.IsValid(name) || !File.Exists(Path.Combine(Repository.Root, "src", "Suites", name, "README.md")))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        // Build output can leave a folder behind; a suite folder is named as the suite and says what the suite is.
+        Assert.True(wrong.Count == 0, $"src/Suites/ holds one folder per suite, named in PascalCase, each with a README.md (ADR-0043). Fix: {string.Join(", ", wrong.Select(name => "src/Suites/" + name))}.");
     }
 
     [Fact]
     public void NothingButTheLayerFoldersSitsInSource()
     {
-        string[] expected = ["Business", "Hosts", "Kernel", "Products"];
+        string[] expected = ["Business", "Hosts", "Kernel", "Suites"];
         var others = Directory.EnumerateDirectories(Path.Combine(Repository.Root, "src"))
             .Select(directory => Path.GetFileName(directory))
             .Where(name => !expected.Contains(name, StringComparer.Ordinal))
@@ -122,6 +138,6 @@ public class RepositoryLayoutTests
             .ToList();
 
         // A checkout of a branch from before ADR-0029 leaves build output in folders such as src/Iron.Identity.
-        Assert.True(others.Count == 0, $"src/ holds the layer folders and src/Hosts only (ADR-0029). Move or delete: {string.Join(", ", others.Select(name => "src/" + name))}.");
+        Assert.True(others.Count == 0, $"src/ holds the layer folders and src/Hosts only (ADR-0029, ADR-0043). Move or delete: {string.Join(", ", others.Select(name => "src/" + name))}.");
     }
 }

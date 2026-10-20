@@ -46,7 +46,7 @@ public static class ProjectCatalog
         var declaredLayer = ReadLayer(document);
         ProjectLayer? layer = ProjectLayers.TryParse(declaredLayer, out var parsed) ? parsed : null;
         var (kind, moduleName) = Classify(name, layer);
-        return new ProjectInfo(name, relativePath, declaredLayer, layer, kind, moduleName, ReadProjectReferences(document));
+        return new ProjectInfo(name, relativePath, declaredLayer, layer, kind, moduleName, ReadProjectReferences(document), ReadProperty(document, "IronSuite"));
     }
 
     private static (ProjectKind Kind, string? ModuleName) Classify(string name, ProjectLayer? layer)
@@ -82,10 +82,12 @@ public static class ProjectCatalog
         return (ProjectKind.Module, name);
     }
 
-    private static string? ReadLayer(XDocument document)
+    private static string? ReadLayer(XDocument document) => ReadProperty(document, "IronLayer");
+
+    private static string? ReadProperty(XDocument document, string property)
     {
-        // An empty element is no layer, as the build's own check sees it; the value is not trimmed, so " Kernel " is refused by both.
-        var element = document.Descendants().FirstOrDefault(e => e.Name.LocalName == "IronLayer");
+        // An empty element is no value, as the build's own check sees it; the value is not trimmed, so " Kernel " is refused by both.
+        var element = document.Descendants().FirstOrDefault(e => e.Name.LocalName == property);
         return element is null || element.Value.Length == 0 ? null : element.Value;
     }
 

@@ -17,8 +17,15 @@ public interface IModule
     IReadOnlyList<Permission> Permissions { get; }
 
     /// <summary>
+    /// The suite the module belongs to (ADR-0043): its short name, such as <c>procurement</c>, or <c>foundation</c> for a
+    /// kernel or business module. It comes from the project's <c>IronSuite</c>, which the build writes into the assembly,
+    /// so a module never states it in code; the catalogue groups by it.
+    /// </summary>
+    string Suite => SuiteName.Of(GetType().Assembly);
+
+    /// <summary>
     /// How the module is licensed (ADR-0034). A kernel module is the platform and has none, which is the default; a
-    /// Business or Products module declares its licence code and subscription type, and MapModules puts every endpoint
+    /// Business or suite module declares its licence code and subscription type, and MapModules puts every endpoint
     /// it maps behind the entitlement check.
     /// </summary>
     ModuleLicence? Licence => null;

@@ -153,7 +153,9 @@ public sealed class SchemaCheckRunner(NpgsqlDataSource dataSource, IEnumerable<R
             return [];
         }
 
-        var violations = await Checks.SchemaCheck.RunAsync(dataSource, schemas, cancellationToken).ConfigureAwait(false);
+        // A suite module's schema starts with its suite's short name, which its assembly carries (ADR-0043).
+        var suites = contexts.Select(c => SuiteName.Of(c.ContextType.Assembly)).Where(s => s != SuiteName.Foundation).Distinct(StringComparer.Ordinal).ToList();
+        var violations = await Checks.SchemaCheck.RunAsync(dataSource, schemas, suites, cancellationToken).ConfigureAwait(false);
         foreach (var violation in violations)
         {
             logger.LogError("Schema violation: {Violation}", violation);

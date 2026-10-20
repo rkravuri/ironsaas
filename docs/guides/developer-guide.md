@@ -39,11 +39,12 @@ src/
       Contracts/             public interfaces and DTOs; its own project Iron.Kernel.<Module>.Contracts
       README.md              what the module is responsible for
   Business/                  Iron.Business.<Module>: shared business masters, schema business_<module> (README; empty)
-  Products/                  Iron.Products.<Product>: one product each, schema products_<product> (README; empty)
+  Suites/                    one folder per suite (ADR-0043), each with its README
+    Procurement/             the eProcurement Suite: Iron.Suites.Procurement.<Module>, schema procurement_<module> (empty)
   Hosts/
     Iron.Host.Api/  Iron.Host.Worker/            tenant unit hosts, with their Dockerfiles
     Iron.Host.ControlPlane/  Iron.Host.Fleet/    control plane hosts, with their Dockerfiles
-shell/                       the React shell: src/api, src/auth, src/modules/<layer>/<module>, src/components/data-grid, e2e/
+shell/                       the React shell: src/api, src/auth, src/modules/<layer>/<module> (a suite's under suites/<suite>/), src/components/data-grid, e2e/
 tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, <Layer>/<Project>.Tests, and
                              Iron.Testing (the platform services the tests run on) with test-services.sh
 tools/Iron.Smoke/            the smoke test; scaffolding tools come after S1
@@ -58,10 +59,10 @@ docs/                        prd/, adr/, guides/, slices/
 |---|---|---|
 | Warnings are errors | Any compiler or analyzer warning | Fix the warning. Do not suppress it without a comment that says why. |
 | One version per package, in `Directory.Packages.props` | A project has a `Version` attribute on a `PackageReference`, or a package is missing from the props file | Add the package to `Directory.Packages.props` with its licence; reference it by name only. |
-| Layers (ADR-0029) | A project declares no `<IronLayer>` or one that is not `Kernel`, `Business`, `Products`, `Host`, `Test` or `Tool` (the build stops with `IRON0001` or `IRON0002`); the layer does not match the project's name and folder; a project references a higher layer (Kernel to Business or Products, Business to Products), even its Contracts | Declare the layer. For an upward need, invert it: the lower layer declares an interface in its Contracts, the higher one implements it. |
+| Layers (ADR-0029, ADR-0043) | A project declares no `<IronLayer>` or one that is not `Kernel`, `Business`, `Suite`, `Host`, `Test` or `Tool` (the build stops with `IRON0001` or `IRON0002`); a Suite project declares no `<IronSuite>`, another project declares one, or the value is not a suite's name (`IRON0003`, `IRON0004`); the layer or the suite does not match the project's name, folder and schema prefix; a project references a higher layer (Kernel to Business or a suite, Business to a suite), even its Contracts; a suite's project references another suite's | Declare the layer. For an upward need, invert it: the lower layer declares an interface in its Contracts, the higher one implements it. |
 | Module boundaries (ADR-0001) | A module references another module's implementation project; a Contracts project references anything but `Iron.Kernel`; a kernel library references a module; a host references another host | Move the shared type into the other module's `Contracts` project and reference that. |
 | Private namespaces (ADR-0001) | An assembly uses a type from another module's `Api`, `Services` or `Data` namespace | Expose what you need through the other module's `Contracts` project. |
-| Layout | A project is not in a folder with its own name; a Contracts project is outside its module; a module has no Contracts project; a project under `src/` does not start with `Iron.`; `src/` holds something other than `Kernel/`, `Business/`, `Products/` and `Hosts/` | Move or rename the project; add the missing Contracts project. |
+| Layout | A project is not in a folder with its own name; a Contracts project is outside its module; a module has no Contracts project; a project under `src/` does not start with `Iron.`; `src/` holds something other than `Kernel/`, `Business/`, `Suites/` and `Hosts/`, or `src/Suites/` a folder that is not a suite with its README | Move or rename the project; add the missing Contracts project. |
 
 The messages name the project file or the assembly and the forbidden reference.
 
@@ -71,16 +72,16 @@ Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to t
 
 ## Requirements (ADR-0041, ADR-0042)
 
-The requirements are in `docs/prd/`, one markdown document per layer and product with a CSV beside it; `docs/prd/README.md` lists them. The markdown is the source: edit it, run `make prd-csv` to write its CSV, and `make prd-check` before committing (CI runs it).
+The requirements are in `docs/prd/`, one markdown document per layer and product with a CSV beside it, the Foundation's in `docs/prd/foundation/` and each suite's in `docs/prd/suites/<suite>/` (ADR-0043); `docs/prd/README.md` lists them. The markdown is the source: edit it, run `make prd-csv` to write its CSV, and `make prd-check` before committing (CI runs it).
 
 - A new requirement takes the next free identifier in its area's block of twenty, is tagged `[New]`, and has criteria `AC1 Given ..., When ..., Then ...` with at least one marked `(error case)`. A rule nobody has decided is tagged `[Decision]` with the question and a proposed default in its notes.
 - An identifier is never reused, and a moved requirement starts its notes with what it was ("Was FF-022."); `requirements-map.md` says where every requirement of the archived Functional Foundation PRD went.
-- A dependency points down the layers (kernel, business, products, the supplier portal surface); between products it points to an earlier one, or to a later one only as an event, written `RCV-081 (event)`. The check refuses anything else.
+- A dependency points down the layers (kernel, business, a suite's products, its surfaces) and stays inside its suite; between a suite's products it points to an earlier one, or to a later one only as an event, written `RCV-081 (event)`. The check refuses anything else.
 - A test names what it proves by identifier and criterion, `REQ-012 AC2`, so the validation pack can trace it (TF-218).
 
 ## Add a module
 
-Start with the placement test (ADR-0029). It has no business meaning: Kernel. Two or more products would need to own it: Business. One product owns it: Products. Write the answer and the reason in the module's README; a reviewer reads it first.
+Start with the placement test (ADR-0029, ADR-0043). It has no business meaning: Kernel. Enterprise products of any kind need it, or the products of two or more suites: Business. Two or more products of one suite need it: that suite's shared master. One product owns it: that product. Write the answer and the reason in the module's README; a reviewer reads it first.
 
 Example: a new kernel module `Iron.Kernel.Settings` (typed settings know nothing about any business domain).
 
@@ -98,9 +99,9 @@ Permission names, audit events, error codes, routes and configuration sections n
 
 When a kernel module needs something only a business module can supply (the organisation kinds, for one), the kernel declares an interface in its Contracts with a kernel default, and the business module implements it; the host registers the business implementation. The kernel never references Business.
 
-## Add a business module or a product
+## Add a business module or a suite's module
 
-The same steps under `src/Business/Iron.Business.<Module>/` (layer `Business`, schema `business_<module>`) or `src/Products/Iron.Products.<Product>/` (layer `Products`, schema `products_<product>`), with tests in `tests/Business/` or `tests/Products/`. Every entity is a `BusinessRecord` or marked `ITenantWide` (TF-220). A business module may use the kernel; a product may use Business and the kernel; both only through Contracts projects. Business never depends on a product: where it must hear from one, it declares an extension point the product implements. Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product may use an earlier one's Contracts, and an earlier one hears from a later one only through domain events (ADR-0042). The two layer READMEs (`src/Business/README.md`, `src/Products/README.md`) have the naming table, and the module's PRD names its schema, its permissions and its dependencies.
+The same steps under `src/Business/Iron.Business.<Module>/` (layer `Business`, schema `business_<module>`) or `src/Suites/<Suite>/Iron.Suites.<Suite>.<Module>/` (layer `Suite` with `<IronSuite><Suite></IronSuite>`, schema `<suite>_<module>`, for example `procurement_orders`), with tests in `tests/Business/` or `tests/Suites/<Suite>/`. Every entity is a `BusinessRecord` or marked `ITenantWide` (TF-220). A business module may use the kernel; a suite's module may use Business and the kernel; both only through Contracts projects. A suite never references another suite. Business never depends on a suite: where it must hear from one, it declares an extension point the suite's module implements. Inside a suite the shared masters come first, then the products in process order, for the eProcurement Suite Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product may use an earlier one's Contracts, and an earlier one hears from a later one only through domain events (ADR-0042). The layer READMEs (`src/Business/README.md`, `src/Suites/README.md`) have the naming tables, the suite's README (`src/Suites/Procurement/README.md`) its products, and the module's PRD names its schema, its permissions and its dependencies.
 
 ## Hosts and unit commands (ADR-0011)
 
@@ -409,7 +410,7 @@ Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/ExplainAccessTests.cs` hold
 
 ## Licensing a module or feature (ADR-0034)
 
-Kernel modules are the platform: always on, never in a plan, and they declare no licence (the architecture test `LicensingRules` refuses one). A Business or Products module must declare one. Features may be licensed in any layer.
+Kernel modules are the platform: always on, never in a plan, and they declare no licence (the architecture test `LicensingRules` refuses one). A Business or suite module must declare one. Features may be licensed in any layer.
 
 1. **Declare it in the module's own code.** The licence code and the subscription type in the module's `IModule`, the features in its Contracts beside its permissions, listed in its `IModule`:
 

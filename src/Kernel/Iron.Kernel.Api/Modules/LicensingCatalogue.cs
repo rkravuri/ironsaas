@@ -4,10 +4,20 @@ using System.Text.Json.Serialization;
 namespace Iron.Kernel.Api.Modules;
 
 /// <summary>A licensed module as the catalogue lists it: its licence code, the module that declares it, how it is sold, and its features.</summary>
-public sealed record LicensedModuleEntry(string Code, string Module, SubscriptionType SubscriptionType, IReadOnlyList<string> Features);
+public sealed record LicensedModuleEntry(string Code, string Module, SubscriptionType SubscriptionType, IReadOnlyList<string> Features)
+{
+    /// <summary>The suite of the declaring module (ADR-0043); the file says it once, as the group the entry sits in.</summary>
+    [JsonIgnore]
+    public string Suite { get; init; } = SuiteName.Foundation;
+}
 
 /// <summary>A feature as the catalogue lists it: its code, the module that declares it, that module's licence code (null for a kernel module), and what it is.</summary>
-public sealed record FeatureEntry(string Code, string Module, string? Licence, string Description);
+public sealed record FeatureEntry(string Code, string Module, string? Licence, string Description)
+{
+    /// <summary>The suite of the declaring module (ADR-0043); the file says it once, as the group the entry sits in.</summary>
+    [JsonIgnore]
+    public string Suite { get; init; } = SuiteName.Foundation;
+}
 
 /// <summary>Whether a flag is in the code (active), or was taken out of it on purpose (retired, TF-052).</summary>
 public enum FlagStatus
@@ -24,6 +34,10 @@ public sealed record FlagEntry(string Key, string Module, FlagType Type, FlagKin
 {
     [JsonIgnore]
     public bool IsKillSwitch => Key.StartsWith(Flag.KillSwitchPrefix, StringComparison.Ordinal);
+
+    /// <summary>The suite of the declaring module (ADR-0043): <c>foundation</c> for the kill switches.</summary>
+    [JsonIgnore]
+    public string Suite { get; init; } = SuiteName.Foundation;
 
     public static FlagEntry From(Flag flag, string module)
     {
@@ -50,6 +64,10 @@ public sealed record SettingEntry(
     decimal? Maximum,
     bool WholeNumber)
 {
+    /// <summary>The suite of the declaring module (ADR-0043); the file says it once, as the group the entry sits in.</summary>
+    [JsonIgnore]
+    public string Suite { get; init; } = SuiteName.Foundation;
+
     public static SettingEntry From(SettingDefinition setting, string module)
     {
         ArgumentNullException.ThrowIfNull(setting);
@@ -84,11 +102,14 @@ public sealed record DutyEntry(string Code, string Module, string Name, string D
 /// What a build can license and switch (ADR-0034, ADR-0035), and the settings (ADR-0036) and duties (ADR-0037) it declares: the licensed modules, the features and the flags its
 /// modules declare in code, with the kernel's kill switches. AddModules builds it from the host's modules; the control
 /// plane reads the same catalogue from the file the unit host writes (<c>make catalogue</c>), so a plan or a flag rule is
-/// checked against the build the units run, without the control plane loading Business or Products modules.
+/// checked against the build the units run, without the control plane loading Business or suite modules.
+/// The file groups the modules, features, flags and settings by suite, the Foundation first (ADR-0043); in memory the
+/// lists are flat, by code, and each entry knows its suite.
 /// </summary>
 public sealed class LicensingCatalogue
 {
-    public const int FormatVersion = 1;
+    /// <summary>Version 2 groups by suite (ADR-0043); version 1 was one flat list of each.</summary>
+    public const int FormatVersion = 2;
 
     /// <summary>The module the catalogue names for the kill switches, which every host has (ADR-0035).</summary>
     public const string KernelModule = "kernel";
@@ -161,6 +182,14 @@ public sealed class LicensingCatalogue
         }
 
         Duties = [.. (duties ?? []).OrderBy(d => d.Code, StringComparer.Ordinal)];
+        Suites = [.. Modules.Select(m => m.Suite)
+            .Concat(Features.Select(f => f.Suite))
+            .Concat(Flags.Select(f => f.Suite))
+            .Concat(Settings.Select(s => s.Suite))
+            .Where(suite => suite != SuiteName.Foundation)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .Prepend(SuiteName.Foundation)];
     }
 
     public static LicensingCatalogue Empty { get; } = new([], []);
@@ -182,6 +211,9 @@ public sealed class LicensingCatalogue
 
     /// <summary>Duties by code, the kernel's <c>all</c> among them.</summary>
     public IReadOnlyList<DutyEntry> Duties { get; }
+
+    /// <summary>The groups of the file: <c>foundation</c> first, then every suite with an entry, by short name (ADR-0043).</summary>
+    public IReadOnlyList<string> Suites { get; }
 
     public LicensedModuleEntry? FindModule(string code) => _modules.GetValueOrDefault(code);
 
@@ -205,16 +237,26 @@ public sealed class LicensingCatalogue
         var duties = new List<DutyEntry> { DutyEntry.From(KernelDuties.All, KernelModule) };
         foreach (var module in modules)
         {
+            var suite = module.Suite;
+            if (suite != SuiteName.Foundation && !SuiteName.IsShortName(suite))
+            {
+                throw new InvalidOperationException($"The module '{module.Name}' names the suite '{suite}', which is not a suite's short name (ADR-0043).");
+            }
+
             if (module.Licence is { } licence)
             {
-                licensed.Add(new LicensedModuleEntry(licence.Code, module.Name, licence.SubscriptionType, [.. module.Features.Select(f => f.Code).Order(StringComparer.Ordinal)]));
+                licensed.Add(new LicensedModuleEntry(licence.Code, module.Name, licence.SubscriptionType, [.. module.Features.Select(f => f.Code).Order(StringComparer.Ordinal)]) { Suite = suite });
             }
-            else
+            else if (suite == SuiteName.Foundation)
             {
                 platform.Add(module.Name);
             }
+            else
+            {
+                throw new InvalidOperationException($"The module '{module.Name}' of the suite '{suite}' declares no licence; a suite's modules are licensed, only the kernel is the platform (ADR-0034, ADR-0043).");
+            }
 
-            features.AddRange(module.Features.Select(feature => new FeatureEntry(feature.Code, module.Name, module.Licence?.Code, feature.Description)));
+            features.AddRange(module.Features.Select(feature => new FeatureEntry(feature.Code, module.Name, module.Licence?.Code, feature.Description) { Suite = suite }));
             foreach (var flag in module.Flags)
             {
                 if (flag.IsKillSwitch)
@@ -222,10 +264,10 @@ public sealed class LicensingCatalogue
                     throw new InvalidOperationException($"The module '{module.Name}' declares '{flag.Key}', but the kill-switch family is the kernel's (KillSwitches).");
                 }
 
-                flags.Add(FlagEntry.From(flag, module.Name));
+                flags.Add(FlagEntry.From(flag, module.Name) with { Suite = suite });
             }
 
-            settings.AddRange(module.Settings.Select(setting => SettingEntry.From(setting, module.Name)));
+            settings.AddRange(module.Settings.Select(setting => SettingEntry.From(setting, module.Name) with { Suite = suite }));
             duties.AddRange(module.Duties.Select(duty => DutyEntry.From(duty, module.Name)));
         }
 
@@ -268,8 +310,20 @@ public sealed class LicensingCatalogue
         return problems;
     }
 
-    /// <summary>The file form: indented JSON with a format version, ending in a newline, so a diff shows what a build adds.</summary>
-    public string ToJson() => JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, Modules, Features, Flags, Settings, Duties), Json) + "\n";
+    /// <summary>
+    /// The file form: indented JSON with a format version, ending in a newline, so a diff shows what a build adds. The
+    /// licensed modules, features, flags and settings sit in one group per suite, the Foundation's first (ADR-0043).
+    /// </summary>
+    public string ToJson()
+    {
+        var groups = Suites.Select(suite => new SuiteGroup(
+            suite,
+            [.. Modules.Where(m => m.Suite == suite)],
+            [.. Features.Where(f => f.Suite == suite)],
+            [.. Flags.Where(f => f.Suite == suite)],
+            [.. Settings.Where(s => s.Suite == suite)]));
+        return JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, [.. groups], Duties), Json) + "\n";
+    }
 
     public static LicensingCatalogue Parse(string json)
     {
@@ -280,8 +334,32 @@ public sealed class LicensingCatalogue
             throw new InvalidOperationException($"The licensing catalogue has format version {document.FormatVersion}; this build reads version {FormatVersion}.");
         }
 
-        return new LicensingCatalogue(document.Modules ?? [], document.Features ?? [], document.Platform, document.Flags, document.Settings, document.Duties);
+        var groups = document.Suites ?? [];
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var group in groups)
+        {
+            if (group.Suite != SuiteName.Foundation && !SuiteName.IsShortName(group.Suite))
+            {
+                throw new InvalidOperationException($"The licensing catalogue has a group '{group.Suite}', which is neither the Foundation nor a suite's short name.");
+            }
+
+            if (!names.Add(group.Suite))
+            {
+                throw new InvalidOperationException($"The licensing catalogue has the group '{group.Suite}' twice.");
+            }
+        }
+
+        return new LicensingCatalogue(
+            groups.SelectMany(g => (g.Modules ?? []).Select(m => m with { Suite = g.Suite })),
+            groups.SelectMany(g => (g.Features ?? []).Select(f => f with { Suite = g.Suite })),
+            document.Platform,
+            groups.SelectMany(g => (g.Flags ?? []).Select(f => f with { Suite = g.Suite })),
+            groups.SelectMany(g => (g.Settings ?? []).Select(s => s with { Suite = g.Suite })),
+            document.Duties);
     }
 
-    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings, IReadOnlyList<DutyEntry>? Duties);
+    private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<SuiteGroup>? Suites, IReadOnlyList<DutyEntry>? Duties);
+
+    /// <summary>One suite's part of the file, or the Foundation's.</summary>
+    private sealed record SuiteGroup(string Suite, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings);
 }

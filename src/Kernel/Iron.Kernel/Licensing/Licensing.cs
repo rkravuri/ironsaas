@@ -22,7 +22,7 @@ public enum EntitlementStatus
 }
 
 /// <summary>
-/// How a Business or Products module is licensed (ADR-0034): its licence code, which plans and entitlements name, and
+/// How a Business or suite module is licensed (ADR-0034): its licence code, which plans and entitlements name, and
 /// its subscription type. Kernel modules are the platform and declare none.
 /// </summary>
 public sealed partial record ModuleLicence

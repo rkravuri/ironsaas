@@ -61,10 +61,10 @@ public class AssemblyReferenceRulesTests
         };
 
         var violations = AssemblyReferenceRules.FindForbidden(
-            "Iron.Products.Procurement.dll",
+            "Iron.Suites.Procurement.Orders.dll",
             referencedTypes,
-            ownModule: "Iron.Products.Procurement",
-            allModules: ["Iron.Kernel.Authorization", "Iron.Business.Organisations", "Iron.Products.Procurement"]);
+            ownModule: "Iron.Suites.Procurement.Orders",
+            allModules: ["Iron.Kernel.Authorization", "Iron.Business.Organisations", "Iron.Suites.Procurement.Orders"]);
 
         Assert.Collection(
             violations,

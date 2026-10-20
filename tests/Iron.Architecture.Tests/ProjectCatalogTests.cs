@@ -9,7 +9,8 @@ public class ProjectCatalogTests
     [InlineData("src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj", "Kernel", ProjectKind.Contracts, "Iron.Kernel.Identity")]
     [InlineData("src/Business/Iron.Business.Organisations/Iron.Business.Organisations.csproj", "Business", ProjectKind.Module, "Iron.Business.Organisations")]
     [InlineData("src/Business/Iron.Business.Organisations/Contracts/Iron.Business.Organisations.Contracts.csproj", "Business", ProjectKind.Contracts, "Iron.Business.Organisations")]
-    [InlineData("src/Products/Iron.Products.Procurement/Iron.Products.Procurement.csproj", "Products", ProjectKind.Module, "Iron.Products.Procurement")]
+    [InlineData("src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj", "Suite", ProjectKind.Module, "Iron.Suites.Procurement.Orders")]
+    [InlineData("src/Suites/Procurement/Iron.Suites.Procurement.Orders/Contracts/Iron.Suites.Procurement.Orders.Contracts.csproj", "Suite", ProjectKind.Contracts, "Iron.Suites.Procurement.Orders")]
     [InlineData("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", "Host", ProjectKind.Host, null)]
     [InlineData("tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj", "Test", ProjectKind.Test, null)]
     [InlineData("tools/Iron.Smoke/Iron.Smoke.csproj", "Tool", ProjectKind.Tool, null)]
@@ -38,6 +39,25 @@ public class ProjectCatalogTests
 
         Assert.Equal("kernel", project.DeclaredLayer);
         Assert.Null(project.Layer);
+    }
+
+    [Fact]
+    public void ReadsTheDeclaredSuiteAsWritten()
+    {
+        const string xml = """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <IronLayer>Suite</IronLayer>
+                <IronSuite>Procurement</IronSuite>
+              </PropertyGroup>
+            </Project>
+            """;
+
+        var project = ProjectCatalog.Describe("src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj", xml);
+
+        Assert.Equal(ProjectLayer.Suite, project.Layer);
+        Assert.Equal("Procurement", project.DeclaredSuite);
+        Assert.Null(Fixture.At("src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj").DeclaredSuite);
     }
 
     [Fact]

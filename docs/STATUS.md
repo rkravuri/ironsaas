@@ -41,7 +41,33 @@ The Functional Foundation PRD split into one document per layer and product (ADR
 |---|---|---|---|
 | PRD split | done | main | merged 2026-10-20 (9180b07); seventeen commits after the prompt (3012bfb), 61f01b5 to e9054c1; ADR-0041 and ADR-0042. The map has 172 rows: 154 moved, 9 split, 9 covered by the kernel, none merged or retired. The kernel PRD holds 207 requirements, TF-241 to TF-243 new; the business and product documents 208 (Business 59, Supplier management 18, Contracts 10, Catalogue 12, Requests 15, Orders 21, Receiving 23, Invoicing 30, supplier portal 14, product method 5), and five one-page scopes. At the checkpoint the design session answered seven points (Business never depends on a product; products in process order, ADR-0042; the module names; the reconciliation per module; TF-243; bill-to as a location type; portal ownership as SPX-006); at review it decided every `[Decision]` (each marked "decided 2026-10-20"), retired BF-025, accepted the six proposals and section 7.2's order in principle, and corrected ADR-0042: a person's conversion is a call from the later product's screen, only automatic ones are events. `make prd-check` (16 tests, then the check) runs in CI. On main: make prd-check passed, make test 758, make shell-check 229 tests, make format clean |
 
-The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing group is a business master, not a unit kind, because it serves several units and owns no records (BF-007). `src/Business/README.md` and the comment on `IOrganisationKinds` say so too.
+The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing group is a master, not a unit kind, because it serves several units and owns no records (BF-007, since the review of L2 the eProcurement Suite's PUR-001). `src/Business/README.md` and the comment on `IOrganisationKinds` say so too.
+
+## IronSaaS Foundation and suites
+
+The third layer became Suite (ADR-0043), from `docs/prompts/L2-suites.md`: IronSaaS Foundation is the kernel and business layers together, and the eProcurement Suite (`procurement`) is the first suite on it.
+
+| Task | State | Branch | Notes |
+|---|---|---|---|
+| L2 IronSaaS Foundation and suites | accepted at review; its changes made, merging | slice/l2-suites | seven commits after the prompt (2696cd6), d4199f4 to aa6136e, and the review changes after them; ADR-0043. The Suite layer in the build (`IronSuite` beside `IronLayer`, `IRON0003` and `IRON0004`, the suite carried into the assembly's metadata) and in the architecture tests, with fixtures for a reference between suites, from the Foundation to a suite, and a name, folder or schema prefix of another suite; `src/Suites/` with its README and the eProcurement Suite's; `make ef-add` finds a suite module by its last segment; `make catalogue` groups by suite, the Foundation first (format version 2); the shell's `modules/suites/`, refused to kernel and business modules, the local lint rule `iron/suite-imports` between suites, a manifest's `suite` held to its folder, and the home page's openers grouped by suite; the requirements in `docs/prd/foundation/` and `docs/prd/suites/procurement/` with every identifier unchanged, prd-check refusing a dependency between suites; TF-244 in the tenancy area and slice V; the README, SECURITY.md and the names. At review, 2026-10-20, the design session accepted it with six changes, made before the merge: ADR-0043's decision 8 (the Foundation holds mechanisms and generic masters, a suite brings its own content); the purchasing PRD (`PUR-`) for the shared master `Iron.Suites.Procurement.Purchasing`, with purchasing groups, the purchasing profiles of suppliers and people, the starter approvals and the suite's readiness items; BF-007 and BF-201 moved whole and BF-021, BF-061, BF-101, BF-106, BF-107, BF-108, BF-161, BF-162, BF-164, BF-202 and BF-203 split, each moved part keeping its old identifiers in `was` and listed in the map's section "Moved after the split", which prd-check holds; each product names its templates and declares its notification keys; the shell's header reads IronSaaS; SECURITY.md sends reports to the security address. |
+
+Decided in the task, each small enough for a line here:
+
+- `Foundation` is not a suite name either, beside `Kernel` and `Business`: `foundation` is the catalogue's and the home page's name for everything outside a suite.
+- A module's suite is its project's `IronSuite`, written into the assembly by `Directory.Build.props` and read by `IModule.Suite`'s default; the architecture test refuses a module that reports another.
+- The catalogue's file went to format version 2 and was written fresh from the code; it held no retired flag, so nothing was lost. In memory its lists stay flat, so no reader changed.
+- The runtime schema check accepts a suite's prefix only for the suites its caller's contexts belong to; the kernel names no suite.
+- The home page keeps "Where to go" and groups inside it, each group under its suite's name (a third-level heading); with only the Foundation's modules today, every tenant sees one group, "IronSaaS Foundation".
+- The PRDs that moved carry version 1.1 with a change-log line (the technical PRD 1.4 DRAFT, with TF-244); no requirement's words changed.
+
+Decided while making the review's changes, as readings of decision 8 beyond its list:
+
+- BF-061's default match levels moved with the other match levels, to a legal entity's default in the purchasing master (PUR-025), which also states the order a line's match level is taken in; ORD-005 reads it.
+- SUP-005's portal channels were the same setting as BF-106's, so both went to the supplier portal as one requirement (SPX-007), which writes them into the new supplier's purchasing profile; the supplier portal sits above the master, so the dependency points down.
+- BF-203's enabled suppliers became the suite's readiness item, beside BF-202's suppliers and items (PUR-081).
+- ORD-022 holds the acknowledgement reminder days; the receipt and return notes, the order and change order, and the invoice acknowledgement are named by ORD-141, RCV-141 and INV-121; every product declares its notification keys in a requirement of its own (SUP-121, CON-081, CAT-081, REQ-081, ORD-142, RCV-142, INV-122), each listing the keys its requirements already raised.
+- The purchasing master's permission names are proposed (`purchasing.groups.*`, `purchasing.profiles.*`, `purchasing.configuration.manage`), replacing `organisations.purchasing_groups.*`, which was never built; the slice that builds the module decides them.
+- The technical PRD's section 7.2 gains PR0, the purchasing master, after B4 and before PR1.
 
 ## Maintenance
 
@@ -51,7 +77,7 @@ The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing
 
 ## Open questions
 
-None.
+1. `SECURITY.md` names `SECURITY_EMAIL_HERE`, as the review wrote it; the owner replaces it with the security address.
 
 ## Later items
 
@@ -63,7 +89,7 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Every refused request writes `entitlements.access_denied`; a client that keeps calling a refused endpoint fills the audit trail. The shell hides those calls; rate limits (S3) bound the rest.
 - The last-administrator guard counts tenant-wide assignments, not active principals (ADR-0031): a disabled last administrator still counts.
 - A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units. A record-scoped assignment is not in an access review either (ADR-0037).
-- No kernel module declares a business record, so no module registers a record policy yet; the first business or products module brings the first, and the architecture test then reads its `AddServices`. A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response (ADR-0032).
+- No kernel module declares a business record, so no module registers a record policy yet; the first business or suite module brings the first, and the architecture test then reads its `AddServices`. A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response (ADR-0032).
 - System roles follow the permission catalogue when the seed runs, unchecked by the conflict rules: a new module's permissions in a system role show in the next report run, not as a refusal. A tenant role's change is checked at once (ADR-0039).
 - A rule's change appears in the conflicts report at the next run, within a day, or at once with Run the report now; a record-scoped grant meets only a tenant grant or a grant on the same record in the rules; the grant dialog's conflict preview is not shown when the preview call fails, and the API still refuses a blocked grant (ADR-0039).
 - The explanation covers the checks an endpoint declares; checks a handler makes on its own are not explained, and an allowance says so in words (ADR-0039).
@@ -86,3 +112,6 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Since S2-close the `smoke` tenant is provisioned again on the laptop (on Standard), beside acme, bravo and echo; their administrators' invitations are in `secret/tenants/<slug>/fleet`.
 - Dependabot proposes versions only after 14 days (its cooldown) and majors outside its groups. Two it is told to leave, each with its reason in `.github/dependabot.yml`: `Microsoft.CodeAnalysis.CSharp`, which must match the Roslyn that EF Core's design package pulls (5.9.0 beside EF Core 10.0.12's 5.0.0 does not restore, NU1107), so it is raised by hand with the EF Core that asks for it; and TypeScript majors, until typescript-eslint accepts them (8.72.0 asks for typescript below 6.1). React Router 8 and jest-dom 7 are in since M1.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
+- TF-244 is written, not built: until it is, a unit loads every module `Iron.Host.Api.UnitModules` lists, and no suite module exists yet. A plan cannot yet be refused for naming another group's module (TF-244 AC7); the catalogue's groups are what that check will read.
+- Decision 8 of ADR-0043 is applied to what the review listed. Read against it again when the second suite's PRDs are written: the business lookups and their seeds name procurement's reasons and charge types (BF-121, BF-122), and BF-005 lists procurement's settings among those set per organisation.
+- Separate images per suite, and a suite in a repository of its own with the Foundation as packages, wait for ADR-0043's conditions (a separate team, release rhythm or licence).

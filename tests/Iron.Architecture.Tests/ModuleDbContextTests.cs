@@ -8,8 +8,8 @@ namespace Iron.Architecture.Tests;
 /// <summary>
 /// Finds every ModuleDbContext in the module assemblies of the three layers, builds its model without a database, and
 /// applies the model rules (TF-220: a business entity without an owning organisation fails the build). The rule for
-/// business records applies to the Business and Products layers, and a context's schema carries the prefix of its
-/// project's layer (ADR-0029).
+/// business records applies to the Business and Suite layers, and a context's schema carries the prefix of its
+/// project's layer, or for a suite project its suite's (ADR-0029, ADR-0043).
 /// </summary>
 public class ModuleDbContextTests
 {
@@ -34,8 +34,8 @@ public class ModuleDbContextTests
             foreach (var contextType in ModuleDbContextTypes(assembly))
             {
                 contextsFound++;
-                violations.AddRange(CheckContext(contextType, isBusinessModule: project.Layer is ProjectLayer.Business or ProjectLayer.Products));
-                if (project.Layer is { } layer && SchemaPrefixViolation(contextType.Name, SchemaAttribute.For(contextType), layer) is { } wrongPrefix)
+                violations.AddRange(CheckContext(contextType, isBusinessModule: project.Layer is ProjectLayer.Business or ProjectLayer.Suite));
+                if (project.Layer is { } layer && SchemaPrefixViolation(contextType.Name, SchemaAttribute.For(contextType), layer, project.DeclaredSuite) is { } wrongPrefix)
                 {
                     violations.Add(wrongPrefix);
                 }
@@ -46,15 +46,20 @@ public class ModuleDbContextTests
     }
 
     [Theory]
-    [InlineData("kernel_identity", ProjectLayer.Kernel, true)]
-    [InlineData("business_items", ProjectLayer.Business, true)]
-    [InlineData("products_procurement", ProjectLayer.Products, true)]
-    [InlineData("identity", ProjectLayer.Kernel, false)]
-    [InlineData("business_items", ProjectLayer.Kernel, false)]
-    [InlineData("kernel_items", ProjectLayer.Business, false)]
-    public void AContextsSchemaCarriesThePrefixOfItsProjectsLayer(string schema, ProjectLayer layer, bool accepted)
+    [InlineData("kernel_identity", ProjectLayer.Kernel, null, true)]
+    [InlineData("business_items", ProjectLayer.Business, null, true)]
+    [InlineData("procurement_purchasing", ProjectLayer.Suite, "Procurement", true)]
+    [InlineData("procurement_orders", ProjectLayer.Suite, "Procurement", true)]
+    [InlineData("identity", ProjectLayer.Kernel, null, false)]
+    [InlineData("business_items", ProjectLayer.Kernel, null, false)]
+    [InlineData("kernel_items", ProjectLayer.Business, null, false)]
+    [InlineData("products_orders", ProjectLayer.Suite, "Procurement", false)]
+    [InlineData("business_orders", ProjectLayer.Suite, "Procurement", false)]
+    [InlineData("school_pupils", ProjectLayer.Suite, "Procurement", false)]
+    [InlineData("procurement_", ProjectLayer.Suite, "Procurement", false)]
+    public void AContextsSchemaCarriesThePrefixOfItsProjectsLayerOrSuite(string schema, ProjectLayer layer, string? suite, bool accepted)
     {
-        var violation = SchemaPrefixViolation("SampleDbContext", schema, layer);
+        var violation = SchemaPrefixViolation("SampleDbContext", schema, layer, suite);
 
         if (accepted)
         {
@@ -63,20 +68,21 @@ public class ModuleDbContextTests
         else
         {
             Assert.NotNull(violation);
-            Assert.StartsWith($"SampleDbContext: the schema '{schema}' must start with '{ProjectLayers.SchemaPrefix(layer)}'", violation, StringComparison.Ordinal);
+            Assert.StartsWith($"SampleDbContext: the schema '{schema}' must start with '{ProjectLayers.SchemaPrefix(layer, suite)}'", violation, StringComparison.Ordinal);
         }
     }
 
-    /// <summary>A module context's schema starts with the prefix of the layer its project declares (ADR-0029).</summary>
-    internal static string? SchemaPrefixViolation(string contextName, string schema, ProjectLayer layer)
+    /// <summary>A module context's schema starts with the prefix of the layer its project declares, a suite's with its suite's (ADR-0029, ADR-0043).</summary>
+    internal static string? SchemaPrefixViolation(string contextName, string schema, ProjectLayer layer, string? suite = null)
     {
-        var prefix = ProjectLayers.SchemaPrefix(layer);
+        var prefix = ProjectLayers.SchemaPrefix(layer, suite);
         if (prefix is null || (schema.StartsWith(prefix, StringComparison.Ordinal) && schema.Length > prefix.Length))
         {
             return null;
         }
 
-        return $"{contextName}: the schema '{schema}' must start with '{prefix}', the prefix of the {layer} layer its project declares (ADR-0029).";
+        var owner = layer == ProjectLayer.Suite ? $"the {suite} suite its project declares (ADR-0043)" : $"the {layer} layer its project declares (ADR-0029)";
+        return $"{contextName}: the schema '{schema}' must start with '{prefix}', the prefix of {owner}.";
     }
 
     private static IEnumerable<Type> ModuleDbContextTypes(Assembly assembly)

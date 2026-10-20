@@ -10,6 +10,7 @@ namespace Iron.Architecture.Tests;
 /// <param name="Kind">The role of the project.</param>
 /// <param name="ModuleName">For modules and Contracts projects: the module's project name. Otherwise null.</param>
 /// <param name="References">The names of the projects it references.</param>
+/// <param name="DeclaredSuite">The text of &lt;IronSuite&gt; as written, for example <c>Procurement</c>, or null when the project declares none (ADR-0043).</param>
 public sealed record ProjectInfo(
     string Name,
     string RelativePath,
@@ -17,4 +18,5 @@ public sealed record ProjectInfo(
     ProjectLayer? Layer,
     ProjectKind Kind,
     string? ModuleName,
-    IReadOnlyList<string> References);
+    IReadOnlyList<string> References,
+    string? DeclaredSuite = null);

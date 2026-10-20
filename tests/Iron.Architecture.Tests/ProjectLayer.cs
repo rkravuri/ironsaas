@@ -1,11 +1,13 @@
+using Iron.Kernel;
+
 namespace Iron.Architecture.Tests;
 
-/// <summary>The layers a project can declare with &lt;IronLayer&gt; in its project file (ADR-0029).</summary>
+/// <summary>The layers a project can declare with &lt;IronLayer&gt; in its project file (ADR-0029, ADR-0043).</summary>
 public enum ProjectLayer
 {
     Kernel,
     Business,
-    Products,
+    Suite,
     Host,
     Test,
     Tool,
@@ -29,21 +31,25 @@ public static class ProjectLayers
         return false;
     }
 
-    /// <summary>Kernel, Business and Products are ordered; dependencies go down that order only. The rest have no rank.</summary>
+    /// <summary>Kernel, Business and Suite are ordered; dependencies go down that order only. The rest have no rank.</summary>
     public static int? Rank(ProjectLayer layer) => layer switch
     {
         ProjectLayer.Kernel => 0,
         ProjectLayer.Business => 1,
-        ProjectLayer.Products => 2,
+        ProjectLayer.Suite => 2,
         _ => null,
     };
 
-    /// <summary>The prefix of a module schema in this layer, for example <c>kernel_</c>; null for layers without schemas.</summary>
-    public static string? SchemaPrefix(ProjectLayer layer) => layer switch
+    /// <summary>
+    /// The prefix of a module schema in this layer: <c>kernel_</c>, <c>business_</c>, or for a suite its short name and
+    /// an underscore, <c>procurement_</c> (ADR-0043). Null for layers without schemas, and for a suite project that
+    /// names no suite, which LayerRules reports.
+    /// </summary>
+    public static string? SchemaPrefix(ProjectLayer layer, string? suite = null) => layer switch
     {
         ProjectLayer.Kernel => "kernel_",
         ProjectLayer.Business => "business_",
-        ProjectLayer.Products => "products_",
+        ProjectLayer.Suite when SuiteName.IsValid(suite) => SuiteName.ShortName(suite!) + "_",
         _ => null,
     };
 }

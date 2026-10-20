@@ -14,7 +14,7 @@ public enum ProjectKind
     /// <summary>The public surface of a module: interfaces and DTOs other modules may use.</summary>
     Contracts,
 
-    /// <summary>A module of the kernel, business or products layer, with Api, Services and Data folders.</summary>
+    /// <summary>A module of the kernel, business or suite layer, with Api, Services and Data folders.</summary>
     Module,
 
     /// <summary>A host (Iron.Host.*) that composes modules into a runnable application.</summary>

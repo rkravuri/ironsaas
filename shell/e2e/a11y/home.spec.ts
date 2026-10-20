@@ -52,8 +52,11 @@ for (const scheme of schemes) {
       );
       await expect(page.getByRole("img", { name: /A small building with its flag up/ })).toBeVisible();
       await expect(page.getByRole("article")).toHaveCount(person.openers.length);
+      // Every module here is the Foundation's, so every opener sits in its group, the first (ADR-0043).
+      const foundation = page.getByRole("region", { name: "IronSaaS Foundation" });
+      await expect(foundation.getByRole("article")).toHaveCount(person.openers.length);
       for (const name of person.openers) {
-        await expect(page.getByRole("article", { name })).toBeVisible();
+        await expect(foundation.getByRole("article", { name })).toBeVisible();
       }
       const actions = page.getByRole("region", { name: "Quick actions" });
       if (person.who === "administrator") {

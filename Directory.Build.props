@@ -25,17 +25,36 @@
   </PropertyGroup>
 
   <!--
-    Every project names its layer in its own file (ADR-0029): <IronLayer>Kernel</IronLayer>, or Business, Products,
-    Host, Test or Tool. The architecture tests read it to refuse a reference that points up; this target stops the
-    compile of a project that leaves it out or misspells it. The match is case-sensitive, as the tests' is.
+    Every project names its layer in its own file (ADR-0029): <IronLayer>Kernel</IronLayer>, or Business, Suite,
+    Host, Test or Tool. A Suite project also names its suite, <IronSuite>Procurement</IronSuite>, and no other project
+    does (ADR-0043). The architecture tests read both to refuse a reference that points up or crosses from one suite to
+    another; this target stops the compile of a project that leaves them out or misspells them. The match is
+    case-sensitive, as the tests' is.
   -->
   <Target Name="IronCheckLayer" BeforeTargets="CoreCompile">
     <Error Code="IRON0001"
            Condition="'$(IronLayer)' == ''"
-           Text="$(MSBuildProjectFile) declares no IronLayer. Add &lt;IronLayer&gt; to its first PropertyGroup: Kernel, Business, Products, Host, Test or Tool (ADR-0029)." />
+           Text="$(MSBuildProjectFile) declares no IronLayer. Add &lt;IronLayer&gt; to its first PropertyGroup: Kernel, Business, Suite, Host, Test or Tool (ADR-0029)." />
     <Error Code="IRON0002"
-           Condition="'$(IronLayer)' != '' and !$([System.Text.RegularExpressions.Regex]::IsMatch('$(IronLayer)', '^(Kernel|Business|Products|Host|Test|Tool)$'))"
-           Text="$(MSBuildProjectFile) declares IronLayer '$(IronLayer)', which is not a layer. Use Kernel, Business, Products, Host, Test or Tool (ADR-0029)." />
+           Condition="'$(IronLayer)' != '' and !$([System.Text.RegularExpressions.Regex]::IsMatch('$(IronLayer)', '^(Kernel|Business|Suite|Host|Test|Tool)$'))"
+           Text="$(MSBuildProjectFile) declares IronLayer '$(IronLayer)', which is not a layer. Use Kernel, Business, Suite, Host, Test or Tool (ADR-0029, ADR-0043)." />
+    <Error Code="IRON0003"
+           Condition="'$(IronLayer)' == 'Suite' and '$(IronSuite)' == ''"
+           Text="$(MSBuildProjectFile) declares IronLayer Suite but no IronSuite. Add the suite's name beside it, for example &lt;IronSuite&gt;Procurement&lt;/IronSuite&gt; (ADR-0043)." />
+    <Error Code="IRON0003"
+           Condition="'$(IronLayer)' != '' and '$(IronLayer)' != 'Suite' and '$(IronSuite)' != ''"
+           Text="$(MSBuildProjectFile) declares IronSuite '$(IronSuite)' but is a $(IronLayer) project. Only a Suite project names its suite; remove it (ADR-0043)." />
+    <Error Code="IRON0004"
+           Condition="'$(IronSuite)' != '' and (!$([System.Text.RegularExpressions.Regex]::IsMatch('$(IronSuite)', '^[A-Z][A-Za-z0-9]*$')) or $([System.Text.RegularExpressions.Regex]::IsMatch('$(IronSuite)', '^(?i:kernel|business|foundation)$')))"
+           Text="$(MSBuildProjectFile) declares IronSuite '$(IronSuite)', which is not a suite name. Use one word in PascalCase, other than Kernel, Business and Foundation (ADR-0043)." />
   </Target>
+
+  <!--
+    A suite project carries its suite into its assembly, so IModule.Suite reads it from there and no module repeats it
+    in code (ADR-0043). Items are evaluated after every property, so the project's own IronSuite is seen here.
+  -->
+  <ItemGroup Condition="'$(IronSuite)' != ''">
+    <AssemblyMetadata Include="IronSuite" Value="$(IronSuite)" />
+  </ItemGroup>
 
 </Project>

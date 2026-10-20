@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   declaredRoutes,
   ManifestError,
+  foundationSuite,
   navigationFor,
+  openersBySuite,
   openersFor,
   quickActionsFor,
   routeAt,
@@ -171,6 +173,48 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
     ]);
     expect(quickActionsFor(licensed, permissions, sourcing).map((a) => a.id)).toEqual(["new-event"]);
     expect(navigationFor(licensed, permissions, { strict: true }).map((g) => g.module)).toEqual(["identity"]);
+  });
+
+  it("groups the openers by suite, the Foundation's first, whatever order the list gives", () => {
+    const suites: ModuleManifest[] = [
+      {
+        name: "orders",
+        titleKey: "x",
+        licence: "orders",
+        suite: "procurement",
+        routes: [{ path: "/orders", permission: "orders.read", element: null, titleKey: "x" }],
+        navigation: [{ labelKey: "x", path: "/orders", permission: "orders.read" }],
+      },
+      ...licensed,
+      {
+        name: "pupils",
+        titleKey: "x",
+        licence: "pupils",
+        suite: "school",
+        routes: [{ path: "/pupils", permission: "pupils.read", element: null, titleKey: "x" }],
+        navigation: [{ labelKey: "x", path: "/pupils", permission: "pupils.read" }],
+      },
+    ];
+    const everything = () => true;
+    const openings = openersFor(suites, [...permissions, "orders.read", "pupils.read"], { strict: true }, everything);
+
+    expect(openings.map((opening) => [opening.module, opening.suite])).toEqual([
+      ["orders", "procurement"],
+      ["identity", foundationSuite],
+      ["sourcing", foundationSuite],
+      ["pupils", "school"],
+    ]);
+    expect(
+      openersBySuite(openings).map((group) => [group.suite, group.openings.map((opening) => opening.module)]),
+    ).toEqual([
+      [foundationSuite, ["identity", "sourcing"]],
+      ["procurement", ["orders"]],
+      ["school", ["pupils"]],
+    ]);
+    // A suite with nothing the person may open has no group, and neither has the Foundation then.
+    expect(openersBySuite(openings.filter((opening) => opening.suite === "school")).map((g) => g.suite)).toEqual([
+      "school",
+    ]);
   });
 
   it("carries the licence on its routes, so the route guard can check it on a link typed by hand", () => {

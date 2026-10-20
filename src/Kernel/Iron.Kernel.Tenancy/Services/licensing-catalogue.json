@@ -1,5 +1,5 @@
 {
-  "format_version": 1,
+  "format_version": 2,
   "platform": [
     "audit",
     "authz",
@@ -9,193 +9,198 @@
     "identity",
     "settings"
   ],
-  "modules": [],
-  "features": [
+  "suites": [
     {
-      "code": "authorization.role_transfer",
-      "module": "authz",
-      "licence": null,
-      "description": "Export the tenant's roles to a file and import roles from another tenant"
-    }
-  ],
-  "flags": [
-    {
-      "key": "flags.example_release",
-      "module": "flags",
-      "type": "boolean",
-      "kind": "release",
-      "purpose": "An example release flag: changes nothing; proves rules, scopes and rollouts end to end.",
-      "owner": "Platform team",
-      "remove_by": "2027-03-31",
-      "default": false,
-      "status": "active"
-    },
-    {
-      "key": "flags.example_tone",
-      "module": "flags",
-      "type": "string",
-      "kind": "experiment",
-      "purpose": "An example experiment flag with the values warm and plain: changes nothing; proves string flags.",
-      "owner": "Platform team",
-      "remove_by": "2027-03-31",
-      "default": "plain",
-      "status": "active"
-    },
-    {
-      "key": "kill.ai",
-      "module": "kernel",
-      "type": "boolean",
-      "kind": "operational",
-      "purpose": "Stops calls to AI services.",
-      "owner": "Platform operations",
-      "remove_by": null,
-      "default": false,
-      "status": "active"
-    },
-    {
-      "key": "kill.email",
-      "module": "kernel",
-      "type": "boolean",
-      "kind": "operational",
-      "purpose": "Stops outbound email; the messages wait and are retried when it is off (S4).",
-      "owner": "Platform operations",
-      "remove_by": null,
-      "default": false,
-      "status": "active"
-    },
-    {
-      "key": "kill.imports",
-      "module": "kernel",
-      "type": "boolean",
-      "kind": "operational",
-      "purpose": "Stops imports into a tenant, role import among them.",
-      "owner": "Platform operations",
-      "remove_by": null,
-      "default": false,
-      "status": "active"
-    },
-    {
-      "key": "kill.push",
-      "module": "kernel",
-      "type": "boolean",
-      "kind": "operational",
-      "purpose": "Stops live push to browsers and devices.",
-      "owner": "Platform operations",
-      "remove_by": null,
-      "default": false,
-      "status": "active"
-    },
-    {
-      "key": "kill.sms",
-      "module": "kernel",
-      "type": "boolean",
-      "kind": "operational",
-      "purpose": "Stops outbound SMS.",
-      "owner": "Platform operations",
-      "remove_by": null,
-      "default": false,
-      "status": "active"
-    },
-    {
-      "key": "kill.webhooks",
-      "module": "kernel",
-      "type": "boolean",
-      "kind": "operational",
-      "purpose": "Stops outbound webhook calls.",
-      "owner": "Platform operations",
-      "remove_by": null,
-      "default": false,
-      "status": "active"
-    }
-  ],
-  "settings": [
-    {
-      "key": "identity.invitation.valid_days",
-      "module": "identity",
-      "type": "number",
-      "description": "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.",
-      "default": 3,
-      "scopes": [
-        "tenant",
-        "unit"
+      "suite": "foundation",
+      "modules": [],
+      "features": [
+        {
+          "code": "authorization.role_transfer",
+          "module": "authz",
+          "licence": null,
+          "description": "Export the tenant's roles to a file and import roles from another tenant"
+        }
       ],
-      "visible_to_shell": false,
-      "requirement": "A whole number from 1 to 30.",
-      "choices": null,
-      "minimum": 1,
-      "maximum": 30,
-      "whole_number": true
-    },
-    {
-      "key": "identity.session.absolute_hours",
-      "module": "identity",
-      "type": "number",
-      "description": "How long a session may last at most, active or not, in hours. A new session takes the value; open sessions keep theirs.",
-      "default": 12,
-      "scopes": [
-        "tenant"
+      "flags": [
+        {
+          "key": "flags.example_release",
+          "module": "flags",
+          "type": "boolean",
+          "kind": "release",
+          "purpose": "An example release flag: changes nothing; proves rules, scopes and rollouts end to end.",
+          "owner": "Platform team",
+          "remove_by": "2027-03-31",
+          "default": false,
+          "status": "active"
+        },
+        {
+          "key": "flags.example_tone",
+          "module": "flags",
+          "type": "string",
+          "kind": "experiment",
+          "purpose": "An example experiment flag with the values warm and plain: changes nothing; proves string flags.",
+          "owner": "Platform team",
+          "remove_by": "2027-03-31",
+          "default": "plain",
+          "status": "active"
+        },
+        {
+          "key": "kill.ai",
+          "module": "kernel",
+          "type": "boolean",
+          "kind": "operational",
+          "purpose": "Stops calls to AI services.",
+          "owner": "Platform operations",
+          "remove_by": null,
+          "default": false,
+          "status": "active"
+        },
+        {
+          "key": "kill.email",
+          "module": "kernel",
+          "type": "boolean",
+          "kind": "operational",
+          "purpose": "Stops outbound email; the messages wait and are retried when it is off (S4).",
+          "owner": "Platform operations",
+          "remove_by": null,
+          "default": false,
+          "status": "active"
+        },
+        {
+          "key": "kill.imports",
+          "module": "kernel",
+          "type": "boolean",
+          "kind": "operational",
+          "purpose": "Stops imports into a tenant, role import among them.",
+          "owner": "Platform operations",
+          "remove_by": null,
+          "default": false,
+          "status": "active"
+        },
+        {
+          "key": "kill.push",
+          "module": "kernel",
+          "type": "boolean",
+          "kind": "operational",
+          "purpose": "Stops live push to browsers and devices.",
+          "owner": "Platform operations",
+          "remove_by": null,
+          "default": false,
+          "status": "active"
+        },
+        {
+          "key": "kill.sms",
+          "module": "kernel",
+          "type": "boolean",
+          "kind": "operational",
+          "purpose": "Stops outbound SMS.",
+          "owner": "Platform operations",
+          "remove_by": null,
+          "default": false,
+          "status": "active"
+        },
+        {
+          "key": "kill.webhooks",
+          "module": "kernel",
+          "type": "boolean",
+          "kind": "operational",
+          "purpose": "Stops outbound webhook calls.",
+          "owner": "Platform operations",
+          "remove_by": null,
+          "default": false,
+          "status": "active"
+        }
       ],
-      "visible_to_shell": true,
-      "requirement": "A whole number from 1 to 24.",
-      "choices": null,
-      "minimum": 1,
-      "maximum": 24,
-      "whole_number": true
-    },
-    {
-      "key": "identity.session.idle_minutes",
-      "module": "identity",
-      "type": "number",
-      "description": "How long a session stays open without activity before it ends, in minutes. A new session takes the value; open sessions keep theirs.",
-      "default": 60,
-      "scopes": [
-        "tenant"
-      ],
-      "visible_to_shell": true,
-      "requirement": "A whole number from 15 to 480.",
-      "choices": null,
-      "minimum": 15,
-      "maximum": 480,
-      "whole_number": true
-    },
-    {
-      "key": "shell.colour_scheme",
-      "module": "settings",
-      "type": "choice",
-      "description": "The colour scheme of the shell: light, dark, or the one the device uses (auto).",
-      "default": "auto",
-      "scopes": [
-        "user"
-      ],
-      "visible_to_shell": true,
-      "requirement": "One of: light, dark, auto.",
-      "choices": [
-        "light",
-        "dark",
-        "auto"
-      ],
-      "minimum": null,
-      "maximum": null,
-      "whole_number": false
-    },
-    {
-      "key": "shell.density",
-      "module": "settings",
-      "type": "choice",
-      "description": "How closely grids and record pages set their rows: comfortable, or compact for more on the screen.",
-      "default": "comfortable",
-      "scopes": [
-        "user"
-      ],
-      "visible_to_shell": true,
-      "requirement": "One of: comfortable, compact.",
-      "choices": [
-        "comfortable",
-        "compact"
-      ],
-      "minimum": null,
-      "maximum": null,
-      "whole_number": false
+      "settings": [
+        {
+          "key": "identity.invitation.valid_days",
+          "module": "identity",
+          "type": "number",
+          "description": "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.",
+          "default": 3,
+          "scopes": [
+            "tenant",
+            "unit"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 1 to 30.",
+          "choices": null,
+          "minimum": 1,
+          "maximum": 30,
+          "whole_number": true
+        },
+        {
+          "key": "identity.session.absolute_hours",
+          "module": "identity",
+          "type": "number",
+          "description": "How long a session may last at most, active or not, in hours. A new session takes the value; open sessions keep theirs.",
+          "default": 12,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": true,
+          "requirement": "A whole number from 1 to 24.",
+          "choices": null,
+          "minimum": 1,
+          "maximum": 24,
+          "whole_number": true
+        },
+        {
+          "key": "identity.session.idle_minutes",
+          "module": "identity",
+          "type": "number",
+          "description": "How long a session stays open without activity before it ends, in minutes. A new session takes the value; open sessions keep theirs.",
+          "default": 60,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": true,
+          "requirement": "A whole number from 15 to 480.",
+          "choices": null,
+          "minimum": 15,
+          "maximum": 480,
+          "whole_number": true
+        },
+        {
+          "key": "shell.colour_scheme",
+          "module": "settings",
+          "type": "choice",
+          "description": "The colour scheme of the shell: light, dark, or the one the device uses (auto).",
+          "default": "auto",
+          "scopes": [
+            "user"
+          ],
+          "visible_to_shell": true,
+          "requirement": "One of: light, dark, auto.",
+          "choices": [
+            "light",
+            "dark",
+            "auto"
+          ],
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "shell.density",
+          "module": "settings",
+          "type": "choice",
+          "description": "How closely grids and record pages set their rows: comfortable, or compact for more on the screen.",
+          "default": "comfortable",
+          "scopes": [
+            "user"
+          ],
+          "visible_to_shell": true,
+          "requirement": "One of: comfortable, compact.",
+          "choices": [
+            "comfortable",
+            "compact"
+          ],
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        }
+      ]
     }
   ],
   "duties": [

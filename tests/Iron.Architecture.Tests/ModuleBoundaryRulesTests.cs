@@ -10,8 +10,12 @@ public class ModuleBoundaryRulesTests
     private const string AuditContracts = "src/Kernel/Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj";
     private const string Organisations = "src/Business/Iron.Business.Organisations/Iron.Business.Organisations.csproj";
     private const string OrganisationsContracts = "src/Business/Iron.Business.Organisations/Contracts/Iron.Business.Organisations.Contracts.csproj";
-    private const string Procurement = "src/Products/Iron.Products.Procurement/Iron.Products.Procurement.csproj";
-    private const string ProcurementContracts = "src/Products/Iron.Products.Procurement/Contracts/Iron.Products.Procurement.Contracts.csproj";
+    private const string Orders = "src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj";
+    private const string OrdersContracts = "src/Suites/Procurement/Iron.Suites.Procurement.Orders/Contracts/Iron.Suites.Procurement.Orders.Contracts.csproj";
+    private const string Purchasing = "src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Iron.Suites.Procurement.Purchasing.csproj";
+    private const string PurchasingContracts = "src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Contracts/Iron.Suites.Procurement.Purchasing.Contracts.csproj";
+    private const string Pupils = "src/Suites/School/Iron.Suites.School.Pupils/Iron.Suites.School.Pupils.csproj";
+    private const string PupilsContracts = "src/Suites/School/Iron.Suites.School.Pupils/Contracts/Iron.Suites.School.Pupils.Contracts.csproj";
 
     [Fact]
     public void AModuleMayUseTheVocabularyTheKernelLibrariesAndContracts()
@@ -96,9 +100,10 @@ public class ModuleBoundaryRulesTests
             Fixture.At(Vocabulary),
             Fixture.At(Identity, "Iron.Kernel"),
             Fixture.At(Organisations, "Iron.Kernel"),
-            Fixture.At(Procurement, "Iron.Kernel"),
+            Fixture.At(Orders, "Iron.Kernel"),
+            Fixture.At(Pupils, "Iron.Kernel"),
             Fixture.At("src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj", "Iron.Kernel"),
-            Fixture.At("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", "Iron.Kernel", "Iron.Kernel.Identity", "Iron.Business.Organisations", "Iron.Products.Procurement", "Iron.Host.Worker"),
+            Fixture.At("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", "Iron.Kernel", "Iron.Kernel.Identity", "Iron.Business.Organisations", "Iron.Suites.Procurement.Orders", "Iron.Suites.School.Pupils", "Iron.Host.Worker"),
         };
 
         var violation = Assert.Single(ModuleBoundaryRules.Check(projects));
@@ -127,33 +132,71 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
-    public void TheBusinessLayerMustNotReferenceAProduct()
+    public void TheFoundationMustNotReferenceASuiteNotEvenItsContracts()
     {
         var projects = new[]
         {
-            Fixture.At(ProcurementContracts),
-            Fixture.At(Organisations, "Iron.Products.Procurement.Contracts"),
+            Fixture.At(OrdersContracts),
+            Fixture.At(Organisations, "Iron.Suites.Procurement.Orders.Contracts"),
+            Fixture.At(Identity, "Iron.Suites.Procurement.Orders.Contracts"),
         };
 
-        var violation = Assert.Single(ModuleBoundaryRules.Check(projects));
+        var violations = ModuleBoundaryRules.Check(projects);
 
-        Assert.Contains(Organisations, violation, StringComparison.Ordinal);
-        Assert.Contains("a Business project may not use the Products layer", violation, StringComparison.Ordinal);
+        Assert.Equal(2, violations.Count);
+        Assert.Contains(violations, v => v.StartsWith(Organisations, StringComparison.Ordinal) && v.Contains("a Business project may not use the Suite layer", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.StartsWith(Identity, StringComparison.Ordinal) && v.Contains("a Kernel project may not use the Suite layer", StringComparison.Ordinal));
+        Assert.All(violations, v => Assert.Contains("The Foundation never references a suite", v, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ASuiteMustNotReferenceAnotherSuiteNotEvenItsContracts()
+    {
+        var projects = new[]
+        {
+            Fixture.At(PupilsContracts),
+            Fixture.At(OrdersContracts),
+            Fixture.At(Orders, "Iron.Suites.School.Pupils.Contracts"),
+            Fixture.At(Pupils, "Iron.Suites.Procurement.Orders.Contracts"),
+        };
+
+        var violations = ModuleBoundaryRules.Check(projects);
+
+        Assert.Equal(2, violations.Count);
+        Assert.Contains(violations, v => v.StartsWith(Orders, StringComparison.Ordinal) && v.Contains("the Procurement suite may not use the School suite", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.StartsWith(Pupils, StringComparison.Ordinal) && v.Contains("the School suite may not use the Procurement suite", StringComparison.Ordinal));
+        Assert.All(violations, v => Assert.Contains("A suite never references another suite", v, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ASuitesProductUsesItsSharedMasterThroughItsContracts()
+    {
+        var projects = new[]
+        {
+            Fixture.At(Vocabulary),
+            Fixture.At(DataLibrary, "Iron.Kernel"),
+            Fixture.At(PurchasingContracts, "Iron.Kernel"),
+            Fixture.At(OrdersContracts, "Iron.Kernel"),
+            Fixture.At(Purchasing, "Iron.Kernel", "Iron.Kernel.Data", "Iron.Suites.Procurement.Purchasing.Contracts"),
+            Fixture.At(Orders, "Iron.Kernel", "Iron.Kernel.Data", "Iron.Suites.Procurement.Orders.Contracts", "Iron.Suites.Procurement.Purchasing.Contracts"),
+        };
+
+        Assert.Empty(ModuleBoundaryRules.Check(projects));
     }
 
     [Fact]
     public void ALowerLayerIsUsedThroughItsContracts()
     {
-        // A business module implements a kernel extension point; a product uses business and kernel masters.
+        // A business module implements a kernel extension point; a suite's product uses business and kernel masters.
         var projects = new[]
         {
             Fixture.At(Vocabulary),
             Fixture.At(DataLibrary, "Iron.Kernel"),
             Fixture.At(IdentityContracts, "Iron.Kernel"),
             Fixture.At(OrganisationsContracts, "Iron.Kernel"),
-            Fixture.At(ProcurementContracts, "Iron.Kernel"),
+            Fixture.At(OrdersContracts, "Iron.Kernel"),
             Fixture.At(Organisations, "Iron.Kernel", "Iron.Kernel.Data", "Iron.Business.Organisations.Contracts", "Iron.Kernel.Identity.Contracts"),
-            Fixture.At(Procurement, "Iron.Kernel", "Iron.Kernel.Data", "Iron.Products.Procurement.Contracts", "Iron.Business.Organisations.Contracts", "Iron.Kernel.Identity.Contracts"),
+            Fixture.At(Orders, "Iron.Kernel", "Iron.Kernel.Data", "Iron.Suites.Procurement.Orders.Contracts", "Iron.Business.Organisations.Contracts", "Iron.Kernel.Identity.Contracts"),
         };
 
         Assert.Empty(ModuleBoundaryRules.Check(projects));
@@ -167,7 +210,7 @@ public class ModuleBoundaryRulesTests
             Fixture.At(Identity),
             Fixture.At(Organisations),
             Fixture.At(Organisations.Replace("Organisations", "Items", StringComparison.Ordinal), "Iron.Kernel.Identity"),
-            Fixture.At(Procurement, "Iron.Business.Organisations"),
+            Fixture.At(Orders, "Iron.Business.Organisations"),
         };
 
         var violations = ModuleBoundaryRules.Check(projects);

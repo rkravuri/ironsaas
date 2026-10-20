@@ -7,7 +7,7 @@ import { useSession } from "@/auth/session-context";
 import { Home } from "@/design/illustrations";
 import { ModuleMark, TenantMark } from "@/design/patterns";
 import { manifests } from "@/modules";
-import { openersFor, routeAt, type ModuleOpening } from "@/modules/registry";
+import { openersBySuite, openersFor, routeAt, type ModuleOpening, type SuiteOpenings } from "@/modules/registry";
 import { useQuickActions } from "@/shell/quick-actions";
 import { dayPart } from "./greeting";
 import { readRecent, type RecentPage } from "./recent";
@@ -33,8 +33,8 @@ function markDrawn(session: string): void {
 
 /**
  * The home page (ADR-0033), the landing page after sign-in: a moment, so the art leads here. The greeting, the Home
- * drawing and the tenant mark open it; then one opener per module the principal may open, the quick actions it may
- * perform at its home unit, and the pages it opened last. Nothing here polls the API or moves while the person reads;
+ * drawing and the tenant mark open it; then one opener per module the principal may open, grouped by suite with the
+ * Foundation's modules first (ADR-0043), the quick actions it may perform at its home unit, and the pages it opened last. Nothing here polls the API or moves while the person reads;
  * the marks draw in once per session, and not at all with reduced motion.
  */
 export function HomePage() {
@@ -47,8 +47,11 @@ function HomeView({ me }: { me: Me }) {
   const { t } = useTranslation();
   const session = useSession();
   const hostname = window.location.hostname;
-  const openers = useMemo(
-    () => openersFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled),
+  const groups = useMemo(
+    () =>
+      openersBySuite(
+        openersFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled),
+      ),
     [session.permissions, session.entitlements],
   );
   const sessionId = me.session.id;
@@ -98,11 +101,11 @@ function HomeView({ me }: { me: Me }) {
       <Grid gap="xl">
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Section title={t("home.modules")}>
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              {openers.map((opening) => (
-                <Opener key={opening.module} opening={opening} drawIn={drawIn} />
+            <Stack gap="lg">
+              {groups.map((group) => (
+                <SuiteGroup key={group.suite} group={group} drawIn={drawIn} />
               ))}
-            </SimpleGrid>
+            </Stack>
           </Section>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 4 }}>
@@ -128,6 +131,24 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+/** The openers of one suite, or of the Foundation, under the suite's name (ADR-0043). */
+function SuiteGroup({ group, drawIn }: { group: SuiteOpenings; drawIn: boolean }) {
+  const { t } = useTranslation();
+  const id = useId();
+  return (
+    <Stack gap="sm" component="section" aria-labelledby={id} data-suite={group.suite}>
+      <Title order={3} size="h5" c="dimmed" id={id}>
+        {t(`suites.${group.suite}`)}
+      </Title>
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        {group.openings.map((opening) => (
+          <Opener key={opening.module} opening={opening} drawIn={drawIn} />
+        ))}
+      </SimpleGrid>
+    </Stack>
+  );
+}
+
 /** One module in its accent: its mark, its title, one line, a spot drawing if it has one, and its first pages. */
 function Opener({ opening, drawIn }: { opening: ModuleOpening; drawIn: boolean }) {
   const { t } = useTranslation();
@@ -148,7 +169,7 @@ function Opener({ opening, drawIn }: { opening: ModuleOpening; drawIn: boolean }
         <Group align="flex-start" gap="md" wrap="nowrap">
           <ModuleMark name={opening.module} accent={accent} size={56} animate={drawIn} />
           <Stack gap={4}>
-            <Title order={3} size="h4" id={id}>
+            <Title order={4} size="h4" id={id}>
               {t(opening.titleKey)}
             </Title>
             {opening.opener && (

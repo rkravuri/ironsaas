@@ -33,7 +33,6 @@ public class LayerRulesTests
     [InlineData("src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj", "Kernel")]
     [InlineData("src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj", "Kernel")]
     [InlineData("src/Business/Iron.Business.Organisations/Iron.Business.Organisations.csproj", "Business")]
-    [InlineData("src/Products/Iron.Products.Procurement/Iron.Products.Procurement.csproj", "Products")]
     [InlineData("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", "Host")]
     [InlineData("tests/Kernel/Iron.Kernel.Identity.Tests/Iron.Kernel.Identity.Tests.csproj", "Test")]
     [InlineData("tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj", "Test")]
@@ -48,9 +47,8 @@ public class LayerRulesTests
     [InlineData("src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj", "Business")]
     [InlineData("src/Business/Iron.Business.Items/Iron.Business.Items.csproj", "Kernel")]
     [InlineData("src/Business/Iron.Kernel.Items/Iron.Kernel.Items.csproj", "Business")]
-    [InlineData("src/Products/Iron.Business.Items/Iron.Business.Items.csproj", "Business")]
+    [InlineData("src/Suites/Procurement/Iron.Business.Items/Iron.Business.Items.csproj", "Business")]
     [InlineData("src/Hosts/Iron.Kernel.Api/Iron.Kernel.Api.csproj", "Host")]
-    [InlineData("products/Procurement/Procurement.csproj", "Products")]
     [InlineData("src/Kernel/Iron.Kernel.Identity.Tests/Iron.Kernel.Identity.Tests.csproj", "Test")]
     [InlineData("tests/Iron.Fixtures/Iron.Fixtures.csproj", "Test")]
     [InlineData("src/Kernel/Iron.Kernel.Testing/Iron.Kernel.Testing.csproj", "Test")]
@@ -60,5 +58,67 @@ public class LayerRulesTests
 
         Assert.StartsWith(relativePath, violation, StringComparison.Ordinal);
         Assert.Contains($"declares IronLayer {layer}, but a {layer} project is", violation, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj")]
+    [InlineData("src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Contracts/Iron.Suites.Procurement.Purchasing.Contracts.csproj")]
+    [InlineData("src/Suites/School/Iron.Suites.School.Pupils/Iron.Suites.School.Pupils.csproj")]
+    public void ASuiteAcceptsItsOwnProjects(string relativePath)
+    {
+        Assert.Empty(LayerRules.Check([Fixture.At(relativePath)]));
+    }
+
+    [Theory]
+    // The suite in IronSuite, the name and the folder must be one suite.
+    [InlineData("src/Suites/Procurement/Iron.Suites.School.Pupils/Iron.Suites.School.Pupils.csproj", "Procurement")]
+    [InlineData("src/Suites/School/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj", "Procurement")]
+    [InlineData("src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj", "School")]
+    [InlineData("src/Suites/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj", "Procurement")]
+    [InlineData("src/Suites/Procurement/Iron.Products.Orders/Iron.Products.Orders.csproj", "Procurement")]
+    [InlineData("src/Suites/Procurement/Iron.Suites.Procurement/Iron.Suites.Procurement.csproj", "Procurement")]
+    public void ASuiteProjectMustAgreeWithItsSuiteNameAndFolder(string relativePath, string suite)
+    {
+        var violation = Assert.Single(LayerRules.Check([Fixture.DeclaringSuite(relativePath, "Suite", suite)]));
+
+        Assert.StartsWith(relativePath, violation, StringComparison.Ordinal);
+        Assert.Contains($"declares IronLayer Suite and IronSuite {suite}, but a project of that suite is named Iron.Suites.{suite}.* and lives under src/Suites/{suite}/", violation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ASuiteProjectWithoutASuiteIsRefused()
+    {
+        const string path = "src/Suites/Procurement/Iron.Suites.Procurement.Orders/Iron.Suites.Procurement.Orders.csproj";
+
+        var violation = Assert.Single(LayerRules.Check([Fixture.Declaring(path, "Suite")]));
+
+        Assert.Contains("declares IronLayer Suite but no <IronSuite>", violation, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("procurement")]
+    [InlineData("Kernel")]
+    [InlineData("Business")]
+    [InlineData("Foundation")]
+    [InlineData("e-Procurement")]
+    public void ASuiteNameIsOneWordInPascalCaseAndNotALayer(string suite)
+    {
+        var path = $"src/Suites/{suite}/Iron.Suites.{suite}.Orders/Iron.Suites.{suite}.Orders.csproj";
+
+        var violation = Assert.Single(LayerRules.Check([Fixture.DeclaringSuite(path, "Suite", suite)]));
+
+        Assert.Contains($"declares IronSuite '{suite}', which is not a suite name", violation, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("src/Business/Iron.Business.Items/Iron.Business.Items.csproj", "Business")]
+    [InlineData("src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj", "Kernel")]
+    [InlineData("src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj", "Host")]
+    [InlineData("tests/Suites/Procurement/Iron.Suites.Procurement.Orders.Tests/Iron.Suites.Procurement.Orders.Tests.csproj", "Test")]
+    public void OnlyASuiteProjectNamesASuite(string relativePath, string layer)
+    {
+        var violation = Assert.Single(LayerRules.Check([Fixture.DeclaringSuite(relativePath, layer, "Procurement")]));
+
+        Assert.Contains($"declares IronSuite 'Procurement', but it is a {layer} project", violation, StringComparison.Ordinal);
     }
 }

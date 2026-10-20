@@ -2,7 +2,7 @@
 
 Kernel module (ADR-0029). Schema `kernel_entitlements`. The unit's side of entitlements: what this tenant may use, read from the store, kept for a restart, evaluated by one service, and checked in the API (TF-040, TF-041, TF-043, TF-046; ADR-0034). The control plane's side (plans, a tenant's entitlements, the history) is in `Iron.Kernel.Tenancy`.
 
-Placement test: it knows nothing about any business domain, so it is Kernel. It licenses Business and Products modules, which declare their licence in their own code; the kernel itself is never in a plan.
+Placement test: it knows nothing about any business domain, so it is Kernel. It licenses Business and suite modules, which declare their licence in their own code; the kernel itself is never in a plan.
 
 | Folder | Holds |
 |---|---|

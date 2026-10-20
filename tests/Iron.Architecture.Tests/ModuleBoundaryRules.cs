@@ -2,8 +2,9 @@ namespace Iron.Architecture.Tests;
 
 /// <summary>
 /// The project reference rules of the modular monolith (ADR-0001) across the three layers (ADR-0029): dependencies go
-/// downward only, and between modules only through a Contracts project. Every message names the project file to fix
-/// and the rule that was broken.
+/// downward only, and between modules only through a Contracts project. A suite never references another suite, and
+/// the Foundation never references a suite (ADR-0043). Every message names the project file to fix and the rule that
+/// was broken.
 /// </summary>
 public static class ModuleBoundaryRules
 {
@@ -56,7 +57,14 @@ public static class ModuleBoundaryRules
         var targetRank = target.Layer is { } targetLayer ? ProjectLayers.Rank(targetLayer) : null;
         if (projectRank is not null && targetRank is not null && targetRank > projectRank)
         {
-            return $"Dependencies go downward only: a {project.Layer} project may not use the {target.Layer} layer. When the kernel needs what only Business can supply, the kernel declares an interface in its Contracts and Business implements it (ADR-0029).";
+            return target.Layer == ProjectLayer.Suite
+                ? $"Dependencies go downward only: a {project.Layer} project may not use the Suite layer. The Foundation never references a suite; where it must hear from one, it declares an interface in its Contracts that the suite implements (ADR-0043)."
+                : $"Dependencies go downward only: a {project.Layer} project may not use the {target.Layer} layer. When the kernel needs what only Business can supply, the kernel declares an interface in its Contracts and Business implements it (ADR-0029).";
+        }
+
+        if (project.Layer == ProjectLayer.Suite && target.Layer == ProjectLayer.Suite && !string.Equals(project.DeclaredSuite, target.DeclaredSuite, StringComparison.Ordinal))
+        {
+            return $"A suite never references another suite: the {project.DeclaredSuite} suite may not use the {target.DeclaredSuite} suite, not even its Contracts. What both need belongs in Business (ADR-0043).";
         }
 
         switch (project.Kind)
@@ -82,7 +90,7 @@ public static class ModuleBoundaryRules
             case ProjectKind.Host:
                 return target.Kind is ProjectKind.Vocabulary or ProjectKind.Library or ProjectKind.Contracts or ProjectKind.Module
                     ? null
-                    : "A host may reference projects of the kernel, business and products layers only, never another host, a test or a tool.";
+                    : "A host may reference projects of the kernel, business and suite layers only, never another host, a test or a tool.";
 
             default:
                 return null;

@@ -11,7 +11,7 @@ Kernel module (ADR-0029). Schema `kernel_tenancy`. The tenant registry and the c
 
 ## Plans and entitlements (TF-040 to TF-045, ADR-0034)
 
-What a tenant may use is decided here and nowhere else. Kernel modules are the platform: always on and never in a plan. A Business or Products module is licensed per module, and a feature in any layer, as their modules declare in code; the control plane knows them from `Services/licensing-catalogue.json`, which `make catalogue` writes from the unit host's modules and a host test keeps equal to them, embedded in this assembly. A plan or a tenant never names a code the catalogue does not know.
+What a tenant may use is decided here and nowhere else. Kernel modules are the platform: always on and never in a plan. A Business or suite module is licensed per module, and a feature in any layer, as their modules declare in code; the control plane knows them from `Services/licensing-catalogue.json`, which `make catalogue` writes from the unit host's modules and a host test keeps equal to them, embedded in this assembly. A plan or a tenant never names a code the catalogue does not know.
 
 | Operation | Endpoint | Permission | Refused when |
 |---|---|---|---|

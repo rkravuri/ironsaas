@@ -17,19 +17,32 @@ public static class SchemaCheck
     public const string Integer = "integer";
     public const string Boolean = "boolean";
 
+    public static Task<IReadOnlyList<string>> RunAsync(
+        NpgsqlDataSource dataSource,
+        IReadOnlyCollection<string> schemas,
+        CancellationToken cancellationToken) => RunAsync(dataSource, schemas, [], cancellationToken);
+
+    /// <summary>The check over these schemas, where a schema may also start with the prefix of one of these suites (ADR-0043).</summary>
     public static async Task<IReadOnlyList<string>> RunAsync(
         NpgsqlDataSource dataSource,
         IReadOnlyCollection<string> schemas,
+        IReadOnlyCollection<string> suites,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(dataSource);
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-        return await RunAsync(connection, schemas, cancellationToken).ConfigureAwait(false);
+        return await RunAsync(connection, schemas, suites, cancellationToken).ConfigureAwait(false);
     }
+
+    public static Task<IReadOnlyList<string>> RunAsync(
+        NpgsqlConnection connection,
+        IReadOnlyCollection<string> schemas,
+        CancellationToken cancellationToken) => RunAsync(connection, schemas, [], cancellationToken);
 
     public static async Task<IReadOnlyList<string>> RunAsync(
         NpgsqlConnection connection,
         IReadOnlyCollection<string> schemas,
+        IReadOnlyCollection<string> suites,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -37,16 +50,20 @@ public static class SchemaCheck
 
         var tables = await LoadTablesAsync(connection, schemas, cancellationToken).ConfigureAwait(false);
         var foreignKeys = await LoadForeignKeysAsync(connection, schemas, cancellationToken).ConfigureAwait(false);
-        return [.. CheckSchemaNames(schemas), .. Evaluate(tables, foreignKeys)];
+        return [.. CheckSchemaNames(schemas, suites), .. Evaluate(tables, foreignKeys)];
     }
 
-    /// <summary>Every schema checked is a module schema, and a module schema carries its layer's prefix (ADR-0029).</summary>
-    public static IReadOnlyList<string> CheckSchemaNames(IEnumerable<string> schemas)
+    /// <summary>
+    /// Every schema checked is a module schema, and a module schema carries its layer's prefix, or the prefix of one of
+    /// these suites (ADR-0029, ADR-0043). The caller names the suites of its modules; the kernel knows none.
+    /// </summary>
+    public static IReadOnlyList<string> CheckSchemaNames(IEnumerable<string> schemas, IEnumerable<string>? suites = null)
     {
         ArgumentNullException.ThrowIfNull(schemas);
+        var prefixes = SchemaAttribute.Prefixes(suites);
         return schemas
-            .Where(schema => !SchemaAttribute.HasLayerPrefix(schema))
-            .Select(schema => $"{schema}: a module schema starts with its layer's prefix ({string.Join(", ", SchemaAttribute.LayerPrefixes)}) and the module's name, as in kernel_identity (ADR-0029).")
+            .Where(schema => !SchemaAttribute.HasLayerPrefix(schema, suites))
+            .Select(schema => $"{schema}: a module schema starts with its layer's prefix ({string.Join(", ", prefixes)}) and the module's name, as in kernel_identity (ADR-0029, ADR-0043).")
             .ToList();
     }
 

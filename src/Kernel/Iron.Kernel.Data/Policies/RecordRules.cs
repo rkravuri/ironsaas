@@ -5,7 +5,7 @@ namespace Iron.Kernel.Data.Policies;
 
 /// <summary>
 /// The kernel's building blocks for record policies (TF-035, ADR-0032): unit visibility, the owner while a condition
-/// holds, and the two combinators. Supplier and approver rules belong to the Products layer and the workflow slice.
+/// holds, and the two combinators. Supplier and approver rules belong to the eProcurement Suite and the workflow slice.
 /// </summary>
 public static class RecordRules
 {
