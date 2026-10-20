@@ -7,6 +7,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Health;
+using Iron.Kernel.Entitlements;
 using Iron.Kernel.Fleet;
 using Iron.Kernel.Identity;
 using Iron.Kernel.Security;
@@ -29,7 +30,7 @@ builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this worker runs, in order: the same list as the API host, without endpoints.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule()];
+IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule()];
 
 builder.AddIronTelemetry("iron-fleet", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);
@@ -45,6 +46,7 @@ builder.Services.AddIronDatabase(connectionString, builder.Configuration["Databa
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 builder.Services.AddIronFleetWorker();
+builder.Services.AddIronEntitlementReconciler();
 
 var app = builder.Build();
 

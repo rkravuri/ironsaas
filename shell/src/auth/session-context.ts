@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { Me } from "@/api/identity";
+import type { Entitlements } from "./entitlements";
 import type { SessionEnd } from "./session-channel";
 import type { EndReason } from "./session-clock";
 
@@ -12,6 +13,8 @@ export interface Session {
   permissions: readonly string[];
   /** The permissions held for the whole tenant: the actions whose scope is the tenant, such as changing roles. */
   tenantPermissions: readonly string[];
+  /** What this tenant, and this person's seats, entitle (ADR-0034): from /me/context, read with the session and every 30 seconds. */
+  entitlements: Entitlements;
   /** Why the last session ended, for the sentence on the login page; undefined when nothing ended it here. */
   ended: SessionEnd | undefined;
   /** Re-reads /me. */

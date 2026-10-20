@@ -66,6 +66,29 @@ public sealed class Tenant : AuditedEntity, ITenantWide
 
     public DateTimeOffset? ActivatedAt { get; private set; }
 
+    /// <summary>The grace days of the plan applied last (TF-040 AC3).</summary>
+    public int GraceDays { get; private set; }
+
+    /// <summary>Grows by one with every committed change of the tenant's entitlements; the store's copy carries it.</summary>
+    public int EntitlementsRevision { get; private set; }
+
+    /// <summary>The revision the store holds; behind <see cref="EntitlementsRevision"/> until the fleet reconciles (ADR-0034).</summary>
+    public int PublishedRevision { get; private set; }
+
+    /// <summary>A plan applied: its code and grace days, and the next revision, which the caller writes into the history.</summary>
+    public int ApplyPlan(string plan, int graceDays)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(plan);
+        ArgumentOutOfRangeException.ThrowIfNegative(graceDays);
+        Plan = plan;
+        GraceDays = graceDays;
+        EntitlementsRevision++;
+        return EntitlementsRevision;
+    }
+
+    /// <summary>The store took this revision. An older one written late never moves the mark back.</summary>
+    public void Published(int revision) => PublishedRevision = Math.Max(PublishedRevision, revision);
+
     public void SetStatus(TenantStatus status, DateTimeOffset now)
     {
         Status = status;

@@ -62,6 +62,28 @@ public class EndpointPermissionCheckTests
     }
 
     [Fact]
+    public void TheRulesRefuseAFeatureNoModuleDeclaredAndALicensedEndpointWithoutAGate()
+    {
+        var licensing = new Iron.Kernel.Api.Modules.LicensingCatalogue([], [new Iron.Kernel.Api.Modules.FeatureEntry("sample.export", "sample", null, "Export things")]);
+        var declared = Endpoint("/api/v1/things/export", new PermissionMetadata(Read), new Iron.Kernel.Api.Entitlements.FeatureMetadata("sample.export"));
+        var undeclared = Endpoint("/api/v1/things/import", new PermissionMetadata(Read), new Iron.Kernel.Api.Entitlements.FeatureMetadata("sample.import"));
+        var licensed = Endpoint("/api/v1/widgets", new PermissionMetadata(Read), new Iron.Kernel.Api.Entitlements.LicensedModuleMetadata("widgets"));
+
+        Assert.Empty(EndpointPermissionCheck.Check([declared], new PermissionCatalogue([Read]), evaluatorRegistered: true, licensing, gateRegistered: true));
+        var unknown = Assert.Single(EndpointPermissionCheck.Check([undeclared], new PermissionCatalogue([Read]), evaluatorRegistered: true, licensing, gateRegistered: true));
+        Assert.Contains("feature 'sample.import' is not declared", unknown, StringComparison.Ordinal);
+        var noGate = Assert.Single(EndpointPermissionCheck.Check([licensed], new PermissionCatalogue([Read]), evaluatorRegistered: true, licensing, gateRegistered: false));
+        Assert.Contains("IEntitlementGate", noGate, StringComparison.Ordinal);
+    }
+
+    private static Microsoft.AspNetCore.Routing.RouteEndpoint Endpoint(string pattern, params object[] metadata) => new(
+        _ => Task.CompletedTask,
+        Microsoft.AspNetCore.Routing.Patterns.RoutePatternFactory.Parse(pattern),
+        0,
+        new Microsoft.AspNetCore.Http.EndpointMetadataCollection(metadata),
+        pattern);
+
+    [Fact]
     public void TheRulesNameBothMarkersOnOneEndpointAsAMistake()
     {
         var endpoint = new Microsoft.AspNetCore.Routing.RouteEndpoint(

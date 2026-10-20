@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, onResponse, onUnauthenticated } from "@/api/client";
+import { fetchContext } from "@/api/entitlements";
 import { fetchMe, logout as logoutCall, type Me } from "@/api/identity";
+import { contextQueryKey, contextRefreshMs, entitlementsFrom } from "./entitlements";
 import { openSessionChannel, type SessionChannel, type SessionEnd } from "./session-channel";
 import type { EndReason } from "./session-clock";
 import { meQueryKey, SessionContext, type Session, type SessionStatus } from "./session-context";
@@ -12,7 +14,9 @@ const heardEnd = (reason: SessionEnd): SessionEnd => (reason === "signed-out" ? 
 
 /**
  * The signed-in principal from /me, shared by the shell, the guards and the pages (ADR-0020), and the session's times
- * for the warning (ADR-0033): /me sets them, every answer moves them, and the tabs of the browser share them.
+ * for the warning (ADR-0033): /me sets them, every answer moves them, and the tabs of the browser share them. With the
+ * session, /me/context: what the tenant is entitled to, read again every 30 seconds while the tab is visible, so a plan
+ * changed in the control plane shows within a minute without a new sign-in (TF-043, ADR-0034).
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -32,6 +36,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     (reason: SessionEnd | undefined, tell: boolean) => {
       const live = queryClient.getQueryData<Me | null>(meQueryKey);
       queryClient.setQueryData(meQueryKey, null);
+      queryClient.removeQueries({ queryKey: contextQueryKey });
       watch.clear();
       if (live && reason !== undefined) {
         setEnded(reason);
@@ -83,6 +88,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   // Each /me answer sets the times, on this browser's clock, from the moment it arrived.
   const me = query.data ?? undefined;
+
+  const context = useQuery({
+    queryKey: contextQueryKey,
+    queryFn: ({ signal }) => fetchContext(signal),
+    enabled: me !== undefined,
+    retry: false,
+    staleTime: contextRefreshMs,
+    // Every 30 seconds while the tab is visible, never while it is hidden, and at once when it is shown again, however
+    // fresh the last answer: a person coming back to the tab sees what applies now, and a hidden tab costs nothing.
+    refetchInterval: contextRefreshMs,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: "always",
+  });
+  const contextData = me !== undefined ? context.data : undefined;
+  const entitlements = useMemo(() => entitlementsFrom(contextData, me !== undefined && context.isPending), [contextData, me, context.isPending]);
   useEffect(() => {
     if (me) {
       watch.fromMe(me.session, query.dataUpdatedAt);
@@ -129,8 +149,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       // A failure that is not "not signed in" still shows the login page, with the error noted by the boundary later.
       status = query.isPending ? "loading" : "signed-out";
     }
-    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], ended, refresh, signedIn, extend, signOut, expire, forget };
-  }, [me, query.error, query.isPending, ended, refresh, signedIn, extend, signOut, expire, forget]);
+    return { status, me, permissions: me?.permissions_anywhere ?? [], tenantPermissions: me?.permissions ?? [], entitlements, ended, refresh, signedIn, extend, signOut, expire, forget };
+  }, [me, query.error, query.isPending, entitlements, ended, refresh, signedIn, extend, signOut, expire, forget]);
 
   return (
     <SessionWatchContext.Provider value={watch}>

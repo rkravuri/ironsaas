@@ -41,7 +41,8 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0031](0031-nobody-grants-more-than-they-hold.md) | Nobody grants more than they hold | Accepted |
 | [0032](0032-record-policies.md) | Record policies, and a forgotten policy does not compile | Accepted |
 | [0033](0033-home-the-header-and-the-session-warning.md) | Home, the header, and the session warning across tabs | Accepted |
+| [0034](0034-entitlements-the-kernel-outside-plans-and-the-store-as-the-channel.md) | Entitlements: the kernel outside plans, one catalogue, and the store as the channel | Accepted |
 
 ## Reading order
 
-For a newcomer: 0001 and 0029 (the shape of the code and its three layers), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 and 0030 to 0032 (who may do what, where, who may grant it, and which records each may see), 0016 to 0019 and 0028 (how a tenant comes to exist, and how it heals), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 and 0033 (how S2 onwards is built, how it looks, and the shell's home and frame). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.
+For a newcomer: 0001 and 0029 (the shape of the code and its three layers), 0002 (the shape of a deployment), 0007 to 0010 (the conventions every line of code follows), 0012 to 0015 and 0030 to 0032 (who may do what, where, who may grant it, and which records each may see), 0034 (what a tenant may use, and how its unit learns it), 0016 to 0019 and 0028 (how a tenant comes to exist, and how it heals), 0020 to 0022 (the shell and the pipeline), 0023 to 0027 and 0033 (how S2 onwards is built, how it looks, and the shell's home and frame). The slice plan `docs/slices/S1-walking-skeleton.md` tells the story in order.

@@ -13,6 +13,14 @@
     <ProjectReference Include="Contracts/Iron.Kernel.Tenancy.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Fleet/Contracts/Iron.Kernel.Fleet.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Entitlements/Contracts/Iron.Kernel.Entitlements.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- What the units of this build can license, written by make catalogue (ADR-0034); the control plane image carries it. -->
+    <EmbeddedResource Include="Services/licensing-catalogue.json" LogicalName="Iron.Kernel.Tenancy.Services.licensing-catalogue.json" />
   </ItemGroup>
 
   <ItemGroup>

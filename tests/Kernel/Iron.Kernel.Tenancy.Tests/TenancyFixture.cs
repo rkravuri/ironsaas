@@ -4,6 +4,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Fleet;
+using Iron.Kernel.Security.Secrets;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,14 +30,17 @@ public sealed class TenancyFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 
-    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal)
+    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, Action<IServiceCollection>? configure = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(time);
         services.AddSingleton(principal);
         services.AddLogging();
         services.AddIronDatabase(ConnectionString);
+        // No store: the entitlements stay behind in the store's copy, as when the store refuses a write (ADR-0034).
+        services.AddIronSecretStore(new ConfigurationBuilder().Build());
         services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
+        configure?.Invoke(services);
         return services.BuildServiceProvider();
     }
 }

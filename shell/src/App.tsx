@@ -19,7 +19,11 @@ const GalleryPage = import.meta.env.DEV ? lazy(() => import("@/gallery/GalleryPa
 
 const children: RouteObject[] = declaredRoutes(manifests, { strict }).map((route) => ({
   path: route.path.replace(/^\//, ""),
-  element: <RequirePermission permission={route.permission ?? null}>{route.element}</RequirePermission>,
+  element: (
+    <RequirePermission permission={route.permission ?? null} licence={route.licence}>
+      {route.element}
+    </RequirePermission>
+  ),
 }));
 
 const galleryRoutes: RouteObject[] = GalleryPage

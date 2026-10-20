@@ -5,6 +5,7 @@ import { Alert, Button, Text } from "@mantine/core";
 import { IconDownload, IconPlus, IconUpload } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
 import { exportRoles, fetchRoles, type Role } from "@/api/authorization";
+import { useFeature } from "@/auth/entitlements";
 import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ListPage } from "@/components/templates";
@@ -12,6 +13,8 @@ import { Mandala } from "@/design/patterns";
 import { ImportRolesDialog } from "./ImportRolesDialog";
 
 const manage = "authz.roles.manage";
+/** Role export and import are licensed on their own (ADR-0034): the enterprise plan has them. */
+const roleTransfer = "authorization.role_transfer";
 const defaultSort = [{ field: "code", direction: "asc" as const }];
 
 /** Saves the export as a file the person keeps, then hands it to another tenant's import. */
@@ -25,12 +28,16 @@ function download(document: unknown) {
   URL.revokeObjectURL(url);
 }
 
-/** The roles of this tenant (TF-032) on the list template: system roles first by their code, a row opens the role. */
+/**
+ * The roles of this tenant (TF-032) on the list template: system roles first by their code, a row opens the role.
+ * Export and Import show only while the tenant's plan has role transfer; the API refuses them otherwise.
+ */
 export function RolesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSession();
   const canManage = session.tenantPermissions.includes(manage);
+  const transfer = useFeature(roleTransfer);
   const [importing, setImporting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [failure, setFailure] = useState<ApiError | undefined>();
@@ -62,10 +69,12 @@ export function RolesPage() {
         drawing={<Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed="roles" size={56} accent="console" />}
         actions={
           <>
-            <Button variant="default" leftSection={<IconDownload size={16} aria-hidden="true" />} onClick={() => void exportAll()}>
-              {t("roles.export")}
-            </Button>
-            {canManage && (
+            {transfer.available && (
+              <Button variant="default" leftSection={<IconDownload size={16} aria-hidden="true" />} onClick={() => void exportAll()}>
+                {t("roles.export")}
+              </Button>
+            )}
+            {canManage && transfer.writable && (
               <Button variant="default" leftSection={<IconUpload size={16} aria-hidden="true" />} onClick={() => setImporting(true)}>
                 {t("roles.import.open")}
               </Button>
@@ -101,7 +110,7 @@ export function RolesPage() {
           onRowOpen={(role) => void navigate(`/console/roles/${role.id}`)}
         />
       </ListPage>
-      {importing && (
+      {importing && transfer.writable && (
         <ImportRolesDialog
           onClose={() => setImporting(false)}
           onApplied={() => {

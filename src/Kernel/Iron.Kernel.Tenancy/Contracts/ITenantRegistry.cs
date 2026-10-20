@@ -51,7 +51,11 @@ public static class TenancyPermissions
 
     public static readonly Permission TenantsProvision = new("tenancy.tenants.provision", "Request provisioning and de-provisioning of tenants", Risk.Critical);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision];
+    public static readonly Permission EntitlementsRead = new("tenancy.entitlements.read", "View plans, tenants' entitlements and their history", Risk.Low);
+
+    public static readonly Permission EntitlementsManage = new("tenancy.entitlements.manage", "Define plans and apply them to tenants", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage];
 }
 
 public static class TenancyErrors
@@ -62,6 +66,11 @@ public static class TenancyErrors
     public const string HostnameInvalid = "tenancy.hostname.invalid";
     public const string AlreadyActive = "tenancy.tenant.already_active";
     public const string NotProvisionable = "tenancy.tenant.not_provisionable";
+    public const string PlanNotFound = "tenancy.plan.not_found";
+    public const string PlanCodeInvalid = "tenancy.plan.code_invalid";
+    public const string PlanUnknownEntitlements = "tenancy.plan.unknown_entitlements";
+    public const string PlanDatesInvalid = "tenancy.plan.dates_invalid";
+    public const string HistoryReadOnly = "tenancy.entitlement_history.read_only";
 }
 
 public static class TenancyAuditEvents
@@ -71,4 +80,16 @@ public static class TenancyAuditEvents
     public const string DeprovisioningRequested = "tenancy.deprovisioning_requested";
     public const string UpdateRequested = "tenancy.update_requested";
     public const string StatusChanged = "tenancy.tenant.status_changed";
+    public const string PlanSaved = "tenancy.plan_saved";
+    public const string PlanApplied = "tenancy.plan_applied";
+}
+
+/// <summary>
+/// A tenant's entitlements as the fleet uses them (ADR-0034): written to the store at <c>tenants/&lt;slug&gt;/entitlements</c>
+/// again, which the secrets step does on every provisioning and update, so a store that lost them heals with the unit.
+/// </summary>
+public interface ITenantEntitlements
+{
+    /// <summary>Writes the tenant's effective entitlements to the store; false when the store could not take them (the fleet reconciles every minute).</summary>
+    Task<bool> PublishAsync(string slug, CancellationToken cancellationToken);
 }

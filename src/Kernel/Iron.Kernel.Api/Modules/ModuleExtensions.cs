@@ -1,4 +1,7 @@
+using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Permissions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +16,7 @@ public sealed class ModuleCollection(IReadOnlyList<IModule> modules)
 
 public static class ModuleExtensions
 {
-    /// <summary>Registers the services of every module and remembers the list for MapModules.</summary>
+    /// <summary>Registers the services of every module, the permission and licensing catalogues, and remembers the list for MapModules.</summary>
     public static IServiceCollection AddModules(this IServiceCollection services, IConfiguration configuration, IReadOnlyList<IModule> modules)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -44,17 +47,31 @@ public static class ModuleExtensions
 
         services.AddSingleton(new ModuleCollection(modules));
         services.AddSingleton(new PermissionCatalogue(permissions));
+        services.AddSingleton(LicensingCatalogue.From(modules));
         return services;
     }
 
-    /// <summary>Maps the endpoints of every module registered with AddModules.</summary>
+    /// <summary>
+    /// Maps the endpoints of every module registered with AddModules. A licensed module maps into a group that marks
+    /// each of its endpoints with its licence, so the entitlement check refuses them while the module is not entitled
+    /// and serves them again when it is, without a restart (ADR-0034: filters, not unmapped endpoints).
+    /// </summary>
     public static IEndpointRouteBuilder MapModules(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         var modules = endpoints.ServiceProvider.GetRequiredService<ModuleCollection>();
         foreach (var module in modules.Modules)
         {
-            module.MapEndpoints(endpoints);
+            if (module.Licence is { } licence)
+            {
+                var group = endpoints.MapGroup(string.Empty).WithMetadata(new LicensedModuleMetadata(licence.Code));
+                group.AddEndpointFilter(new EntitlementFilter());
+                module.MapEndpoints(group);
+            }
+            else
+            {
+                module.MapEndpoints(endpoints);
+            }
         }
 
         return endpoints;

@@ -114,6 +114,38 @@ When a kernel module needs something only a business module can supply (the orga
 
 The same steps under `src/Business/Iron.Business.<Module>/` (layer `Business`, schema `business_<module>`) or `src/Products/Iron.Products.<Product>/` (layer `Products`, schema `products_<product>`), with tests in `tests/Business/` or `tests/Products/`. Every entity is a `BusinessRecord` or marked `ITenantWide` (TF-220). A business module may use the kernel; a product may use Business and the kernel; both only through Contracts projects. The two layer READMEs (`src/Business/README.md`, `src/Products/README.md`) have the naming table.
 
+## Licensing a module or feature (A4, ADR-0034)
+
+Kernel modules are the platform: always on, never in a plan, and they declare no licence (the architecture test `LicensingRules` refuses one). A Business or Products module must declare one. Features may be licensed in any layer.
+
+1. **Declare it in the module's own code.** The licence code and the subscription type in the module's `IModule`, the features in its Contracts beside its permissions, listed in its `IModule`:
+
+   ```csharp
+   public static class SourcingFeatures
+   {
+       public static readonly Feature Auctions = new("sourcing.auctions", "Auctions with pre-bidding");
+
+       public static IReadOnlyList<Feature> All => [Auctions];
+   }
+
+   public sealed class SourcingModule : IModule
+   {
+       public ModuleLicence Licence => new("sourcing", SubscriptionType.PerPerson);
+
+       public IReadOnlyList<Feature> Features => SourcingFeatures.All;
+       // Name, Permissions, AddServices, MapEndpoints as for any module
+   }
+   ```
+
+   A licence code is lowercase letters, digits and underscores; a feature code is `area.feature`.
+2. **Nothing else for the module's endpoints.** `MapModules` puts every endpoint of a licensed module behind the check: 403 `entitlements.module_disabled` when the tenant does not have it, `entitlements.read_only` for a write when it is read only, `entitlements.seat_required` for a person without a seat of a per-person module. The check runs after authentication and before the permission.
+3. **A feature on its endpoints:** `.RequirePermission(...).RequireFeature(SourcingFeatures.Auctions.Code)`; 403 `entitlements.feature_disabled` when it is not available, which includes a feature whose module is not. Code that needs to ask (a background job, a choice inside a handler) injects `IEntitlements` from `Iron.Kernel.Entitlements.Contracts`: `Module(licence)`, `ModuleForAsync(licence, principal)`, `Feature(code)`.
+4. **Write the catalogue:** add the module to `Iron.Host.Api.UnitModules`, then `make catalogue`, and commit `src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json`. The host test fails until the file matches the modules; the control plane refuses a plan with a code the file does not have.
+5. **In the shell:** `licence: "sourcing"` in the module's manifest hides its navigation, routes, opener and quick actions until `/me/context` says it is entitled; `useFeature("sourcing.auctions")` answers `available` (show the control) and `writable` (show what changes data). The shell hides; the API decides.
+6. **Put it in a plan:** `PUT /api/v1/plans/{code}` on the control plane, then `make apply-plan TENANT=x PLAN=y`. A per-person module gets its seat count there; seats are assigned in the unit (`POST /api/v1/seats`).
+
+Tests: a module's tests prove its own rules with an allow-all gate in the test host (`AllEntitled`, as the module test projects have); `tests/Kernel/Iron.Kernel.Entitlements.Tests` proves the check with a fixture module licensed per person.
+
 ## Write an ADR
 
 Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).
@@ -306,7 +338,7 @@ The home page, the search and the help panel read the manifests, so a module app
 | Unit and integration tests | `make test`, `make shell-check` | the code, on real platform services in containers |
 | Accessibility | `make shell-a11y` | the gallery against WCAG 2.1 AA with axe in a real browser; no stack needed |
 | Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace |
-| Browser | `make e2e` | login, home, the search, the grid, inviting a person and a child-unit administrator's view in a real browser |
+| Browser | `make e2e` | login, home, the search, the grid, inviting a person, a child-unit administrator's view, and a plan changed in the control plane reaching the shell and the API within a minute, in a real browser |
 | Pipeline's stage | `make integration` | platform and control plane from images, then the smoke |
 
 Every pull request runs the first two levels in CI; every merge to main builds the images and runs the pipeline's stage on the runner. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.

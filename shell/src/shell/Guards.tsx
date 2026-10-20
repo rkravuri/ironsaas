@@ -31,9 +31,15 @@ export function RequireSession({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** The route's permission, checked again at render time: a link typed by hand gets the same answer as the API would give (TF-030). */
-export function RequirePermission({ permission, children }: { permission: string | null; children: ReactNode }) {
+/**
+ * The route's licence and permission, checked again at render time: a link typed by hand gets the same answer as the
+ * API would give (TF-030, TF-040 AC1). A licensed module's page waits for the first answer of /me/context.
+ */
+export function RequirePermission({ permission, licence, children }: { permission: string | null; licence?: string | undefined; children: ReactNode }) {
   const session = useSession();
+  if (licence !== undefined && !session.entitlements.entitled(licence)) {
+    return session.entitlements.pending ? <LoadingView height="60vh" /> : <ErrorView error={new ApiError(403, { title: "Forbidden", error_code: "entitlements.module_disabled" }, undefined)} />;
+  }
   if (permission !== null && !session.permissions.includes(permission)) {
     return <ErrorView error={new ApiError(403, { title: "Forbidden", error_code: "authz.forbidden" }, undefined)} />;
   }

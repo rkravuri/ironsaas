@@ -1,3 +1,4 @@
+using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Problems;
 using Iron.Kernel.Api.Responses;
 using Microsoft.AspNetCore.Builder;
@@ -97,14 +98,19 @@ public sealed class SignedInFilter : IEndpointFilter
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
         var principal = context.HttpContext.RequestServices.GetService<ICurrentPrincipal>();
-        return principal is null || principal.IsAnonymous()
-            ? AuthenticationFailure.Problem(context.HttpContext)
-            : await next(context).ConfigureAwait(false);
+        if (principal is null || principal.IsAnonymous())
+        {
+            return AuthenticationFailure.Problem(context.HttpContext);
+        }
+
+        // After authentication, before the handler: a module or feature that is not entitled answers 403 (ADR-0034).
+        return await EntitlementCheck.RefusalAsync(context.HttpContext, principal.Id).ConfigureAwait(false) ?? await next(context).ConfigureAwait(false);
     }
 }
 
 /// <summary>
-/// Runs before the handler of every endpoint that carries RequirePermission. The check is tenant-wide unless the
+/// Runs before the handler of every endpoint that carries RequirePermission: authentication, then the entitlements of
+/// the endpoint's module and features (ADR-0034), then the permission. The permission check is tenant-wide unless the
 /// endpoint declares its scope with <c>ScopedToUnit</c> or <c>ScopedToRecord</c> (ADR-0030).
 /// </summary>
 public sealed class PermissionFilter(Permission permission) : IEndpointFilter
@@ -119,6 +125,14 @@ public sealed class PermissionFilter(Permission permission) : IEndpointFilter
         if (principal is null || principal.IsAnonymous())
         {
             return AuthenticationFailure.Problem(http);
+        }
+
+        // After authentication and before the permission (ADR-0034): a person whose tenant lacks the module or the feature
+        // hears that, not that they lack a permission, and no permission denial is audited for it.
+        var refusal = await EntitlementCheck.RefusalAsync(http, principal.Id).ConfigureAwait(false);
+        if (refusal is not null)
+        {
+            return refusal;
         }
 
         var evaluator = http.RequestServices.GetService<IPermissionEvaluator>();

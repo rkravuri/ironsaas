@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Iron.Kernel.Api;
+using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit;
@@ -9,6 +10,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Fleet;
+using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -34,7 +36,9 @@ public class TenantsEndpointTests(TenancyFixture fixture) : IAsyncLifetime
         builder.Services.AddScoped<ICurrentPrincipal, HeaderPrincipal>();
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
+        builder.Services.AddIronSecretStore(builder.Configuration);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
+        builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
 
         _app = builder.Build();
         _app.UseIronTelemetry();

@@ -12,7 +12,8 @@ public sealed record NewTenant(string Slug, string DisplayName, IReadOnlyList<st
 
 /// <summary>
 /// The tenant registry (TF-001): create with unique slug and hostnames, read, change status, and ask the fleet to
-/// provision (TF-002). A tenant and its hostnames are written with the audit event in one transaction.
+/// provision (TF-002). A tenant, its hostnames and its plan's entitlements are written with the audit events in one
+/// transaction; the entitlements go to the store after the commit (ADR-0034).
 /// </summary>
 public sealed class TenantRegistry(
     TenancyDbContext context,
@@ -21,6 +22,8 @@ public sealed class TenantRegistry(
     IUnitOfWork unitOfWork,
     TimeProvider time,
     IAuditWriter audit,
+    EntitlementService entitlements,
+    ITenantEntitlements publisher,
     ILogger<TenantRegistry> logger) : ITenantRegistry
 {
     public async Task<Result<TenantRecord>> CreateAsync(NewTenant request, CancellationToken cancellationToken)
@@ -50,15 +53,27 @@ public sealed class TenantRegistry(
             return Error.Conflict(TenancyErrors.HostnameTaken, $"The hostname '{taken}' belongs to another tenant.");
         }
 
-        var tenant = new Tenant(tenantId, request.DisplayName, request.Region ?? options.DefaultRegion, request.Plan ?? options.DefaultPlan, request.SizeClass, request.AdministratorLoginId, request.AdministratorDisplayName);
+        var plan = (request.Plan ?? options.DefaultPlan).Trim().ToLowerInvariant();
+        var tenant = new Tenant(tenantId, request.DisplayName, request.Region ?? options.DefaultRegion, plan, request.SizeClass, request.AdministratorLoginId, request.AdministratorDisplayName);
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         context.Tenants.Add(tenant);
         context.Hostnames.AddRange(hostnames.Select(h => new TenantHostname(tenant.Id, h)));
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.TenantCreated, AuditOutcome.Success, tenant.CreatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["hostnames"] = string.Join(",", hostnames), ["size_class"] = tenant.SizeClass.ToString().ToLowerInvariant() }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
-        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.TenantCreated, AuditOutcome.Success, tenant.CreatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["hostnames"] = string.Join(",", hostnames), ["size_class"] = tenant.SizeClass.ToString().ToLowerInvariant(), ["plan"] = plan }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("Tenant {Slug} created with {Count} hostname(s).", tenant.Slug, hostnames.Count);
+        // A tenant starts with its plan's entitlements (TF-042), in the same transaction; an unknown plan refuses the tenant.
+        var applied = await entitlements.ApplyWithinAsync(tenant, new PlanApplication(plan, null, null, $"Tenant created with the plan {plan}"), cancellationToken).ConfigureAwait(false);
+        if (applied.IsFailure)
+        {
+            return applied.Error.Code == TenancyErrors.PlanNotFound
+                ? Error.Validation(TenancyErrors.PlanNotFound, applied.Error.Message, new FieldError("plan", "not_found", applied.Error.Message))
+                : applied.Error;
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        await publisher.PublishAsync(tenant.Slug, cancellationToken).ConfigureAwait(false);
+
+        logger.LogInformation("Tenant {Slug} created with {Count} hostname(s) and the plan {Plan}.", tenant.Slug, hostnames.Count, plan);
         return ToRecord(tenant, hostnames);
     }
 

@@ -20,7 +20,7 @@ export function Search() {
   const navigate = useNavigate();
   const session = useSession();
   const quick = useQuickActions();
-  const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }), [session.permissions]);
+  const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled), [session.permissions, session.entitlements]);
 
   const groups: SpotlightActionGroupData[] = [
     {

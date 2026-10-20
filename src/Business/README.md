@@ -17,6 +17,7 @@ Before creating a module, ask where it belongs:
 - Business may use Kernel, never Products. Between modules, in any layer, only through a Contracts project.
 - When the kernel needs something only Business can supply, the kernel declares an interface in its Contracts and a business module implements it; the kernel never references Business. The first one is the organisation kinds: `IOrganisationKinds` in `Iron.Kernel.Authorization.Contracts`, which `Iron.Business.Organisations` will implement with legal entity, business unit, purchasing group, department and team (A1).
 - Every entity is a `BusinessRecord` (owning organisation and sharing mode) or marked `ITenantWide` (TF-220); the architecture tests check it.
+- A business module is licensed per module, in its own code (ADR-0034): its `IModule` declares its licence code and subscription type, and its features; the architecture test refuses one without a licence. A plan then includes it, and until a tenant's plan does, its endpoints answer `entitlements.module_disabled` and the shell hides it (the developer guide's "Licensing a module or feature").
 - Permission names, audit events, error codes, routes and configuration sections name the module, not the layer: `<module>.<resource>.<action>`, never `business.<module>...`.
 
 ## Names
@@ -38,3 +39,4 @@ Before creating a module, ask where it belongs:
 3. Name the context's schema `[Schema("business_<module>")]` and generate its first migration with `make ef-add MODULE=<Module> NAME=Initial`.
 4. Add both projects to `Foundation.slnx` and to `tests/Iron.Architecture.Tests`, and the module to the hosts that serve it.
 5. Run `make check`: it names any reference that points up or past a Contracts project.
+6. Declare its licence and features, add it to `Iron.Host.Api.UnitModules`, run `make catalogue` and commit the catalogue; add `licence` to its shell manifest.

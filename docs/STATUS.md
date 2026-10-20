@@ -15,7 +15,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A2 Roles and scoped assignments | done | main | merged 2026-10-19 (05a34eb); nine commits (0457c7f to 1d9f7b5); ADR-0031; acme, bravo and echo updated, smoke 11 of 11 and e2e 8 of 8 on echo, with a child-unit administrator |
 | A3 Record policies | done | main | merged 2026-10-19 (1af5b18); seven commits (c813656 to 49e3f70); ADR-0032; acme, bravo and echo carry A2 and A3, smoke 11 of 11 on echo |
 | D4 Home and the header | done | main | merged 2026-10-19 (179fbfa); seven commits (79cb00f to 096dff9); ADR-0033; acme, bravo and echo carry D4, smoke 11 of 11 and e2e 11 of 11 on echo |
-| A4 Entitlements | next | | docs/prompts/S2.md section A4 |
+| A4 Entitlements | review | slice/s2-a4 | six commits after the prompt (8879856), 33bcea1 to the status commit; ADR-0034; the control plane and acme, bravo and echo carry A4, all three on the Enterprise plan; smoke 11 of 11 and e2e 14 of 14 on echo, where Export and Import went 28 s after the move to Standard and came back 27 s after the move back |
 | A5 Feature flags | | | |
 | A6 Settings | | | |
 | A7 Delegation and access reviews | | | |
@@ -25,10 +25,11 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Open questions
 
-(none)
+- A4 reads the entitlements every 30 seconds at the unit and in the shell, not every 60 as section A4 says: the two caches are in series, and at 60 each a change could take two minutes to reach the shell, against TF-043's minute (ADR-0034, decision 4). Each is still within TF-043's "at most 60 seconds", and the unit's is a setting (`Entitlements:RefreshSeconds`). Confirm 30, or say 60 and accept two minutes in the worst case.
 
 ## Later items
 
+- Before S2 closes: the shell test suite passes reliably on a loaded machine. Find the slow tests, bound the workers, and keep explicit timeouts only where a test renders something heavy; today a test can time out at 5 seconds when `make shell-check` runs right after `make test`.
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
@@ -38,7 +39,6 @@ The running state of the current slice, kept current by Claude Code at the end o
 - No kernel module declares a business record (A3 step 6), so no module registers a record policy yet; the first business or products module brings the first, and the architecture test then reads its `AddServices`.
 - Record policies guard paging and reads by id (ADR-0032). A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response.
 - A record-level refusal (403 or 404 from a policy) is logged, not audited; the audit of reads arrives with A8.
-- The control plane still runs the image from A2 (8 of 9): A3 and D4 change nothing it serves, and the next `make up-control` brings it up to date.
 - `make e2e` makes a new child administrator only when the store has lost the one it made (a password cannot be set again before S3's reset), so a reset store leaves an unused account in the tenant.
 - A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units.
 - Testing Library names a tree item from all its content, the items below it included (Mantine's Tree gives the item no label of its own); the scan passes, but check a parent item with a screen reader before the tree pattern spreads.
@@ -50,3 +50,10 @@ The running state of the current slice, kept current by Claude Code at the end o
 - Each `make e2e` invites one person into echo's `E2E branch` to prove the invitation link; those accounts stay Invited.
 - jsdom lays nothing out, so Mantine hides a menu's dropdown in unit tests; those tests query the items hidden or not, and the browser specs prove what is visible.
 - PRD section 2.1 and the requirement texts keep the S1 module names, pointed to ADR-0029 from the document control; the PRD split in the design session renames them and divides `Iron.Organisations` between the kernel tree and `Iron.Business.Organisations`.
+- The plan preview warns that a removed module's data stays and is hidden; the counts of that data (TF-042 AC2) wait for the first module that has data.
+- Trials and their banners (TF-044), an operator's change of one entitlement without a plan (status, dates, seats), and assigning seats from the console wait; seats have their API (`/api/v1/seats`) and show on the Subscription page.
+- No licensed module exists yet: the module checks and seats are proven with a fixture module licensed per person in `Iron.Kernel.Entitlements.Tests`, and the Subscription page on the laptop says "No licensed modules yet".
+- A tenant created before A4 has no entitlements until a plan is applied, so no role export and import; acme, bravo and echo were moved to Enterprise with `make apply-plan`. A tenant provisioned from now on starts on `standard` unless it is created with another plan, so `make smoke` without `TENANT` makes a tenant without role transfer.
+- Each unit reads the store twice a minute (the API and the worker both run the Entitlements module and keep the same last-known row). Fine for the fleets in sight; revisit with many hundreds of units (ADR-0034).
+- Every refused request writes `entitlements.access_denied`; a client that keeps calling a refused endpoint fills the audit trail. The shell hides those calls; rate limits (S3) bound the rest.
+- The browser test that moves echo between Standard and Enterprise takes about a minute and a quarter; it leaves echo on Enterprise, also when it fails.

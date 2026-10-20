@@ -5,7 +5,8 @@ REST conventions for every endpoint of every host (TF-100, TF-101, ADR-0009). No
 | Namespace | What is in it |
 |---|---|
 | `Iron.Kernel.Api` | `AddIronApi()` and `UseIronApi()`: JSON shape, problem details, the last-line exception handler |
-| `Iron.Kernel.Api.Modules` | `IModule` and `AddModules` / `MapModules`: how a host composes modules |
+| `Iron.Kernel.Api.Modules` | `IModule` (with its `Licence` and `Features`, ADR-0034) and `AddModules` / `MapModules`: how a host composes modules; `LicensingCatalogue`, what the host's modules can license, which the control plane reads from the file `make catalogue` writes |
+| `Iron.Kernel.Api.Entitlements` | `IEntitlementGate` for the Entitlements module, `RequireFeature("area.feature")`, `LicensedModuleMetadata` (MapModules puts it on every endpoint of a licensed module), `EntitlementCheck`, `EntitlementFilter` and `EntitlementErrors` (`entitlements.module_disabled`, `entitlements.read_only`, `entitlements.feature_disabled`, `entitlements.seat_required`) |
 | `Iron.Kernel.Api.Permissions` | `RequirePermission` and `RequireSignedIn` on endpoints and groups, `PermissionFilter` and `SignedInFilter` (401 with `auth.not_authenticated` or `auth.session_expired`, 403), `AuthenticationFailure` for authentication middleware, `IPermissionEvaluator` for the Authorization module, `PermissionCatalogue`, `EndpointPermissionCheck` at start-up (TF-030, TF-031) |
 | `Iron.Kernel.Api.Tenancy` | `TenantBinding.FromConfiguration`, `AddIronTenant`, `UseIronTenant`: the unit's one tenant from configuration and the hostname check (TF-003) |
 | `Iron.Kernel.Api.Routing` | `MapApiGroup("users")`: a route group under `/api/v1/users`, tagged for OpenAPI |
@@ -52,6 +53,8 @@ users.MapPost("/", async (CreateUser request, HttpContext http, UserService serv
     return ApiResults.From(result, http, user => TypedResults.Created($"/api/v1/users/{user.Id}", user));
 }).Validate<CreateUser>();
 ```
+
+Entitlements (ADR-0034): a licensed module's endpoints and an endpoint with `RequireFeature` are checked after authentication and before the permission, inside the permission and sign-in filters, so a person whose tenant lacks the module hears that and no permission denial is written for it; an anonymous endpoint is checked by `EntitlementFilter`. The start-up check also refuses a feature no module of the host declares, and a licensed endpoint without an `IEntitlementGate`.
 
 Permissions on endpoints and the start-up check arrive with T8 (`RequirePermission`). A permission is checked tenant-wide unless the endpoint declares its scope (ADR-0030): `.ScopedToUnit("id")` checks at the organisation unit named by the route value, `.ScopedToRecord("order", lookup)` at the record named by the route value and the unit that owns it, which the lookup finds (`IServiceProvider`, record id, cancellation token to the owning unit id, or null). A record the lookup does not find is checked tenant-wide. The scope reaches the evaluator on `AccessRequest.Scope`.
 

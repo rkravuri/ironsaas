@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check format clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check format catalogue apply-plan clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -26,6 +26,11 @@ check: ## Run only the architecture checks (module boundaries, layout)
 
 format: ## Apply the code style from .editorconfig
 	dotnet format Foundation.slnx
+
+CATALOGUE_FILE := src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json
+
+catalogue: ## Write what the units can license (the modules' licences and features) to the file the control plane carries (ADR-0034)
+	dotnet run --project src/Hosts/Iron.Host.Api --configuration $(CONFIG) -- catalogue $(CURDIR)/$(CATALOGUE_FILE)
 
 clean: ## Remove build output (the .NET folders only; shell/node_modules has bin folders of its own)
 	dotnet clean Foundation.slnx
@@ -111,6 +116,10 @@ update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit 
 	@test -n "$(TENANT)" || (echo "usage: make update-unit TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=update $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
+apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
+	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) DRY_RUN=$(or $(DRY_RUN),0) $(COMPOSE_DIR)/scripts/apply-plan.sh $(TENANT) $(PLAN) "$(STARTS)" "$(ENDS)"
+
 deprovision: ## Ask the fleet to take a tenant's unit down (data is kept): make deprovision TENANT=acme
 	@test -n "$(TENANT)" || (echo "usage: make deprovision TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=deprovision $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
@@ -152,7 +161,8 @@ e2e: shell-node env ## Set up the child-unit data, then run the Playwright tests
 	scoped=$$(E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" STORE_TOKEN="$$OPENBAO_ROOT_TOKEN" python3 $(COMPOSE_DIR)/scripts/e2e-data.py) \
 	  || { echo "The child unit's data for the browser test could not be set up on $(TEST_TENANT)."; exit 1; }; \
 	eval "$$scoped"; \
-	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" npx playwright test
+	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" \
+	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) npx playwright test
 
 shell-install: shell-node ## Install the shell's packages (shell/)
 	cd shell && npm ci --no-audit --no-fund

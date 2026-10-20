@@ -39,6 +39,7 @@ public sealed class ProvisioningWorker(IServiceScopeFactory scopes, FleetOptions
             var next = await context.ProvisioningJobs.AsNoTracking()
                 .Where(j => j.Status == ProvisioningStatus.Requested)
                 .OrderBy(j => j.RequestedAt)
+                .ThenBy(j => j.Id)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
             if (next is null)
