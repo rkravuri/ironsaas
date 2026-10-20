@@ -77,7 +77,9 @@
       "subscription": "Subscription",
       "settings": "Settings",
       "delegations": "Delegations",
-      "accessReviews": "Access reviews"
+      "accessReviews": "Access reviews",
+      "explain": "Explain access",
+      "conflicts": "Conflict rules"
     }
   },
   "users": {
@@ -778,7 +780,9 @@
       "title": "Remove {{role}}?",
       "message": "{{name}} loses {{role}} ({{scope}}) at once.",
       "confirm": "Remove role"
-    }
+    },
+    "explain": "Why can't they…?",
+    "explainHint": "See every check the system makes for one of their actions, and which one decides."
   },
   "home": {
     "title": "Home",
@@ -1091,6 +1095,106 @@
     "ownUnit": "{{unit}}, the record's own unit, sees it whatever you choose",
     "save": "Save",
     "failed": "Who sees this record could not be loaded. Try again in a moment."
+  },
+  "explain": {
+    "title": "Explain access",
+    "description": "Why a person can or cannot do something: the checks the system makes, in order, with the one that refuses or the role that allows.",
+    "person": "Person",
+    "action": "Action",
+    "actionHint": "What they would do, as the system names it.",
+    "loadingActions": "Loading the actions.",
+    "noActions": "No action matches.",
+    "unit": "At the unit",
+    "unitId": "Unit id",
+    "record": "Record id ({{type}})",
+    "value": "Value of {{name}}",
+    "actingFor": "Acting for (optional)",
+    "actingForHint": "As if they acted for this person, with the duties delegated to them.",
+    "ask": "Explain",
+    "emptyTitle": "Choose a person and an action",
+    "emptyText": "The answer lists each check the system makes, in order, and says which one decides.",
+    "failed": "The explanation could not be given",
+    "checksLabel": "The checks, in order",
+    "grantedBy": "Granted by",
+    "operatorReason": " The operator says: {{reason}}",
+    "modules": {
+      "authz": "Access and organisation",
+      "identity": "People and sign-in",
+      "settings": "Settings",
+      "audit": "Audit trail",
+      "entitlements": "Subscription",
+      "flags": "Flags",
+      "files": "Files"
+    },
+    "outcome": {
+      "allowed": "{{name}} can: {{action}}",
+      "denied": "{{name}} cannot: {{action}} The system answers {{status}}.",
+      "firstFailed": "The first check that refuses it: {{check}}.",
+      "acting": "As if {{name}} acted for {{delegator}}."
+    },
+    "checks": {
+      "principal": "The person",
+      "entitlement": "The subscription",
+      "flags": "Flags and kill switches",
+      "permission": "The permission",
+      "record_policy": "The record's policy"
+    },
+    "results": {
+      "passed": "passed",
+      "failed": "refused",
+      "not_reached": "not reached",
+      "not_applicable": "does not apply"
+    },
+    "where": {
+      "tenant": "for the whole organisation",
+      "unit": "at {{unit}}",
+      "record": "on this record, which belongs to {{unit}}",
+      "anywhere": "at some unit; the list then keeps the rows of those units"
+    },
+    "grant": {
+      "tenant": "{{role}}, for the whole organisation",
+      "unit": "{{role}}, at {{unit}}",
+      "unitWithChildren": "{{role}}, at {{unit}} and the units below it",
+      "record": "{{role}}, on this record"
+    },
+    "reasons": {
+      "notReached": "Not checked: an earlier check refuses the request.",
+      "principal": {
+        "active": "{{name}} is active and may sign in.",
+        "invited": "{{name}} has not accepted the invitation yet, so they cannot sign in.",
+        "locked": "{{name}} is locked out, so they cannot sign in.",
+        "disabled": "{{name}} is disabled, so they cannot sign in."
+      },
+      "entitlement": {
+        "not_licensed": "The action belongs to no licensed module and needs no feature.",
+        "entitled": "The subscription includes what the action needs.",
+        "module_disabled": "The module {{subject}} is not part of the subscription.",
+        "feature_disabled": "The feature {{subject}} is not part of the subscription.",
+        "read_only": "The module {{subject}} is read only for this organisation: it may be looked at, not changed.",
+        "seat_required": "{{name}} has no seat for the module {{subject}}."
+      },
+      "flags": {
+        "no_flags": "The action needs no flag and no kill switch.",
+        "flags_allow": "Every flag the action needs allows it.",
+        "killed": "The kill switch {{flag}} is on: the platform operator stopped this for now.{{operatorReason}}",
+        "flag_off": "The flag {{flag}} is off for {{name}}."
+      },
+      "permission": {
+        "signed_in": "Anyone signed in may do this; it needs no permission.",
+        "granted": "{{name}} holds the permission \"{{permission}}\" {{where}}.",
+        "not_granted": "{{name}} does not hold the permission \"{{permission}}\" {{where}}.",
+        "no_active_delegation": "While acting for {{delegator}}, {{name}} holds nothing: no delegation from them is active now.",
+        "unavailable": "The permission could not be checked just now, so the system refuses."
+      },
+      "record_policy": {
+        "no_record": "The action opens no record through a record policy.",
+        "allowed": "The record's policy lets them {{action}} it.",
+        "forbidden": "{{name}} may see the record, and its policy does not let them {{action}} it.",
+        "not_visible": "The record exists, and {{name}} may not see it, so the system answers as if it did not.",
+        "no_such_record": "There is no record with this id.",
+        "no_policy": "The record type has no policy."
+      }
+    }
   },
   "delegations": {
     "title": "Delegations",

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Checkbox, Group, Radio, Select, Stack, Table, Text, VisuallyHidden } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
+import { IconHelpCircle, IconPlus } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
 import { fetchAssignments, fetchRoles, fetchUnits, grantRole, removeAssignment, type Assignment, type ScopeKind } from "@/api/authorization";
@@ -28,6 +29,7 @@ const assignmentsKey = (principal: string) => ["authz", "role-assignments", "pri
 export function AccessTab({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
   const session = useSession();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [granting, setGranting] = useState(false);
   const [removing, setRemoving] = useState<Assignment | undefined>();
@@ -68,11 +70,23 @@ export function AccessTab({ user }: { user: UserRecord }) {
         <Text size="sm" c="dimmed" maw={640}>
           {t("access.intro", { name: user.display_name })}
         </Text>
-        {session.permissions.includes(manage) && (
-          <Button leftSection={<IconPlus size={16} aria-hidden="true" />} onClick={() => setGranting(true)}>
-            {t("access.grant.open")}
-          </Button>
-        )}
+        <Group gap="sm">
+          {session.permissions.includes("authz.access.explain") && (
+            <Button
+              variant="default"
+              leftSection={<IconHelpCircle size={16} aria-hidden="true" />}
+              title={t("access.explainHint")}
+              onClick={() => void navigate(`/console/explain?principal=${encodeURIComponent(user.id)}&name=${encodeURIComponent(user.display_name)}`)}
+            >
+              {t("access.explain")}
+            </Button>
+          )}
+          {session.permissions.includes(manage) && (
+            <Button leftSection={<IconPlus size={16} aria-hidden="true" />} onClick={() => setGranting(true)}>
+              {t("access.grant.open")}
+            </Button>
+          )}
+        </Group>
       </Group>
       {failure && (
         <Alert color="danger" role="alert">
