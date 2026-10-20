@@ -22,7 +22,11 @@ export function ImportRolesDialog({ onClose, onApplied }: { onClose: () => void;
   const [busy, setBusy] = useState(false);
 
   const fail = (error: unknown) =>
-    setFailure(error instanceof ApiError ? { message: error.message, correlationId: error.correlationId } : { message: t("errors.unexpected"), correlationId: undefined });
+    setFailure(
+      error instanceof ApiError
+        ? { message: error.message, correlationId: error.correlationId }
+        : { message: t("errors.unexpected"), correlationId: undefined },
+    );
 
   const check = async () => {
     setFailure(undefined);
@@ -61,7 +65,14 @@ export function ImportRolesDialog({ onClose, onApplied }: { onClose: () => void;
   const blocked = diff !== undefined && diff.unknown.length > 0;
 
   return (
-    <Modal opened onClose={onClose} title={t("roles.import.title")} size="lg" centered closeButtonProps={{ "aria-label": t("dialog.close") }}>
+    <Modal
+      opened
+      onClose={onClose}
+      title={t("roles.import.title")}
+      size="lg"
+      centered
+      closeButtonProps={{ "aria-label": t("dialog.close") }}
+    >
       <Stack>
         {diff === undefined ? (
           <>
@@ -76,7 +87,16 @@ export function ImportRolesDialog({ onClose, onApplied }: { onClose: () => void;
                 }
               }}
             />
-            <Textarea label={t("roles.import.paste")} value={text} onChange={(event) => setText(event.currentTarget.value)} autosize minRows={6} maxRows={14} ff="monospace" data-autofocus />
+            <Textarea
+              label={t("roles.import.paste")}
+              value={text}
+              onChange={(event) => setText(event.currentTarget.value)}
+              autosize
+              minRows={6}
+              maxRows={14}
+              ff="monospace"
+              data-autofocus
+            />
           </>
         ) : (
           <DiffView diff={diff} />
@@ -148,16 +168,32 @@ function DiffView({ diff }: { diff: ImportDiff }) {
                 <Text span ff="monospace" size="sm">
                   {change.code}
                 </Text>
-                {change.added.length > 0 && <Text size="sm">{t("roles.import.gains", { permissions: change.added.join(", ") })}</Text>}
-                {change.removed.length > 0 && <Text size="sm">{t("roles.import.loses", { permissions: change.removed.join(", ") })}</Text>}
-                {change.fields.length > 0 && <Text size="sm">{t("roles.import.fields", { fields: change.fields.map((field) => t(`roles.import.field.${field}`, { defaultValue: field })).join(", ") })}</Text>}
+                {change.added.length > 0 && (
+                  <Text size="sm">{t("roles.import.gains", { permissions: change.added.join(", ") })}</Text>
+                )}
+                {change.removed.length > 0 && (
+                  <Text size="sm">{t("roles.import.loses", { permissions: change.removed.join(", ") })}</Text>
+                )}
+                {change.fields.length > 0 && (
+                  <Text size="sm">
+                    {t("roles.import.fields", {
+                      fields: change.fields
+                        .map((field) => t(`roles.import.field.${field}`, { defaultValue: field }))
+                        .join(", "),
+                    })}
+                  </Text>
+                )}
               </List.Item>
             ))}
           </List>
         </Stack>
       )}
       <Section title={t("roles.import.unchanged", { count: diff.unchanged.length })} items={diff.unchanged} />
-      <Section title={t("roles.import.skipped", { count: diff.skipped_system.length })} items={diff.skipped_system} note={t("roles.import.skippedNote")} />
+      <Section
+        title={t("roles.import.skipped", { count: diff.skipped_system.length })}
+        items={diff.skipped_system}
+        note={t("roles.import.skippedNote")}
+      />
     </Stack>
   );
 }

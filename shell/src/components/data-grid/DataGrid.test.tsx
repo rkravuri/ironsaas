@@ -36,7 +36,12 @@ describe("the DataGrid wrapper", () => {
 
     render(
       <MantineProvider>
-        <DataGrid<Row> columns={[{ field: "name", headerKey: "users.displayName", sortable: true, filter: "text" }]} fetchPage={fetchPage} defaultSort={[{ field: "name", direction: "asc" }]} label="rows" />
+        <DataGrid<Row>
+          columns={[{ field: "name", headerKey: "users.displayName", sortable: true, filter: "text" }]}
+          fetchPage={fetchPage}
+          defaultSort={[{ field: "name", direction: "asc" }]}
+          label="rows"
+        />
       </MantineProvider>,
     );
 
@@ -48,11 +53,23 @@ describe("the DataGrid wrapper", () => {
   });
 
   it("shows the API's problem with its correlation id when a page fails", async () => {
-    const fetchPage = vi.fn((): Promise<ListResult<Row>> => Promise.reject(new ApiError(400, { title: "Bad Request", detail: "'nope' is not a filterable field.", error_code: "list.unknown_field" }, "corr-grid")));
+    const fetchPage = vi.fn((): Promise<ListResult<Row>> =>
+      Promise.reject(
+        new ApiError(
+          400,
+          { title: "Bad Request", detail: "'nope' is not a filterable field.", error_code: "list.unknown_field" },
+          "corr-grid",
+        ),
+      ),
+    );
 
     render(
       <MantineProvider>
-        <DataGrid<Row> columns={[{ field: "name", headerKey: "users.displayName" }]} fetchPage={fetchPage} label="rows" />
+        <DataGrid<Row>
+          columns={[{ field: "name", headerKey: "users.displayName" }]}
+          fetchPage={fetchPage}
+          label="rows"
+        />
       </MantineProvider>,
     );
 
@@ -62,11 +79,17 @@ describe("the DataGrid wrapper", () => {
   });
 
   it("tells the user when the API capped the page size", async () => {
-    const fetchPage = vi.fn((): Promise<ListResult<Row>> => Promise.resolve({ data: [], meta: meta({ page_size: 200, page_size_capped: true, total_count: 0 }) }));
+    const fetchPage = vi.fn((): Promise<ListResult<Row>> =>
+      Promise.resolve({ data: [], meta: meta({ page_size: 200, page_size_capped: true, total_count: 0 }) }),
+    );
 
     render(
       <MantineProvider>
-        <DataGrid<Row> columns={[{ field: "name", headerKey: "users.displayName" }]} fetchPage={fetchPage} label="rows" />
+        <DataGrid<Row>
+          columns={[{ field: "name", headerKey: "users.displayName" }]}
+          fetchPage={fetchPage}
+          label="rows"
+        />
       </MantineProvider>,
     );
 

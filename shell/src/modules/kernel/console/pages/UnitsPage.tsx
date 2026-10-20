@@ -2,10 +2,32 @@ import { useEffect, useMemo, useState, type FocusEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Box, Button, Flex, Group, Paper, Stack, Table, Text, Tree, getTreeExpandedState, useTree } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Group,
+  Paper,
+  Stack,
+  Table,
+  Text,
+  Tree,
+  getTreeExpandedState,
+  useTree,
+} from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
-import { deactivateUnit, fetchKinds, fetchUnits, reactivateUnit, type Kinds, type Merge, type Unit } from "@/api/authorization";
+import {
+  deactivateUnit,
+  fetchKinds,
+  fetchUnits,
+  reactivateUnit,
+  type Kinds,
+  type Merge,
+  type Unit,
+} from "@/api/authorization";
 import { useAccessAt } from "@/auth/access";
 import { useSession } from "@/auth/session-context";
 import { ConfirmDialog, EmptyState, LoadingState, RecordHeader } from "@/components/panels";
@@ -27,7 +49,9 @@ interface Failure {
 }
 
 const failureOf = (error: unknown, fallback: string): Failure =>
-  error instanceof ApiError ? { message: error.message, correlationId: error.correlationId } : { message: fallback, correlationId: undefined };
+  error instanceof ApiError
+    ? { message: error.message, correlationId: error.correlationId }
+    : { message: fallback, correlationId: undefined };
 
 /**
  * The organisation tree of the tenant (TF-034, TF-223): the tree on the left, the chosen unit's record on the right, with
@@ -116,7 +140,8 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
     onSelectedStateChange: (state) => setSelectedId(state[0]),
   });
 
-  const canHoldHere = selected !== undefined && selected.status === "active" && childKinds(kinds, selected.kind).length > 0;
+  const canHoldHere =
+    selected !== undefined && selected.status === "active" && childKinds(kinds, selected.kind).length > 0;
   const shown = dialog ?? (adding && canManage && canHoldHere ? "create" : undefined);
   const close = () => {
     setDialog(undefined);
@@ -197,7 +222,9 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
                     tree.toggleExpanded(node.value);
                   }}
                 >
-                  {hasChildren && <IconChevronRight size={14} style={{ transform: expanded ? "rotate(90deg)" : "none" }} />}
+                  {hasChildren && (
+                    <IconChevronRight size={14} style={{ transform: expanded ? "rotate(90deg)" : "none" }} />
+                  )}
                 </Box>
                 <Text size="sm" truncate {...(inactive ? { c: "dimmed" } : {})}>
                   {node.label}
@@ -214,15 +241,38 @@ function UnitsWorkspace({ units, kinds }: { units: readonly Unit[]; kinds: Kinds
       </Paper>
       <Paper withBorder p="md" style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
         {selected ? (
-          <UnitRecord unit={selected} units={units} kinds={kinds} canManage={canManage} failure={failure} busy={busy} onAction={setDialog} onReactivate={() => void reactivate()} />
+          <UnitRecord
+            unit={selected}
+            units={units}
+            kinds={kinds}
+            canManage={canManage}
+            failure={failure}
+            busy={busy}
+            onAction={setDialog}
+            onReactivate={() => void reactivate()}
+          />
         ) : (
           <EmptyState drawing="nothingFound" size="sm" title={t("units.select")} />
         )}
       </Paper>
-      {selected && shown === "create" && <CreateUnitDialog unit={selected} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />}
-      {selected && dialog === "rename" && <RenameUnitDialog unit={selected} onClose={close} onDone={(unit) => done(unit)} />}
-      {selected && dialog === "move" && <MoveUnitDialog unit={selected} units={units} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />}
-      {selected && dialog === "merge" && <MergeUnitDialog unit={selected} units={units} onClose={close} onDone={merged} />}
+      {selected && shown === "create" && (
+        <CreateUnitDialog unit={selected} kinds={kinds} onClose={close} onDone={(unit) => done(unit, unit.parent_id)} />
+      )}
+      {selected && dialog === "rename" && (
+        <RenameUnitDialog unit={selected} onClose={close} onDone={(unit) => done(unit)} />
+      )}
+      {selected && dialog === "move" && (
+        <MoveUnitDialog
+          unit={selected}
+          units={units}
+          kinds={kinds}
+          onClose={close}
+          onDone={(unit) => done(unit, unit.parent_id)}
+        />
+      )}
+      {selected && dialog === "merge" && (
+        <MergeUnitDialog unit={selected} units={units} onClose={close} onDone={merged} />
+      )}
       {selected && (
         <ConfirmDialog
           opened={dialog === "deactivate"}

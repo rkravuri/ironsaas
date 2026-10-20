@@ -16,7 +16,13 @@ export interface FormProps<Values extends Record<string, unknown>> {
 }
 
 /** The form every page uses: labels above, one column, inline validation after the first blur, the primary action last. */
-export function Form<Values extends Record<string, unknown>>({ form, onSubmit, submitLabel, secondary, children }: FormProps<Values>) {
+export function Form<Values extends Record<string, unknown>>({
+  form,
+  onSubmit,
+  submitLabel,
+  secondary,
+  children,
+}: FormProps<Values>) {
   const { t } = useTranslation();
   const [summary, setSummary] = useState<ProblemSummary | undefined>();
   const [submitting, setSubmitting] = useState(false);

@@ -2,7 +2,15 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, onResponse, onUnauthenticated } from "@/api/client";
 import { fetchContext } from "@/api/entitlements";
-import { actFor as actForCall, fetchMe, logout as logoutCall, stopActing as stopActingCall, workFor as workForCall, type Me, type WorkFor } from "@/api/identity";
+import {
+  actFor as actForCall,
+  fetchMe,
+  logout as logoutCall,
+  stopActing as stopActingCall,
+  workFor as workForCall,
+  type Me,
+  type WorkFor,
+} from "@/api/identity";
 import type { KillSwitch } from "@/api/flags";
 import { contextQueryKey, contextRefreshMs, entitlementsFrom } from "./entitlements";
 import { flagProvider } from "./flags";
@@ -156,7 +164,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     refetchOnWindowFocus: "always",
   });
   const contextData = me !== undefined ? context.data : undefined;
-  const entitlements = useMemo(() => entitlementsFrom(contextData, me !== undefined && context.isPending), [contextData, me, context.isPending]);
+  const entitlements = useMemo(
+    () => entitlementsFrom(contextData, me !== undefined && context.isPending),
+    [contextData, me, context.isPending],
+  );
   const flags = contextData?.flags;
   const killSwitches = useMemo<readonly KillSwitch[]>(() => flags?.kill_switches ?? [], [flags]);
   const contextSettings = contextData?.settings;
@@ -233,7 +244,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       workFor,
       dismissActingEnded,
     };
-  }, [me, query.error, query.isPending, entitlements, killSwitches, settings, settingsKnown, ended, actingEnded, refresh, signedIn, extend, signOut, expire, forget, actFor, stopActing, workFor, dismissActingEnded]);
+  }, [
+    me,
+    query.error,
+    query.isPending,
+    entitlements,
+    killSwitches,
+    settings,
+    settingsKnown,
+    ended,
+    actingEnded,
+    refresh,
+    signedIn,
+    extend,
+    signOut,
+    expire,
+    forget,
+    actFor,
+    stopActing,
+    workFor,
+    dismissActingEnded,
+  ]);
 
   return (
     <SessionWatchContext.Provider value={watch}>

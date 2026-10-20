@@ -8,8 +8,22 @@ const columns: DataGridColumn<SampleRow>[] = [
   { field: "name", headerKey: "gallery.grid.name", sortable: true, filter: "text", flex: 2 },
   { field: "kind", headerKey: "gallery.grid.kind", filter: "text", width: 140 },
   { field: "status", headerKey: "gallery.grid.status", filter: "text", width: 120 },
-  { field: "amount", headerKey: "gallery.grid.amount", sortable: true, filter: "number", width: 140, format: (row) => row.amount.toFixed(2) },
-  { field: "updated_at", headerKey: "gallery.grid.updated", sortable: true, filter: "date", width: 160, format: (row) => row.updated_at.slice(0, 10) },
+  {
+    field: "amount",
+    headerKey: "gallery.grid.amount",
+    sortable: true,
+    filter: "number",
+    width: 140,
+    format: (row) => row.amount.toFixed(2),
+  },
+  {
+    field: "updated_at",
+    headerKey: "gallery.grid.updated",
+    sortable: true,
+    filter: "date",
+    width: 160,
+    format: (row) => row.updated_at.slice(0, 10),
+  },
 ];
 
 interface GridSectionProps {
@@ -31,7 +45,12 @@ export function GridSection({ onReady }: GridSectionProps) {
         </Title>
         <Text>{t("gallery.grid.intro")}</Text>
         <div style={{ height: 520 }}>
-          <DataGrid<SampleRow> columns={columns} fetchPage={fetchPage} label={t("gallery.grid.label")} onReady={onReady} />
+          <DataGrid<SampleRow>
+            columns={columns}
+            fetchPage={fetchPage}
+            label={t("gallery.grid.label")}
+            onReady={onReady}
+          />
         </div>
       </Stack>
     </section>

@@ -3,7 +3,14 @@ import { screen, waitFor } from "@testing-library/react";
 import { json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
 import { useSetting } from "./settings";
 
-const entitlements = { revision: 1, plan: "enterprise", confirmed_at: "2026-10-20T09:00:00Z", stale: false, modules: [], features: [] };
+const entitlements = {
+  revision: 1,
+  plan: "enterprise",
+  confirmed_at: "2026-10-20T09:00:00Z",
+  stale: false,
+  modules: [],
+  features: [],
+};
 
 function Probe() {
   const idle = useSetting("identity.session.idle_minutes");
@@ -44,7 +51,11 @@ describe("useSetting, the shell's one hook for settings (TF-059, ADR-0036)", () 
   it("answers the default in code until /me/context answers, when it fails, and for a value of another type", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
-      "GET /api/v1/me/context": () => json({ entitlements, settings: { values: [{ key: "identity.session.idle_minutes", value: "thirty", level: "tenant" }] } }),
+      "GET /api/v1/me/context": () =>
+        json({
+          entitlements,
+          settings: { values: [{ key: "identity.session.idle_minutes", value: "thirty", level: "tenant" }] },
+        }),
     });
     renderWithProviders(<Probe />);
 
@@ -54,7 +65,10 @@ describe("useSetting, the shell's one hook for settings (TF-059, ADR-0036)", () 
   });
 
   it("answers the defaults when the context call fails, and the shell still renders", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me()), "GET /api/v1/me/context": () => problem(503, { title: "Unavailable", error_code: "test.down" }) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      "GET /api/v1/me/context": () => problem(503, { title: "Unavailable", error_code: "test.down" }),
+    });
     renderWithProviders(<Probe />);
 
     await waitFor(() => expect(screen.getByTestId("idle")).toHaveTextContent("60"));

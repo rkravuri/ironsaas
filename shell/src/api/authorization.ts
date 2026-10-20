@@ -34,21 +34,30 @@ export type Kinds = z.infer<typeof KindsSchema>;
 
 const units = "/api/v1/organisation-units";
 
-export const fetchUnits = (signal?: AbortSignal) => request(units, { schema: UnitTreeSchema, ...(signal ? { signal } : {}) });
+export const fetchUnits = (signal?: AbortSignal) =>
+  request(units, { schema: UnitTreeSchema, ...(signal ? { signal } : {}) });
 
-export const fetchKinds = (signal?: AbortSignal) => request("/api/v1/organisation-kinds", { schema: KindsSchema, ...(signal ? { signal } : {}) });
+export const fetchKinds = (signal?: AbortSignal) =>
+  request("/api/v1/organisation-kinds", { schema: KindsSchema, ...(signal ? { signal } : {}) });
 
 export const createUnit = (parentId: string, body: { name: string; code: string; kind: string }) =>
   request(`${units}/${encodeURIComponent(parentId)}/children`, { method: "POST", body, schema: UnitSchema });
 
-export const renameUnit = (id: string, name: string) => request(`${units}/${encodeURIComponent(id)}/rename`, { method: "POST", body: { name }, schema: UnitSchema });
+export const renameUnit = (id: string, name: string) =>
+  request(`${units}/${encodeURIComponent(id)}/rename`, { method: "POST", body: { name }, schema: UnitSchema });
 
 export const moveUnit = (id: string, parentId: string) =>
-  request(`${units}/${encodeURIComponent(id)}/move`, { method: "POST", body: { parent_id: parentId }, schema: UnitSchema });
+  request(`${units}/${encodeURIComponent(id)}/move`, {
+    method: "POST",
+    body: { parent_id: parentId },
+    schema: UnitSchema,
+  });
 
-export const deactivateUnit = (id: string) => request(`${units}/${encodeURIComponent(id)}/deactivate`, { method: "POST", schema: UnitSchema });
+export const deactivateUnit = (id: string) =>
+  request(`${units}/${encodeURIComponent(id)}/deactivate`, { method: "POST", schema: UnitSchema });
 
-export const reactivateUnit = (id: string) => request(`${units}/${encodeURIComponent(id)}/reactivate`, { method: "POST", schema: UnitSchema });
+export const reactivateUnit = (id: string) =>
+  request(`${units}/${encodeURIComponent(id)}/reactivate`, { method: "POST", schema: UnitSchema });
 
 /** GET .../readiness: what the modules need of a unit before people work in it (TF-223); ready when every item is done. */
 export const ReadinessSchema = z.object({
@@ -81,9 +90,13 @@ export const MergeSchema = z.object({ from: UnitSchema, into: UnitSchema, parts:
 export type Merge = z.infer<typeof MergeSchema>;
 
 export const previewMerge = (id: string, into: string, signal?: AbortSignal) =>
-  request(`${units}/${encodeURIComponent(id)}/merge-preview?into=${encodeURIComponent(into)}`, { schema: MergeSchema, ...(signal ? { signal } : {}) });
+  request(`${units}/${encodeURIComponent(id)}/merge-preview?into=${encodeURIComponent(into)}`, {
+    schema: MergeSchema,
+    ...(signal ? { signal } : {}),
+  });
 
-export const mergeUnit = (id: string, into: string) => request(`${units}/${encodeURIComponent(id)}/merge`, { method: "POST", body: { into_id: into }, schema: MergeSchema });
+export const mergeUnit = (id: string, into: string) =>
+  request(`${units}/${encodeURIComponent(id)}/merge`, { method: "POST", body: { into_id: into }, schema: MergeSchema });
 
 /** Who sees a business record beyond its unit (TF-222, ADR-0038). */
 export const SharingModeSchema = z.enum(["private", "shared", "tenant"]);
@@ -111,9 +124,11 @@ export const RecordSharingSchema = z.object({
 });
 export type RecordSharing = z.infer<typeof RecordSharingSchema>;
 
-const sharingPath = (recordType: string, id: string) => `/api/v1/record-sharing/${encodeURIComponent(recordType)}/${encodeURIComponent(id)}`;
+const sharingPath = (recordType: string, id: string) =>
+  `/api/v1/record-sharing/${encodeURIComponent(recordType)}/${encodeURIComponent(id)}`;
 
-export const fetchSharing = (recordType: string, id: string, signal?: AbortSignal) => request(sharingPath(recordType, id), { schema: RecordSharingSchema, ...(signal ? { signal } : {}) });
+export const fetchSharing = (recordType: string, id: string, signal?: AbortSignal) =>
+  request(sharingPath(recordType, id), { schema: RecordSharingSchema, ...(signal ? { signal } : {}) });
 
 export const changeSharing = (recordType: string, id: string, body: { mode: SharingMode; units: string[] }) =>
   request(sharingPath(recordType, id), { method: "PUT", body, schema: RecordSharingSchema });
@@ -142,7 +157,12 @@ export const RiskSchema = z.enum(["low", "medium", "high", "critical"]);
 export type Risk = z.infer<typeof RiskSchema>;
 
 /** One permission of the catalogue (TF-030): the role editor groups them by module and shows the risk. */
-export const PermissionSchema = z.object({ name: z.string(), module: z.string(), description: z.string(), risk: RiskSchema });
+export const PermissionSchema = z.object({
+  name: z.string(),
+  module: z.string(),
+  description: z.string(),
+  risk: RiskSchema,
+});
 export type Permission = z.infer<typeof PermissionSchema>;
 export const PermissionsSchema = z.object({ data: z.array(PermissionSchema) });
 
@@ -162,7 +182,14 @@ export const ImportDiffSchema = z.object({
   dry_run: z.boolean(),
   applied: z.boolean(),
   created: z.array(z.string()),
-  changed: z.array(z.object({ code: z.string(), added: z.array(z.string()), removed: z.array(z.string()), fields: z.array(z.string()) })),
+  changed: z.array(
+    z.object({
+      code: z.string(),
+      added: z.array(z.string()),
+      removed: z.array(z.string()),
+      fields: z.array(z.string()),
+    }),
+  ),
   unchanged: z.array(z.string()),
   unknown: z.array(z.object({ code: z.string(), permissions: z.array(z.string()) })),
   skipped_system: z.array(z.string()),
@@ -178,21 +205,27 @@ export interface RoleInput {
 
 const roles = "/api/v1/roles";
 
-export const fetchRoles = (query: string, signal?: AbortSignal) => request(`${roles}${query ? `?${query}` : ""}`, { schema: RoleListSchema, ...(signal ? { signal } : {}) });
+export const fetchRoles = (query: string, signal?: AbortSignal) =>
+  request(`${roles}${query ? `?${query}` : ""}`, { schema: RoleListSchema, ...(signal ? { signal } : {}) });
 
-export const fetchRole = (id: string, signal?: AbortSignal) => request(`${roles}/${encodeURIComponent(id)}`, { schema: RoleSchema, ...(signal ? { signal } : {}) });
+export const fetchRole = (id: string, signal?: AbortSignal) =>
+  request(`${roles}/${encodeURIComponent(id)}`, { schema: RoleSchema, ...(signal ? { signal } : {}) });
 
-export const createRole = (code: string, input: RoleInput) => request(roles, { method: "POST", body: { code, ...input }, schema: RoleSchema });
+export const createRole = (code: string, input: RoleInput) =>
+  request(roles, { method: "POST", body: { code, ...input }, schema: RoleSchema });
 
-export const updateRole = (id: string, input: RoleInput) => request(`${roles}/${encodeURIComponent(id)}`, { method: "PUT", body: input, schema: RoleSchema });
+export const updateRole = (id: string, input: RoleInput) =>
+  request(`${roles}/${encodeURIComponent(id)}`, { method: "PUT", body: input, schema: RoleSchema });
 
 export const deleteRole = (id: string) => request(`${roles}/${encodeURIComponent(id)}`, { method: "DELETE" });
 
-export const fetchPermissions = (signal?: AbortSignal) => request("/api/v1/permissions", { schema: PermissionsSchema, ...(signal ? { signal } : {}) });
+export const fetchPermissions = (signal?: AbortSignal) =>
+  request("/api/v1/permissions", { schema: PermissionsSchema, ...(signal ? { signal } : {}) });
 
 export const exportRoles = () => request(`${roles}/export`, { schema: RoleExportSchema });
 
-export const importRoles = (document: unknown, dryRun: boolean) => request(`${roles}/import`, { method: "POST", body: { dry_run: dryRun, document }, schema: ImportDiffSchema });
+export const importRoles = (document: unknown, dryRun: boolean) =>
+  request(`${roles}/import`, { method: "POST", body: { dry_run: dryRun, document }, schema: ImportDiffSchema });
 
 export const ScopeKindSchema = z.enum(["tenant", "unit", "unit_with_children", "record"]);
 export type ScopeKind = z.infer<typeof ScopeKindSchema>;
@@ -220,7 +253,8 @@ const assignments = "/api/v1/role-assignments";
 /** GET /api/v1/role-assignments/mine: the signed-in principal's own assignments, whatever it may read of others' (D4). */
 export const MyAssignmentsSchema = z.object({ data: z.array(AssignmentSchema) });
 
-export const fetchMyAssignments = (signal?: AbortSignal) => request(`${assignments}/mine`, { schema: MyAssignmentsSchema, ...(signal ? { signal } : {}) });
+export const fetchMyAssignments = (signal?: AbortSignal) =>
+  request(`${assignments}/mine`, { schema: MyAssignmentsSchema, ...(signal ? { signal } : {}) });
 
 export const fetchAssignments = (query: string, signal?: AbortSignal) =>
   request(`${assignments}?${query}`, { schema: AssignmentListSchema, ...(signal ? { signal } : {}) });
@@ -228,14 +262,22 @@ export const fetchAssignments = (query: string, signal?: AbortSignal) =>
 export const grantRole = (body: { principal_id: string; role_id: string; scope_kind: ScopeKind; unit_id?: string }) =>
   request(assignments, { method: "POST", body, schema: AssignmentSchema });
 
-export const removeAssignment = (id: string) => request(`${assignments}/${encodeURIComponent(id)}`, { method: "DELETE" });
+export const removeAssignment = (id: string) =>
+  request(`${assignments}/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 /** A duty a person may hand to someone for a while (TF-037, ADR-0037): its code, its words, and what it covers. */
-export const DutySchema = z.object({ code: z.string(), module: z.string(), name: z.string(), description: z.string(), permissions: z.array(z.string()) });
+export const DutySchema = z.object({
+  code: z.string(),
+  module: z.string(),
+  name: z.string(),
+  description: z.string(),
+  permissions: z.array(z.string()),
+});
 export type Duty = z.infer<typeof DutySchema>;
 export const DutiesSchema = z.object({ data: z.array(DutySchema) });
 
-export const fetchDuties = (signal?: AbortSignal) => request("/api/v1/duties", { schema: DutiesSchema, ...(signal ? { signal } : {}) });
+export const fetchDuties = (signal?: AbortSignal) =>
+  request("/api/v1/duties", { schema: DutiesSchema, ...(signal ? { signal } : {}) });
 
 export const DelegationStatusSchema = z.enum(["scheduled", "active", "ended", "expired"]);
 export type DelegationStatus = z.infer<typeof DelegationStatusSchema>;
@@ -264,7 +306,8 @@ export const DelegationListSchema = listSchema(DelegationSchema);
 const delegations = "/api/v1/delegations";
 
 /** The delegations you give and hold: a handful, not a paged list. */
-export const fetchMyDelegations = (signal?: AbortSignal) => request(`${delegations}/mine`, { schema: MyDelegationsSchema, ...(signal ? { signal } : {}) });
+export const fetchMyDelegations = (signal?: AbortSignal) =>
+  request(`${delegations}/mine`, { schema: MyDelegationsSchema, ...(signal ? { signal } : {}) });
 
 /** Others' delegations, for administrators: those whose delegator's home unit you hold authz.delegations.manage at. */
 export const fetchManagedDelegations = (query: string, signal?: AbortSignal) =>
@@ -280,17 +323,29 @@ export interface NewDelegation {
   reason: string;
 }
 
-export const createDelegation = (body: NewDelegation) => request(delegations, { method: "POST", body, schema: DelegationSchema });
+export const createDelegation = (body: NewDelegation) =>
+  request(delegations, { method: "POST", body, schema: DelegationSchema });
 
 export const endDelegation = (id: string, reason?: string) =>
-  request(`${delegations}/${encodeURIComponent(id)}/end`, { method: "POST", body: { reason: reason ?? null }, schema: DelegationSchema });
+  request(`${delegations}/${encodeURIComponent(id)}/end`, {
+    method: "POST",
+    body: { reason: reason ?? null },
+    schema: DelegationSchema,
+  });
 
 /** Access reviews (TF-038). */
 export const ReviewStatusSchema = z.enum(["open", "closed"]);
 export const ReviewDecisionSchema = z.enum(["confirm", "revoke"]);
 export type ReviewDecision = z.infer<typeof ReviewDecisionSchema>;
 
-export const ReviewProgressSchema = z.object({ total: z.number(), decided: z.number(), confirmed: z.number(), revoked: z.number(), open: z.number(), overdue: z.number() });
+export const ReviewProgressSchema = z.object({
+  total: z.number(),
+  decided: z.number(),
+  confirmed: z.number(),
+  revoked: z.number(),
+  open: z.number(),
+  overdue: z.number(),
+});
 export type ReviewProgress = z.infer<typeof ReviewProgressSchema>;
 
 export const ReviewSummarySchema = z.object({
@@ -305,7 +360,13 @@ export const ReviewSummarySchema = z.object({
 export type ReviewSummary = z.infer<typeof ReviewSummarySchema>;
 export const ReviewListSchema = listSchema(ReviewSummarySchema);
 
-const EscalationSchema = z.object({ at: z.string(), days_overdue: z.number(), open_items: z.number(), reviewers: z.array(PersonSchema), targets: z.array(PersonSchema) });
+const EscalationSchema = z.object({
+  at: z.string(),
+  days_overdue: z.number(),
+  open_items: z.number(),
+  reviewers: z.array(PersonSchema),
+  targets: z.array(PersonSchema),
+});
 
 /** One campaign with the progress of what the reader may see, per unit, and the escalations of late units. */
 export const ReviewSchema = z.object({
@@ -319,7 +380,15 @@ export const ReviewSchema = z.object({
   started_at: z.string(),
   closed_at: z.string().nullable(),
   progress: ReviewProgressSchema,
-  by_unit: z.array(z.object({ unit_id: z.string(), unit_name: z.string(), unit_path: z.array(z.string()), progress: ReviewProgressSchema, escalation: EscalationSchema.nullable() })),
+  by_unit: z.array(
+    z.object({
+      unit_id: z.string(),
+      unit_name: z.string(),
+      unit_path: z.array(z.string()),
+      progress: ReviewProgressSchema,
+      escalation: EscalationSchema.nullable(),
+    }),
+  ),
   can_manage: z.boolean(),
 });
 export type Review = z.infer<typeof ReviewSchema>;
@@ -339,7 +408,13 @@ export const ReviewItemSchema = z.object({
   unit_name: z.string(),
   unit_path: z.array(z.object({ id: z.string(), name: z.string() })),
   decision: z
-    .object({ decision: ReviewDecisionSchema, comment: z.string().nullable(), decided_by: PersonSchema, decided_at: z.string(), assignment_removed: z.boolean() })
+    .object({
+      decision: ReviewDecisionSchema,
+      comment: z.string().nullable(),
+      decided_by: PersonSchema,
+      decided_at: z.string(),
+      assignment_removed: z.boolean(),
+    })
     .nullable(),
   /** About the reader's own access: another reviewer decides it (ADR-0037). */
   yours: z.boolean(),
@@ -355,12 +430,17 @@ export type ItemState = "open" | "decided" | "all";
 
 const reviews = "/api/v1/access-reviews";
 
-export const fetchReviews = (query: string, signal?: AbortSignal) => request(`${reviews}${query ? `?${query}` : ""}`, { schema: ReviewListSchema, ...(signal ? { signal } : {}) });
+export const fetchReviews = (query: string, signal?: AbortSignal) =>
+  request(`${reviews}${query ? `?${query}` : ""}`, { schema: ReviewListSchema, ...(signal ? { signal } : {}) });
 
-export const fetchReview = (id: string, signal?: AbortSignal) => request(`${reviews}/${encodeURIComponent(id)}`, { schema: ReviewSchema, ...(signal ? { signal } : {}) });
+export const fetchReview = (id: string, signal?: AbortSignal) =>
+  request(`${reviews}/${encodeURIComponent(id)}`, { schema: ReviewSchema, ...(signal ? { signal } : {}) });
 
 export const fetchReviewItems = (id: string, state: ItemState, query: string, signal?: AbortSignal) =>
-  request(`${reviews}/${encodeURIComponent(id)}/items?state=${state}${query ? `&${query}` : ""}`, { schema: ReviewItemListSchema, ...(signal ? { signal } : {}) });
+  request(`${reviews}/${encodeURIComponent(id)}/items?state=${state}${query ? `&${query}` : ""}`, {
+    schema: ReviewItemListSchema,
+    ...(signal ? { signal } : {}),
+  });
 
 export interface NewReview {
   name: string;
@@ -370,18 +450,31 @@ export interface NewReview {
 
 export const startReview = (body: NewReview) => request(reviews, { method: "POST", body, schema: ReviewSchema });
 
-export const closeReview = (id: string) => request(`${reviews}/${encodeURIComponent(id)}/close`, { method: "POST", schema: ReviewSchema });
+export const closeReview = (id: string) =>
+  request(`${reviews}/${encodeURIComponent(id)}/close`, { method: "POST", schema: ReviewSchema });
 
 export const decideItem = (review: string, item: string, decision: ReviewDecision, comment?: string) =>
-  request(`${reviews}/${encodeURIComponent(review)}/items/${encodeURIComponent(item)}/decision`, { method: "POST", body: { decision, comment: comment ?? null }, schema: ReviewItemSchema });
+  request(`${reviews}/${encodeURIComponent(review)}/items/${encodeURIComponent(item)}/decision`, {
+    method: "POST",
+    body: { decision, comment: comment ?? null },
+    schema: ReviewItemSchema,
+  });
 
 export const ConfirmManySchema = z.object({ confirmed: z.number(), already_decided: z.number() });
 
 export const confirmItems = (review: string, itemIds: string[], comment?: string) =>
-  request(`${reviews}/${encodeURIComponent(review)}/confirm`, { method: "POST", body: { item_ids: itemIds, comment: comment ?? null }, schema: ConfirmManySchema });
+  request(`${reviews}/${encodeURIComponent(review)}/confirm`, {
+    method: "POST",
+    body: { item_ids: itemIds, comment: comment ?? null },
+    schema: ConfirmManySchema,
+  });
 
 /** A route value an action needs: a unit (its permission is checked there), a record (and its policy), or a plain value. */
-export const ActionRouteValueSchema = z.object({ name: z.string(), kind: z.enum(["unit", "record", "value"]), record_type: z.string().nullable() });
+export const ActionRouteValueSchema = z.object({
+  name: z.string(),
+  kind: z.enum(["unit", "record", "value"]),
+  record_type: z.string().nullable(),
+});
 export type ActionRouteValue = z.infer<typeof ActionRouteValueSchema>;
 
 /** An endpoint whose access can be explained (ADR-0039): its name, its summary in words, its module and what it needs. */
@@ -397,7 +490,10 @@ export const ExplainableActionSchema = z.object({
 export type ExplainableAction = z.infer<typeof ExplainableActionSchema>;
 
 export const fetchExplainableActions = (signal?: AbortSignal) =>
-  request("/api/v1/access/actions", { schema: z.object({ data: z.array(ExplainableActionSchema) }), ...(signal ? { signal } : {}) });
+  request("/api/v1/access/actions", {
+    schema: z.object({ data: z.array(ExplainableActionSchema) }),
+    ...(signal ? { signal } : {}),
+  });
 
 const ExplainedUnitSchema = z.object({ id: z.string(), name: z.string() });
 
@@ -430,7 +526,13 @@ export const ExplainedCheckSchema = z.object({
 });
 export type ExplainedCheck = z.infer<typeof ExplainedCheckSchema>;
 
-const ExplainedPersonSchema = z.object({ id: z.string(), name: z.string(), type: z.string(), status: z.string(), home_unit: ExplainedUnitSchema.nullable() });
+const ExplainedPersonSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  status: z.string(),
+  home_unit: ExplainedUnitSchema.nullable(),
+});
 
 /** Why a person can or cannot perform an action: the checks in order, the outcome, and the status the API would answer. */
 export const AccessExplanationSchema = z.object({
@@ -464,7 +566,10 @@ export function explainQuery(question: ExplainQuestion): string {
 }
 
 export const explainAccess = (question: ExplainQuestion, signal?: AbortSignal) =>
-  request(`/api/v1/access/explain?${explainQuery(question)}`, { schema: AccessExplanationSchema, ...(signal ? { signal } : {}) });
+  request(`/api/v1/access/explain?${explainQuery(question)}`, {
+    schema: AccessExplanationSchema,
+    ...(signal ? { signal } : {}),
+  });
 
 /** Segregation of duties (TF-036, ADR-0039): what a rule's side names, and what the rule does. */
 export const ConflictSideKindSchema = z.enum(["permission", "role"]);
@@ -501,13 +606,19 @@ export interface ConflictRuleBody {
 const conflictRules = "/api/v1/conflict-rules";
 
 export const fetchConflictRules = (query: string, signal?: AbortSignal) =>
-  request(`${conflictRules}${query ? `?${query}` : ""}`, { schema: ConflictRuleListSchema, ...(signal ? { signal } : {}) });
+  request(`${conflictRules}${query ? `?${query}` : ""}`, {
+    schema: ConflictRuleListSchema,
+    ...(signal ? { signal } : {}),
+  });
 
-export const createConflictRule = (body: ConflictRuleBody) => request(conflictRules, { method: "POST", body, schema: ConflictRuleSchema });
+export const createConflictRule = (body: ConflictRuleBody) =>
+  request(conflictRules, { method: "POST", body, schema: ConflictRuleSchema });
 
-export const updateConflictRule = (id: string, body: ConflictRuleBody) => request(`${conflictRules}/${encodeURIComponent(id)}`, { method: "PUT", body, schema: ConflictRuleSchema });
+export const updateConflictRule = (id: string, body: ConflictRuleBody) =>
+  request(`${conflictRules}/${encodeURIComponent(id)}`, { method: "PUT", body, schema: ConflictRuleSchema });
 
-export const deleteConflictRule = (id: string) => request(`${conflictRules}/${encodeURIComponent(id)}`, { method: "DELETE" });
+export const deleteConflictRule = (id: string) =>
+  request(`${conflictRules}/${encodeURIComponent(id)}`, { method: "DELETE" });
 
 /** One grant of a conflict: the role, where it applies, and whether it is the person's own or delegated to them. */
 export const ConflictGrantSchema = z.object({
@@ -539,15 +650,28 @@ export type ConflictEntry = z.infer<typeof ConflictEntrySchema>;
 export const ConflictEntryListSchema = listSchema(ConflictEntrySchema);
 
 export const fetchConflicts = (query: string, signal?: AbortSignal) =>
-  request(`/api/v1/conflict-report${query ? `?${query}` : ""}`, { schema: ConflictEntryListSchema, ...(signal ? { signal } : {}) });
+  request(`/api/v1/conflict-report${query ? `?${query}` : ""}`, {
+    schema: ConflictEntryListSchema,
+    ...(signal ? { signal } : {}),
+  });
 
-export const ConflictRunSchema = z.object({ id: z.string(), trigger: z.enum(["daily", "on_demand"]), rules: z.number(), conflicts: z.number(), computed_at: z.string() });
+export const ConflictRunSchema = z.object({
+  id: z.string(),
+  trigger: z.enum(["daily", "on_demand"]),
+  rules: z.number(),
+  conflicts: z.number(),
+  computed_at: z.string(),
+});
 export type ConflictRun = z.infer<typeof ConflictRunSchema>;
 
 export const fetchLatestConflictRun = (signal?: AbortSignal) =>
-  request("/api/v1/conflict-report/runs/latest", { schema: z.object({ run: ConflictRunSchema.nullable() }), ...(signal ? { signal } : {}) });
+  request("/api/v1/conflict-report/runs/latest", {
+    schema: z.object({ run: ConflictRunSchema.nullable() }),
+    ...(signal ? { signal } : {}),
+  });
 
-export const runConflictReport = () => request("/api/v1/conflict-report/runs", { method: "POST", schema: ConflictRunSchema });
+export const runConflictReport = () =>
+  request("/api/v1/conflict-report/runs", { method: "POST", schema: ConflictRunSchema });
 
 /** A conflict a grant would create, before the grant: the rule, and the grant it meets on the other side. */
 export const GrantConflictSchema = z.object({
@@ -561,5 +685,13 @@ export const GrantConflictSchema = z.object({
 });
 export type GrantConflict = z.infer<typeof GrantConflictSchema>;
 
-export const previewGrantConflicts = (body: { principal_id: string; role_id: string; scope_kind: ScopeKind; unit_id?: string }, signal?: AbortSignal) =>
-  request(`${assignments}/conflicts`, { method: "POST", body, schema: z.object({ data: z.array(GrantConflictSchema) }), ...(signal ? { signal } : {}) });
+export const previewGrantConflicts = (
+  body: { principal_id: string; role_id: string; scope_kind: ScopeKind; unit_id?: string },
+  signal?: AbortSignal,
+) =>
+  request(`${assignments}/conflicts`, {
+    method: "POST",
+    body,
+    schema: z.object({ data: z.array(GrantConflictSchema) }),
+    ...(signal ? { signal } : {}),
+  });

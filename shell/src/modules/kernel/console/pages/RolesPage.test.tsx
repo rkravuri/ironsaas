@@ -4,14 +4,52 @@ import { json, me, renderWithProviders, stubFetch } from "@/test/render";
 import { RolesPage } from "./RolesPage";
 
 const administrator = ["authz.roles.manage", "authz.roles.read"];
-const emptyList = { data: [], meta: { page_number: 1, page_size: 50, total_count: 0, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 }, links: { self: "/api/v1/roles", first: "/api/v1/roles", previous: null, next: null, last: "/api/v1/roles" } };
+const emptyList = {
+  data: [],
+  meta: {
+    page_number: 1,
+    page_size: 50,
+    total_count: 0,
+    total_pages: 1,
+    has_previous: false,
+    has_next: false,
+    page_size_capped: false,
+    max_page_size: 200,
+  },
+  links: { self: "/api/v1/roles", first: "/api/v1/roles", previous: null, next: null, last: "/api/v1/roles" },
+};
 const context = (status: "enabled" | "read_only" | "disabled", importsKilled = false) => ({
-  entitlements: { revision: 1, plan: "standard", confirmed_at: "2026-10-20T09:00:00Z", stale: false, modules: [], features: [{ code: "authorization.role_transfer", status, reason: status === "disabled" ? "not_licensed" : "licensed" }] },
+  entitlements: {
+    revision: 1,
+    plan: "standard",
+    confirmed_at: "2026-10-20T09:00:00Z",
+    stale: false,
+    modules: [],
+    features: [
+      { code: "authorization.role_transfer", status, reason: status === "disabled" ? "not_licensed" : "licensed" },
+    ],
+  },
   flags: {
     known: true,
     confirmed_at: "2026-10-20T09:00:00Z",
-    values: [{ key: "kill.imports", type: "boolean", value: importsKilled, reason: importsKilled ? "targeting_match" : "default" }],
-    kill_switches: importsKilled ? [{ path: "imports", flag: "kill.imports", since: "2026-10-20T08:30:00Z", reason: "An import fault is being fixed." }] : [],
+    values: [
+      {
+        key: "kill.imports",
+        type: "boolean",
+        value: importsKilled,
+        reason: importsKilled ? "targeting_match" : "default",
+      },
+    ],
+    kill_switches: importsKilled
+      ? [
+          {
+            path: "imports",
+            flag: "kill.imports",
+            since: "2026-10-20T08:30:00Z",
+            reason: "An import fault is being fixed.",
+          },
+        ]
+      : [],
   },
 });
 

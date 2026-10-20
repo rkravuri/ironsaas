@@ -27,9 +27,26 @@ export function AlertDialog({ opened, title, message, actions, children }: Alert
   return (
     <Portal>
       <Overlay fixed zIndex={layer} backgroundOpacity={0.45} />
-      <Box pos="fixed" inset={0} p="md" style={{ zIndex: layer + 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box
+        pos="fixed"
+        inset={0}
+        p="md"
+        style={{ zIndex: layer + 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
         <FocusTrap active>
-          <Paper role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-message`} data-panel="alert-dialog" withBorder shadow="xl" radius="md" p="lg" maw={460} w="100%">
+          <Paper
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={`${id}-title`}
+            aria-describedby={`${id}-message`}
+            data-panel="alert-dialog"
+            withBorder
+            shadow="xl"
+            radius="md"
+            p="lg"
+            maw={460}
+            w="100%"
+          >
             <Stack gap="md">
               <Title order={2} size="h4" id={`${id}-title`}>
                 {title}

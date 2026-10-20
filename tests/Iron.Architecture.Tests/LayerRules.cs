@@ -51,7 +51,8 @@ public static class LayerRules
         ProjectLayer.Business => ("src/Business/", name.StartsWith("Iron.Business.", StringComparison.Ordinal), "named Iron.Business.*"),
         ProjectLayer.Products => ("src/Products/", name.StartsWith("Iron.Products.", StringComparison.Ordinal), "named Iron.Products.*"),
         ProjectLayer.Host => ("src/Hosts/", name.StartsWith("Iron.Host.", StringComparison.Ordinal), "named Iron.Host.*"),
-        ProjectLayer.Test => ("tests/", name.EndsWith(".Tests", StringComparison.Ordinal), "named *.Tests"),
+        // A test project, or a library the test projects share (the platform services they run on: tests/Iron.Testing).
+        ProjectLayer.Test => ("tests/", name.EndsWith(".Tests", StringComparison.Ordinal) || name.EndsWith(".Testing", StringComparison.Ordinal), "named *.Tests, or *.Testing for a library the tests share"),
         ProjectLayer.Tool => ("tools/", true, "any name"),
         _ => throw new ArgumentOutOfRangeException(nameof(layer), layer, "Every layer has an expectation."),
     };

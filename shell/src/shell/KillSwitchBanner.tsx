@@ -16,7 +16,8 @@ export function KillSwitchBanner() {
     return null;
   }
 
-  const since = (iso: string) => new Date(iso).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" });
+  const since = (iso: string) =>
+    new Date(iso).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" });
   return (
     <Stack gap="xs" mb="md">
       {killSwitches.map((killed) => (
@@ -29,7 +30,9 @@ export function KillSwitchBanner() {
           title={t("killSwitch.title", { path: t(`killSwitch.paths.${killed.path}`, { defaultValue: killed.path }) })}
         >
           <Text size="sm">{t("killSwitch.since", { time: since(killed.since) })}</Text>
-          <Text size="sm">{killed.reason ? t("killSwitch.reason", { reason: killed.reason }) : t("killSwitch.noReason")}</Text>
+          <Text size="sm">
+            {killed.reason ? t("killSwitch.reason", { reason: killed.reason }) : t("killSwitch.noReason")}
+          </Text>
         </Alert>
       ))}
     </Stack>

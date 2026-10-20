@@ -1,5 +1,6 @@
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Tests.Sample;
+using Iron.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -7,7 +8,6 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
-using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Data.Tests;
 
@@ -17,17 +17,20 @@ namespace Iron.Kernel.Data.Tests;
 /// </summary>
 public sealed class PostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19rc1").Build();
+    private TestPostgres? _postgres;
 
     private NpgsqlDataSource? _dataSource;
 
-    public string ConnectionString => _container.GetConnectionString();
+    public string ConnectionString => Postgres.ConnectionString;
+
+    /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
+    private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
     public NpgsqlDataSource DataSource => _dataSource ?? throw new InvalidOperationException("The fixture is not initialised.");
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync(TestContext.Current.CancellationToken);
+        _postgres = await TestPostgres.StartAsync("data", TestContext.Current.CancellationToken);
         _dataSource = new NpgsqlDataSourceBuilder(ConnectionString).Build();
 
         await using var provider = BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -46,7 +49,10 @@ public sealed class PostgresFixture : IAsyncLifetime
             await _dataSource.DisposeAsync();
         }
 
-        await _container.DisposeAsync();
+        if (_postgres is not null)
+        {
+            await _postgres.DisposeAsync();
+        }
     }
 
     /// <summary>The services a host would register for the data layer, with a controllable clock and principal.</summary>

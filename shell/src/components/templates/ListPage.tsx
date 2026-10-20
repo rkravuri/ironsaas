@@ -18,9 +18,17 @@ export interface ListPageProps {
 
 /** A list: the opener, the filters, then the grid filling the rest of the viewport (TF-170, brief section 2). */
 export function ListPage({ title, description, drawing, actions, filters, density = true, children }: ListPageProps) {
-  const opener = { title, ...(description !== undefined ? { description } : {}), ...(drawing !== undefined ? { drawing } : {}) };
+  const opener = {
+    title,
+    ...(description !== undefined ? { description } : {}),
+    ...(drawing !== undefined ? { drawing } : {}),
+  };
   return (
-    <Stack gap="md" style={{ height: "calc(100dvh - var(--app-shell-header-height) - 2 * var(--app-shell-padding))" }} data-template="list">
+    <Stack
+      gap="md"
+      style={{ height: "calc(100dvh - var(--app-shell-header-height) - 2 * var(--app-shell-padding))" }}
+      data-template="list"
+    >
       <PageOpener
         {...opener}
         actions={

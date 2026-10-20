@@ -1,13 +1,23 @@
 # Developer guide
 
-How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission, an audit event, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
+How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission and its checks, an audit event, a licence, a flag, a setting, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
+
+The sections, in order:
+
+- The repository: Working on the repository, Layout, Rules the build enforces, Write an ADR.
+- A module and its code: Add a module, Add a business module or a product, Hosts and unit commands, Writing code: the kernel vocabulary's conventions, Writing an entity and a module context, A table and its migration, A change and its audit event in one transaction, Writing an endpoint, An endpoint with a permission, Who is acting, An API client, A unit's configuration, Observability and security in a host.
+- Who may do what: Where things are checked, Scoping an endpoint to a record, Record policies, Granting access, Delegating and reviewing access, Working across units, Explaining access and conflicts.
+- What a tenant has: Licensing a module or feature, Feature flags and kill switches, Declaring a setting.
+- The control plane: The control plane and a provisioning step.
+- The shell: A shell page, Styling a page, A module on the home page and in the header.
+- Proving a change: Proving a change.
 
 ## Working on the repository
 
 - Develop in WSL 2 (Ubuntu) or on Linux. Clone inside the Linux file system (for example `~/src/foundation`), not under `/mnt/c`; builds are many times faster there.
 - Install the .NET SDK 10.0. `dotnet --version` must print 10.0.x. `global.json` accepts any 10.0.1xx feature band.
-- Commands: `make build`, `make test`, `make check`, `make format` for the .NET side; `make shell-install`, `make shell-check`, `make shell-a11y`, `make shell-dev` for the shell. `make` alone lists them.
-- Before you push: `make test` and `make shell-check` are green and `make format` made no change; CI checks all three.
+- Commands: `make build`, `make test`, `make check` for the .NET side; `make shell-install`, `make shell-check`, `make shell-a11y`, `make shell-dev` for the shell; `make format` for both (`dotnet format` and Prettier, ADR-0040). `make` alone lists them.
+- Before you push: `make test` and `make shell-check` are green and `make format` made no change; CI checks all three, both formatters included.
 - Every pull request follows `definition-of-done.md`, summarised in `.github/pull_request_template.md`.
 
 ## Layout
@@ -34,7 +44,8 @@ src/
     Iron.Host.Api/  Iron.Host.Worker/            tenant unit hosts, with their Dockerfiles
     Iron.Host.ControlPlane/  Iron.Host.Fleet/    control plane hosts, with their Dockerfiles
 shell/                       the React shell: src/api, src/auth, src/modules/<layer>/<module>, src/components/data-grid, e2e/
-tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, and <Layer>/<Project>.Tests
+tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, <Layer>/<Project>.Tests, and
+                             Iron.Testing (the platform services the tests run on) with test-services.sh
 tools/Iron.Smoke/            the smoke test; scaffolding tools come after S1
 infra/compose/               the laptop platform and the unit template's rendered output
 .github/workflows/           ci.yml and release.yml
@@ -54,41 +65,9 @@ docs/                        prd/, adr/, guides/, slices/
 
 The messages name the project file or the assembly and the forbidden reference.
 
-## Writing code: the kernel vocabulary's conventions (ADR-0007)
+## Write an ADR
 
-- A service returns `Result` or `Result<T>` for expected failures and never throws for them. `return Error.NotFound("identity.user.not_found", "The user does not exist.");` reads as plain code. Exceptions are for programmer errors and infrastructure failures.
-- Error codes are lowercase dotted segments, at least two: `module.resource.reason`. The constructor rejects other shapes.
-- Time: inject `TimeProvider` and call `GetUtcNow()`. Never `DateTime.UtcNow`; the build fails on it. Store UTC.
-- Ids: `Ids.New()` (UUID version 7). Never `Guid.NewGuid()` for a key.
-- Argument checks: `ArgumentNullException.ThrowIfNull(x)`, `ArgumentException.ThrowIfNullOrWhiteSpace(s)`, `ArgumentOutOfRangeException.ThrowIfNegative(n)`.
-- The tenant is `TenantContext`, a singleton bound at start. Never pass a tenant id through business code; the unit serves one tenant.
-- Lists take a `ListQuery` and return a `Page<T>`.
-
-## Writing an entity and a module context (ADR-0008)
-
-- Pick the base class: `BusinessRecord` for business and master data (it needs an owning organisation), `AuditedEntity` for platform data that changes, `AppendOnlyEntity` for rows that are never changed or deleted. Add `ISoftDeletable` when a record may be deleted by users.
-- Give the entity a private parameterless constructor for Entity Framework and public constructors for your code. Change state through methods, not public setters.
-- Never set `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` or `Version`. The save interceptor fills them from `TimeProvider` and `ICurrentPrincipal`.
-- The module's context derives from `ModuleDbContext`, carries `[Schema("module")]`, exposes a `DbSet<T>` per entity and maps module-internal relations and indexes in `ConfigureModule`. Snake_case names, the key, the version token, the soft-delete filter and the append-only comment come from the conventions.
-- Never add a foreign key to a table of another module. Store the other record's id as a `Guid`.
-- Register the context in the host with `services.AddIronDbContext<MyDbContext>()` after `services.AddIronDatabase(connectionString)`.
-- Tests that touch the database use the `PostgresFixture` pattern from `tests/Kernel/Iron.Kernel.Data.Tests`: a throw-away container, `EnsureCreated` from the context, `FakeTimeProvider` and a fixed principal.
-
-## Writing an endpoint (ADR-0009)
-
-- Group the resource with `endpoints.MapApiGroup("users")`; the path becomes `/api/v1/users`. Resource names are plural kebab-case nouns.
-- Handlers return `IResult`. A service result goes through `ApiResults.From(result, http, value => TypedResults.Ok(value))`; a failure becomes problem details on its own.
-- Lists: declare the fields once in a `ListFields<T>` (snake_case names, pointing at the entity properties, with a default sort), parse with `ListQueryParser.Parse(http.Request.Query, fields)`, apply with `.ApplyListQuery(query, fields).ToPageAsync(query.Page, ct)` and return `ApiResults.List(page, http, query)`. That works for an entity marked `IOwnAccessRule` (its module applies its own access rule; `ITenantWide` is one); a business record pages through its policy (see Record policies).
-- Request bodies: write an `AbstractValidator<TRequest>`, register it in the module's `AddServices`, and add `.Validate<TRequest>()` to the endpoint.
-- Never catch exceptions to return an error status; let the unexpected exception handler produce the 500 problem with the correlation id. Return `Error`s for expected failures.
-- The OpenAPI document and the Scalar browser are at `/openapi/v1.json` and `/scalar/v1` in Development.
-
-## Observability and security in a host (ADR-0010)
-
-- `builder.AddIronTelemetry("iron-api", t => t.TenantId = ...)` then `app.UseIronTelemetry()` first in the pipeline. Every request gets a trace, the response carries `X-Correlation-Id`, and metrics and logs flow to the collector. Set `OTEL_EXPORTER_OTLP_ENDPOINT` when the collector is not on `localhost:4317`.
-- `builder.Services.AddIronSecurity(builder.Configuration)` then `app.UseIronSecurity()` after `UseIronApi()`. Allowed browser origins go in `Security:Cors:AllowedOrigins`; the shell needs none.
-- `builder.Services.AddIronHealth()` plus `app.MapIronHealth()`; a module or infrastructure adds readiness checks with the tag `ready` (`AddIronDatabaseHealthCheck()` for PostgreSQL).
-- Log through `ILogger<T>` with structured values (`logger.LogInformation("Tenant {TenantId} provisioned", id)`); never string-concatenate values into the message. Do not log secrets or personal data.
+Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).
 
 ## Add a module
 
@@ -114,107 +93,197 @@ When a kernel module needs something only a business module can supply (the orga
 
 The same steps under `src/Business/Iron.Business.<Module>/` (layer `Business`, schema `business_<module>`) or `src/Products/Iron.Products.<Product>/` (layer `Products`, schema `products_<product>`), with tests in `tests/Business/` or `tests/Products/`. Every entity is a `BusinessRecord` or marked `ITenantWide` (TF-220). A business module may use the kernel; a product may use Business and the kernel; both only through Contracts projects. The two layer READMEs (`src/Business/README.md`, `src/Products/README.md`) have the naming table.
 
-## Licensing a module or feature (A4, ADR-0034)
+## Hosts and unit commands (ADR-0011)
 
-Kernel modules are the platform: always on, never in a plan, and they declare no licence (the architecture test `LicensingRules` refuses one). A Business or Products module must declare one. Features may be licensed in any layer.
+A host's `Program.cs` is the only place that decides what runs in a process. It has one shape:
 
-1. **Declare it in the module's own code.** The licence code and the subscription type in the module's `IModule`, the features in its Contracts beside its permissions, listed in its `IModule`:
+1. `HealthProbe.IsCommand(args)`: answer the `health` command without building the host.
+2. `TenantBinding.FromConfiguration`: bind to one tenant or stop.
+3. List the modules: `IReadOnlyList<IModule> modules = [...]`.
+4. Register the shared libraries, then `AddModules`.
+5. Build; if `DatabaseCommands.IsCommand(args)`, run `migrate`, `seed` or `schema-check` and exit.
+6. Pipeline order: `UseIronTelemetry`, `UseIronApi`, `UseIronSecurity`, `UseIronTenant`, then endpoints.
+
+Adding a module to a host means adding one line to the list. Adding reference data means one `ISeeder` registered by the module. Adding a table means a migration in the module's project; `migrate` picks it up because the module context is registered with `AddIronDbContext`.
+
+On the laptop: `make run-api` serves http://localhost:5100 bound to tenant `dev` for hostnames `localhost` and `dev.localhost`; `make run-worker` runs the worker on http://localhost:5101 with a heartbeat every 15 seconds; `make migrate` runs the migrate command against the laptop database; `make images` builds the five images (four hosts and the shell).
+
+## Writing code: the kernel vocabulary's conventions (ADR-0007)
+
+- A service returns `Result` or `Result<T>` for expected failures and never throws for them. `return Error.NotFound("identity.user.not_found", "The user does not exist.");` reads as plain code. Exceptions are for programmer errors and infrastructure failures.
+- Error codes are lowercase dotted segments, at least two: `module.resource.reason`. The constructor rejects other shapes.
+- Time: inject `TimeProvider` and call `GetUtcNow()`. Never `DateTime.UtcNow`; the build fails on it. Store UTC.
+- Ids: `Ids.New()` (UUID version 7). Never `Guid.NewGuid()` for a key.
+- Argument checks: `ArgumentNullException.ThrowIfNull(x)`, `ArgumentException.ThrowIfNullOrWhiteSpace(s)`, `ArgumentOutOfRangeException.ThrowIfNegative(n)`.
+- The tenant is `TenantContext`, a singleton bound at start. Never pass a tenant id through business code; the unit serves one tenant.
+- Lists take a `ListQuery` and return a `Page<T>`.
+
+## Writing an entity and a module context (ADR-0008)
+
+- Pick the base class: `BusinessRecord` for business and master data (it needs an owning organisation), `AuditedEntity` for platform data that changes, `AppendOnlyEntity` for rows that are never changed or deleted. Add `ISoftDeletable` when a record may be deleted by users.
+- Give the entity a private parameterless constructor for Entity Framework and public constructors for your code. Change state through methods, not public setters.
+- Never set `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy` or `Version`. The save interceptor fills them from `TimeProvider` and `ICurrentPrincipal`.
+- The module's context derives from `ModuleDbContext`, carries `[Schema("module")]`, exposes a `DbSet<T>` per entity and maps module-internal relations and indexes in `ConfigureModule`. Snake_case names, the key, the version token, the soft-delete filter and the append-only comment come from the conventions.
+- Never add a foreign key to a table of another module. Store the other record's id as a `Guid`.
+- Register the context in the host with `services.AddIronDbContext<MyDbContext>()` after `services.AddIronDatabase(connectionString)`.
+- Tests that touch the database get a database of their own from `TestPostgres` (`tests/Iron.Testing`, see Proving a change), as `tests/Kernel/Iron.Kernel.Data.Tests/PostgresFixture.cs` does: create the tables from the context, then use `FakeTimeProvider` and a fixed principal.
+
+## A table and its migration (ADR-0008)
+
+1. Add or change the entity in the module's `Data/` folder (derive from `AuditedEntity`, `AppendOnlyEntity` or `BusinessRecord`) and map it in `ConfigureModule`.
+2. Generate the migration: `make ef-add MODULE=Authorization NAME=AddRoleColour`. The first time, `dotnet tool restore` installs `dotnet-ef` from `.config/dotnet-tools.json`. `MODULE` is the last segment of the module's name, whatever its layer. The generated files land in the module's `Data/Migrations` (for example `src/Kernel/Iron.Kernel.Authorization/Data/Migrations`); read the `Up` method once, run `make format` (Entity Framework writes a byte-order mark that the format check refuses), then commit them with the entity change.
+3. `make test`: the module's `ModelTests` passes only when the migration matches the model; the schema check runs over the migrated schema.
+4. Apply it: `make migrate` on the laptop; the fleet runs the image's `migrate` command for every tenant unit.
+
+Migrations are never written by hand and never edited after they are committed; a correction is a new migration. The one change made by hand is a rename, before the first commit: `make ef-add` cannot tell a rename from a drop and an add, so turn its drop and add into `RenameColumn` and say so in the migration's comment (ADR-0031 records the first, `RoleCodeAndName`).
+
+## A change and its audit event in one transaction (ADR-0013)
+
+```csharp
+await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
+order.Approve(reason);
+await orders.SaveChangesAsync(cancellationToken);
+await audit.WriteAsync(new AuditEvent("procurement.order.approved", AuditOutcome.Success, principal.Id, order.Number, RecordType: "order", RecordId: order.Id, Reason: reason), cancellationToken);
+await transaction.CommitAsync(cancellationToken);
+```
+
+`IUnitOfWork` (Iron.Kernel.Data) puts every module context of the request in one transaction; disposing without `CommitAsync` rolls everything back. Without a unit of work, each `SaveChangesAsync` is its own transaction and the audit event is written at once, which is right for a denial or a failed login.
+
+The app role cannot change or delete audit rows; PostgreSQL refuses it. `make migrate` grants the role's privileges when `Database:AppRole` is set (`Database__AppRole=acme_app`); the fleet sets it for every unit.
+
+## Writing an endpoint (ADR-0009)
+
+- Group the resource with `endpoints.MapApiGroup("users")`; the path becomes `/api/v1/users`. Resource names are plural kebab-case nouns.
+- Handlers return `IResult`. A service result goes through `ApiResults.From(result, http, value => TypedResults.Ok(value))`; a failure becomes problem details on its own.
+- Lists: declare the fields once in a `ListFields<T>` (snake_case names, pointing at the entity properties, with a default sort), parse with `ListQueryParser.Parse(http.Request.Query, fields)`, apply with `.ApplyListQuery(query, fields).ToPageAsync(query.Page, ct)` and return `ApiResults.List(page, http, query)`. That works for an entity marked `IOwnAccessRule` (its module applies its own access rule; `ITenantWide` is one); a business record pages through its policy (see Record policies).
+- Request bodies: write an `AbstractValidator<TRequest>`, register it in the module's `AddServices`, and add `.Validate<TRequest>()` to the endpoint.
+- Never catch exceptions to return an error status; let the unexpected exception handler produce the 500 problem with the correlation id. Return `Error`s for expected failures.
+- The OpenAPI document and the Scalar browser are at `/openapi/v1.json` and `/scalar/v1` in Development.
+
+## An endpoint with a permission (ADR-0012)
+
+1. Declare the permission in the module's Contracts project: `public static readonly Permission UsersRead = new("identity.users.read", "List and view users", Risk.Low);` and list it in the module's `Permissions`.
+2. Put it on the endpoint or the group: `endpoints.MapApiGroup("users").RequirePermission(IdentityPermissions.UsersRead);`.
+3. Run the host. It starts only when every endpoint has a permission or `.AllowAnonymous()`; the message names what is missing.
+4. The filter runs before the handler: 401 for nobody, 403 `authz.permission_denied` (with the permission named) for a principal without it, and a denial audit event. OpenAPI shows "Requires permission" on the operation.
+
+Anonymous endpoints are the short list of TF-030: health, login, recovery, invitation acceptance, public branding. `Iron.Host.Tests` keeps the list fixed; adding to it is a reviewed change.
+
+## Who is acting (ADR-0014)
+
+`ICurrentPrincipal` is the signed-in principal of the request (from the `iron.session` cookie), nobody when there is no valid session, and the system principal in jobs and commands. `ActingForId` is the person a shell session acts for by delegation (ADR-0037), and null otherwise. Endpoints declare one of three things: `.RequirePermission(x)`, `.RequireSignedIn()` (any signed-in principal: me, logout) or `.AllowAnonymous()` (health, login, invitation acceptance). The filter answers 401 `auth.not_authenticated` for nobody, 401 `auth.session_expired` for a cookie whose session ran out, and 403 `authz.permission_denied` for the wrong somebody.
+
+On the laptop: `make migrate`, then `make seed` creates the system roles and the first administrator `admin@dev.localhost` in Invited status; the invitation token is in the seed output. Accept it with `POST /auth/invitations/<token>/accept` and a password of at least 12 characters, then `POST /auth/login`; the response sets the cookie and `GET /api/v1/me` shows the permissions and the session expiry.
+
+## An API client (ADR-0015)
+
+A service account gets a token with the client credentials grant and sends it as a bearer:
+
+```bash
+curl -s -X POST https://acme.localhost/connect/token -u smoke-client:<secret> -d grant_type=client_credentials
+curl -s https://acme.localhost/api/v1/users -H "Authorization: Bearer <access_token>"
+```
+
+Tokens live 15 minutes, carry the unit's tenant, and are checked on every request together with the principal behind them. `GET /.well-known/jwks.json` publishes the signing key. On the laptop, `make seed` creates `smoke-client` and `make token` fetches a token from the running API host. A token for another tenant, an expired token or a disabled service account answers 401 with `auth.token_invalid` or `auth.token_expired`.
+
+## A unit's configuration (ADR-0016)
+
+A host reads its configuration from its unit secret in the store, loaded at start by `AddIronSecrets()` just below the environment variables. Inside a module, inject the bound options or `IConfiguration` as usual; never read the store directly. What a unit needs at runtime goes into the keys the fleet writes (`ConnectionStrings:Database`, `Database:AppRole`, `Storage:ContainerSasUrl`, `Tokens:SigningKeyPem`); a new runtime secret is a new key written by the fleet's secrets step and read through configuration, not a new way to fetch it.
+
+Files go through `IObjectStorage` (Iron.Kernel.Files.Contracts): `PutAsync`, `GetAsync`, `DeleteAsync`, with the tenant's container behind it. The container's signature is all a unit holds; it cannot create containers or reach another tenant's.
+
+## Observability and security in a host (ADR-0010)
+
+- `builder.AddIronTelemetry("iron-api", t => t.TenantId = ...)` then `app.UseIronTelemetry()` first in the pipeline. Every request gets a trace, the response carries `X-Correlation-Id`, and metrics and logs flow to the collector. Set `OTEL_EXPORTER_OTLP_ENDPOINT` when the collector is not on `localhost:4317`.
+- `builder.Services.AddIronSecurity(builder.Configuration)` then `app.UseIronSecurity()` after `UseIronApi()`. Allowed browser origins go in `Security:Cors:AllowedOrigins`; the shell needs none.
+- `builder.Services.AddIronHealth()` plus `app.MapIronHealth()`; a module or infrastructure adds readiness checks with the tag `ready` (`AddIronDatabaseHealthCheck()` for PostgreSQL).
+- Log through `ILogger<T>` with structured values (`logger.LogInformation("Tenant {TenantId} provisioned", id)`); never string-concatenate values into the message. Do not log secrets or personal data.
+
+## Where things are checked
+
+A request meets the checks in this order; **Explain access** in the console (`/console/explain`) shows the first four for a person and an action, from the same decisions (ADR-0039).
+
+| Check | A module declares | Checked | Refused with | Section |
+|---|---|---|---|---|
+| Entitlements | its licence in `IModule`, its features in Contracts; `.RequireFeature(code)` on an endpoint | after authentication, before everything else; `IEntitlements` in code | 403 `entitlements.module_disabled`, `entitlements.read_only`, `entitlements.seat_required` or `entitlements.feature_disabled` | Licensing a module or feature |
+| Flags and kill switches | its flags in Contracts; `.RequireFlag(key)`, `.RequireFlagOff(KillSwitches.Imports.Key)` | after the entitlements, before the permission; `IFlagClients` in code | 404 `flags.disabled`, 503 `flags.killed` | Feature flags and kill switches |
+| Permission at a scope | its permissions in Contracts; `.RequirePermission(p)` with `.ScopedToUnit`, `.ScopedToRecord` or `.ScopedByRow` | the endpoint filter, after the flags, with the delegator's duties while acting | 401 `auth.not_authenticated`, 403 `authz.permission_denied` | An endpoint with a permission; Scoping an endpoint to a record |
+| Record policy | `services.AddRecordPolicy(...)` for each business record | in the query: `IRecordPolicies.ApplyAsync` for a list, `FindAsync` for one record | 404 `data.record.not_found`, 403 `data.record.forbidden` | Record policies |
+| Conflict rules | nothing: the tenant's administrators write the rules | when a role is granted, a duty delegated or a role's permissions changed, in the service | 409 `authz.sod.conflict` for a rule that blocks; a rule that warns lists the conflict in the report | Explaining access and conflicts |
+
+A check a handler makes on its own (a move's new parent, the no-escalation rule of a grant) comes after these and is not explained; its error says why.
+
+## Scoping an endpoint to a record (ADR-0030)
+
+A permission is checked tenant-wide unless the endpoint says where the access happens. Once it does, a role assigned to an organisation unit applies to that unit's records and not to others, and a role assigned with children applies to the whole subtree, wherever it moves later.
+
+1. **One record by its id.** Name the record type (a short snake_case word, the same one record-scoped assignments use) and give the lookup that finds the unit that owns the record, one query by key:
 
    ```csharp
-   public static class SourcingFeatures
-   {
-       public static readonly Feature Auctions = new("sourcing.auctions", "Auctions with pre-bidding");
-
-       public static IReadOnlyList<Feature> All => [Auctions];
-   }
-
-   public sealed class SourcingModule : IModule
-   {
-       public ModuleLicence Licence => new("sourcing", SubscriptionType.PerPerson);
-
-       public IReadOnlyList<Feature> Features => SourcingFeatures.All;
-       // Name, Permissions, AddServices, MapEndpoints as for any module
-   }
+   orders.MapPost("/{id:guid}/approve", ApproveAsync)
+       .RequirePermission(OrdersPermissions.Approve)
+       .ScopedToRecord("purchase_order", (services, id, ct) => services.GetRequiredService<OrdersDbContext>().Orders
+           .Where(o => o.Id == id).Select(o => (Guid?)o.OwningOrganisationId).SingleOrDefaultAsync(ct));
    ```
 
-   A licence code is lowercase letters, digits and underscores; a feature code is `area.feature`.
-2. **Nothing else for the module's endpoints.** `MapModules` puts every endpoint of a licensed module behind the check: 403 `entitlements.module_disabled` when the tenant does not have it, `entitlements.read_only` for a write when it is read only, `entitlements.seat_required` for a person without a seat of a per-person module. The check runs after authentication and before the permission.
-3. **A feature on its endpoints:** `.RequirePermission(...).RequireFeature(SourcingFeatures.Auctions.Code)`; 403 `entitlements.feature_disabled` when it is not available, which includes a feature whose module is not. Code that needs to ask (a background job, a choice inside a handler) injects `IEntitlements` from `Iron.Kernel.Entitlements.Contracts`: `Module(licence)`, `ModuleForAsync(licence, principal)`, `Feature(code)`.
-4. **Write the catalogue:** add the module to `Iron.Host.Api.UnitModules`, then `make catalogue`, and commit `src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json`. The host test fails until the file matches the modules; the control plane refuses a plan with a code the file does not have.
-5. **In the shell:** `licence: "sourcing"` in the module's manifest hides its navigation, routes, opener and quick actions until `/me/context` says it is entitled; `useFeature("sourcing.auctions")` answers `available` (show the control) and `writable` (show what changes data). The shell hides; the API decides.
-6. **Put it in a plan:** `PUT /api/v1/plans/{code}` on the control plane, then `make apply-plan TENANT=x PLAN=y`. A per-person module gets its seat count there; seats are assigned in the unit (`POST /api/v1/seats`).
+   A record the lookup does not find is checked tenant-wide, so only a tenant-wide grant reaches the handler, which answers 404.
+2. **An operation on a unit itself:** `.ScopedToUnit("id")`, as the organisation unit endpoints do.
+3. **A second place the route cannot carry** (a target in the body): check it in the handler with `IPermissionEvaluator` and `new AccessRequest(...) { Scope = AccessScope.Unit(target) }`, as the unit move does for its new parent.
+4. **A list:** declare `.ScopedByRow()` on the endpoint, so the filter lets in a principal who holds the permission at any scope; then ask once and filter once. For a business record that is its policy (see Record policies); for other rows, as here. `var access = await recordAccess.AccessibleAsync(principal.Id, OrdersPermissions.Read, "purchase_order", ct);` then `query.WhereAccessible(access)` before `ApplyListQuery`. Rows that are not business records name their unit another way: `query.WhereAccessible(access, p => p.HomeUnitId, p => p.Id)`. The same filtered query answers a read by id, with 404 outside. The answer costs one query over the units whatever the list's length (or none for a tenant-wide grant), and the list stays one query. Never check row by row.
+5. **Test it** with an assignment scoped to a unit: a record of that unit is allowed, a record of a sibling is denied, and a record of a child is allowed only with children (see `ScopeEvaluationTests` in the Authorization tests).
 
-Tests: a module's tests prove its own rules with an allow-all gate in the test host (`AllEntitled`, as the module test projects have); `tests/Kernel/Iron.Kernel.Entitlements.Tests` proves the check with a fixture module licensed per person.
+Saving a business record also checks its owner: `OwningOrganisationId` must name an active unit, or the save throws `OwningOrganisationException`. Check the unit in the service first and answer with an error; the interceptor is the guarantee behind it.
 
-## Feature flags and kill switches (A5, ADR-0035)
+## Record policies (ADR-0032)
 
-A flag changes behaviour without a deploy: a release turned on for some tenants first, an experiment, an operational switch. It is not an entitlement: what a tenant has paid for is licensed (the section above), never flagged.
+Every business record type has a policy; its lists and reads by id go through it. Forgetting is not possible: paging a raw query of a business record does not compile (CS0311: it is not `IOwnAccessRule`), and a business record type without a registered policy fails the architecture tests.
 
-1. **Declare it in the module's own code**, in its Contracts, and list it in its `IModule`:
+**A policy in a few lines**, in the module's `AddServices`. An order is seen in the reader's units, approved where the reader may approve, and changed by its creator while a draft:
 
-   ```csharp
-   public static class SourcingFlags
-   {
-       public const string Owner = "Sourcing team";
+```csharp
+services.AddRecordPolicy(
+    "purchase_order",                       // the record type name record-scoped assignments use, its code
+    "Purchase orders",                      // what people call these records, as a merge preview shows them
+    OrdersPermissions.Read,                 // the scope rule for this permission always applies first
+    RecordRules.All(
+        RecordRules.UnitVisibility<Order>(OrdersPermissions.Read, (OrdersActions.Approve, OrdersPermissions.Approve)),
+        RecordRules.OwnerWhile<Order>(o => o.Status == OrderStatus.Draft, RecordActions.Update)));
+```
 
-       public static readonly Flag NewAwardScreen = Flag.Boolean(
-           "sourcing.new_award_screen", FlagKind.Release, "Shows the new award screen while it is proven.", Owner,
-           removeBy: new DateOnly(2027, 3, 31), defaultValue: false);
+`UnitVisibility` reads the units the read permission reaches and allows each action it names where that action's permission reaches; `OwnerWhile` lets the creator perform its actions while the module's condition holds, and does not narrow reading. `All` takes the strictest answer, `Any` the most generous; an action no block has a rule for is denied. The kernel joins the policy to the scope rule with AND, so a policy can hide records and never show more. A policy class of the module's own implements `IRecordPolicy<T>` and registers with `AddRecordPolicy<Order, OrderPolicy>("purchase_order", "Purchase orders", OrdersPermissions.Read)`.
 
-       public static IReadOnlyList<Flag> All => [NewAwardScreen];
-   }
+**A list:**
 
-   // in SourcingModule
-   public IReadOnlyList<Flag> Flags => SourcingFlags.All;
-   ```
+```csharp
+var orders = await policies.ApplyAsync(context.Orders.AsNoTracking(), ct);    // IRecordPolicies policies
+var page = await orders.ApplyListQuery(query, Fields).ToPageAsync(query.Page, ct);
+return ApiResults.List(page.Map(OrderResponse.From), http, query);
+```
 
-   A key is `area.flag` in lowercase with underscores. The type is boolean, string, number or JSON (`Flag.String`, `Flag.Number`, `Flag.Json`). An owner and a purpose are required; release and experiment flags need the date they are to be removed by. The default is what the flag answers when no rule matches, and the only answer while the unit has never known any rules.
-2. **Write the catalogue:** `make catalogue`, and commit `licensing-catalogue.json`. The control plane refuses rules for a flag it does not have.
-3. **Ask it in code** through OpenFeature: inject `IFlagClients` from `Iron.Kernel.Flags.Contracts`, then `var flags = await clients.CurrentAsync(ct);` (the signed-in principal) or `ForAsync(principalId, ct)` (a job acting for someone), and `await flags.GetBooleanValueAsync(SourcingFlags.NewAwardScreen.Key, false)`. The caller's default answers an undeclared flag or a wrong type.
-4. **Or on an endpoint:** `.RequireFlag(SourcingFlags.NewAwardScreen.Key)` answers 404 `flags.disabled` while the flag is off for the caller. A risky path gets its kill switch with `.RequireFlagOff(KillSwitches.Imports.Key)`, which answers 503 `flags.killed` with the operator's reason while it is on. Both run after the entitlement check and before the permission, and are audited.
-5. **In the shell:** `useFlag("sourcing.new_award_screen", false)` from `@/auth/flags`. The value comes from `/me/context`, evaluated by the API for this person, and is read again every 30 seconds; the default answers until it comes, and whenever it fails. The type of the default is the type of the answer.
-6. **Set its rules** in the control plane: `make flag KEY=sourcing.new_award_screen VALUE=true TENANT=echo` for one tenant, or `PUT /api/v1/flags/{key}/rules` for scopes, percentages and attributes. Units learn a change within 30 seconds, the shell within a minute.
-7. **Retire it:** remove the declaration and the code that asks it, and mark the flag `"status": "retired"` in `licensing-catalogue.json` in the same change. `make catalogue` and the host test refuse, naming the flag and its owner, a flag that left the code while the catalogue marks it active, and a retired flag still declared. The control plane's flag report lists flags past their removal date with their owner.
+The page and its total count are counted under the policy. `PolicyQuery<T>` narrows further (`Where`), pages, counts or lists; it never hands the raw query back.
 
-**The shell never decides security by a flag.** A flag in the shell shows or hides; it never stands in for a permission, an entitlement or a check the API makes. The values reach the browser, and a person can change what their browser does. Every action a flag hides is checked again by the API: the permission, the entitlement and, for a kill switch, `RequireFlagOff`.
+**One record for an action:** `var order = await policies.FindAsync<Order>(id, OrdersActions.Approve, ct);` answers the record, tracked by the module's context so the service can change and save it, or `data.record.not_found` (404) when the reader may not see it, the same as an id that does not exist, or `data.record.forbidden` (403) when the reader may see it but not act. Pass the result's error to `ApiResults.Problem`. The endpoint declares the action's permission with `.ScopedByRow()`; the policy decides per record.
 
-**Kill switches** are a reserved family, `kill.<path>`, declared by the kernel only: email, webhooks, sms, ai, push and imports. A module never declares one; the path that needs a switch names it on its endpoints or asks it in its jobs. Only an operator turns one on or off, with a reason (`make kill-switch`, runbook section 5). While one is on, administrators see a banner with the path, since when and the reason.
+**Testing it:** each block and combination without a database, with a `PolicySubject` over a fake reach (`RecordRulesTests` in the Data tests); the policy against PostgreSQL with records of other units in the table (`RecordPolicyTests`); the architecture tests check the registration.
 
-Tests: test hosts register an allow-all gate beside the entitlements one (`AllEntitled` implements `IFlagGate` too); `tests/Kernel/Iron.Kernel.Flags.Tests` proves the evaluation order, the refresh and the kill switch on a real store.
+## Granting access (ADR-0031)
 
-## Declaring a setting (A6, ADR-0036)
+**Roles and scopes.** A role is a set of permissions with a code, a name and the kind of principal it is for. An assignment gives a role to a principal at a scope: the whole tenant, one unit, a unit with the units below it, or one record. Declare new permissions in the module's Contracts and list them in its `Permissions`; the catalogue (`GET /api/v1/permissions`) and the role editor pick them up, grouped by module, with their risk. The seed keeps the system roles in step with the catalogue: `tenant-administrator` holds everything, `read-only` and `service-default` every `*.read`.
 
-A setting is something the tenant decides: a limit, a validity, a template, a preference. It is not a flag (the platform's switch, the operator's) and not an entitlement (what the tenant has paid for).
+**Nobody grants more than they hold.** Through the API, a grant needs `authz.assignments.manage` and every permission of the role over the whole scope; a unit-only assignment does not count for a unit with its children. A tenant role holds only permissions its editor holds tenant-wide, and an import is held to the same rule. The last tenant-wide tenant administrator stays. `IRoleAssignments.AssignAsync` is the seed's trusted path and checks none of this: never expose it to a request. A grant or a removal clears the principal's cached grants on that node at once; elsewhere they expire within the 60-second window (ADR-0012).
 
-1. **Declare it in the module's Contracts** as a typed static definition, and list it in its `IModule`:
+**A page that asks for access at a unit.** Navigation and route guards use `session.permissions`, which holds what the principal holds anywhere; the API keeps deciding per row. An action whose scope is a unit asks `/me/access` for that unit through the hook:
 
-   ```csharp
-   public static class SourcingSettings
-   {
-       public static readonly Setting<int> QuoteValidDays = Setting.WholeNumber(
-           "sourcing.quote.valid_days", "How long a supplier's quote stays valid, in days.", 30, 1, 365, SettingScopes.Tenant | SettingScopes.Unit);
+```tsx
+const access = useAccessAt(unit ? { unit: unit.id } : undefined, ["authz.units.manage"]);
+{access.can("authz.units.manage") && <Button onClick={rename}>{t("units.actions.rename")}</Button>}
+```
 
-       public static IReadOnlyList<SettingDefinition> All => [QuoteValidDays];
-   }
+The hook asks only when the principal holds the permission somewhere, and caches the answer for 30 seconds. An action on something that reaches a unit and every unit below it, such as removing an assignment with children, passes `{ unit, includeChildren: true }` and gets only what is held over the whole subtree. An action for a record passes `{ recordType, recordId, unit }`; an action whose scope is the tenant, such as changing a role, reads `session.tenantPermissions`. Show nothing while the answer is on its way, and let the endpoint's refusal (403 with the missing permissions named) land in the page's alert.
 
-   // in SourcingModule
-   public IReadOnlyList<SettingDefinition> Settings => SourcingSettings.All;
-   ```
+**Testing it.** Each rule has an integration test with its error code (`AssignmentServiceTests`, `RoleServiceTests`, `RoleImportTests` in the Authorization tests); a scoped list has a test with a reader at a child unit and a principal outside (`ScopedUsersTests` in the Identity tests); `make e2e` sets up the run's own unit with a child unit inside it and signs in as that unit's administrator (`shell/e2e/scoped.spec.ts`).
 
-   The factories are `Text` (with a `SettingRule.Length` or `SettingRule.Matches` and words), `WholeNumber` and `Number` (with their range), `Boolean`, `Choice` (with the words it allows), `Json` (with a `SettingRule.Must` and words), and `Secret`. The scopes say where a value may be set: the tenant, a unit (and the units below it), a person. `visibleToShell: true` sends the effective value to the shell; never for a secret.
-2. **Write the catalogue:** `make catalogue`, and commit `licensing-catalogue.json` and `shell/src/api/setting-keys.ts`. The host test fails until both match the code.
-3. **Read it** through `ISettings` from `Iron.Kernel.Settings.Contracts`, for the context the value is for:
-   - `SettingContext.ForPerson(principalId)`: the person's own value, then their home unit walking up, then the tenant;
-   - `SettingContext.ForUnit(record.OwningOrganisationId)`: for a record, its unit walking up, then the tenant (TF-221);
-   - `SettingContext.Tenant`: for what belongs to nobody in particular.
-
-   `await settings.GetAsync(SourcingSettings.QuoteValidDays, context, ct)` answers an `int`. There is no string overload: a key nobody declared does not compile. A change is seen by every process within 30 seconds, without a restart.
-4. **A secret** is a `Setting.Secret(...)`: its value is a path under `tenants/<slug>/settings/`, never the secret. Read the secret with `ISecretSettings.ReadSecretAsync(setting, context, ct)` where you use it, and do not keep it: the service keeps it five minutes at most, and nothing else may hold it longer, log it or return it.
-5. **In the shell:** `useSetting("sourcing.quote.valid_days")` from `@/auth/settings` answers the effective value for the signed-in person, typed by the generated keys, and the default until `/me/context` answers. Give the setting a name in `src/i18n/en.json` under `settings.names` (the key with its dots as underscores), and, for a number, its amount under `settings.amounts` with `_one` and `_other`; the console's Settings page shows it then by its module.
-
-The console's page and the API check the permission at the place changed (`settings.values.manage` tenant-wide or at the unit); a module adds nothing for that. Tests: `tests/Kernel/Iron.Kernel.Settings.Tests` declares a probe module with a setting for every scope and a secret reference; a module's own tests read its settings through a host that lists the Settings module, as Identity's do.
-
-## Delegating and reviewing access (A7, ADR-0037)
+## Delegating and reviewing access (ADR-0037)
 
 A **duty** is a set of permissions a person may hand to someone else for a while: approval while on leave, receiving during a trip. A module declares its duties next to its permissions, and lists them in its `IModule`:
 
@@ -248,7 +317,7 @@ A module that must not be done while acting (an action only the person themselve
 
 Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/DelegationTests.cs` declares a probe module with three duties and shows each refusal and acting with exactly the delegator's rights; `ReviewTests.cs` covers the snapshot, the reviewers' units, the revoke and the guard, and the escalation on a fake clock; `tests/Kernel/Iron.Kernel.Identity.Tests/ActingForTests.cs` follows acting through the session, `/me` and the audit list.
 
-## Working across units (A8, ADR-0038)
+## Working across units (ADR-0038)
 
 A business record belongs to one unit and is **private** to it by default: the people whose roles cover that unit see it. It can be **shared** with listed units, whose people may then read it, or opened to the **tenant**, which everyone holding the read permission somewhere sees. A module writes none of this: `BusinessRecord` carries the mode, the data library keeps the listed units, and `UnitVisibility` and the policy engine follow the mode in the list's own query.
 
@@ -301,7 +370,7 @@ The units page shows the items and whether the unit is ready; the kernel registe
 
 Tests: `tests/Kernel/Iron.Kernel.Data.Tests/Policies/SharingTests.cs` covers the modes with paging, the read audit, the refusals, the list audit, the working unit and a merge's move; `tests/Kernel/Iron.Kernel.Authorization.Tests` has a probe module with a real business record (`ProbeRecords.cs`) used by `WorkingUnitTests`, `UnitMergeTests` and `RecordSharingEndpointTests`; `tests/Kernel/Iron.Kernel.Identity.Tests/ScopedUsersTests.cs` follows the working unit and a merge over HTTP; `tests/Kernel/Iron.Kernel.Settings.Tests/UnitChangeTests.cs` proves that a move keeps a unit's settings and a merge moves them.
 
-## Explaining access and conflicts (A9, ADR-0039)
+## Explaining access and conflicts (ADR-0039)
 
 An administrator asks why a person can or cannot do something in the console's **Explain access**, or from a user's Access tab with **Why can't they…?**. The answer lists the checks the request meets, in order, from the same decisions the request makes. A module gets this for nothing for every named endpoint that declares its permission: give the endpoint a name (`WithName`) and a summary in words (`WithSummary`), since the summary is what the person picks the action by, and scope it as usual (`ScopedToUnit`, `ScopedToRecord`, `ScopedByRow`). A record route that has a policy action other than read names it: `ScopedToRecord(type, owningUnit, policyAction: RecordActions.Update)`.
 
@@ -329,157 +398,107 @@ Then add its check to `AccessExplainer` in its place in the order. A check a han
 
 Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/ExplainAccessTests.cs` holds the matrix that compares each explanation with the real call (licensed module, feature, kill switch, scope, acting, record policy), and the audit; `ConflictDetectorTests.cs` covers the overlap rule alone; `ConflictTests.cs` covers each mode on assignments and delegations, unrelated units, the report on a fake clock after a rule's change, and the review marker; `tests/Kernel/Iron.Kernel.Identity.Tests/ScopedUsersTests.cs` shows that a person of another tenant cannot be explained.
 
-## Write an ADR
+## Licensing a module or feature (ADR-0034)
 
-Copy `docs/adr/0000-template.md` to the next number, fill it in, and add it to the table in `docs/adr/README.md`. A pull request that introduces a decision without its ADR is not merged (TF-209).
+Kernel modules are the platform: always on, never in a plan, and they declare no licence (the architecture test `LicensingRules` refuses one). A Business or Products module must declare one. Features may be licensed in any layer.
 
-## Hosts and unit commands (T7)
-
-A host's `Program.cs` is the only place that decides what runs in a process. It has one shape:
-
-1. `HealthProbe.IsCommand(args)`: answer the `health` command without building the host.
-2. `TenantBinding.FromConfiguration`: bind to one tenant or stop.
-3. List the modules: `IReadOnlyList<IModule> modules = [...]`.
-4. Register the shared libraries, then `AddModules`.
-5. Build; if `DatabaseCommands.IsCommand(args)`, run `migrate`, `seed` or `schema-check` and exit.
-6. Pipeline order: `UseIronTelemetry`, `UseIronApi`, `UseIronSecurity`, `UseIronTenant`, then endpoints.
-
-Adding a module to a host means adding one line to the list. Adding reference data means one `ISeeder` registered by the module. Adding a table means a migration in the module's project; `migrate` picks it up because the module context is registered with `AddIronDbContext`.
-
-On the laptop: `make run-api` serves http://localhost:5100 bound to tenant `dev` for hostnames `localhost` and `dev.localhost`; `make run-worker` runs the worker on http://localhost:5101 with a heartbeat every 15 seconds; `make migrate` runs the migrate command against the laptop database; `make images` builds the four images.
-
-
-## An endpoint with a permission (T8)
-
-1. Declare the permission in the module's Contracts project: `public static readonly Permission UsersRead = new("identity.users.read", "List and view users", Risk.Low);` and list it in the module's `Permissions`.
-2. Put it on the endpoint or the group: `endpoints.MapApiGroup("users").RequirePermission(IdentityPermissions.UsersRead);`.
-3. Run the host. It starts only when every endpoint has a permission or `.AllowAnonymous()`; the message names what is missing.
-4. The filter runs before the handler: 401 for nobody, 403 `authz.permission_denied` (with the permission named) for a principal without it, and a denial audit event. OpenAPI shows "Requires permission" on the operation.
-
-Anonymous endpoints are the short list of TF-030: health, login, recovery, invitation acceptance, public branding. `Iron.Host.Tests` keeps the list fixed; adding to it is a reviewed change.
-
-## Scoping an endpoint to a record (A1, ADR-0030)
-
-A permission is checked tenant-wide unless the endpoint says where the access happens. Once it does, a role assigned to an organisation unit applies to that unit's records and not to others, and a role assigned with children applies to the whole subtree, wherever it moves later.
-
-1. **One record by its id.** Name the record type (a short snake_case word, the same one record-scoped assignments use) and give the lookup that finds the unit that owns the record, one query by key:
+1. **Declare it in the module's own code.** The licence code and the subscription type in the module's `IModule`, the features in its Contracts beside its permissions, listed in its `IModule`:
 
    ```csharp
-   orders.MapPost("/{id:guid}/approve", ApproveAsync)
-       .RequirePermission(OrdersPermissions.Approve)
-       .ScopedToRecord("purchase_order", (services, id, ct) => services.GetRequiredService<OrdersDbContext>().Orders
-           .Where(o => o.Id == id).Select(o => (Guid?)o.OwningOrganisationId).SingleOrDefaultAsync(ct));
+   public static class SourcingFeatures
+   {
+       public static readonly Feature Auctions = new("sourcing.auctions", "Auctions with pre-bidding");
+
+       public static IReadOnlyList<Feature> All => [Auctions];
+   }
+
+   public sealed class SourcingModule : IModule
+   {
+       public ModuleLicence Licence => new("sourcing", SubscriptionType.PerPerson);
+
+       public IReadOnlyList<Feature> Features => SourcingFeatures.All;
+       // Name, Permissions, AddServices, MapEndpoints as for any module
+   }
    ```
 
-   A record the lookup does not find is checked tenant-wide, so only a tenant-wide grant reaches the handler, which answers 404.
-2. **An operation on a unit itself:** `.ScopedToUnit("id")`, as the organisation unit endpoints do.
-3. **A second place the route cannot carry** (a target in the body): check it in the handler with `IPermissionEvaluator` and `new AccessRequest(...) { Scope = AccessScope.Unit(target) }`, as the unit move does for its new parent.
-4. **A list:** declare `.ScopedByRow()` on the endpoint, so the filter lets in a principal who holds the permission at any scope; then ask once and filter once. For a business record that is its policy (see Record policies); for other rows, as here. `var access = await recordAccess.AccessibleAsync(principal.Id, OrdersPermissions.Read, "purchase_order", ct);` then `query.WhereAccessible(access)` before `ApplyListQuery`. Rows that are not business records name their unit another way: `query.WhereAccessible(access, p => p.HomeUnitId, p => p.Id)`. The same filtered query answers a read by id, with 404 outside. The answer costs one query over the units whatever the list's length (or none for a tenant-wide grant), and the list stays one query. Never check row by row.
-5. **Test it** with an assignment scoped to a unit: a record of that unit is allowed, a record of a sibling is denied, and a record of a child is allowed only with children (see `ScopeEvaluationTests` in the Authorization tests).
+   A licence code is lowercase letters, digits and underscores; a feature code is `area.feature`.
+2. **Nothing else for the module's endpoints.** `MapModules` puts every endpoint of a licensed module behind the check: 403 `entitlements.module_disabled` when the tenant does not have it, `entitlements.read_only` for a write when it is read only, `entitlements.seat_required` for a person without a seat of a per-person module. The check runs after authentication and before the permission.
+3. **A feature on its endpoints:** `.RequirePermission(...).RequireFeature(SourcingFeatures.Auctions.Code)`; 403 `entitlements.feature_disabled` when it is not available, which includes a feature whose module is not. Code that needs to ask (a background job, a choice inside a handler) injects `IEntitlements` from `Iron.Kernel.Entitlements.Contracts`: `Module(licence)`, `ModuleForAsync(licence, principal)`, `Feature(code)`.
+4. **Write the catalogue:** add the module to `Iron.Host.Api.UnitModules`, then `make catalogue`, and commit `src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json`. The host test fails until the file matches the modules; the control plane refuses a plan with a code the file does not have.
+5. **In the shell:** `licence: "sourcing"` in the module's manifest hides its navigation, routes, opener and quick actions until `/me/context` says it is entitled; `useFeature("sourcing.auctions")` answers `available` (show the control) and `writable` (show what changes data). The shell hides; the API decides.
+6. **Put it in a plan:** `PUT /api/v1/plans/{code}` on the control plane, then `make apply-plan TENANT=x PLAN=y`. A per-person module gets its seat count there; seats are assigned in the unit (`POST /api/v1/seats`).
 
-Saving a business record also checks its owner: `OwningOrganisationId` must name an active unit, or the save throws `OwningOrganisationException`. Check the unit in the service first and answer with an error; the interceptor is the guarantee behind it.
+Tests: a module's tests prove its own rules with an allow-all gate in the test host (`AllEntitled`, as the module test projects have); `tests/Kernel/Iron.Kernel.Entitlements.Tests` proves the check with a fixture module licensed per person.
 
-## Granting access (A2, ADR-0031)
+## Feature flags and kill switches (ADR-0035)
 
-**Roles and scopes.** A role is a set of permissions with a code, a name and the kind of principal it is for. An assignment gives a role to a principal at a scope: the whole tenant, one unit, a unit with the units below it, or one record. Declare new permissions in the module's Contracts and list them in its `Permissions`; the catalogue (`GET /api/v1/permissions`) and the role editor pick them up, grouped by module, with their risk. The seed keeps the system roles in step with the catalogue: `tenant-administrator` holds everything, `read-only` and `service-default` every `*.read`.
+A flag changes behaviour without a deploy: a release turned on for some tenants first, an experiment, an operational switch. It is not an entitlement: what a tenant has paid for is licensed (the section above), never flagged.
 
-**Nobody grants more than they hold.** Through the API, a grant needs `authz.assignments.manage` and every permission of the role over the whole scope; a unit-only assignment does not count for a unit with its children. A tenant role holds only permissions its editor holds tenant-wide, and an import is held to the same rule. The last tenant-wide tenant administrator stays. `IRoleAssignments.AssignAsync` is the seed's trusted path and checks none of this: never expose it to a request. A grant or a removal clears the principal's cached grants on that node at once; elsewhere they expire within the 60-second window (ADR-0012).
+1. **Declare it in the module's own code**, in its Contracts, and list it in its `IModule`:
 
-**A page that asks for access at a unit.** Navigation and route guards use `session.permissions`, which holds what the principal holds anywhere; the API keeps deciding per row. An action whose scope is a unit asks `/me/access` for that unit through the hook:
+   ```csharp
+   public static class SourcingFlags
+   {
+       public const string Owner = "Sourcing team";
 
-```tsx
-const access = useAccessAt(unit ? { unit: unit.id } : undefined, ["authz.units.manage"]);
-{access.can("authz.units.manage") && <Button onClick={rename}>{t("units.actions.rename")}</Button>}
-```
+       public static readonly Flag NewAwardScreen = Flag.Boolean(
+           "sourcing.new_award_screen", FlagKind.Release, "Shows the new award screen while it is proven.", Owner,
+           removeBy: new DateOnly(2027, 3, 31), defaultValue: false);
 
-The hook asks only when the principal holds the permission somewhere, and caches the answer for 30 seconds. An action on something that reaches a unit and every unit below it, such as removing an assignment with children, passes `{ unit, includeChildren: true }` and gets only what is held over the whole subtree. An action for a record passes `{ recordType, recordId, unit }`; an action whose scope is the tenant, such as changing a role, reads `session.tenantPermissions`. Show nothing while the answer is on its way, and let the endpoint's refusal (403 with the missing permissions named) land in the page's alert.
+       public static IReadOnlyList<Flag> All => [NewAwardScreen];
+   }
 
-**Testing it.** Each rule has an integration test with its error code (`AssignmentServiceTests`, `RoleServiceTests`, `RoleImportTests` in the Authorization tests); a scoped list has a test with a reader at a child unit and a principal outside (`ScopedUsersTests` in the Identity tests); `make e2e` sets up a child unit on the tenant and signs in as its administrator (`shell/e2e/scoped.spec.ts`).
+   // in SourcingModule
+   public IReadOnlyList<Flag> Flags => SourcingFlags.All;
+   ```
 
-## Record policies (A3, ADR-0032)
+   A key is `area.flag` in lowercase with underscores. The type is boolean, string, number or JSON (`Flag.String`, `Flag.Number`, `Flag.Json`). An owner and a purpose are required; release and experiment flags need the date they are to be removed by. The default is what the flag answers when no rule matches, and the only answer while the unit has never known any rules.
+2. **Write the catalogue:** `make catalogue`, and commit `licensing-catalogue.json`. The control plane refuses rules for a flag it does not have.
+3. **Ask it in code** through OpenFeature: inject `IFlagClients` from `Iron.Kernel.Flags.Contracts`, then `var flags = await clients.CurrentAsync(ct);` (the signed-in principal) or `ForAsync(principalId, ct)` (a job acting for someone), and `await flags.GetBooleanValueAsync(SourcingFlags.NewAwardScreen.Key, false)`. The caller's default answers an undeclared flag or a wrong type.
+4. **Or on an endpoint:** `.RequireFlag(SourcingFlags.NewAwardScreen.Key)` answers 404 `flags.disabled` while the flag is off for the caller. A risky path gets its kill switch with `.RequireFlagOff(KillSwitches.Imports.Key)`, which answers 503 `flags.killed` with the operator's reason while it is on. Both run after the entitlement check and before the permission, and are audited.
+5. **In the shell:** `useFlag("sourcing.new_award_screen", false)` from `@/auth/flags`. The value comes from `/me/context`, evaluated by the API for this person, and is read again every 30 seconds; the default answers until it comes, and whenever it fails. The type of the default is the type of the answer.
+6. **Set its rules** in the control plane: `make flag KEY=sourcing.new_award_screen VALUE=true TENANT=echo` for one tenant, or `PUT /api/v1/flags/{key}/rules` for scopes, percentages and attributes. Units learn a change within 30 seconds, the shell within a minute.
+7. **Retire it:** remove the declaration and the code that asks it, and mark the flag `"status": "retired"` in `licensing-catalogue.json` in the same change. `make catalogue` and the host test refuse, naming the flag and its owner, a flag that left the code while the catalogue marks it active, and a retired flag still declared. The control plane's flag report lists flags past their removal date with their owner.
 
-Every business record type has a policy; its lists and reads by id go through it. Forgetting is not possible: paging a raw query of a business record does not compile (CS0311: it is not `IOwnAccessRule`), and a business record type without a registered policy fails the architecture tests.
+**The shell never decides security by a flag.** A flag in the shell shows or hides; it never stands in for a permission, an entitlement or a check the API makes. The values reach the browser, and a person can change what their browser does. Every action a flag hides is checked again by the API: the permission, the entitlement and, for a kill switch, `RequireFlagOff`.
 
-**A policy in a few lines**, in the module's `AddServices`. An order is seen in the reader's units, approved where the reader may approve, and changed by its creator while a draft:
+**Kill switches** are a reserved family, `kill.<path>`, declared by the kernel only: email, webhooks, sms, ai, push and imports. A module never declares one; the path that needs a switch names it on its endpoints or asks it in its jobs. Only an operator turns one on or off, with a reason (`make kill-switch`, runbook section 5). While one is on, administrators see a banner with the path, since when and the reason.
 
-```csharp
-services.AddRecordPolicy(
-    "purchase_order",                       // the record type name record-scoped assignments use, its code
-    "Purchase orders",                      // what people call these records, as a merge preview shows them
-    OrdersPermissions.Read,                 // the scope rule for this permission always applies first
-    RecordRules.All(
-        RecordRules.UnitVisibility<Order>(OrdersPermissions.Read, (OrdersActions.Approve, OrdersPermissions.Approve)),
-        RecordRules.OwnerWhile<Order>(o => o.Status == OrderStatus.Draft, RecordActions.Update)));
-```
+Tests: test hosts register an allow-all gate beside the entitlements one (`AllEntitled` implements `IFlagGate` too); `tests/Kernel/Iron.Kernel.Flags.Tests` proves the evaluation order, the refresh and the kill switch on a real store.
 
-`UnitVisibility` reads the units the read permission reaches and allows each action it names where that action's permission reaches; `OwnerWhile` lets the creator perform its actions while the module's condition holds, and does not narrow reading. `All` takes the strictest answer, `Any` the most generous; an action no block has a rule for is denied. The kernel joins the policy to the scope rule with AND, so a policy can hide records and never show more. A policy class of the module's own implements `IRecordPolicy<T>` and registers with `AddRecordPolicy<Order, OrderPolicy>("purchase_order", "Purchase orders", OrdersPermissions.Read)`.
+## Declaring a setting (ADR-0036)
 
-**A list:**
+A setting is something the tenant decides: a limit, a validity, a template, a preference. It is not a flag (the platform's switch, the operator's) and not an entitlement (what the tenant has paid for).
 
-```csharp
-var orders = await policies.ApplyAsync(context.Orders.AsNoTracking(), ct);    // IRecordPolicies policies
-var page = await orders.ApplyListQuery(query, Fields).ToPageAsync(query.Page, ct);
-return ApiResults.List(page.Map(OrderResponse.From), http, query);
-```
+1. **Declare it in the module's Contracts** as a typed static definition, and list it in its `IModule`:
 
-The page and its total count are counted under the policy. `PolicyQuery<T>` narrows further (`Where`), pages, counts or lists; it never hands the raw query back.
+   ```csharp
+   public static class SourcingSettings
+   {
+       public static readonly Setting<int> QuoteValidDays = Setting.WholeNumber(
+           "sourcing.quote.valid_days", "How long a supplier's quote stays valid, in days.", 30, 1, 365, SettingScopes.Tenant | SettingScopes.Unit);
 
-**One record for an action:** `var order = await policies.FindAsync<Order>(id, OrdersActions.Approve, ct);` answers the record, tracked by the module's context so the service can change and save it, or `data.record.not_found` (404) when the reader may not see it, the same as an id that does not exist, or `data.record.forbidden` (403) when the reader may see it but not act. Pass the result's error to `ApiResults.Problem`. The endpoint declares the action's permission with `.ScopedByRow()`; the policy decides per record.
+       public static IReadOnlyList<SettingDefinition> All => [QuoteValidDays];
+   }
 
-**Testing it:** each block and combination without a database, with a `PolicySubject` over a fake reach (`RecordRulesTests` in the Data tests); the policy against PostgreSQL with records of other units in the table (`RecordPolicyTests`); the architecture tests check the registration.
+   // in SourcingModule
+   public IReadOnlyList<SettingDefinition> Settings => SourcingSettings.All;
+   ```
 
-## A table and its migration (T8)
+   The factories are `Text` (with a `SettingRule.Length` or `SettingRule.Matches` and words), `WholeNumber` and `Number` (with their range), `Boolean`, `Choice` (with the words it allows), `Json` (with a `SettingRule.Must` and words), and `Secret`. The scopes say where a value may be set: the tenant, a unit (and the units below it), a person. `visibleToShell: true` sends the effective value to the shell; never for a secret.
+2. **Write the catalogue:** `make catalogue`, and commit `licensing-catalogue.json` and `shell/src/api/setting-keys.ts`. The host test fails until both match the code.
+3. **Read it** through `ISettings` from `Iron.Kernel.Settings.Contracts`, for the context the value is for:
+   - `SettingContext.ForPerson(principalId)`: the person's own value, then their home unit walking up, then the tenant;
+   - `SettingContext.ForUnit(record.OwningOrganisationId)`: for a record, its unit walking up, then the tenant (TF-221);
+   - `SettingContext.Tenant`: for what belongs to nobody in particular.
 
-1. Add or change the entity in the module's `Data/` folder (derive from `AuditedEntity`, `AppendOnlyEntity` or `BusinessRecord`) and map it in `ConfigureModule`.
-2. Generate the migration: `make ef-add MODULE=Authorization NAME=AddRoleColour`. The first time, `dotnet tool restore` installs `dotnet-ef` from `.config/dotnet-tools.json`. `MODULE` is the last segment of the module's name, whatever its layer. The generated files land in the module's `Data/Migrations` (for example `src/Kernel/Iron.Kernel.Authorization/Data/Migrations`); read the `Up` method once, run `make format` (Entity Framework writes a byte-order mark that the format check refuses), then commit them with the entity change.
-3. `make test`: the module's `ModelTests` passes only when the migration matches the model; the schema check runs over the migrated schema.
-4. Apply it: `make migrate` on the laptop; the fleet runs the image's `migrate` command for every tenant unit.
+   `await settings.GetAsync(SourcingSettings.QuoteValidDays, context, ct)` answers an `int`. There is no string overload: a key nobody declared does not compile. A change is seen by every process within 30 seconds, without a restart.
+4. **A secret** is a `Setting.Secret(...)`: its value is a path under `tenants/<slug>/settings/`, never the secret. Read the secret with `ISecretSettings.ReadSecretAsync(setting, context, ct)` where you use it, and do not keep it: the service keeps it five minutes at most, and nothing else may hold it longer, log it or return it.
+5. **In the shell:** `useSetting("sourcing.quote.valid_days")` from `@/auth/settings` answers the effective value for the signed-in person, typed by the generated keys, and the default until `/me/context` answers. Give the setting a name in `src/i18n/en.json` under `settings.names` (the key with its dots as underscores), and, for a number, its amount under `settings.amounts` with `_one` and `_other`; the console's Settings page shows it then by its module.
 
-Migrations are never written by hand and never edited after they are committed; a correction is a new migration. The one change made by hand is a rename, before the first commit: `make ef-add` cannot tell a rename from a drop and an add, so turn its drop and add into `RenameColumn` and say so in the migration's comment (ADR-0031 records the first, `RoleCodeAndName`).
+The console's page and the API check the permission at the place changed (`settings.values.manage` tenant-wide or at the unit); a module adds nothing for that. Tests: `tests/Kernel/Iron.Kernel.Settings.Tests` declares a probe module with a setting for every scope and a secret reference; a module's own tests read its settings through a host that lists the Settings module, as Identity's do.
 
-
-## A change and its audit event in one transaction (T9)
-
-```csharp
-await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
-order.Approve(reason);
-await orders.SaveChangesAsync(cancellationToken);
-await audit.WriteAsync(new AuditEvent("procurement.order.approved", AuditOutcome.Success, principal.Id, order.Number, RecordType: "order", RecordId: order.Id, Reason: reason), cancellationToken);
-await transaction.CommitAsync(cancellationToken);
-```
-
-`IUnitOfWork` (Iron.Kernel.Data) puts every module context of the request in one transaction; disposing without `CommitAsync` rolls everything back. Without a unit of work, each `SaveChangesAsync` is its own transaction and the audit event is written at once, which is right for a denial or a failed login.
-
-The app role cannot change or delete audit rows; PostgreSQL refuses it. `make migrate` grants the role's privileges when `Database:AppRole` is set (`Database__AppRole=acme_app`); the fleet sets it for every unit.
-
-
-## Who is acting (T10)
-
-`ICurrentPrincipal` is the signed-in principal of the request (from the `iron.session` cookie), nobody when there is no valid session, and the system principal in jobs and commands. `ActingForId` is the person a shell session acts for by delegation (ADR-0037), and null otherwise. Endpoints declare one of three things: `.RequirePermission(x)`, `.RequireSignedIn()` (any signed-in principal: me, logout) or `.AllowAnonymous()` (health, login, invitation acceptance). The filter answers 401 `auth.not_authenticated` for nobody, 401 `auth.session_expired` for a cookie whose session ran out, and 403 `authz.permission_denied` for the wrong somebody.
-
-On the laptop: `make migrate`, then `make seed` creates the system roles and the first administrator `admin@dev.localhost` in Invited status; the invitation token is in the seed output. Accept it with `POST /auth/invitations/<token>/accept` and a password of at least 12 characters, then `POST /auth/login`; the response sets the cookie and `GET /api/v1/me` shows the permissions and the session expiry.
-
-
-## An API client (T11)
-
-A service account gets a token with the client credentials grant and sends it as a bearer:
-
-```bash
-curl -s -X POST https://acme.localhost/connect/token -u smoke-client:<secret> -d grant_type=client_credentials
-curl -s https://acme.localhost/api/v1/users -H "Authorization: Bearer <access_token>"
-```
-
-Tokens live 15 minutes, carry the unit's tenant, and are checked on every request together with the principal behind them. `GET /.well-known/jwks.json` publishes the signing key. On the laptop, `make seed` creates `smoke-client` and `make token` fetches a token from the running API host. A token for another tenant, an expired token or a disabled service account answers 401 with `auth.token_invalid` or `auth.token_expired`.
-
-
-## A unit's configuration (T12, ADR-0016)
-
-A host reads its configuration from its unit secret in the store, loaded at start by `AddIronSecrets()` just below the environment variables. Inside a module, inject the bound options or `IConfiguration` as usual; never read the store directly. What a unit needs at runtime goes into the keys the fleet writes (`ConnectionStrings:Database`, `Database:AppRole`, `Storage:ContainerSasUrl`, `Tokens:SigningKeyPem`); a new runtime secret is a new key written by the fleet's secrets step and read through configuration, not a new way to fetch it.
-
-Files go through `IObjectStorage` (Iron.Kernel.Files.Contracts): `PutAsync`, `GetAsync`, `DeleteAsync`, with the tenant's container behind it. The container's signature is all a unit holds; it cannot create containers or reach another tenant's.
-
-
-## The control plane and a provisioning step (T13, T14, ADR-0017 to ADR-0019)
+## The control plane and a provisioning step (ADR-0017 to ADR-0019)
 
 The control plane is a unit like the others, with `Iron.Kernel.Tenancy` (the registry and the tenant API) and `Iron.Kernel.Fleet` (jobs, steps, the worker). A new thing to do for every tenant is a new step:
 
@@ -489,15 +508,14 @@ The control plane is a unit like the others, with `Iron.Kernel.Tenancy` (the reg
 
 The fleet worker needs nothing else: it runs the steps of the job's kind in order, records each with its duration, stops at the first failure, and continues from it on the next request.
 
-
-## A shell page (T15, T16, D3, ADR-0020, ADR-0021, ADR-0027)
+## A shell page (ADR-0020, ADR-0021, ADR-0027)
 
 1. Add the API binding in `shell/src/api/<module>.ts`: a Zod schema for the response and a function that calls `request()` with it. For a list, use `listSchema(ItemSchema)` and take the ListQuery string as the parameter.
 2. Put the page on a template from `shell/src/components/templates`: `ListPage` for a list (the title, one line, the actions, the filters, and the grid; the density switch comes with it), `RecordPage` for a record (the `RecordHeader` with its status as a word, then the panels behind tabs: `AttachmentPanel`, `HistoryPanel`, `ApprovalPanel`, `CommentPanel`), `WizardPage` for steps, `ConsolePage` for settings, `DashboardPage` for numbers. Nothing here is `EmptyState`; a wait is `LoadingState`; a question is `ConfirmDialog`; a form in a dialog is `FormDialog`. They live in `shell/src/components/panels`.
 3. For a list, declare the columns (`field` is the API's field name; `sortable` and `filter` follow the API's field table) and render `<DataGrid columns={...} fetchPage={...} defaultSort={...} label={...} onRowOpen={...} />`; paging, sorting and filtering are server round trips the wrapper builds. Space and Enter select the focused row, a double click or Ctrl+Enter runs `onRowOpen`, and `onSelectionChange` tells the page what is selected.
 4. For a form, `useZodForm({ schema, initialValues })` and `<Form form={form} onSubmit={save} submitLabel={...} secondary={...}>` with Mantine inputs bound through `form.getInputProps`. Field names are camelCase; when `save` rejects with an `ApiError`, the API's field problems land on their fields (`items[0].unit_price` becomes `items.0.unitPrice`) and the rest shows at the top with the correlation id. Never two primary actions.
 5. Add the route and the navigation entry to the module's manifest in `shell/src/modules/<layer>/<module>/manifest.tsx`, each with its `permission` (`null` for any signed-in principal), and the manifest to `shell/src/modules/index.ts` if it is new. Every string goes through `src/i18n/en.json`.
-6. `make shell-check`: a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper and a colour by value fail lint. A new component gets its tile in the gallery, and `make shell-a11y` scans it.
+6. `make shell-check`: Prettier's check fails unformatted code (`make format` fixes it); a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper and a colour by value fail lint. A new component gets its tile in the gallery, and `make shell-a11y` scans it.
 
 A page reads the signed-in principal with `useSession()`; it never checks a permission itself beyond what the manifest declares, since the API's answer is the one that counts. Errors from `request()` are `ApiError` with the correlation id; the error views show it.
 
@@ -509,11 +527,11 @@ A page's tests stay fast on a loaded machine (A7; `make shell-check` passes besi
 - When the order of two answers matters, hold one in the stub until the test has seen the first, rather than racing them.
 - An explicit timeout only where a test renders something heavy: the grid, the gallery, the lint test. Vitest's workers are bounded in `vite.config.ts` (half the cores, at most 8).
 
-## Styling a page (D1, ADR-0024, ADR-0025)
+## Styling a page (ADR-0024, ADR-0025, ADR-0040)
 
-A page uses the components as the theme styles them and names colours by meaning: `color="danger"` on an alert, `c="dimmed"` on a hint, a `var(--iron-...)` variable from `shell/src/design/tokens.ts` when a style needs a value. A hex, `rgb()`, `hsl()`, a CSS colour name or a Mantine palette name (`red`, `gray.6`) in a `style`, `styles`, `vars` or `gradient` object or in `c`, `bg`, `bd`, `color`, `fill` or `stroke` fails lint, and the message says what to use. The title of a moment (the login page, a home page, an opener) says `<Title order={2} variant="display">` to take the display family; the work area keeps the reading family. The gallery (`make shell-dev`, then http://localhost:5173/gallery, with `?scheme=dark` and `?density=compact` to switch) shows every token and every themed component in both schemes and both densities; a new component or token gets its example there, and `make shell-a11y` runs the WCAG 2.1 AA scan on it and leaves a screenshot of each run in `shell/test-results/`. The density setting (`useDensity`) and the reduced-motion hook (`usePrefersReducedMotion`) live in `shell/src/design/`. A drawing is a component from `shell/src/design/illustrations/` (`<Welcome decorative size="md" />`): `sm` in a grid or a loader, `md` on a page, `lg` in the gallery; it is hidden from assistive technology when the text beside it says the same, labelled otherwise. The tenant's mark is `<TenantMark hostname={window.location.hostname} size={24} />` from `shell/src/design/patterns/`. A new drawing follows `docs/design/illustration-checklist.md` and gets its tile in the gallery.
+A page uses the components as the theme styles them and names colours by meaning: `color="danger"` on an alert, `c="dimmed"` on a hint, a `var(--iron-...)` variable from `shell/src/design/tokens.ts` when a style needs a value. A hex, `rgb()`, `hsl()`, a CSS colour name or a Mantine palette name (`red`, `gray.6`) in a `style`, `styles`, `vars` or `gradient` object or in `c`, `bg`, `bd`, `color`, `fill` or `stroke` fails lint, and the message says what to use. The title of a moment (the login page, a home page, an opener) says `<Title order={2} variant="display">` to take the display family; the work area keeps the reading family. The gallery (`make shell-dev`, then http://localhost:5173/gallery, with `?scheme=dark` and `?density=compact` to switch) shows every token and every themed component in both schemes and both densities; a new component or token gets its example there, and `make shell-a11y` runs the WCAG 2.1 AA scan on it and leaves a screenshot of each run in `shell/test-results/a11y/`. Prettier formats the code (`make format`, ADR-0040): the line is 120 characters, so diffs read side by side; let it wrap. The density setting (`useDensity`) and the reduced-motion hook (`usePrefersReducedMotion`) live in `shell/src/design/`. A drawing is a component from `shell/src/design/illustrations/` (`<Welcome decorative size="md" />`): `sm` in a grid or a loader, `md` on a page, `lg` in the gallery; it is hidden from assistive technology when the text beside it says the same, labelled otherwise. The tenant's mark is `<TenantMark hostname={window.location.hostname} size={24} />` from `shell/src/design/patterns/`. A new drawing follows `docs/design/illustration-checklist.md` and gets its tile in the gallery.
 
-## A module on the home page and in the header (D4, ADR-0033)
+## A module on the home page and in the header (ADR-0033)
 
 The home page, the search and the help panel read the manifests, so a module appears in them without a change to the shell.
 
@@ -523,14 +541,18 @@ The home page, the search and the help panel read the manifests, so a module app
 4. **Recently opened** names a page by its route's title; a record page names itself with `useRecentName(record.name)` once the record has loaded.
 5. **The session warning** needs nothing from a page: every answer through `request()` counts as activity and moves the idle end in every tab. A page that holds unsaved work should still save as it goes; the warning gives two minutes.
 
-## Proving a change (T17, T18, ADR-0022)
+## Proving a change (ADR-0022)
 
 | Level | Command | What it proves |
 |---|---|---|
 | Unit and integration tests | `make test`, `make shell-check` | the code, on real platform services in containers |
 | Accessibility | `make shell-a11y` | the gallery against WCAG 2.1 AA with axe in a real browser; no stack needed |
-| Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace |
-| Browser | `make e2e` | login, home, the search, the grid, inviting a person, a child-unit administrator's view, and a plan changed in the control plane reaching the shell and the API within a minute, in a real browser |
+| Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace, then a role scoped to a unit, a plan change and a kill switch reaching the API, each restored |
+| Browser | `make e2e` | login, home, the search, the grid, inviting a person, a child-unit administrator's view, delegation and reviews, settings, working across units, explaining access and conflict rules, and a plan and a kill switch reaching the shell within a minute, in a real browser, each run in a unit of its own |
 | Pipeline's stage | `make integration` | platform and control plane from images, then the smoke |
 
-Every pull request runs the first two levels in CI; every merge to main builds the images and runs the pipeline's stage on the runner. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.
+Every pull request runs the first two levels and both formatters in CI; every merge to main builds the images and runs the pipeline's stage on the runner.
+
+**The tests' platform services.** `make test` starts one PostgreSQL, one Azurite and one OpenBao for the whole run (`tests/test-services.sh`) and runs four test projects at a time; each project works in a database, blob containers and a store mount of its own. A fixture gets them from `tests/Iron.Testing`: `await TestPostgres.StartAsync("orders", ct)` answers a connection string to a new database (and `CreateDatabaseAsync` another, for a second tenant), `TestBlob.StartAsync` the account, `TestOpenBao.StartAsync("orders", ct)` the store with a mount named after the project. A project run alone (an IDE, `dotnet test` on one project) starts containers of its own the same way. Names that live in a whole server rather than a database (PostgreSQL roles, blob containers, store policies) must stay apart between projects: give them the project's name.
+
+**The browser tests' data.** `make e2e` makes a unit of the run's own under the root (`infra/compose/scripts/e2e-data.py`), with the people, units and assignments the tests need inside it, and deactivates it at the end whatever the result. A test that needs a unit makes it under the run's unit (`E2E_RUN_UNIT_ID`), never under the root, and names what it makes with the run's id. A change to a host or a module reaches a laptop tenant with `make images` and `make update-unit TENANT=<slug>`.

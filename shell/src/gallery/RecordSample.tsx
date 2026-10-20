@@ -13,7 +13,14 @@ const unit = (n: number, name: string, parent: number | null, depth: number) => 
   parent_id: parent === null ? null : `01a18000-0000-7000-8000-${String(parent).padStart(12, "0")}`,
   depth,
 });
-const tree = [unit(1, "Acme", null, 0), unit(2, "Sales", 1, 1), unit(3, "North", 2, 2), unit(4, "South", 2, 2), unit(5, "Finance", 1, 1), unit(6, "Operations", 1, 1)];
+const tree = [
+  unit(1, "Acme", null, 0),
+  unit(2, "Sales", 1, 1),
+  unit(3, "North", 2, 2),
+  unit(4, "South", 2, 2),
+  unit(5, "Finance", 1, 1),
+  unit(6, "Operations", 1, 1),
+];
 const named = (choice: (typeof tree)[number]) => ({ id: choice.id, name: choice.name, code: choice.code });
 
 /** The sample order's sharing: North's, shared with Finance, changed here in memory only. */
@@ -74,7 +81,11 @@ export function RecordSample() {
                 <SharingPanel
                   sharing={sharing}
                   onChange={(mode, units) => {
-                    setSharing({ ...sharing, mode, units: tree.filter((choice) => units.includes(choice.id)).map(named) });
+                    setSharing({
+                      ...sharing,
+                      mode,
+                      units: tree.filter((choice) => units.includes(choice.id)).map(named),
+                    });
                     return Promise.resolve();
                   }}
                 />
@@ -102,7 +113,13 @@ export function RecordSample() {
               <HistoryPanel
                 events={[
                   { id: "h3", at: at(14), actor: "Grace Hopper", action: t("gallery.record.events.submitted") },
-                  { id: "h2", at: at(13), actor: "Ada Lovelace", action: t("gallery.record.events.changed"), summary: t("gallery.record.events.changedSummary") },
+                  {
+                    id: "h2",
+                    at: at(13),
+                    actor: "Ada Lovelace",
+                    action: t("gallery.record.events.changed"),
+                    summary: t("gallery.record.events.changedSummary"),
+                  },
                   { id: "h1", at: at(12), actor: "Ada Lovelace", action: t("gallery.record.events.created") },
                 ]}
               />
@@ -126,7 +143,9 @@ export function RecordSample() {
             label: t("gallery.record.tabs.comments"),
             panel: (
               <Stack>
-                <CommentPanel comments={[{ id: "c1", author: "Grace Hopper", at: at(14), text: t("gallery.record.comment") }]} />
+                <CommentPanel
+                  comments={[{ id: "c1", author: "Grace Hopper", at: at(14), text: t("gallery.record.comment") }]}
+                />
               </Stack>
             ),
           },

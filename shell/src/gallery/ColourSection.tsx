@@ -24,7 +24,10 @@ function Scale({ name, meaningKey, shades }: ScaleProps) {
       <SimpleGrid cols={{ base: 5, sm: 10 }} spacing="xs">
         {shades.map((shade, index) => (
           <Stack key={shade} gap={4} align="center">
-            <div aria-hidden="true" style={{ background: shade, width: "100%", height: 40, borderRadius: "var(--mantine-radius-sm)" }} />
+            <div
+              aria-hidden="true"
+              style={{ background: shade, width: "100%", height: 40, borderRadius: "var(--mantine-radius-sm)" }}
+            />
             <Text size="xs">{index}</Text>
             <Text size="xs" ff="monospace">
               {shade}
@@ -48,7 +51,15 @@ export function ColourSection() {
           const foreground = resolved[scheme][pair.foreground] ?? "";
           const background = resolved[scheme][pair.background] ?? "";
           const ratio = foreground !== "" && background !== "" ? contrastRatio(foreground, background) : 0;
-          return { key: `${scheme}:${pair.foreground}:${pair.background}`, scheme, pair, foreground, background, ratio, pass: ratio >= pair.minimum };
+          return {
+            key: `${scheme}:${pair.foreground}:${pair.background}`,
+            scheme,
+            pair,
+            foreground,
+            background,
+            ratio,
+            pass: ratio >= pair.minimum,
+          };
         }),
     );
   }, []);
@@ -62,7 +73,12 @@ export function ColourSection() {
         <Title order={3}>{t("gallery.colour.scales")}</Title>
         <Text>{t("gallery.colour.scalesIntro")}</Text>
         {accentNames.map((name) => (
-          <Scale key={name} name={name} meaningKey={tokens.accents[name].meaningKey} shades={tokens.accents[name].shades} />
+          <Scale
+            key={name}
+            name={name}
+            meaningKey={tokens.accents[name].meaningKey}
+            shades={tokens.accents[name].shades}
+          />
         ))}
         <Scale name="gray" meaningKey="design.neutral.gray" shades={tokens.neutral.gray} />
         <Scale name="dark" meaningKey="design.neutral.dark" shades={tokens.neutral.dark} />
@@ -96,12 +112,23 @@ export function ColourSection() {
                 <Table.Td>{t(`gallery.scheme.${row.scheme}`)}</Table.Td>
                 <Table.Td>
                   {row.pair.minimum >= textMinimum ? (
-                    <span style={{ color: row.foreground, background: row.background, padding: "2px 8px", borderRadius: 4 }}>{t("gallery.colour.sampleText")}</span>
+                    <span
+                      style={{ color: row.foreground, background: row.background, padding: "2px 8px", borderRadius: 4 }}
+                    >
+                      {t("gallery.colour.sampleText")}
+                    </span>
                   ) : (
                     <span
                       role="img"
                       aria-label={t("gallery.colour.swatch")}
-                      style={{ display: "inline-block", width: 32, height: 20, background: row.background, border: `2px solid ${row.foreground}`, borderRadius: 4 }}
+                      style={{
+                        display: "inline-block",
+                        width: 32,
+                        height: 20,
+                        background: row.background,
+                        border: `2px solid ${row.foreground}`,
+                        borderRadius: 4,
+                      }}
                     />
                   )}
                 </Table.Td>

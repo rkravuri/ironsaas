@@ -54,9 +54,11 @@ function toLinearRgb({ lightness, chroma, hue }: Oklch): [number, number, number
 
 // Rounding noise just outside 0 or 1 is not out of gamut; a real excursion is at least a hundredth.
 const tolerance = 0.0005;
-const inGamut = (rgb: readonly number[]): boolean => rgb.every((channel) => channel >= -tolerance && channel <= 1 + tolerance);
+const inGamut = (rgb: readonly number[]): boolean =>
+  rgb.every((channel) => channel >= -tolerance && channel <= 1 + tolerance);
 
-const linearToSrgb = (channel: number): number => (channel <= 0.0031308 ? 12.92 * channel : 1.055 * Math.pow(channel, 1 / 2.4) - 0.055);
+const linearToSrgb = (channel: number): number =>
+  channel <= 0.0031308 ? 12.92 * channel : 1.055 * Math.pow(channel, 1 / 2.4) - 0.055;
 
 const toHexByte = (channel: number): string =>
   Math.round(255 * linearToSrgb(Math.min(1, Math.max(0, channel))))
@@ -84,4 +86,5 @@ export function shadesFor(hue: number, chroma: number, { steps, ramp = flatRamp 
 }
 
 /** An accent scale: the accent table and the chroma ramp. */
-export const accentShades = (hue: number, chroma: number): Shades => shadesFor(hue, chroma, { steps: accentSteps, ramp: chromaRamp });
+export const accentShades = (hue: number, chroma: number): Shades =>
+  shadesFor(hue, chroma, { steps: accentSteps, ramp: chromaRamp });

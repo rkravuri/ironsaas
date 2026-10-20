@@ -19,3 +19,5 @@ NuGet packages carry their licence in a comment in `Directory.Packages.props` (A
 | `@openfeature/web-sdk` | 1.10.0 (2026-07-28) | Apache-2.0 | evaluating flags in the shell through OpenFeature (A5, ADR-0035) |
 | `@openfeature/core` | 1.12.0 (2026-07-28) | Apache-2.0 | the web SDK's shared types, a peer dependency it needs (A5) |
 | `OpenFeature` (NuGet, recorded here too) | 2.14.1 (2026-08-10) | Apache-2.0 | evaluating flags in the API (A5) |
+| `@mantine/spotlight` | 9.7.3 | MIT | the search palette, built from its parts as a combobox (D4, S2-close) |
+| `prettier` | 3.9.9 (2026-09-23) | MIT | formatting the shell's code, a dev dependency (S2-close, ADR-0040) |

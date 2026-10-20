@@ -6,9 +6,24 @@ import { RoleEditorPage } from "./RoleEditorPage";
 
 const catalogue = {
   data: [
-    { name: "authz.roles.manage", module: "authz", description: "Create, change and delete tenant roles", risk: "high" },
-    { name: "authz.roles.read", module: "authz", description: "List and view roles and their permissions", risk: "low" },
-    { name: "identity.users.read", module: "identity", description: "List and view users and service accounts", risk: "low" },
+    {
+      name: "authz.roles.manage",
+      module: "authz",
+      description: "Create, change and delete tenant roles",
+      risk: "high",
+    },
+    {
+      name: "authz.roles.read",
+      module: "authz",
+      description: "List and view roles and their permissions",
+      risk: "low",
+    },
+    {
+      name: "identity.users.read",
+      module: "identity",
+      description: "List and view users and service accounts",
+      risk: "low",
+    },
   ],
 };
 
@@ -40,7 +55,11 @@ const page = (route: string) =>
 
 describe("the role editor", () => {
   it("groups the permissions by module and shows each risk as a word", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me(administrator)), "GET /api/v1/permissions": () => json(catalogue), "GET /api/v1/roles/r1": () => json(role()) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me(administrator)),
+      "GET /api/v1/permissions": () => json(catalogue),
+      "GET /api/v1/roles/r1": () => json(role()),
+    });
     page("/console/roles/r1");
 
     const authz = (await screen.findByText("Authorization")).closest("fieldset")!;
@@ -57,7 +76,12 @@ describe("the role editor", () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
-      "POST /api/v1/roles": () => problem(403, { error_code: "authz.role.escalation", detail: "A role can only hold permissions you hold for the whole tenant. You do not hold: authz.roles.manage." }),
+      "POST /api/v1/roles": () =>
+        problem(403, {
+          error_code: "authz.role.escalation",
+          detail:
+            "A role can only hold permissions you hold for the whole tenant. You do not hold: authz.roles.manage.",
+        }),
     });
     page("/console/roles/new");
 
@@ -69,14 +93,28 @@ describe("the role editor", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("You do not hold: authz.roles.manage.");
     const post = calls.find((call) => call.key === "POST /api/v1/roles");
-    expect(JSON.parse(post?.init?.body as string)).toEqual({ code: "role-keeper", name: "Role keeper", description: "", principal_type: "service", permissions: ["authz.roles.manage"] });
+    expect(JSON.parse(post?.init?.body as string)).toEqual({
+      code: "role-keeper",
+      name: "Role keeper",
+      description: "",
+      principal_type: "service",
+      permissions: ["authz.roles.manage"],
+    });
   });
 
   it("keeps a system role read only and says why", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
-      "GET /api/v1/roles/r1": () => json(role({ code: "read-only", name: "Read only", is_system: true, permissions: ["authz.roles.read", "identity.users.read"] })),
+      "GET /api/v1/roles/r1": () =>
+        json(
+          role({
+            code: "read-only",
+            name: "Read only",
+            is_system: true,
+            permissions: ["authz.roles.read", "identity.users.read"],
+          }),
+        ),
     });
     page("/console/roles/r1");
 

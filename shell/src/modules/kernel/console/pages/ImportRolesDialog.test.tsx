@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import { json, me, renderWithProviders, stubFetch } from "@/test/render";
 import { ImportRolesDialog } from "./ImportRolesDialog";
 
-const exported = { format_version: 1, roles: [{ code: "buyer", name: "Buyer", description: "", principal_type: "user", permissions: ["identity.users.read"] }] };
+const exported = {
+  format_version: 1,
+  roles: [
+    { code: "buyer", name: "Buyer", description: "", principal_type: "user", permissions: ["identity.users.read"] },
+  ],
+};
 
 const diff = (extra: Record<string, unknown> = {}) => ({
   dry_run: true,
@@ -18,7 +23,9 @@ const diff = (extra: Record<string, unknown> = {}) => ({
 
 const paste = async () => {
   const dialog = await screen.findByRole("dialog", { name: "Import roles" });
-  fireEvent.change(within(dialog).getByLabelText("Or paste the export"), { target: { value: JSON.stringify(exported) } });
+  fireEvent.change(within(dialog).getByLabelText("Or paste the export"), {
+    target: { value: JSON.stringify(exported) },
+  });
   fireEvent.click(within(dialog).getByRole("button", { name: "Check the import" }));
   return dialog;
 };
@@ -28,7 +35,12 @@ describe("the role import", () => {
     const onApplied = vi.fn();
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(["authz.roles.manage"])),
-      "POST /api/v1/roles/import": (init) => json((JSON.parse(init?.body as string) as { dry_run: boolean }).dry_run ? diff() : diff({ dry_run: false, applied: true })),
+      "POST /api/v1/roles/import": (init) =>
+        json(
+          (JSON.parse(init?.body as string) as { dry_run: boolean }).dry_run
+            ? diff()
+            : diff({ dry_run: false, applied: true }),
+        ),
     });
     renderWithProviders(<ImportRolesDialog onClose={() => undefined} onApplied={onApplied} />);
 
@@ -45,7 +57,9 @@ describe("the role import", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Apply the import" }));
 
     await vi.waitFor(() => expect(onApplied).toHaveBeenCalled());
-    const bodies = calls.filter((call) => call.key === "POST /api/v1/roles/import").map((call) => JSON.parse(call.init?.body as string) as { dry_run: boolean; document: unknown });
+    const bodies = calls
+      .filter((call) => call.key === "POST /api/v1/roles/import")
+      .map((call) => JSON.parse(call.init?.body as string) as { dry_run: boolean; document: unknown });
     expect(bodies.map((body) => body.dry_run)).toEqual([true, false]);
     expect(bodies[1]?.document).toEqual(exported);
   });
@@ -53,7 +67,8 @@ describe("the role import", () => {
   it("names the unknown permissions and does not let the import apply", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(["authz.roles.manage"])),
-      "POST /api/v1/roles/import": () => json(diff({ unknown: [{ code: "buyer", permissions: ["procurement.orders.create"] }] })),
+      "POST /api/v1/roles/import": () =>
+        json(diff({ unknown: [{ code: "buyer", permissions: ["procurement.orders.create"] }] })),
     });
     renderWithProviders(<ImportRolesDialog onClose={() => undefined} onApplied={() => undefined} />);
 

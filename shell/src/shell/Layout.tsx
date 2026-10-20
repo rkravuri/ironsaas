@@ -31,7 +31,10 @@ import { WorkingUnitControl, WorkingUnitFailure } from "./WorkingUnit";
 export function Layout() {
   const { t } = useTranslation();
   const session = useSession();
-  const navigation = useMemo(() => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled), [session.permissions, session.entitlements]);
+  const navigation = useMemo(
+    () => navigationFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled),
+    [session.permissions, session.entitlements],
+  );
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure();
   const acting = useActingChoice();
@@ -40,7 +43,11 @@ export function Layout() {
   usePreferenceSync();
 
   return (
-    <AppShell header={{ height: 56 }} navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !opened } }} padding="md">
+    <AppShell
+      header={{ height: 56 }}
+      navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !opened } }}
+      padding="md"
+    >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group wrap="nowrap" gap="sm">
@@ -63,7 +70,15 @@ export function Layout() {
 
       <AppShell.Navbar p="xs" aria-label={t("app.navigation")}>
         <ScrollArea type="auto">
-          <NavLink component={RouterNavLink} to="/" end label={t("home.title")} leftSection={<IconHome size={16} />} active={location.pathname === "/"} onClick={close} />
+          <NavLink
+            component={RouterNavLink}
+            to="/"
+            end
+            label={t("home.title")}
+            leftSection={<IconHome size={16} />}
+            active={location.pathname === "/"}
+            onClick={close}
+          />
           {navigation.map((group) => (
             <NavLink key={group.module} label={t(group.titleKey)} defaultOpened childrenOffset={12}>
               {group.entries.map((entry) => (

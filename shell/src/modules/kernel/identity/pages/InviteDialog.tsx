@@ -34,7 +34,11 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
   const session = useSession();
   const [created, setCreated] = useState<CreatedUser | undefined>();
   const canSeeUnits = session.permissions.includes("authz.units.read");
-  const units = useQuery({ queryKey: ["authz", "organisation-units"], queryFn: ({ signal }) => fetchUnits(signal), enabled: canSeeUnits });
+  const units = useQuery({
+    queryKey: ["authz", "organisation-units"],
+    queryFn: ({ signal }) => fetchUnits(signal),
+    enabled: canSeeUnits,
+  });
   const home = session.me?.home_unit ?? null;
   const working = (session.me?.all_units ? null : session.me?.working_unit) ?? home;
   const schema = useMemo(
@@ -46,18 +50,32 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
       }),
     [t],
   );
-  const form = useZodForm<InviteValues>({ schema, initialValues: { displayName: "", loginId: "", homeUnitId: working?.id ?? "" } });
+  const form = useZodForm<InviteValues>({
+    schema,
+    initialValues: { displayName: "", loginId: "", homeUnitId: working?.id ?? "" },
+  });
   const unit = form.getValues().homeUnitId;
   const access = useAccessAt(unit !== "" ? { unit } : undefined, [manage]);
   const refused = unit !== "" && !access.pending && !access.can(manage);
-  const unitError = typeof form.errors.homeUnitId === "string" ? form.errors.homeUnitId : refused ? t("users.invite.unitRefused") : undefined;
+  const unitError =
+    typeof form.errors.homeUnitId === "string"
+      ? form.errors.homeUnitId
+      : refused
+        ? t("users.invite.unitRefused")
+        : undefined;
 
   const submit = async (values: InviteValues) => {
     if (refused) {
       form.setFieldError("homeUnitId", t("users.invite.unitRefused"));
       return;
     }
-    setCreated(await createUser({ display_name: values.displayName.trim(), login_id: values.loginId.trim(), home_unit_id: values.homeUnitId }));
+    setCreated(
+      await createUser({
+        display_name: values.displayName.trim(),
+        login_id: values.loginId.trim(),
+        home_unit_id: values.homeUnitId,
+      }),
+    );
   };
 
   const openRecord = () => {
@@ -68,15 +86,35 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <FormDialog opened title={created ? t("users.invite.doneTitle", { name: created.user.display_name }) : t("users.invite.title")} onClose={created ? openRecord : onClose}>
+    <FormDialog
+      opened
+      title={created ? t("users.invite.doneTitle", { name: created.user.display_name }) : t("users.invite.title")}
+      onClose={created ? openRecord : onClose}
+    >
       {created ? (
         <InvitationLink created={created} onDone={openRecord} />
       ) : (
-        <Form form={form} onSubmit={submit} submitLabel={t("users.invite.submit")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
+        <Form
+          form={form}
+          onSubmit={submit}
+          submitLabel={t("users.invite.submit")}
+          secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+        >
           <TextInput label={t("users.displayName")} data-autofocus {...form.getInputProps("displayName")} />
-          <TextInput label={t("users.loginId")} description={t("users.invite.loginHint")} autoComplete="off" {...form.getInputProps("loginId")} />
+          <TextInput
+            label={t("users.loginId")}
+            description={t("users.invite.loginHint")}
+            autoComplete="off"
+            {...form.getInputProps("loginId")}
+          />
           {!canSeeUnits ? (
-            <TextInput label={t("users.homeUnit")} value={working?.name ?? ""} readOnly description={t("users.invite.ownUnit")} error={unitError} />
+            <TextInput
+              label={t("users.homeUnit")}
+              value={working?.name ?? ""}
+              readOnly
+              description={t("users.invite.ownUnit")}
+              error={unitError}
+            />
           ) : units.isPending ? (
             <LoadingState height={120} />
           ) : (
@@ -109,11 +147,23 @@ function InvitationLink({ created, onDone }: { created: CreatedUser; onDone: () 
   return (
     <Stack data-invitation>
       <Text size="sm">{t("users.invite.created", { name: created.user.display_name })}</Text>
-      <TextInput ref={field} label={t("users.invite.link")} value={link} readOnly onFocus={(event) => event.currentTarget.select()} />
+      <TextInput
+        ref={field}
+        label={t("users.invite.link")}
+        value={link}
+        readOnly
+        onFocus={(event) => event.currentTarget.select()}
+      />
       <CopyButton value={link}>
         {({ copied, copy }) => (
           <Group gap="sm">
-            <Button variant="default" onClick={copy} leftSection={copied ? <IconCheck size={16} aria-hidden="true" /> : <IconCopy size={16} aria-hidden="true" />}>
+            <Button
+              variant="default"
+              onClick={copy}
+              leftSection={
+                copied ? <IconCheck size={16} aria-hidden="true" /> : <IconCopy size={16} aria-hidden="true" />
+              }
+            >
               {copied ? t("users.invite.copied") : t("users.invite.copy")}
             </Button>
           </Group>

@@ -16,10 +16,26 @@ export interface ConfirmDialogProps {
 }
 
 /** A question with one primary answer and a way out (brief section 8). */
-export function ConfirmDialog({ opened, title, message, confirmLabel, cancelLabel, danger = false, busy = false, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  opened,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  danger = false,
+  busy = false,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
   const { t } = useTranslation();
   return (
-    <Modal opened={opened} onClose={onCancel} title={title} centered closeButtonProps={{ "aria-label": t("dialog.close") }}>
+    <Modal
+      opened={opened}
+      onClose={onCancel}
+      title={title}
+      centered
+      closeButtonProps={{ "aria-label": t("dialog.close") }}
+    >
       <Stack>
         <Text>{message}</Text>
         <Group justify="flex-end">

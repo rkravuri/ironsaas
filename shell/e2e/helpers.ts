@@ -4,7 +4,10 @@ export const loginId = process.env.E2E_LOGIN_ID ?? "admin@smoke.localhost";
 export const password = process.env.E2E_PASSWORD ?? "";
 
 /** Signs in through the real login page and waits for the shell: the administrator, unless another account is given. */
-export async function signIn(page: Page, account: { loginId: string; password: string } = { loginId, password }): Promise<void> {
+export async function signIn(
+  page: Page,
+  account: { loginId: string; password: string } = { loginId, password },
+): Promise<void> {
   if (!account.password) {
     throw new Error("E2E_PASSWORD is required: the administrator's password, as the smoke tool kept it in the store.");
   }

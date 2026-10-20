@@ -8,7 +8,10 @@ const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 async function expectNoViolation(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page }).withTags(wcag21aa).analyze();
   expect(
-    results.violations.map((violation) => `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`),
+    results.violations.map(
+      (violation) =>
+        `${violation.id}: ${violation.help} at ${violation.nodes.map((node) => `${node.target.map(String).join(" ")} (${node.failureSummary ?? ""})`).join("; ")}`,
+    ),
   ).toEqual([]);
 }
 
@@ -37,7 +40,12 @@ for (const scheme of schemes) {
     // Keyboard only: the person by two letters of their name, the action by its words.
     await choose(page, page.getByRole("combobox", { name: "Person" }), "gr", `${grace.name}, ${north.name}`);
     await expect(page.getByRole("combobox", { name: "Person" })).toHaveValue(`${grace.name}, ${north.name}`);
-    await choose(page, page.getByRole("combobox", { name: "Action" }), "Import roles", "Import roles from another tenant's export.");
+    await choose(
+      page,
+      page.getByRole("combobox", { name: "Action" }),
+      "Import roles",
+      "Import roles from another tenant's export.",
+    );
     await page.getByRole("button", { name: "Explain" }).focus();
     await page.keyboard.press("Enter");
 
@@ -50,10 +58,12 @@ for (const scheme of schemes) {
     await expect(page.getByText("The first check that refuses it: The permission.")).toBeVisible();
     const checks = page.getByRole("list", { name: "The checks, in order" });
     await expect(checks.getByRole("listitem")).toHaveCount(5);
-    await expect(checks).toContainText(`${grace.name} does not hold the permission "Create, change and delete tenant roles" for the whole organisation.`);
+    await expect(checks).toContainText(
+      `${grace.name} does not hold the permission "Create, change and delete tenant roles" for the whole organisation.`,
+    );
     await expect(checks).toContainText("The record's policy: not reached");
     await page.screenshot({
-      path: `test-results/explain-denial-${scheme}.png`,
+      path: `test-results/a11y/explain-denial-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);
@@ -63,7 +73,11 @@ for (const scheme of schemes) {
     const tree = page.getByRole("tree", { name: "At the unit" });
     await expect(tree).toBeVisible();
     await tree.getByRole("treeitem").first().focus();
-    for (let step = 0; step < 10 && !(await page.getByText("Acme Corporation / Operations / North").isVisible()); step += 1) {
+    for (
+      let step = 0;
+      step < 10 && !(await page.getByText("Acme Corporation / Operations / North").isVisible());
+      step += 1
+    ) {
       await page.keyboard.press("ArrowDown");
     }
     await expect(page.getByText("Acme Corporation / Operations / North")).toBeVisible();
@@ -74,9 +88,11 @@ for (const scheme of schemes) {
         name: `${grace.name} can: Rename an organisation unit.`,
       }),
     ).toBeVisible();
-    await expect(page.getByRole("list", { name: "Granted by" })).toContainText("Operations lead, at Operations and the units below it");
+    await expect(page.getByRole("list", { name: "Granted by" })).toContainText(
+      "Operations lead, at Operations and the units below it",
+    );
     await page.screenshot({
-      path: `test-results/explain-allowance-${scheme}.png`,
+      path: `test-results/a11y/explain-allowance-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);

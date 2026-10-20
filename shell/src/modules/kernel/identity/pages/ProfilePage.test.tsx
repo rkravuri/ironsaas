@@ -26,14 +26,27 @@ afterEach(() => {
 describe("My profile", () => {
   it("sits on the record template: name, login identifier, home unit and status, with details, access and session", async () => {
     stubFetch({
-      "GET /api/v1/me": () => json({ ...me(["identity.users.read"]), display_name: "Ada Lovelace", home_unit: { id: "b", name: "E2E branch", code: "e2e-branch" } }),
+      "GET /api/v1/me": () =>
+        json({
+          ...me(["identity.users.read"]),
+          display_name: "Ada Lovelace",
+          home_unit: { id: "b", name: "E2E branch", code: "e2e-branch" },
+        }),
       "GET /api/v1/role-assignments/mine": () =>
-        json({ data: [mine("1", "Unit user reader", "unit_with_children", ["Acme", "E2E branch"]), mine("2", "Read only", "tenant", []), mine("3", "Auditor", "unit", ["Acme", "Finance"])] }),
+        json({
+          data: [
+            mine("1", "Unit user reader", "unit_with_children", ["Acme", "E2E branch"]),
+            mine("2", "Read only", "tenant", []),
+            mine("3", "Auditor", "unit", ["Acme", "Finance"]),
+          ],
+        }),
     });
     renderWithProviders(<ProfilePage />);
 
     expect(await screen.findByRole("heading", { level: 2, name: "Ada Lovelace" })).toBeInTheDocument();
-    const header = screen.getByRole("heading", { level: 2, name: "Ada Lovelace" }).closest("[data-panel=record-header]") as HTMLElement;
+    const header = screen
+      .getByRole("heading", { level: 2, name: "Ada Lovelace" })
+      .closest("[data-panel=record-header]") as HTMLElement;
     expect(header).toHaveTextContent("admin@acme.localhost");
     expect(header).toHaveTextContent("Home unit: E2E branch");
     expect(within(header).getByText("Active")).toBeInTheDocument();
@@ -42,7 +55,11 @@ describe("My profile", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("tab", { name: "Access" }));
     const roles = await screen.findByRole("list", { name: "Your roles" });
-    expect(within(roles).getAllByRole("listitem").map((item) => item.firstChild?.textContent)).toEqual([
+    expect(
+      within(roles)
+        .getAllByRole("listitem")
+        .map((item) => item.firstChild?.textContent),
+    ).toEqual([
       "Unit user reader, at Acme / E2E branch and every unit below it",
       "Read only, for the whole tenant",
       "Auditor, at Acme / Finance only",
@@ -62,7 +79,14 @@ describe("My profile", () => {
       "GET /api/v1/me": () => json(me([])),
       "GET /api/v1/me/context": () =>
         json({
-          entitlements: { revision: 1, plan: "enterprise", confirmed_at: "2026-10-20T09:00:00Z", stale: false, modules: [], features: [] },
+          entitlements: {
+            revision: 1,
+            plan: "enterprise",
+            confirmed_at: "2026-10-20T09:00:00Z",
+            stale: false,
+            modules: [],
+            features: [],
+          },
           settings: { values: [{ key: "identity.session.idle_minutes", value: 30, level: "tenant" }] },
         }),
     });
@@ -79,7 +103,9 @@ describe("My profile", () => {
 
     await user.click(screen.getByRole("tab", { name: "Session" }));
     const session = await screen.findByRole("tabpanel", { name: "Session" });
-    await waitFor(() => expect(session).toHaveTextContent("ends a session after 30 minutes without activity, and after 12 hours at most"));
+    await waitFor(() =>
+      expect(session).toHaveTextContent("ends a session after 30 minutes without activity, and after 12 hours at most"),
+    );
   });
 
   it("says what will appear when the person holds no role yet", async () => {

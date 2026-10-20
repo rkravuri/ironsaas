@@ -1,34 +1,33 @@
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
 using Iron.Kernel.Security.Secrets;
+using Iron.Testing;
 using Microsoft.Extensions.Configuration;
 
 namespace Iron.Kernel.Security.Tests;
 
-/// <summary>An OpenBao container in development mode, as on the laptop platform.</summary>
+/// <summary>OpenBao in development mode, as on the laptop platform, with a mount of this project's own (tests/Iron.Testing).</summary>
 public sealed class OpenBaoFixture : IAsyncLifetime
 {
-    public const string RootToken = "test-root-token";
+    private TestOpenBao? _store;
 
-    private readonly IContainer _container = new ContainerBuilder("openbao/openbao:2.7.1")
-        .WithCommand("server", "-dev", "-dev-root-token-id=" + RootToken, "-dev-listen-address=0.0.0.0:8200")
-        .WithEnvironment("BAO_ADDR", "http://127.0.0.1:8200")
-        .WithCreateParameterModifier(parameters =>
+    public string Address => Store.Address;
+
+    public string RootToken => Store.RootToken;
+
+    public string Mount => Store.Mount;
+
+    public SecretStoreOptions Options(string path = "tenants/acme") => new() { Address = Address, Token = RootToken, Mount = Store.Mount, Path = path };
+
+    private TestOpenBao Store => _store ?? throw new InvalidOperationException("The fixture is not initialised.");
+
+    public async ValueTask InitializeAsync() => _store = await TestOpenBao.StartAsync("security", TestContext.Current.CancellationToken);
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_store is not null)
         {
-            parameters.HostConfig ??= new Docker.DotNet.Models.HostConfig();
-            parameters.HostConfig.CapAdd = ["IPC_LOCK"];
-        })
-        .WithPortBinding(8200, true)
-        .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request => request.ForPort(8200).ForPath("/v1/sys/health")))
-        .Build();
-
-    public string Address => $"http://{_container.Hostname}:{_container.GetMappedPublicPort(8200)}";
-
-    public SecretStoreOptions Options(string path = "tenants/acme") => new() { Address = Address, Token = RootToken, Path = path };
-
-    public async ValueTask InitializeAsync() => await _container.StartAsync(TestContext.Current.CancellationToken);
-
-    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+            await _store.DisposeAsync();
+        }
+    }
 }
 
 [CollectionDefinition(Name)]
@@ -67,7 +66,8 @@ public class SecretStoreTests(OpenBaoFixture openBao)
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Secrets:Address"] = openBao.Address,
-                ["Secrets:Token"] = OpenBaoFixture.RootToken,
+                ["Secrets:Token"] = openBao.RootToken,
+                ["Secrets:Mount"] = openBao.Mount,
                 ["Secrets:Path"] = "tenants/bravo",
                 ["ConnectionStrings:Database"] = "from-the-environment",
             })
@@ -96,7 +96,8 @@ public class SecretStoreTests(OpenBaoFixture openBao)
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Secrets:Address"] = openBao.Address,
-                ["Secrets:Token"] = OpenBaoFixture.RootToken,
+                ["Secrets:Token"] = openBao.RootToken,
+                ["Secrets:Mount"] = openBao.Mount,
                 ["Secrets:Path"] = "tenants/nobody",
             })
             .AddIronSecrets();

@@ -10,26 +10,28 @@ Done when, on the laptop: a second administrator in a child unit sees only that 
 
 ## 2. Requirement coverage
 
-| ID | Requirement | What S2 builds | Continues in |
+What S2 built for each requirement, and where it continues. Three acceptance criteria were amended in S2, each in the PRD with its line in the change log: TF-032 AC3 (an import with unknown permissions is refused, not skipped: ADR-0031), TF-035 AC1 (a record outside the reader's scope answers not found, not forbidden: ADR-0032) and TF-050 AC3 (when the flag service is unreachable, the last known values apply before the code defaults: ADR-0035).
+
+| ID | Requirement | What S2 built | Continues in |
 |---|---|---|---|
-| TF-021 | Inactivity | The shell warns before the session expires | S3 |
-| TF-032 | Roles | Tenant roles with permissions, scoped to a principal type; system roles read-only; export and import | done |
-| TF-033 | Scoped assignments | Scope: tenant, unit with or without children, record; effective permissions per record scope | done |
-| TF-034 | Organisation units | The unit tree; home unit per principal; access to other units | TF-223 (lifecycle) |
-| TF-035 | Record policies | Policy interface per module, evaluated on reads and applied as list filters; unit tests per policy; build check | products add theirs |
-| TF-036 | Segregation of duties | Conflict rules between permissions or roles, warn or block, report | Should; last in order |
-| TF-037 | Delegation | Duties, date range, reason, both identities in audit, overlap and cycle refused | S5 (approval duties) |
-| TF-038 | Access reviews | Campaign per unit, confirm or revoke, decisions recorded, overdue escalation | S4 (notifications) |
-| TF-039 | Effective access explanation | "Why can this principal do this": roles, scopes, policies, entitlements, flags | Should; last in order |
-| TF-040 to 043, 045, 046 | Entitlements | Modules and features per tenant with status and dates; seats; plans applied with a diff; one effective-entitlement service with a 60-second cache in UI and API; audit and history | TF-044 trial and grace (Could) |
-| TF-050, 051, 052, 054, 056 | Feature flags | Types and scopes, OpenFeature in API and UI, in-house provider, kill switches with banner, lifecycle check | TF-053, 055 (Should, Could) |
-| TF-057 to 059, 221 | Settings | Declared in code, hierarchy user, unit, tenant, system; console with audit and reset; typed accessor; effective settings to the UI; organisation scope | done |
-| TF-222 | Cross-organisation access | Assignments to several units or a parent with children; sharing with listed units; cross-unit read audit; organisation switcher | S8 (supplier) |
-| TF-223 | Organisation lifecycle | Create with checklist, move, deactivate; merge and split | Should; merge and split last |
-| TF-170 | Shell | Navigation filtered by entitlement and flags; header with search, notifications, help, profile; page patterns | S4 (notifications content) |
-| TF-171 | Design system | Tokens, illustrations, patterns, page templates, forms with server error mapping, panels, dialogs, states, saved views | S5 (saved views on the grid) |
-| TF-172 | Accessibility | AA on the gallery, scan in CI, keyboard operation of the grid, no colour-only status | quarterly audit |
-| TF-173 | Theming | Tenant mark, colours within contrast rules, logo, name | S4 (emails) |
+| TF-021 | Inactivity | The shell warns two minutes before the session ends, in every tab of the browser; the idle and absolute limits are tenant settings (D4, A6, ADR-0033) | S3 (the concurrent session limit) |
+| TF-032 | Roles | Tenant roles of permissions for people or service accounts; system roles read-only and kept in step with the catalogue; export and import with a diff, a licensed feature with a kill switch; nobody grants more than they hold; a role's change checked against the conflict rules (A2, A9). AC3 amended | done |
+| TF-033 | Scoped assignments | Assignments at the tenant, a unit with or without the units below it, or a record; effective permissions per scope, cached and cleared on change (A1, A2) | products: a record-scoped assignment checks its record once a module can name it |
+| TF-034 | Organisation units | The tree as a materialised path, a home unit per principal, kinds as an extension point (A1, ADR-0030) | `Iron.Business.Organisations` fills the kinds |
+| TF-035 | Record policies | The policy interface, evaluated on reads by id and applied as list filters in the query, with its blocks and the build check that a business record pages only through its policy (A3, ADR-0032). AC1 amended | products add their policies |
+| TF-036 | Segregation of duties | Conflict rules between permissions or roles, blocking or warning on grants, delegations and role changes, by overlapping scope; the daily report and the review marker (A9, ADR-0039) | S3 (a system role's change by the seed) |
+| TF-037 | Delegation | Duties declared by modules, a period and a reason, acting for the delegator with both names in the audit, overlap, cycle and onward delegation refused (A7, ADR-0037) | S5 (a workflow assigns the delegate, AC1; approval duties) |
+| TF-038 | Access reviews | Campaigns over units, confirm or revoke, decisions recorded, nobody decides their own access, the overdue escalation recorded (A7) | S4 (the escalation sent as a message) |
+| TF-039 | Effective access explanation | "Explain access": the checks in order from the same decisions the request makes, the first failure named, the granting role and scope for an allowance (A9, ADR-0039) | checks a handler makes on its own |
+| TF-040 to 043, 045, 046 | Entitlements | Plans and tenant entitlements in the control plane with a preview and history; modules and features with status and dates; seats; the unit's 30-second refresh through the store and the shell's minute; navigation and API checks; one catalogue (A4, ADR-0034) | TF-044 trials and grace banners (Could); an operator's change of one entitlement; seats assigned from the console |
+| TF-050, 051, 052, 054, 056 | Feature flags | Flags declared in code with owner and removal date, rules in the control plane by scope, OpenFeature in the API and the shell, kill switches with their banner, the lifecycle check in the build (A5, ADR-0035). TF-050 AC3 amended | TF-053 exposure events, TF-055 tenant-visible flags (Should, Could) |
+| TF-057 to 059, 221 | Settings | Typed definitions in code as the accessor, the hierarchy person, unit, tenant and default, the console page with history and reset, effective values to the shell, secret references (A6, ADR-0036) | an operator-wide default; a record scope |
+| TF-222 | Cross-organisation access | Assignments to several units or a parent with children, records shared with listed units, the cross-unit read audit, the unit a person works for with "All my units" (A8, ADR-0038) | S8 (the supplier side); a share with a unit and the units below it |
+| TF-223 | Organisation lifecycle | Create with a readiness checklist modules supply, move, deactivate, reactivate, merge with a preview (A8, ADR-0038) | splitting a unit |
+| TF-170 | Shell | Navigation filtered by permission, entitlement and flag; the home page with openers and quick actions; the header with search (a combobox a screen reader follows), help and profile; page patterns (D3, D4) | S4 (notifications) |
+| TF-171 | Design system | Tokens, the drawn world, patterns and the tenant mark, page templates, panels, dialogs, states, the schema form with server errors on their fields (D1 to D3) | S5 (saved views on the grid) |
+| TF-172 | Accessibility | WCAG 2.1 AA on the gallery in both schemes and densities, scanned in CI with the keyboard paths of every page, no status by colour alone (D1 onwards) | a quarterly audit with assistive technology |
+| TF-173 | Theming | The tenant's mark from its hostname, colours within the contrast rules, the light and dark schemes (D1, D2) | S4 (emails) |
 
 ## 3. Design
 
@@ -73,3 +75,45 @@ Scope evaluation performance (unit tree closure table against recursive queries)
 ## 5. How we build
 
 Each task is one Claude Code session from its section in `docs/prompts/S2.md` (ADR-0023). The result is reviewed in the design session from the diff and the test output; fixes go back as the next prompt. A task is done when its "done when" holds on the laptop, its tests and documentation are in, and its ADRs are written. The State column of the task table is updated as tasks land.
+
+## 6. Decisions recorded
+
+Eighteen ADRs, each written in the task that decided it: 0023 (the build method), 0024 and 0025 (the design language and its foundation, D1), 0026 (illustrations and patterns, D2), 0027 (templates, panels and the form, D3), 0028 (the store persists and an update heals, P1), 0029 (three layers, L1), 0030 (the organisation tree, A1), 0031 (nobody grants more than they hold, A2), 0032 (record policies, A3), 0033 (home, the header and the session warning, D4), 0034 (entitlements, A4), 0035 (feature flags, A5), 0036 (settings, A6), 0037 (delegation and access reviews, A7), 0038 (sharing, the read audit, the working unit and the unit lifecycle, A8), 0039 (explaining access and segregation of duties, A9) and 0040 (Prettier formats the shell, S2-close). The decisions section 3.3 asked for are among them: the scope evaluation as a materialised path (0030), the entitlement push through the store (0034), the settings accessor as typed definitions rather than a generator (0036), the OpenFeature provider (0035) and the illustration review rule (0026).
+
+## 7. Closing notes (2026-10-20)
+
+S2 closed with every task's "done when" met on the laptop and the done-when of section 1 proven:
+
+- a second administrator in a child unit sees only that unit's users: the browser test of the child unit, and the smoke's `scoped-role` step on every run;
+- a role without `identity.users.read` makes Users disappear from navigation and the API answer 403: A2's tests and the browser test of the child unit;
+- a plan applied in the control plane reaches the shell and the API within a minute: the browser test that moves echo between Standard and Enterprise, and the smoke's `plan-change` step. No licensed module exists yet, so role transfer, a licensed feature, stands in for a module, and the module check is proven with a fixture module in the Entitlements tests;
+- a kill switch shows its banner: the browser test of the import kill switch, and the smoke's `kill-switch` step;
+- a setting overridden for a unit resolves for a user in it: the browser test of the invitation validity set for a child unit;
+- a delegate acts and the audit shows both: the browser test of delegation and reviews;
+- the gallery scan reports zero AA violations: 60 of 60, in CI and on the laptop;
+- the login pages of `acme` and `bravo` each carry their own mark: D2's tests and screenshots.
+
+At the close: 758 .NET tests, 229 shell tests, the smoke's fourteen steps, 25 browser tests against the stack, 60 scans without it; eighteen ADRs (0023 to 0040).
+
+### What differed from the plan, and why
+
+- **The build method.** Every task was one Claude Code session from its section in `docs/prompts/S2.md` (ADR-0023), sharpened in the design session just before it, and reviewed there from the diff and the test output; each review answered with the merge or with numbered changes, which landed as the task's last commit before the merge. The plan's four D tasks and nine A tasks kept their order; two tasks were added, P1 and L1.
+- **The layers (L1).** Inserted after D3, before any further module: the kernel, business and product layers in names, folders, schemas and build checks (ADR-0029), with a new migration baseline and the laptop reset once, so no module was written twice. The plan's `Iron.Entitlements`, `Iron.Flags` and `Iron.Settings` became `Iron.Kernel.*`, and the organisation kinds an extension point for `Iron.Business.Organisations`.
+- **The store (P1).** Inserted after WSL restarted under memory pressure and the development-mode OpenBao lost every secret: the laptop store now runs in server mode on a volume with a static seal, and an update heals a unit whose secrets were lost (ADR-0028). The runbook names WSL's memory and swap.
+- **Stacked branches.** A4 to A6 were built on each other's unmerged branches, which made their reviews depend on each other; the owner ruled that tasks are never stacked, and CLAUDE.md's first step now stops when any slice branch is unmerged.
+- **Decisions taken in review**, beyond what the sections asked: the entitlement refresh at 30 seconds in the unit and the shell reading `/me/context` only while its tab is visible (A4); the permission names `tenancy.flags.*` and `tenancy.kill_switches.manage`, a kill switch on wherever any applicable rule says so and a rule that says false refused (A5); `settings.values.read` and `.manage`, and an invitation valid for 3 days (A6); a person's own delegations in My profile and the console's page for administrators, nobody deciding their own access in a review, and the directory answering a name and a home unit a page at a time (A7); the keyboard paths of dialogs proven in the scans, the sharing dialog's units as nested lists, and record types named by their display name in a merge's preview (A8); a role's change checked against the conflict rules, and an allowance saying the action may still refuse for its own reasons (A9).
+- **Design decisions that took another form** than section 3 foresaw: the settings accessor is the typed definitions themselves, without a source generator (ADR-0036); the entitlement push is the store, read every 30 seconds, not an event (ADR-0034); the tree is a materialised path, not a closure table (ADR-0030).
+- **S2-close.** The pipeline had been red on main since it began: the pinned `trivy-action@0.28.0` disappeared when the action moved to `v`-prefixed tags, so CI failed from 2026-10-18 and the release never reached its images. The actions moved to their current majors, Dependabot to a 14-day cooldown with majors outside its groups, and the shell's packages to exact pins. The .NET suite became reliable on three shared services, four projects at a time (once it lost a fixture to a starved thread). The shell got its formatter (ADR-0040), the browser tests a unit per run, the scan a folder of its own, the search a combobox a screen reader follows, and the smoke three steps.
+
+### Open items carried into S3
+
+From STATUS, each with its home where it has one:
+
+- **Trust (S3's own requirements).** The password reset flow (TF-017), which an operator also needs when a tenant's administrator password is lost and which would let `make e2e` and the smoke set a password again; "Sign out everywhere" with the sessions console (TF-022); the lockout (TF-012); rate limits (TF-072), which also bound a client that keeps calling a refused endpoint and fills the audit trail with `entitlements.access_denied`; a response header with the session's idle end, so the shell's estimate is exact when a tenant shortens the limits.
+- **Access.** The last-administrator guard counts tenant-wide assignments, not active principals; a record-scoped assignment does not check that its record exists; a system role's change by the seed is not checked against the conflict rules; a rule's change appears in the report at the next run, not at once for one rule; a record grant meets only a tenant grant or the same record in the rules; the grant dialog shows no conflict preview when the preview call fails (the API still refuses); checks a handler makes on its own are not explained; a delegator who loses a role loses it for the delegate within the grants cache's 60 seconds on other nodes; the directory shows every active person's name and home unit to everyone signed in.
+- **Organisations.** Splitting a unit; a share with a unit and the units below it; a merge as a job for units with millions of records; a review campaign that names a merged unit keeps naming it; the header hides the choice of unit while acting.
+- **Entitlements, flags and settings.** Trials and their banners (TF-044); an operator's change of one entitlement; assigning seats from the console; the counts of a removed module's data in the plan preview (TF-042 AC2); flag rules from a console page; exposure events (TF-053) and tenant-visible flags (TF-055); kill switches for email, webhooks, SMS, AI and push wired by the slices that build those paths (S4 for email); an operator-wide override of a setting's default, a secret written from the console, and a record scope; the store and database reads every unit makes twice a minute, and `/me/context` evaluating every flag, to revisit with many hundreds of units or flags.
+- **Business and products.** No kernel module declares a business record, so no module registers a record policy yet, and a module's own Entity Framework reads for background work are not checked by the build; no licensed module exists yet; no module has a spot drawing of its own; the PRD split in the design session renames the S1 module names and divides `Iron.Organisations`.
+- **The shell.** A choice filter in the grid for type and status; a parent item in Mantine's tree named from all its content, to check with a screen reader before the pattern spreads; jsdom's hidden menus, proven by the browser specs; three majors Dependabot proposed and that need their own work: React Router 8, jest-dom 7 and TypeScript 7.
+- **The laptop and the pipeline.** No API disables a person or deletes a unit, so the smoke's and the browser tests' runs leave inactive units with their people; the chiseled images' Kerberos probe message; Dependabot's first grouped pull requests under the cooldown, to be checked as they come.
+

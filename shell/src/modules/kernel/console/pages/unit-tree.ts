@@ -15,7 +15,9 @@ export function toTreeData(units: readonly Unit[]): TreeNodeData[] {
   const build = (parent: string | null): TreeNodeData[] =>
     (children.get(parent) ?? []).map((unit) => {
       const below = build(unit.id);
-      return below.length > 0 ? { value: unit.id, label: unit.name, children: below } : { value: unit.id, label: unit.name };
+      return below.length > 0
+        ? { value: unit.id, label: unit.name, children: below }
+        : { value: unit.id, label: unit.name };
     });
   return build(null);
 }
@@ -36,7 +38,11 @@ export function subtreeIds(units: readonly Unit[], id: string): Set<string> {
 export function pathOf(units: readonly Unit[], id: string): Unit[] {
   const byId = new Map(units.map((unit) => [unit.id, unit]));
   const path: Unit[] = [];
-  for (let current = byId.get(id); current !== undefined; current = current.parent_id === null ? undefined : byId.get(current.parent_id)) {
+  for (
+    let current = byId.get(id);
+    current !== undefined;
+    current = current.parent_id === null ? undefined : byId.get(current.parent_id)
+  ) {
     path.unshift(current);
   }
   return path;

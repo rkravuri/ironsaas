@@ -4,7 +4,8 @@ import type { INoRowsOverlayParams } from "ag-grid-community";
 import { describe, expect, it } from "vitest";
 import { NoRowsOverlay } from "./NoRowsOverlay";
 
-const params = (filtered: boolean) => ({ api: { isAnyFilterPresent: () => filtered } }) as unknown as INoRowsOverlayParams;
+const params = (filtered: boolean) =>
+  ({ api: { isAnyFilterPresent: () => filtered } }) as unknown as INoRowsOverlayParams;
 
 describe("the grid's empty state", () => {
   it("shows the empty box and says nothing yet when no filter is set", () => {

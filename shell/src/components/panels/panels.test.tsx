@@ -2,14 +2,28 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { fill, renderWithProviders, stubFetch } from "@/test/render";
-import { ApprovalPanel, AttachmentPanel, CommentPanel, ConfirmDialog, EmptyState, FormDialog, HistoryPanel, LoadingState } from "./index";
+import {
+  ApprovalPanel,
+  AttachmentPanel,
+  CommentPanel,
+  ConfirmDialog,
+  EmptyState,
+  FormDialog,
+  HistoryPanel,
+  LoadingState,
+} from "./index";
 
 describe("the empty and loading states", () => {
   it("carry their drawing beside the words", () => {
     stubFetch({});
     renderWithProviders(
       <>
-        <EmptyState drawing="nothingFound" title="Nothing matches" text="Change the filter." action={<button type="button">Clear</button>} />
+        <EmptyState
+          drawing="nothingFound"
+          title="Nothing matches"
+          text="Change the filter."
+          action={<button type="button">Clear</button>}
+        />
         <LoadingState text="Loading the records" />
       </>,
     );
@@ -27,7 +41,17 @@ describe("the dialogs", () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
-    renderWithProviders(<ConfirmDialog opened title="Delete the unit?" message="Its records move to the parent." confirmLabel="Delete" danger onConfirm={onConfirm} onCancel={onCancel} />);
+    renderWithProviders(
+      <ConfirmDialog
+        opened
+        title="Delete the unit?"
+        message="Its records move to the parent."
+        confirmLabel="Delete"
+        danger
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />,
+    );
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Its records move to the parent.");
     await user.click(screen.getByRole("button", { name: "Delete" }));
@@ -58,7 +82,16 @@ describe("the attachment panel", () => {
     const onUpload = vi.fn(() => Promise.resolve());
     const onDownload = vi.fn();
     const onDelete = vi.fn(() => Promise.resolve());
-    renderWithProviders(<AttachmentPanel attachments={[{ id: "a", name: "contract.pdf", size: 24_576, uploadedAt: "2026-10-18T09:00:00Z", uploadedBy: "Ada" }]} onUpload={onUpload} onDownload={onDownload} onDelete={onDelete} />);
+    renderWithProviders(
+      <AttachmentPanel
+        attachments={[
+          { id: "a", name: "contract.pdf", size: 24_576, uploadedAt: "2026-10-18T09:00:00Z", uploadedBy: "Ada" },
+        ]}
+        onUpload={onUpload}
+        onDownload={onDownload}
+        onDelete={onDelete}
+      />,
+    );
     expect(screen.getByText("24 KB")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Download contract.pdf" }));
     expect(onDownload).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }));
@@ -85,9 +118,21 @@ describe("the history, approval and comment panels", () => {
     const onAdd = vi.fn(() => Promise.resolve());
     renderWithProviders(
       <>
-        <HistoryPanel events={[{ id: "e1", at: "2026-10-18T09:00:00Z", actor: "Ada", action: "Created", summary: "From the import." }]} />
-        <ApprovalPanel steps={[{ id: "s1", name: "Manager", approver: "Grace", state: "approved" }, { id: "s2", name: "Finance", approver: "Linus", state: "pending" }]} />
-        <CommentPanel comments={[{ id: "c1", author: "Ada", at: "2026-10-18T09:00:00Z", text: "Looks right." }]} onAdd={onAdd} />
+        <HistoryPanel
+          events={[
+            { id: "e1", at: "2026-10-18T09:00:00Z", actor: "Ada", action: "Created", summary: "From the import." },
+          ]}
+        />
+        <ApprovalPanel
+          steps={[
+            { id: "s1", name: "Manager", approver: "Grace", state: "approved" },
+            { id: "s2", name: "Finance", approver: "Linus", state: "pending" },
+          ]}
+        />
+        <CommentPanel
+          comments={[{ id: "c1", author: "Ada", at: "2026-10-18T09:00:00Z", text: "Looks right." }]}
+          onAdd={onAdd}
+        />
       </>,
     );
     expect(screen.getByText("Created")).toBeInTheDocument();

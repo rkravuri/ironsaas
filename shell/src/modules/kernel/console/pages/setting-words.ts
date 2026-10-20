@@ -4,7 +4,8 @@ import type { SettingView } from "@/api/settings";
 /** The catalogue key of a setting's words: i18next reads dots as nesting, so the key's dots become underscores. */
 export const settingSlug = (key: string) => key.replaceAll(".", "_");
 
-export const settingName = (setting: SettingView, t: TFunction) => t(`settings.names.${settingSlug(setting.key)}`, { defaultValue: setting.key });
+export const settingName = (setting: SettingView, t: TFunction) =>
+  t(`settings.names.${settingSlug(setting.key)}`, { defaultValue: setting.key });
 
 const asText = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value));
 
@@ -25,7 +26,8 @@ export function displayValue(setting: SettingView, value: unknown, t: TFunction)
   }
 }
 
-const day = (iso: string | null) => (iso === null ? "" : new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" }));
+const day = (iso: string | null) =>
+  iso === null ? "" : new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
 
 /** Where the value at this place comes from, in a sentence (TF-058): the default, here, a unit above, or the organisation. */
 export function sourceSentence(setting: SettingView, t: TFunction): string {

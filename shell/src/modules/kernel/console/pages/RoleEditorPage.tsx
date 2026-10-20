@@ -2,11 +2,33 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Checkbox, Code, Fieldset, Group, Radio, Stack, Table, Text, TextInput, Textarea } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Code,
+  Fieldset,
+  Group,
+  Radio,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Textarea,
+} from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
-import { createRole, deleteRole, fetchAssignments, fetchPermissions, fetchRole, updateRole, type Permission, type Role } from "@/api/authorization";
+import {
+  createRole,
+  deleteRole,
+  fetchAssignments,
+  fetchPermissions,
+  fetchRole,
+  updateRole,
+  type Permission,
+  type Role,
+} from "@/api/authorization";
 import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, LoadingState } from "@/components/panels";
@@ -32,8 +54,16 @@ const roleQueryKey = (id: string) => ["authz", "roles", id] as const;
 export function RoleEditorPage() {
   const { t } = useTranslation();
   const { id } = useParams();
-  const catalogue = useQuery({ queryKey: ["authz", "permissions"], queryFn: ({ signal }) => fetchPermissions(signal), staleTime: 300_000 });
-  const role = useQuery({ queryKey: roleQueryKey(id ?? "new"), queryFn: ({ signal }) => fetchRole(id as string, signal), enabled: id !== undefined });
+  const catalogue = useQuery({
+    queryKey: ["authz", "permissions"],
+    queryFn: ({ signal }) => fetchPermissions(signal),
+    staleTime: 300_000,
+  });
+  const role = useQuery({
+    queryKey: roleQueryKey(id ?? "new"),
+    queryFn: ({ signal }) => fetchRole(id as string, signal),
+    enabled: id !== undefined,
+  });
 
   if (catalogue.isPending || (id !== undefined && role.isPending)) {
     return <LoadingState />;
@@ -83,7 +113,14 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
   const schema = useMemo(
     () =>
       z.object({
-        code: isNew ? z.string().trim().min(2, t("roles.form.codeRequired")).max(100, t("roles.form.codeTooLong")).regex(codePattern, t("roles.form.codeShape")) : z.string(),
+        code: isNew
+          ? z
+              .string()
+              .trim()
+              .min(2, t("roles.form.codeRequired"))
+              .max(100, t("roles.form.codeTooLong"))
+              .regex(codePattern, t("roles.form.codeShape"))
+          : z.string(),
         name: z.string().trim().min(1, t("roles.form.nameRequired")).max(200, t("roles.form.nameTooLong")),
         description: z.string().max(500, t("roles.form.descriptionTooLong")),
         principalType: z.enum(["user", "service"]),
@@ -104,7 +141,12 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
 
   const save = async (values: RoleValues) => {
     setSaved(false);
-    const input = { name: values.name.trim(), description: values.description.trim(), principal_type: values.principalType, permissions: values.permissions };
+    const input = {
+      name: values.name.trim(),
+      description: values.description.trim(),
+      principal_type: values.principalType,
+      permissions: values.permissions,
+    };
     if (role === undefined) {
       const created = await createRole(values.code.trim(), input);
       await queryClient.invalidateQueries({ queryKey: ["authz", "roles"] });
@@ -152,7 +194,12 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
         </Alert>
       )}
       {editable ? (
-        <Form form={form} onSubmit={save} submitLabel={isNew ? t("roles.form.create") : t("roles.form.save")} secondary={{ label: t("dialog.cancel"), onClick: () => void navigate("/console/roles") }}>
+        <Form
+          form={form}
+          onSubmit={save}
+          submitLabel={isNew ? t("roles.form.create") : t("roles.form.save")}
+          secondary={{ label: t("dialog.cancel"), onClick: () => void navigate("/console/roles") }}
+        >
           <RoleFields form={form} catalogue={catalogue} isNew={isNew} disabled={false} />
           {saved && (
             <Text size="sm" role="status">
@@ -173,12 +220,21 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
         header={{
           title: role?.name ?? t("roles.editor.newTitle"),
           ...(role !== undefined ? { code: role.code } : {}),
-          ...(role !== undefined ? { status: role.is_system ? { label: t("roles.kinds.system"), tone: "neutral" as const } : { label: t("roles.kinds.tenant"), tone: "info" as const } } : {}),
+          ...(role !== undefined
+            ? {
+                status: role.is_system
+                  ? { label: t("roles.kinds.system"), tone: "neutral" as const }
+                  : { label: t("roles.kinds.tenant"), tone: "info" as const },
+              }
+            : {}),
           ...(role !== undefined
             ? {
                 meta: [
                   { label: t("roles.principalType"), value: t(`roles.principalTypes.${role.principal_type}`) },
-                  { label: t("roles.permissions"), value: t("roles.permissionCount", { count: role.permissions.length }) },
+                  {
+                    label: t("roles.permissions"),
+                    value: t("roles.permissionCount", { count: role.permissions.length }),
+                  },
                 ],
               }
             : {}),
@@ -194,7 +250,9 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
         }}
         tabs={[
           { value: "definition", label: t("roles.editor.definition"), panel: definition },
-          ...(canSeeHolders ? [{ value: "holders", label: t("roles.editor.holders"), panel: <RoleHolders roleId={role.id} /> }] : []),
+          ...(canSeeHolders
+            ? [{ value: "holders", label: t("roles.editor.holders"), panel: <RoleHolders roleId={role.id} /> }]
+            : []),
         ]}
       />
       {role !== undefined && (
@@ -214,7 +272,17 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
 }
 
 /** The role's fields; the permissions grouped by module, each with its description, its name and its risk. */
-function RoleFields({ form, catalogue, isNew, disabled }: { form: UseFormReturnType<RoleValues>; catalogue: readonly Permission[]; isNew: boolean; disabled: boolean }) {
+function RoleFields({
+  form,
+  catalogue,
+  isNew,
+  disabled,
+}: {
+  form: UseFormReturnType<RoleValues>;
+  catalogue: readonly Permission[];
+  isNew: boolean;
+  disabled: boolean;
+}) {
   const { t } = useTranslation();
   const modules = useMemo(() => {
     const byModule = new Map<string, Permission[]>();
@@ -226,15 +294,40 @@ function RoleFields({ form, catalogue, isNew, disabled }: { form: UseFormReturnT
   const chosen = form.getValues().permissions;
   const toggle = (name: string, on: boolean) => {
     const current = form.getValues().permissions;
-    form.setFieldValue("permissions", on ? [...current, name].sort() : current.filter((candidate) => candidate !== name));
+    form.setFieldValue(
+      "permissions",
+      on ? [...current, name].sort() : current.filter((candidate) => candidate !== name),
+    );
   };
 
   return (
     <Stack gap="md">
-      {isNew && <TextInput label={t("roles.code")} description={t("roles.form.codeHint")} data-autofocus {...form.getInputProps("code")} />}
-      <TextInput label={t("roles.name")} disabled={disabled} {...(isNew ? {} : { "data-autofocus": true })} {...form.getInputProps("name")} />
-      <Textarea label={t("roles.descriptionLabel")} autosize minRows={2} disabled={disabled} {...form.getInputProps("description")} />
-      <Radio.Group label={t("roles.principalType")} description={t("roles.form.principalTypeHint")} {...form.getInputProps("principalType")}>
+      {isNew && (
+        <TextInput
+          label={t("roles.code")}
+          description={t("roles.form.codeHint")}
+          data-autofocus
+          {...form.getInputProps("code")}
+        />
+      )}
+      <TextInput
+        label={t("roles.name")}
+        disabled={disabled}
+        {...(isNew ? {} : { "data-autofocus": true })}
+        {...form.getInputProps("name")}
+      />
+      <Textarea
+        label={t("roles.descriptionLabel")}
+        autosize
+        minRows={2}
+        disabled={disabled}
+        {...form.getInputProps("description")}
+      />
+      <Radio.Group
+        label={t("roles.principalType")}
+        description={t("roles.form.principalTypeHint")}
+        {...form.getInputProps("principalType")}
+      >
         <Group mt={4}>
           <Radio value="user" label={t("roles.principalTypes.user")} disabled={disabled} />
           <Radio value="service" label={t("roles.principalTypes.service")} disabled={disabled} />
@@ -271,7 +364,10 @@ function RoleFields({ form, catalogue, isNew, disabled }: { form: UseFormReturnT
 /** Who holds the role and where, for the readers of assignments (ADR-0031: each row as far as the reader may see). */
 function RoleHolders({ roleId }: { roleId: string }) {
   const { t } = useTranslation();
-  const holders = useQuery({ queryKey: ["authz", "role-assignments", "role", roleId], queryFn: ({ signal }) => fetchAssignments(`filter=role_id:eq:${roleId}&page_size=100`, signal) });
+  const holders = useQuery({
+    queryKey: ["authz", "role-assignments", "role", roleId],
+    queryFn: ({ signal }) => fetchAssignments(`filter=role_id:eq:${roleId}&page_size=100`, signal),
+  });
   if (holders.isPending) {
     return <LoadingState height={120} />;
   }

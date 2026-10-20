@@ -1,0 +1,8 @@
+# What the dependency scan (CI, Trivy) may let through, each with its reason. Keep this list short.
+misconfigurations:
+  - id: DS-0002
+    paths:
+      - "src/Hosts/Iron.Host.Fleet/Dockerfile"
+    statement: >-
+      The fleet drives Docker through the socket mounted into its container on the laptop and the runner (ADR-0019),
+      which needs root. The other images run as a non-root user. On Kubernetes (S6) the fleet uses no socket.

@@ -30,7 +30,8 @@ export const ContextSchema = z.object({
 });
 export type Context = z.infer<typeof ContextSchema>;
 
-export const fetchContext = (signal?: AbortSignal) => request("/api/v1/me/context", { schema: ContextSchema, ...(signal ? { signal } : {}) });
+export const fetchContext = (signal?: AbortSignal) =>
+  request("/api/v1/me/context", { schema: ContextSchema, ...(signal ? { signal } : {}) });
 
 const SeatsSchema = z.object({ limit: z.number().nullable(), assigned: z.number(), remaining: z.number().nullable() });
 
@@ -72,4 +73,5 @@ export const SubscriptionSchema = z.object({
 });
 export type Subscription = z.infer<typeof SubscriptionSchema>;
 
-export const fetchSubscription = (signal?: AbortSignal) => request("/api/v1/subscription", { schema: SubscriptionSchema, ...(signal ? { signal } : {}) });
+export const fetchSubscription = (signal?: AbortSignal) =>
+  request("/api/v1/subscription", { schema: SubscriptionSchema, ...(signal ? { signal } : {}) });

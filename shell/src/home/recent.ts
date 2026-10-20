@@ -19,7 +19,12 @@ export const recentStorageKey = (principal: string) => `iron.recent.${principal}
 
 const isRecentPage = (value: unknown): value is RecentPage => {
   const page = value as Partial<RecentPage> | null;
-  return typeof page?.path === "string" && typeof page.titleKey === "string" && typeof page.module === "string" && typeof page.at === "number";
+  return (
+    typeof page?.path === "string" &&
+    typeof page.titleKey === "string" &&
+    typeof page.module === "string" &&
+    typeof page.at === "number"
+  );
 };
 
 /** The pages, newest first. A blocked or damaged storage means none, nothing worse. */
@@ -44,7 +49,10 @@ function store(principal: string, pages: RecentPage[]): void {
 export function rememberPage(principal: string, page: Omit<RecentPage, "label">): RecentPage[] {
   const pages = readRecent(principal);
   const before = pages.find((candidate) => candidate.path === page.path);
-  const next = [{ ...page, ...(before?.label !== undefined ? { label: before.label } : {}) }, ...pages.filter((candidate) => candidate.path !== page.path)];
+  const next = [
+    { ...page, ...(before?.label !== undefined ? { label: before.label } : {}) },
+    ...pages.filter((candidate) => candidate.path !== page.path),
+  ];
   store(principal, next);
   return next;
 }

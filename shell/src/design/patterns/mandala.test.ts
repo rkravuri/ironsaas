@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { mandala, seedFrom, symmetries } from "./mandala";
 
 const base = { symmetry: 8 as const, rings: 4, stroke: 2, density: 0.7 };
-const paths = (seed: string, extra: Partial<typeof base> = {}) => mandala({ ...base, ...extra, seed }).rings.map((ring) => ring.path);
+const paths = (seed: string, extra: Partial<typeof base> = {}) =>
+  mandala({ ...base, ...extra, seed }).rings.map((ring) => ring.path);
 
 describe("the mandala generator", () => {
   it("gives the same drawing for the same seed, and the same object back", () => {

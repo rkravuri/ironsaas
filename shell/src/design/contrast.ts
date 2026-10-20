@@ -26,7 +26,8 @@ export function parseColour(value: string): Rgba {
   const fn = functionPattern.exec(text);
   if (fn?.[1] !== undefined && fn[2] !== undefined && fn[3] !== undefined) {
     const alphaText = fn[4];
-    const alpha = alphaText === undefined ? 1 : alphaText.endsWith("%") ? Number(alphaText.slice(0, -1)) / 100 : Number(alphaText);
+    const alpha =
+      alphaText === undefined ? 1 : alphaText.endsWith("%") ? Number(alphaText.slice(0, -1)) / 100 : Number(alphaText);
     return { r: Number(fn[1]), g: Number(fn[2]), b: Number(fn[3]), a: alpha };
   }
   throw new Error(`Not a colour value: ${value}`);

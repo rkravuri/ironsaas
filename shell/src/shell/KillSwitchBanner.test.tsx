@@ -11,13 +11,30 @@ import { KillSwitchBanner } from "./KillSwitchBanner";
 import { Layout } from "./Layout";
 
 const administrator = ["authz.roles.manage", "authz.roles.read"];
-const entitlements = { revision: 1, plan: "enterprise", confirmed_at: "2026-10-20T09:00:00Z", stale: false, modules: [], features: [] };
-const killed: KillSwitch = { path: "imports", flag: "kill.imports", since: "2026-10-20T08:30:00Z", reason: "An import fault is being fixed." };
+const entitlements = {
+  revision: 1,
+  plan: "enterprise",
+  confirmed_at: "2026-10-20T09:00:00Z",
+  stale: false,
+  modules: [],
+  features: [],
+};
+const killed: KillSwitch = {
+  path: "imports",
+  flag: "kill.imports",
+  since: "2026-10-20T08:30:00Z",
+  reason: "An import fault is being fixed.",
+};
 
 /** What /me/context answers: the API puts the kill switches in for administrators only, so the stub decides who sees them. */
 const context = (killSwitches: KillSwitch[]) => ({
   entitlements,
-  flags: { known: true, confirmed_at: "2026-10-20T09:00:00Z", values: [{ key: "kill.imports", type: "boolean", value: killSwitches.length > 0, reason: "targeting_match" }], kill_switches: killSwitches },
+  flags: {
+    known: true,
+    confirmed_at: "2026-10-20T09:00:00Z",
+    values: [{ key: "kill.imports", type: "boolean", value: killSwitches.length > 0, reason: "targeting_match" }],
+    kill_switches: killSwitches,
+  },
 });
 
 function renderShell() {
@@ -46,12 +63,17 @@ afterEach(() => {
 
 describe("the kill-switch banner (TF-055, ADR-0035)", () => {
   it("tells an administrator which path is stopped, since when and why, in words with an icon, above the page", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me(administrator)), "GET /api/v1/me/context": () => json(context([killed])) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me(administrator)),
+      "GET /api/v1/me/context": () => json(context([killed])),
+    });
     renderShell();
 
     const banner = await screen.findByRole("status");
     expect(banner).toHaveTextContent("The platform's operator has stopped imports for now");
-    expect(banner).toHaveTextContent(`Since ${new Date(killed.since).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}.`);
+    expect(banner).toHaveTextContent(
+      `Since ${new Date(killed.since).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}.`,
+    );
     expect(banner).toHaveTextContent("The operator's reason: An import fault is being fixed.");
     // The icon is beside the words, never instead of them, and has no name of its own.
     expect(banner.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
@@ -62,7 +84,10 @@ describe("the kill-switch banner (TF-055, ADR-0035)", () => {
   });
 
   it("shows nothing when the answer has no kill switches, as it is for a person who is not an administrator", async () => {
-    const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(["identity.users.read"])), "GET /api/v1/me/context": () => json(context([])) });
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me(["identity.users.read"])),
+      "GET /api/v1/me/context": () => json(context([])),
+    });
     renderWithProviders(<KillSwitchBanner />);
 
     await waitFor(() => expect(calls.some((call) => call.key === "GET /api/v1/me/context")).toBe(true));

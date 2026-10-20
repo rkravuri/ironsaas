@@ -7,7 +7,16 @@ import { Alert, Button, Checkbox, Group, Radio, Select, Stack, Table, Text, Visu
 import { IconHelpCircle, IconPlus } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
-import { fetchAssignments, fetchRoles, fetchUnits, grantRole, previewGrantConflicts, removeAssignment, type Assignment, type ScopeKind } from "@/api/authorization";
+import {
+  fetchAssignments,
+  fetchRoles,
+  fetchUnits,
+  grantRole,
+  previewGrantConflicts,
+  removeAssignment,
+  type Assignment,
+  type ScopeKind,
+} from "@/api/authorization";
 import type { UserRecord } from "@/api/identity";
 import { useAccessAt } from "@/auth/access";
 import { useSession } from "@/auth/session-context";
@@ -77,7 +86,11 @@ export function AccessTab({ user }: { user: UserRecord }) {
               variant="default"
               leftSection={<IconHelpCircle size={16} aria-hidden="true" />}
               title={t("access.explainHint")}
-              onClick={() => void navigate(`/console/explain?principal=${encodeURIComponent(user.id)}&name=${encodeURIComponent(user.display_name)}`)}
+              onClick={() =>
+                void navigate(
+                  `/console/explain?principal=${encodeURIComponent(user.id)}&name=${encodeURIComponent(user.display_name)}`,
+                )
+              }
             >
               {t("access.explain")}
             </Button>
@@ -140,7 +153,11 @@ export function AccessTab({ user }: { user: UserRecord }) {
       <ConfirmDialog
         opened={removing !== undefined}
         title={t("access.remove.title", { role: removing?.role_name ?? "" })}
-        message={t("access.remove.message", { role: removing?.role_name ?? "", name: user.display_name, scope: removing ? where(removing, t) : "" })}
+        message={t("access.remove.message", {
+          role: removing?.role_name ?? "",
+          name: user.display_name,
+          scope: removing ? where(removing, t) : "",
+        })}
         confirmLabel={t("access.remove.confirm")}
         danger
         busy={busy}
@@ -152,7 +169,9 @@ export function AccessTab({ user }: { user: UserRecord }) {
 }
 
 const where = (assignment: Assignment, t: TFunction) =>
-  assignment.unit_path.length > 0 ? `${t(`access.scopes.${assignment.scope_kind}`)}: ${unitPathLabel(assignment)}` : t(`access.scopes.${assignment.scope_kind}`);
+  assignment.unit_path.length > 0
+    ? `${t(`access.scopes.${assignment.scope_kind}`)}: ${unitPathLabel(assignment)}`
+    : t(`access.scopes.${assignment.scope_kind}`);
 
 /**
  * One assignment. Remove shows only where it will work: the reader manages assignments at its unit, over the unit and
@@ -161,7 +180,10 @@ const where = (assignment: Assignment, t: TFunction) =>
 function AssignmentRow({ assignment, onRemove }: { assignment: Assignment; onRemove: () => void }) {
   const { t } = useTranslation();
   const session = useSession();
-  const target = assignment.unit_id !== null ? { unit: assignment.unit_id, includeChildren: assignment.scope_kind === "unit_with_children" } : undefined;
+  const target =
+    assignment.unit_id !== null
+      ? { unit: assignment.unit_id, includeChildren: assignment.scope_kind === "unit_with_children" }
+      : undefined;
   const access = useAccessAt(target, [manage]);
   const canRemove = assignment.unit_id !== null ? access.can(manage) : session.tenantPermissions.includes(manage);
   return (
@@ -177,7 +199,12 @@ function AssignmentRow({ assignment, onRemove }: { assignment: Assignment; onRem
       <Table.Td>{new Date(assignment.created_at).toLocaleDateString()}</Table.Td>
       <Table.Td>
         {canRemove && (
-          <Button size="xs" variant="default" onClick={onRemove} aria-label={t("access.remove.label", { role: assignment.role_name })}>
+          <Button
+            size="xs"
+            variant="default"
+            onClick={onRemove}
+            aria-label={t("access.remove.label", { role: assignment.role_name })}
+          >
             {t("access.remove.open")}
           </Button>
         )}
@@ -194,22 +221,44 @@ interface GrantValues extends Record<string, unknown> {
 }
 
 /** Grant a role: the role, then where (the tenant or a unit on the tree, with or without the units below it). */
-function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose: () => void; onDone: () => Promise<void> }) {
+function GrantRoleDialog({
+  user,
+  onClose,
+  onDone,
+}: {
+  user: UserRecord;
+  onClose: () => void;
+  onDone: () => Promise<void>;
+}) {
   const { t } = useTranslation();
   const session = useSession();
   const forTenant = session.tenantPermissions.includes(manage);
   const kind = user.type === "user" ? "user" : "service";
-  const roles = useQuery({ queryKey: ["authz", "roles", "grantable"], queryFn: ({ signal }) => fetchRoles("page_size=200&sort=name", signal) });
+  const roles = useQuery({
+    queryKey: ["authz", "roles", "grantable"],
+    queryFn: ({ signal }) => fetchRoles("page_size=200&sort=name", signal),
+  });
   const canSeeUnits = session.permissions.includes("authz.units.read");
-  const units = useQuery({ queryKey: ["authz", "organisation-units"], queryFn: ({ signal }) => fetchUnits(signal), enabled: canSeeUnits });
+  const units = useQuery({
+    queryKey: ["authz", "organisation-units"],
+    queryFn: ({ signal }) => fetchUnits(signal),
+    enabled: canSeeUnits,
+  });
   const unitList = useMemo(() => units.data?.data ?? [], [units.data]);
-  const options = (roles.data?.data ?? []).filter((role) => role.principal_type === "any" || role.principal_type === kind).map((role) => ({ value: role.id, label: role.name }));
+  const options = (roles.data?.data ?? [])
+    .filter((role) => role.principal_type === "any" || role.principal_type === kind)
+    .map((role) => ({ value: role.id, label: role.name }));
   const homeVisible = user.home_unit !== null && unitList.some((unit) => unit.id === user.home_unit?.id);
 
   const schema = useMemo(
     () =>
       z
-        .object({ roleId: z.string().min(1, t("access.grant.roleRequired")), scope: z.enum(["tenant", "unit"]), unitId: z.string(), includeChildren: z.boolean() })
+        .object({
+          roleId: z.string().min(1, t("access.grant.roleRequired")),
+          scope: z.enum(["tenant", "unit"]),
+          unitId: z.string(),
+          includeChildren: z.boolean(),
+        })
         .superRefine((values, context) => {
           if (values.scope === "unit" && values.unitId === "") {
             context.addIssue({ code: "custom", path: ["unitId"], message: t("access.grant.unitRequired") });
@@ -219,7 +268,12 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
   );
   const form = useZodForm<GrantValues>({
     schema,
-    initialValues: { roleId: "", scope: forTenant && !canSeeUnits ? "tenant" : "unit", unitId: homeVisible ? (user.home_unit?.id ?? "") : "", includeChildren: true },
+    initialValues: {
+      roleId: "",
+      scope: forTenant && !canSeeUnits ? "tenant" : "unit",
+      unitId: homeVisible ? (user.home_unit?.id ?? "") : "",
+      includeChildren: true,
+    },
   });
   const values = form.getValues();
   // The conflict rules are asked about the grant as it stands, so the dialog says what they will do before the confirm
@@ -228,8 +282,14 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
     if (values.roleId === "" || (values.scope === "unit" && values.unitId === "")) {
       return undefined;
     }
-    const scopeKind: ScopeKind = values.scope === "tenant" ? "tenant" : values.includeChildren ? "unit_with_children" : "unit";
-    return { principal_id: user.id, role_id: values.roleId, scope_kind: scopeKind, ...(values.scope === "unit" ? { unit_id: values.unitId } : {}) };
+    const scopeKind: ScopeKind =
+      values.scope === "tenant" ? "tenant" : values.includeChildren ? "unit_with_children" : "unit";
+    return {
+      principal_id: user.id,
+      role_id: values.roleId,
+      scope_kind: scopeKind,
+      ...(values.scope === "unit" ? { unit_id: values.unitId } : {}),
+    };
   }, [user.id, values.roleId, values.scope, values.unitId, values.includeChildren]);
   const conflicts = useQuery({
     queryKey: ["authz", "grant-conflicts", question],
@@ -245,15 +305,26 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
   }, [home, form]);
 
   const submit = async (chosen: GrantValues) => {
-    const scopeKind: ScopeKind = chosen.scope === "tenant" ? "tenant" : chosen.includeChildren ? "unit_with_children" : "unit";
-    await grantRole({ principal_id: user.id, role_id: chosen.roleId, scope_kind: scopeKind, ...(chosen.scope === "unit" ? { unit_id: chosen.unitId } : {}) });
+    const scopeKind: ScopeKind =
+      chosen.scope === "tenant" ? "tenant" : chosen.includeChildren ? "unit_with_children" : "unit";
+    await grantRole({
+      principal_id: user.id,
+      role_id: chosen.roleId,
+      scope_kind: scopeKind,
+      ...(chosen.scope === "unit" ? { unit_id: chosen.unitId } : {}),
+    });
     await onDone();
   };
 
   return (
     <FormDialog opened title={t("access.grant.title", { name: user.display_name })} onClose={onClose}>
       {/* The form is there from the start, so the dialog can focus its first field; the lists fill in as they arrive. */}
-      <Form form={form} onSubmit={submit} submitLabel={t("access.grant.submit")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
+      <Form
+        form={form}
+        onSubmit={submit}
+        submitLabel={t("access.grant.submit")}
+        secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+      >
         <Select
           label={t("access.role")}
           description={t("access.grant.roleHint")}
@@ -286,10 +357,16 @@ function GrantRoleDialog({ user, onClose, onDone }: { user: UserRecord; onClose:
                 error={typeof form.errors.unitId === "string" ? form.errors.unitId : undefined}
                 disabled={(unit) => unit.status !== "active"}
               />
-              <Checkbox label={t("access.grant.includeChildren")} description={t("access.grant.includeChildrenHint")} {...form.getInputProps("includeChildren", { type: "checkbox" })} />
+              <Checkbox
+                label={t("access.grant.includeChildren")}
+                description={t("access.grant.includeChildrenHint")}
+                {...form.getInputProps("includeChildren", { type: "checkbox" })}
+              />
             </>
           ))}
-        {question !== undefined && conflicts.data && <GrantConflictNotice name={user.display_name} conflicts={conflicts.data.data} />}
+        {question !== undefined && conflicts.data && (
+          <GrantConflictNotice name={user.display_name} conflicts={conflicts.data.data} />
+        )}
       </Form>
     </FormDialog>
   );

@@ -18,7 +18,13 @@ export interface EmptyStateProps {
 export function EmptyState({ drawing, title, text, action, size = "md" }: EmptyStateProps) {
   const Illustration = illustrations[drawing];
   return (
-    <Stack align="center" gap="xs" py={size === "md" ? "xl" : "md"} data-panel="empty-state" data-drawing-name={drawing}>
+    <Stack
+      align="center"
+      gap="xs"
+      py={size === "md" ? "xl" : "md"}
+      data-panel="empty-state"
+      data-drawing-name={drawing}
+    >
       <Illustration decorative size={size} />
       <Title order={3} size={size === "md" ? "h3" : "h5"}>
         {title}

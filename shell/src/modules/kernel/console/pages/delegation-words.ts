@@ -2,7 +2,12 @@ import type { DelegationStatus } from "@/api/authorization";
 import type { StatusTone } from "@/components/panels";
 
 /** A status in a meaning and in words, never colour alone (brief section 5). */
-export const statusTone: Record<DelegationStatus, StatusTone> = { scheduled: "info", active: "success", ended: "neutral", expired: "neutral" };
+export const statusTone: Record<DelegationStatus, StatusTone> = {
+  scheduled: "info",
+  active: "success",
+  ended: "neutral",
+  expired: "neutral",
+};
 
 /** Whether a delegation still counts, now or later: only those can be ended. */
 export const isRunning = (status: DelegationStatus) => status === "scheduled" || status === "active";

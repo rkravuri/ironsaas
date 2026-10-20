@@ -16,7 +16,13 @@ export interface Accent {
   readonly shades: Shades;
 }
 
-const accent = (name: AccentName, hue: number, chroma: number): Accent => ({ name, meaningKey: `design.accents.${name}`, hue, chroma, shades: accentShades(hue, chroma) });
+const accent = (name: AccentName, hue: number, chroma: number): Accent => ({
+  name,
+  meaningKey: `design.accents.${name}`,
+  hue,
+  chroma,
+  shades: accentShades(hue, chroma),
+});
 
 // The neutrals: the paper's warm hue for the light scheme's greys, the ink's cool hue for the dark scheme's.
 const paperHue = 85;
@@ -95,7 +101,11 @@ export function contrastPairs(): readonly ContrastPair[] {
       { foreground: variable("white"), background: variable(`${name}-filled`), minimum: textMinimum },
       { foreground: variable("white"), background: variable(`${name}-filled-hover`), minimum: textMinimum },
       { foreground: variable(`${name}-light-color`), background: variable(`${name}-light`), minimum: textMinimum },
-      { foreground: variable(`${name}-light-color`), background: variable(`${name}-light-hover`), minimum: textMinimum },
+      {
+        foreground: variable(`${name}-light-color`),
+        background: variable(`${name}-light-hover`),
+        minimum: textMinimum,
+      },
       { foreground: variable(`${name}-outline`), background: variable("body"), minimum: uiMinimum },
     );
   }

@@ -8,33 +8,42 @@ using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Flags.Contracts;
 using Iron.Kernel.Flags.Services;
+using Iron.Testing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
-using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Flags.Tests;
 
 /// <summary>A unit's database for the run: Audit, Authorization and Flags migrated and seeded.</summary>
 public sealed class FlagsFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19rc1").Build();
+    private TestPostgres? _postgres;
 
-    public string ConnectionString => _container.GetConnectionString();
+    public string ConnectionString => Postgres.ConnectionString;
+
+    /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
+    private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
     public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new AuthorizationModule(), new FlagsModule()];
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync(TestContext.Current.CancellationToken);
+        _postgres = await TestPostgres.StartAsync("flags", TestContext.Current.CancellationToken);
         await using var provider = BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), new ControlledSource(), SystemPrincipal.Instance);
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
     }
 
-    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (_postgres is not null)
+        {
+            await _postgres.DisposeAsync();
+        }
+    }
 
     /// <summary>The services a unit has, with a controllable clock and source, and a log that keeps what it is told.</summary>
     public ServiceProvider BuildServices(FakeTimeProvider time, IFlagRuleSource source, ICurrentPrincipal principal, CapturingLogs? logs = null, IPrincipals? principals = null)

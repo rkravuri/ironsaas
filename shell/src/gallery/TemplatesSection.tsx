@@ -37,7 +37,11 @@ export function TemplatesSection() {
         </Title>
         <Example title={t("gallery.templates.list")}>
           <div style={{ height: 420 }}>
-            <ListPage title={t("gallery.grid.label")} description={t("gallery.templates.listDescription")} actions={<Button>{t("gallery.templates.newRecord")}</Button>}>
+            <ListPage
+              title={t("gallery.grid.label")}
+              description={t("gallery.templates.listDescription")}
+              actions={<Button>{t("gallery.templates.newRecord")}</Button>}
+            >
               <DataGrid<SampleRow> columns={columns} fetchPage={fetchPage} label={t("gallery.templates.listGrid")} />
             </ListPage>
           </div>
@@ -63,8 +67,18 @@ export function TemplatesSection() {
             title={t("gallery.console.title")}
             description={t("gallery.console.description")}
             sections={[
-              { id: "gallery-console-general", title: t("gallery.console.general"), description: t("gallery.console.generalDescription"), children: <TextInput label={t("gallery.console.tenantName")} defaultValue="Acme" /> },
-              { id: "gallery-console-mail", title: t("gallery.console.mail"), description: t("gallery.console.mailDescription"), children: <TextInput label={t("gallery.console.sender")} defaultValue="noreply@acme.localhost" /> },
+              {
+                id: "gallery-console-general",
+                title: t("gallery.console.general"),
+                description: t("gallery.console.generalDescription"),
+                children: <TextInput label={t("gallery.console.tenantName")} defaultValue="Acme" />,
+              },
+              {
+                id: "gallery-console-mail",
+                title: t("gallery.console.mail"),
+                description: t("gallery.console.mailDescription"),
+                children: <TextInput label={t("gallery.console.sender")} defaultValue="noreply@acme.localhost" />,
+              },
             ]}
           />
         </Example>
@@ -74,7 +88,13 @@ export function TemplatesSection() {
             description={t("gallery.dashboard.description")}
             cards={[
               { id: "open", label: t("gallery.dashboard.open"), value: "128", hint: t("gallery.dashboard.openHint") },
-              { id: "late", label: t("gallery.dashboard.late"), value: "3", tone: "danger", hint: t("gallery.dashboard.lateHint") },
+              {
+                id: "late",
+                label: t("gallery.dashboard.late"),
+                value: "3",
+                tone: "danger",
+                hint: t("gallery.dashboard.lateHint"),
+              },
               { id: "done", label: t("gallery.dashboard.done"), value: "412", tone: "success" },
               { id: "value", label: t("gallery.dashboard.value"), value: "1.2 M" },
             ]}

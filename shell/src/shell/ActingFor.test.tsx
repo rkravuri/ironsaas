@@ -9,7 +9,14 @@ import { ActingBand, ActingForControl } from "./ActingFor";
 const ada = "01a17a00-0000-7000-8000-0000000000a1";
 const userAdministration = { code: "identity.user_administration", name: "user administration" };
 const until = "2026-10-27T00:00:00Z";
-const received = { delegator_id: ada, delegator_name: "Ada Lovelace", delegate_id: me().id, delegate_name: "Admin", duties: [userAdministration], until };
+const received = {
+  delegator_id: ada,
+  delegator_name: "Ada Lovelace",
+  delegate_id: me().id,
+  delegate_name: "Admin",
+  duties: [userAdministration],
+  until,
+};
 const actingFor = { id: ada, name: "Ada Lovelace", duties: [userAdministration], until };
 
 /** /me with the delegations a person gives and holds, and whom the session acts for. */
@@ -103,7 +110,9 @@ describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
     expect(await screen.findByText("You are acting for Ada Lovelace")).toBeInTheDocument();
     release();
 
-    expect(await screen.findByText("The delegation from Ada Lovelace has ended, so you act as yourself again.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("The delegation from Ada Lovelace has ended, so you act as yourself again."),
+    ).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText("You are acting for Ada Lovelace")).not.toBeInTheDocument());
     expect(screen.queryByRole("button", { name: /act for/i })).not.toBeInTheDocument();
   });

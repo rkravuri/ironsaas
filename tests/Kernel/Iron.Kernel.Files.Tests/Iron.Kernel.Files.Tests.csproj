@@ -13,8 +13,6 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
-    <PackageReference Include="Testcontainers.PostgreSql" />
-    <PackageReference Include="Testcontainers.Azurite" />
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" />
@@ -25,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../Iron.Testing/Iron.Testing.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />

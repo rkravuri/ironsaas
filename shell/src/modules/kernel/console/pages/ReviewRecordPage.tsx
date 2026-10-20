@@ -6,7 +6,16 @@ import { Alert, Button, Group, SegmentedControl, Stack, Text, Textarea } from "@
 import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
-import { closeReview, confirmItems, decideItem, fetchReview, fetchReviewItems, type ItemState, type Review, type ReviewItem } from "@/api/authorization";
+import {
+  closeReview,
+  confirmItems,
+  decideItem,
+  fetchReview,
+  fetchReviewItems,
+  type ItemState,
+  type Review,
+  type ReviewItem,
+} from "@/api/authorization";
 import { DataGrid, type DataGridColumn, type ListResult } from "@/components/data-grid";
 import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, FormDialog, LoadingState, type RecordStatus } from "@/components/panels";
@@ -26,7 +35,10 @@ export function ReviewRecordPage() {
   const { t, i18n } = useTranslation();
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
-  const review = useQuery({ queryKey: ["authz", "access-reviews", id], queryFn: ({ signal }) => fetchReview(id, signal) });
+  const review = useQuery({
+    queryKey: ["authz", "access-reviews", id],
+    queryFn: ({ signal }) => fetchReview(id, signal),
+  });
   const [closing, setClosing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ApiError | undefined>();
@@ -64,12 +76,23 @@ export function ReviewRecordPage() {
   };
 
   const status: RecordStatus =
-    data.status === "closed" ? { label: t("reviews.status.closed"), tone: "neutral" } : data.overdue ? { label: t("reviews.status.overdue"), tone: "warning" } : { label: t("reviews.status.open"), tone: "info" };
+    data.status === "closed"
+      ? { label: t("reviews.status.closed"), tone: "neutral" }
+      : data.overdue
+        ? { label: t("reviews.status.overdue"), tone: "warning" }
+        : { label: t("reviews.status.open"), tone: "info" };
 
   return (
     <>
       {failure && (
-        <Alert color="danger" role="alert" mb="md" withCloseButton closeButtonLabel={t("dialog.close")} onClose={() => setFailure(undefined)}>
+        <Alert
+          color="danger"
+          role="alert"
+          mb="md"
+          withCloseButton
+          closeButtonLabel={t("dialog.close")}
+          onClose={() => setFailure(undefined)}
+        >
           {failure.message}
         </Alert>
       )}
@@ -115,7 +138,9 @@ function decisionLabel(item: ReviewItem, t: ReturnType<typeof useTranslation>["t
     }
     return item.with_owner ? t("reviews.items.withOwner") : t("reviews.items.toDecide");
   }
-  return t(item.decision.decision === "confirm" ? "reviews.items.confirmedBy" : "reviews.items.revokedBy", { name: item.decision.decided_by.name });
+  return t(item.decision.decision === "confirm" ? "reviews.items.confirmedBy" : "reviews.items.revokedBy", {
+    name: item.decision.decided_by.name,
+  });
 }
 
 /**
@@ -179,23 +204,49 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         confirming.items.map((item) => item.id),
       );
       setConfirming((current) => ({ ...current, opened: false }));
-      return result.already_decided > 0 ? t("reviews.items.confirmedManyWithDecided", { count: result.confirmed, decided: result.already_decided }) : t("reviews.items.confirmedMany", { count: result.confirmed });
+      return result.already_decided > 0
+        ? t("reviews.items.confirmedManyWithDecided", { count: result.confirmed, decided: result.already_decided })
+        : t("reviews.items.confirmedMany", { count: result.confirmed });
     });
 
   const columns = useMemo<DataGridColumn<ReviewItem>[]>(
     () => [
-      { field: "principal_name", headerKey: "reviews.items.columns.principal", sortable: true, filter: "text", flex: 2 },
+      {
+        field: "principal_name",
+        headerKey: "reviews.items.columns.principal",
+        sortable: true,
+        filter: "text",
+        flex: 2,
+      },
       { field: "role_name", headerKey: "reviews.items.columns.role", sortable: true, filter: "text", flex: 2 },
       { field: "unit_name", headerKey: "reviews.items.columns.unit", sortable: true, filter: "text", flex: 1 },
-      { field: "unit_path", headerKey: "reviews.items.columns.path", flex: 2, format: (item) => item.unit_path.map((step) => step.name).join(" / ") },
-      { field: "scope_kind", headerKey: "reviews.items.columns.scope", width: 200, format: (item) => t(`reviews.items.scopes.${item.scope_kind}`) },
-      { field: "decision", headerKey: "reviews.items.columns.decision", flex: 2, format: (item) => decisionLabel(item, t) },
+      {
+        field: "unit_path",
+        headerKey: "reviews.items.columns.path",
+        flex: 2,
+        format: (item) => item.unit_path.map((step) => step.name).join(" / "),
+      },
+      {
+        field: "scope_kind",
+        headerKey: "reviews.items.columns.scope",
+        width: 200,
+        format: (item) => t(`reviews.items.scopes.${item.scope_kind}`),
+      },
+      {
+        field: "decision",
+        headerKey: "reviews.items.columns.decision",
+        flex: 2,
+        format: (item) => decisionLabel(item, t),
+      },
       // An item that takes part in a conflict of the report says so by the rule's name (TF-036): words, not a mark alone.
       {
         field: "conflicts",
         headerKey: "reviews.items.columns.conflicts",
         flex: 2,
-        format: (item) => (item.conflicts.length > 0 ? t("reviews.items.conflict", { rules: item.conflicts.join(", ") }) : t("reviews.items.noConflict")),
+        format: (item) =>
+          item.conflicts.length > 0
+            ? t("reviews.items.conflict", { rules: item.conflicts.join(", ") })
+            : t("reviews.items.noConflict"),
       },
     ],
     [t],
@@ -223,13 +274,29 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
           data={states.map((value) => ({ value, label: t(`reviews.items.states.${value}`) }))}
         />
         <Group gap="xs">
-          <Button variant="default" leftSection={<IconCheck size={16} aria-hidden="true" />} disabled={!undecided} loading={busy && undecided} onClick={() => selected && void confirmOne(selected)}>
+          <Button
+            variant="default"
+            leftSection={<IconCheck size={16} aria-hidden="true" />}
+            disabled={!undecided}
+            loading={busy && undecided}
+            onClick={() => selected && void confirmOne(selected)}
+          >
             {t("reviews.items.confirm")}
           </Button>
-          <Button variant="default" color="danger" leftSection={<IconX size={16} aria-hidden="true" />} disabled={!undecided} onClick={() => setRevoking(selected)}>
+          <Button
+            variant="default"
+            color="danger"
+            leftSection={<IconX size={16} aria-hidden="true" />}
+            disabled={!undecided}
+            onClick={() => setRevoking(selected)}
+          >
             {t("reviews.items.revoke")}
           </Button>
-          <Button leftSection={<IconChecks size={16} aria-hidden="true" />} disabled={!open || pageOpen.length === 0} onClick={() => setConfirming({ opened: true, items: pageOpen })}>
+          <Button
+            leftSection={<IconChecks size={16} aria-hidden="true" />}
+            disabled={!open || pageOpen.length === 0}
+            onClick={() => setConfirming({ opened: true, items: pageOpen })}
+          >
             {t("reviews.items.confirmPage", { count: pageOpen.length })}
           </Button>
         </Group>
@@ -238,12 +305,25 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         {t("reviews.items.intro")}
       </Text>
       {notice && (
-        <Alert role="status" variant="light" color="success" withCloseButton closeButtonLabel={t("dialog.close")} onClose={() => setNotice(undefined)}>
+        <Alert
+          role="status"
+          variant="light"
+          color="success"
+          withCloseButton
+          closeButtonLabel={t("dialog.close")}
+          onClose={() => setNotice(undefined)}
+        >
           {notice}
         </Alert>
       )}
       {failure && (
-        <Alert color="danger" role="alert" withCloseButton closeButtonLabel={t("dialog.close")} onClose={() => setFailure(undefined)}>
+        <Alert
+          color="danger"
+          role="alert"
+          withCloseButton
+          closeButtonLabel={t("dialog.close")}
+          onClose={() => setFailure(undefined)}
+        >
           {failure.message}
           {failure.correlationId !== undefined && (
             <Text size="xs" c="dimmed" mt={4}>
@@ -253,9 +333,20 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         </Alert>
       )}
       <div style={{ height: 460 }}>
-        <DataGrid<ReviewItem> columns={columns} fetchPage={fetchPage} defaultSort={itemSort} label={t("reviews.items.label")} refreshKey={`${state}:${refreshKey}`} onSelectionChange={setSelected} />
+        <DataGrid<ReviewItem>
+          columns={columns}
+          fetchPage={fetchPage}
+          defaultSort={itemSort}
+          label={t("reviews.items.label")}
+          refreshKey={`${state}:${refreshKey}`}
+          onSelectionChange={setSelected}
+        />
       </div>
-      <FormDialog opened={revoking !== undefined} title={t("reviews.items.revokeTitle")} onClose={() => setRevoking(undefined)}>
+      <FormDialog
+        opened={revoking !== undefined}
+        title={t("reviews.items.revokeTitle")}
+        onClose={() => setRevoking(undefined)}
+      >
         {revoking && (
           <RevokeForm
             item={revoking}
@@ -282,14 +373,37 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
   );
 }
 
-function RevokeForm({ item, onClose, onDone }: { item: ReviewItem; onClose: () => void; onDone: (comment: string | undefined) => Promise<void> }) {
+function RevokeForm({
+  item,
+  onClose,
+  onDone,
+}: {
+  item: ReviewItem;
+  onClose: () => void;
+  onDone: (comment: string | undefined) => Promise<void>;
+}) {
   const { t } = useTranslation();
   const schema = useMemo(() => z.object({ comment: z.string().max(500, t("reviews.items.commentTooLong")) }), [t]);
   const form = useZodForm({ schema, initialValues: { comment: "" } });
   return (
-    <Form form={form} onSubmit={async (values) => onDone(values.comment.trim() || undefined)} submitLabel={t("reviews.items.revokeConfirm")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
-      <Text size="sm">{t("reviews.items.revokeMessage", { name: item.principal_name, role: item.role_name, unit: item.unit_name })}</Text>
-      <Textarea label={t("reviews.items.comment")} description={t("reviews.items.commentHint")} autosize minRows={2} maxRows={5} data-autofocus {...form.getInputProps("comment")} />
+    <Form
+      form={form}
+      onSubmit={async (values) => onDone(values.comment.trim() || undefined)}
+      submitLabel={t("reviews.items.revokeConfirm")}
+      secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+    >
+      <Text size="sm">
+        {t("reviews.items.revokeMessage", { name: item.principal_name, role: item.role_name, unit: item.unit_name })}
+      </Text>
+      <Textarea
+        label={t("reviews.items.comment")}
+        description={t("reviews.items.commentHint")}
+        autosize
+        minRows={2}
+        maxRows={5}
+        data-autofocus
+        {...form.getInputProps("comment")}
+      />
     </Form>
   );
 }
@@ -298,7 +412,9 @@ function RevokeForm({ item, onClose, onDone }: { item: ReviewItem; onClose: () =
 function Units({ review }: { review: Review }) {
   const { t, i18n } = useTranslation();
   if (review.by_unit.length === 0) {
-    return <EmptyState drawing="nothingYet" size="sm" title={t("reviews.units.none")} text={t("reviews.units.noneText")} />;
+    return (
+      <EmptyState drawing="nothingYet" size="sm" title={t("reviews.units.none")} text={t("reviews.units.noneText")} />
+    );
   }
   return (
     <Stack gap="sm" component="ul" m={0} pl={0} style={{ listStyle: "none" }} aria-label={t("reviews.units.label")}>
@@ -312,7 +428,9 @@ function Units({ review }: { review: Review }) {
             <Text size="xs" c="dimmed">
               {t("reviews.units.escalated", {
                 date: new Date(unit.escalation.at).toLocaleDateString(i18n.language, { dateStyle: "medium" }),
-                targets: new Intl.ListFormat(i18n.language, { type: "conjunction" }).format(unit.escalation.targets.map((target) => target.name)),
+                targets: new Intl.ListFormat(i18n.language, { type: "conjunction" }).format(
+                  unit.escalation.targets.map((target) => target.name),
+                ),
               })}
             </Text>
           )}

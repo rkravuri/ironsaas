@@ -36,7 +36,12 @@ export function RecordHeader({ title, code, status, meta, actions, drawing }: Re
               {title}
             </Title>
             {status !== undefined && (
-              <Badge variant={status.tone === "neutral" ? "default" : "light"} {...(status.tone !== "neutral" ? { color: status.tone } : {})} size="lg" radius="sm">
+              <Badge
+                variant={status.tone === "neutral" ? "default" : "light"}
+                {...(status.tone !== "neutral" ? { color: status.tone } : {})}
+                size="lg"
+                radius="sm"
+              >
                 {status.label}
               </Badge>
             )}

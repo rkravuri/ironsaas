@@ -37,7 +37,13 @@ export function AttachmentPanel({ attachments, onUpload, onDownload, onDelete }:
           }}
         >
           {(props) => (
-            <Button {...props} variant="default" size="xs" leftSection={<IconUpload size={16} />} disabled={onUpload === undefined}>
+            <Button
+              {...props}
+              variant="default"
+              size="xs"
+              leftSection={<IconUpload size={16} />}
+              disabled={onUpload === undefined}
+            >
               {t("attachments.upload")}
             </Button>
           )}
@@ -61,7 +67,11 @@ export function AttachmentPanel({ attachments, onUpload, onDownload, onDelete }:
               <Table.Tr key={attachment.id}>
                 <Table.Td>
                   {onDownload ? (
-                    <UnstyledButton onClick={() => onDownload(attachment)} aria-label={t("attachments.download", { name: attachment.name })} td="underline">
+                    <UnstyledButton
+                      onClick={() => onDownload(attachment)}
+                      aria-label={t("attachments.download", { name: attachment.name })}
+                      td="underline"
+                    >
                       {attachment.name}
                     </UnstyledButton>
                   ) : (
@@ -73,7 +83,11 @@ export function AttachmentPanel({ attachments, onUpload, onDownload, onDelete }:
                 <Table.Td>{attachment.uploadedBy}</Table.Td>
                 {onDelete !== undefined && (
                   <Table.Td>
-                    <ActionIcon variant="subtle" aria-label={t("attachments.remove", { name: attachment.name })} onClick={() => void onDelete(attachment)}>
+                    <ActionIcon
+                      variant="subtle"
+                      aria-label={t("attachments.remove", { name: attachment.name })}
+                      onClick={() => void onDelete(attachment)}
+                    >
                       <IconTrash size={16} />
                     </ActionIcon>
                   </Table.Td>

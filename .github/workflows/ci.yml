@@ -1,7 +1,8 @@
 name: CI
 
 # Every pull request and every push to main (ADR-0022): the code builds with warnings as errors, the architecture and
-# integration tests pass against Testcontainers, the shell lints, type-checks, tests and builds, its gallery passes the
+# integration tests pass on the run's PostgreSQL, Azurite and OpenBao, the shell lints, is formatted (ADR-0040),
+# type-checks, tests and builds, its gallery passes the
 # accessibility scan, no secret is in the history, and no known critical or high vulnerability is in the dependencies.
 
 on:
@@ -39,10 +40,11 @@ jobs:
       - name: Format check
         run: dotnet format Foundation.slnx --verify-no-changes --no-restore
 
-      # Architecture, unit and integration tests; the integration tests start PostgreSQL, Azurite and OpenBao with
-      # Testcontainers on the runner's Docker. Microsoft Testing Platform mode: the solution is passed with --solution.
+      # Architecture, unit and integration tests; the integration tests use PostgreSQL, Azurite and OpenBao, as
+      # the run's one container of each on the runner's Docker, four test projects at a time, as on the laptop
+      # (tests/test-services.sh; Microsoft Testing Platform mode, the solution passed with --solution).
       - name: Test
-        run: dotnet test --solution Foundation.slnx --configuration Release --no-build
+        run: make test CONFIG=Release TEST_ARGS=--no-build
 
   shell:
     name: Shell lint, tests and build
@@ -55,7 +57,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: npm
@@ -64,7 +66,8 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
-      - name: Lint, type check, tests and build
+      # npm run check: lint, Prettier's check (ADR-0040), the type check, the tests and the build.
+      - name: Lint, format check, type check, tests and build
         run: npm run check
 
   shell-accessibility:
@@ -78,7 +81,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 26
           cache: npm
@@ -94,10 +97,10 @@ jobs:
       - name: Build the gallery and scan it
         run: npm run a11y
 
-      # The four screenshots and the report on every run: the review looks at the pictures, not only at failures.
+      # The screenshots (test-results/a11y) and the report on every run: the review looks at the pictures, not only at failures.
       - name: Upload the screenshots and the report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shell-accessibility
           path: |
@@ -129,7 +132,7 @@ jobs:
           fetch-depth: 0
 
       - name: gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -142,7 +145,7 @@ jobs:
 
       # Lock files of the .NET and the shell dependencies; images are scanned in the release workflow.
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -150,3 +153,5 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: "1"
+          # The exceptions, each with its reason.
+          trivyignores: .trivyignore.yaml

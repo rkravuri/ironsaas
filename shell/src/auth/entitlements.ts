@@ -31,12 +31,21 @@ export interface Entitlements {
 
 const unknown: Access = { available: false, writable: false, status: "disabled", reason: "unknown" };
 
-const access = (status: EntitlementStatus, reason: string): Access => ({ available: status !== "disabled", writable: status === "enabled", status, reason });
+const access = (status: EntitlementStatus, reason: string): Access => ({
+  available: status !== "disabled",
+  writable: status === "enabled",
+  status,
+  reason,
+});
 
 /** The entitlements from an answer of /me/context; without one, nothing licensed is available. */
 export function entitlementsFrom(context: Context | undefined, pending: boolean): Entitlements {
-  const modules = new Map((context?.entitlements.modules ?? []).map((entry) => [entry.code, access(entry.status, entry.reason)]));
-  const features = new Map((context?.entitlements.features ?? []).map((entry) => [entry.code, access(entry.status, entry.reason)]));
+  const modules = new Map(
+    (context?.entitlements.modules ?? []).map((entry) => [entry.code, access(entry.status, entry.reason)]),
+  );
+  const features = new Map(
+    (context?.entitlements.features ?? []).map((entry) => [entry.code, access(entry.status, entry.reason)]),
+  );
   return {
     pending,
     stale: context?.entitlements.stale ?? false,

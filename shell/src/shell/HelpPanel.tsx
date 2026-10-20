@@ -25,7 +25,13 @@ export function HelpButton() {
           <IconHelp size={18} aria-hidden="true" />
         </ActionIcon>
       </Tooltip>
-      <Drawer opened={opened} onClose={close} position="right" title={t("help.title")} closeButtonProps={{ "aria-label": t("dialog.close") }}>
+      <Drawer
+        opened={opened}
+        onClose={close}
+        position="right"
+        title={t("help.title")}
+        closeButtonProps={{ "aria-label": t("dialog.close") }}
+      >
         <Stack gap="lg">
           <Stack gap="xs">
             <Title order={3} size="h5">

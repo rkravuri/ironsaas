@@ -6,7 +6,11 @@ import { ErrorView } from "@/shell/ErrorBoundary";
 import { LoadingView } from "@/shell/Guards";
 
 // The shapes the real views receive: a 403 problem from the API, a 404 from the router, an error from code.
-const forbidden = new ApiError(403, { title: "Forbidden", error_code: "authz.forbidden", correlation_id: "01a14e12-0000-7000-8000-0000000000aa" }, undefined);
+const forbidden = new ApiError(
+  403,
+  { title: "Forbidden", error_code: "authz.forbidden", correlation_id: "01a14e12-0000-7000-8000-0000000000aa" },
+  undefined,
+);
 const notFound = { status: 404, statusText: "Not Found", internal: false, data: null };
 
 /** The error views, the loading view and the login form, as the shell shows them. */

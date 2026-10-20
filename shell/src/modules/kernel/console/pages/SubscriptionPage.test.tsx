@@ -23,8 +23,28 @@ const subscription = {
     },
   ],
   features: [
-    { code: "authorization.role_transfer", description: "Export the tenant's roles to a file and import roles from another tenant", module: "authz", licence: null, status: "enabled", reason: "licensed", starts_on: "2026-10-19", ends_on: null, grace_ends_on: null },
-    { code: "sourcing.auctions", description: "Auctions with pre-bidding", module: "sourcing", licence: "sourcing", status: "disabled", reason: "not_licensed", starts_on: null, ends_on: null, grace_ends_on: null },
+    {
+      code: "authorization.role_transfer",
+      description: "Export the tenant's roles to a file and import roles from another tenant",
+      module: "authz",
+      licence: null,
+      status: "enabled",
+      reason: "licensed",
+      starts_on: "2026-10-19",
+      ends_on: null,
+      grace_ends_on: null,
+    },
+    {
+      code: "sourcing.auctions",
+      description: "Auctions with pre-bidding",
+      module: "sourcing",
+      licence: "sourcing",
+      status: "disabled",
+      reason: "not_licensed",
+      starts_on: null,
+      ends_on: null,
+      grace_ends_on: null,
+    },
   ],
 };
 

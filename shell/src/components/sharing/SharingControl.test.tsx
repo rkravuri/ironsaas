@@ -3,8 +3,20 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { json, me, renderWithProviders, stubFetch } from "@/test/render";
 import { SharingControl } from "./SharingControl";
 
-const unit = (id: string, name: string, parent: string | null, depth: number) => ({ id, name, code: name.toLowerCase(), parent_id: parent, depth });
-const choices = [unit("acme", "Acme", null, 0), unit("sales", "Sales", "acme", 1), unit("north", "North", "sales", 2), unit("desk", "Desk", "north", 3), unit("finance", "Finance", "acme", 1)];
+const unit = (id: string, name: string, parent: string | null, depth: number) => ({
+  id,
+  name,
+  code: name.toLowerCase(),
+  parent_id: parent,
+  depth,
+});
+const choices = [
+  unit("acme", "Acme", null, 0),
+  unit("sales", "Sales", "acme", 1),
+  unit("north", "North", "sales", 2),
+  unit("desk", "Desk", "north", 3),
+  unit("finance", "Finance", "acme", 1),
+];
 
 /** How many lists hold an element: its level in the tree, as assistive technology announces it. */
 const level = (element: HTMLElement) => {
@@ -33,15 +45,26 @@ afterEach(() => {
 
 describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
   it("says who sees the record in words for each mode", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me()), [`GET ${path}`]: () => json(sharing("shared", { units: ["finance", "sales"], mayChange: false })) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      [`GET ${path}`]: () => json(sharing("shared", { units: ["finance", "sales"], mayChange: false })),
+    });
     renderWithProviders(<SharingControl recordType="sales_order" recordId="o1" />);
 
-    expect(await screen.findByText("Belongs to North and is shared with Sales and Finance: the people whose roles cover any of them see it.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Belongs to North and is shared with Sales and Finance: the people whose roles cover any of them see it.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Change who sees this" })).toBeNull();
   });
 
   it("says a private record is its unit's, and a tenant one the whole organisation's", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me()), [`GET ${path}`]: () => json(sharing("private")), "GET /api/v1/record-sharing/sales_order/o2": () => json({ ...sharing("tenant"), record_id: "o2" }) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      [`GET ${path}`]: () => json(sharing("private")),
+      "GET /api/v1/record-sharing/sales_order/o2": () => json({ ...sharing("tenant"), record_id: "o2" }),
+    });
     renderWithProviders(
       <>
         <SharingControl recordType="sales_order" recordId="o1" />
@@ -50,7 +73,11 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
     );
 
     expect(await screen.findByText("Private to North: the people whose roles cover North see it.")).toBeInTheDocument();
-    expect(await screen.findByText("Belongs to North and is open to the whole organisation: everyone who may see these records sees it.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Belongs to North and is open to the whole organisation: everyone who may see these records sees it.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shares with units chosen on the tree, a unit never choosing those below it, and asks for one at least", async () => {
@@ -78,7 +105,11 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
     await waitFor(() => expect(calls.some((call) => call.key === `PUT ${path}`)).toBe(true));
     const put = calls.find((call) => call.key === `PUT ${path}`);
     expect(JSON.parse(put?.init?.body as string)).toEqual({ mode: "shared", units: ["sales"] });
-    expect(await screen.findByText("Belongs to North and is shared with Sales: the people whose roles cover any of them see it.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Belongs to North and is shared with Sales: the people whose roles cover any of them see it.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("puts the units in lists nested as the tree is, and keeps the record's own unit in its place in words", async () => {
@@ -94,7 +125,11 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
 
     // Each unit's level is the number of lists around it: Acme, then Sales, then North's place, then Desk.
     expect([level(box("Acme")), level(box("Sales")), level(box("Desk")), level(box("Finance"))]).toEqual([1, 2, 4, 2]);
-    expect(within(item("Acme")).getAllByRole("listitem").map((li) => li.firstChild?.textContent)).toEqual(["Sales", "North, the record's own unit, sees it whatever you choose", "Desk", "Finance"]);
+    expect(
+      within(item("Acme"))
+        .getAllByRole("listitem")
+        .map((li) => li.firstChild?.textContent),
+    ).toEqual(["Sales", "North, the record's own unit, sees it whatever you choose", "Desk", "Finance"]);
     const own = within(item("Sales")).getByText("North, the record's own unit, sees it whatever you choose");
     expect(own.closest("li")).toContainElement(box("Desk"));
     expect(level(own)).toBe(3);
@@ -115,6 +150,9 @@ describe("the sharing control on a record page (TF-222, ADR-0038)", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(calls.some((call) => call.key === `PUT ${path}`)).toBe(true));
-    expect(JSON.parse(calls.find((call) => call.key === `PUT ${path}`)?.init?.body as string)).toEqual({ mode: "tenant", units: [] });
+    expect(JSON.parse(calls.find((call) => call.key === `PUT ${path}`)?.init?.body as string)).toEqual({
+      mode: "tenant",
+      units: [],
+    });
   });
 });

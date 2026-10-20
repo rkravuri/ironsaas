@@ -11,7 +11,12 @@ export interface ApprovalStep {
   state: ApprovalState;
 }
 
-const tones: Record<ApprovalState, StatusTone> = { waiting: "neutral", pending: "warning", approved: "success", rejected: "danger" };
+const tones: Record<ApprovalState, StatusTone> = {
+  waiting: "neutral",
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
+};
 
 /** The shape of an approval (TF-171): the steps, who decides, where it stands. S5 brings the decisions. */
 export function ApprovalPanel({ steps }: { steps: ApprovalStep[] }) {
@@ -32,7 +37,11 @@ export function ApprovalPanel({ steps }: { steps: ApprovalStep[] }) {
                   {step.approver}
                 </Text>
               </Stack>
-              <Badge variant={tone === "neutral" ? "default" : "light"} {...(tone !== "neutral" ? { color: tone } : {})} radius="sm">
+              <Badge
+                variant={tone === "neutral" ? "default" : "light"}
+                {...(tone !== "neutral" ? { color: tone } : {})}
+                radius="sm"
+              >
                 {t(`approval.states.${step.state}`)}
               </Badge>
             </Group>

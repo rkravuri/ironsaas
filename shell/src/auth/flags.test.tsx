@@ -77,7 +77,10 @@ describe("useFlag, the shell's one hook for flags (TF-054, ADR-0035)", () => {
   });
 
   it("gives every flag its default when /me/context fails, and the shell still renders", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me()), "GET /api/v1/me/context": () => problem(503, { title: "Unavailable", error_code: "test.down" }) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      "GET /api/v1/me/context": () => problem(503, { title: "Unavailable", error_code: "test.down" }),
+    });
     renderWithProviders(<Probe />);
 
     await waitFor(() => expect(screen.getByTestId("tone")).toHaveTextContent("plain"));
@@ -86,7 +89,10 @@ describe("useFlag, the shell's one hook for flags (TF-054, ADR-0035)", () => {
   });
 
   it("gives the defaults when the flags part is missing or does not parse, and keeps the entitlements", async () => {
-    stubFetch({ "GET /api/v1/me": () => json(me()), "GET /api/v1/me/context": () => json({ entitlements, flags: { known: "yes" } }) });
+    stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      "GET /api/v1/me/context": () => json({ entitlements, flags: { known: "yes" } }),
+    });
     renderWithProviders(<Probe />);
 
     await waitFor(() => expect(screen.getByTestId("transfer")).toHaveTextContent("available"));

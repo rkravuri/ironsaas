@@ -52,10 +52,36 @@ export function RolesPage() {
   const columns: DataGridColumn<Role>[] = [
     { field: "name", headerKey: "roles.name", sortable: true, filter: "text", flex: 2 },
     { field: "code", headerKey: "roles.code", sortable: true, filter: "text", flex: 2 },
-    { field: "principal_type", headerKey: "roles.principalType", filter: false, width: 190, format: (role) => t(`roles.principalTypes.${role.principal_type}`) },
-    { field: "is_system", headerKey: "roles.kind", filter: false, width: 150, format: (role) => t(role.is_system ? "roles.kinds.system" : "roles.kinds.tenant") },
-    { field: "permissions", headerKey: "roles.permissions", filter: false, width: 150, format: (role) => t("roles.permissionCount", { count: role.permissions.length }) },
-    { field: "updated_at", headerKey: "roles.updated", sortable: true, filter: false, width: 190, hidden: true, format: (role) => new Date(role.updated_at).toLocaleString() },
+    {
+      field: "principal_type",
+      headerKey: "roles.principalType",
+      filter: false,
+      width: 190,
+      format: (role) => t(`roles.principalTypes.${role.principal_type}`),
+    },
+    {
+      field: "is_system",
+      headerKey: "roles.kind",
+      filter: false,
+      width: 150,
+      format: (role) => t(role.is_system ? "roles.kinds.system" : "roles.kinds.tenant"),
+    },
+    {
+      field: "permissions",
+      headerKey: "roles.permissions",
+      filter: false,
+      width: 150,
+      format: (role) => t("roles.permissionCount", { count: role.permissions.length }),
+    },
+    {
+      field: "updated_at",
+      headerKey: "roles.updated",
+      sortable: true,
+      filter: false,
+      width: 190,
+      hidden: true,
+      format: (role) => new Date(role.updated_at).toLocaleString(),
+    },
   ];
 
   const exportAll = async () => {
@@ -76,12 +102,20 @@ export function RolesPage() {
         actions={
           <>
             {transfer.available && (
-              <Button variant="default" leftSection={<IconDownload size={16} aria-hidden="true" />} onClick={() => void exportAll()}>
+              <Button
+                variant="default"
+                leftSection={<IconDownload size={16} aria-hidden="true" />}
+                onClick={() => void exportAll()}
+              >
                 {t("roles.export")}
               </Button>
             )}
             {canImport && (
-              <Button variant="default" leftSection={<IconUpload size={16} aria-hidden="true" />} onClick={() => setImporting(true)}>
+              <Button
+                variant="default"
+                leftSection={<IconUpload size={16} aria-hidden="true" />}
+                onClick={() => setImporting(true)}
+              >
                 {t("roles.import.open")}
               </Button>
             )}

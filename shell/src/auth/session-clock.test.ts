@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { afterActivity, merge, nextChangeIn, phaseAt, timesFromMe, warningLead, type SessionTimes } from "./session-clock";
+import {
+  afterActivity,
+  merge,
+  nextChangeIn,
+  phaseAt,
+  timesFromMe,
+  warningLead,
+  type SessionTimes,
+} from "./session-clock";
 
 const minute = 60_000;
 const hour = 60 * minute;
@@ -8,14 +16,19 @@ const start = Date.parse("2026-10-19T08:00:00Z");
 const iso = (at: number) => new Date(at).toISOString();
 
 /** A session as /me shows it right after a login at `start`: idle in 60 minutes, absolute in 12 hours. */
-const fresh = (): SessionTimes => timesFromMe({ id: "s1", idle_expires_at: iso(start + hour), expires_at: iso(start + 12 * hour) }, start, 0);
+const fresh = (): SessionTimes =>
+  timesFromMe({ id: "s1", idle_expires_at: iso(start + hour), expires_at: iso(start + 12 * hour) }, start, 0);
 
 describe("the session clock", () => {
   it("reads /me's times onto this browser's clock, with the idle span it shows", () => {
     expect(fresh()).toEqual({ sessionId: "s1", idleEndsAt: start + hour, endsAt: start + 12 * hour, idleSpan: hour });
 
     // The server's clock runs five minutes ahead of this browser's: the ends move back by five minutes, the span stays.
-    const skewed = timesFromMe({ id: "s1", idle_expires_at: iso(start + 5 * minute + hour), expires_at: iso(start + 5 * minute + 12 * hour) }, start, 5 * minute);
+    const skewed = timesFromMe(
+      { id: "s1", idle_expires_at: iso(start + 5 * minute + hour), expires_at: iso(start + 5 * minute + 12 * hour) },
+      start,
+      5 * minute,
+    );
     expect(skewed.idleEndsAt).toBe(start + hour);
     expect(skewed.endsAt).toBe(start + 12 * hour);
     expect(skewed.idleSpan).toBe(hour);
@@ -24,14 +37,24 @@ describe("the session clock", () => {
   it("keeps the largest idle span it has seen: an answer between two touches shows less", () => {
     const touched = fresh();
     // Thirty seconds later the server has not written its activity time again: the answer shows a span 30 seconds short.
-    const between = timesFromMe({ id: "s1", idle_expires_at: iso(start + hour), expires_at: iso(start + 12 * hour) }, start + 30_000, 0, touched);
+    const between = timesFromMe(
+      { id: "s1", idle_expires_at: iso(start + hour), expires_at: iso(start + 12 * hour) },
+      start + 30_000,
+      0,
+      touched,
+    );
     expect(between.idleSpan).toBe(hour);
     expect(between.idleEndsAt).toBe(start + hour);
   });
 
   it("keeps the idle span it knew when the idle end is the absolute limit", () => {
     const near = start + 11.5 * hour;
-    const capped = timesFromMe({ id: "s1", idle_expires_at: iso(start + 12 * hour), expires_at: iso(start + 12 * hour) }, near, 0, fresh());
+    const capped = timesFromMe(
+      { id: "s1", idle_expires_at: iso(start + 12 * hour), expires_at: iso(start + 12 * hour) },
+      near,
+      0,
+      fresh(),
+    );
     expect(capped.idleEndsAt).toBe(start + 12 * hour);
     expect(capped.idleSpan).toBe(hour);
   });
@@ -64,7 +87,10 @@ describe("the session clock", () => {
     const busy = afterActivity(fresh(), start + 12 * hour - minute);
     const now = start + 12 * hour - warningLead;
     expect(phaseAt(busy, now)).toEqual({ kind: "final", endsAt: start + 12 * hour });
-    expect(phaseAt(afterActivity(busy, now + 30_000), now + 30_000)).toEqual({ kind: "final", endsAt: start + 12 * hour });
+    expect(phaseAt(afterActivity(busy, now + 30_000), now + 30_000)).toEqual({
+      kind: "final",
+      endsAt: start + 12 * hour,
+    });
     expect(nextChangeIn(busy, now)).toBe(warningLead);
     expect(phaseAt(busy, start + 12 * hour)).toEqual({ kind: "ended", reason: "absolute" });
   });

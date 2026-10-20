@@ -1,0 +1,10 @@
+# Prettier formats the shell's code (ADR-0040); build output, reports and the lock file are not code, and the README is
+# prose written by hand.
+node_modules
+dist
+dist-gallery
+coverage
+test-results
+playwright-report
+package-lock.json
+*.md

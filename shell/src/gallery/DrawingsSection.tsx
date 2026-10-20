@@ -57,7 +57,16 @@ export function DrawingsSection() {
               <defs>
                 <Hatch id="gallery-hatch" />
               </defs>
-              <rect x={10} y={10} width={100} height={100} rx={8} fill="url(#gallery-hatch)" stroke="var(--iron-ink)" strokeWidth={2} />
+              <rect
+                x={10}
+                y={10}
+                width={100}
+                height={100}
+                rx={8}
+                fill="url(#gallery-hatch)"
+                stroke="var(--iron-ink)"
+                strokeWidth={2}
+              />
             </svg>
             <Text size="sm">{t("gallery.drawings.hatch")}</Text>
           </Stack>

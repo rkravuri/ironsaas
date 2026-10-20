@@ -7,12 +7,12 @@ using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
 using Iron.Kernel.Settings;
+using Iron.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
-using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Identity.Tests;
 
@@ -28,9 +28,12 @@ public sealed class IdentityFixture : IAsyncLifetime
     public const string SmokeClientId = "smoke-client";
     public const string SmokeClientSecret = "a smoke client secret of some length";
 
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:19rc1").Build();
+    private TestPostgres? _postgres;
 
-    public string ConnectionString => _container.GetConnectionString();
+    public string ConnectionString => Postgres.ConnectionString;
+
+    /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
+    private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
     public static IReadOnlyDictionary<string, string?> Configuration => new Dictionary<string, string?>(StringComparer.Ordinal)
     {
@@ -57,25 +60,24 @@ public sealed class IdentityFixture : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync(TestContext.Current.CancellationToken);
+        _postgres = await TestPostgres.StartAsync("identity", TestContext.Current.CancellationToken);
         await using var provider = BuildServices(new FakeTimeProvider());
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
     }
 
-    public async ValueTask DisposeAsync() => await _container.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (_postgres is not null)
+        {
+            await _postgres.DisposeAsync();
+        }
+    }
 
     /// <summary>Another tenant's database in the same container, migrated and seeded: a person there is no one here.</summary>
     public async Task<string> CreateTenantDatabaseAsync(string name)
     {
-        await using (var connection = new NpgsqlConnection(ConnectionString))
-        {
-            await connection.OpenAsync(TestContext.Current.CancellationToken);
-            await using var create = new NpgsqlCommand($"create database \"{name}\"", connection);
-            await create.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-        }
-
-        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = name }.ConnectionString;
+        var connectionString = await Postgres.CreateDatabaseAsync(name, TestContext.Current.CancellationToken);
         await using var provider = BuildServices(new FakeTimeProvider(), connectionString: connectionString);
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));

@@ -11,7 +11,11 @@ describe("the API client", () => {
   it("sends JSON with the session cookie and validates the answer", async () => {
     const { calls } = stubFetch({ "POST /auth/login": () => json({ ok: true }) });
 
-    const result = await request("/auth/login", { method: "POST", body: { login_id: "a", password: "b" }, schema: z.object({ ok: z.boolean() }) });
+    const result = await request("/auth/login", {
+      method: "POST",
+      body: { login_id: "a", password: "b" },
+      schema: z.object({ ok: z.boolean() }),
+    });
 
     expect(result).toEqual({ ok: true });
     expect(calls[0]?.init?.credentials).toBe("same-origin");
@@ -19,7 +23,14 @@ describe("the API client", () => {
   });
 
   it("turns a problem into an ApiError with the error code and the correlation id", async () => {
-    stubFetch({ "GET /api/v1/users": () => problem(400, { title: "Bad Request", detail: "Unknown field 'nope'.", error_code: "list.unknown_field" }, "abc123") });
+    stubFetch({
+      "GET /api/v1/users": () =>
+        problem(
+          400,
+          { title: "Bad Request", detail: "Unknown field 'nope'.", error_code: "list.unknown_field" },
+          "abc123",
+        ),
+    });
 
     const error = await request("/api/v1/users").catch((e: unknown) => e);
 
@@ -36,8 +47,23 @@ describe("the API client", () => {
       "GET /api/v1/things": () =>
         json({
           data: [{ id: "1" }],
-          meta: { page_number: 1, page_size: 50, total_count: 1, total_pages: 1, has_previous: false, has_next: false, page_size_capped: false, max_page_size: 200 },
-          links: { self: "/api/v1/things?page_number=1", first: "/api/v1/things?page_number=1", previous: null, next: null, last: "/api/v1/things?page_number=1" },
+          meta: {
+            page_number: 1,
+            page_size: 50,
+            total_count: 1,
+            total_pages: 1,
+            has_previous: false,
+            has_next: false,
+            page_size_capped: false,
+            max_page_size: 200,
+          },
+          links: {
+            self: "/api/v1/things?page_number=1",
+            first: "/api/v1/things?page_number=1",
+            previous: null,
+            next: null,
+            last: "/api/v1/things?page_number=1",
+          },
         }),
     });
 
@@ -49,7 +75,9 @@ describe("the API client", () => {
   });
 
   it("takes the correlation id from the header when the body has none, and tells listeners about a 401", async () => {
-    stubFetch({ "GET /api/v1/me": () => new Response("", { status: 401, headers: { "X-Correlation-Id": "from-header" } }) });
+    stubFetch({
+      "GET /api/v1/me": () => new Response("", { status: 401, headers: { "X-Correlation-Id": "from-header" } }),
+    });
     const listener = vi.fn();
     const stop = onUnauthenticated(listener);
 

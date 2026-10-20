@@ -18,14 +18,25 @@ help: ## Show this list
 build: ## Build every project (warnings are errors)
 	dotnet build Foundation.slnx --configuration $(CONFIG)
 
-test: ## Run every test project (Microsoft Testing Platform, see global.json)
-	dotnet test --solution Foundation.slnx --configuration $(CONFIG)
+# One PostgreSQL, one Azurite and one OpenBao for the whole run, each project in its own database, containers and mount
+# (tests/test-services.sh, tests/Iron.Testing), and at most four test projects at once. Every project at once (one per
+# CPU thread), each with containers of its own, started some forty containers beside the stack, and a starved thread
+# failed Testcontainers' five-second image name check before any test ran. The services go whatever the result.
+TEST_PARALLEL ?= 4
+TEST_ARGS ?=
+
+test: ## Run every test project (Microsoft Testing Platform, see global.json) on the run's three services, four at a time
+	@services=$$(sh tests/test-services.sh up) || { sh tests/test-services.sh down; exit 1; }; \
+	eval "$$services"; \
+	dotnet test --solution Foundation.slnx --configuration $(CONFIG) --max-parallel-test-modules $(TEST_PARALLEL) $(TEST_ARGS); \
+	status=$$?; sh tests/test-services.sh down; exit $$status
 
 check: ## Run only the architecture checks (module boundaries, layout)
 	dotnet test --project tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj --configuration $(CONFIG)
 
-format: ## Apply the code style from .editorconfig
+format: shell-node ## Apply the code style: dotnet format from .editorconfig, Prettier in the shell (ADR-0040)
 	dotnet format Foundation.slnx
+	cd shell && npm run format --silent
 
 CATALOGUE_FILE := src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json
 SETTING_KEYS_FILE := shell/src/api/setting-keys.ts
@@ -165,15 +176,18 @@ smoke: env ## Run the smoke test against the local stack (control plane, fleet a
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
 	SMOKE_TENANT=$(TEST_TENANT) dotnet run --project tools/Iron.Smoke --configuration Release
 
-e2e: shell-node env ## Set up the child-unit data, then run the Playwright tests against the smoke tenant, or TENANT=x (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
+e2e: shell-node env ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate it (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	password=$$(python3 -c 'import json,sys,urllib.request; r=urllib.request.Request("http://localhost:8200/v1/secret/data/tenants/" + sys.argv[2] + "/smoke", headers={"X-Vault-Token": sys.argv[1]}); print(json.load(urllib.request.urlopen(r))["data"]["data"]["administrator_password"])' "$$OPENBAO_ROOT_TOKEN" "$(TEST_TENANT)" 2>/dev/null) \
 	  || { echo "No administrator password at secret/tenants/$(TEST_TENANT)/smoke: run make smoke TENANT=$(TEST_TENANT) first."; exit 1; }; \
-	scoped=$$(E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" STORE_TOKEN="$$OPENBAO_ROOT_TOKEN" python3 $(COMPOSE_DIR)/scripts/e2e-data.py) \
-	  || { echo "The child unit's data for the browser test could not be set up on $(TEST_TENANT)."; exit 1; }; \
+	scoped=$$(E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" python3 $(COMPOSE_DIR)/scripts/e2e-data.py setup) \
+	  || { echo "The run's unit for the browser tests could not be set up on $(TEST_TENANT)."; exit 1; }; \
 	eval "$$scoped"; \
-	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" \
-	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) npx playwright test
+	(cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" \
+	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) npx playwright test); \
+	status=$$?; \
+	E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" python3 $(COMPOSE_DIR)/scripts/e2e-data.py teardown || status=1; \
+	exit $$status
 
 shell-install: shell-node ## Install the shell's packages (shell/)
 	cd shell && npm ci --no-audit --no-fund
@@ -181,7 +195,7 @@ shell-install: shell-node ## Install the shell's packages (shell/)
 shell-dev: shell-node ## Run the shell with Vite on http://localhost:5173, proxying the API paths to make run-api
 	cd shell && npm run dev
 
-shell-check: shell-node ## Lint, test and build the shell
+shell-check: shell-node ## Lint, check the formatting of, test and build the shell
 	cd shell && npm run check
 
 shell-a11y: shell-node ## Build the gallery and run the accessibility scan on it (browsers once: cd shell && npm run e2e:install)

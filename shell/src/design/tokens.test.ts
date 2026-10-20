@@ -24,7 +24,9 @@ describe("the tokens", () => {
         }
         const ratio = contrastRatio(foreground, background);
         if (ratio < pair.minimum) {
-          failures.push(`${scheme}: ${pair.foreground} (${foreground}) on ${pair.background} (${background}) is ${ratio.toFixed(2)}:1, below ${pair.minimum}:1`);
+          failures.push(
+            `${scheme}: ${pair.foreground} (${foreground}) on ${pair.background} (${background}) is ${ratio.toFixed(2)}:1, below ${pair.minimum}:1`,
+          );
         }
       }
     }
@@ -32,7 +34,15 @@ describe("the tokens", () => {
   });
 
   it("use no pure black or white anywhere", () => {
-    const values = [tokens.ink.light, tokens.ink.dark, tokens.paper.light, tokens.paper.dark, ...tokens.neutral.gray, ...tokens.neutral.dark, ...accentNames.flatMap((name) => [...tokens.accents[name].shades])];
+    const values = [
+      tokens.ink.light,
+      tokens.ink.dark,
+      tokens.paper.light,
+      tokens.paper.dark,
+      ...tokens.neutral.gray,
+      ...tokens.neutral.dark,
+      ...accentNames.flatMap((name) => [...tokens.accents[name].shades]),
+    ];
     expect(values.filter((value) => pure.includes(value))).toEqual([]);
   });
 

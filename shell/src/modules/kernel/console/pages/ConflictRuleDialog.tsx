@@ -3,7 +3,15 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Group, Radio, Select, Stack, Text, TextInput, Textarea } from "@mantine/core";
 import { z } from "zod";
-import { createConflictRule, fetchPermissions, fetchRoles, updateConflictRule, type ConflictMode, type ConflictRule, type ConflictSideKind } from "@/api/authorization";
+import {
+  createConflictRule,
+  fetchPermissions,
+  fetchRoles,
+  updateConflictRule,
+  type ConflictMode,
+  type ConflictRule,
+  type ConflictSideKind,
+} from "@/api/authorization";
 import { Form, useZodForm } from "@/components/form";
 import { FormDialog } from "@/components/panels";
 import { PersonPicker } from "./PersonPicker";
@@ -36,7 +44,12 @@ interface ConflictRuleDialogProps {
 export function ConflictRuleDialog({ opened, rule, onClose, onDone }: ConflictRuleDialogProps) {
   const { t } = useTranslation();
   return (
-    <FormDialog opened={opened} size="lg" title={rule ? t("conflicts.editor.editTitle", { name: rule.name }) : t("conflicts.editor.createTitle")} onClose={onClose}>
+    <FormDialog
+      opened={opened}
+      size="lg"
+      title={rule ? t("conflicts.editor.editTitle", { name: rule.name }) : t("conflicts.editor.createTitle")}
+      onClose={onClose}
+    >
       {opened && <ConflictRuleForm rule={rule} onClose={onClose} onDone={onDone} />}
     </FormDialog>
   );
@@ -60,7 +73,10 @@ function ConflictRuleForm({ rule, onClose, onDone }: Omit<ConflictRuleDialogProp
       })),
     [permissions.data],
   );
-  const roleOptions = useMemo(() => (roles.data?.data ?? []).map((r) => ({ value: r.id, label: r.name })), [roles.data]);
+  const roleOptions = useMemo(
+    () => (roles.data?.data ?? []).map((r) => ({ value: r.id, label: r.name })),
+    [roles.data],
+  );
   const schema = useMemo(
     () =>
       z.object({
@@ -132,7 +148,12 @@ function ConflictRuleForm({ rule, onClose, onDone }: Omit<ConflictRuleDialogProp
   };
 
   return (
-    <Form form={form} onSubmit={submit} submitLabel={rule ? t("conflicts.editor.submitEdit") : t("conflicts.editor.submitCreate")} secondary={{ label: t("dialog.cancel"), onClick: onClose }}>
+    <Form
+      form={form}
+      onSubmit={submit}
+      submitLabel={rule ? t("conflicts.editor.submitEdit") : t("conflicts.editor.submitCreate")}
+      secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+    >
       <TextInput label={t("conflicts.editor.name")} data-autofocus {...form.getInputProps("name")} />
       {side("first", t("conflicts.editor.first"))}
       {side("second", t("conflicts.editor.second"))}
@@ -142,7 +163,13 @@ function ConflictRuleForm({ rule, onClose, onDone }: Omit<ConflictRuleDialogProp
           <Radio value="warn" label={t("conflicts.modes.warn")} description={t("conflicts.modeHints.warn")} />
         </Stack>
       </Radio.Group>
-      <Textarea label={t("conflicts.editor.reason")} description={t("conflicts.editor.reasonHint")} autosize minRows={2} {...form.getInputProps("reason")} />
+      <Textarea
+        label={t("conflicts.editor.reason")}
+        description={t("conflicts.editor.reasonHint")}
+        autosize
+        minRows={2}
+        {...form.getInputProps("reason")}
+      />
       <PersonPicker
         label={t("conflicts.editor.owner")}
         description={t("conflicts.editor.ownerHint")}

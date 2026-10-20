@@ -16,7 +16,9 @@ describe("the ListQuery mapping", () => {
       ],
     });
 
-    expect(query).toBe("page_number=2&page_size=50&sort=-created_at%2Clogin_id&filter=status%3Aeq%3Aactive&filter=login_id%3Acontains%3Aravi");
+    expect(query).toBe(
+      "page_number=2&page_size=50&sort=-created_at%2Clogin_id&filter=status%3Aeq%3Aactive&filter=login_id%3Acontains%3Aravi",
+    );
     expect(new URLSearchParams(query).getAll("filter")).toEqual(["status:eq:active", "login_id:contains:ravi"]);
   });
 
@@ -28,7 +30,13 @@ describe("the ListQuery mapping", () => {
   });
 
   it("maps the grid's sort model in order and drops unsorted columns", () => {
-    expect(sortFromGrid([{ colId: "a", sort: "desc" }, { colId: "b", sort: null }, { colId: "c", sort: "asc" }])).toEqual([
+    expect(
+      sortFromGrid([
+        { colId: "a", sort: "desc" },
+        { colId: "b", sort: null },
+        { colId: "c", sort: "asc" },
+      ]),
+    ).toEqual([
       { field: "a", direction: "desc" },
       { field: "c", direction: "asc" },
     ]);

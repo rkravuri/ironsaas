@@ -74,7 +74,11 @@ export function PersonalDelegations() {
         <Text size="sm" c="dimmed" maw={560}>
           {t("delegations.yours.intro")}
         </Text>
-        <Button leftSection={<IconPlus size={16} aria-hidden="true" />} onClick={() => setCreating(true)} disabled={actingNow}>
+        <Button
+          leftSection={<IconPlus size={16} aria-hidden="true" />}
+          onClick={() => setCreating(true)}
+          disabled={actingNow}
+        >
           {t("delegations.create.open")}
         </Button>
       </Group>
@@ -84,7 +88,13 @@ export function PersonalDelegations() {
         </Text>
       )}
       {failure && (
-        <Alert color="danger" role="alert" withCloseButton closeButtonLabel={t("dialog.close")} onClose={() => setFailure(undefined)}>
+        <Alert
+          color="danger"
+          role="alert"
+          withCloseButton
+          closeButtonLabel={t("dialog.close")}
+          onClose={() => setFailure(undefined)}
+        >
           {failure.message}
           {failure.correlationId !== undefined && (
             <Text size="xs" c="dimmed" mt={4}>
@@ -100,9 +110,21 @@ export function PersonalDelegations() {
           {mine.error instanceof ApiError ? mine.error.message : t("errors.unexpected")}
         </Alert>
       ) : mine.data.data.length === 0 ? (
-        <EmptyState drawing="nothingYet" size="sm" title={t("delegations.yours.none")} text={t("delegations.yours.noneText")} />
+        <EmptyState
+          drawing="nothingYet"
+          size="sm"
+          title={t("delegations.yours.none")}
+          text={t("delegations.yours.noneText")}
+        />
       ) : (
-        <Stack gap="sm" component="ul" m={0} pl={0} style={{ listStyle: "none" }} aria-label={t("delegations.yours.title")}>
+        <Stack
+          gap="sm"
+          component="ul"
+          m={0}
+          pl={0}
+          style={{ listStyle: "none" }}
+          aria-label={t("delegations.yours.title")}
+        >
           {mine.data.data.map((delegation) => {
             const given = delegation.delegator.id === me?.id;
             const period = periodLabel(delegation.starts_at, delegation.ends_at, i18n.language);
@@ -113,7 +135,9 @@ export function PersonalDelegations() {
                 <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
                   <Stack gap={2}>
                     <Text size="sm">
-                      {given ? t("delegations.yours.given", { name: delegation.delegate.name, duties }) : t("delegations.yours.received", { name: delegation.delegator.name, duties })}
+                      {given
+                        ? t("delegations.yours.given", { name: delegation.delegate.name, duties })
+                        : t("delegations.yours.received", { name: delegation.delegator.name, duties })}
                     </Text>
                     <Text size="xs" c="dimmed">
                       {t("delegations.period", period)} {t("delegations.reason", { reason: delegation.reason })}
@@ -122,7 +146,13 @@ export function PersonalDelegations() {
                   <Group gap="xs" wrap="nowrap">
                     <DelegationStatus delegation={delegation} />
                     {canAct && (
-                      <Button size="xs" variant="light" leftSection={<IconUserShare size={14} aria-hidden="true" />} loading={acting === delegation.delegator.id} onClick={() => void actFor(delegation.delegator.id)}>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        leftSection={<IconUserShare size={14} aria-hidden="true" />}
+                        loading={acting === delegation.delegator.id}
+                        onClick={() => void actFor(delegation.delegator.id)}
+                      >
                         {t("delegations.actFor", { name: delegation.delegator.name })}
                       </Button>
                     )}
@@ -147,7 +177,12 @@ export function PersonalDelegations() {
           await changed();
         }}
       />
-      <EndDelegationDialog delegation={ending} busy={busy} onConfirm={() => void end()} onCancel={() => setEnding(undefined)} />
+      <EndDelegationDialog
+        delegation={ending}
+        busy={busy}
+        onConfirm={() => void end()}
+        onCancel={() => setEnding(undefined)}
+      />
     </Stack>
   );
 }
@@ -157,14 +192,28 @@ export function DelegationStatus({ delegation }: { delegation: Delegation }) {
   const { t } = useTranslation();
   const tone = statusTone[delegation.status];
   return (
-    <Badge variant={tone === "neutral" ? "default" : "light"} {...(tone !== "neutral" ? { color: tone } : {})} radius="sm">
+    <Badge
+      variant={tone === "neutral" ? "default" : "light"}
+      {...(tone !== "neutral" ? { color: tone } : {})}
+      radius="sm"
+    >
       {t(`delegations.status.${delegation.status}`)}
     </Badge>
   );
 }
 
 /** Ending a delegation asks first: the delegate stops acting at once. */
-export function EndDelegationDialog({ delegation, busy, onConfirm, onCancel }: { delegation: Delegation | undefined; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
+export function EndDelegationDialog({
+  delegation,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  delegation: Delegation | undefined;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
   const { t } = useTranslation();
   // The words of the last delegation asked about stay while the dialog fades out.
   const [shown, setShown] = useState(delegation);
@@ -175,7 +224,9 @@ export function EndDelegationDialog({ delegation, busy, onConfirm, onCancel }: {
     <ConfirmDialog
       opened={delegation !== undefined}
       title={t("delegations.end.title")}
-      message={shown ? t("delegations.end.message", { delegator: shown.delegator.name, delegate: shown.delegate.name }) : ""}
+      message={
+        shown ? t("delegations.end.message", { delegator: shown.delegator.name, delegate: shown.delegate.name }) : ""
+      }
       confirmLabel={t("delegations.end.confirm")}
       danger
       busy={busy}

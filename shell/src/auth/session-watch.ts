@@ -76,7 +76,12 @@ export class SessionWatch {
     }
     this.times = next;
     const last = this.published;
-    if (always || last === undefined || last.sessionId !== next.sessionId || Math.abs(next.idleEndsAt - last.idleEndsAt) >= publishStep) {
+    if (
+      always ||
+      last === undefined ||
+      last.sessionId !== next.sessionId ||
+      Math.abs(next.idleEndsAt - last.idleEndsAt) >= publishStep
+    ) {
       this.published = next;
       this.channel?.post({ kind: "times", times: next });
     }

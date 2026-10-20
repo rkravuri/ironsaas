@@ -9,7 +9,13 @@ import { RequirePermission } from "./Guards";
 /** The navigation labels the session leaves visible, as the layout builds them. */
 function Navigation() {
   const session = useSession();
-  return <p data-testid="navigation">{navigationFor(manifests, session.permissions, { strict: true }).flatMap((group) => group.entries.map((entry) => entry.path)).join(" ")}</p>;
+  return (
+    <p data-testid="navigation">
+      {navigationFor(manifests, session.permissions, { strict: true })
+        .flatMap((group) => group.entries.map((entry) => entry.path))
+        .join(" ")}
+    </p>
+  );
 }
 
 describe("the guards and the navigation", () => {

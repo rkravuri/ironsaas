@@ -1,7 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { NavLink as RouterNavLink } from "react-router";
 import { Group, Menu, Text, UnstyledButton, VisuallyHidden, useMantineColorScheme } from "@mantine/core";
-import { IconCheck, IconChevronDown, IconDeviceDesktop, IconLogout, IconMoon, IconSun, IconUser } from "@tabler/icons-react";
+import {
+  IconCheck,
+  IconChevronDown,
+  IconDeviceDesktop,
+  IconLogout,
+  IconMoon,
+  IconSun,
+  IconUser,
+} from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
 import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 

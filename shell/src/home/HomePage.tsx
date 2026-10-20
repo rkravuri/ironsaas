@@ -47,7 +47,10 @@ function HomeView({ me }: { me: Me }) {
   const { t } = useTranslation();
   const session = useSession();
   const hostname = window.location.hostname;
-  const openers = useMemo(() => openersFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled), [session.permissions, session.entitlements]);
+  const openers = useMemo(
+    () => openersFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled),
+    [session.permissions, session.entitlements],
+  );
   const sessionId = me.session.id;
   const [drawIn] = useState(() => drawnFor() !== sessionId);
   const [part] = useState(() => dayPart(new Date().getHours()));
@@ -68,11 +71,24 @@ function HomeView({ me }: { me: Me }) {
           <Title order={1} variant="display">
             {t(`home.greeting.${part}`, { name: me.display_name })}
           </Title>
-          <Text c="dimmed">{me.home_unit ? t("home.introWithUnit", { unit: me.home_unit.name }) : t("home.intro")}</Text>
+          <Text c="dimmed">
+            {me.home_unit ? t("home.introWithUnit", { unit: me.home_unit.name }) : t("home.intro")}
+          </Text>
         </Stack>
         {/* The mark as a texture beside the drawing, never behind the words (brief section 4). */}
         <Box pos="relative" visibleFrom="sm" style={{ flexShrink: 0 }}>
-          <TenantMark hostname={hostname} size={240} opacity={0.07} style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }} />
+          <TenantMark
+            hostname={hostname}
+            size={240}
+            opacity={0.07}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+            }}
+          />
           <Box pos="relative">
             <Home size="lg" />
           </Box>
@@ -119,7 +135,15 @@ function Opener({ opening, drawIn }: { opening: ModuleOpening; drawIn: boolean }
   const accent = opening.opener?.accent ?? "primary";
   const Drawing = opening.opener?.drawing;
   return (
-    <Paper withBorder p="lg" radius="md" component="article" aria-labelledby={id} data-opener={opening.module} style={{ borderTop: `3px solid var(--iron-accent-${accent})` }}>
+    <Paper
+      withBorder
+      p="lg"
+      radius="md"
+      component="article"
+      aria-labelledby={id}
+      data-opener={opening.module}
+      style={{ borderTop: `3px solid var(--iron-accent-${accent})` }}
+    >
       <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
         <Group align="flex-start" gap="md" wrap="nowrap">
           <ModuleMark name={opening.module} accent={accent} size={56} animate={drawIn} />

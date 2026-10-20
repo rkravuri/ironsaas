@@ -42,10 +42,18 @@ export function stubFetch(handlers: Record<string, FetchHandler>) {
     calls.push({ key, init });
     const handler = handlers[key];
     if (!handler) {
-      return new Response(JSON.stringify({ title: "Not Found", status: 404, error_code: "test.unhandled", correlation_id: "test-correlation" }), {
-        status: 404,
-        headers: { "Content-Type": "application/problem+json", "X-Correlation-Id": "test-correlation" },
-      });
+      return new Response(
+        JSON.stringify({
+          title: "Not Found",
+          status: 404,
+          error_code: "test.unhandled",
+          correlation_id: "test-correlation",
+        }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/problem+json", "X-Correlation-Id": "test-correlation" },
+        },
+      );
     }
     return handler(init);
   });
@@ -63,7 +71,10 @@ export const problem = (status: number, body: Record<string, unknown>, correlati
   });
 
 /** A session as /me shows it: started a minute ago, idle in an hour, absolute in twelve, unless a test moves them. */
-export const sessionTimes = ({ idleIn = 60 * 60_000, endsIn = 12 * 60 * 60_000 }: { idleIn?: number; endsIn?: number } = {}) => ({
+export const sessionTimes = ({
+  idleIn = 60 * 60_000,
+  endsIn = 12 * 60 * 60_000,
+}: { idleIn?: number; endsIn?: number } = {}) => ({
   id: "01a14e12-0000-7000-8000-000000000001",
   started_at: new Date(Date.now() - 60_000).toISOString(),
   expires_at: new Date(Date.now() + endsIn).toISOString(),

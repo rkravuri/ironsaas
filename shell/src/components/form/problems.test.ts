@@ -57,7 +57,16 @@ describe("applyProblem", () => {
     });
     expect(summary?.message).toBe("");
 
-    const bare = new ApiError(409, ProblemSchema.parse({ status: 409, detail: "The login id is taken.", error_code: "identity.users.conflict", correlation_id: "c" }), undefined);
+    const bare = new ApiError(
+      409,
+      ProblemSchema.parse({
+        status: 409,
+        detail: "The login id is taken.",
+        error_code: "identity.users.conflict",
+        correlation_id: "c",
+      }),
+      undefined,
+    );
     act(() => {
       summary = applyProblem(result.current, bare);
     });

@@ -87,7 +87,10 @@ function Details({ me }: { me: Me }) {
 /** The person's own assignments, read-only, each a sentence: the role, then where it applies (TF-033, ADR-0031). */
 function MyAccess() {
   const { t } = useTranslation();
-  const mine = useQuery({ queryKey: ["authz", "role-assignments", "mine"], queryFn: ({ signal }) => fetchMyAssignments(signal) });
+  const mine = useQuery({
+    queryKey: ["authz", "role-assignments", "mine"],
+    queryFn: ({ signal }) => fetchMyAssignments(signal),
+  });
   if (mine.isPending) {
     return <LoadingState height={120} />;
   }
@@ -104,7 +107,9 @@ function MyAccess() {
     );
   }
   if (mine.data.data.length === 0) {
-    return <EmptyState drawing="nothingYet" size="sm" title={t("profile.access.none")} text={t("profile.access.noneText")} />;
+    return (
+      <EmptyState drawing="nothingYet" size="sm" title={t("profile.access.none")} text={t("profile.access.noneText")} />
+    );
   }
   return (
     <Stack gap="sm">
@@ -200,7 +205,10 @@ function MySession({ me }: { me: Me }) {
     <Stack gap="md" align="flex-start">
       <Facts
         rows={[
-          [t("profile.session.started"), me.session.started_at ? when(me.session.started_at) : t("profile.session.unknown")],
+          [
+            t("profile.session.started"),
+            me.session.started_at ? when(me.session.started_at) : t("profile.session.unknown"),
+          ],
           [t("profile.session.idle"), when(times?.idleEndsAt ?? me.session.idle_expires_at)],
           [t("profile.session.absolute"), when(me.session.expires_at)],
         ]}
@@ -208,7 +216,11 @@ function MySession({ me }: { me: Me }) {
       <Text size="sm" c="dimmed" maw={640}>
         {t("profile.session.limits", { idle: idleMinutes, hours: absoluteHours })} {t("profile.session.explain")}
       </Text>
-      <Button variant="default" leftSection={<IconLogout size={16} aria-hidden="true" />} onClick={() => void session.signOut()}>
+      <Button
+        variant="default"
+        leftSection={<IconLogout size={16} aria-hidden="true" />}
+        onClick={() => void session.signOut()}
+      >
         {t("app.signOut")}
       </Button>
     </Stack>

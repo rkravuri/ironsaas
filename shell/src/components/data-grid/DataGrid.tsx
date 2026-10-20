@@ -26,13 +26,31 @@ import { ApiError } from "@/api/client";
 import type { ListMeta } from "@/api/client";
 import { useDensity } from "@/design/density";
 import { tokens } from "@/design/tokens";
-import { buildListQuery, defaultPageSize, filtersFromGrid, maxPageSize, pageFromRows, sortFromGrid, type GridFilterModel, type SortTerm } from "./list-query";
+import {
+  buildListQuery,
+  defaultPageSize,
+  filtersFromGrid,
+  maxPageSize,
+  pageFromRows,
+  sortFromGrid,
+  type GridFilterModel,
+  type SortTerm,
+} from "./list-query";
 import { NoRowsOverlay } from "./NoRowsOverlay";
 import { rowKeyAction } from "./keys";
 import { dataGridTheme } from "./theme";
 
 // Only what the wrapper uses; the validation module explains a missing one in development and costs nothing in production.
-ModuleRegistry.registerModules([InfiniteRowModelModule, PaginationModule, RowSelectionModule, TextFilterModule, NumberFilterModule, DateFilterModule, ColumnApiModule, ...(import.meta.env.DEV ? [ValidationModule] : [])]);
+ModuleRegistry.registerModules([
+  InfiniteRowModelModule,
+  PaginationModule,
+  RowSelectionModule,
+  TextFilterModule,
+  NumberFilterModule,
+  DateFilterModule,
+  ColumnApiModule,
+  ...(import.meta.env.DEV ? [ValidationModule] : []),
+]);
 
 export type DataGridFilter = "text" | "number" | "date" | false;
 
@@ -78,9 +96,22 @@ export interface DataGridProblem {
   correlationId: string | undefined;
 }
 
-const textFilterParams = { filterOptions: ["contains", "startsWith", "equals", "notEqual"], maxNumConditions: 1, buttons: ["apply", "reset"], debounceMs: 300 };
-const numberFilterParams = { filterOptions: ["equals", "notEqual", "lessThan", "lessThanOrEqual", "greaterThan", "greaterThanOrEqual"], maxNumConditions: 1, buttons: ["apply", "reset"] };
-const dateFilterParams = { filterOptions: ["equals", "lessThan", "greaterThan"], maxNumConditions: 1, buttons: ["apply", "reset"] };
+const textFilterParams = {
+  filterOptions: ["contains", "startsWith", "equals", "notEqual"],
+  maxNumConditions: 1,
+  buttons: ["apply", "reset"],
+  debounceMs: 300,
+};
+const numberFilterParams = {
+  filterOptions: ["equals", "notEqual", "lessThan", "lessThanOrEqual", "greaterThan", "greaterThanOrEqual"],
+  maxNumConditions: 1,
+  buttons: ["apply", "reset"],
+};
+const dateFilterParams = {
+  filterOptions: ["equals", "lessThan", "greaterThan"],
+  maxNumConditions: 1,
+  buttons: ["apply", "reset"],
+};
 
 /**
  * The one grid of the shell (S1 plan 3.10): AG Grid Community in the infinite row model, so paging, sorting and
@@ -89,7 +120,17 @@ const dateFilterParams = { filterOptions: ["equals", "lessThan", "greaterThan"],
  * data-based id would throw. Nothing else imports ag-grid (ESLint); switching to Enterprise by licence is a
  * change to this file.
  */
-export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize, defaultSort = [], label, refreshKey, onReady, onRowOpen, onSelectionChange }: DataGridProps<T>) {
+export function DataGridImpl<T>({
+  columns,
+  fetchPage,
+  pageSize = defaultPageSize,
+  defaultSort = [],
+  label,
+  refreshKey,
+  onReady,
+  onRowOpen,
+  onSelectionChange,
+}: DataGridProps<T>) {
   const { t } = useTranslation();
   const density = useDensity();
   const apiRef = useRef<GridApi<T> | null>(null);
@@ -107,8 +148,22 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
           field: column.field as never,
           headerName: t(column.headerKey),
           sortable: column.sortable ?? false,
-          filter: column.filter === "text" ? "agTextColumnFilter" : column.filter === "number" ? "agNumberColumnFilter" : column.filter === "date" ? "agDateColumnFilter" : false,
-          filterParams: column.filter === "text" ? textFilterParams : column.filter === "number" ? numberFilterParams : column.filter === "date" ? dateFilterParams : undefined,
+          filter:
+            column.filter === "text"
+              ? "agTextColumnFilter"
+              : column.filter === "number"
+                ? "agNumberColumnFilter"
+                : column.filter === "date"
+                  ? "agDateColumnFilter"
+                  : false,
+          filterParams:
+            column.filter === "text"
+              ? textFilterParams
+              : column.filter === "number"
+                ? numberFilterParams
+                : column.filter === "date"
+                  ? dateFilterParams
+                  : undefined,
           hide: hidden.has(column.field),
           resizable: true,
         };
@@ -148,7 +203,10 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
             setProblem(
               error instanceof ApiError
                 ? { message: error.message, correlationId: error.correlationId }
-                : { message: error instanceof Error ? error.message : t("errors.unexpected"), correlationId: undefined },
+                : {
+                    message: error instanceof Error ? error.message : t("errors.unexpected"),
+                    correlationId: undefined,
+                  },
             );
             params.failCallback();
           },
@@ -228,7 +286,12 @@ export function DataGridImpl<T>({ columns, fetchPage, pageSize = defaultPageSize
           <Menu.Dropdown>
             {columns.map((column) => (
               <Menu.Item key={column.field} component="div">
-                <Checkbox label={t(column.headerKey)} checked={!hidden.has(column.field)} onChange={(event) => toggleColumn(column.field, event.currentTarget.checked)} size="sm" />
+                <Checkbox
+                  label={t(column.headerKey)}
+                  checked={!hidden.has(column.field)}
+                  onChange={(event) => toggleColumn(column.field, event.currentTarget.checked)}
+                  size="sm"
+                />
               </Menu.Item>
             ))}
           </Menu.Dropdown>
