@@ -60,6 +60,9 @@ public sealed partial class OrganisationUnit : AuditedEntity
 
     public UnitStatus Status { get; private set; }
 
+    /// <summary>The unit this one was merged into (TF-223, ADR-0038); a merged unit is inactive and stays so.</summary>
+    public Guid? MergedIntoId { get; private set; }
+
     public bool IsRoot => ParentId is null;
 
     public bool IsActive => Status == UnitStatus.Active;
@@ -85,6 +88,29 @@ public sealed partial class OrganisationUnit : AuditedEntity
     public void Rename(string name) => Name = RequireName(name);
 
     public void Deactivate() => Status = UnitStatus.Inactive;
+
+    public void Reactivate()
+    {
+        if (MergedIntoId is not null)
+        {
+            throw new InvalidOperationException("A merged unit stays inactive.");
+        }
+
+        Status = UnitStatus.Active;
+    }
+
+    /// <summary>The end of a merge: everything this unit held is in the other unit, and this one is inactive.</summary>
+    public void MergeInto(OrganisationUnit into)
+    {
+        ArgumentNullException.ThrowIfNull(into);
+        if (Contains(into))
+        {
+            throw new InvalidOperationException("A unit cannot merge into itself or one of its descendants.");
+        }
+
+        Status = UnitStatus.Inactive;
+        MergedIntoId = into.Id;
+    }
 
     /// <summary>The unit's own row; the descendants' paths are rewritten by the service in one statement (ADR-0030).</summary>
     public void MoveUnder(OrganisationUnit parent)

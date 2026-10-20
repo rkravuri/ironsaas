@@ -48,6 +48,17 @@ public sealed class SettingValue : AuditedEntity, ITenantWide
         ArgumentException.ThrowIfNullOrWhiteSpace(valueJson);
         ValueJson = valueJson;
     }
+
+    /// <summary>A merge moves a unit's value to the unit that stays (ADR-0038).</summary>
+    public void MoveToUnit(Guid unitId)
+    {
+        if (Level != SettingLevel.Unit)
+        {
+            throw new InvalidOperationException("Only a unit's value moves to another unit.");
+        }
+
+        TargetId = unitId;
+    }
 }
 
 /// <summary>

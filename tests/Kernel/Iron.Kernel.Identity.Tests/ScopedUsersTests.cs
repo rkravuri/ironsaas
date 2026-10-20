@@ -193,6 +193,38 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AMergeMovesThePeopleHomedAtTheUnitThatGoesAndThePreviewNamesThem()
+    {
+        var (sales, _, marketing) = await TreeAsync();
+        var first = await UserAsync(marketing);
+        var second = await UserAsync(marketing);
+        var administrator = await UserAsync(sales);
+        await GrantAsync(administrator.Id, [AuthorizationPermissions.UnitsRead.Name, AuthorizationPermissions.UnitsManage.Name, IdentityPermissions.UsersRead.Name], RoleScope.Tenant);
+        var cookie = await LoginAsync(administrator.LoginId);
+
+        using (var preview = await JsonAsync(await GetAsync($"/api/v1/organisation-units/{marketing}/merge-preview?into={sales}", cookie)))
+        {
+            var people = preview.RootElement.GetProperty("parts").EnumerateArray().Single(p => p.GetProperty("code").GetString() == UnitMergeParts.People);
+            Assert.Equal(("identity", 2), (people.GetProperty("module").GetString(), people.GetProperty("count").GetInt32()));
+            Assert.Equal(["Scoped User", "Scoped User"], people.GetProperty("items").EnumerateArray().Select(i => i.GetString()));
+        }
+
+        using var merged = await PostAsync($"/api/v1/organisation-units/{marketing}/merge", cookie, new Dictionary<string, object> { ["into_id"] = sales });
+
+        Assert.Equal(HttpStatusCode.OK, merged.StatusCode);
+        foreach (var moved in new[] { first, second })
+        {
+            using var user = await JsonAsync(await GetAsync($"/api/v1/users/{moved.Id}", cookie));
+            Assert.Equal(sales, user.RootElement.GetProperty("home_unit").GetProperty("id").GetGuid());
+        }
+
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var audited = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+            .SingleAsync(e => e.EventType == AuthorizationAuditEvents.UnitMerged && e.RecordId == marketing, TestContext.Current.CancellationToken);
+        Assert.Contains(first.Id.ToString("D"), audited.Details, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task MeListsThePermissionsHeldAnywhereAndMeAccessThoseAtAUnit()
     {
         var (sales, east, marketing) = await TreeAsync();

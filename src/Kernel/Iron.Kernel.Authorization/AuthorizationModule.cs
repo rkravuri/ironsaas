@@ -56,6 +56,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IUnitReach, UnitReach>();
         services.AddScoped<IWorkingUnits, WorkingUnits>();
         services.AddScoped<OrganisationUnitService>();
+        services.AddScoped<UnitMergeService>();
         services.AddScoped<IOrganisationUnits>(provider => provider.GetRequiredService<OrganisationUnitService>());
         services.AddScoped<IOrganisationUnitCheck, OrganisationUnitCheck>();
         services.AddScoped<ISeeder, AuthorizationSeeder>();
@@ -80,6 +81,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IValidator<CreateUnitRequest>, CreateUnitRequestValidator>();
         services.AddScoped<IValidator<RenameUnitRequest>, RenameUnitRequestValidator>();
         services.AddScoped<IValidator<MoveUnitRequest>, MoveUnitRequestValidator>();
+        services.AddScoped<IValidator<MergeUnitRequest>, MergeUnitRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

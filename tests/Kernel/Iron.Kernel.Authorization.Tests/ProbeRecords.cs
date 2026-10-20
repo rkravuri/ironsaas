@@ -1,3 +1,4 @@
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Entities;
@@ -7,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Iron.Kernel.Authorization.Tests;
 
@@ -39,6 +41,19 @@ public sealed class ProbeDbContext(DbContextOptions<ProbeDbContext> options) : M
     }
 }
 
+/// <summary>The probe's checklist for a unit, as a product supplies one (TF-223): a unit is ready once it holds a crate.</summary>
+public sealed class CrateReadiness(ProbeDbContext context) : IUnitReadiness
+{
+    public const string FirstCrate = "probe.first_crate";
+
+    public async Task<IReadOnlyList<ReadinessItem>> CheckAsync(OrganisationUnitInfo unit, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(unit);
+        var done = await context.Crates.AnyAsync(c => c.OwningOrganisationId == unit.Id, cancellationToken);
+        return [new ReadinessItem("probe", FirstCrate, "A first crate in the unit", done)];
+    }
+}
+
 public static class ProbeRecords
 {
     public const string CrateType = "probe_crate";
@@ -53,6 +68,7 @@ public static class ProbeRecords
         services.AddIronDbContext<ProbeDbContext>(options => options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
         services.AddRecordPolicy(CrateType, CratesRead, RecordRules.UnitVisibility<Crate>(CratesRead, (RecordActions.Update, CratesManage), (RecordActions.Share, CratesManage)));
         services.AddUnitRecordOwners<ProbeDbContext>("probe");
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitReadiness, CrateReadiness>());
     }
 
     /// <summary>The crates table, made from the model once the modules' own migrations have run.</summary>

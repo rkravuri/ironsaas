@@ -6,6 +6,7 @@ using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
+using Iron.Kernel.Api.Problems;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
@@ -35,9 +36,10 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentPrincipal, HeaderPrincipal>();
         builder.Services.AddSingleton<IAuditWriter>(_audit);
+        builder.Services.AddSingleton<IPrincipals>(fixture.Principals);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuthorizationModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuthorizationModule(), new DutyProbeModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 
@@ -170,6 +172,94 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
         using var problem = await JsonAsync(refused);
         Assert.Equal(AuthorizationErrors.UnitHasActiveChildren, problem.RootElement.GetProperty("error_code").GetString());
+    }
+
+    [Fact]
+    public async Task ADeactivatedUnitIsReactivatedOverHttp()
+    {
+        var root = await RootIdAsync();
+        var office = await CreateAsync(root, "Office");
+        using (var deactivated = await SendAsync(HttpMethod.Post, $"/api/v1/organisation-units/{office}/deactivate", _administrator))
+        {
+            Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
+        }
+
+        using var reactivated = await SendAsync(HttpMethod.Post, $"/api/v1/organisation-units/{office}/reactivate", _administrator);
+
+        Assert.Equal(HttpStatusCode.OK, reactivated.StatusCode);
+        using var body = await JsonAsync(reactivated);
+        Assert.Equal("active", body.RootElement.GetProperty("status").GetString());
+        Assert.Contains(_audit.Events, e => e.Action == AuthorizationAuditEvents.UnitReactivated && e.RecordId == office);
+    }
+
+    [Fact]
+    public async Task ANewUnitShowsTheModulesChecklistAndIsReadyWhenEveryItemIsDone()
+    {
+        var root = await RootIdAsync();
+        var office = await CreateAsync(root, "Office");
+
+        using (var before = await JsonAsync(await SendAsync(HttpMethod.Get, $"/api/v1/organisation-units/{office}/readiness", _administrator)))
+        {
+            Assert.False(before.RootElement.GetProperty("ready").GetBoolean());
+            var item = Assert.Single(before.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal((CrateReadiness.FirstCrate, "A first crate in the unit", false), (item.GetProperty("code").GetString(), item.GetProperty("label").GetString(), item.GetProperty("done").GetBoolean()));
+        }
+
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var probe = scope.ServiceProvider.GetRequiredService<ProbeDbContext>();
+            probe.Crates.Add(new Crate(office, "the first"));
+            await probe.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var after = await JsonAsync(await SendAsync(HttpMethod.Get, $"/api/v1/organisation-units/{office}/readiness", _administrator));
+        Assert.True(after.RootElement.GetProperty("ready").GetBoolean());
+    }
+
+    [Fact]
+    public async Task AMergeNeedsTheManagePermissionAtBothUnitsAndAnswersWhatMoved()
+    {
+        var root = await RootIdAsync();
+        var head = await CreateAsync(root, "Head office");
+        var branch = await CreateAsync(root, "Branch");
+        await CreateAsync(branch, "Desk");
+        var manager = Ids.New();
+        await AssignAsync(manager, RoleScope.Unit(branch, includeChildren: true));
+
+        using var previewRefused = await SendAsync(HttpMethod.Get, $"/api/v1/organisation-units/{branch}/merge-preview?into={head}", manager);
+        using var mergeRefused = await SendAsync(HttpMethod.Post, $"/api/v1/organisation-units/{branch}/merge", manager, new { into_id = head });
+        using var preview = await SendAsync(HttpMethod.Get, $"/api/v1/organisation-units/{branch}/merge-preview?into={head}", _administrator);
+        using var merged = await SendAsync(HttpMethod.Post, $"/api/v1/organisation-units/{branch}/merge", _administrator, new { into_id = head });
+        using var tree = await JsonAsync(await SendAsync(HttpMethod.Get, "/api/v1/organisation-units", _administrator));
+
+        Assert.Equal(HttpStatusCode.Forbidden, previewRefused.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, mergeRefused.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+        using (var body = await JsonAsync(preview))
+        {
+            Assert.Equal((branch, head), (body.RootElement.GetProperty("from").GetProperty("id").GetGuid(), body.RootElement.GetProperty("into").GetProperty("id").GetGuid()));
+            var children = body.RootElement.GetProperty("parts").EnumerateArray().Single(p => p.GetProperty("code").GetString() == UnitMergeParts.Children);
+            Assert.Equal((1, "Desk"), (children.GetProperty("count").GetInt32(), children.GetProperty("items")[0].GetString()));
+        }
+
+        Assert.Equal(HttpStatusCode.OK, merged.StatusCode);
+        var gone = tree.RootElement.GetProperty("data").EnumerateArray().Single(u => u.GetProperty("id").GetGuid() == branch);
+        Assert.Equal(("inactive", head), (gone.GetProperty("status").GetString(), gone.GetProperty("merged_into_id").GetGuid()));
+        Assert.Contains(_audit.Events, e => e.Action == AuthorizationAuditEvents.UnitMerged && e.RecordId == branch && e.PrincipalId == _administrator);
+    }
+
+    [Fact]
+    public async Task AMergeIntoAUnitBelowIsRefusedOnTheIntoField()
+    {
+        var root = await RootIdAsync();
+        var branch = await CreateAsync(root, "Branch");
+        var desk = await CreateAsync(branch, "Desk");
+
+        using var preview = await SendAsync(HttpMethod.Get, $"/api/v1/organisation-units/{branch}/merge-preview?into={desk}", _administrator);
+        using var missing = await SendAsync(HttpMethod.Get, $"/api/v1/organisation-units/{branch}/merge-preview", _administrator);
+
+        await AssertProblemAsync(preview, HttpStatusCode.BadRequest, AuthorizationErrors.UnitMergeIntoOwn, "into_id");
+        await AssertProblemAsync(missing, HttpStatusCode.BadRequest, ApiErrors.Validation, "into");
     }
 
     private async Task<Guid> RootIdAsync()

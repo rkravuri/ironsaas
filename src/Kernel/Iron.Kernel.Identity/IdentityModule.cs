@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Iron.Kernel.Identity;
 
@@ -59,6 +60,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<LoginService>();
         services.AddScoped<InvitationService>();
         services.AddScoped<IPrincipals, PrincipalDirectory>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitMergeParticipant, HomeUnitMerge>());
         services.AddScoped<UserService>();
         services.AddScoped<IValidator<CreateUserRequest>, CreateUserRequestValidator>();
         services.AddScoped<RequestPrincipal>();

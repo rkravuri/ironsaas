@@ -24,14 +24,42 @@ public sealed record UnitResponse(
     UnitStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    int Version)
+    int Version,
+    Guid? MergedIntoId)
 {
     public static UnitResponse From(OrganisationUnit unit)
     {
         ArgumentNullException.ThrowIfNull(unit);
-        return new UnitResponse(unit.Id, unit.Name, unit.Code, unit.Kind, unit.ParentId, unit.Depth, unit.Status, unit.CreatedAt, unit.UpdatedAt, unit.Version);
+        return new UnitResponse(unit.Id, unit.Name, unit.Code, unit.Kind, unit.ParentId, unit.Depth, unit.Status, unit.CreatedAt, unit.UpdatedAt, unit.Version, unit.MergedIntoId);
     }
 }
+
+/// <summary>A unit's checklist from the modules (TF-223): ready when every item is done, or when no module asks anything.</summary>
+public sealed record UnitReadinessResponse(Guid UnitId, bool Ready, IReadOnlyList<ReadinessItem> Items);
+
+/// <summary>What one kind of thing a merge moves: at most twenty items in words, and the count of all of them.</summary>
+public sealed record MergePartResponse(string Code, string Module, string? RecordType, int Count, IReadOnlyList<string> Items, IReadOnlyList<string> Conflicts)
+{
+    public const int ItemsShown = 20;
+
+    public static MergePartResponse From(UnitMergePart part)
+    {
+        ArgumentNullException.ThrowIfNull(part);
+        return new MergePartResponse(part.Code, part.Module, part.RecordType, part.Count, [.. part.Items.Take(ItemsShown)], part.Conflicts);
+    }
+}
+
+/// <summary>A merge of one unit into another, before (the preview) or after (what moved).</summary>
+public sealed record MergeResponse(UnitResponse From, UnitResponse Into, IReadOnlyList<MergePartResponse> Parts)
+{
+    public static MergeResponse Of(UnitMergeOutcome outcome)
+    {
+        ArgumentNullException.ThrowIfNull(outcome);
+        return new MergeResponse(UnitResponse.From(outcome.From), UnitResponse.From(outcome.Into), [.. outcome.Parts.Select(MergePartResponse.From)]);
+    }
+}
+
+public sealed record MergeUnitRequest(Guid IntoId);
 
 /// <summary>The whole tree, depth first from the root with siblings by name. Not paged: a tenant's tree is small (ADR-0030).</summary>
 public sealed record UnitTreeResponse(IReadOnlyList<UnitResponse> Data);
@@ -65,6 +93,14 @@ public sealed class RenameUnitRequestValidator : AbstractValidator<RenameUnitReq
     }
 }
 
+public sealed class MergeUnitRequestValidator : AbstractValidator<MergeUnitRequest>
+{
+    public MergeUnitRequestValidator()
+    {
+        RuleFor(r => r.IntoId).NotEmpty();
+    }
+}
+
 public sealed class MoveUnitRequestValidator : AbstractValidator<MoveUnitRequest>
 {
     public MoveUnitRequestValidator()
@@ -74,9 +110,10 @@ public sealed class MoveUnitRequestValidator : AbstractValidator<MoveUnitRequest
 }
 
 /// <summary>
-/// The organisation tree (TF-034): read it whole, read one unit, create a unit under another, rename, move and
-/// deactivate. A change needs <c>authz.units.manage</c> at the unit it touches (ADR-0030): a role assigned to a unit with
-/// its children lets its holder shape that part of the tree, and a move also needs it at the new parent.
+/// The organisation tree (TF-034, TF-223): read it whole, read one unit, create a unit under another, rename, move,
+/// deactivate, reactivate and merge, and read a unit's readiness. A change needs <c>authz.units.manage</c> at the unit it
+/// touches (ADR-0030): a role assigned to a unit with its children lets its holder shape that part of the tree; a move
+/// also needs it at the new parent, and a merge at the unit merged into (ADR-0038).
 /// </summary>
 internal static class OrganisationUnitsEndpoints
 {
@@ -89,6 +126,10 @@ internal static class OrganisationUnitsEndpoints
         units.MapPost("/{id:guid}/rename", RenameAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().Validate<RenameUnitRequest>().WithName("RenameOrganisationUnit").WithSummary("Rename a unit.");
         units.MapPost("/{id:guid}/move", MoveAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().Validate<MoveUnitRequest>().WithName("MoveOrganisationUnit").WithSummary("Move a unit and its subtree under another unit.");
         units.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().WithName("DeactivateOrganisationUnit").WithSummary("Deactivate a unit that has no active units under it.");
+        units.MapPost("/{id:guid}/reactivate", ReactivateAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().WithName("ReactivateOrganisationUnit").WithSummary("Make a deactivated unit active again, under an active parent; never a merged unit.");
+        units.MapGet("/{id:guid}/readiness", ReadinessAsync).RequirePermission(AuthorizationPermissions.UnitsRead).ScopedToUnit().WithName("GetOrganisationUnitReadiness").WithSummary("What the modules need of this unit before people work in it, and whether it is ready.");
+        units.MapGet("/{id:guid}/merge-preview", MergePreviewAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().WithName("PreviewOrganisationUnitMerge").WithSummary("What merging this unit into the unit given by 'into' would move and drop, by module. Changes nothing.");
+        units.MapPost("/{id:guid}/merge", MergeAsync).RequirePermission(AuthorizationPermissions.UnitsManage).ScopedToUnit().Validate<MergeUnitRequest>().WithName("MergeOrganisationUnit").WithSummary("Merge this unit into another in one transaction: records, people, assignments, settings, shares and child units move; this unit ends inactive.");
 
         var kinds = endpoints.MapApiGroup("organisation-kinds");
         kinds.MapGet("/", Kinds).RequirePermission(AuthorizationPermissions.UnitsRead).ScopedByRow().WithName("ListOrganisationKinds").WithSummary("The kinds of unit and which kinds each may hold.");
@@ -128,13 +169,75 @@ internal static class OrganisationUnitsEndpoints
         var decision = await evaluator.EvaluateAsync(atParent, cancellationToken);
         if (!decision.Allowed)
         {
-            var problem = ProblemFactory.Create(Error.Forbidden(PermissionErrors.PermissionDenied, "You do not have the permission to move a unit under this one."), http);
-            problem.Extensions["permission"] = AuthorizationPermissions.UnitsManage.Name;
-            return TypedResults.Problem(problem);
+            return Denied(http, "You do not have the permission to move a unit under this one.");
         }
 
         var result = await units.MoveAsync(id, request.ParentId, cancellationToken);
         return ApiResults.From(result, http, unit => TypedResults.Ok(UnitResponse.From(unit)));
+    }
+
+    private static async Task<IResult> ReactivateAsync(Guid id, HttpContext http, OrganisationUnitService units, CancellationToken cancellationToken)
+    {
+        var result = await units.ReactivateAsync(id, cancellationToken);
+        return ApiResults.From(result, http, unit => TypedResults.Ok(UnitResponse.From(unit)));
+    }
+
+    private static async Task<IResult> ReadinessAsync(Guid id, HttpContext http, OrganisationUnitService units, IEnumerable<IUnitReadiness> checklists, CancellationToken cancellationToken)
+    {
+        var unit = await units.FindAsync(id, cancellationToken);
+        if (unit is null)
+        {
+            return ApiResults.Problem(Error.NotFound(AuthorizationErrors.UnitNotFound, "There is no organisation unit with this id."), http);
+        }
+
+        var items = new List<ReadinessItem>();
+        foreach (var checklist in checklists)
+        {
+            items.AddRange(await checklist.CheckAsync(unit, cancellationToken));
+        }
+
+        return TypedResults.Ok(new UnitReadinessResponse(unit.Id, items.TrueForAll(i => i.Done), items));
+    }
+
+    private static async Task<IResult> MergePreviewAsync(Guid id, Guid? into, HttpContext http, UnitMergeService merges, IPermissionEvaluator evaluator, ICurrentPrincipal principal, CancellationToken cancellationToken)
+    {
+        if (into is not { } intoId)
+        {
+            return ApiResults.Problem(Error.Validation(ApiErrors.Validation, "Say which unit to merge into.", new FieldError("into", "required", "Choose the unit to merge into.")), http);
+        }
+
+        if (!await MayManageAsync(intoId, http, evaluator, principal, cancellationToken))
+        {
+            return Denied(http, "You do not have the permission to merge a unit into this one.");
+        }
+
+        var result = await merges.PreviewAsync(id, intoId, cancellationToken);
+        return ApiResults.From(result, http, outcome => TypedResults.Ok(MergeResponse.Of(outcome)));
+    }
+
+    private static async Task<IResult> MergeAsync(Guid id, MergeUnitRequest request, HttpContext http, UnitMergeService merges, IPermissionEvaluator evaluator, ICurrentPrincipal principal, CancellationToken cancellationToken)
+    {
+        // The filter checked the unit that goes; the unit that stays is in the body, so its check is here (ADR-0038).
+        if (!await MayManageAsync(request.IntoId, http, evaluator, principal, cancellationToken))
+        {
+            return Denied(http, "You do not have the permission to merge a unit into this one.");
+        }
+
+        var result = await merges.MergeAsync(id, request.IntoId, cancellationToken);
+        return ApiResults.From(result, http, outcome => TypedResults.Ok(MergeResponse.Of(outcome)));
+    }
+
+    private static async Task<bool> MayManageAsync(Guid unitId, HttpContext http, IPermissionEvaluator evaluator, ICurrentPrincipal principal, CancellationToken cancellationToken)
+    {
+        var request = new AccessRequest(principal.Id, AuthorizationPermissions.UnitsManage, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/") { Scope = AccessScope.Unit(unitId) };
+        return (await evaluator.EvaluateAsync(request, cancellationToken)).Allowed;
+    }
+
+    private static IResult Denied(HttpContext http, string message)
+    {
+        var problem = ProblemFactory.Create(Error.Forbidden(PermissionErrors.PermissionDenied, message), http);
+        problem.Extensions["permission"] = AuthorizationPermissions.UnitsManage.Name;
+        return TypedResults.Problem(problem);
     }
 
     private static async Task<IResult> DeactivateAsync(Guid id, HttpContext http, OrganisationUnitService units, CancellationToken cancellationToken)
