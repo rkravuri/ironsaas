@@ -176,15 +176,18 @@ smoke: env ## Run the smoke test against the local stack (control plane, fleet a
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
 	SMOKE_TENANT=$(TEST_TENANT) dotnet run --project tools/Iron.Smoke --configuration Release
 
-e2e: shell-node env ## Set up the child-unit data, then run the Playwright tests against the smoke tenant, or TENANT=x (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
+e2e: shell-node env ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate it (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	password=$$(python3 -c 'import json,sys,urllib.request; r=urllib.request.Request("http://localhost:8200/v1/secret/data/tenants/" + sys.argv[2] + "/smoke", headers={"X-Vault-Token": sys.argv[1]}); print(json.load(urllib.request.urlopen(r))["data"]["data"]["administrator_password"])' "$$OPENBAO_ROOT_TOKEN" "$(TEST_TENANT)" 2>/dev/null) \
 	  || { echo "No administrator password at secret/tenants/$(TEST_TENANT)/smoke: run make smoke TENANT=$(TEST_TENANT) first."; exit 1; }; \
-	scoped=$$(E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" STORE_TOKEN="$$OPENBAO_ROOT_TOKEN" python3 $(COMPOSE_DIR)/scripts/e2e-data.py) \
-	  || { echo "The child unit's data for the browser test could not be set up on $(TEST_TENANT)."; exit 1; }; \
+	scoped=$$(E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" python3 $(COMPOSE_DIR)/scripts/e2e-data.py setup) \
+	  || { echo "The run's unit for the browser tests could not be set up on $(TEST_TENANT)."; exit 1; }; \
 	eval "$$scoped"; \
-	cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" \
-	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) npx playwright test
+	(cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" \
+	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) npx playwright test); \
+	status=$$?; \
+	E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" python3 $(COMPOSE_DIR)/scripts/e2e-data.py teardown || status=1; \
+	exit $$status
 
 shell-install: shell-node ## Install the shell's packages (shell/)
 	cd shell && npm ci --no-audit --no-fund

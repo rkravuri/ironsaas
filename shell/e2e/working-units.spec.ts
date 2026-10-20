@@ -11,6 +11,8 @@ const two = { loginId: process.env.E2E_TWO_UNITS_LOGIN_ID ?? "", password: proce
 const secondUnit = process.env.E2E_SECOND_UNIT ?? "E2E second branch";
 const thirdUnit = process.env.E2E_THIRD_UNIT ?? "E2E third branch";
 const tenant = process.env.E2E_TENANT ?? "smoke";
+// The run's own unit (infra/compose/scripts/e2e-data.py): what this run makes lives under it, apart from earlier runs.
+const runUnitId = process.env.E2E_RUN_UNIT_ID ?? "";
 const run = Date.now().toString(36);
 
 const loginCells = (grid: Locator) => grid.locator('[role="gridcell"][col-id="login_id"]');
@@ -61,11 +63,9 @@ test.describe("working across units", () => {
     await signIn(page);
     const from = `E2E merge from ${run}`;
     const into = `E2E merge into ${run}`;
-    const tree = await call<{ data: Unit[] }>(page, "GET", "/api/v1/organisation-units");
-    const root = tree.body.data.find((unit) => unit.parent_id === null);
-    expect(root).toBeDefined();
-    const intoUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${root!.id}/children`, { name: into, code: `e2e-into-${run}`, kind: "unit" });
-    const fromUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${root!.id}/children`, { name: from, code: `e2e-from-${run}`, kind: "unit" });
+    expect(runUnitId).not.toBe("");
+    const intoUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, { name: into, code: `e2e-into-${run}`, kind: "unit" });
+    const fromUnit = await call<Unit>(page, "POST", `/api/v1/organisation-units/${runUnitId}/children`, { name: from, code: `e2e-from-${run}`, kind: "unit" });
     const person = await call<{ user: { id: string } }>(page, "POST", "/api/v1/users", { login_id: `merged-${run}@${tenant}.localhost`, display_name: `Merged person ${run}`, home_unit_id: fromUnit.body.id });
     expect([intoUnit.status, fromUnit.status, person.status]).toEqual([201, 201, 201]);
 
