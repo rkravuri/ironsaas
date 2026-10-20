@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """The browser test's data on a tenant, through the API (A2): a child unit, a user created in it with a role that
-reads users at the unit and its children, and a colleague in the same unit. Safe to run again: what exists is reused.
+reads users at the unit and its children, and a colleague in the same unit. Since A7 the child user also reviews the
+unit's access (authz.reviews.decide there), and a role exists for the test to grant while acting for the administrator
+and to revoke in a review. Safe to run again: what exists is reused.
 
 Reads E2E_TENANT, E2E_ADMIN_PASSWORD and STORE_TOKEN (and E2E_INGRESS, E2E_STORE) from the environment, keeps the
 child administrator's login id and password at secret/tenants/<tenant>/e2e, and prints shell exports for make e2e.
@@ -24,6 +26,8 @@ STORE_PATH = f"/v1/secret/data/tenants/{TENANT}/e2e"
 UNIT_CODE = "e2e-branch"
 UNIT_NAME = "E2E branch"
 ROLE_CODE = "e2e-unit-user-reader"
+REVIEWER_ROLE_CODE = "e2e-unit-reviewer"
+REVOCABLE_ROLE_CODE = "e2e-revocable"
 
 
 def log(message):
@@ -80,6 +84,16 @@ def create_user(cookie, login_id, display_name, unit_id):
     return created["user"]["id"], created["invitation_link"]
 
 
+def ensure_role(cookie, code, name, description, permissions):
+    """The role with this code, created once."""
+    found = api("GET", f"/api/v1/roles?filter=code:eq:{code}", cookie)["data"]
+    if found:
+        return found[0]
+    created = api("POST", "/api/v1/roles", cookie, {"code": code, "name": name, "description": description, "principal_type": "user", "permissions": permissions}, expect=(201,))
+    log(f"Created the role {code}.")
+    return created
+
+
 def main():
     admin = login(ADMIN, os.environ["E2E_ADMIN_PASSWORD"])
     if admin is None:
@@ -93,18 +107,9 @@ def main():
         child = api("POST", f"/api/v1/organisation-units/{root['id']}/children", admin, {"name": UNIT_NAME, "code": UNIT_CODE, "kind": "unit"}, expect=(201,))
         log(f"Created the unit {UNIT_NAME} under {root['name']}.")
 
-    roles = api("GET", f"/api/v1/roles?filter=code:eq:{ROLE_CODE}", admin)["data"]
-    if roles:
-        role = roles[0]
-    else:
-        role = api(
-            "POST",
-            "/api/v1/roles",
-            admin,
-            {"code": ROLE_CODE, "name": "Unit user reader", "description": "Reads the users of a unit and the units below it.", "principal_type": "user", "permissions": ["identity.users.read"]},
-            expect=(201,),
-        )
-        log(f"Created the role {ROLE_CODE}.")
+    role = ensure_role(admin, ROLE_CODE, "Unit user reader", "Reads the users of a unit and the units below it.", ["identity.users.read"])
+    reviewer = ensure_role(admin, REVIEWER_ROLE_CODE, "Unit access reviewer", "Confirms or revokes the roles held in a unit and the units below it.", ["authz.reviews.decide"])
+    revocable = ensure_role(admin, REVOCABLE_ROLE_CODE, "Revocable in review", "Granted and revoked by the browser test of access reviews.", ["authz.units.read"])
 
     kept = store_read()
     if kept and login(kept["login_id"], kept["password"]):
@@ -122,15 +127,27 @@ def main():
 
     found = api("GET", f"/api/v1/users?filter=login_id:eq:{urllib.parse.quote(child_login)}&fields=id", admin)["data"]
     child_id = found[0]["id"]
-    in_unit = api("GET", f"/api/v1/users?filter=home_unit_id:eq:{child['id']}&fields=id", admin)["data"]
-    if len(in_unit) < 2:
-        create_user(admin, f"colleague-{secrets.token_hex(3)}@{TENANT}.localhost", "A colleague", child["id"])
+    colleagues = api("GET", f"/api/v1/users?filter=login_id:startswith:colleague-&filter=home_unit_id:eq:{child['id']}&fields=id", admin)["data"]
+    if not colleagues:
+        colleague_id, _ = create_user(admin, f"colleague-{secrets.token_hex(3)}@{TENANT}.localhost", "A colleague", child["id"])
         log(f"Created a colleague in {UNIT_NAME}.")
+    else:
+        colleague_id = colleagues[0]["id"]
 
     api("POST", "/api/v1/role-assignments", admin, {"principal_id": child_id, "role_id": role["id"], "scope_kind": "unit_with_children", "unit_id": child["id"]}, expect=(200, 201))
-    log(f"{child_login} reads the users of {UNIT_NAME} and below.")
+    api("POST", "/api/v1/role-assignments", admin, {"principal_id": child_id, "role_id": reviewer["id"], "scope_kind": "unit_with_children", "unit_id": child["id"]}, expect=(200, 201))
+    log(f"{child_login} reads the users of {UNIT_NAME} and below, and reviews their access.")
 
-    exports = {"E2E_CHILD_LOGIN_ID": child_login, "E2E_CHILD_PASSWORD": child_password, "E2E_OUTSIDE_USER_ID": me["id"], "E2E_CHILD_UNIT": UNIT_NAME}
+    exports = {
+        "E2E_CHILD_LOGIN_ID": child_login,
+        "E2E_CHILD_PASSWORD": child_password,
+        "E2E_OUTSIDE_USER_ID": me["id"],
+        "E2E_CHILD_UNIT": UNIT_NAME,
+        "E2E_CHILD_UNIT_ID": child["id"],
+        "E2E_CHILD_ID": child_id,
+        "E2E_COLLEAGUE_ID": colleague_id,
+        "E2E_REVOCABLE_ROLE_ID": revocable["id"],
+    }
     for name, value in exports.items():
         print(f"export {name}={shlex.quote(value)}")
 

@@ -6,7 +6,8 @@ const schemes = ["light", "dark"] as const;
 const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const people: { who: Who; label: string; openers: string[] }[] = [
   { who: "administrator", label: "tenant administrator", openers: ["Identity", "Console"] },
-  { who: "child", label: "child-unit administrator", openers: ["Identity"] },
+  // Delegations is the console's page for everyone (ADR-0037), so the child's home has the Console opener too.
+  { who: "child", label: "child-unit administrator", openers: ["Identity", "Console"] },
 ];
 
 async function expectNoViolation(page: Page): Promise<void> {
@@ -119,6 +120,13 @@ for (const scheme of schemes) {
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("list", { name: "Your roles" })).toContainText("User reader, at Acme Corporation / Operations / North and every unit below it");
     await page.screenshot({ path: `test-results/profile-access-${scheme}.png` });
+    await expectNoViolation(page);
+
+    // Delegations (A7): the person's own, both ways, in words with their status.
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("list", { name: "Your delegations" })).toContainText("You hand user administration to Linus Pauling");
+    await expect(page.getByRole("tabpanel", { name: "Delegations" })).toContainText("Over");
+    await page.screenshot({ path: `test-results/profile-delegations-${scheme}.png` });
     await expectNoViolation(page);
 
     // Preferences (A6): the colour scheme and the density, which follow the person.

@@ -66,7 +66,8 @@ describe("the Acting for control (TF-037, ADR-0033, ADR-0037)", () => {
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: "Act for someone who delegated duties to you" }));
-    await user.click(await screen.findByRole("menuitem", { name: /Ada Lovelace/ }));
+    // jsdom lays nothing out, so Mantine may keep the dropdown hidden: the item is queried hidden or not (STATUS).
+    await user.click(await screen.findByRole("menuitem", { name: /Ada Lovelace/, hidden: true }));
 
     expect(await screen.findByText("You are acting for Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText(/You use Ada Lovelace's rights for user administration until/)).toBeInTheDocument();

@@ -19,15 +19,16 @@ test.describe("a child-unit administrator", () => {
       await page.emulateMedia({ colorScheme: scheme });
       await signIn(page, child);
 
-      // The navigation follows the permissions held anywhere: Users, and nothing of the console.
+      // The navigation follows the permissions held anywhere: Users, and of the console only what is theirs (A7).
       const navigation = page.getByRole("navigation", { name: "Main navigation" });
       await expect(navigation.getByRole("link", { name: "Users" })).toBeVisible();
       await expect(navigation.getByRole("link", { name: "Roles" })).toHaveCount(0);
       await expect(navigation.getByRole("link", { name: "Organisation units" })).toHaveCount(0);
 
-      // So does the home page (D4): the Identity opener alone, and no quick action the child cannot perform.
+      // So does the home page (D4): the Identity opener, the console's Delegations (anyone's) and Access reviews (the
+      // child reviews its unit), and no quick action the child cannot perform.
       await expect(page.getByRole("article", { name: "Identity" })).toBeVisible();
-      await expect(page.getByRole("article", { name: "Console" })).toHaveCount(0);
+      await expect(page.getByRole("article", { name: "Console" }).getByRole("link")).toHaveText(["Delegations", "Access reviews"]);
       await expect(page.getByRole("region", { name: "Quick actions" })).toHaveCount(0);
       await page.screenshot({ path: `test-results/e2e/home-child-${scheme}.png`, fullPage: true });
 

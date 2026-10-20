@@ -125,7 +125,8 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
   const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useState<ReviewItem | undefined>();
   const [revoking, setRevoking] = useState<ReviewItem | undefined>();
-  const [confirmingPage, setConfirmingPage] = useState(false);
+  // The items the confirmation was opened for: kept after it closes, so its words do not change while it fades out.
+  const [confirming, setConfirming] = useState<{ opened: boolean; items: ReviewItem[] }>({ opened: false, items: [] });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | undefined>();
   const [failure, setFailure] = useState<ApiError | undefined>();
@@ -171,9 +172,9 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
     run(async () => {
       const result = await confirmItems(
         review.id,
-        pageOpen.map((item) => item.id),
+        confirming.items.map((item) => item.id),
       );
-      setConfirmingPage(false);
+      setConfirming((current) => ({ ...current, opened: false }));
       return result.already_decided > 0 ? t("reviews.items.confirmedManyWithDecided", { count: result.confirmed, decided: result.already_decided }) : t("reviews.items.confirmedMany", { count: result.confirmed });
     });
 
@@ -217,7 +218,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
           <Button variant="default" color="danger" leftSection={<IconX size={16} aria-hidden="true" />} disabled={!undecided} onClick={() => setRevoking(selected)}>
             {t("reviews.items.revoke")}
           </Button>
-          <Button leftSection={<IconChecks size={16} aria-hidden="true" />} disabled={!open || pageOpen.length === 0} onClick={() => setConfirmingPage(true)}>
+          <Button leftSection={<IconChecks size={16} aria-hidden="true" />} disabled={!open || pageOpen.length === 0} onClick={() => setConfirming({ opened: true, items: pageOpen })}>
             {t("reviews.items.confirmPage", { count: pageOpen.length })}
           </Button>
         </Group>
@@ -258,13 +259,13 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         )}
       </FormDialog>
       <ConfirmDialog
-        opened={confirmingPage}
+        opened={confirming.opened}
         title={t("reviews.items.confirmPageTitle")}
-        message={t("reviews.items.confirmPageMessage", { count: pageOpen.length })}
-        confirmLabel={t("reviews.items.confirmPageConfirm", { count: pageOpen.length })}
+        message={t("reviews.items.confirmPageMessage", { count: confirming.items.length })}
+        confirmLabel={t("reviews.items.confirmPageConfirm", { count: confirming.items.length })}
         busy={busy}
         onConfirm={() => void confirmPage()}
-        onCancel={() => setConfirmingPage(false)}
+        onCancel={() => setConfirming((current) => ({ ...current, opened: false }))}
       />
     </Stack>
   );

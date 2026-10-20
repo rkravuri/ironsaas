@@ -84,7 +84,7 @@ What the fleet renders is in `infra/compose/units/<slug>/` (git-ignored): one `c
 
 From source, for daily work: `make secret-control && make migrate-control && make seed-control` once, then `make run-control` (API on :5200) and `make run-fleet` (the fleet worker with the Compose runtime, driving this machine's Docker) in two terminals. The seed creates the `operator` account (tenant-administrator) and the `smoke-reader` account (service-default, for the smoke's denial case); re-run `make seed-control` after pulling a change that adds accounts.
 
-As containers, as the pipeline runs it: `make up-control` writes the control secret with container hosts and starts `control-api` and `fleet` from the images. The two cannot run beside the source processes: stop `make run-control` and `make run-fleet` first (port 5200), and run `make secret-control` again before going back to source.
+As containers, as the pipeline runs it: `make up-control` writes the control secret with container hosts, migrates and seeds the control plane's database with the image (so a new image's migrations and permissions are in place before it serves), and starts `control-api` and `fleet` from the images. The two cannot run beside the source processes: stop `make run-control` and `make run-fleet` first (port 5200), and run `make secret-control` again before going back to source.
 
 ## 7. The dev tenant from source
 
