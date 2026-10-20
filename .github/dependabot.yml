@@ -20,6 +20,11 @@ updates:
       dotnet:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # Roslyn moves with EF Core, by hand. Microsoft.EntityFrameworkCore.Design pulls Microsoft.CodeAnalysis.CSharp.Workspaces
+      # at its own Roslyn version, which needs the same Microsoft.CodeAnalysis.Common as Microsoft.CodeAnalysis.CSharp:
+      # 5.9.0 beside EF Core 10.0.12's 5.0.0 does not restore (NU1107, #12). Raise it with the EF Core that asks for it.
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp"
   - package-ecosystem: npm
     directory: /shell
     schedule:
@@ -30,6 +35,11 @@ updates:
       shell:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # TypeScript majors wait for typescript-eslint, which asks for typescript below 6.1 (8.72.0 on 2026-10-19), so
+      # TypeScript 7 does not resolve and failed the npm job. Remove this when typescript-eslint accepts the major.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directories:
       - /src/Hosts/Iron.Host.Api
