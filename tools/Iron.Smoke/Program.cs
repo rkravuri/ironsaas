@@ -5,7 +5,7 @@ using Iron.Kernel.Security.Secrets;
 using Iron.Smoke;
 
 // The smoke test (TF-240): the stack as an operator and a user meet it. Every step is a real call through the ingress
-// or the control plane; nothing is mocked. Exit code 0 when every step passes.
+// or the control plane; nothing is mocked. Exit code 0 when every step passes. Eleven steps since S1, three since S2.
 var options = SmokeOptions.FromEnvironment();
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -229,6 +229,14 @@ await report.StepAsync("trace", async () =>
 
     throw new SmokeException($"trace {cookieCorrelation} not found in Tempo within 60 s (last answer {(answer is null ? "none" : (int)answer.Status)}); is the telemetry profile up?");
 });
+
+// S2's three steps (S2-close): a scoped role, a plan change and a kill switch, each restoring what it changed. The run's
+// short id names what they make, apart from earlier runs.
+var run = Convert.ToHexString(RandomNumberGenerator.GetBytes(3)).ToLowerInvariant();
+var access = new AccessSteps(api, options, operatorToken ?? string.Empty, administratorPassword ?? string.Empty, run);
+await report.StepAsync("scoped-role", () => access.ScopedRoleAsync(ct));
+await report.StepAsync("plan-change", () => access.PlanChangeAsync(ct));
+await report.StepAsync("kill-switch", () => access.KillSwitchAsync(ct));
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
