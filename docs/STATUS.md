@@ -33,6 +33,16 @@ S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the
 |---|---|---|---|
 | | | | |
 
+## The PRD split
+
+The Functional Foundation PRD split into one document per layer and product (ADR-0041), from `docs/prompts/PRD-split.md`, before the business and product slices and S3's tasks.
+
+| Task | State | Branch | Notes |
+|---|---|---|---|
+| PRD split | at the checkpoint after step 4, waiting for the design session | slice/prd-split | ADR-0041; the map (172 rows: 157 moved, 6 split, 9 covered, none merged or retired); the Business PRD, seven product PRDs, the supplier portal surface and the product method with the moved requirements (176) and their outlines; the five scope pages as headings; the archived PRD; `make prd-check` with its tests, in CI. Steps 5 to 10 follow the design session's answer |
+
+The Business PRD corrects the A1 amendment in `docs/prompts/S2.md`: a purchasing group is a business master, not a unit kind, because it serves several units and owns no records. `src/Business/README.md` and the comment on `IOrganisationKinds` still list it among the kinds; they follow after the checkpoint.
+
 ## Maintenance
 
 | Task | State | Branch | Notes |
@@ -41,7 +51,13 @@ S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the
 
 ## Open questions
 
-None.
+For the design session at the PRD split's checkpoint (each is also in the document it concerns):
+
+- The two rows placed by the test: item imports with the Business item master (FF-049), and each product's operational reports in that product (FF-160).
+- Four Business requirements depend on product requirements (BF-108 on SUP-004, BF-202 on SUP-005, BF-204 on INV-010, BF-205 on INV-043); code may not depend upward.
+- Products that depend on each other: Requests and Orders, Orders and Contracts, Receiving and Invoicing; Catalogue on Contracts.
+- Module names: `Iron.Products.SupplierManagement` beside `Iron.Business.Suppliers`, and a name for Contracts other than `Iron.Products.Contracts`, whose public project would be `Iron.Products.Contracts.Contracts`.
+- INV-027 (nightly reconciliation) recomputes counters of three modules; FF-184's clause that approvals, tasks and notifications respect organisation access has no kernel requirement.
 
 ## Later items
 
