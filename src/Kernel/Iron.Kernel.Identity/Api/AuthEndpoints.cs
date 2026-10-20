@@ -1,10 +1,12 @@
 using FluentValidation;
+using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
+using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
@@ -74,7 +76,10 @@ public sealed record MeDelegations(IReadOnlyList<ActiveDelegationResponse> Given
 
 public sealed record ActForRequest(Guid PrincipalId);
 
-/// <summary>A person as a picker offers them: enough to tell two people apart, and nothing more.</summary>
+/// <summary>
+/// A person as the delegate picker offers them (ADR-0037): their display name and their home unit's name, and the id the
+/// delegation names them by, which says nothing more.
+/// </summary>
 public sealed record DirectoryEntry(Guid Id, string DisplayName, string? HomeUnit);
 
 /// <summary>The permissions the signed-in principal holds at one unit or one record, for the shell to show its actions there.</summary>
@@ -104,6 +109,11 @@ public sealed class AcceptInvitationRequestValidator : AbstractValidator<AcceptI
 /// </summary>
 internal static class AuthEndpoints
 {
+    /// <summary>The directory sorts by name and nothing else: no field it could be asked to filter on reveals more.</summary>
+    public static readonly ListFields<Principal> DirectoryFields = new ListFields<Principal>()
+        .Add("display_name", p => p.DisplayName, FieldUse.Select | FieldUse.Sort)
+        .SortByDefault("display_name");
+
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
@@ -115,7 +125,7 @@ internal static class AuthEndpoints
         endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
         endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
         endpoints.MapDelete("/api/v1/me/acting-for", StopActingAsync).RequireSignedIn().WithTags("me").WithName("StopActing").WithSummary("Act as yourself again; answers /me.");
-        endpoints.MapGet("/api/v1/directory", DirectoryAsync).RequireSignedIn().WithTags("me").WithName("Directory").WithSummary("Active people of this tenant whose name or login matches the search, for choosing a delegate: name and home unit only.");
+        endpoints.MapGet("/api/v1/directory", DirectoryAsync).RequireSignedIn().WithTags("me").WithName("Directory").WithSummary("A page of the active people of this tenant whose name or login contains the search (two characters at least), for choosing a delegate: display name and home unit name only.");
         endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=), over a unit and the units below it (&include_children=true), or at a record (?record_type=&record_id=, with &unit= for the record's unit).");
         TokenEndpoints.Map(endpoints);
         UsersEndpoints.Map(endpoints);
@@ -210,26 +220,32 @@ internal static class AuthEndpoints
     }
 
     /// <summary>
-    /// Active people whose name or login identifier contains the search, at most 20, for choosing a delegate: anyone may
-    /// delegate, including people who may not list users, so the answer carries a name and a home unit and nothing else.
+    /// A page of the active people whose display name or login identifier contains the search, for choosing a delegate
+    /// (ADR-0037): anyone may delegate, including people who may not list users, so a row is the person's display name,
+    /// their home unit's name and the id the delegation names them by. The login is matched and never answered. Two
+    /// characters at least, so the directory cannot be read through page by page from an empty search.
     /// </summary>
-    private static async Task<IResult> DirectoryAsync(string? search, IdentityDbContext context, IOrganisationUnits units, CancellationToken cancellationToken)
+    private static async Task<IResult> DirectoryAsync(string? search, HttpContext http, IdentityDbContext context, IOrganisationUnits units, CancellationToken cancellationToken)
     {
         var text = search?.Trim() ?? string.Empty;
         if (text.Length < 2)
         {
-            return TypedResults.Ok(new { data = Array.Empty<DirectoryEntry>() });
+            return ApiResults.Problem(Error.Validation(IdentityErrors.DirectorySearchTooShort, "Type at least two characters of a name to search the directory.", new FieldError("search", "too_short", "Type at least two characters.")), http);
+        }
+
+        var parsed = ListQueryParser.Parse(http.Request.Query, DirectoryFields);
+        if (parsed.IsFailure)
+        {
+            return ApiResults.Problem(parsed.Error, http);
         }
 
         var pattern = $"%{text.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal)}%";
-        var people = await context.Principals.AsNoTracking()
-            .Where(p => p.Type == PrincipalType.User && p.Status == PrincipalStatus.Active && (EF.Functions.ILike(p.DisplayName, pattern) || EF.Functions.ILike(p.LoginId, pattern)))
-            .OrderBy(p => p.DisplayName)
-            .Take(20)
-            .Select(p => new { p.Id, p.DisplayName, p.HomeUnitId })
-            .ToListAsync(cancellationToken);
+        var query = parsed.Value;
+        var people = context.Principals.AsNoTracking()
+            .Where(p => p.Type == PrincipalType.User && p.Status == PrincipalStatus.Active && (EF.Functions.ILike(p.DisplayName, pattern) || EF.Functions.ILike(p.LoginId, pattern)));
+        var page = await people.ApplyListQuery(query, DirectoryFields).ToPageAsync(query.Page, cancellationToken);
         var unitNames = new Dictionary<Guid, string>();
-        foreach (var unitId in people.Where(p => p.HomeUnitId is not null).Select(p => p.HomeUnitId!.Value).Distinct())
+        foreach (var unitId in page.Items.Where(p => p.HomeUnitId is not null).Select(p => p.HomeUnitId!.Value).Distinct())
         {
             if (await units.FindAsync(unitId, cancellationToken) is { } unit)
             {
@@ -237,7 +253,7 @@ internal static class AuthEndpoints
             }
         }
 
-        return TypedResults.Ok(new { data = people.Select(p => new DirectoryEntry(p.Id, p.DisplayName, p.HomeUnitId is { } id ? unitNames.GetValueOrDefault(id) : null)).ToList() });
+        return ApiResults.List(page.Map(p => new DirectoryEntry(p.Id, p.DisplayName, p.HomeUnitId is { } id ? unitNames.GetValueOrDefault(id) : null)), http, query);
     }
 
     /// <summary>

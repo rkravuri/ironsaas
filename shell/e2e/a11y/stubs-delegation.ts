@@ -74,7 +74,7 @@ export async function stubDelegations(target: Page, { acting = false }: { acting
   await target.route("**/api/v1/delegations?**", (route) => route.fulfill({ json: listOf(managedDelegations) }));
   await target.route("**/api/v1/delegations/mine", (route) => route.fulfill({ json: { data: myDelegations } }));
   await target.route("**/api/v1/directory?**", (route) =>
-    route.fulfill({ json: { data: [{ id: grace.id, display_name: grace.name, home_unit: "North" }, { id: linus.id, display_name: linus.name, home_unit: "Finance" }] } }),
+    route.fulfill({ json: listOf([{ id: grace.id, display_name: grace.name, home_unit: "North" }, { id: linus.id, display_name: linus.name, home_unit: "Finance" }]) }),
   );
 }
 

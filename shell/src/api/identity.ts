@@ -88,13 +88,17 @@ export const actFor = (principalId: string) => request("/api/v1/me/acting-for", 
 /** Act as yourself again; answers /me. */
 export const stopActing = () => request("/api/v1/me/acting-for", { method: "DELETE", schema: MeSchema });
 
-/** A person as the delegate picker offers them: a name and a home unit, nothing more. */
+/** A person as the delegate picker offers them (ADR-0037): a display name, a home unit's name, and the id to choose them by. */
 export const DirectoryEntrySchema = z.object({ id: z.string(), display_name: z.string(), home_unit: z.string().nullable() });
 export type DirectoryEntry = z.infer<typeof DirectoryEntrySchema>;
+export const DirectoryPageSchema = listSchema(DirectoryEntrySchema);
 
-/** Active people whose name or login contains the search (two characters at least), for choosing a delegate. */
+/** How many people the picker offers at once; more matches ask for more of the name. */
+export const directoryPageSize = 20;
+
+/** The first page of the active people whose name or login contains the search (two characters at least). */
 export const searchDirectory = (search: string, signal?: AbortSignal) =>
-  request(`/api/v1/directory?search=${encodeURIComponent(search)}`, { schema: z.object({ data: z.array(DirectoryEntrySchema) }), ...(signal ? { signal } : {}) });
+  request(`/api/v1/directory?search=${encodeURIComponent(search)}&page_size=${directoryPageSize}`, { schema: DirectoryPageSchema, ...(signal ? { signal } : {}) });
 
 export function accessQuery(target: AccessTarget): string {
   const params = new URLSearchParams();

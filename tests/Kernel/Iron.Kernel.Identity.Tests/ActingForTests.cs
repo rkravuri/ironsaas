@@ -193,6 +193,33 @@ public class ActingForTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheDirectoryAnswersADisplayNameAndAHomeUnitNameAPageAtATimeForTwoCharactersOrMore()
+    {
+        var tag = $"dir{Ids.New():N}"[..12];
+        var (_, cookie) = await PersonAsync($"{tag}a", role: null);
+        await PersonAsync($"{tag}b", role: null);
+        await PersonAsync($"{tag}c", role: null);
+
+        using var tooShort = await SendAsync(HttpMethod.Get, "/api/v1/directory?search=d", cookie);
+        using var first = await SendAsync(HttpMethod.Get, $"/api/v1/directory?search={tag}&page_size=2", cookie);
+        using var second = await SendAsync(HttpMethod.Get, $"/api/v1/directory?search={tag}&page_size=2&page_number=2", cookie);
+        using var asked = await SendAsync(HttpMethod.Get, $"/api/v1/directory?search={tag}&fields=login_id", cookie);
+
+        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
+        Assert.Equal(IdentityErrors.DirectorySearchTooShort, JsonDocument.Parse(await tooShort.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.GetProperty("error_code").GetString());
+        var page = JsonDocument.Parse(await first.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement;
+        Assert.Equal(3, page.GetProperty("meta").GetProperty("total_count").GetInt32());
+        var rows = page.GetProperty("data").EnumerateArray().ToList();
+        Assert.Equal([$"{tag}a", $"{tag}b"], rows.Select(row => row.GetProperty("display_name").GetString()));
+
+        // A name, a home unit and the id a delegation names the person by: no login, email, status or type.
+        Assert.All(rows, row => Assert.Equal(["id", "display_name", "home_unit"], row.EnumerateObject().Select(property => property.Name)));
+        var rest = JsonDocument.Parse(await second.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.GetProperty("data");
+        Assert.Equal([$"{tag}c"], rest.EnumerateArray().Select(row => row.GetProperty("display_name").GetString()));
+        Assert.Equal(HttpStatusCode.BadRequest, asked.StatusCode);
+    }
+
+    [Fact]
     public async Task ATokenNeverActsForAnyone()
     {
         await using var scope = _app!.Services.CreateAsyncScope();

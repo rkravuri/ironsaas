@@ -971,7 +971,8 @@
     "withUnit": "{{name}}, {{unit}}",
     "typeMore": "Type two letters or more of a name or login.",
     "searching": "Looking for people",
-    "nobody": "Nobody active has a name or login like that."
+    "nobody": "Nobody active has a name or login like that.",
+    "more": "More people match: type more of the name to find the one you mean."
   },
   "acting": {
     "control": {

@@ -32,6 +32,9 @@ public static class IdentityErrors
 
     /// <summary>No delegation from that person to the asker is active now.</summary>
     public const string ActingNoDelegation = "identity.acting.no_delegation";
+
+    /// <summary>A directory search shorter than two characters: it would list the tenant's people one page at a time.</summary>
+    public const string DirectorySearchTooShort = "identity.directory.search_too_short";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
