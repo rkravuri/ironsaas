@@ -803,6 +803,7 @@
   "search": {
     "open": "Search",
     "label": "Search pages and actions",
+    "results": "Pages and actions that match",
     "placeholder": "Search pages and actions by name or module",
     "pages": "Pages",
     "actions": "Quick actions",

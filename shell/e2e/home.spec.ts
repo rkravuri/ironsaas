@@ -22,7 +22,7 @@ test.describe("home and the header (D4)", () => {
     await signIn(page);
 
     await page.keyboard.press("Control+K");
-    const search = page.getByRole("textbox", { name: "Search pages and actions" });
+    const search = page.getByRole("combobox", { name: "Search pages and actions" });
     await expect(search).toBeFocused();
     await search.fill("units");
     await page.keyboard.press("Enter");

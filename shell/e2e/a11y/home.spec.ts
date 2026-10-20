@@ -58,13 +58,25 @@ for (const scheme of schemes) {
     await help.focus();
 
     await page.keyboard.press("Control+K");
-    const search = page.getByRole("textbox", { name: "Search pages and actions" });
+    const search = page.getByRole("combobox", { name: "Search pages and actions" });
     await expect(search).toBeFocused();
-    await expect(page.getByRole("button", { name: /^Add a unit/ })).toBeVisible();
+    await expect(page.getByRole("option", { name: /^Add a unit/ })).toBeVisible();
     await search.fill("prof");
-    await expect(page.getByRole("button", { name: /^My profile/ })).toBeVisible();
+    // The first match is chosen, and the input points a screen reader at it: what Enter will open is heard, not only seen.
+    const profile = page.getByRole("option", { name: /^My profile/ });
+    await expect(profile).toHaveAttribute("aria-selected", "true");
+    await expect(search).toHaveAttribute("aria-activedescendant", (await profile.getAttribute("id")) ?? "");
     await page.screenshot({ path: `test-results/a11y/search-${scheme}.png` });
     await expectNoViolation(page);
+
+    // The arrows move the choice, and the input points at the new one.
+    await search.fill("");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    const chosen = page.getByRole("option", { selected: true });
+    await expect(chosen).toHaveCount(1);
+    await expect(search).toHaveAttribute("aria-activedescendant", (await chosen.getAttribute("id")) ?? "");
+    await expect(chosen).not.toHaveAccessibleName(/^Home/);
 
     await page.keyboard.press("Escape");
     await expect(search).toBeHidden();
