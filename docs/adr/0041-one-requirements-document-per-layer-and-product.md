@@ -14,18 +14,18 @@ ADR-0029 placed every piece of Foundation in one of three layers: kernel, busine
 
    | Document | File | Identifier prefix |
    |---|---|---|
-   | Technical Foundation PRD (the kernel) | `technical-foundation-PRD.md` (kept) | `TF-` (kept) |
-   | Business Foundation PRD | `business-foundation-PRD.md` | `BF-` |
-   | Supplier management | `products/supplier-management-PRD.md` | `SUP-` |
-   | Catalogue | `products/catalogue-PRD.md` | `CAT-` |
-   | Purchase requests | `products/requests-PRD.md` | `REQ-` |
-   | Purchase orders | `products/orders-PRD.md` | `ORD-` |
-   | Receiving (shipment notices, goods and service receipts) | `products/receiving-PRD.md` | `RCV-` |
-   | Invoicing | `products/invoicing-PRD.md` | `INV-` |
-   | Contracts | `products/contracts-PRD.md` | `CON-` |
-   | Supplier portal and Supplier Network experience (a surface) | `surfaces/supplier-portal-PRD.md` | `SPX-` |
+   | Technical Foundation PRD (the kernel) | `foundation/technical-foundation-PRD.md` (kept; in `foundation/` since ADR-0043) | `TF-` (kept) |
+   | Business Foundation PRD | `foundation/business-foundation-PRD.md` | `BF-` |
+   | Supplier management | `suites/procurement/supplier-management-PRD.md` | `SUP-` |
+   | Catalogue | `suites/procurement/catalogue-PRD.md` | `CAT-` |
+   | Purchase requests | `suites/procurement/requests-PRD.md` | `REQ-` |
+   | Purchase orders | `suites/procurement/orders-PRD.md` | `ORD-` |
+   | Receiving (shipment notices, goods and service receipts) | `suites/procurement/receiving-PRD.md` | `RCV-` |
+   | Invoicing | `suites/procurement/invoicing-PRD.md` | `INV-` |
+   | Contracts | `suites/procurement/contracts-PRD.md` | `CON-` |
+   | Supplier portal and Supplier Network experience (a surface) | `suites/procurement/supplier-portal-PRD.md` | `SPX-` |
    | Product method (binding for every business and product document) | `product-method.md` | `PM-` |
-   | Sourcing (RFx), Auctions, Projects and tasks, Surveys, Expenses | `products/<name>-scope.md`, one page each | `SRC-`, `AUC-`, `PRJ-`, `SRV-`, `EXP-` reserved |
+   | Sourcing (RFx), Auctions, Projects and tasks, Surveys, Expenses | `suites/procurement/<name>-scope.md`, one page each | `SRC-`, `AUC-`, `PRJ-`, `SRV-`, `EXP-` reserved |
 
 2. **A CSV next to every requirements document**, named after it (`requests-PRD.md` has `requests-requirements.csv`, `product-method.md` has `product-method-requirements.csv`), with the columns of the first two: `id`, `area`, `title`, `priority`, `tag`, `requirement`, `rationale`, `acceptance_criteria`, `depends_on`, `notes`, plus `was`, the old identifier when there is one. Lists inside a cell are joined with `|`. The markdown is the source; `make prd-csv` writes the CSVs from it.
 3. **Identifiers are stable and never reused.** They are numbered in blocks of twenty per area: the first area of a document holds 001 to 020, the second 021 to 040, and so on, so an area can grow without renumbering the next. An identifier, once given, is never given to another requirement, even after its requirement is retired.

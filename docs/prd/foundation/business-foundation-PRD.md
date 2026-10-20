@@ -1,21 +1,21 @@
-# Foundation: Business Foundation PRD
+# IronSaaS Foundation: Business Foundation PRD
 
 ## 0. Document control
 
 | Item | Value |
 |---|---|
 | Document title | Business Foundation: the shared business masters and the business configuration of kernel mechanisms, Product Requirements Document |
-| Layer | Business (ADR-0029): modules `Iron.Business.<Module>` in `src/Business/`, schemas `business_<module>`; the modules are proposed in section 9 |
+| Layer | Business (ADR-0029), which with the kernel is IronSaaS Foundation, what every tenant has (ADR-0043): modules `Iron.Business.<Module>` in `src/Business/`, schemas `business_<module>`; the modules are proposed in section 9 |
 | Identifier prefix | `BF-`, in blocks of twenty per area (ADR-0041); the table is `business-foundation-requirements.csv` |
-| Version | 1.0 (accepted at the review of 2026-10-20) |
+| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
-| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `archive/functional-foundation-p2p-PRD-v1.md`), the map from its identifiers (`requirements-map.md`), ADR-0029 and ADR-0041, and the split brief (`docs/prompts/PRD-split.md`). |
-| Dependency | Every mechanism (identity, roles, the unit tree, the approvals engine, audit, files, notifications, numbering, custom fields and lookups, imports, telemetry) is a kernel capability in the Technical Foundation PRD, cited by its TF identifier and never specified again here. The products build on this document; where a requirement here names a product's, it is an open point (section 12.2). |
-| Method | The product method (`product-method.md`) is binding: a process reference pack before the first slice of each module (PM-001). |
+| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map from its identifiers (`../requirements-map.md`), ADR-0029 and ADR-0041, and the split brief (`docs/prompts/PRD-split.md`). |
+| Dependency | Every mechanism (identity, roles, the unit tree, the approvals engine, audit, files, notifications, numbering, custom fields and lookups, imports, telemetry) is a kernel capability in the Technical Foundation PRD, cited by its TF identifier and never specified again here. The eProcurement Suite's products build on this document, and later suites will (ADR-0043); where a requirement here names a product's, it is an open point (section 12.2). |
+| Method | The product method (`../product-method.md`) is binding: a process reference pack before the first slice of each module (PM-001). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
+Change log: 1.1, 2026-10-20: moved to `docs/prd/foundation/` beside the Technical Foundation PRD, the business layer of IronSaaS Foundation (ADR-0043); paths follow the move; no requirement changed. Which of its requirements only the eProcurement Suite needs is an open point of the L2 report, not a move. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
 
 ## 1. Vision and goals
 
@@ -55,7 +55,7 @@ Keep (carried), from the archived PRD's list: account-string splits with budget 
 | Content visibility on masters | Which masters carry visibility tags, on the kernel's TF-241 | 5.10 |
 | Setup and data | Starter sets, readiness, country accelerator packs, reference data from standards, masters import, export and ERP sync | 5.11 |
 
-The supplier's life cycle (invitation, registration, approval, status, compliance, performance) is the Supplier management product (`products/supplier-management-PRD.md`); supplier items are the Catalogue product's.
+The supplier's life cycle (invitation, registration, approval, status, compliance, performance) is the Supplier management product (`../suites/procurement/supplier-management-PRD.md`); supplier items are the Catalogue product's.
 
 ### 2.2 Organisation separation
 
@@ -646,7 +646,7 @@ Chart of accounts and segments, account strings, budgets, fiscal calendar, curre
 
 **Requirement:** Projects shall be a master of cost objects, each with a code, a name, validity dates and an owning unit; a project may own budget lines (BF-064), and spending against the project checks and reserves them like any budget (BF-065, BF-066); a line may be coded to an active project within its validity, and a project outside its validity or inactive is not offered on new lines.
 
-**Why:** Spend is followed and controlled by project as well as by account string. A project here is a cost object; projects and tasks as a product are later scope (`products/projects-and-tasks-scope.md`).
+**Why:** Spend is followed and controlled by project as well as by account string. A project here is a cost object; projects and tasks as a product are later scope (`../suites/procurement/projects-and-tasks-scope.md`).
 
 **Acceptance criteria:**
 

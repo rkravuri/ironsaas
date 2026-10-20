@@ -1,11 +1,11 @@
-# Foundation: Projects and tasks, scope
+# eProcurement Suite: Projects and tasks, scope
 
 | Item | Value |
 |---|---|
 | Document | One-page scope of a later product (ADR-0041). Its full PRD starts from its own process reference pack (PM-001), reviewed by an external practitioner (PM-002). |
-| Layer | Products (ADR-0029) |
+| Layer | Suite (ADR-0043): a later product of the eProcurement Suite, on IronSaaS Foundation |
 | Identifier prefix | `PRJ-`, reserved; no requirements yet |
-| Version | 1.0 (accepted at the review of 2026-10-20) |
+| Version | 1.1 (accepted at the review of 2026-10-20; moved to `docs/prd/suites/procurement/` by ADR-0043) |
 | Date | 2026-10-20 |
 
 ## Purpose

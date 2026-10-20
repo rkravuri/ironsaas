@@ -1,26 +1,26 @@
-# Foundation: Technical Foundation PRD
+# IronSaaS Foundation: Technical Foundation PRD
 
 ## 0. Document control
 
 | Item | Value |
 |---|---|
-| Document title | Foundation, the IronSaaS enterprise SaaS platform: Technical Foundation Product Requirements Document |
-| Code namespace | `Iron.*` in three layers (ADR-0029): Kernel (`Iron.Kernel`, `Iron.Kernel.*`, for example `Iron.Kernel.Identity`), Business (`Iron.Business.*`), Products (`Iron.Products.*`). Database schemas carry the layer prefix and the module name (for example `kernel_identity`, `kernel_tenancy`, `kernel_audit`). Section 2.1 lists the kernel's modules by today's names; ADR-0029 maps the S1 names the ADRs before it use, and section 3.5 shows the structure. |
-| Version | 1.3 DRAFT for review (the PRD split of 2026-10-20 applied) |
+| Document title | IronSaaS Foundation, the enterprise SaaS platform for regulated industries: Technical Foundation Product Requirements Document |
+| Code namespace | `Iron.*` in three layers (ADR-0029, ADR-0043): Kernel (`Iron.Kernel`, `Iron.Kernel.*`, for example `Iron.Kernel.Identity`) and Business (`Iron.Business.*`), which together are IronSaaS Foundation, and Suite (`Iron.Suites.<Suite>.*`, for example `Iron.Suites.Procurement.Orders` in the eProcurement Suite). Database schemas carry the layer prefix, or a suite's short name, and the module name (for example `kernel_identity`, `kernel_tenancy`, `procurement_orders`). Section 2.1 lists the kernel's modules by today's names; ADR-0029 maps the S1 names the ADRs before it use, and section 3.5 shows the structure. |
+| Version | 1.4 DRAFT for review (the suites of ADR-0043 applied) |
 | Date | 2026-10-20 |
 | Status | Draft. Written for joint development. Decisions confirmed on 2026-10-17 are listed in section 8.1; remaining open points are in section 8.2. |
 | Inputs | The anonymised reverse-engineered PRD of the current procurement platform (its cross-cutting services, defects and gaps), the IronSaaS build rules (simplicity, plain layers, open-source first, Linux runtime, Python for AI), the product owner's decisions of 2026-10-17, and current SaaS platform practice (OWASP ASVS, NIST 800-63, OpenTelemetry, OpenFeature, SOC 2, ISO 27001, GDPR, India DPDP, 21 CFR Part 11). Nothing of Foundation exists yet; this is a fresh start. |
-| Readers | You (product owner and architect), the developers who will build Foundation, security and compliance reviewers, and the product teams who will build business products (first: procure-to-pay) on top of Foundation. |
-| Companion documents | The Business Foundation PRD, the product PRDs, the supplier portal surface and the product method, one per layer and product (ADR-0041), listed in this folder's README. They assume everything in this document exists. The Functional Foundation PRD they replace is archived, with a map from its identifiers. |
+| Readers | You (product owner and architect), the developers who will build Foundation, security and compliance reviewers, and the product teams who will build suites on top of Foundation (first: the eProcurement Suite). |
+| Companion documents | The Business Foundation PRD beside this one in `docs/prd/foundation/`, the eProcurement Suite's product PRDs, supplier portal surface and later scopes in `docs/prd/suites/procurement/`, and the product method in `docs/prd/`, one per layer and product (ADR-0041, ADR-0043), listed in `docs/prd/README.md`. They assume everything in this document exists. The Functional Foundation PRD they replace is archived, with a map from its identifiers. |
 | Tags | `[Core]` must exist before the first business product ships. `[Extended]` can follow in a later slice. `[Decision]` a choice you must confirm. `[Carried]` behaviour carried over from the current product. `[Gap]` a gap or defect found in the current product that Foundation must close. |
 
-Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped. 2026-10-19 (task A3): TF-035 AC1 follows ADR-0032: another supplier's order by identifier answers not found, so a link reveals nothing. 2026-10-20 (task A5): TF-050 AC3 follows ADR-0035: the last known value comes before the default in code, so a kill switch that is on stays on while the flag service is unavailable. 2026-10-20 (the PRD split, ADR-0041): six criteria that are error cases carry the marker `(error case)`, as the one form of acceptance criteria asks (TF-004 AC2, TF-007 AC1, TF-021 AC1, TF-029 AC2, TF-040 AC2, TF-046 AC1); the CSV is written from this document, gains the column `was`, and so also carries the three criteria amended in S2 (TF-032 AC3, TF-035 AC1, TF-050 AC3), which had reached only this document. 1.3 DRAFT, 2026-10-20 (the PRD split, ADR-0041 and ADR-0042): section 2.1 lists the kernel's modules by today's names, built and planned, and retires `Iron.Organisations`, which S2 built inside Authorization, Data and Settings, its business meaning now the Business PRD's; three requirements are new, TF-241 (content visibility and visibility tags), TF-242 (the forms engine) and TF-243 (approvals, tasks and notifications respect access, the design session's answer to the archived FF-184); TF-099 and TF-166 name the business configuration that uses them; TF-218 traces the identifiers of every PRD to tests; section 5a points to each product PRD's records and signatures; section 7 schedules TF-241 before the first business slice, proposes the business and product slices, and puts S7's requirements back in S7's row, from which a missing cell had moved them into S9's; sections 3.3 and 6 name `Iron.Kernel.Files` and `Iron.Kernel.Security`. 2026-10-20 (the split's review): TF-242 is built in S4, and section 7.2's order is accepted in principle.
+Change log: 1.0 DRAFT, 2026-10-17, first full draft. 1.2 DRAFT, 2026-10-17, second round: Azure as the cloud with laptop-first development; scale targets for very large tenants and a formal dedicated-deployment option; the Supplier Network plane (one portal for all suppliers of all tenants); intercompany as a design consideration; research-backed functional design principle. 1.1 DRAFT, 2026-10-17, decisions applied: per-tenant application and database isolation on shared infrastructure; all compliance frameworks in scope; AG Grid (Community first, Enterprise later) instead of open-source-only grid; subscription billing per user and module in version 1; UI-only localisation with Unicode data; mobile companion app scope; new areas for fleet operations, multi-organisation separation, regulated-industry controls and mobile readiness. 2026-10-19 (task L1): the code namespace line and section 3.5 follow ADR-0029, three layers: kernel, business, products. 2026-10-19 (task A2): TF-032 AC3 follows ADR-0031: unknown permissions refuse the apply instead of being skipped. 2026-10-19 (task A3): TF-035 AC1 follows ADR-0032: another supplier's order by identifier answers not found, so a link reveals nothing. 2026-10-20 (task A5): TF-050 AC3 follows ADR-0035: the last known value comes before the default in code, so a kill switch that is on stays on while the flag service is unavailable. 2026-10-20 (the PRD split, ADR-0041): six criteria that are error cases carry the marker `(error case)`, as the one form of acceptance criteria asks (TF-004 AC2, TF-007 AC1, TF-021 AC1, TF-029 AC2, TF-040 AC2, TF-046 AC1); the CSV is written from this document, gains the column `was`, and so also carries the three criteria amended in S2 (TF-032 AC3, TF-035 AC1, TF-050 AC3), which had reached only this document. 1.3 DRAFT, 2026-10-20 (the PRD split, ADR-0041 and ADR-0042): section 2.1 lists the kernel's modules by today's names, built and planned, and retires `Iron.Organisations`, which S2 built inside Authorization, Data and Settings, its business meaning now the Business PRD's; three requirements are new, TF-241 (content visibility and visibility tags), TF-242 (the forms engine) and TF-243 (approvals, tasks and notifications respect access, the design session's answer to the archived FF-184); TF-099 and TF-166 name the business configuration that uses them; TF-218 traces the identifiers of every PRD to tests; section 5a points to each product PRD's records and signatures; section 7 schedules TF-241 before the first business slice, proposes the business and product slices, and puts S7's requirements back in S7's row, from which a missing cell had moved them into S9's; sections 3.3 and 6 name `Iron.Kernel.Files` and `Iron.Kernel.Security`. 2026-10-20 (the split's review): TF-242 is built in S4, and section 7.2's order is accepted in principle. 1.4 DRAFT, 2026-10-20 (task L2, ADR-0043): IronSaaS Foundation and its suites; the code namespace line and section 3.5 follow the Suite layer; TF-244, suites per tenant, joins the tenancy area and slice V; the document moved to `docs/prd/foundation/`.
 
 ## 1. Vision and principles
 
 ### 1.1 Vision
 
-Foundation is the technical base for a family of enterprise SaaS products. A product team builds business modules (procurement, sourcing, expenses, and others) on Foundation and gets, for free and from day one: multi-tenancy, identity and access, module licensing, feature flags, settings, audit, security, telemetry, localisation, notifications, files, jobs, workflow, extensibility, a UI shell and an operations console. Product teams write business logic and screens. They never write their own login, audit or tenant code.
+IronSaaS Foundation is the technical base for a family of enterprise SaaS suites for regulated industries: the eProcurement Suite first, then others such as a School ERP (ADR-0043). A product team builds a suite's modules on Foundation and gets, for free and from day one: multi-tenancy, identity and access, module licensing, feature flags, settings, audit, security, telemetry, localisation, notifications, files, jobs, workflow, extensibility, a UI shell and an operations console. Product teams write business logic and screens. They never write their own login, audit or tenant code.
 
 ### 1.2 Principles (binding)
 
@@ -198,7 +198,7 @@ Chosen model, stated plainly:
 
 ### 3.5 Code structure (for a fresh graduate)
 
-Code lives in three layers (ADR-0029). **Kernel**: technical mechanisms that know nothing about any business domain. **Business**: the shared business masters and the business configuration of kernel mechanisms. **Products**: documents and processes with their own life cycles. The placement test decides where a module goes: it has no business meaning, Kernel; two or more products would need to own it, Business; one product owns it, Products.
+Code lives in three layers (ADR-0029, ADR-0043). **Kernel**: technical mechanisms that know nothing about any business domain. **Business**: the shared business masters and the business configuration of kernel mechanisms. The two together are IronSaaS Foundation, which every tenant has. **Suite**: a set of products sold together, with the masters only its products share; the first is the eProcurement Suite (`procurement`), and a tenant has the suites it bought (TF-244). The placement test decides where a module goes: it has no business meaning, Kernel; enterprise products of any kind need it, or the products of two or more suites, Business; two or more products of one suite need it, that suite's shared master; one product owns it, that product.
 
 ```
 src/
@@ -213,21 +213,22 @@ src/
       Contracts/  public interfaces and DTOs other modules may use (its own project)
   Business/
     Iron.Business.<Module>/              shared masters, same layout, schema business_<module>
-  Products/
-    Iron.Products.<Product>/             one product, same layout, schema products_<product>
+  Suites/
+    Procurement/                         the eProcurement Suite
+      Iron.Suites.Procurement.<Module>/  a shared master or a product, same layout, schema procurement_<module>
   Hosts/
     Iron.Host.Api/                       web host that composes modules
     Iron.Host.Worker/                    worker host
     Iron.Host.ControlPlane/              control plane host
     Iron.Host.Fleet/                     fleet orchestrator host (provisioning, releases, migrations, backups)
-shell/                                   React shell and design system; modules in src/modules/{kernel,business,products}/
+shell/                                   React shell and design system; modules in src/modules/{kernel,business,suites/<suite>}/
 tests/                                   tests/<Layer>/<Project>.Tests; the architecture and host tests at tests/
 tools/   the smoke test, scaffolding, seed data
 infra/   compose and kubernetes manifests, infrastructure as code
 docs/    ADRs, runbooks, this PRD
 ```
 
-Dependencies go downward only: Products may use Business and Kernel, Business may use Kernel, Kernel uses only Kernel. A module never references another module's `Data/` folder; between modules only `Contracts/` is public, in every layer. When the kernel needs something only Business can supply, the kernel declares an interface in its Contracts and Business implements it. Every project declares its layer (`<IronLayer>`), and the build refuses an upward reference, a reference past a Contracts project and a schema without its layer prefix. Permission names, audit events, error codes, routes and configuration sections name the module, not the layer.
+Dependencies go downward only: a suite may use Business and Kernel, Business may use Kernel, Kernel uses only Kernel; a suite never references another suite, and the Foundation never references a suite. A module never references another module's `Data/` folder; between modules only `Contracts/` is public, in every layer. When the kernel needs something only Business can supply, the kernel declares an interface in its Contracts and Business implements it. Every project declares its layer (`<IronLayer>`), a suite's project its suite too (`<IronSuite>`), and the build refuses an upward reference, a reference between suites, a reference past a Contracts project and a schema without its layer's or suite's prefix. Permission names, audit events, error codes, routes and configuration sections name the module, not the layer or the suite.
 
 ### 3.6 Supplier Network plane
 
@@ -269,7 +270,7 @@ Compliance notes: the network is multi-tenant by nature, but it holds supplier-o
 ## 4. Requirements
 Each requirement has an identifier, a priority (Must, Should, Could), a tag, the requirement statement in business terms, the reason, acceptance criteria that a tester can run (including at least one error case), dependencies and notes.
 
-### 4.1 Tenancy and control plane (TF-001 to TF-009, 9 requirements)
+### 4.1 Tenancy and control plane (TF-001 to TF-009 and TF-244, 10 requirements)
 
 #### TF-001 Tenant registry  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Tenancy and control plane
@@ -408,6 +409,27 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC3 Given all tenants healthy, When the view loads, Then it shows green with the time of the last check.
 
 *Depends on:* TF-001, TF-130, TF-191
+
+#### TF-244 Suites per tenant
+*Priority:* **Must** · *Tag:* `[Core]` `[New]` · *Area:* Tenancy and control plane
+
+**Requirement:** The control plane shall record the suites each tenant has bought, one or more (ADR-0043), and the fleet shall install IronSaaS Foundation for every tenant and a suite only for the tenants that bought it: a suite's modules are migrated, seeded and loaded in those tenants' units and in no other. Adding a suite to an active tenant shall be an update job; removing one shall switch its modules off and keep its schemas, rows and files, so that adding it again finds them. Inside a suite, modules and features shall be entitlements (TF-040 to TF-046) with plans per suite: every tenant holds one Foundation plan, which names the business modules and the kernel's features (such as `authorization.role_transfer`), and one plan for each suite it bought, which names only that suite's modules and features; the tenant's entitlements are the union of its plans and reach the unit within a minute. One image per release carries the Foundation and every suite, and a unit loads its tenant's suites at start, from its configuration.
+
+**Why:** A customer buys the eProcurement Suite, or a later suite such as a School ERP, and rarely both. A unit that carried every suite would migrate schemas, run seeds and expose endpoints its tenant never bought, and what the system holds would grow with every suite. Plans per suite let each suite be sold on its own beside the Foundation every tenant has.
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant provisioned with the eProcurement Suite, When provisioning finishes, Then the suite's schemas are migrated, its seeds have run, its endpoints answer, and its shell modules are listed for the people entitled to them.
+- AC2 Given a tenant provisioned without the eProcurement Suite, When its unit runs, Then its database holds none of the suite's schemas, the suite's endpoints answer not found, and the shell lists none of its modules.
+- AC3 Given an active tenant without the suite, When an operator adds the suite, Then an update job migrates, seeds and loads its modules, the tenant's suites in the control plane name it, and the change is audited with the operator.
+- AC4 Given an active tenant with the suite and records in it, When an operator removes the suite, Then its modules are switched off within a minute and its schemas, rows and files are kept; When the suite is added again, Then the same records are there.
+- AC5 Given a tenant with the suite, When an operator switches one of the suite's modules or features off in the tenant's plan for that suite, Then the unit and the shell follow within a minute, as for any entitlement (TF-040 to TF-046).
+- AC6 Given a tenant with a Foundation plan that includes `authorization.role_transfer` and a plan for the eProcurement Suite, When its entitlements are written to the store, Then they are the union of the two, and the Foundation's features apply whatever suites the tenant has.
+- AC7 Given a plan of the eProcurement Suite that names a module or feature of another suite or of the Foundation, When the plan is saved or applied, Then it is refused, naming the module or feature and the group it belongs to. (error case)
+
+*Depends on:* TF-001, TF-002, TF-004, TF-040, TF-042, TF-043, TF-046, TF-080, TF-210
+
+**Notes:** New (ADR-0043, decided 2026-10-20). Scheduled with TF-241 in slice V, before the first suite slice (section 7). The tenant's suites live in Tenancy beside its plans; provisioning and the update job pass them into the unit's configuration; `make catalogue` already groups the licensable modules, features, flags and settings by suite, the Foundation first, which is what a plan of one group is checked against. Today's plans, Standard and Enterprise, become Foundation plans. Separate images per suite are a later option.
 
 ### 4.2 Identity and authentication (TF-010 to TF-019, 10 requirements)
 
@@ -3481,7 +3503,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* TF-035, TF-091, TF-097, TF-151, TF-222, TF-241
 
-**Notes:** Written at the PRD split's checkpoint, the design session's answer to FF-184's clause that approvals, tasks and notifications respect the same access (`requirements-map.md`).
+**Notes:** Written at the PRD split's checkpoint, the design session's answer to FF-184's clause that approvals, tasks and notifications respect the same access (`../requirements-map.md`).
 
 ### 4.30 Forms engine (TF-242, 1 requirement)
 
@@ -3594,7 +3616,7 @@ Each slice is a thin end-to-end increment that can be demonstrated. Numbers in b
 |---|---|---|---|
 | S1 Walking skeleton | Repository, module layout, hosts, one tenant provisioned by the control plane as its own deployment unit (namespace, containers, database, bucket, secrets path), login with password, one protected API operation, one shell page with the grid component, traces visible, deployed to integration by pipeline | TF-001, 002, 003, 010, 011, 020, 021, 030, 031, 060, 070, 080, 100, 101, 130, 160, 170, 171, 180, 190, 209, 210, 220 | Done |
 | S2 Access control and organisations | Permission catalogue, roles, assignments with scope, deny by default check at start-up, record policies, entitlements and flags evaluated, settings hierarchy, organisation ownership and sharing pattern on records, unit-scoped configuration | TF-032 to 039, 040 to 046, 050 to 056, 057 to 059, 221 to 223 | Done |
-| V Content visibility | Visibility tags on records and people, the filter inside the query after roles and units, the explanation and the reviews | TF-241 | Before the first business slice |
+| V Content visibility and suites | Visibility tags on records and people, the filter inside the query after roles and units, the explanation and the reviews; a tenant's suites installed by purchase, with a plan per suite beside the Foundation plan | TF-241, TF-244 | Before the first business slice |
 | S3 Trust and compliance | MFA, SSO (OIDC), sessions console, password policy and lockout, audit log with chain, change history, secrets from the store, security headers, rate limits, vulnerability pipeline | TF-012 to 019, 022 to 029, 061 to 069, 071 to 079, 218, 219 | Next |
 | S4 Platform services | Files with virus scan, notifications with templates and preferences, jobs with console, outbox and webhooks, import and export framework, localisation with a second language, the forms engine | TF-081 to 089, 110 to 114, 120 to 124, 131 to 136, 140 to 142, 145, 150 to 156, 161 to 166, 242 | |
 | S5 Workflow and extensibility | Generic approval engine, SLA timers, delegation, custom fields and lookups, plugin hooks, saved views, unified search; access in what is sent | TF-090 to 099, 200 to 205, 208, 243 | |
@@ -3605,9 +3627,9 @@ Each slice is a thin end-to-end increment that can be demonstrated. Numbers in b
 
 S9 runs when the first Azure deployment exists; until then scale patterns are designed in and tested at laptop size. There is no time pressure on the market (owner decision); Foundation strength comes before product speed.
 
-### 7.2 The business and product slices (accepted in principle, 2026-10-20)
+### 7.2 The business slices and the eProcurement Suite's slices (accepted in principle, 2026-10-20)
 
-The order stands in principle; its interleaving with S3 to S5 comes with S3's tasks. It follows the dependencies of the requirements. TF-241 comes before the first business slice, because every business record type needs visibility tags from its first day. A business slice follows the kernel slices it needs: approval configurations after the workflow engine (S5), notification templates after notifications (S4), lookups after custom lookups (S5). A product slice follows the business slices and the earlier products it calls (ADR-0042), and supplier questionnaires follow the forms engine (TF-242). Each module's first slice follows its process reference pack (PM-001), which a slice P0 prepares beside the kernel's slices. A requirement whose part needs a later kernel slice is built in two steps: the translations of item names (TF-143) and the ERP sync of masters (TF-206) come with S7, and every supplier-facing part waits for the Supplier Network (S8).
+The order stands in principle; its interleaving with S3 to S5 comes with S3's tasks. It follows the dependencies of the requirements. TF-241 comes before the first business slice, because every business record type needs visibility tags from its first day; TF-244 comes with it, before the first suite slice (PR1), so the eProcurement Suite's first module is installed only for the tenants that bought the suite. A business slice follows the kernel slices it needs: approval configurations after the workflow engine (S5), notification templates after notifications (S4), lookups after custom lookups (S5). A product slice follows the business slices and the earlier products it calls (ADR-0042), and supplier questionnaires follow the forms engine (TF-242). Each module's first slice follows its process reference pack (PM-001), which a slice P0 prepares beside the kernel's slices. A requirement whose part needs a later kernel slice is built in two steps: the translations of item names (TF-143) and the ERP sync of masters (TF-206) come with S7, and every supplier-facing part waits for the Supplier Network (S8).
 
 | Order | Slice | Builds | Needs |
 |---|---|---|---|

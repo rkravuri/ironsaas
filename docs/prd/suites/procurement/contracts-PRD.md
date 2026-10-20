@@ -1,20 +1,20 @@
-# Foundation: Contracts PRD
+# eProcurement Suite: Contracts PRD
 
 ## 0. Document control
 
 | Item | Value |
 |---|---|
 | Document title | Contracts: the contract repository, pricing and consumption, Product Requirements Document |
-| Layer | Products (ADR-0029); the module is proposed in section 13 |
+| Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `CON-`, in blocks of twenty per area (ADR-0041); the table is `contracts-requirements.csv` |
-| Version | 1.0 (accepted at the review of 2026-10-20) |
+| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
-| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
+| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Suppliers and items are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -320,7 +320,7 @@ Second (ADR-0042): it calls no product. Orders records each release and its canc
 
 ## 13. Layer, module, schema and permissions
 
-The module is `Iron.Products.ContractManagement` (schema `products_contract_management`), accepted at the checkpoint, since `Iron.Products.Contracts` would have the public project `Iron.Products.Contracts.Contracts`; the product keeps the name Contracts. Its shell module is `shell/src/modules/products/contract-management/`, licensed as a module (ADR-0034).
+The module is `Iron.Suites.Procurement.ContractManagement` (schema `procurement_contract_management`), accepted at the checkpoint, since `Iron.Suites.Procurement.Contracts` would have the public project `Iron.Suites.Procurement.Contracts.Contracts`; the product keeps the name Contracts. Its shell module is `shell/src/modules/suites/procurement/contract-management/`, licensed as a module (ADR-0034).
 
 Permissions, decided 2026-10-20: `contract_management.contracts.{read,create,update,approve,publish}`, `contract_management.reports.read`. They replace the archived PRD's `contracts.contract.{read,create,update,publish}`.
 
@@ -353,7 +353,7 @@ Decided at the PRD split's checkpoint, on 2026-10-20:
 
 | Decision | Where applied |
 |---|---|
-| The module is `Iron.Products.ContractManagement`, since `Iron.Products.Contracts` would have the public project `Iron.Products.Contracts.Contracts` | Section 13 |
+| The module is `Iron.Suites.Procurement.ContractManagement`, since `Iron.Suites.Procurement.Contracts` would have the public project `Iron.Suites.Procurement.Contracts.Contracts` | Section 13 |
 | Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042); Contracts is second, so Orders records its releases through this product's Contracts | CON-021, ORD-008 |
 
 ## 17. Glossary

@@ -1,20 +1,20 @@
-# Foundation: Supplier management PRD
+# eProcurement Suite: Supplier management PRD
 
 ## 0. Document control
 
 | Item | Value |
 |---|---|
 | Document title | Supplier management: the supplier's life cycle with the tenant, Product Requirements Document |
-| Layer | Products (ADR-0029); the module is proposed in section 13 |
+| Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `SUP-`, in blocks of twenty per area (ADR-0041); the table is `supplier-management-requirements.csv` |
-| Version | 1.0 (accepted at the review of 2026-10-20) |
+| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
-| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), ADR-0029 and ADR-0041. |
-| Dependency | The supplier record and its parts are the Business PRD's (BF-101 to BF-108); every mechanism is a kernel capability cited by its TF identifier. The supplier's own screens are served through the supplier portal surface (`../surfaces/supplier-portal-PRD.md`). |
+| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
+| Dependency | The supplier record and its parts are the Business PRD's (BF-101 to BF-108); every mechanism is a kernel capability cited by its TF identifier. The supplier's own screens are served through the supplier portal surface (`supplier-portal-PRD.md`). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
+Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -367,7 +367,7 @@ Portal ownership (was FF-036) moved to the supplier portal surface at the checkp
 
 ## 7. Supplier views
 
-In the portal (`../surfaces/supplier-portal-PRD.md`) the supplier registers once and completes this tenant's sections (SUP-002, through SPX-021), maintains its company data and sees what awaits each customer's approval (SUP-101), answers questionnaires and uploads the documents the tenant requires, with what is missing for publishing (SUP-102), and sees its relationship's status and the indicators the customer shares (SPX-028). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
+In the portal (`supplier-portal-PRD.md`) the supplier registers once and completes this tenant's sections (SUP-002, through SPX-021), maintains its company data and sees what awaits each customer's approval (SUP-101), answers questionnaires and uploads the documents the tenant requires, with what is missing for publishing (SUP-102), and sees its relationship's status and the indicators the customer shares (SPX-028). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
 
 The requirements (SUP-101 to SUP-120):
 
@@ -502,7 +502,7 @@ The 360 view's tabs for orders, receipts, invoices, contracts and the catalogue 
 
 ## 13. Layer, module, schema and permissions
 
-The module is `Iron.Products.SupplierManagement` (schema `products_supplier_management`), accepted at the checkpoint; not `Iron.Products.Suppliers`, since the supplier master is `Iron.Business.Suppliers` and two modules whose names end in the same segment cannot both be named to `make ef-add MODULE=` (ADR-0029). Its shell module is `shell/src/modules/products/supplier-management/`, and it is licensed as a module (ADR-0034).
+The module is `Iron.Suites.Procurement.SupplierManagement` (schema `procurement_supplier_management`), accepted at the checkpoint; not `Iron.Suites.Procurement.Suppliers`, since the supplier master is `Iron.Business.Suppliers` and two modules whose names end in the same segment cannot both be named to `make ef-add MODULE=` (ADR-0029). Its shell module is `shell/src/modules/suites/procurement/supplier-management/`, and it is licensed as a module (ADR-0034).
 
 Permissions, decided 2026-10-20, naming the module: `supplier_management.suppliers.{invite,approve,publish,hold,deactivate,impersonate}`, `supplier_management.changes.approve`, `supplier_management.bank_accounts.verify`, `supplier_management.documents.{read,manage}`, `supplier_management.questionnaires.{read,send,score}`, `supplier_management.risk_flags.{read,manage}`, `supplier_management.performance.read`, `supplier_management.merges.run`, `supplier_management.configuration.manage`, `supplier_management.reports.read`. They replace the archived PRD's `suppliers.supplier.{approve,publish,hold,deactivate,invite,impersonate}`, `suppliers.bank.verify` and `suppliers.document.*`. A supplier user's own actions arrive through the network with a delegated token and the supplier role (TF-234), not with these.
 
@@ -538,7 +538,7 @@ Decided at the PRD split's checkpoint, on 2026-10-20:
 | Portal ownership is the supplier portal surface's rule, which every product's supplier views obey | SPX-006; section 6.5 |
 | The optional organisation approval of an enablement is this product's; the enablement is Business's | SUP-006, BF-108 |
 | Products depend on each other in the process order, Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing: a later product calls an earlier one through its Contracts, and an earlier one hears from a later one only through events (ADR-0042) | Section 12 |
-| The module is `Iron.Products.SupplierManagement` | Section 13 |
+| The module is `Iron.Suites.Procurement.SupplierManagement` | Section 13 |
 
 ### 16.2 Open points
 

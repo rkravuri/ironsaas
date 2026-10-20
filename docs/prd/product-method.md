@@ -1,19 +1,19 @@
-# Foundation: Product method
+# IronSaaS: Product method
 
 ## 0. Document control
 
 | Item | Value |
 |---|---|
-| Document title | The product method: process reference and research basis, binding for the Business PRD and every product PRD |
+| Document title | The product method: process reference and research basis, binding for the Business PRD and every product PRD of every suite (ADR-0043) |
 | Identifier prefix | `PM-`, in blocks of twenty per area (ADR-0041); the table is `product-method-requirements.csv` |
-| Version | 1.0 (accepted at the review of 2026-10-20) |
+| Version | 1.1 (accepted at the review of 2026-10-20; named by ADR-0043) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `archive/functional-foundation-p2p-PRD-v1.md`), its section 2.4 and area 6.14, the map (`requirements-map.md`), the Technical Foundation PRD's P17 and TF-240, ADR-0041. |
 | Binding | Every business module and every product follows this method before its first slice. A product's PRD cites the requirements here; it does not restate them. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: reviewed at the split's checkpoint without change. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The process reference and research basis of the Functional Foundation PRD 1.2 moved here, binding for every business and product document; the words are unchanged except for names that changed. The reference data from standards (was FF-202) went to the Business PRD as BF-205.
+Change log: 1.1, 2026-10-20: binds IronSaaS Foundation's business layer and every suite's products (ADR-0043); it stays in `docs/prd/`, outside the layers; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: reviewed at the split's checkpoint without change. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The process reference and research basis of the Functional Foundation PRD 1.2 moved here, binding for every business and product document; the words are unchanged except for names that changed. The reference data from standards (was FF-202) went to the Business PRD as BF-205.
 
 ## 1. Purpose
 

@@ -1,20 +1,20 @@
-# Foundation: Supplier portal and Supplier Network experience PRD
+# eProcurement Suite: Supplier portal and Supplier Network experience PRD
 
 ## 0. Document control
 
 | Item | Value |
 |---|---|
 | Document title | The supplier portal and the Supplier Network experience: one portal for all suppliers of all customers, Product Requirements Document of a surface |
-| Layer | A surface, not a product (ADR-0029): the supplier's screens are served through the kernel's Supplier Network plane (TF-230 to TF-239), and each product contributes its supplier views in its own PRD's section 7 |
+| Layer | A surface of the eProcurement Suite, on IronSaaS Foundation, not a product (ADR-0029, ADR-0043): the supplier's screens are served through the kernel's Supplier Network plane (TF-230 to TF-239), and each product contributes its supplier views in its own PRD's section 7 |
 | Identifier prefix | `SPX-`, in blocks of twenty per area (ADR-0041); the table is `supplier-portal-requirements.csv` |
-| Version | 1.0 (accepted at the review of 2026-10-20) |
+| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
-| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../requirements-map.md`), the Technical Foundation PRD's section 3.6, ADR-0029 and ADR-0041. |
+| Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), the Technical Foundation PRD's section 3.6, ADR-0029 and ADR-0041. |
 | Dependency | The network itself (identity, registry, relationships, action index, delegated access, profile propagation) is the kernel's TF-230 to TF-239; the supplier record is the Business PRD's; the documents are the products'. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
+Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as the eProcurement Suite's surface on IronSaaS Foundation (ADR-0043), beside the products whose supplier views it composes; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
 
 ## 1. Vision and goals
 
@@ -64,14 +64,14 @@ The portal's own screens are this document's (section 5). Every other supplier s
 
 | Supplier view | Requirement | Product |
 |---|---|---|
-| Orders and acknowledgement | ORD-101 | `../products/orders-PRD.md` |
-| Shipment notices | RCV-121 | `../products/receiving-PRD.md` |
-| Receipts and returns | RCV-122 | `../products/receiving-PRD.md` |
-| Invoices | INV-101 | `../products/invoicing-PRD.md` |
-| Catalogue | CAT-061 | `../products/catalogue-PRD.md` |
-| Company data | SUP-101 | `../products/supplier-management-PRD.md` |
-| Questionnaires and documents | SUP-102 | `../products/supplier-management-PRD.md` |
-| Contracts | CON-061 | `../products/contracts-PRD.md` |
+| Orders and acknowledgement | ORD-101 | `orders-PRD.md` |
+| Shipment notices | RCV-121 | `receiving-PRD.md` |
+| Receipts and returns | RCV-122 | `receiving-PRD.md` |
+| Invoices | INV-101 | `invoicing-PRD.md` |
+| Catalogue | CAT-061 | `catalogue-PRD.md` |
+| Company data | SUP-101 | `supplier-management-PRD.md` |
+| Questionnaires and documents | SUP-102 | `supplier-management-PRD.md` |
+| Contracts | CON-061 | `contracts-PRD.md` |
 
 ## 5. Requirements
 

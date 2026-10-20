@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks the requirement documents in docs/prd against the rules of ADR-0041 and ADR-0042.
+"""Checks the requirement documents in docs/prd against the rules of ADR-0041, ADR-0042 and ADR-0043.
 
 Every requirements document is a markdown file with requirement blocks and a CSV beside it, written from the markdown
 (`make prd-csv`). The check reads them all, with the archived Functional Foundation PRD and the map, and names the file
@@ -11,11 +11,14 @@ and the identifier of every problem:
   document or does not name the FF identifier in its `was`, or a requirement whose `was` the map does not list;
 - a requirement without acceptance criteria in the Given, When, Then form numbered AC1 onwards, or without one marked
   "(error case)";
-- a product PRD without the sections "Supplier views" and "Records and signatures";
+- a product PRD of the eProcurement Suite without the sections "Supplier views" and "Records and signatures";
 - a CSV that differs from its markdown in any cell, and a map whose markdown and CSV differ;
-- a dependency on an identifier no document holds, one that points up a layer (the kernel, the business layer, the
-  products, the supplier portal surface), and one on a later product in the process order unless it is marked
-  "(event)" (ADR-0042).
+- a dependency on an identifier no document holds, one that points up a layer (the kernel, the business layer, a
+  suite's products, its surfaces), one on a later product of its suite's process order unless it is marked "(event)"
+  (ADR-0042), and one from a suite's document on another suite's (ADR-0043).
+
+The Foundation's documents sit in foundation/, each suite's in suites/<suite>/; the product method, the map and the
+archive stay at the top of docs/prd.
 
 Standard library only, so CI needs nothing but Python 3. Exit status 1 when anything is wrong.
 """
@@ -36,31 +39,51 @@ ARCHIVE = PRD / "archive" / "functional-foundation-p2p-PRD-v1.md"
 MAP_MD = PRD / "requirements-map.md"
 MAP_CSV = PRD / "requirements-map.csv"
 
-# The requirements documents and their prefixes (ADR-0041, decision 1). The scope pages carry no requirements yet.
+# The requirements documents and their prefixes (ADR-0041, decision 1), in their folders (ADR-0043): the Foundation's
+# in foundation/, each suite's in suites/<suite>/. The scope pages carry no requirements yet.
 DOCUMENTS = {
-    "technical-foundation-PRD.md": "TF",
-    "business-foundation-PRD.md": "BF",
+    "foundation/technical-foundation-PRD.md": "TF",
+    "foundation/business-foundation-PRD.md": "BF",
     "product-method.md": "PM",
-    "products/supplier-management-PRD.md": "SUP",
-    "products/catalogue-PRD.md": "CAT",
-    "products/requests-PRD.md": "REQ",
-    "products/orders-PRD.md": "ORD",
-    "products/receiving-PRD.md": "RCV",
-    "products/invoicing-PRD.md": "INV",
-    "products/contracts-PRD.md": "CON",
-    "surfaces/supplier-portal-PRD.md": "SPX",
+    "suites/procurement/supplier-management-PRD.md": "SUP",
+    "suites/procurement/catalogue-PRD.md": "CAT",
+    "suites/procurement/requests-PRD.md": "REQ",
+    "suites/procurement/orders-PRD.md": "ORD",
+    "suites/procurement/receiving-PRD.md": "RCV",
+    "suites/procurement/invoicing-PRD.md": "INV",
+    "suites/procurement/contracts-PRD.md": "CON",
+    "suites/procurement/supplier-portal-PRD.md": "SPX",
 }
 NOT_REQUIREMENT_DOCUMENTS = {"README.md", "requirements-map.md"}
-PRODUCT_SECTIONS = ["Supplier views", "Records and signatures"]
+# The sections every product PRD of a suite has; a later suite states its own when its first PRD is written.
+PRODUCT_SECTIONS = {"procurement": ["Supplier views", "Records and signatures"]}
 TAGS = {"Core", "Extended", "Carried", "Improved", "Gap", "New", "Decision", "Later"}
 
-# Dependencies point down the layers (ADR-0029, ADR-0042): kernel, business, products, the supplier portal surface. The
-# product method binds every layer and stands outside them. Between products, the process order: a later product may
-# depend on an earlier one; an earlier one hears from a later one only through a domain event, written "ORD-001 (event)".
-LAYERS = {"TF": 0, "BF": 1, "SUP": 2, "CON": 2, "CAT": 2, "REQ": 2, "ORD": 2, "RCV": 2, "INV": 2, "SPX": 3}
+# Dependencies point down the layers (ADR-0029, ADR-0042, ADR-0043): the kernel, the business layer (the two are the
+# Foundation), a suite's products, a suite's surfaces. The product method binds every layer and stands outside them. A
+# suite's document never depends on another suite's. Between the products of a suite, its process order: a later
+# product may depend on an earlier one; an earlier one hears from a later one only through a domain event, written
+# "ORD-001 (event)".
+FOUNDATION_LAYERS = {"TF": 0, "BF": 1}
+SURFACES = {"SPX"}
 LAYER_NAMES = {0: "the kernel", 1: "the business layer", 2: "the products", 3: "the supplier portal surface"}
-PROCESS_ORDER = ["SUP", "CON", "CAT", "REQ", "ORD", "RCV", "INV"]
+PROCESS_ORDER = {"procurement": ["SUP", "CON", "CAT", "REQ", "ORD", "RCV", "INV"]}
 DEPENDENCY = re.compile(r"^([A-Z]{2,3})-(\d{3})( \(event\))?$")
+
+
+def suite_of(name: str) -> str | None:
+    """The suite a document belongs to, by its folder: suites/procurement/orders-PRD.md is procurement's."""
+    parts = name.split("/")
+    return parts[1] if len(parts) > 2 and parts[0] == "suites" else None
+
+
+def layer_of(name: str, prefix: str) -> int | None:
+    """The layer of a document: the Foundation's two by prefix, a suite's surface or product by folder; None outside them."""
+    if prefix in FOUNDATION_LAYERS:
+        return FOUNDATION_LAYERS[prefix]
+    if suite_of(name) is None:
+        return None
+    return 3 if prefix in SURFACES else 2
 
 COLUMNS = ["id", "area", "title", "priority", "tag", "requirement", "rationale", "acceptance_criteria", "depends_on", "notes", "was"]
 ARCHIVE_COLUMNS = COLUMNS[:-1]
@@ -262,8 +285,8 @@ def check_requirements(document: Document, prefix: str) -> list[str]:
                 problems.append(f"{where}: AC{number} is not in the form Given ..., When ..., Then ...")
         if requirement.criteria and not any("(error case)" in text for _, text in requirement.criteria):
             problems.append(f"{where}: no criterion is marked (error case)")
-    if name.startswith("products/"):
-        for section in PRODUCT_SECTIONS:
+    if prefix not in SURFACES:
+        for section in PRODUCT_SECTIONS.get(suite_of(name) or "", []):
             if not any(re.sub(r"^[\d.]+\s*", "", heading).startswith(section) for heading in document.headings):
                 problems.append(f"{name}: no section {section!r}")
     return problems
@@ -294,7 +317,7 @@ def compare(document: Document, columns: list[str]) -> list[str]:
 
 
 def check_dependencies(document: Document, requirement: Requirement, live: dict[str, tuple[Document, Requirement]]) -> list[str]:
-    """Every dependency exists, points down a layer or sideways, and reaches a later product only as an event (ADR-0042)."""
+    """Every dependency exists, stays in its suite, points down a layer or sideways, and reaches a later product only as an event."""
     problems = []
     where = f"{document.name}: {requirement.id}"
     for dependency in requirement.depends_on:
@@ -307,14 +330,21 @@ def check_dependencies(document: Document, requirement: Requirement, live: dict[
             problems.append(f"{where} depends on {identifier}, which no document holds")
             continue
         own, theirs = requirement.prefix, match.group(1)
-        if own not in LAYERS or theirs not in LAYERS:
+        their_document = live[identifier][0]
+        own_suite, their_suite = suite_of(document.name), suite_of(their_document.name)
+        if own_suite and their_suite and own_suite != their_suite:
+            problems.append(f"{where} depends on {identifier} of the {their_suite} suite; a suite never depends on another suite, and what both need belongs in the Foundation (ADR-0043)")
+            continue
+        own_layer, their_layer = layer_of(document.name, own), layer_of(their_document.name, theirs)
+        if own_layer is None or their_layer is None:
             if event:
                 problems.append(f"{where}: {identifier} is marked (event), which only a dependency on a later product is")
             continue
-        if LAYERS[theirs] > LAYERS[own]:
-            problems.append(f"{where} depends on {identifier}, which points up from {LAYER_NAMES[LAYERS[own]]} to {LAYER_NAMES[LAYERS[theirs]]}")
+        if their_layer > own_layer:
+            problems.append(f"{where} depends on {identifier}, which points up from {LAYER_NAMES[own_layer]} to {LAYER_NAMES[their_layer]}")
             continue
-        later = own in PROCESS_ORDER and theirs in PROCESS_ORDER and PROCESS_ORDER.index(theirs) > PROCESS_ORDER.index(own)
+        order = PROCESS_ORDER.get(own_suite or "", [])
+        later = own in order and theirs in order and order.index(theirs) > order.index(own)
         if later and not event:
             problems.append(f"{where} depends on {identifier} of a later product; an earlier product hears from it only through an event, written '{identifier} (event)'")
         if event and not later:
@@ -420,8 +450,8 @@ def check() -> int:
         print(f"\nprd-check: {len(problems)} problems")
         return 1
     for document in live_documents:
-        print(f"{document.name:40} {len(document.requirements):4} requirements")
-    print(f"{'requirements-map.csv':40} {len(read_csv(MAP_CSV)):4} rows, one per FF identifier")
+        print(f"{document.name:48} {len(document.requirements):4} requirements")
+    print(f"{'requirements-map.csv':48} {len(read_csv(MAP_CSV)):4} rows, one per FF identifier")
     print("prd-check: passed")
     return 0
 
@@ -440,6 +470,6 @@ def write_csvs() -> int:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Check the requirement documents in docs/prd (ADR-0041).")
+    parser = argparse.ArgumentParser(description="Check the requirement documents in docs/prd (ADR-0041, ADR-0043).")
     parser.add_argument("--write-csv", action="store_true", help="write every document's CSV, and the map's, from its markdown")
     sys.exit(write_csvs() if parser.parse_args().write_csv else check())
