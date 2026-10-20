@@ -181,6 +181,42 @@ class PrdCheckTest(unittest.TestCase):
         self.files["foundation/technical-foundation-PRD.md"] = "# Kernel\n\n" + block("TF-001", "Tenant registry", "Tenancy", GOOD, "ORD-001")
         self.assert_refused("TF-001 depends on ORD-001, which points up from the kernel to the products")
 
+    def with_a_purchasing_master(self, depends: str = "BF-001", notes: str = "") -> None:
+        """The eProcurement Suite's shared master, below its products and above the Foundation (ADR-0043)."""
+        prd_check.DOCUMENTS = {**prd_check.DOCUMENTS, "suites/procurement/purchasing-PRD.md": "PUR"}
+        self.files["suites/procurement/purchasing-PRD.md"] = "# Purchasing\n\n" + block("PUR-001", "Purchasing groups", "Purchasing groups", GOOD, depends, notes)
+
+    def test_a_product_on_its_suites_master_is_accepted_and_a_master_needs_no_product_sections(self) -> None:
+        self.with_a_purchasing_master()
+        self.files["suites/procurement/orders-PRD.md"] = "# Orders\n\n" + block("ORD-001", "Orders", "Orders", GOOD, "REQ-001, PUR-001") + PRODUCT_SECTIONS
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+
+    def test_a_suites_master_on_a_product_is_refused(self) -> None:
+        self.with_a_purchasing_master("BF-001, REQ-001")
+        self.assert_refused("PUR-001 depends on REQ-001, which points up from the suite's shared masters to the products")
+
+    def test_a_part_moved_after_the_split_names_its_old_identifiers_and_the_map_lists_it(self) -> None:
+        self.with_a_purchasing_master(notes="Was FF-001 and BF-001, the part that moved.")
+        self.map_rows[0] = "| FF-001 | Legal entities | split | BF-001, PUR-001 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  |  |"
+        self.map_rows.append("| BF-001 | Legal entities | split | BF-001, PUR-001 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  |  |")
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+
+    def test_a_was_without_its_move_in_the_map_is_refused(self) -> None:
+        self.with_a_purchasing_master(notes="Was BF-001, the part that moved.")
+        self.assert_refused("suites/procurement/purchasing-PRD.md: PUR-001 says it was BF-001, but the map's row does not list it")
+
+    def test_a_moved_identifier_still_held_is_refused(self) -> None:
+        self.with_a_purchasing_master(notes="Was BF-001.")
+        self.map_rows.append("| BF-001 | Legal entities | moved | PUR-001 | `suites/procurement/purchasing-PRD.md` |  |  |  |  |")
+        self.assert_refused("requirements-map.csv: BF-001: moved, but foundation/business-foundation-PRD.md still holds it; a moved identifier is never reused")
+
+    def test_a_move_whose_part_does_not_name_it_is_refused(self) -> None:
+        self.with_a_purchasing_master()
+        self.map_rows.append("| BF-001 | Legal entities | split | BF-001, PUR-001 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  |  |")
+        self.assert_refused("suites/procurement/purchasing-PRD.md: PUR-001: its notes do not start with Was ... BF-001")
+
     def test_a_document_outside_its_folder_is_unknown(self) -> None:
         self.files["business-foundation-PRD.md"] = self.files["foundation/business-foundation-PRD.md"].replace("BF-001", "BF-002")
         self.assert_refused("business-foundation-PRD.md: a document the check does not know")

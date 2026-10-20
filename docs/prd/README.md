@@ -13,6 +13,7 @@ One requirements document per layer and product (ADR-0041), each with its CSV be
 
 | Document | What it holds | Prefix |
 |---|---|---|
+| `suites/procurement/purchasing-PRD.md` | The suite's shared master: purchasing groups, the purchasing profiles of suppliers and people, the starter approvals and readiness items | `PUR-` |
 | `suites/procurement/supplier-management-PRD.md` | The supplier's life cycle | `SUP-` |
 | `suites/procurement/catalogue-PRD.md` | Supplier items, catalogues and shopping | `CAT-` |
 | `suites/procurement/requests-PRD.md` | Purchase requests | `REQ-` |
@@ -32,9 +33,9 @@ One requirements document per layer and product (ADR-0041), each with its CSV be
 
 ## How to cite and change them
 
-A requirement is cited by its identifier, and a test names what it proves by the identifier and the criterion: `REQ-012 AC2` (TF-218). Identifiers are stable and never reused, and did not change when the documents moved to their folders; each area of a document has a block of twenty, and a moved requirement starts its notes with what it was ("Was FF-022.").
+A requirement is cited by its identifier, and a test names what it proves by the identifier and the criterion: `REQ-012 AC2` (TF-218). Identifiers are stable and never reused, and did not change when the documents moved to their folders; each area of a document has a block of twenty, and a moved requirement starts its notes with every identifier it had ("Was FF-022.", "Was FF-174 and BF-201."), and the map lists each move, those after the split included.
 
-Requirements depend down the layers: the kernel, the business layer, a suite's products, its surfaces. Between the eProcurement Suite's products they follow the process order: Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing (ADR-0042). A dependency on a later product is an event and is written so: `RCV-081 (event)`. Business never depends on a product; where it must hear from one, it declares an extension point (the Business PRD's section 6.2). A suite's document never depends on another suite's (ADR-0043).
+Requirements depend down the layers: the kernel, the business layer, a suite's shared masters, its products, its surfaces. The Foundation holds mechanisms and generic masters, and a suite brings its own content (ADR-0043, decision 8). Between the eProcurement Suite's products they follow the process order: Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing (ADR-0042). A dependency on a later product is an event and is written so: `RCV-081 (event)`. Business never depends on a product; where it must hear from one, it declares an extension point (the Business PRD's section 6.2). A suite's document never depends on another suite's (ADR-0043).
 
 A new suite gets its own folder, `suites/<suite>/`, with its documents' prefixes added to `tools/prd_check.py` and its process order beside the eProcurement Suite's.
 

@@ -7,14 +7,14 @@
 | Document title | Receiving: shipment notices, goods and service receipts, returns, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `RCV-`, in blocks of twenty per area (ADR-0041); the table is `receiving-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Units of measure and warehouses are the Business PRD's; orders and invoices are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): RCV-141 names the receipt and return note templates (from BF-162), and RCV-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -211,7 +211,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given no template, When rendered, Then it is refused naming the template. (error case)
 - AC3 Given the supplier user, When they open their receipt, Then the same PDF is available.
 
-*Depends on:* RCV-024, TF-162
+*Depends on:* RCV-024, TF-162, RCV-141
 
 **Notes:** Was FF-101.
 
@@ -447,6 +447,42 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 *Depends on:* TF-171, TF-203
 
 **Notes:** Was FF-160, the receiving reports; the others are REQ-061, ORD-081, INV-084 and CAT-041. Placed by the test: each product owns its reports.
+
+### 6.7 Templates and notifications (RCV-141 to RCV-160)
+
+#### RCV-141 Receipt and return note templates
+*Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Templates and notifications
+
+**Requirement:** Receiving shall name its document templates on the business layer's templates (BF-162): the receipt note and the return note, per legal entity and language, with the placeholders each offers documented and an English starter template of each; a receipt renders through the receipt note (RCV-026) and a return to a supplier through the return note (RCV-061).
+
+**Why:** Branded documents. A product's templates are its content; the template mechanism is the Foundation's (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a receipt note template for legal entity L1, When a receipt of L1 is rendered, Then it is rendered with that template.
+- AC2 Given a template that misses a placeholder Receiving marks mandatory, When saved, Then it is refused naming the placeholder. (error case)
+- AC3 Given a preview, When requested, Then sample data renders.
+
+*Depends on:* BF-162, TF-162
+
+**Notes:** Was FF-173 and BF-162, the receipt and return note templates. Moved at the review of L2, 2026-10-20 (ADR-0043).
+
+#### RCV-142 Notification keys of Receiving
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Templates and notifications
+
+**Requirement:** Receiving shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: shipment notice submitted (the buyer owner, RCV-001), service entry partly accepted, with the reason (the supplier's primary contact, RCV-046) and return to supplier (the supplier's primary contact, RCV-061).
+
+**Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Receiving exists with its English starter template and its default audience.
+- AC2 Given a service entry partly accepted with a reason (RCV-046), When the acceptance is saved, Then the supplier's primary contact is told with the reason in the key's template.
+- AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
+
+*Depends on:* BF-164, RCV-001, RCV-046, RCV-061
+
+**Notes:** Was BF-164, the keys and starter templates of Receiving. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
 ## 7. Supplier views
 

@@ -7,14 +7,14 @@
 | Document title | Catalogue: supplier items, supplier catalogues and shopping, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `CAT-`, in blocks of twenty per area (ADR-0041); the table is `catalogue-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Items, categories, units and suppliers are the Business PRD's (BF-041 to BF-044, BF-101); contract items are the Contracts product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Supplier items, catalogues and shopping moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The item master went to the Business PRD.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): CAT-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Supplier items, catalogues and shopping moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The item master went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -261,6 +261,25 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* TF-171, TF-203
 
 **Notes:** Was FF-160, the catalogue reports; the others are REQ-061, ORD-081, RCV-101 and INV-084. Placed by the test: each product owns its reports.
+
+### 6.4 Notifications (CAT-081 to CAT-100)
+
+#### CAT-081 Notification keys of Catalogue
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Notifications
+
+**Requirement:** Catalogue shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: catalogue revision submitted (the buyer owner, CAT-002), catalogue revision accepted (the supplier's primary contact, CAT-003) and price expiring (the buyer owner, CAT-005).
+
+**Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Catalogue exists with its English starter template and its default audience.
+- AC2 Given a catalogue revision accepted (CAT-003), When the acceptance is saved, Then the supplier's primary contact is told in the key's template.
+- AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
+
+*Depends on:* BF-164, CAT-002, CAT-003, CAT-005
+
+**Notes:** Was BF-164, the keys and starter templates of Catalogue. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
 ## 7. Supplier views
 

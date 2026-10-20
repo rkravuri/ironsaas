@@ -7,7 +7,7 @@
 | Document title | Business Foundation: the shared business masters and the business configuration of kernel mechanisms, Product Requirements Document |
 | Layer | Business (ADR-0029), which with the kernel is IronSaaS Foundation, what every tenant has (ADR-0043): modules `Iron.Business.<Module>` in `src/Business/`, schemas `business_<module>`; the modules are proposed in section 9 |
 | Identifier prefix | `BF-`, in blocks of twenty per area (ADR-0041); the table is `business-foundation-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20: what only the eProcurement Suite needs moved to its purchasing PRD) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map from its identifiers (`../requirements-map.md`), ADR-0029 and ADR-0041, and the split brief (`docs/prompts/PRD-split.md`). |
@@ -15,7 +15,7 @@
 | Method | The product method (`../product-method.md`) is binding: a process reference pack before the first slice of each module (PM-001). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/foundation/` beside the Technical Foundation PRD, the business layer of IronSaaS Foundation (ADR-0043); paths follow the move; no requirement changed. Which of its requirements only the eProcurement Suite needs is an open point of the L2 report, not a move. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): BF-007 and BF-201 moved whole to the eProcurement Suite's purchasing PRD (PUR-001, PUR-061), and their identifiers are not reused; BF-021, BF-061, BF-101, BF-106, BF-107, BF-108, BF-161, BF-162, BF-164, BF-202 and BF-203 keep the Foundation's part, and their suite parts moved to the purchasing PRD, Supplier management, the supplier portal and the products, as the map's section "Moved after the split" lists. 1.1, 2026-10-20: moved to `docs/prd/foundation/` beside the Technical Foundation PRD, the business layer of IronSaaS Foundation (ADR-0043); paths follow the move; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
 
 ## 1. Vision and goals
 
@@ -43,8 +43,8 @@ Keep (carried), from the archived PRD's list: account-string splits with budget 
 
 | Area | Holds | Section |
 |---|---|---|
-| Organisations | Legal entity attributes and the finance masters of a legal entity; business units and departments as kinds of the kernel's unit tree; purchasing groups as a business master; the business rules of organisation separation | 5.1 |
-| People | The people master linked to kernel principals: employee identifier, designation, job grade, manager, business groups, defaults | 5.2 |
+| Organisations | Legal entity attributes and the finance masters of a legal entity; business units and departments as kinds of the kernel's unit tree; the business rules of organisation separation | 5.1 |
+| People | The people master linked to kernel principals: employee identifier, designation, job grade, manager, business groups, a default account string | 5.2 |
 | Items and classification | Items, categories and commodities, units of measure | 5.3 |
 | Finance | Chart of accounts and segments, account strings, budgets, fiscal calendar, currencies and rates, tax codes, payment and shipping terms, projects as cost objects | 5.4 |
 | Locations | Ship-to locations, warehouses | 5.5 |
@@ -56,6 +56,8 @@ Keep (carried), from the archived PRD's list: account-string splits with budget 
 | Setup and data | Starter sets, readiness, country accelerator packs, reference data from standards, masters import, export and ERP sync | 5.11 |
 
 The supplier's life cycle (invitation, registration, approval, status, compliance, performance) is the Supplier management product (`../suites/procurement/supplier-management-PRD.md`); supplier items are the Catalogue product's.
+
+Since the review of L2 this layer holds mechanisms and generic masters, and a suite brings its own content (ADR-0043, decision 8): purchasing groups, the purchasing profiles of suppliers and people, and the eProcurement Suite's starter approvals and readiness items are that suite's purchasing master (`../suites/procurement/purchasing-PRD.md`); its templates, notification keys and document settings are its products'.
 
 ### 2.2 Organisation separation
 
@@ -107,9 +109,6 @@ erDiagram
   PERSON }o--|| ORGANISATION : "default unit"
   PERSON }o--o| PERSON : "reports to"
   PERSON }o--o{ BUSINESS_GROUP : "member of"
-  PURCHASING_GROUP }o--o{ PERSON : "buyers"
-  PURCHASING_GROUP }o--o{ CATEGORY : covers
-  PURCHASING_GROUP }o--o{ ORGANISATION : serves
   PROJECT }o--|| ORGANISATION : "owned by"
   PROJECT }o--o{ BUDGET_LINE : "consumes"
   AUTHORITY_ROW }o--o| CATEGORY : "for"
@@ -124,7 +123,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 ### 5.1 Organisations (BF-001 to BF-020)
 
-Legal entity attributes, the finance masters of a legal entity, the business rules of organisation separation (section 2.2), the kinds of the kernel's units, supplied through `IOrganisationKinds` (BF-006), and purchasing groups (BF-007). A purchasing group is a business master, not a unit kind: it serves several units and owns no records. The A1 amendment in `docs/prompts/S2.md` listed it among the kinds; this document corrects that.
+Legal entity attributes, the finance masters of a legal entity, the business rules of organisation separation (section 2.2), the kinds of the kernel's units, supplied through `IOrganisationKinds` (BF-006). A purchasing group is not a unit kind: it serves several units and owns no records. The A1 amendment in `docs/prompts/S2.md` listed it among the kinds; the Business PRD corrected that as BF-007, which moved to the eProcurement Suite's purchasing master at the review of L2 (PUR-001).
 
 #### BF-001 Legal entity finance attributes
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Organisations
@@ -227,34 +226,16 @@ Legal entity attributes, the finance masters of a legal entity, the business rul
 
 *Depends on:* TF-034, BF-001
 
-**Notes:** Decided 2026-10-20: the kinds and where each may stand, as written. A purchasing group is not a kind (BF-007). Open point G-02 keeps its default: any unit may own documents, and the legal entity above it supplies the chart of accounts and the tax registration.
-
-#### BF-007 Purchasing groups
-*Priority:* **Should** · *Tag:* `[New]` · *Area:* Organisations
-
-**Requirement:** Purchasing groups shall be a business master, not a unit kind: a group of buyers (BF-021), the categories it covers (BF-042) and the units it serves; a group serves several units and owns no records. The products use a group to assign the buyer of a request line by the line's category and unit (REQ-023), to filter a buyer's work queue, and to report spend by group; a purchasing group gives no access and takes no part in approvals.
-
-**Why:** Buyers are organised by what they buy and for whom, across units. A unit kind would put a group at one place in the tree and make it an owner of records, and a purchasing group is neither.
-
-**Acceptance criteria:**
-
-- AC1 Given a purchasing group covering the category IT hardware and serving units A and B, When it is opened, Then its buyers, categories and units are listed.
-- AC2 Given a line of the category IT hardware in unit A, When a product asks which purchasing group serves it, Then the group and its buyers are named.
-- AC3 Given a buyer of a purchasing group, When they open a request of a unit their roles do not reach, Then it is refused, because the group grants no access. (error case)
-- AC4 Given a purchasing group, When someone tries to make it the owning organisation of a record, Then it is refused, because a purchasing group is no unit. (error case)
-
-*Depends on:* BF-021, BF-042, TF-034
-
-**Notes:** Decided 2026-10-20: a purchasing group assigns the buyer, filters the work queue and reports spend; it is not access and not approvals. Corrects the A1 amendment in `docs/prompts/S2.md`, which listed purchasing group among the unit kinds.
+**Notes:** Decided 2026-10-20: the kinds and where each may stand, as written. A purchasing group is not a kind (PUR-001, once BF-007). Open point G-02 keeps its default: any unit may own documents, and the legal entity above it supplies the chart of accounts and the tax registration.
 
 ### 5.2 People (BF-021 to BF-040)
 
-The people master linked to kernel principals: employee identifier, designation, job grade, the manager as the reporting line, business groups for routing and notifications (not for visibility, and not roles), and a person's default ship-to location and account string. Documents default to the session's working unit (A8), which starts at the home unit, so BF-025 (a person's defaults on new documents) was retired on 2026-10-20 and its identifier is not reused. It implements the kernel's `IReviewEscalation` (BF-026).
+The people master linked to kernel principals: employee identifier, designation, job grade, the manager as the reporting line, business groups for routing and notifications (not for visibility, and not roles), and a person's default account string (the default ship-to location is the eProcurement Suite's, PUR-041). Documents default to the session's working unit (A8), which starts at the home unit, so BF-025 (a person's defaults on new documents) was retired on 2026-10-20 and its identifier is not reused. It implements the kernel's `IReviewEscalation` (BF-026).
 
 #### BF-021 People master
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* People
 
-**Requirement:** The people master shall hold, for each person who works in the tenant, a link to their kernel principal (TF-010), an employee identifier unique in the tenant, a designation, a job grade, a manager, business groups, a default ship-to location and a default account string; a person has one principal, and a principal at most one person.
+**Requirement:** The people master shall hold, for each person who works in the tenant, a link to their kernel principal (TF-010), an employee identifier unique in the tenant, a designation, a job grade, a manager, business groups and a default account string; a person has one principal, and a principal at most one person.
 
 **Why:** Approvals, notifications and defaults need business facts about people, such as who their manager is and which grade they hold, which the kernel's principals do not carry by design.
 
@@ -267,7 +248,7 @@ The people master linked to kernel principals: employee identifier, designation,
 
 *Depends on:* TF-010, TF-034, BF-022, BF-023, BF-024
 
-**Notes:** Loaded by import and by ERP or HR sync like the other masters (BF-206, TF-206). Decided 2026-10-20: the people master holds no default unit, because documents default to the session's working unit (A8), which starts at the home unit (TF-034); BF-025, which proposed a person's defaults on new documents, is retired, and its identifier is not reused.
+**Notes:** Loaded by import and by ERP or HR sync like the other masters (BF-206, TF-206). Decided 2026-10-20: the people master holds no default unit, because documents default to the session's working unit (A8), which starts at the home unit (TF-034); BF-025, which proposed a person's defaults on new documents, is retired, and its identifier is not reused. Its default ship-to location moved to the eProcurement Suite's person purchasing profile (PUR-041) at the review of L2, 2026-10-20 (ADR-0043).
 
 #### BF-022 Designations and job grades
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* People
@@ -405,7 +386,7 @@ Chart of accounts and segments, account strings, budgets, fiscal calendar, curre
 #### BF-061 Chart of accounts and segments
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Finance
 
-**Requirement:** Finance administrators shall define charts of account per legal entity with ordered segments (name, length, data type, allowed values or value ranges, mandatory), buying group, billing address, and default match levels for products and services.
+**Requirement:** Finance administrators shall define charts of account per legal entity with ordered segments (name, length, data type, allowed values or value ranges, mandatory) and billing address.
 
 **Why:** Account strings are built from segments.
 
@@ -417,7 +398,7 @@ Chart of accounts and segments, account strings, budgets, fiscal calendar, curre
 
 *Depends on:* BF-001
 
-**Notes:** Was FF-002. GL codes are one of the chart's segments, not a master of their own: the GL code of a line is the value of its GL segment in the account string.
+**Notes:** Was FF-002. GL codes are one of the chart's segments, not a master of their own: the GL code of a line is the value of its GL segment in the account string. Its buying group and its default match levels moved to the eProcurement Suite's purchasing master (PUR-001, PUR-025) at the review of L2, 2026-10-20 (ADR-0043).
 
 #### BF-062 Account strings
 *Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Finance
@@ -723,7 +704,7 @@ The supplier record and its parts, which every product reads, and its enablement
 #### BF-101 Supplier master
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Supplier master
 
-**Requirement:** The supplier master shall hold identity (number auto or manual, legal name, trade name, type, registration type, country), tax identifiers (validated per country rules), classification (categories, commodities, preferred flag, diversity attributes), commercial defaults (currency, payment terms, shipping terms, match levels), portal settings (allowed channels), status fields and custom fields.
+**Requirement:** The supplier master shall hold identity (number auto or manual, legal name, trade name, type, registration type, country), tax identifiers (validated per country rules), classification (categories, commodities, diversity attributes), commercial defaults (currency, payment terms, shipping terms), status fields and custom fields.
 
 **Why:** Central master of the products.
 
@@ -735,7 +716,7 @@ The supplier record and its parts, which every product reads, and its enablement
 
 *Depends on:* BF-042, BF-072
 
-**Notes:** Was FF-022.
+**Notes:** Was FF-022. Its match levels, portal channels and preferred flag moved to the eProcurement Suite's supplier purchasing profile (PUR-021, PUR-022) at the review of L2, 2026-10-20 (ADR-0043).
 
 #### BF-102 Supplier addresses
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Supplier master
@@ -806,7 +787,7 @@ The supplier record and its parts, which every product reads, and its enablement
 #### BF-106 Supplier configuration defaults
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Supplier master
 
-**Requirement:** Tenant administrators shall set defaults for new suppliers (payment terms, currency, match levels, required sections, required documents, portal channels) applied at creation and editable per supplier.
+**Requirement:** Tenant administrators shall set the payment terms and currency a new supplier starts with, applied at creation and editable per supplier.
 
 **Why:** Consistency and speed.
 
@@ -818,30 +799,29 @@ The supplier record and its parts, which every product reads, and its enablement
 
 *Depends on:* BF-101, TF-057
 
-**Notes:** Was FF-035.
+**Notes:** Was FF-035. At the review of L2, 2026-10-20 (ADR-0043), its match levels moved to the supplier purchasing profile's defaults (PUR-024), its required sections and documents to Supplier management (SUP-005), and its portal channels to the supplier portal (SPX-007).
 
-#### BF-107 Supplier categories and preferred status
+#### BF-107 Supplier categories
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier master
 
-**Requirement:** Suppliers shall be classified by categories and commodities they serve, with preferred or approved status per category; request and order supplier suggestions shall use these classifications.
+**Requirement:** Suppliers shall be classified by the categories and commodities they serve, and the classification is offered wherever suppliers are chosen by category.
 
 **Why:** Guide buyers to the right suppliers.
 
 **Acceptance criteria:**
 
-- AC1 Given a line of category X, When suppliers are suggested, Then preferred suppliers for X appear first.
-- AC2 Given a supplier removed from a category, When suggested, Then it no longer appears for that category.
-- AC3 Given a supplier on hold, When suggested, Then it is excluded. (edge)
-- AC4 Given a category that does not exist, When assigned, Then it is refused. (error case)
+- AC1 Given a supplier serving the categories X and Y, When it is opened, Then both are listed with their commodities.
+- AC2 Given a supplier removed from a category, When the suppliers of that category are listed, Then it no longer appears.
+- AC3 Given a category that does not exist, When assigned, Then it is refused. (error case)
 
 *Depends on:* BF-101, BF-042
 
-**Notes:** Was FF-038.
+**Notes:** Was FF-038. Its preferred or approved status per category and the supplier suggestions moved to the eProcurement Suite's supplier purchasing profile (PUR-022) at the review of L2, 2026-10-20 (ADR-0043). AC1 is written for the part that stays.
 
 #### BF-108 Supplier enablement per organisation
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier master
 
-**Requirement:** A supplier shall register once per tenant and be enabled per organisation with organisation-specific terms (payment and shipping terms, currency, match levels, preferred flag, status On or On Hold); documents of an organisation may use only suppliers enabled in it.
+**Requirement:** A supplier shall register once per tenant and be enabled per organisation with organisation-specific terms (payment and shipping terms, currency, status On or On Hold); documents of an organisation may use only suppliers enabled in it.
 
 **Why:** One registration for the supplier, separate control for each unit.
 
@@ -852,7 +832,7 @@ The supplier record and its parts, which every product reads, and its enablement
 
 *Depends on:* BF-101, BF-003
 
-**Notes:** Was FF-182, the enablement and its terms. Its optional organisation approval is SUP-006, since Business never depends on a product (ADR-0042); its clause that supplier users see the documents of every organisation that enabled them, with its AC3, is SPX-004's, which says the same. Decision G-01 default.
+**Notes:** Was FF-182, the enablement and its terms. Its optional organisation approval is SUP-006, since Business never depends on a product (ADR-0042); its clause that supplier users see the documents of every organisation that enabled them, with its AC3, is SPX-004's, which says the same. Decision G-01 default. Its match levels and preferred flag per organisation moved to the eProcurement Suite's purchasing terms per organisation (PUR-023) at the review of L2, 2026-10-20 (ADR-0043).
 
 ### 5.7 Lookups (BF-121 to BF-140)
 
@@ -899,7 +879,7 @@ Approval configurations per document type on the kernel's workflow engine (TF-09
 #### BF-141 Approval configurations per document type
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Approvals and delegation of authority
 
-**Requirement:** The business layer shall hold the approval configurations of every document type on the kernel's workflow engine (TF-090 to TF-099): the document types and kinds (new and change) the products register, the conditions on their registered fields, the stages and approvers, per tenant and per organisation (BF-005), starting from the starter set (BF-201).
+**Requirement:** The business layer shall hold the approval configurations of every document type on the kernel's workflow engine (TF-090 to TF-099): the document types and kinds (new and change) the products register, the conditions on their registered fields, the stages and approvers, per tenant and per organisation (BF-005), starting from the starter set each suite brings (the eProcurement Suite's is in its purchasing PRD).
 
 **Why:** Approval rules are business configuration of a kernel mechanism (ADR-0029); one place for them keeps every product's approvals alike and auditable.
 
@@ -909,7 +889,7 @@ Approval configurations per document type on the kernel's workflow engine (TF-09
 - AC2 Given a configuration for organisation A and one for the tenant, When a document of A is submitted, Then A's applies.
 - AC3 Given a condition on a field the document type does not register, When saved, Then it is refused naming the field. (error case)
 
-*Depends on:* TF-090, TF-095, TF-221, BF-005, BF-201
+*Depends on:* TF-090, TF-095, TF-221, BF-005
 
 **Notes:** Built with the kernel's workflow engine (S5).
 
@@ -955,7 +935,7 @@ Document type settings and document templates; number series per document type a
 #### BF-161 Document type settings
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Numbering, templates and notifications
 
-**Requirement:** Settings per document type for budget validation and blocking, consumption trigger, multi-currency lines, approval configurations, numbering, templates, mandatory custom fields and acknowledgement reminder days.
+**Requirement:** Settings per document type for budget validation and blocking, consumption trigger, multi-currency lines, approval configurations, numbering, templates and mandatory custom fields; a product declares the settings only its own documents have, such as the reminder days of an order's acknowledgement.
 
 **Why:** Configurable control.
 
@@ -967,24 +947,24 @@ Document type settings and document templates; number series per document type a
 
 *Depends on:* TF-057
 
-**Notes:** Was FF-170.
+**Notes:** Was FF-170. Its acknowledgement reminder days moved to Orders (ORD-022) at the review of L2, 2026-10-20 (ADR-0043).
 
-#### BF-162 Document templates for the products
+#### BF-162 Document templates
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Numbering, templates and notifications
 
-**Requirement:** Templates for order, change order, return note, receipt note and invoice acknowledgement per legal entity and language through kernel templates, with product placeholders documented.
+**Requirement:** Templates per document type, legal entity and language through kernel templates, for the document templates the products name, each with the placeholders its product documents.
 
 **Why:** Branded documents.
 
 **Acceptance criteria:**
 
-- AC1 Given a template per legal entity, When rendered, Then it is used.
+- AC1 Given a template per legal entity for a document type, When a document of that legal entity is rendered, Then it is used.
 - AC2 Given a missing placeholder, When saved, Then it is refused. (error case)
 - AC3 Given a preview, When requested, Then sample data renders.
 
 *Depends on:* TF-162, TF-163
 
-**Notes:** Was FF-173.
+**Notes:** Was FF-173. Each product names its own templates since the review of L2, 2026-10-20 (ADR-0043): the order and change order are Orders' (ORD-141), the receipt and return notes Receiving's (RCV-141), the invoice acknowledgement Invoicing's (INV-121).
 
 #### BF-163 Number series
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Numbering, templates and notifications
@@ -1004,19 +984,19 @@ Document type settings and document templates; number series per document type a
 #### BF-164 Business notification templates and audiences
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Numbering, templates and notifications
 
-**Requirement:** The business layer shall hold the templates of the products' notification keys per language, and per legal entity or unit where the tenant wants (TF-150, TF-221), and say who is told what: each key names its audience, a role on the document (requester, buyer owner, approver, supplier primary contact), a business group (BF-024) or a person; no notification goes to someone who cannot read its record (TF-243). The starter templates are one per key, in English, active from provisioning, and the tenant edits them.
+**Requirement:** The business layer shall hold the templates of the notification keys the products declare, per language, and per legal entity or unit where the tenant wants (TF-150, TF-221), and say who is told what: each key names its audience, a role on the document (for example its requester or an approver), a business group (BF-024) or a person; no notification goes to someone who cannot read its record (TF-243). Each product declares its keys with their starter templates, one per key in English, active from provisioning, which the tenant edits.
 
 **Why:** The products declare what happens; the tenant decides, in its own words, who hears of it.
 
 **Acceptance criteria:**
 
-- AC1 Given the key "order issued" with the audience requester, When an order is issued, Then the requester of each of its lines is told, in their language's template.
+- AC1 Given a key a product declares with the audience requester (for example Orders' "order issued"), When its event happens, Then the requester of the document is told, in their language's template.
 - AC2 Given a template for legal entity L1 and a tenant template, When a document of L1 is notified, Then L1's template is used.
 - AC3 Given a template with a placeholder its key does not offer, When saved, Then it is refused naming the placeholder. (error case)
 
 *Depends on:* BF-024, TF-150, TF-151, TF-221, TF-243
 
-**Notes:** Decided 2026-10-20: the proposed starter templates stand, marked for review in the slice that builds this requirement (B3).
+**Notes:** Decided 2026-10-20: the proposed starter templates stand, marked for review in the slice that builds this requirement (B3). Since the review of L2, 2026-10-20 (ADR-0043), each product declares its own keys and starter templates (SUP-121, CON-081, CAT-081, REQ-081, ORD-142, RCV-142, INV-122), and the procurement roles here are examples.
 
 ### 5.10 Content visibility on masters (BF-181 to BF-200)
 
@@ -1043,47 +1023,29 @@ Which masters carry visibility tags, on the kernel mechanism TF-241: suppliers, 
 
 ### 5.11 Setup and data (BF-201 to BF-220)
 
-The approval starter set, go-live and organisation readiness as contributions to the kernel's `IUnitReadiness`, country accelerator packs, reference data from standards, and masters import, export and ERP sync.
-
-#### BF-201 Approval configuration starter set
-*Priority:* **Should** · *Tag:* `[New]` · *Area:* Setup and data
-
-**Requirement:** A starter set of approval configurations per document type (manager chain by amount bands, budget owner for requests, finance for invoices above a threshold, procurement head for suppliers) shall be seeded as inactive examples that administrators can activate and edit.
-
-**Why:** Faster go-live.
-
-**Acceptance criteria:**
-
-- AC1 Given a new tenant, When the console opens, Then the starter configurations exist inactive.
-- AC2 Given activation, When a document is submitted, Then the configuration applies.
-- AC3 Given an edit, When saved, Then it is versioned by the kernel workflow. (edge)
-- AC4 Given a starter configuration edited to reference an unknown field, When saved, Then it is refused. (error case)
-
-*Depends on:* TF-090, TF-095
-
-**Notes:** Was FF-174.
+Go-live and organisation readiness as contributions to the kernel's `IUnitReadiness`, country accelerator packs, reference data from standards, and masters import, export and ERP sync.
 
 #### BF-202 Go-live checklist and data readiness
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Setup and data
 
-**Requirement:** A tenant readiness view shall show what is missing before go-live: legal entities, chart of accounts, account strings, budgets, currencies, units, taxes, templates, numbering, approval configurations, suppliers, items, users and roles, with links to fix each.
+**Requirement:** A tenant readiness view shall show what is missing before go-live, from what each layer and suite contributes: the Foundation's items are legal entities, chart of accounts, account strings, budgets, currencies, units, taxes, users and roles, and the templates, numbering and approval configurations of every document type a module registers; each suite contributes its own items; each item links to where it is fixed.
 
 **Why:** Goal 3 (first request within one day, section 1.2).
 
 **Acceptance criteria:**
 
 - AC1 Given missing templates, When the view loads, Then it is listed with a link.
-- AC2 Given all items complete, When the view loads, Then it shows ready.
+- AC2 Given every contributed item complete, When the view loads, Then it shows ready.
 - AC3 Given a user without administration permission, When opening, Then it is refused. (error case)
 
 *Depends on:* BF-161, TF-223
 
-**Notes:** Was FF-175. Its checklist is made of contributions to the kernel's IUnitReadiness (A8). Its dependency on the supplier onboarding configuration (SUP-005) is dropped: Business never depends on a product, and a product that needs readiness items contributes its own to IUnitReadiness (TF-223, ADR-0042).
+**Notes:** Was FF-175. Its checklist is made of contributions to the kernel's IUnitReadiness (A8). Its dependency on the supplier onboarding configuration (SUP-005) is dropped: Business never depends on a product, and a product that needs readiness items contributes its own to IUnitReadiness (TF-223, ADR-0042). Its suppliers and items are the eProcurement Suite's contribution since the review of L2, 2026-10-20 (PUR-081, ADR-0043).
 
 #### BF-203 Organisation readiness checklist
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Setup and data
 
-**Requirement:** Adding an organisation shall open a readiness checklist (legal entity link, chart of accounts, account strings, budgets, numbering, templates, approval configurations, enabled suppliers, users and roles).
+**Requirement:** Adding an organisation shall open a readiness checklist (legal entity link, chart of accounts, account strings, budgets, numbering, templates, approval configurations, users and roles), with the items each suite contributes.
 
 **Why:** Companies reorganise.
 
@@ -1094,7 +1056,7 @@ The approval starter set, go-live and organisation readiness as contributions to
 
 *Depends on:* TF-223, BF-202
 
-**Notes:** Was FF-188, the checklist's items, which this layer contributes to the kernel's IUnitReadiness; creating, deactivating and merging organisations are the kernel's TF-223 (A8). AC2 is written for the part, as BF-202 AC3 says it for the tenant.
+**Notes:** Was FF-188, the checklist's items, which this layer contributes to the kernel's IUnitReadiness; creating, deactivating and merging organisations are the kernel's TF-223 (A8). AC2 is written for the part, as BF-202 AC3 says it for the tenant. Its enabled suppliers are the eProcurement Suite's contribution since the review of L2, 2026-10-20 (PUR-081, ADR-0043).
 
 #### BF-204 Country accelerator packs
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Setup and data
@@ -1233,14 +1195,14 @@ Proposed by the placement test (ADR-0029): each holds masters or configuration t
 
 | Module | Holds | Schema | Requirements | Permissions |
 |---|---|---|---|---|
-| `Iron.Business.Organisations` | The kinds of unit, legal entity attributes, purchasing groups, the organisation rules | `business_organisations` | BF-001 to BF-007, BF-203 | `organisations.legal_entities.{read,manage}`, `organisations.purchasing_groups.{read,manage}` |
+| `Iron.Business.Organisations` | The kinds of unit, legal entity attributes, the organisation rules | `business_organisations` | BF-001 to BF-006, BF-203 | `organisations.legal_entities.{read,manage}` |
 | `Iron.Business.People` | People, managers, business groups, the escalation to a manager | `business_people` | BF-021 to BF-024, BF-026 | `people.people.{read,manage}`, `people.groups.{read,manage}` |
 | `Iron.Business.Items` | Items, categories and commodities, units of measure | `business_items` | BF-041 to BF-044 | `items.items.{read,manage}`, `items.categories.{read,manage}`, `items.units.{read,manage}` |
 | `Iron.Business.Finance` | Charts of accounts, account strings, budgets, fiscal calendars, currencies and rates, tax codes with HSN and SAC, payment and shipping terms, projects, the budget reconciliation | `business_finance` | BF-061 to BF-075 | `finance.charts.{read,manage}`, `finance.budgets.{read,manage,adjust}`, `finance.rates.{read,manage,approve}`, `finance.taxes.{read,manage}`, `finance.terms.{read,manage}`, `finance.projects.{read,manage}` |
 | `Iron.Business.Locations` | Ship-to, bill-to and warehouse locations | `business_locations` | BF-081 to BF-083 | `locations.locations.{read,manage}` |
 | `Iron.Business.Suppliers` | The supplier record and its parts, its enablement per organisation | `business_suppliers` | BF-101 to BF-108 | `suppliers.suppliers.{read,create,update}`, `suppliers.bank_accounts.{read,update}`, `suppliers.enablements.{read,manage}` |
 | `Iron.Business.Lookups` | The business lists and their seeds | `business_lookups` | BF-121, BF-122 | `lookups.values.manage` |
-| `Iron.Business.Approvals` | Approval configurations, the delegation of authority matrix and its resolver, the starter set | `business_approvals` | BF-141 to BF-143, BF-201 | `approvals.configurations.{read,manage}`, `approvals.authority.{read,manage}` |
+| `Iron.Business.Approvals` | Approval configurations, the delegation of authority matrix and its resolver | `business_approvals` | BF-141 to BF-143 | `approvals.configurations.{read,manage}`, `approvals.authority.{read,manage}` |
 | `Iron.Business.Documents` | Document type settings, document templates, number series, notification templates and audiences | `business_documents` | BF-161 to BF-164 | `documents.settings.manage`, `documents.templates.manage`, `documents.series.manage`, `documents.notifications.manage` |
 | `Iron.Business.Packs` | Country accelerator packs | `business_packs` | BF-204 | `packs.packs.install` (operators), `packs.packs.configure` |
 
@@ -1258,7 +1220,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 |---|---|---|
 | P0 | Process reference packs | BF-205 |
 | P1 | Masters, organisations and first request | BF-001, BF-002, BF-003, BF-004, BF-005, BF-042, BF-043, BF-061, BF-062, BF-063, BF-064, BF-065, BF-066, BF-067, BF-069, BF-070, BF-071, BF-072, BF-081, BF-108, BF-161, BF-202, BF-206 |
-| P2 | Suppliers and orders | BF-101, BF-102, BF-103, BF-104, BF-105, BF-106, BF-162, BF-201, BF-203 |
+| P2 | Suppliers and orders | BF-101, BF-102, BF-103, BF-104, BF-105, BF-106, BF-162, BF-203 |
 | P3 | Receiving | BF-082 |
 | P4 | Invoicing and matching | BF-068, BF-073 |
 | P5 | Catalogue, contracts, change orders | BF-041, BF-044 |
@@ -1288,7 +1250,7 @@ The split itself is ADR-0041. Decided at its checkpoint, on 2026-10-20:
 | Approvals, tasks and notifications respect access | TF-243 |
 | Bill-to is a location type in the locations master, linked to its legal entity, one default per legal entity and more allowed | BF-083 |
 
-Decided at the review of the split, on 2026-10-20, each written into its requirement with "decided 2026-10-20" in its notes: BF-006, BF-007 (with REQ-023 on the product side), BF-022, BF-074, BF-075, BF-122, BF-142, BF-164 and BF-181; BF-025 retired; the modules and permissions of section 9.
+Decided at the review of the split, on 2026-10-20, each written into its requirement with "decided 2026-10-20" in its notes: BF-006, BF-007 (with REQ-023 on the product side; moved to the purchasing PRD as PUR-001 at the review of L2), BF-022, BF-074, BF-075, BF-122, BF-142, BF-164 and BF-181; BF-025 retired; the modules and permissions of section 9.
 
 ### 12.2 Open points
 
@@ -1311,7 +1273,7 @@ From the archived PRD's section 10.2:
 | Accelerator pack | Packaged configuration, reference data and rules for a country or industry (Indian GST first) |
 | Account string | Coded combination of chart-of-account segment values used to code a line and track budget |
 | Account split | Division of a line across account strings by percent, each with a budget period |
-| Purchasing group | A group of buyers, the categories it covers and the units it serves; a business master, not a unit kind |
+| Purchasing group | A group of buyers, the categories it covers and the units it serves; the eProcurement Suite's master (PUR-001), not a unit kind |
 | Business group | A team of people that work and notifications are routed to; it gives no visibility and is not a role |
 | Delegation of authority matrix | Who may approve up to what amount, by designation, job grade or role, category and legal entity or unit; distinct from the kernel's delegation of duties |
 | Designation, job grade | A person's position and level, kept as business lookups; the grades in order |

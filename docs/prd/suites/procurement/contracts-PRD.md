@@ -7,14 +7,14 @@
 | Document title | Contracts: the contract repository, pricing and consumption, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `CON-`, in blocks of twenty per area (ADR-0041); the table is `contracts-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Suppliers and items are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): CON-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -226,6 +226,25 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* CON-021
 
 **Notes:** Was FF-146.
+
+### 6.4 Notifications (CON-081 to CON-100)
+
+#### CON-081 Notification keys of Contracts
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Notifications
+
+**Requirement:** Contracts shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: consumption threshold reached (the contract owner, CON-021) and contract expiring, at 90, 60 and 30 days (the contract owner, CON-022).
+
+**Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Contracts exists with its English starter template and its default audience.
+- AC2 Given a contract 60 days from expiry, When the job runs (CON-022), Then its owner is told in the key's template.
+- AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
+
+*Depends on:* BF-164, CON-021, CON-022
+
+**Notes:** Was BF-164, the keys and starter templates of Contracts. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
 ## 7. Supplier views
 

@@ -6,7 +6,11 @@ No projects yet. The requirements are specified, and the technical PRD's section
 
 ## Shared masters
 
-Masters that two or more of this suite's products need and no other suite would. None is decided yet: the L2 report proposes the Business requirements that only this suite needs (purchasing groups first), to be placed here or kept in Business by the design session.
+Masters that two or more of this suite's products need and no other suite would, and the suite's own content (ADR-0043, decision 8):
+
+| Module | Holds | Requirements |
+|---|---|---|
+| `Iron.Suites.Procurement.Purchasing` (schema `procurement_purchasing`) | Purchasing groups; the purchasing profiles of suppliers (match levels, channels, preferred status, terms per organisation) and of people (the default ship-to); a legal entity's match levels; the suite's starter approvals and readiness items | `docs/prd/suites/procurement/purchasing-PRD.md` |
 
 ## Products, in process order (ADR-0042)
 

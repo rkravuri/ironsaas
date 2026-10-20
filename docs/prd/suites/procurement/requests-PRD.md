@@ -7,14 +7,14 @@
 | Document title | Purchase requests: controlled demand with budget, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `REQ-`, in blocks of twenty per area (ADR-0041); the table is `requests-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, items, units, locations and suppliers are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): REQ-001's ship-to defaults from the purchasing master (PUR-041), REQ-023 takes its buyer from PUR-001, and REQ-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -76,7 +76,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### REQ-001 Create and edit a request
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Requests
 
-**Requirement:** Requesters shall create requests (title, legal entity, currency, chart of account, requested for, organisation unit, project, need-by date, fiscal period, ship-to location, notes, custom fields, attachments) as Draft and edit them in Draft or Rejected; editing in other states is refused.
+**Requirement:** Requesters shall create requests (title, legal entity, currency, chart of account, requested for, organisation unit, project, need-by date, fiscal period, ship-to location, notes, custom fields, attachments) as Draft and edit them in Draft or Rejected; editing in other states is refused. The ship-to location defaults from the requester's purchasing profile (PUR-041).
 
 **Why:** Entry document.
 
@@ -86,9 +86,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a request in approval, When edited, Then it is refused with the state named. (error case)
 - AC3 Given a rejected request edited and resubmitted, When processed, Then a new approval chain is built.
 
-*Depends on:* BF-001, BF-061, BF-070
+*Depends on:* BF-001, BF-061, BF-070, PUR-041
 
-**Notes:** Was FF-050.
+**Notes:** Was FF-050. The default ship-to comes from the eProcurement Suite's purchasing master since the review of L2 (ADR-0043).
 
 #### REQ-002 Request lines and lots
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Requests
@@ -266,7 +266,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### REQ-023 Buyer and work queue from the purchasing group
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Ordering
 
-**Requirement:** A request line's buyer shall be a buyer of the purchasing group that serves the line's category and unit (BF-007), and a buyer's work queue of approved lines to order shall show the lines of the groups they belong to, filterable by group.
+**Requirement:** A request line's buyer shall be a buyer of the purchasing group that serves the line's category and unit (PUR-001), and a buyer's work queue of approved lines to order shall show the lines of the groups they belong to, filterable by group.
 
 **Why:** Buyers work by what they buy and for whom; the purchasing group says which buyer a line goes to.
 
@@ -276,9 +276,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a buyer of two purchasing groups, When they open their work queue, Then it shows the approved lines of both groups and can be filtered by group.
 - AC3 Given a line whose category and unit no purchasing group serves, When it is approved, Then it has no buyer and the queue shows it as unassigned. (error case)
 
-*Depends on:* REQ-007, BF-007
+*Depends on:* REQ-007, PUR-001
 
-**Notes:** New at the review of the PRD split, 2026-10-20: purchasing groups assign the buyer and filter the work queue (BF-007). They give no access, so a buyer still needs a role over the line's unit to open it.
+**Notes:** New at the review of the PRD split, 2026-10-20: purchasing groups assign the buyer and filter the work queue (PUR-001, BF-007 until the review of L2 moved it to the eProcurement Suite's purchasing master). They give no access, so a buyer still needs a role over the line's unit to open it.
 
 ### 6.3 Templates and lists (REQ-041 to REQ-060)
 
@@ -334,6 +334,25 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* TF-171, TF-203
 
 **Notes:** Was FF-160, the request reports; the others are ORD-081, RCV-101, INV-084 and CAT-041. Placed by the test: each product owns its reports.
+
+### 6.5 Notifications (REQ-081 to REQ-100)
+
+#### REQ-081 Notification keys of Requests
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Notifications
+
+**Requirement:** Requests shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: request approved and request rejected (the requester, REQ-007), request cancelled (the requester, REQ-008) and line assigned (the buyer, REQ-023).
+
+**Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Requests exists with its English starter template and its default audience.
+- AC2 Given a request rejected (REQ-007), When the rejection is saved, Then the requester is told in the key's template.
+- AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
+
+*Depends on:* BF-164, REQ-007, REQ-008, REQ-023
+
+**Notes:** Was BF-164, the keys and starter templates of Requests. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
 ## 7. Supplier views
 
@@ -414,7 +433,8 @@ Fourth (ADR-0042): it calls Supplier management, Contracts and Catalogue, and he
 ### 12.2 What it uses
 
 - Kernel, cited by its requirements: TF-033 (scoped assignments), TF-035 (record policies), TF-090 and TF-091 (approvals and resolvers), TF-171 (the grid), TF-202 (hooks), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166 (numbering), TF-241, TF-243.
-- Business: BF-001 (legal entities), BF-041 and BF-043 (items, units), BF-061 to BF-066 (charts, account strings, budget periods, budget check and consumption), BF-070 (rates); and through their use on lines, BF-007 (the buyer from the purchasing group), BF-075 (projects), BF-081 and BF-083 (locations), BF-143 (approvers from the delegation of authority), BF-163 (number series).
+- Business: BF-001 (legal entities), BF-041 and BF-043 (items, units), BF-061 to BF-066 (charts, account strings, budget periods, budget check and consumption), BF-070 (rates); and through their use on lines, BF-075 (projects), BF-081 and BF-083 (locations), BF-143 (approvers from the delegation of authority), BF-163 (number series).
+- The suite's purchasing master (ADR-0043): PUR-001 (the buyer from the purchasing group), PUR-022 (supplier suggestions), PUR-041 (the requester's ship-to).
 - Earlier products: Supplier management (REQ-005 on SUP-004, a line's supplier published, not on hold, without a critical flag or a blocking expired document); Contracts (a contract item's price and reference on a line, CAT-022); Catalogue (the cart it converts, read through Catalogue's Contracts).
 
 ### 12.3 Events

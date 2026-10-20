@@ -9,13 +9,15 @@ and the identifier of every problem:
   block of twenty;
 - an FF identifier of the archived PRD without a row in the map, a map row whose new identifier is missing from its
   document or does not name the FF identifier in its `was`, or a requirement whose `was` the map does not list;
+- a move after the split (the map's section "Moved after the split", ADR-0043) whose parts do not name the old
+  identifier in their `was`, a moved identifier that a document still holds, or a split one that none holds;
 - a requirement without acceptance criteria in the Given, When, Then form numbered AC1 onwards, or without one marked
   "(error case)";
 - a product PRD of the eProcurement Suite without the sections "Supplier views" and "Records and signatures";
 - a CSV that differs from its markdown in any cell, and a map whose markdown and CSV differ;
 - a dependency on an identifier no document holds, one that points up a layer (the kernel, the business layer, a
-  suite's products, its surfaces), one on a later product of its suite's process order unless it is marked "(event)"
-  (ADR-0042), and one from a suite's document on another suite's (ADR-0043).
+  suite's shared masters, its products, its surfaces), one on a later product of its suite's process order unless it
+  is marked "(event)" (ADR-0042), and one from a suite's document on another suite's (ADR-0043).
 
 The Foundation's documents sit in foundation/, each suite's in suites/<suite>/; the product method, the map and the
 archive stay at the top of docs/prd.
@@ -53,6 +55,7 @@ DOCUMENTS = {
     "suites/procurement/invoicing-PRD.md": "INV",
     "suites/procurement/contracts-PRD.md": "CON",
     "suites/procurement/supplier-portal-PRD.md": "SPX",
+    "suites/procurement/purchasing-PRD.md": "PUR",
 }
 NOT_REQUIREMENT_DOCUMENTS = {"README.md", "requirements-map.md"}
 # The sections every product PRD of a suite has; a later suite states its own when its first PRD is written.
@@ -60,13 +63,14 @@ PRODUCT_SECTIONS = {"procurement": ["Supplier views", "Records and signatures"]}
 TAGS = {"Core", "Extended", "Carried", "Improved", "Gap", "New", "Decision", "Later"}
 
 # Dependencies point down the layers (ADR-0029, ADR-0042, ADR-0043): the kernel, the business layer (the two are the
-# Foundation), a suite's products, a suite's surfaces. The product method binds every layer and stands outside them. A
-# suite's document never depends on another suite's. Between the products of a suite, its process order: a later
-# product may depend on an earlier one; an earlier one hears from a later one only through a domain event, written
-# "ORD-001 (event)".
+# Foundation), a suite's shared masters, its products, its surfaces. The product method binds every layer and stands
+# outside them. A suite's document never depends on another suite's. Between the products of a suite, its process
+# order: a later product may depend on an earlier one; an earlier one hears from a later one only through a domain
+# event, written "ORD-001 (event)".
 FOUNDATION_LAYERS = {"TF": 0, "BF": 1}
+MASTERS = {"PUR"}
 SURFACES = {"SPX"}
-LAYER_NAMES = {0: "the kernel", 1: "the business layer", 2: "the products", 3: "the supplier portal surface"}
+LAYER_NAMES = {0: "the kernel", 1: "the business layer", 2: "the suite's shared masters", 3: "the products", 4: "the supplier portal surface"}
 PROCESS_ORDER = {"procurement": ["SUP", "CON", "CAT", "REQ", "ORD", "RCV", "INV"]}
 DEPENDENCY = re.compile(r"^([A-Z]{2,3})-(\d{3})( \(event\))?$")
 
@@ -78,12 +82,12 @@ def suite_of(name: str) -> str | None:
 
 
 def layer_of(name: str, prefix: str) -> int | None:
-    """The layer of a document: the Foundation's two by prefix, a suite's surface or product by folder; None outside them."""
+    """The layer of a document: the Foundation's two by prefix, a suite's master, product or surface by folder and prefix."""
     if prefix in FOUNDATION_LAYERS:
         return FOUNDATION_LAYERS[prefix]
     if suite_of(name) is None:
         return None
-    return 3 if prefix in SURFACES else 2
+    return 2 if prefix in MASTERS else 4 if prefix in SURFACES else 3
 
 COLUMNS = ["id", "area", "title", "priority", "tag", "requirement", "rationale", "acceptance_criteria", "depends_on", "notes", "was"]
 ARCHIVE_COLUMNS = COLUMNS[:-1]
@@ -95,9 +99,10 @@ REQUIREMENT_HEADING = re.compile(r"^#### ([A-Z]{2,3})-(\d{3}) (.+?)\s*$")
 META = re.compile(r"^\*Priority:\* \*\*(Must|Should|Could)\*\* · \*Tag:\* ((?:`\[[A-Za-z]+\]` ?)+) · \*Area:\* (.+?)\s*$")
 CRITERION = re.compile(r"^- AC(\d+) (.+?)\s*$")
 GIVEN_WHEN_THEN = re.compile(r"^Given .+?, When .+?, Then .+")
-WAS = re.compile(r"^Was (FF-\d{3}(?:(?:, | and )FF-\d{3})*)")
+# A moved requirement names every identifier it had, the archived FF one and any of the split's documents (ADR-0043).
+WAS = re.compile(r"^Was ([A-Z]{2,3}-\d{3}(?:(?:, | and )[A-Z]{2,3}-\d{3})*)")
 IDENTIFIER = re.compile(r"\b[A-Z]{2,3}-\d{3}\b")
-OLD_IDENTIFIER = re.compile(r"FF-\d{3}")
+MAP_ROW = re.compile(r"^\| [A-Z]{2,3}-\d{3} \|")
 
 
 @dataclass
@@ -122,7 +127,7 @@ class Requirement:
     @property
     def was(self) -> list[str]:
         match = WAS.match(self.notes)
-        return OLD_IDENTIFIER.findall(match.group(1)) if match else []
+        return IDENTIFIER.findall(match.group(1)) if match else []
 
     def row(self) -> dict[str, str]:
         return {
@@ -221,10 +226,10 @@ def write_csv(path: Path, columns: list[str], rows: list[dict[str, str]]) -> Non
 
 
 def read_map_markdown(path: Path) -> list[dict[str, str]]:
-    """The map's table: the rows whose first cell is an FF identifier, cells split on ' | '."""
+    """The map's tables: the rows whose first cell is an identifier, FF ones first, cells split on ' | '."""
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
-        if line.startswith("| FF-"):
+        if MAP_ROW.match(line):
             cells = [cell.strip() for cell in line.strip().strip("|").split(" | ")]
             row = dict(zip(MAP_COLUMNS, cells))
             row["new_ids"] = "|".join(part.strip() for part in row.get("new_ids", "").split(",") if part.strip())
@@ -285,7 +290,7 @@ def check_requirements(document: Document, prefix: str) -> list[str]:
                 problems.append(f"{where}: AC{number} is not in the form Given ..., When ..., Then ...")
         if requirement.criteria and not any("(error case)" in text for _, text in requirement.criteria):
             problems.append(f"{where}: no criterion is marked (error case)")
-    if prefix not in SURFACES:
+    if prefix not in SURFACES and prefix not in MASTERS:
         for section in PRODUCT_SECTIONS.get(suite_of(name) or "", []):
             if not any(re.sub(r"^[\d.]+\s*", "", heading).startswith(section) for heading in document.headings):
                 problems.append(f"{name}: no section {section!r}")
@@ -367,6 +372,9 @@ def check_map(archive: Document, live: dict[str, tuple[Document, Requirement]]) 
         if identifier in seen:
             problems.append(f"{where}: two rows")
         seen[identifier] = row
+        if not identifier.startswith("FF-"):
+            problems += check_later_move(row, live)
+            continue
         if identifier not in old:
             problems.append(f"{where}: not an identifier of the archived PRD")
             continue
@@ -412,6 +420,34 @@ def check_map(archive: Document, live: dict[str, tuple[Document, Requirement]]) 
     return problems
 
 
+def check_later_move(row: dict[str, str], live: dict[str, tuple[Document, Requirement]]) -> list[str]:
+    """A move after the split (ADR-0043): its parts name the old identifier, and a moved identifier is never reused."""
+    identifier = row["old_id"]
+    where = f"requirements-map.csv: {identifier}"
+    problems = []
+    outcome = row["outcome"]
+    new_ids = [part for part in row["new_ids"].split("|") if part]
+    if outcome not in {"moved", "split"}:
+        problems.append(f"{where}: a move after the split is moved or split, not {outcome!r}")
+    if outcome == "moved" and identifier in live:
+        problems.append(f"{where}: moved, but {live[identifier][0].name} still holds it; a moved identifier is never reused")
+    if outcome == "split" and identifier not in live:
+        problems.append(f"{where}: split, but no document holds it any more; a requirement whose every part moved is moved")
+    if outcome == "split" and identifier not in new_ids:
+        problems.append(f"{where}: split, but the part that stays is not among its new identifiers")
+    documents_named = {part for part in row["documents"].split("|") if part}
+    for new_id in new_ids:
+        if new_id not in live:
+            problems.append(f"{where}: {new_id} is in no document")
+            continue
+        document, requirement = live[new_id]
+        if document.name not in documents_named:
+            problems.append(f"{where}: {new_id} is in {document.name}, which the row does not name")
+        if new_id != identifier and identifier not in requirement.was:
+            problems.append(f"{document.name}: {new_id}: its notes do not start with Was ... {identifier}")
+    return problems
+
+
 def check() -> int:
     problems: list[str] = []
     live_documents, found_problems = documents()
@@ -451,7 +487,9 @@ def check() -> int:
         return 1
     for document in live_documents:
         print(f"{document.name:48} {len(document.requirements):4} requirements")
-    print(f"{'requirements-map.csv':48} {len(read_csv(MAP_CSV)):4} rows, one per FF identifier")
+    map_rows = read_csv(MAP_CSV)
+    later = sum(1 for row in map_rows if not row["old_id"].startswith("FF-"))
+    print(f"{'requirements-map.csv':48} {len(map_rows) - later:4} rows, one per FF identifier, and {later} moves after the split")
     print("prd-check: passed")
     return 0
 

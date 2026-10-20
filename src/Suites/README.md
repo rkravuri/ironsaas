@@ -13,7 +13,7 @@ Before creating a module, ask where it belongs:
 - Two or more products of one suite need it: that suite's **shared master** (`src/Suites/<Suite>/`).
 - One product owns it: that **product** (`src/Suites/<Suite>/`).
 
-A suite's master that a second suite turns out to need moves down to Business; a product never owns what another product needs.
+A suite's master that a second suite turns out to need moves down to Business; a product never owns what another product needs. The Foundation holds mechanisms and generic masters, and a suite brings its own content: document types, templates, starter sets, checklist items and seeded values that name its documents, even when the screen that edits them is the Foundation's (ADR-0043, decision 8). A suite's master extends a Foundation record one to one rather than copying it.
 
 ## The rule
 

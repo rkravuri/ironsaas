@@ -27,7 +27,8 @@ A need, from a request line without a supplier or from a buyer, becomes an event
 ## What it needs from the kernel and the business layer
 
 - Kernel: the forms engine for questions, scoring and weights (TF-242); approvals (TF-090, TF-091); the Supplier Network's invitations, inbox and delegated access (TF-230 to TF-236); notifications (TF-150); files (TF-160); numbering (TF-166); signatures on the award (TF-063); visibility tags (TF-241) and access in what is sent (TF-243).
-- Business: suppliers and their enablement (BF-101, BF-108), items and categories (BF-041, BF-042), currencies and rates (BF-070), purchasing groups (BF-007), people (BF-021) and the delegation of authority (BF-142, BF-143).
+- Business: suppliers and their enablement (BF-101, BF-108), items and categories (BF-041, BF-042), currencies and rates (BF-070), people (BF-021) and the delegation of authority (BF-142, BF-143).
+- The suite's purchasing master (ADR-0043): purchasing groups (PUR-001) and the suppliers' purchasing profiles (PUR-021, PUR-022).
 - Earlier products (ADR-0042): Supplier management, so that only approved suppliers are invited (SUP-004); Contracts, which an award creates; Requests, whose lines it sources.
 
 Its place in the process order, decided 2026-10-20: between Requests and Orders, since it reads request lines and creates contracts, and Orders creates orders from an award.

@@ -7,14 +7,14 @@
 | Document title | Supplier management: the supplier's life cycle with the tenant, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `SUP-`, in blocks of twenty per area (ADR-0041); the table is `supplier-management-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | The supplier record and its parts are the Business PRD's (BF-101 to BF-108); every mechanism is a kernel capability cited by its TF identifier. The supplier's own screens are served through the supplier portal surface (`supplier-portal-PRD.md`). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): SUP-005 holds the sections and documents a new supplier must complete (from BF-106), its portal channels moved to the supplier portal (SPX-007), and SUP-121 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -151,7 +151,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### SUP-005 Supplier onboarding configuration
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Onboarding
 
-**Requirement:** Settings for enabled registration sections, required documents and questionnaires, bank verification rules, duplicate thresholds, portal channels and supplier defaults.
+**Requirement:** Settings for enabled registration sections, the sections, documents and questionnaires a new supplier must complete, bank verification rules and duplicate thresholds; the channels a new supplier starts with are the supplier portal's, its terms the supplier master's.
 
 **Why:** Different onboarding per tenant.
 
@@ -160,10 +160,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a section disabled, When a supplier registers, Then it is not shown.
 - AC2 Given bank verification required, When a bank change is approved without checklist, Then it is refused. (error case)
 - AC3 Given a threshold changed, When duplicate detection runs, Then the new threshold applies.
+- AC4 Given a document set as required for new suppliers, When a supplier is invited, Then the document is listed among what it must complete.
 
 *Depends on:* TF-057, SUP-002
 
-**Notes:** Was FF-171.
+**Notes:** Was FF-171, FF-035 and BF-106: FF-171 whole, with the sections and documents BF-106 set for a new supplier merged in at the review of L2, 2026-10-20 (ADR-0043). Its portal channels moved to the supplier portal (SPX-007); the supplier defaults it named are BF-106's and PUR-024's.
 
 #### SUP-006 Organisation approval of an enablement
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Onboarding
@@ -364,6 +365,25 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 ### 6.5 Supplier access (SUP-081 to SUP-100)
 
 Portal ownership (was FF-036) moved to the supplier portal surface at the checkpoint, as SPX-006: a rule every product's supplier views obey. It was SUP-081 in the checkpoint's skeleton; the identifier is not reused, and the block stays this area's.
+
+### 6.6 Notifications (SUP-121 to SUP-140)
+
+#### SUP-121 Notification keys of Supplier management
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Notifications
+
+**Requirement:** Supplier management shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: supplier invited (the invited contact, SUP-001), registration submitted (the buyer owner, SUP-002), change rejected (the proposer, SUP-022), bank account changed (the supplier's primary contact and the buyer owner, SUP-023) and document expiring (the supplier's primary contact and the buyer owner, SUP-041).
+
+**Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Supplier management exists with its English starter template and its default audience.
+- AC2 Given a supplier's bank account changed (SUP-023), When the change is saved, Then the supplier's primary contact and the buyer owner are told in the key's template.
+- AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
+
+*Depends on:* BF-164, SUP-001, SUP-002, SUP-022, SUP-023, SUP-041
+
+**Notes:** Was BF-164, the keys and starter templates of Supplier management. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
 ## 7. Supplier views
 

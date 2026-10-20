@@ -45,6 +45,11 @@ ADR-0029 put the code in three layers: Kernel, Business and Products. The PRD sp
    - One image per release carries the Foundation and every suite. A unit loads its tenant's suites at start, from its configuration. Separate images per suite are a later option.
 6. **Repository.** One repository holds the Foundation and its suites. A suite could move to its own repository later and use the Foundation as packages. That is worth it when one of three things holds: a separate team owns the suite, the suite needs a separate release rhythm, or the suite is sold under a separate licence. Until then one repository keeps one build, one test run, and one change for both sides.
 7. **What keeps its name.** Every contract of ADR-0029 decision 6 stays: permission names, audit event names, error codes, routes, configuration sections, image names, Compose names and secret paths name the module, never the layer or the suite. Because they name the module, a module's name is unique across the Foundation and every suite; the catalogue already refuses a licence code declared twice.
+8. **Mechanisms in the Foundation, content in the suite** (decided at the review of L2, 2026-10-20). The Foundation holds mechanisms and generic masters. A suite brings its own content: document types, templates, starter sets, checklist items, and seeded values that name the suite's documents, even when the screen that edits them is in the Foundation.
+   - The approval configurations are the Foundation's (BF-141); the eProcurement Suite's starter set is the suite's (PUR-061).
+   - The template, notification and document settings mechanisms are the Foundation's (BF-161, BF-162, BF-164); each product names its own templates, declares its notification keys and starter templates, and the settings only its documents have.
+   - The readiness view is the Foundation's (BF-202, BF-203); each suite contributes its own items.
+   - A master that only one suite's products use is that suite's shared master, and it extends the Foundation's record one to one rather than copying it: the eProcurement Suite's purchasing master (`Iron.Suites.Procurement.Purchasing`, `docs/prd/suites/procurement/purchasing-PRD.md`) holds purchasing groups and the purchasing profiles of suppliers and people.
 
 ### How the build holds it
 
@@ -54,7 +59,7 @@ ADR-0029 put the code in three layers: Kernel, Business and Products. The PRD sp
 - `make ef-add MODULE=<Module>` finds `src/Suites/<Suite>/Iron.Suites.<Suite>.<Module>` by the last segment of its name, as it finds the kernel and business modules.
 - `make catalogue` writes the catalogue grouped by suite (format version 2): the group `foundation` first, then each suite, each with its licensed modules, features, flags and settings. The host test still fails while the file and the code differ.
 - In the shell, ESLint refuses an import of `modules/business` or `modules/suites` inside `modules/kernel`, of `modules/suites` inside `modules/business`, and of another suite's folder inside `modules/suites/<suite>` (the local rule `iron/suite-imports`). A manifest under `suites/<suite>/` declares `suite: "<suite>"`, and a test holds the declaration to the folder. The home page groups the module openers by suite, the Foundation's first.
-- `make prd-check` refuses a dependency from one suite's document on another suite's.
+- `make prd-check` refuses a dependency from one suite's document on another suite's, and one from a suite's shared master on its products. A requirement that moved after the split names every identifier it had at the start of its notes, the map's section "Moved after the split" lists each move, and the check refuses a moved identifier that a document still holds.
 
 ### The mapping from ADR-0029's names
 
@@ -84,4 +89,5 @@ ADRs before this one keep the names of their time. This table translates them.
 - Easier: a new line of business has its own place for its masters; a tenant carries only what it bought; the layer and the suite of any project, schema, shell module or document are in its name.
 - Harder: the unit composes its modules from its tenant's configuration (TF-244), which provisioning, the update job and the catalogue must honour; plans gain a group; a suite's tests need a unit with that suite.
 - The paths of the requirement documents moved once; their identifiers did not.
-- Revisit: before the second suite's first slice, review the Business requirements that only procurement needs (the L2 report proposes them) and move those that belong to a procurement master; when one of decision 6's conditions holds, give the suite its own repository.
+- The review of L2 applied decision 8 to the Business PRD: what only the eProcurement Suite needs moved to its purchasing master, its products and its supplier portal, as the map's section "Moved after the split" lists.
+- Revisit: when the second suite's PRDs are written, read the Business PRD against decision 8 again, in particular the business lookups and their seeded values (BF-121, BF-122) and the per-organisation settings BF-005 lists; when one of decision 6's conditions holds, give the suite its own repository.

@@ -3629,23 +3629,24 @@ S9 runs when the first Azure deployment exists; until then scale patterns are de
 
 ### 7.2 The business slices and the eProcurement Suite's slices (accepted in principle, 2026-10-20)
 
-The order stands in principle; its interleaving with S3 to S5 comes with S3's tasks. It follows the dependencies of the requirements. TF-241 comes before the first business slice, because every business record type needs visibility tags from its first day; TF-244 comes with it, before the first suite slice (PR1), so the eProcurement Suite's first module is installed only for the tenants that bought the suite. A business slice follows the kernel slices it needs: approval configurations after the workflow engine (S5), notification templates after notifications (S4), lookups after custom lookups (S5). A product slice follows the business slices and the earlier products it calls (ADR-0042), and supplier questionnaires follow the forms engine (TF-242). Each module's first slice follows its process reference pack (PM-001), which a slice P0 prepares beside the kernel's slices. A requirement whose part needs a later kernel slice is built in two steps: the translations of item names (TF-143) and the ERP sync of masters (TF-206) come with S7, and every supplier-facing part waits for the Supplier Network (S8).
+The order stands in principle; its interleaving with S3 to S5 comes with S3's tasks. It follows the dependencies of the requirements. TF-241 comes before the first business slice, because every business record type needs visibility tags from its first day; TF-244 comes with it, before the first suite slice (PR1), so the eProcurement Suite's first module is installed only for the tenants that bought the suite. A business slice follows the kernel slices it needs: approval configurations after the workflow engine (S5), notification templates after notifications (S4), lookups after custom lookups (S5). The eProcurement Suite's purchasing master (PR0) follows the business slices and comes before the suite's first product, since every product reads it (ADR-0043). A product slice follows the business slices, the purchasing master and the earlier products it calls (ADR-0042), and supplier questionnaires follow the forms engine (TF-242). Each module's first slice follows its process reference pack (PM-001), which a slice P0 prepares beside the kernel's slices. A requirement whose part needs a later kernel slice is built in two steps: the translations of item names (TF-143) and the ERP sync of masters (TF-206) come with S7, and every supplier-facing part waits for the Supplier Network (S8).
 
 | Order | Slice | Builds | Needs |
 |---|---|---|---|
 | 1 | P0 Process reference packs | PM-001 to PM-003, and PM-021 and PM-022 as each product's models and measures arrive | Beside the kernel's slices, before each module's first slice |
 | 2 | B1 Organisations, finance and masters | BF-001 to BF-004, BF-006, BF-041 to BF-044, BF-061 to BF-073, BF-075, BF-081 to BF-083, BF-101 to BF-108 (BF-103's portal users with S8), BF-181, BF-207 | V, S4, S5 |
-| 3 | B2 People and lookups | BF-007, BF-021 to BF-024, BF-026, BF-121, BF-122 | B1 |
+| 3 | B2 People and lookups | BF-021 to BF-024, BF-026, BF-121, BF-122 | B1 |
 | 4 | B3 Documents and setup | BF-005, BF-074, BF-161 to BF-164, BF-202 to BF-206 (BF-206's ERP sync with S7) | B2 |
-| 5 | B4 Approvals | BF-141 to BF-143, BF-201 | B3 |
-| 6 | PR1 Supplier management in the tenant | SUP-003, SUP-004, SUP-006, SUP-021 to SUP-024, SUP-041, SUP-043, SUP-061 | B4 |
-| 7 | PR2 Requests | REQ-001 to REQ-009, REQ-041, REQ-042, REQ-061 | PR1 |
-| 8 | PR3 Orders | REQ-021 to REQ-023; ORD-001 to ORD-007, ORD-021 to ORD-023, ORD-041, ORD-042, ORD-081 | PR2, S4 (rendering) |
-| 9 | PR4 Receiving | RCV-021 to RCV-028 (RCV-028's supplier view with S8), RCV-041 to RCV-046, RCV-061, RCV-081 to RCV-083, RCV-101; and ORD-009, ORD-043, ORD-061, ORD-082 and ORD-121, which hear from Receiving | PR3 |
-| 10 | PR5 Invoicing | INV-001 to INV-008, INV-010, INV-021 to INV-027, INV-041 to INV-045, INV-061, INV-062, INV-081 to INV-085 (INV-081's supplier list with S8) | PR4 |
-| 11 | PR6 Contracts and catalogue | CON-001 to CON-006, CON-021, CON-022, CON-041; CAT-001 to CAT-007, CAT-021 to CAT-023, CAT-041; ORD-008, ORD-062 | PR3 |
-| 12 | PR7 Supplier performance and capture | SUP-062, SUP-063, INV-009 | PR5 |
-| 13 | PR8 The supplier side | SUP-001, SUP-002, SUP-005, SUP-042 (with TF-242), SUP-101, SUP-102; SPX-001 to SPX-006, SPX-021 to SPX-028; CAT-061, CON-061, ORD-101, RCV-001, RCV-002, RCV-121, RCV-122, INV-101 | S8, PR1 to PR7 |
+| 5 | B4 Approvals | BF-141 to BF-143 | B3 |
+| 6 | PR0 The eProcurement Suite's purchasing master | PUR-001, PUR-021 to PUR-025, PUR-041, PUR-061, PUR-081 | B4, V (TF-244) |
+| 7 | PR1 Supplier management in the tenant | SUP-003, SUP-004, SUP-006, SUP-021 to SUP-024, SUP-041, SUP-043, SUP-061, SUP-121 | PR0 |
+| 8 | PR2 Requests | REQ-001 to REQ-009, REQ-041, REQ-042, REQ-061, REQ-081 | PR1 |
+| 9 | PR3 Orders | REQ-021 to REQ-023; ORD-001 to ORD-007, ORD-021 to ORD-023, ORD-041, ORD-042, ORD-081, ORD-141, ORD-142 | PR2, S4 (rendering) |
+| 10 | PR4 Receiving | RCV-021 to RCV-028 (RCV-028's supplier view with S8), RCV-041 to RCV-046, RCV-061, RCV-081 to RCV-083, RCV-101, RCV-141, RCV-142; and ORD-009, ORD-043, ORD-061, ORD-082 and ORD-121, which hear from Receiving | PR3 |
+| 11 | PR5 Invoicing | INV-001 to INV-008, INV-010, INV-021 to INV-027, INV-041 to INV-045, INV-061, INV-062, INV-081 to INV-085 (INV-081's supplier list with S8), INV-121, INV-122 | PR4 |
+| 12 | PR6 Contracts and catalogue | CON-001 to CON-006, CON-021, CON-022, CON-041; CAT-001 to CAT-007, CAT-021 to CAT-023, CAT-041; ORD-008, ORD-062, CON-081, CAT-081 | PR3 |
+| 13 | PR7 Supplier performance and capture | SUP-062, SUP-063, INV-009 | PR5 |
+| 14 | PR8 The supplier side | SUP-001, SUP-002, SUP-005, SUP-042 (with TF-242), SUP-101, SUP-102; SPX-001 to SPX-007, SPX-021 to SPX-028; CAT-061, CON-061, ORD-101, RCV-001, RCV-002, RCV-121, RCV-122, INV-101 | S8, PR1 to PR7 |
 
 Every business and product requirement is in one row, and no requirement depends on one in a later row, except through an event. Change orders come with Orders, because the supplier's acknowledgement accepts a proposal as a change order (ORD-021 on ORD-023); the archived plan had them apart (its P2 and P5).
 

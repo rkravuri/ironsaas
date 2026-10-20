@@ -7,14 +7,14 @@
 | Document title | Purchase orders: compliant ordering from approved suppliers, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `ORD-`, in blocks of twenty per area (ADR-0041); the table is `orders-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, terms and suppliers are the Business PRD's; requests, receipts, invoices and contracts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): ORD-005 takes its match levels from the purchasing master, ORD-022 holds the acknowledgement reminder days (from BF-161), ORD-141 names the order and change order templates (from BF-162), and ORD-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -148,20 +148,20 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### ORD-005 Match level and tolerance stamping
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Orders
 
-**Requirement:** On approval each line shall be stamped with the resolved match level (supplier value for the line type, else chart of account, else system default) and the over-receipt and invoice tolerances in force; stamps never change; later configuration changes affect new orders only.
+**Requirement:** On approval each line shall be stamped with the resolved match level (in the order of PUR-025: the supplier's terms in the order's organisation, else the supplier's purchasing profile, else the legal entity's default, else the system default) and the over-receipt and invoice tolerances in force; stamps never change; later configuration changes affect new orders only.
 
 **Why:** Predictable matching.
 
 **Acceptance criteria:**
 
-- AC1 Given supplier 2-way and chart 3-way for products, When approved, Then product lines are stamped 2-way.
+- AC1 Given supplier 2-way and legal entity 3-way for products, When approved, Then product lines are stamped 2-way.
 - AC2 Given a stamped line, When the supplier's match level changes, Then the line keeps its stamp.
 - AC3 Given a line with match level None, When stamped, Then no quantity tracking applies to it. (edge)
 - AC4 Given a stamping attempt on a line that is not approved, When attempted, Then it is refused. (error case)
 
-*Depends on:* ORD-004, BF-101, BF-061
+*Depends on:* ORD-004, PUR-021, PUR-023, PUR-025
 
-**Notes:** Was FF-074.
+**Notes:** Was FF-074. The match levels come from the eProcurement Suite's purchasing master since the review of L2 (ADR-0043).
 
 #### ORD-006 Issue orders by channel
 *Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Orders
@@ -176,7 +176,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given no template, When issued, Then it is refused naming the missing template. (error case)
 - AC3 Given channel portal, When issued, Then the supplier sees it with an acknowledge action.
 
-*Depends on:* ORD-004, TF-162, TF-150
+*Depends on:* ORD-004, ORD-141, TF-162, TF-150
 
 **Notes:** Was FF-075.
 
@@ -255,7 +255,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### ORD-022 Acknowledgement reminders
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Acknowledgement and change
 
-**Requirement:** Unacknowledged orders shall trigger reminders to the supplier after configurable days and escalation to the buyer; the order list shall flag overdue acknowledgements.
+**Requirement:** Unacknowledged orders shall trigger reminders to the supplier after a number of days Orders sets per document type and organisation, and escalation to the buyer; the order list shall flag overdue acknowledgements.
 
 **Why:** Delivery risk is visible early.
 
@@ -266,9 +266,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC3 Given 7 days, When the job runs, Then the buyer is notified. (edge)
 - AC4 Given reminder days set to zero or negative, When saved, Then it is refused. (error case)
 
-*Depends on:* ORD-021, TF-120
+*Depends on:* ORD-021, TF-120, TF-057
 
-**Notes:** Was FF-077.
+**Notes:** Was FF-077, FF-170 and BF-161: FF-077 whole, with the acknowledgement reminder days of BF-161's document type settings, moved at the review of L2, 2026-10-20 (ADR-0043).
 
 #### ORD-023 Change orders with versions
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Acknowledgement and change
@@ -433,6 +433,42 @@ The received and invoiced quantities Orders keeps on its order lines from Receiv
 
 **Notes:** Was FF-133, the quantities Orders keeps; Orders hears of them from Receiving's events (ADR-0042). Receiving, Invoicing and the Business budgets reconcile their own counters in RCV-083, INV-027 and BF-073, in the same window.
 
+### 6.7 Templates and notifications (ORD-141 to ORD-160)
+
+#### ORD-141 Order and change order templates
+*Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Templates and notifications
+
+**Requirement:** Orders shall name its document templates on the business layer's templates (BF-162): the order and the change order, per legal entity and language, with the placeholders each offers documented and an English starter template of each; issuing an order (ORD-006) or a change order (ORD-023) renders through them.
+
+**Why:** Branded documents. A product's templates are its content; the template mechanism is the Foundation's (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given an order template for legal entity L1, When an order of L1 is issued, Then it is rendered with that template.
+- AC2 Given a template that misses a placeholder Orders marks mandatory, When saved, Then it is refused naming the placeholder. (error case)
+- AC3 Given a preview, When requested, Then sample data renders.
+
+*Depends on:* BF-162, TF-162
+
+**Notes:** Was FF-173 and BF-162, the order and change order templates. Moved at the review of L2, 2026-10-20 (ADR-0043).
+
+#### ORD-142 Notification keys of Orders
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Templates and notifications
+
+**Requirement:** Orders shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: line ordered, issued, acknowledged and received (the requester, ORD-009), order acknowledged (the buyer owner, ORD-021), acknowledgement reminder (the supplier's primary contact, ORD-022) and acknowledgement overdue (the buyer owner, ORD-022).
+
+**Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Orders exists with its English starter template and its default audience.
+- AC2 Given an order issued for a requester's line (ORD-009), When it is issued, Then the requester is told with the order number in the key's template.
+- AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
+
+*Depends on:* BF-164, ORD-009, ORD-021, ORD-022
+
+**Notes:** Was BF-164, the keys and starter templates of Orders. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
+
 ## 7. Supplier views
 
 In the portal the supplier sees its issued orders and their versions with their PDFs, acknowledges them (accept, decline or propose changes), and sees holds, soft closes and cancellations (ORD-101); bulk acknowledgement across customers is the surface's (SPX-024). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
@@ -529,7 +565,7 @@ From the archived PRD's section 8.1: order lines follow the kernel's partitionin
 
 ### 11.3 Reports
 
-From the archived PRD's section 8.4: open orders and lines with received and invoiced quantities; cycle times (request to order, order to receipt). Decided at the review: spend by purchasing group (BF-007).
+From the archived PRD's section 8.4: open orders and lines with received and invoiced quantities; cycle times (request to order, order to receipt). Decided at the review: spend by purchasing group (PUR-001).
 
 ### 11.4 Search, exports and analytics feed
 
@@ -548,7 +584,8 @@ Fifth (ADR-0042): it calls Supplier management, Contracts and Requests, and hear
 ### 12.2 What it uses
 
 - Kernel, cited by its requirements: TF-035 and TF-234 (record policies and delegated access, for its supplier view), TF-090 (approvals), TF-120 and TF-123 (jobs), TF-150 (notifications), TF-162 (rendering), TF-171 (the grid), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
-- Business: BF-001 (legal entities), BF-061 (charts), BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (suppliers); and through their use, BF-007 (spend by purchasing group), BF-074 (HSN and SAC codes on lines), BF-083 (bill-to), BF-108 (enablement), BF-143 (approvers), BF-162 and BF-163 (templates, number series).
+- Business: BF-001 (legal entities), BF-061 (charts), BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (suppliers); and through their use, BF-074 (HSN and SAC codes on lines), BF-083 (bill-to), BF-108 (enablement), BF-143 (approvers), BF-162 and BF-163 (templates, number series).
+- The suite's purchasing master (ADR-0043): PUR-001 (spend by purchasing group), PUR-021, PUR-023 and PUR-025 (the match levels it stamps), PUR-022 (supplier suggestions).
 - Earlier products: Supplier management (ORD-004 on SUP-041, documents that block orders, and the supplier's status and risk flags); Contracts (ORD-008 on CON-021, the release recorded at issue and returned on cancellation); Requests (ORD-001 and ORD-003 on REQ-003, the converted lines and their splits): a buyer converts an approved request on this product's screen, which reads its lines and marks them converted at once (REQ-021).
 
 ### 12.3 Events

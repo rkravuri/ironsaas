@@ -7,14 +7,14 @@
 | Document title | The supplier portal and the Supplier Network experience: one portal for all suppliers of all customers, Product Requirements Document of a surface |
 | Layer | A surface of the eProcurement Suite, on IronSaaS Foundation, not a product (ADR-0029, ADR-0043): the supplier's screens are served through the kernel's Supplier Network plane (TF-230 to TF-239), and each product contributes its supplier views in its own PRD's section 7 |
 | Identifier prefix | `SPX-`, in blocks of twenty per area (ADR-0041); the table is `supplier-portal-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), the Technical Foundation PRD's section 3.6, ADR-0029 and ADR-0041. |
 | Dependency | The network itself (identity, registry, relationships, action index, delegated access, profile propagation) is the kernel's TF-230 to TF-239; the supplier record is the Business PRD's; the documents are the products'. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as the eProcurement Suite's surface on IronSaaS Foundation (ADR-0043), beside the products whose supplier views it composes; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): SPX-007 holds the channels a new supplier starts with (from BF-106 and SUP-005); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as the eProcurement Suite's surface on IronSaaS Foundation (ADR-0043), beside the products whose supplier views it composes; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
 
 ## 1. Vision and goals
 
@@ -181,6 +181,23 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* TF-035, TF-025
 
 **Notes:** Was FF-036. Moved from Supplier management (SUP-081 in the checkpoint's skeleton, an identifier not reused) by the design session's answer: a rule every product's supplier views obey (section 4); they cite it and depend on the kernel's TF-035 and TF-234 (ADR-0042).
+
+#### SPX-007 Channels a new supplier starts with
+*Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Portal
+
+**Requirement:** Tenant administrators shall set the channels a new supplier's documents may reach it by (email, the supplier portal, internal only), written into the new supplier's purchasing profile (PUR-021) and editable per supplier there.
+
+**Why:** Consistency and speed; the portal is where a supplier's channels are offered.
+
+**Acceptance criteria:**
+
+- AC1 Given the default channels email and portal, When a supplier is created, Then its purchasing profile has both.
+- AC2 Given a default changed, When existing suppliers are viewed, Then their channels are unchanged.
+- AC3 Given a user without the portal's configuration permission, When saving the defaults, Then it is refused. (error case)
+
+*Depends on:* PUR-021, TF-057
+
+**Notes:** Was FF-035, BF-106, FF-171 and SUP-005: the portal channels a new supplier starts with, which BF-106 set as a default and SUP-005 as an onboarding setting; one requirement at the review of L2, 2026-10-20 (ADR-0043).
 
 ### 5.2 Supplier Network experience (SPX-021 to SPX-040)
 

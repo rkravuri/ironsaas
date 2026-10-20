@@ -7,14 +7,14 @@
 | Document title | Invoicing: invoices, matching, approval for payment and credit notes, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `INV-`, in blocks of twenty per area (ADR-0041); the table is `invoicing-requirements.csv` |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved by ADR-0043) |
+| Version | 1.2 (the review of L2, 2026-10-20) |
 | Date | 2026-10-20 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`; its module was called Payables), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Finance masters, budgets, tax codes, payment terms and suppliers are the Business PRD's; orders and receipts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
+Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): INV-121 names the invoice acknowledgement template (from BF-162), and INV-122 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
 
 ## 1. Vision and goals
 
@@ -588,6 +588,42 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* INV-084
 
 **Notes:** Was FF-161, the invoice measures; the order cycle times are ORD-082.
+
+### 6.6 Templates and notifications (INV-121 to INV-140)
+
+#### INV-121 Invoice acknowledgement template
+*Priority:* **Must** · *Tag:* `[Carried]` · *Area:* Templates and notifications
+
+**Requirement:** Invoicing shall name its document templates on the business layer's templates (BF-162): the invoice acknowledgement, which tells the supplier that an invoice was received and under which number, per legal entity and language, with the placeholders each offers documented and an English starter template of each; an invoice created from orders or receipts (INV-002, INV-003) is acknowledged through it.
+
+**Why:** Branded documents. A product's templates are its content; the template mechanism is the Foundation's (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given an invoice acknowledgement template for legal entity L1, When an invoice of L1 is received, Then the acknowledgement is rendered with that template.
+- AC2 Given a template that misses a placeholder Invoicing marks mandatory, When saved, Then it is refused naming the placeholder. (error case)
+- AC3 Given a preview, When requested, Then sample data renders.
+
+*Depends on:* BF-162, TF-162, INV-002, INV-003
+
+**Notes:** Was FF-173 and BF-162, the invoice acknowledgement template. Moved at the review of L2, 2026-10-20 (ADR-0043).
+
+#### INV-122 Notification keys of Invoicing
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Templates and notifications
+
+**Requirement:** Invoicing shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: invoice acknowledged (the supplier's primary contact, INV-121) and invoice disputed, with the reason (the supplier's primary contact, INV-041).
+
+**Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Invoicing exists with its English starter template and its default audience.
+- AC2 Given an invoice marked disputed with a reason (INV-041), When it is saved, Then the supplier's primary contact is told with the reason in the key's template.
+- AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
+
+*Depends on:* BF-164, INV-041, INV-121
+
+**Notes:** Was BF-164, the keys and starter templates of Invoicing. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
 ## 7. Supplier views
 

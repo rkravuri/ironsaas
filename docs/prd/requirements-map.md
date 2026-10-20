@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| What it maps | Every requirement of the Functional Foundation PRD for procure-to-pay, version 1.2 (`archive/functional-foundation-p2p-PRD-v1.md`), to its new identifier and document (ADR-0041) |
+| What it maps | Every requirement of the Functional Foundation PRD for procure-to-pay, version 1.2 (`archive/functional-foundation-p2p-PRD-v1.md`), to its new identifier and document (ADR-0041); and every requirement of the split's documents that moved after it (section "Moved after the split", ADR-0043) |
 | Table | `requirements-map.csv` has the same rows; `make prd-check` holds the two equal and checks every row against the documents |
 | Date | 2026-10-20 |
 | Status | The placement the brief decided, the rows it did not settle placed by the test and marked, and the design session's answers at the checkpoint (section "Changed at the checkpoint") |
@@ -16,16 +16,18 @@
 - **retired**: it is gone, with the reason in the notes.
 - **Placed by the test**: the brief's table did not settle the row, so the placement test of ADR-0029 did, for the reason in the notes.
 
-Every new requirement says what it was at the start of its notes ("Was FF-022."), and its CSV row carries the old identifier in the column `was`. TF identifiers do not change. The Supplier Network experience (FF-190 to FF-197) rests on the kernel's Supplier Network plane, TF-230 to TF-239.
+Every new requirement says what it was at the start of its notes ("Was FF-022."), and its CSV row carries the old identifier in the column `was`; a part that moved after the split names every identifier it had ("Was FF-174 and BF-201."). TF identifiers do not change. The Supplier Network experience (FF-190 to FF-197) rests on the kernel's Supplier Network plane, TF-230 to TF-239.
 
 Three moved requirements had an error case without the marker; their AC1 is now marked `(error case)`, as ADR-0041 asks: SUP-042 (was FF-031), REQ-006 (was FF-055) and INV-025 (was FF-121).
 
 ## Counts
 
+After the review of L2 (section "Moved after the split"), eight rows that were moved are split.
+
 | Outcome | FF identifiers |
 |---|---|
-| moved | 154 |
-| split | 9 |
+| moved | 146 |
+| split | 17 |
 | merged | 0 |
 | covered | 9 |
 | retired | 0 |
@@ -33,17 +35,18 @@ Three moved requirements had an error case without the marker; their AC1 is now 
 
 | Document | Prefix | Requirements from the archived PRD |
 |---|---|---|
-| `foundation/business-foundation-PRD.md` | BF- | 40 |
+| `foundation/business-foundation-PRD.md` | BF- | 39 |
 | `product-method.md` | PM- | 5 |
 | `suites/procurement/supplier-management-PRD.md` | SUP- | 18 |
 | `suites/procurement/catalogue-PRD.md` | CAT- | 12 |
 | `suites/procurement/requests-PRD.md` | REQ- | 14 |
-| `suites/procurement/orders-PRD.md` | ORD- | 21 |
-| `suites/procurement/receiving-PRD.md` | RCV- | 18 |
-| `suites/procurement/invoicing-PRD.md` | INV- | 30 |
+| `suites/procurement/orders-PRD.md` | ORD- | 22 |
+| `suites/procurement/receiving-PRD.md` | RCV- | 19 |
+| `suites/procurement/invoicing-PRD.md` | INV- | 31 |
 | `suites/procurement/contracts-PRD.md` | CON- | 9 |
-| `suites/procurement/supplier-portal-PRD.md` | SPX- | 14 |
-| all | | 181 |
+| `suites/procurement/supplier-portal-PRD.md` | SPX- | 15 |
+| `suites/procurement/purchasing-PRD.md` | PUR- | 8 |
+| all | | 192 |
 
 ## Changed at the checkpoint
 
@@ -82,7 +85,7 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | Old | Title | Outcome | New | Documents | Covered by | Built by | Placed by the test | Notes |
 |---|---|---|---|---|---|---|---|---|
 | FF-001 | Legal entity finance attributes | moved | BF-001 | `foundation/business-foundation-PRD.md` |  |  |  |  |
-| FF-002 | Chart of accounts and segments | moved | BF-061 | `foundation/business-foundation-PRD.md` |  |  |  |  |
+| FF-002 | Chart of accounts and segments | split | BF-061, PUR-001, PUR-025 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | At the review of L2 (ADR-0043, decision 8): the buying group to a legal entity's purchasing group (PUR-001), the default match levels to the purchasing master (PUR-025). |
 | FF-003 | Account strings | moved | BF-062 | `foundation/business-foundation-PRD.md` |  |  |  |  |
 | FF-004 | Budget periods | moved | BF-063 | `foundation/business-foundation-PRD.md` |  |  |  |  |
 | FF-005 | Budget lines | moved | BF-064 | `foundation/business-foundation-PRD.md` |  |  |  |  |
@@ -98,7 +101,7 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-015 | Masters import, export and ERP sync | moved | BF-206 | `foundation/business-foundation-PRD.md` |  |  |  |  |
 | FF-020 | Supplier invitation | moved | SUP-001 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
 | FF-021 | Supplier self-registration | moved | SUP-002 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
-| FF-022 | Supplier master | moved | BF-101 | `foundation/business-foundation-PRD.md` |  |  |  | The supplier record every product reads; its life cycle is Supplier management. |
+| FF-022 | Supplier master | split | BF-101, PUR-021 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The supplier record every product reads; its life cycle is Supplier management. At the review of L2 (ADR-0043, decision 8): its match levels, portal channels and preferred flag to the supplier purchasing profile (PUR-021). |
 | FF-023 | Duplicate supplier detection | moved | SUP-003 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
 | FF-024 | Supplier approval and publishing | moved | SUP-004 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
 | FF-025 | Supplier status control | moved | SUP-021 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
@@ -111,10 +114,10 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-032 | Supplier performance indicators | moved | SUP-062 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
 | FF-033 | Supplier change approval | moved | SUP-022 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
 | FF-034 | Supplier 360 view and lists | moved | SUP-061 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
-| FF-035 | Supplier configuration defaults | moved | BF-106 | `foundation/business-foundation-PRD.md` |  |  |  |  |
+| FF-035 | Supplier configuration defaults | split | BF-106, PUR-024, SUP-005, SPX-007 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md`, `suites/procurement/supplier-management-PRD.md`, `suites/procurement/supplier-portal-PRD.md` |  |  |  | At the review of L2 (ADR-0043, decision 8): payment terms and currency stay; the match levels to PUR-024, the required sections and documents to SUP-005, the portal channels to SPX-007. |
 | FF-036 | Supplier portal ownership | moved | SPX-006 | `suites/procurement/supplier-portal-PRD.md` |  |  |  | Moved to the supplier portal surface by the design session's answer at the checkpoint: a rule every product's supplier views obey. It was SUP-081 in the checkpoint's skeleton; that identifier is not reused. |
 | FF-037 | Supplier merge | moved | SUP-024 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
-| FF-038 | Supplier categories and preferred status | moved | BF-107 | `foundation/business-foundation-PRD.md` |  |  |  |  |
+| FF-038 | Supplier categories and preferred status | split | BF-107, PUR-022 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | At the review of L2 (ADR-0043, decision 8): the categories a supplier serves stay; preferred status and suggestions to PUR-022. |
 | FF-039 | Supplier risk flags | moved | SUP-043 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
 | FF-040 | Items | moved | BF-041 | `foundation/business-foundation-PRD.md` |  |  |  | The item master; supplier items stay in Catalogue. |
 | FF-041 | Supplier items | moved | CAT-001 | `suites/procurement/catalogue-PRD.md` |  |  |  |  |
@@ -222,22 +225,22 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-164 | Analytics data feed | covered |  |  | TF-089, TF-203 | not built yet: TF-089 is S4, TF-203 S5 |  | Each product declares what it feeds (section 11.4 of each product PRD). |
 | FF-165 | Document search | covered |  |  | TF-204 | not built yet: S5 |  | Each product declares what it indexes and by which fields (section 11.4 of each product PRD). |
 | FF-166 | Exports for audit and ERP | covered |  |  | TF-203, TF-205, TF-206 | not built yet: TF-203 and TF-205 are S5, TF-206 S7; the audit export TF-064 is S3 |  | Each product declares its audit and ERP exports (section 11.4 of each product PRD). |
-| FF-170 | Document type settings | moved | BF-161 | `foundation/business-foundation-PRD.md` |  |  |  |  |
-| FF-171 | Supplier onboarding configuration | moved | SUP-005 | `suites/procurement/supplier-management-PRD.md` |  |  |  |  |
+| FF-170 | Document type settings | split | BF-161, ORD-022 | `foundation/business-foundation-PRD.md`, `suites/procurement/orders-PRD.md` |  |  |  | At the review of L2 (ADR-0043, decision 8): the acknowledgement reminder days to Orders (ORD-022). |
+| FF-171 | Supplier onboarding configuration | split | SUP-005, SPX-007 | `suites/procurement/supplier-management-PRD.md`, `suites/procurement/supplier-portal-PRD.md` |  |  |  | At the review of L2 (ADR-0043, decision 8): its portal channels to the supplier portal (SPX-007). |
 | FF-172 | Matching and tolerance configuration screen | moved | INV-062 | `suites/procurement/invoicing-PRD.md` |  |  |  |  |
-| FF-173 | Document templates for the product | moved | BF-162 | `foundation/business-foundation-PRD.md` |  |  |  |  |
-| FF-174 | Approval configuration starter set | moved | BF-201 | `foundation/business-foundation-PRD.md` |  |  |  |  |
-| FF-175 | Go-live checklist and data readiness | moved | BF-202 | `foundation/business-foundation-PRD.md` |  |  |  | Its checklist is contributions to the kernel's IUnitReadiness (A8); its dependency on the supplier onboarding configuration is dropped (ADR-0042). |
+| FF-173 | Document templates for the product | split | BF-162, ORD-141, RCV-141, INV-121 | `foundation/business-foundation-PRD.md`, `suites/procurement/orders-PRD.md`, `suites/procurement/receiving-PRD.md`, `suites/procurement/invoicing-PRD.md` |  |  |  | At the review of L2 (ADR-0043, decision 8): the template mechanism stays; each product names its own templates. |
+| FF-174 | Approval configuration starter set | moved | PUR-061 | `suites/procurement/purchasing-PRD.md` |  |  |  | Moved at the review of L2 (ADR-0043, decision 8), as BF-201 was: a starter set is a suite's content. |
+| FF-175 | Go-live checklist and data readiness | split | BF-202, PUR-081 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | Its checklist is contributions to the kernel's IUnitReadiness (A8); its dependency on the supplier onboarding configuration is dropped (ADR-0042). At the review of L2 (ADR-0043, decision 8): the eProcurement Suite's items to PUR-081. |
 | FF-176 | Country accelerator packs | moved | BF-204 | `foundation/business-foundation-PRD.md` |  |  |  | Its dependency on e-invoicing readiness is reversed: INV-010 depends on it (ADR-0042). |
 | FF-180 | Owning organisation on every record | covered | BF-003 | `foundation/business-foundation-PRD.md` | TF-220 | S1 (the owning organisation on every business record), A1 (an active unit), A3 (the unit policy on lists and reads), A8 (sharing modes) |  | The owning organisation and the sharing mode are the kernel's; BF-003 keeps the business rules FF-180 adds: which records carry them, documents take the organisation of the requester or buyer and never mix organisations, the organisation shows on lists and records. |
 | FF-181 | Sharing modes for master data | covered | BF-004 | `foundation/business-foundation-PRD.md` | TF-220 | A8 (sharing modes, the shares in kernel_data) |  | The three sharing modes are the kernel's; BF-004 keeps the default mode per master type and what a change of mode does to documents that reference the record. |
-| FF-182 | Supplier enablement per organisation | split | BF-108, SUP-006 | `foundation/business-foundation-PRD.md`, `suites/procurement/supplier-management-PRD.md` |  |  |  | Split by the design session's answer at the checkpoint (Business never depends on a product, ADR-0042): the enablement and its terms to Business, its optional organisation approval to Supplier management. Its clause that supplier users see the documents of every organisation that enabled them, with its AC3, is SPX-004's, which says the same (was FF-189). |
+| FF-182 | Supplier enablement per organisation | split | BF-108, SUP-006, PUR-023 | `foundation/business-foundation-PRD.md`, `suites/procurement/supplier-management-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | Split by the design session's answer at the checkpoint (Business never depends on a product, ADR-0042): the enablement and its terms to Business, its optional organisation approval to Supplier management. Its clause that supplier users see the documents of every organisation that enabled them, with its AC3, is SPX-004's, which says the same (was FF-189). At the review of L2 (ADR-0043, decision 8): its match levels and preferred flag per organisation to PUR-023. |
 | FF-183 | Organisation-specific configuration | covered | BF-005 | `foundation/business-foundation-PRD.md` | TF-221 | A6 (settings with the unit scope); numbering and templates are S4, approval configurations S5 |  | The organisation scope of configuration is the kernel's; BF-005 keeps which business configuration is set per organisation (open point G-03). |
 | FF-184 | Document visibility by organisation | covered |  |  | TF-222, TF-035, TF-243 | A3 (record policies on reads and lists), A8 (cross-unit access, the read audit, the working unit); TF-243 is not built yet (with the workflow engine, S5) |  | Nothing business left over; each product's record policies apply it. Its clause that approvals, tasks and notifications respect the same access is TF-243, which the design session added at the checkpoint. |
 | FF-185 | Finance masters per legal entity and organisation | moved | BF-002 | `foundation/business-foundation-PRD.md` |  |  |  |  |
 | FF-186 | Catalogue and contract applicability per organisation | split | CAT-007, CON-006 | `suites/procurement/catalogue-PRD.md`, `suites/procurement/contracts-PRD.md` |  |  |  | Split between Catalogue and Contracts, as the brief says. |
 | FF-187 | Consolidated reporting and organisation switcher | covered |  |  | TF-222 | A8 (the working unit with All my units, consolidated views by a parent's scope) |  | Nothing business left over: per-organisation and consolidated reports are TF-222's consolidated mode, which each product's reports follow. |
-| FF-188 | Organisation onboarding and lifecycle | covered | BF-203 | `foundation/business-foundation-PRD.md` | TF-223 | A8 (create with readiness from modules, deactivate, reactivate, merge with a preview) |  | Deactivating and merging organisations are the kernel's; BF-203 keeps the checklist's items, which this layer contributes to the kernel's IUnitReadiness. |
+| FF-188 | Organisation onboarding and lifecycle | covered | BF-203, PUR-081 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` | TF-223 | A8 (create with readiness from modules, deactivate, reactivate, merge with a preview) |  | Deactivating and merging organisations are the kernel's; BF-203 keeps the checklist's items, which this layer contributes to the kernel's IUnitReadiness. At the review of L2 (ADR-0043, decision 8): its enabled suppliers are the eProcurement Suite's item (PUR-081). |
 | FF-189 | Supplier portal across organisations | moved | SPX-004 | `suites/procurement/supplier-portal-PRD.md` |  |  |  |  |
 | FF-190 | Supplier connection and onboarding through the network | moved | SPX-021 | `suites/procurement/supplier-portal-PRD.md` |  |  |  |  |
 | FF-191 | Unified inbox across customers | moved | SPX-022 | `suites/procurement/supplier-portal-PRD.md` |  |  |  |  |
@@ -253,3 +256,24 @@ Where a part of a split kept no criterion of the original that tests it, or none
 | FF-203 | Benchmark indicators built in | moved | PM-022 | `product-method.md` |  |  |  |  |
 | FF-204 | External practitioner review | moved | PM-002 | `product-method.md` |  |  |  |  |
 | FF-205 | Research log and living process documentation | moved | PM-003 | `product-method.md` |  |  |  |  |
+
+## Moved after the split
+
+At the review of L2 on 2026-10-20 the design session decided that the Foundation holds mechanisms and generic masters, and a suite brings its own content (ADR-0043, decision 8). These requirements of the split's documents moved, whole or in part; each part that moved keeps its old identifiers at the start of its notes and in the column `was`, and a moved identifier is never reused. The table has the same columns as the map above, and the same CSV.
+
+| Old | Title | Outcome | New | Documents | Covered by | Built by | Placed by the test | Notes |
+|---|---|---|---|---|---|---|---|---|
+| BF-007 | Purchasing groups | moved | PUR-001 | `suites/procurement/purchasing-PRD.md` |  |  |  | Only the eProcurement Suite assigns buyers. |
+| BF-021 | People master | split | BF-021, PUR-041 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The default ship-to location to the person's purchasing profile; the default account string stays. |
+| BF-061 | Chart of accounts and segments | split | BF-061, PUR-001, PUR-025 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The buying group merged into purchasing groups; the default match levels to the purchasing master. |
+| BF-101 | Supplier master | split | BF-101, PUR-021 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | Match levels, portal channels and the preferred flag to the supplier purchasing profile. |
+| BF-106 | Supplier configuration defaults | split | BF-106, PUR-024, SUP-005, SPX-007 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md`, `suites/procurement/supplier-management-PRD.md`, `suites/procurement/supplier-portal-PRD.md` |  |  |  | Payment terms and currency stay; match levels, required sections and documents, and portal channels go to their owners. |
+| BF-107 | Supplier categories and preferred status | split | BF-107, PUR-022 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The categories stay; preferred status and suggestions move. BF-107 is now titled Supplier categories. |
+| BF-108 | Supplier enablement per organisation | split | BF-108, PUR-023 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The match levels and preferred flag of an organisation's terms. |
+| BF-161 | Document type settings | split | BF-161, ORD-022 | `foundation/business-foundation-PRD.md`, `suites/procurement/orders-PRD.md` |  |  |  | The acknowledgement reminder days. |
+| BF-162 | Document templates for the products | split | BF-162, ORD-141, RCV-141, INV-121 | `foundation/business-foundation-PRD.md`, `suites/procurement/orders-PRD.md`, `suites/procurement/receiving-PRD.md`, `suites/procurement/invoicing-PRD.md` |  |  |  | The mechanism stays; each product names its templates. BF-162 is now titled Document templates. |
+| BF-164 | Business notification templates and audiences | split | BF-164, SUP-121, CON-081, CAT-081, REQ-081, ORD-142, RCV-142, INV-122 | `foundation/business-foundation-PRD.md`, `suites/procurement/supplier-management-PRD.md`, `suites/procurement/contracts-PRD.md`, `suites/procurement/catalogue-PRD.md`, `suites/procurement/requests-PRD.md`, `suites/procurement/orders-PRD.md`, `suites/procurement/receiving-PRD.md`, `suites/procurement/invoicing-PRD.md` |  |  |  | The mechanism stays; each product declares its keys and starter templates. |
+| BF-201 | Approval configuration starter set | moved | PUR-061 | `suites/procurement/purchasing-PRD.md` |  |  |  | A starter set is a suite's content; BF-141 keeps the mechanism. |
+| BF-202 | Go-live checklist and data readiness | split | BF-202, PUR-081 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The view stays; the suite's items, its suppliers and items among them, move. |
+| BF-203 | Organisation readiness checklist | split | BF-203, PUR-081 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The checklist stays; its enabled suppliers are the suite's item. |
+| SUP-005 | Supplier onboarding configuration | split | SUP-005, SPX-007 | `suites/procurement/supplier-management-PRD.md`, `suites/procurement/supplier-portal-PRD.md` |  |  |  | Its portal channels to the supplier portal, beside BF-106's. |
