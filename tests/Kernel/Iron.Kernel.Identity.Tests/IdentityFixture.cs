@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace Iron.Kernel.Identity.Tests;
@@ -64,7 +65,24 @@ public sealed class IdentityFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 
-    public ServiceProvider BuildServices(FakeTimeProvider time, string? administratorLoginId = null, Action<IServiceCollection>? configure = null, IReadOnlyDictionary<string, string?>? settings = null)
+    /// <summary>Another tenant's database in the same container, migrated and seeded: a person there is no one here.</summary>
+    public async Task<string> CreateTenantDatabaseAsync(string name)
+    {
+        await using (var connection = new NpgsqlConnection(ConnectionString))
+        {
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+            await using var create = new NpgsqlCommand($"create database \"{name}\"", connection);
+            await create.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+        }
+
+        var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = name }.ConnectionString;
+        await using var provider = BuildServices(new FakeTimeProvider(), connectionString: connectionString);
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        return connectionString;
+    }
+
+    public ServiceProvider BuildServices(FakeTimeProvider time, string? administratorLoginId = null, Action<IServiceCollection>? configure = null, IReadOnlyDictionary<string, string?>? settings = null, string? connectionString = null)
     {
         var values = new Dictionary<string, string?>(Configuration, StringComparer.Ordinal);
         if (administratorLoginId is not null)
@@ -82,7 +100,7 @@ public sealed class IdentityFixture : IAsyncLifetime
         services.AddSingleton<TimeProvider>(time);
         services.AddSingleton(Tenant);
         services.AddLogging();
-        services.AddIronDatabase(ConnectionString);
+        services.AddIronDatabase(connectionString ?? ConnectionString);
         services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule()]);
         configure?.Invoke(services);
         return services.BuildServiceProvider();

@@ -71,6 +71,13 @@ public static class ProbeRecords
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitReadiness, CrateReadiness>());
     }
 
+    /// <summary>The unit that owns a crate, for the permission check of a crate route; null for a crate that does not exist.</summary>
+    public static async Task<Guid?> OwningUnitAsync(IServiceProvider services, Guid crateId, CancellationToken cancellationToken)
+    {
+        var context = services.GetRequiredService<ProbeDbContext>();
+        return await context.Crates.AsNoTracking().Where(c => c.Id == crateId).Select(c => (Guid?)c.OwningOrganisationId).SingleOrDefaultAsync(cancellationToken);
+    }
+
     /// <summary>The crates table, made from the model once the modules' own migrations have run.</summary>
     public static async Task CreateTablesAsync(IServiceProvider provider)
     {

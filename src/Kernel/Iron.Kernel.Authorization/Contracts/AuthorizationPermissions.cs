@@ -21,7 +21,10 @@ public static class AuthorizationPermissions
 
     public static readonly Permission ReviewsDecide = new("authz.reviews.decide", "Confirm or revoke the role assignments of a unit in an access review", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage, DelegationsManage, ReviewsManage, ReviewsDecide];
+    /// <summary>Explain why a person can or cannot perform an action (TF-039): it reveals their access, so it is high risk.</summary>
+    public static readonly Permission AccessExplain = new("authz.access.explain", "Explain why a person can or cannot perform an action", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [RolesRead, RolesManage, AssignmentsRead, AssignmentsManage, UnitsRead, UnitsManage, DelegationsManage, ReviewsManage, ReviewsDecide, AccessExplain];
 }
 
 /// <summary>
@@ -97,6 +100,9 @@ public static class AuthorizationErrors
     public const string ReviewItemDecided = "authz.review.item_decided";
     public const string ReviewDuePassed = "authz.review.due_passed";
     public const string ReviewOwnItem = "authz.review.own_item";
+
+    /// <summary>No endpoint of that name to explain (ADR-0039).</summary>
+    public const string ExplainActionUnknown = "authz.explain.action_unknown";
 }
 
 /// <summary>Audit event types raised by Authorization (TF-060).</summary>
@@ -120,4 +126,7 @@ public static class AuthorizationAuditEvents
     public const string ReviewDecided = "authz.review_decided";
     public const string ReviewClosed = "authz.review_closed";
     public const string ReviewEscalated = "authz.review_escalated";
+
+    /// <summary>Someone's access to an action was explained (ADR-0039): it reveals their access, so it is on the record.</summary>
+    public const string AccessExplained = "authz.access_explained";
 }

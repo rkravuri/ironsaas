@@ -225,6 +225,37 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task APersonOfAnotherTenantCannotBeExplained()
+    {
+        var (sales, _, _) = await TreeAsync();
+        var administrator = await UserAsync(sales);
+        await GrantAsync(administrator.Id, [AuthorizationPermissions.AccessExplain.Name, AuthorizationPermissions.RolesRead.Name], RoleScope.Tenant);
+        var cookie = await LoginAsync(administrator.LoginId);
+        var colleague = await UserAsync(sales);
+
+        // A person who exists only in another tenant's database (TF-039 AC3).
+        var other = await fixture.CreateTenantDatabaseAsync($"explain_{Ids.New():N}");
+        Guid stranger;
+        await using (var provider = fixture.BuildServices(new Microsoft.Extensions.Time.Testing.FakeTimeProvider(), connectionString: other))
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var principal = new Principal($"stranger-{Ids.New():N}@bravo.test", PrincipalType.User, "Someone Elsewhere", null);
+            context.Principals.Add(principal);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+            stranger = principal.Id;
+        }
+
+        using var elsewhere = await GetAsync($"/api/v1/access/explain?principal={stranger}&action=ListRoles", cookie);
+        using var here = await GetAsync($"/api/v1/access/explain?principal={colleague.Id}&action=ListRoles", cookie);
+
+        Assert.Equal(AuthorizationErrors.PrincipalNotFound, await ProblemAsync(elsewhere, HttpStatusCode.NotFound));
+        Assert.Equal(HttpStatusCode.OK, here.StatusCode);
+        using var body = await JsonAsync(here);
+        Assert.Equal(("passed", "active"), (body.RootElement.GetProperty("checks")[0].GetProperty("result").GetString(), body.RootElement.GetProperty("checks")[0].GetProperty("reason").GetString()));
+    }
+
+    [Fact]
     public async Task MeListsThePermissionsHeldAnywhereAndMeAccessThoseAtAUnit()
     {
         var (sales, east, marketing) = await TreeAsync();

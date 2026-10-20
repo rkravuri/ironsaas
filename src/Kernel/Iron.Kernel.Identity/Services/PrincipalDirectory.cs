@@ -16,12 +16,12 @@ public sealed class PrincipalDirectory(IdentityDbContext context) : IPrincipals
         var wanted = ids.Distinct().ToArray();
         var rows = await context.Principals.AsNoTracking()
             .Where(p => wanted.Contains(p.Id))
-            .Select(p => new { p.Id, p.Type, p.DisplayName, p.HomeUnitId })
+            .Select(p => new { p.Id, p.Type, p.DisplayName, p.HomeUnitId, p.Status })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return rows.ToDictionary(
             p => p.Id,
-            p => new PrincipalSummary(p.Id, p.Type == PrincipalType.User ? PrincipalKind.User : PrincipalKind.Service, p.DisplayName, p.HomeUnitId));
+            p => new PrincipalSummary(p.Id, p.Type == PrincipalType.User ? PrincipalKind.User : PrincipalKind.Service, p.DisplayName, p.HomeUnitId, Status(p.Status)));
     }
 
     public async Task<IReadOnlyList<Guid>> HomedAtAsync(IReadOnlyCollection<Guid> unitIds, CancellationToken cancellationToken)
@@ -34,4 +34,12 @@ public sealed class PrincipalDirectory(IdentityDbContext context) : IPrincipals
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private static string Status(PrincipalStatus status) => status switch
+    {
+        PrincipalStatus.Active => PrincipalStatuses.Active,
+        PrincipalStatus.Invited => PrincipalStatuses.Invited,
+        PrincipalStatus.Locked => PrincipalStatuses.Locked,
+        _ => PrincipalStatuses.Disabled,
+    };
 }
