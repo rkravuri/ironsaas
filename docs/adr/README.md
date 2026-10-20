@@ -47,6 +47,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0037](0037-delegation-acting-for-and-access-reviews.md) | Delegation of duties, acting for the delegator, and access reviews | Accepted |
 | [0038](0038-sharing-read-audit-working-unit-and-unit-lifecycle.md) | Record sharing, the cross-unit read audit, the working unit, and the unit lifecycle | Accepted |
 | [0039](0039-explaining-access-and-segregation-of-duties.md) | Explaining access, and segregation of duties by overlapping scope | Accepted |
+| [0040](0040-prettier-formats-the-shell.md) | Prettier formats the shell | Accepted |
 
 ## Reading order
 

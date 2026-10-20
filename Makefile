@@ -195,7 +195,7 @@ shell-install: shell-node ## Install the shell's packages (shell/)
 shell-dev: shell-node ## Run the shell with Vite on http://localhost:5173, proxying the API paths to make run-api
 	cd shell && npm run dev
 
-shell-check: shell-node ## Lint, test and build the shell
+shell-check: shell-node ## Lint, check the formatting of, test and build the shell
 	cd shell && npm run check
 
 shell-a11y: shell-node ## Build the gallery and run the accessibility scan on it (browsers once: cd shell && npm run e2e:install)

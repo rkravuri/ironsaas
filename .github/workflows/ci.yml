@@ -1,7 +1,8 @@
 name: CI
 
 # Every pull request and every push to main (ADR-0022): the code builds with warnings as errors, the architecture and
-# integration tests pass against Testcontainers, the shell lints, type-checks, tests and builds, its gallery passes the
+# integration tests pass on the run's PostgreSQL, Azurite and OpenBao, the shell lints, is formatted (ADR-0040),
+# type-checks, tests and builds, its gallery passes the
 # accessibility scan, no secret is in the history, and no known critical or high vulnerability is in the dependencies.
 
 on:
@@ -65,7 +66,8 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
-      - name: Lint, type check, tests and build
+      # npm run check: lint, Prettier's check (ADR-0040), the type check, the tests and the build.
+      - name: Lint, format check, type check, tests and build
         run: npm run check
 
   shell-accessibility:
