@@ -117,6 +117,33 @@ public class FlagRulesTests
     }
 
     [Fact]
+    public void AKillSwitchIsOnWhereverAnyApplicableRuleSaysSoAndATenantRuleCannotExemptATenant()
+    {
+        var imports = KillSwitches.Imports;
+        // Rules that say false for the tenant, a unit and a person, as one stored before the control plane refused them.
+        List<FlagRuleEntry> rules =
+        [
+            Rules.Global(imports.Key, true, reason: "Imports wait for a fix."),
+            Rules.Tenant(imports.Key, "echo", false),
+            Rules.Unit(imports.Key, "echo", North, false),
+            Rules.User(imports.Key, "echo", Ada, false),
+        ];
+
+        var result = FlagRules.Evaluate(imports, rules, Subject());
+        Assert.True(result.Value.GetBoolean());
+        Assert.Equal("Imports wait for a fix.", result.Rule!.Reason);
+
+        // Without the global rule the false ones turn nothing on, and a tenant's own switch stops that tenant alone.
+        Assert.False(FlagRules.Evaluate(imports, [.. rules.Skip(1)], Subject()).Value.GetBoolean());
+        List<FlagRuleEntry> acmeOnly = [Rules.Tenant(imports.Key, "acme", true, reason: "Acme's import is broken.")];
+        Assert.False(FlagRules.Evaluate(imports, acmeOnly, Subject()).Value.GetBoolean());
+        Assert.True(FlagRules.Evaluate(imports, acmeOnly, Subject(tenant: "acme")).Value.GetBoolean());
+
+        // An ordinary flag keeps the most specific rule: off for the tenant wins over on for the platform.
+        Assert.False(FlagRules.Evaluate(Release, [Rules.Global(Release.Key, true), Rules.Tenant(Release.Key, "echo", false)], Subject()).Value.GetBoolean());
+    }
+
+    [Fact]
     public void ADeclarationNeedsAnOwnerAPurposeARemovalDateForAReleaseAndADefaultOfItsType()
     {
         Assert.Contains("declares no owner", Assert.Throws<ArgumentException>(() => Flag.Boolean("sample.thing", FlagKind.Operational, "Does a thing", " ", null, false)).Message, StringComparison.Ordinal);

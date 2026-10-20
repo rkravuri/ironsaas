@@ -142,25 +142,27 @@ public sealed class EntitlementRefresher(
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<EntitlementsDbContext>();
-            var row = await context.LastKnown.SingleOrDefaultAsync(r => r.Key == LastKnownEntitlements.CurrentKey, cancellationToken).ConfigureAwait(false);
-            if (row is null)
-            {
-                context.LastKnown.Add(new LastKnownEntitlements(document.ToJson(), document.Revision, now));
-            }
-            else if (row.Revision != document.Revision || previous?.Document.Revision != document.Revision || now - row.ConfirmedAt >= PersistEvery)
-            {
-                row.Confirm(document.ToJson(), document.Revision, now);
-            }
-            else
-            {
-                return;
-            }
+            var by = scope.ServiceProvider.GetRequiredService<ICurrentPrincipal>().Id;
+            var json = document.ToJson();
+            var changed = previous?.Document.Revision != document.Revision;
 
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            // One statement: the API and the worker keep the same row and may both write it at once on a unit's first start,
+            // and the second then updates what the first inserted instead of failing on the unique key. An existing row is
+            // written when the revision changed, and otherwise at most every ten minutes. The audit columns are set here
+            // as the save interceptor would set them.
+            await context.Database.ExecuteSqlAsync(
+                $"""
+                insert into kernel_entitlements.last_known (id, key, document, revision, confirmed_at, created_at, created_by, updated_at, updated_by, version)
+                values ({Ids.New()}, {LastKnownEntitlements.CurrentKey}, cast({json} as jsonb), {document.Revision}, {now}, {now}, {by}, {now}, {by}, 1)
+                on conflict (key) do update set document = excluded.document, revision = excluded.revision, confirmed_at = excluded.confirmed_at,
+                    updated_at = excluded.updated_at, updated_by = excluded.updated_by, version = last_known.version + 1
+                where {changed} or last_known.revision <> excluded.revision or excluded.confirmed_at - last_known.confirmed_at >= {PersistEvery}
+                """,
+                cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // The API and the worker keep the same row; when both write at once one of them loses, which is harmless.
+            // The database did not answer; the answer in memory stands, and the next read keeps it again.
             logger.LogWarning("The last known entitlements could not be kept in the database: {Error}", exception.Message);
         }
     }

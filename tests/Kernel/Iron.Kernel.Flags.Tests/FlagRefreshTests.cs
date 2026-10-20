@@ -242,4 +242,28 @@ public class FlagRefreshTests(FlagsFixture fixture)
 
         public override Task<OpenFeature.Model.ResolutionDetails<OpenFeature.Model.Value>> ResolveStructureValueAsync(string flagKey, OpenFeature.Model.Value defaultValue, OpenFeature.Model.EvaluationContext? context = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
+
+    [Fact]
+    public async Task TwoWritersAtOnceKeepOneLastKnownRowAndNeitherFails()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        for (var round = 1; round <= 3; round++)
+        {
+            await ForgetAsync();
+            var logs = new CapturingLogs();
+            var source = new ControlledSource { Rules = Rules.Set(40 + round, [Rules.Global(Imports, true, reason: "Two writers.")]) };
+            await using var api = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), source, SystemPrincipal.Instance, logs);
+            await using var worker = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), source, SystemPrincipal.Instance, logs);
+            FlagRefresher[] writers = [api.GetRequiredService<FlagRefresher>(), worker.GetRequiredService<FlagRefresher>()];
+
+            // A unit's API and worker on its first start: both read the store and both keep the rules, at the same moment.
+            var read = await Task.WhenAll(writers.Select(writer => Task.Run(() => writer.RefreshOnceAsync(ct), ct)));
+
+            Assert.All(read, Assert.True);
+            Assert.DoesNotContain(logs.Lines, line => line.Level >= LogLevel.Error || line.Message.Contains("could not be kept", StringComparison.Ordinal));
+            await using var scope = api.CreateAsyncScope();
+            var row = Assert.Single(await scope.ServiceProvider.GetRequiredService<FlagsDbContext>().LastKnown.AsNoTracking().ToListAsync(ct));
+            Assert.Equal(40 + round, FlagRulesDocument.Parse(row.PlatformDocument!).Revision);
+        }
+    }
 }

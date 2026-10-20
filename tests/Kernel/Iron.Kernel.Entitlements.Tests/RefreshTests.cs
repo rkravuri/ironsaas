@@ -1,7 +1,9 @@
 using System.Diagnostics.Metrics;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Entitlements.Contracts;
+using Iron.Kernel.Entitlements.Data;
 using Iron.Kernel.Entitlements.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -188,5 +190,34 @@ public class RefreshTests(EntitlementsFixture fixture)
         }
 
         public void Dispose() => _listener.Dispose();
+    }
+
+    [Fact]
+    public async Task TwoWritersAtOnceKeepOneLastKnownRowAndNeitherFails()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        for (var round = 1; round <= 3; round++)
+        {
+            await using (var forget = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), new ControlledSource(), SystemPrincipal.Instance))
+            await using (var scope = forget.CreateAsyncScope())
+            {
+                await scope.ServiceProvider.GetRequiredService<EntitlementsDbContext>().LastKnown.ExecuteDeleteAsync(ct);
+            }
+
+            var logs = new CapturingLogs();
+            var source = new ControlledSource { Document = Documents.With(70 + round) };
+            await using var api = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), source, SystemPrincipal.Instance, logs);
+            await using var worker = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), source, SystemPrincipal.Instance, logs);
+            EntitlementRefresher[] writers = [api.GetRequiredService<EntitlementRefresher>(), worker.GetRequiredService<EntitlementRefresher>()];
+
+            // A unit's API and worker on its first start: both read the store and both keep the answer, at the same moment.
+            var read = await Task.WhenAll(writers.Select(writer => Task.Run(() => writer.RefreshOnceAsync(ct), ct)));
+
+            Assert.All(read, Assert.True);
+            Assert.DoesNotContain(logs.Lines, line => line.Level >= LogLevel.Error || line.Message.Contains("could not be kept", StringComparison.Ordinal));
+            await using var check = api.CreateAsyncScope();
+            var row = Assert.Single(await check.ServiceProvider.GetRequiredService<EntitlementsDbContext>().LastKnown.AsNoTracking().ToListAsync(ct));
+            Assert.Equal(70 + round, row.Revision);
+        }
     }
 }

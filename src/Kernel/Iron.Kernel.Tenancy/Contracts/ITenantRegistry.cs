@@ -83,6 +83,7 @@ public static class TenancyErrors
     public const string FlagValueType = "tenancy.flag.value_type";
     public const string FlagRulesChanged = "tenancy.flag.rules_changed";
     public const string KillSwitchReasonRequired = "tenancy.kill_switch.reason_required";
+    public const string KillSwitchFalseRule = "tenancy.kill_switch.false_rule";
     public const string KillSwitchUnknown = "tenancy.kill_switch.unknown";
 }
 
