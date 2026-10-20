@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <!-- Design-time only: lets "dotnet ef migrations add" run for the data library's own context (kernel_data). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

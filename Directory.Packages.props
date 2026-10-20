@@ -35,7 +35,7 @@
     <!-- OpenAPI document generation (MIT), same version train as the runtime. -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <!-- Interactive API reference on top of the OpenAPI document (MIT). Development only. -->
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.3" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.13" />
     <!-- The OpenFeature SDK (Apache-2.0, CNCF): flags evaluated through one interface, provider chosen by configuration (ADR-0035). 2.14.1 of 2026-08-10. -->
     <PackageVersion Include="OpenFeature" Version="2.14.1" />
   </ItemGroup>
@@ -45,8 +45,8 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
     <!-- ASP.NET Core and HttpClient instrumentation (Apache-2.0). -->
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
     <!-- Health checks for class libraries (MIT), same train as the runtime. -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.12" />
   </ItemGroup>
@@ -61,13 +61,13 @@
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
     <!-- The C# compiler as a library (MIT), so a test proves that paging a raw business record query does not compile
          (ADR-0032). The version Entity Framework's design package already brings, so the graph keeps one Roslyn. -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <!-- Throw-away PostgreSQL containers for integration tests (MIT). -->
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.14.0" />
-    <PackageVersion Include="Testcontainers" Version="4.14.0" />
-    <PackageVersion Include="Testcontainers.Azurite" Version="4.14.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.15.0" />
     <!-- FakeTimeProvider for tests (MIT). -->
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
   </ItemGroup>
 
 </Project>
