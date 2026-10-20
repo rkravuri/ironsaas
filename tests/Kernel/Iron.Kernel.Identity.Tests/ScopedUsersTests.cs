@@ -83,7 +83,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
         var inSales = await UserAsync(sales);
         var inEast = await UserAsync(east);
         var inMarketing = await UserAsync(marketing);
-        var reader = await UserAsync(east);
+        var reader = await UserAsync(sales);
         await GrantAsync(reader.Id, [IdentityPermissions.UsersRead.Name], RoleScope.Unit(sales, includeChildren: true));
         var cookie = await LoginAsync(reader.LoginId);
 
@@ -101,6 +101,127 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
         Assert.Equal("East", insideBody.RootElement.GetProperty("home_unit").GetProperty("name").GetString());
         Assert.Equal(IdentityErrors.UserNotFound, await ProblemAsync(outside, HttpStatusCode.NotFound));
         Assert.Equal(IdentityErrors.UserNotFound, await ProblemAsync(unknown, HttpStatusCode.NotFound));
+    }
+
+    [Fact]
+    public async Task APersonWithRolesInSeveralUnitsChoosesTheUnitTheyWorkForAndTheUsersListFollows()
+    {
+        var (sales, east, marketing) = await TreeAsync();
+        var inSales = await UserAsync(sales);
+        var inEast = await UserAsync(east);
+        var inMarketing = await UserAsync(marketing);
+        var person = await UserAsync(east);
+        await GrantAsync(person.Id, [IdentityPermissions.UsersRead.Name], RoleScope.Unit(sales, includeChildren: true));
+        await GrantAsync(person.Id, [IdentityPermissions.UsersRead.Name], RoleScope.Unit(marketing));
+        var cookie = await LoginAsync(person.LoginId);
+
+        // Signed in, the person works for their home unit, and may choose Sales, Marketing or all of them.
+        using (var me = await JsonAsync(await GetAsync("/api/v1/me", cookie)))
+        {
+            Assert.Equal(east, me.RootElement.GetProperty("working_unit").GetProperty("id").GetGuid());
+            Assert.False(me.RootElement.GetProperty("all_units").GetBoolean());
+            var choices = me.RootElement.GetProperty("working_units");
+            Assert.Equal(new[] { sales, east, marketing }.Order(), choices.GetProperty("units").EnumerateArray().Select(u => u.GetProperty("id").GetGuid()).Order());
+            Assert.Equal(["Sales", "East"], choices.GetProperty("units").EnumerateArray().Single(u => u.GetProperty("id").GetGuid() == east).GetProperty("path").EnumerateArray().Skip(1).Select(p => p.GetProperty("name").GetString()));
+            Assert.True(choices.GetProperty("all_units_available").GetBoolean(), "a role at Sales with the units below it");
+        }
+
+        Assert.Equal(new[] { inEast.Id, person.Id }.Order(), await UserIdsAsync(cookie));
+
+        using (var chosen = await JsonAsync(await PostAsync("/api/v1/me/working-unit", cookie, new Dictionary<string, object> { ["unit_id"] = marketing })))
+        {
+            Assert.Equal(marketing, chosen.RootElement.GetProperty("working_unit").GetProperty("id").GetGuid());
+            Assert.Equal("Marketing", chosen.RootElement.GetProperty("working_unit").GetProperty("name").GetString());
+        }
+
+        Assert.Equal([inMarketing.Id], await UserIdsAsync(cookie));
+
+        // A read by id is not narrowed: a link to a colleague in another of the person's units still opens.
+        using (var other = await GetAsync($"/api/v1/users/{inSales.Id}", cookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, other.StatusCode);
+        }
+
+        // All my units: everything the roles reach, and new records and settings follow the home unit.
+        using (var all = await JsonAsync(await PostAsync("/api/v1/me/working-unit", cookie, new Dictionary<string, object> { ["all_units"] = true })))
+        {
+            Assert.True(all.RootElement.GetProperty("all_units").GetBoolean());
+            Assert.Equal(east, all.RootElement.GetProperty("working_unit").GetProperty("id").GetGuid());
+        }
+
+        Assert.Equal(new[] { inSales.Id, inEast.Id, inMarketing.Id, person.Id }.Order(), await UserIdsAsync(cookie));
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var events = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+            .Where(e => e.ActorId == person.Id && e.EventType == IdentityAuditEvents.WorkingUnitChosen)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(2, events.Count);
+    }
+
+    [Fact]
+    public async Task AUnitThatIsNotYoursOrAllUnitsWithoutARoleOverSeveralIsRefusedAndAStaleChoiceFallsBackHome()
+    {
+        var (sales, east, marketing) = await TreeAsync();
+        var person = await UserAsync(sales);
+        await GrantAsync(person.Id, [IdentityPermissions.UsersRead.Name], RoleScope.Unit(sales));
+        await GrantAsync(person.Id, [IdentityPermissions.UsersRead.Name], RoleScope.Unit(marketing));
+        var cookie = await LoginAsync(person.LoginId);
+
+        using var notYours = await PostAsync("/api/v1/me/working-unit", cookie, new Dictionary<string, object> { ["unit_id"] = east });
+        using var notSeveral = await PostAsync("/api/v1/me/working-unit", cookie, new Dictionary<string, object> { ["all_units"] = true });
+        using var marketingChosen = await PostAsync("/api/v1/me/working-unit", cookie, new Dictionary<string, object> { ["unit_id"] = marketing });
+
+        Assert.Equal(IdentityErrors.WorkingUnitNotYours, await ProblemAsync(notYours, HttpStatusCode.Forbidden));
+        Assert.Equal(IdentityErrors.WorkingUnitNotYours, await ProblemAsync(notSeveral, HttpStatusCode.Forbidden));
+        Assert.Equal(HttpStatusCode.OK, marketingChosen.StatusCode);
+
+        // The role at Marketing is removed: the session works for the home unit again.
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>();
+            await context.RoleAssignments.Where(a => a.PrincipalId == person.Id && a.ScopeId == marketing).ExecuteDeleteAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var me = await JsonAsync(await GetAsync("/api/v1/me", cookie));
+        Assert.Equal(sales, me.RootElement.GetProperty("working_unit").GetProperty("id").GetGuid());
+        Assert.Equal([sales], me.RootElement.GetProperty("working_units").GetProperty("units").EnumerateArray().Select(u => u.GetProperty("id").GetGuid()));
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var session = await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Sessions.AsNoTracking()
+                .SingleAsync(s => s.PrincipalId == person.Id, TestContext.Current.CancellationToken);
+            Assert.Null(session.WorkingUnitId);
+        }
+    }
+
+    [Fact]
+    public async Task AMergeMovesThePeopleHomedAtTheUnitThatGoesAndThePreviewNamesThem()
+    {
+        var (sales, _, marketing) = await TreeAsync();
+        var first = await UserAsync(marketing);
+        var second = await UserAsync(marketing);
+        var administrator = await UserAsync(sales);
+        await GrantAsync(administrator.Id, [AuthorizationPermissions.UnitsRead.Name, AuthorizationPermissions.UnitsManage.Name, IdentityPermissions.UsersRead.Name], RoleScope.Tenant);
+        var cookie = await LoginAsync(administrator.LoginId);
+
+        using (var preview = await JsonAsync(await GetAsync($"/api/v1/organisation-units/{marketing}/merge-preview?into={sales}", cookie)))
+        {
+            var people = preview.RootElement.GetProperty("parts").EnumerateArray().Single(p => p.GetProperty("code").GetString() == UnitMergeParts.People);
+            Assert.Equal(("identity", 2), (people.GetProperty("module").GetString(), people.GetProperty("count").GetInt32()));
+            Assert.Equal(["Scoped User", "Scoped User"], people.GetProperty("items").EnumerateArray().Select(i => i.GetString()));
+        }
+
+        using var merged = await PostAsync($"/api/v1/organisation-units/{marketing}/merge", cookie, new Dictionary<string, object> { ["into_id"] = sales });
+
+        Assert.Equal(HttpStatusCode.OK, merged.StatusCode);
+        foreach (var moved in new[] { first, second })
+        {
+            using var user = await JsonAsync(await GetAsync($"/api/v1/users/{moved.Id}", cookie));
+            Assert.Equal(sales, user.RootElement.GetProperty("home_unit").GetProperty("id").GetGuid());
+        }
+
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var audited = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+            .SingleAsync(e => e.EventType == AuthorizationAuditEvents.UnitMerged && e.RecordId == marketing, TestContext.Current.CancellationToken);
+        Assert.Contains(first.Id.ToString("D"), audited.Details, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -258,6 +379,14 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(path, UriKind.Relative));
         request.Headers.Add("Cookie", cookie);
         return await _client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<IReadOnlyList<Guid>> UserIdsAsync(string cookie)
+    {
+        using var list = await GetAsync("/api/v1/users?fields=id&page_size=100", cookie);
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        using var body = await JsonAsync(list);
+        return [.. body.RootElement.GetProperty("data").EnumerateArray().Select(u => u.GetProperty("id").GetGuid()).Order()];
     }
 
     private async Task<HttpResponseMessage> PostAsync(string path, string cookie, IReadOnlyDictionary<string, object> body)

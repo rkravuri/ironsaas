@@ -143,6 +143,8 @@ export async function stubConsole(target: Page): Promise<void> {
   await target.route("**/api/v1/me/access?**", (route) => route.fulfill({ json: { scope: "unit", permissions: administrator } }));
   await target.route("**/api/v1/organisation-units", (route) => route.fulfill({ json: { data: units } }));
   await target.route("**/api/v1/organisation-kinds", (route) => route.fulfill({ json: kinds }));
+  // The kernel's modules ask nothing of a unit (ADR-0038), so each is ready.
+  await target.route("**/api/v1/organisation-units/*/readiness", (route) => route.fulfill({ json: { unit_id: route.request().url().split("/").at(-2), ready: true, items: [] } }));
 }
 
 /** The tenant administrator's permissions, as /me lists them. */

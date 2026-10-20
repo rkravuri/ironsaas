@@ -166,7 +166,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
 
     private async Task<(List<string> Names, Result<Widget> Elsewhere)> ReadAsync(TestRecordAccess access, IRecordPolicy<Widget> policy, Guid elsewhere)
     {
-        await using var provider = Services(_reader, access, s => s.AddRecordPolicy(SamplePolicies.WidgetType, SamplePermissions.WidgetsRead, policy));
+        await using var provider = Services(_reader, access, s => s.AddRecordPolicy(SamplePolicies.WidgetType, "Widgets", SamplePermissions.WidgetsRead, policy));
         await using var scope = provider.CreateAsyncScope();
         var policies = scope.ServiceProvider.GetRequiredService<IRecordPolicies>();
         var policed = await policies.ApplyAsync(scope.ServiceProvider.GetRequiredService<SampleDbContext>().Widgets, TestContext.Current.CancellationToken);

@@ -1,4 +1,5 @@
 using Iron.Kernel.Data.Entities;
+using Iron.Kernel.Data.Sharing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -20,7 +21,9 @@ public static class ModelCheck
         var violations = new List<string>();
         foreach (var entityType in model.GetEntityTypes())
         {
-            if (entityType.IsOwned())
+            // An owned type is part of its owner. The kernel's record shares belong to the data library's own context;
+            // every context with business records maps them read only, to join them in its lists (ADR-0038).
+            if (entityType.IsOwned() || entityType.ClrType == typeof(RecordShare))
             {
                 continue;
             }

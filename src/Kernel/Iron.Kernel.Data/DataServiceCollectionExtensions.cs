@@ -2,6 +2,7 @@ using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Conventions;
 using Iron.Kernel.Data.Policies;
+using Iron.Kernel.Data.Sharing;
 using Iron.Kernel.Data.Transactions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,11 @@ public static class DataServiceCollectionExtensions
 
         // Lists and reads by id of business records go through their policies (ADR-0032); Authorization supplies IRecordAccess.
         services.TryAddScoped<IRecordPolicies, RecordPolicies>();
+
+        // The kernel's record shares (ADR-0038): the data library's own small schema, migrated with the modules'.
+        services.AddIronDbContext<DataDbContext>();
+        services.TryAddScoped<IRecordSharing, RecordSharing>();
+        services.TryAddScoped<IRecordShares, RecordShares>();
         return services;
     }
 

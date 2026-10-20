@@ -432,6 +432,10 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("kind");
 
+                    b.Property<Guid?>("MergedIntoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("merged_into_id");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

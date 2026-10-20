@@ -76,3 +76,15 @@ export function pathLabel(units: readonly Unit[], id: string): string {
     .map((unit) => unit.name)
     .join(" / ");
 }
+
+/**
+ * The units another may merge into, as the API decides it (ADR-0038): active units outside its own subtree. The root
+ * never merges, nor does a unit merged already. Kinds and depth the API checks, and says so on the preview.
+ */
+export function mergeTargets(units: readonly Unit[], unit: Unit): Unit[] {
+  if (unit.parent_id === null || unit.merged_into_id) {
+    return [];
+  }
+  const own = subtreeIds(units, unit.id);
+  return units.filter((candidate) => candidate.status === "active" && !own.has(candidate.id));
+}

@@ -1,6 +1,9 @@
+using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Tests.Sample;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
@@ -28,9 +31,12 @@ public sealed class PostgresFixture : IAsyncLifetime
         _dataSource = new NpgsqlDataSourceBuilder(ConnectionString).Build();
 
         await using var provider = BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
+        // The data library's own schema by its migrations (the record shares), then the sample's tables as they are:
+        // EnsureCreated would do nothing once a table exists.
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         await using var scope = provider.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SampleDbContext>();
-        await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+        await context.GetService<IRelationalDatabaseCreator>().CreateTablesAsync(TestContext.Current.CancellationToken);
     }
 
     public async ValueTask DisposeAsync()
@@ -63,7 +69,11 @@ public sealed class PostgresCollection : ICollectionFixture<PostgresFixture>
     public const string Name = "postgres";
 }
 
-public sealed class FixedPrincipal(Guid id) : ICurrentPrincipal
+public sealed class FixedPrincipal(Guid id, Guid? workingUnit = null, bool allUnits = false) : ICurrentPrincipal
 {
     public Guid Id => id;
+
+    public Guid? WorkingUnitId => workingUnit;
+
+    public bool AllUnits => allUnits;
 }

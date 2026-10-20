@@ -53,7 +53,10 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
         services.AddScoped<IRoleAssignments, RoleAssignments>();
         services.AddScoped<IRecordAccess, RecordAccessService>();
+        services.AddScoped<IUnitReach, UnitReach>();
+        services.AddScoped<IWorkingUnits, WorkingUnits>();
         services.AddScoped<OrganisationUnitService>();
+        services.AddScoped<UnitMergeService>();
         services.AddScoped<IOrganisationUnits>(provider => provider.GetRequiredService<OrganisationUnitService>());
         services.AddScoped<IOrganisationUnitCheck, OrganisationUnitCheck>();
         services.AddScoped<ISeeder, AuthorizationSeeder>();
@@ -78,6 +81,8 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IValidator<CreateUnitRequest>, CreateUnitRequestValidator>();
         services.AddScoped<IValidator<RenameUnitRequest>, RenameUnitRequestValidator>();
         services.AddScoped<IValidator<MoveUnitRequest>, MoveUnitRequestValidator>();
+        services.AddScoped<IValidator<MergeUnitRequest>, MergeUnitRequestValidator>();
+        services.AddScoped<IValidator<ChangeSharingRequest>, ChangeSharingRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -88,5 +93,6 @@ public sealed class AuthorizationModule : IModule
         OrganisationUnitsEndpoints.Map(endpoints);
         DelegationsEndpoints.Map(endpoints);
         AccessReviewsEndpoints.Map(endpoints);
+        RecordSharingEndpoints.Map(endpoints);
     }
 }

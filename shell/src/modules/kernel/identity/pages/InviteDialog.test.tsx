@@ -142,3 +142,40 @@ describe("inviting a person", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
+
+describe("the Users page and the invite dialog follow the unit you work for (ADR-0038)", () => {
+  const working = (unitId: string, name: string, allUnits = false) => () =>
+    json({
+      ...me(["identity.users.read"], manager),
+      home_unit: { id: "branch", name: "Branch", code: "branch" },
+      working_unit: { id: unitId, name, code: unitId },
+      all_units: allUnits,
+      working_units: {
+        units: [
+          { id: "branch", name: "Branch", code: "branch", depth: 1, path: [{ id: "root", name: "Acme" }, { id: "branch", name: "Branch" }] },
+          { id: "finance", name: "Finance", code: "finance", depth: 1, path: [{ id: "root", name: "Acme" }, { id: "finance", name: "Finance" }] },
+        ],
+        all_units_available: true,
+      },
+    });
+
+  it("says the list keeps to the unit, and a person invited joins it unless another is chosen", async () => {
+    openUsers("/users", { "GET /api/v1/me": working("finance", "Finance") });
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(/The list keeps to Finance and the units below it\./)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Invite a person" }));
+    const dialog = await screen.findByRole("dialog", { name: "Invite a person" });
+    expect(await within(dialog).findByText("Acme / Finance")).toBeInTheDocument();
+  });
+
+  it("says the list shows all your units, and a person invited joins your home unit", async () => {
+    openUsers("/users", { "GET /api/v1/me": working("branch", "Branch", true) });
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(/The list shows all your units\./)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Invite a person" }));
+    const dialog = await screen.findByRole("dialog", { name: "Invite a person" });
+    expect(await within(dialog).findByText("Acme / Branch")).toBeInTheDocument();
+  });
+});

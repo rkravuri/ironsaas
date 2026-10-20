@@ -143,6 +143,25 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ATokenWorksForNoUnit()
+    {
+        using var response = await RequestToken(IdentityFixture.SmokeClientId, IdentityFixture.SmokeClientSecret);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var token = body.RootElement.GetProperty("access_token").GetString()!;
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/v1/me/working-unit", UriKind.Relative)) { Content = new StringContent("{\"all_units\":true}", Encoding.UTF8, "application/json") };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var refused = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        using var me = await Get("/api/v1/me", token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal(IdentityErrors.WorkingUnitToken, await ErrorCode(refused));
+        using var described = JsonDocument.Parse(await me.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(JsonValueKind.Null, described.RootElement.GetProperty("working_unit").ValueKind);
+        Assert.Empty(described.RootElement.GetProperty("working_units").GetProperty("units").EnumerateArray());
+    }
+
+    [Fact]
     public async Task TheKeysAreOnTheJwksEndpointAndOpenApiNamesThePermission()
     {
         using var jwks = await _client.GetAsync(new Uri("/.well-known/jwks.json", UriKind.Relative), TestContext.Current.CancellationToken);

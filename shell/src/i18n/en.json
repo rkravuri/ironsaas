@@ -93,6 +93,10 @@
     "email": "Email",
     "created": "Created",
     "description": "The people and service accounts you may see in this tenant.",
+    "scope": {
+      "unit": "The list keeps to {{unit}} and the units below it.",
+      "all": "The list shows all your units."
+    },
     "open": "Open",
     "updated": "Updated",
     "details": "Details",
@@ -129,7 +133,7 @@
       "loginHint": "What they will sign in with, usually their work email address.",
       "unitRequired": "Choose the person's home unit.",
       "unitRefused": "You cannot invite people into this unit. Choose a unit where you manage people.",
-      "ownUnit": "People you invite join your home unit.",
+      "ownUnit": "People you invite join the unit you work for.",
       "doneTitle": "{{name}} is invited",
       "created": "The account for {{name}} is ready. They choose a password when they open this link.",
       "link": "Invitation link",
@@ -529,7 +533,9 @@
       "add": "Add a unit here",
       "rename": "Rename",
       "move": "Move",
-      "deactivate": "Deactivate"
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "merge": "Merge into another unit"
     },
     "create": {
       "title": "A new unit under {{parent}}",
@@ -567,6 +573,62 @@
     },
     "quick": {
       "add": "Add a unit"
+    },
+    "mergedInto": "This unit was merged into {{name}}. What it held is there now.",
+    "mergedElsewhere": "This unit was merged into a unit you may not see. What it held is there now.",
+    "readiness": {
+      "title": "Readiness",
+      "ready": "Ready",
+      "notReady_one": "{{count}} thing to do",
+      "notReady_other": "{{count}} things to do",
+      "none": "No module asks anything of a new unit yet.",
+      "done": "Done: {{label}}",
+      "toDo": "To do: {{label}}",
+      "failed": "The checklist could not be loaded. Try again in a moment."
+    },
+    "merge": {
+      "title": "Merge {{name}} into another unit",
+      "intro": "Everything {{name}} holds moves to the unit you choose: its records, the people whose home unit it is, its role assignments, its settings, its shares and the units below it. Then {{name}} is deactivated and stays merged. A merge cannot be undone.",
+      "into": "Merge into",
+      "intoHint": "An active unit outside this one and the units below it.",
+      "intoRequired": "Choose the unit to merge into.",
+      "previewFirst": "Wait for the preview of what moves, then merge.",
+      "chooseAnother": "This merge is not possible. Choose another unit, or cancel.",
+      "nothingFound": "No unit matches.",
+      "submit": "Merge {{from}} into {{into}}",
+      "submitPlain": "Merge",
+      "refused": "This merge is not possible",
+      "previewTitle": "What moves from {{from}} to {{into}}",
+      "after": "After the merge, {{from}} is deactivated and stays merged into {{into}}.",
+      "nothing": "Nothing",
+      "more_one": "{{count}} more",
+      "more_other": "{{count}} more",
+      "kinds": {
+        "records": "Records",
+        "people": "People",
+        "assignments": "Role assignments",
+        "settings": "Settings",
+        "shares": "Shared records",
+        "children": "Units below"
+      },
+      "parts": {
+        "recordsOf_one": "{{type}}: {{count}} record, from {{module}}",
+        "recordsOf_other": "{{type}}: {{count}} records, from {{module}}",
+        "peopleMove_one": "{{count}} person whose home unit becomes {{into}}: {{names}}",
+        "peopleMove_other": "{{count}} people whose home unit becomes {{into}}: {{names}}",
+        "assignmentsMove_one": "{{count}} moves to {{into}}: {{names}}",
+        "assignmentsMove_other": "{{count}} move to {{into}}: {{names}}",
+        "assignmentsDropped_one": "{{count}} is held at {{into}} already, so it is removed: {{names}}",
+        "assignmentsDropped_other": "{{count}} are held at {{into}} already, so they are removed: {{names}}",
+        "settingsMove_one": "{{count}} moves to {{into}}: {{names}}",
+        "settingsMove_other": "{{count}} move to {{into}}: {{names}}",
+        "settingsDropped_one": "{{count}} is not moved, because {{into}} has its own value: {{names}}",
+        "settingsDropped_other": "{{count}} are not moved, because {{into}} has its own values: {{names}}",
+        "sharesMove_one": "{{count}} record shared with {{from}} is shared with {{into}} instead",
+        "sharesMove_other": "{{count}} records shared with {{from}} are shared with {{into}} instead",
+        "childrenMove_one": "{{count}} unit moves under {{into}}: {{names}}",
+        "childrenMove_other": "{{count}} units move under {{into}}: {{names}}"
+      }
     }
   },
   "roles": {
@@ -997,6 +1059,38 @@
       "unnamed": "The delegation you acted with has ended, so you act as yourself again.",
       "dismiss": "Close this note"
     }
+  },
+  "workingUnit": {
+    "control": "Working for {{name}}. Choose the unit you work for",
+    "title": "The unit you work for",
+    "current": ", chosen",
+    "under": "Under {{path}}",
+    "all": "All my units",
+    "allHint": "Lists show everything your roles reach. New records go to your home unit."
+  },
+  "sharing": {
+    "label": "Who sees this record",
+    "words": {
+      "private": "Private to {{unit}}: the people whose roles cover {{unit}} see it.",
+      "shared": "Belongs to {{unit}} and is shared with {{units}}: the people whose roles cover any of them see it.",
+      "tenant": "Belongs to {{unit}} and is open to the whole organisation: everyone who may see these records sees it."
+    },
+    "change": "Change who sees this",
+    "title": "Who sees this record",
+    "mode": "Sharing",
+    "modes": {
+      "private": "Private to its unit",
+      "privateHint": "Only the people whose roles cover {{unit}} see it.",
+      "shared": "Shared with chosen units",
+      "sharedHint": "The people whose roles cover {{unit}} or one of the units you choose see it. They may read it; changing it stays with {{unit}}.",
+      "tenant": "The whole organisation",
+      "tenantHint": "Everyone who may see these records, in any unit, sees it."
+    },
+    "units": "Share with",
+    "unitsRequired": "Choose at least one unit to share with.",
+    "ownUnit": "{{unit}}, the record's own unit, sees it whatever you choose",
+    "save": "Save",
+    "failed": "Who sees this record could not be loaded. Try again in a moment."
   },
   "delegations": {
     "title": "Delegations",

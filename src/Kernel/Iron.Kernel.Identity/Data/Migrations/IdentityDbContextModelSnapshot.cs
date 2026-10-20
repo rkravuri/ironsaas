@@ -148,6 +148,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("acting_for_id");
 
+                    b.Property<bool>("AllUnits")
+                        .HasColumnType("boolean")
+                        .HasColumnName("all_units");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -199,6 +203,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("integer")
                         .HasColumnName("version");
+
+                    b.Property<Guid?>("WorkingUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("working_unit_id");
 
                     b.HasKey("Id")
                         .HasName("pk_sessions");

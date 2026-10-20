@@ -29,3 +29,26 @@ export async function open(page: Page, path: string): Promise<void> {
     throw new Error(`${path} crashed: ${await page.getByRole("alert").innerText()}`);
   }
 }
+
+export interface Answer<T> {
+  status: number;
+  body: T;
+}
+
+/** A call from the page, with its cookie: Node's resolver behind page.request does not know *.localhost, Chromium does. */
+export async function call<T>(page: Page, method: string, path: string, body?: unknown): Promise<Answer<T>> {
+  return page.evaluate(
+    async ({ method, path, body }) => {
+      const headers: Record<string, string> = { Accept: "application/json" };
+      const init: RequestInit = { method, headers };
+      if (body !== undefined) {
+        headers["Content-Type"] = "application/json";
+        init.body = JSON.stringify(body);
+      }
+      const response = await fetch(path, init);
+      const text = await response.text();
+      return { status: response.status, body: (text ? JSON.parse(text) : null) as never };
+    },
+    { method, path, body },
+  );
+}

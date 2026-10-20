@@ -17,14 +17,16 @@ import { HelpButton } from "./HelpPanel";
 import { KillSwitchBanner } from "./KillSwitchBanner";
 import { ProfileMenu } from "./ProfileMenu";
 import { Search, SearchButton } from "./Search";
+import { useWorkingUnitChoice } from "./working-unit";
+import { WorkingUnitControl, WorkingUnitFailure } from "./WorkingUnit";
 
 /**
  * The frame of every signed-in page (S1 plan 3.10, ADR-0033): the header with the tenant's mark, search, help and the
  * profile menu, and nothing that does not work yet; the navigation from the manifests with Home first; the session
  * warning; for administrators, the kill-switch banner above the page (ADR-0035); and the person's colour scheme and
  * density kept with them across browsers (ADR-0036). The "Acting for" control joins the header, and its band the top of
- * the page, only while the person holds a delegation (ADR-0037). A notifications bell and an organisation switcher join
- * when S4 and A8 give them something to do.
+ * the page, only while the person holds a delegation (ADR-0037). The choice of the unit the person works for joins it
+ * only when there is more than one unit to choose (ADR-0038). A notifications bell joins when S4 gives it something to do.
  */
 export function Layout() {
   const { t } = useTranslation();
@@ -33,6 +35,7 @@ export function Layout() {
   const location = useLocation();
   const [opened, { toggle, close }] = useDisclosure();
   const acting = useActingChoice();
+  const working = useWorkingUnitChoice();
   useRememberPages();
   usePreferenceSync();
 
@@ -49,6 +52,7 @@ export function Layout() {
             </Text>
           </Group>
           <Group wrap="nowrap" gap="sm">
+            <WorkingUnitControl choice={working} />
             <ActingForControl choice={acting} />
             <SearchButton />
             <HelpButton />
@@ -79,6 +83,7 @@ export function Layout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
+        <WorkingUnitFailure choice={working} />
         <ActingBand choice={acting} />
         <KillSwitchBanner />
         <Outlet />

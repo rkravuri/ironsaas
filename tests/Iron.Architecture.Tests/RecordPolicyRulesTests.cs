@@ -82,7 +82,7 @@ public sealed class FixtureModule : IModule
     public IReadOnlyList<Permission> Permissions => [Read];
 
     public void AddServices(IServiceCollection services, IConfiguration configuration) =>
-        services.AddRecordPolicy("fixture_record", Read, RecordRules.UnitVisibility<PolicedRecord>(Read));
+        services.AddRecordPolicy("fixture_record", "Fixture records", Read, RecordRules.UnitVisibility<PolicedRecord>(Read));
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {

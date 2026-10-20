@@ -253,6 +253,45 @@ public sealed class OrganisationUnitService(
         return unit;
     }
 
+    /// <summary>
+    /// Makes a deactivated unit active again (TF-223): its records, people, roles and settings never left it. Not under a
+    /// deactivated parent, and never a merged unit, whose contents are in the unit it was merged into.
+    /// </summary>
+    public async Task<Result<OrganisationUnit>> ReactivateAsync(Guid unitId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        await LockTreeAsync(cancellationToken).ConfigureAwait(false);
+        var unit = await context.OrganisationUnits.SingleOrDefaultAsync(u => u.Id == unitId, cancellationToken).ConfigureAwait(false);
+        if (unit is null)
+        {
+            return NotFound();
+        }
+
+        if (unit.IsActive)
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return unit;
+        }
+
+        if (unit.MergedIntoId is { } mergedInto)
+        {
+            var into = await context.OrganisationUnits.AsNoTracking().Where(u => u.Id == mergedInto).Select(u => u.Name).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            return Error.Conflict(AuthorizationErrors.UnitMerged, $"'{unit.Name}' was merged into '{into}', which holds what it held. Create a new unit if you need one.");
+        }
+
+        var parent = await context.OrganisationUnits.AsNoTracking().SingleAsync(u => u.Id == unit.ParentId, cancellationToken).ConfigureAwait(false);
+        if (!parent.IsActive)
+        {
+            return Error.Conflict(AuthorizationErrors.UnitParentInactive, $"'{parent.Name}', the unit above it, is deactivated. Reactivate it first.");
+        }
+
+        unit.Reactivate();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await WriteAsync(AuthorizationAuditEvents.UnitReactivated, unit, Details(("name", unit.Name)), null, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return unit;
+    }
+
     /// <summary>Deactivates a unit (TF-034 AC2): never the root, and only when none of its children is active.</summary>
     public async Task<Result<OrganisationUnit>> DeactivateAsync(Guid unitId, CancellationToken cancellationToken)
     {
@@ -288,7 +327,7 @@ public sealed class OrganisationUnitService(
         return unit;
     }
 
-    private Error? AllowedUnder(OrganisationUnit parent, string kind, string field = "kind")
+    internal Error? AllowedUnder(OrganisationUnit parent, string kind, string field = "kind")
     {
         var known = kinds.Kinds.FirstOrDefault(k => string.Equals(k.Code, kind, StringComparison.Ordinal));
         if (known is null)
@@ -311,7 +350,7 @@ public sealed class OrganisationUnitService(
 
     private static Error NotFound() => Error.NotFound(AuthorizationErrors.UnitNotFound, "There is no organisation unit with this id.");
 
-    private static Error TooDeep(string field = "parent_id") =>
+    internal static Error TooDeep(string field = "parent_id") =>
         Error.Validation(AuthorizationErrors.UnitTooDeep, $"A unit sits at most {OrganisationUnit.MaxDepth} levels below the root.", new FieldError(field, "too_deep", $"The tree is at most {OrganisationUnit.MaxDepth} levels deep."));
 
     private static Error CodeTaken(string code) =>
@@ -323,6 +362,6 @@ public sealed class OrganisationUnitService(
     private Task WriteAsync(string action, OrganisationUnit unit, Dictionary<string, string> details, string? reason, CancellationToken cancellationToken) =>
         audit.WriteAsync(new AuditEvent(action, AuditOutcome.Success, actor.Id, unit.Code, details, RecordType, unit.Id, reason), cancellationToken);
 
-    private Task LockTreeAsync(CancellationToken cancellationToken) =>
+    internal Task LockTreeAsync(CancellationToken cancellationToken) =>
         context.Database.ExecuteSqlAsync($"select pg_advisory_xact_lock({TreeLockKey})", cancellationToken);
 }

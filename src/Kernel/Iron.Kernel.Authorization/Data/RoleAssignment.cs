@@ -74,6 +74,17 @@ public sealed class RoleAssignment : AuditedEntity, IOwnAccessRule
     public string? ScopeRecordType { get; private set; }
 
     /// <summary>The scope as the evaluator and the rules read it.</summary>
+    /// <summary>A merge moves an assignment scoped to the unit that goes to the unit that stays, with or without its children as before.</summary>
+    public void MoveToUnit(Guid unitId)
+    {
+        if (ScopeKind is not (Scopes.Unit or Scopes.UnitWithChildren))
+        {
+            throw new InvalidOperationException("Only an assignment scoped to a unit moves to another unit.");
+        }
+
+        ScopeId = unitId;
+    }
+
     public RoleScope ToScope() => Scopes.KindOf(ScopeKind) switch
     {
         RoleScopeKind.Unit => RoleScope.Unit(ScopeId!.Value),

@@ -13,7 +13,7 @@ public static class AuthorizationPermissions
 
     public static readonly Permission UnitsRead = new("authz.units.read", "View the organisation units of this tenant", Risk.Low);
 
-    public static readonly Permission UnitsManage = new("authz.units.manage", "Create, rename, move and deactivate organisation units", Risk.High);
+    public static readonly Permission UnitsManage = new("authz.units.manage", "Create, rename, move, deactivate, reactivate and merge organisation units", Risk.High);
 
     public static readonly Permission DelegationsManage = new("authz.delegations.manage", "Create and end delegations of duties for other people, and see them", Risk.High);
 
@@ -72,6 +72,15 @@ public static class AuthorizationErrors
     public const string UnitIsRoot = "authz.unit.is_root";
     public const string UnitTooDeep = "authz.unit.too_deep";
     public const string UnitHasActiveChildren = "authz.unit.has_active_children";
+
+    /// <summary>A unit merged into another stays as it is: what it held is in the other unit now (ADR-0038).</summary>
+    public const string UnitMerged = "authz.unit.merged";
+
+    /// <summary>A unit cannot merge into itself or a unit below it: the surviving unit would be inside the one that goes.</summary>
+    public const string UnitMergeIntoOwn = "authz.unit.merge_into_own";
+
+    /// <summary>A unit cannot be reactivated under a deactivated parent.</summary>
+    public const string UnitParentInactive = "authz.unit.parent_inactive";
     public const string DelegationSelf = "authz.delegation.self";
     public const string DelegationServiceAccount = "authz.delegation.service_account";
     public const string DelegationOverlap = "authz.delegation.overlap";
@@ -103,6 +112,8 @@ public static class AuthorizationAuditEvents
     public const string UnitRenamed = "authz.unit_renamed";
     public const string UnitMoved = "authz.unit_moved";
     public const string UnitDeactivated = "authz.unit_deactivated";
+    public const string UnitReactivated = "authz.unit_reactivated";
+    public const string UnitMerged = "authz.unit_merged";
     public const string DelegationCreated = "authz.delegation_created";
     public const string DelegationEnded = "authz.delegation_ended";
     public const string ReviewStarted = "authz.review_started";

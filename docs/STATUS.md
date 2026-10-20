@@ -19,7 +19,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 | A5 Feature flags | done | main | merged 2026-10-20 (999abbf); six commits after the prompt (adccccb), 67031f7 to 83bbd1b; ADR-0035; the permission names accepted (`tenancy.flags.*`, `tenancy.kill_switches.manage`); a kill switch is on wherever any applicable rule says so, and a rule that says false is refused; the last-known rows of flags and entitlements are one upsert each; the import kill switch on echo worked both ways within a minute at review, smoke 11 of 11 and e2e 15 of 15 on echo |
 | A6 Settings | done | main | merged 2026-10-20 (04408a4); six commits after the prompt (ce511f5), 891a27a to ce0564a; ADR-0036; the permission names kept (`settings.values.read`, `settings.values.manage`); an invitation is valid for 3 days by default, TF-018's 72 hours; the control plane and acme, bravo and echo carry A6, smoke 11 of 11 and e2e 18 of 18 on echo |
 | A7 Delegation and access reviews | done | main | merged 2026-10-20 (30a4784); eleven commits after the prompt (1726056), 80094ad to 2566b73; ADR-0037; at review a person's own delegations moved to My profile and the console's Delegations page is for administrators, nobody decides their own access in a review (an item nobody else may review goes to the campaign's owner), the directory answers a name and a home unit a page at a time, and the shell suite became reliable (`make shell-check` three times in a row beside the running stack); `make up-control` migrates and seeds the control plane before it starts; the control plane, acme, bravo and echo carry A7, smoke 11 of 11 and e2e 19 of 19 on echo |
-| A8 Cross-organisation access and lifecycle | next | | |
+| A8 Cross-organisation access and lifecycle | in review | slice/s2-a8 | the prompt (106fc85) and seven commits; ADR-0038; sharing modes with the shares in `kernel_data`, the cross-unit read audit (A3's later item closed), the working unit with "All my units", reactivation, readiness from modules, merging with a preview; the shell's switcher, merge preview and sharing control; the control plane, acme, bravo and echo carry A8, smoke 11 of 11 and e2e 21 of 21 on echo |
 | A9 Explanation and segregation of duties | | | |
 | S2-close | | | |
 
@@ -33,12 +33,11 @@ None.
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
 - A password reset flow (S3) is also what an operator needs when a tenant's administrator password is lost.
-- Units cannot be reactivated, merged or split yet (TF-223, A8).
+- Splitting a unit by reassigning its records (TF-223) is a later item; units are created, moved, deactivated, reactivated and merged (ADR-0038).
 - The Users grid shows type and status in words and has no filter on them; a filter that offers the words (a choice filter in `DataGrid`) is a later item.
 - The last-administrator guard counts tenant-wide assignments, not active principals (ADR-0031): a disabled last administrator still counts.
 - No kernel module declares a business record (A3 step 6), so no module registers a record policy yet; the first business or products module brings the first, and the architecture test then reads its `AddServices`.
 - Record policies guard paging and reads by id (ADR-0032). A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response.
-- A record-level refusal (403 or 404 from a policy) is logged, not audited; the audit of reads arrives with A8.
 - `make e2e` makes a new child administrator only when the store has lost the one it made (a password cannot be set again before S3's reset), so a reset store leaves an unused account in the tenant.
 - A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units.
 - Testing Library names a tree item from all its content, the items below it included (Mantine's Tree gives the item no label of its own); the scan passes, but check a parent item with a screen reader before the tree pattern spreads.
@@ -72,3 +71,13 @@ None.
 - The directory (`/api/v1/directory`) shows the names and home units of active people to everyone signed in, for choosing a delegate. Revisit if a tenant needs people hidden from each other.
 - A delegator who loses a role loses it for their delegate at once in the process that changed it, and within the grants cache's 60 seconds in the others (ADR-0012, ADR-0037).
 - Since A6 the density follows the person, so the Users grid's browser test starts from comfortable and removes the administrator's density at the end; a test that changes a preference cleans it up the same way.
+- A share lists units one by one; a share with a unit and the units below it waits until a product asks (ADR-0038).
+- A merge runs in one transaction under the tree's lock. Fine for a tenant's units today; a unit that owns millions of records needs the merge as a job (ADR-0038).
+- An access review campaign that names a merged unit keeps naming it, and its open items stay as they were.
+- Each `make e2e` adds two units to echo's tree for the merge test (`E2E merge from` and `E2E merge into`, with the run's stamp), the first merged and inactive, and an invited person homed at the second. Together with the item on the child unit, the e2e data wants a unit of its own per run before S2 closes. The Users grid's browser test no longer looks for the smoke client's row on screen, which the accounts added by every run had pushed out of the rows the grid draws; it reads it in the API's answer.
+- Echo's e2e data since A8: `E2E second branch` and `E2E third branch`, each with a colleague, and a person homed at the second who reads the users of both. They hold no role in `E2E branch`, whose access review the delegation test runs: a role there would be an item of it.
+- The header's choice of unit is hidden while acting for someone, whose rights in full the lists then show (ADR-0038).
+- Whoever may share a record sees the names of the tenant's active units to share it with, though they may not read the tree otherwise (ADR-0038).
+- Chromium reads a visually hidden word with a space before it ("North , chosen"), as it does for "Myself , chosen" since A7, because a visually hidden element is positioned absolutely; a screen reader reads it the same. The browser specs match either spacing.
+- The sharing control lists the units as checkboxes in lists nested as the tree is, not on Mantine's Tree, whose check takes the units below with it: a share lists each unit on its own.
+- Settings follow the unit a person works for when they are resolved for the signed-in person; a page that resolves for someone else uses that person's home unit (ADR-0038).

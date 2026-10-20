@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { KillSwitch } from "@/api/flags";
-import type { Me } from "@/api/identity";
+import type { Me, WorkFor } from "@/api/identity";
 import type { Entitlements } from "./entitlements";
 import type { EffectiveSettings } from "./settings";
 import type { SessionEnd } from "./session-channel";
@@ -46,6 +46,8 @@ export interface Session {
   actFor: (delegatorId: string) => Promise<void>;
   /** Acts as oneself again. */
   stopActing: () => Promise<void>;
+  /** Works for one of the person's units, or all of them (ADR-0038): new records and settings follow it, lists keep to it. */
+  workFor: (choice: WorkFor) => Promise<void>;
   /** The person read the notice that the acting ended. */
   dismissActingEnded: () => void;
 }

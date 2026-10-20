@@ -1,5 +1,6 @@
 using Iron.Kernel.Api.Context;
 using Iron.Kernel.Api.Modules;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Settings.Api;
 using Iron.Kernel.Settings.Contracts;
@@ -47,6 +48,7 @@ public sealed class SettingsModule : IModule
         services.AddScoped<ISettings>(provider => provider.GetRequiredService<SettingsService>());
         services.AddScoped<ISecretSettings, SecretSettings>();
         services.AddScoped<SettingsWriter>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitMergeParticipant, UnitSettingsMerge>());
         services.AddScoped<SettingsConsole>();
         services.AddContextPart<SettingsContextPart>(SettingsContextPart.PartName);
         services.AddHealthChecks().AddCheck<SettingsHealthCheck>("settings", HealthStatus.Degraded, ["ready"]);

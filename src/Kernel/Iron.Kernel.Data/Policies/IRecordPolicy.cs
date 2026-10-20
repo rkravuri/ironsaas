@@ -19,6 +19,9 @@ public static class RecordActions
     public const string Read = "read";
     public const string Update = "update";
     public const string Delete = "delete";
+
+    /// <summary>Changing who sees the record beyond its unit (ADR-0038): the policy decides it like any other action.</summary>
+    public const string Share = "share";
 }
 
 /// <summary>What a policy answers for one record and one action (ADR-0032).</summary>
@@ -42,21 +45,25 @@ public enum PolicyDecision
 
 /// <summary>
 /// Who asks, and what each of their permissions reaches for one record type (ADR-0030). The reach of a permission is
-/// asked once and kept for the rest of the evaluation, so a policy can ask for it as often as it likes.
+/// asked once and kept for the rest of the evaluation, so a policy can ask for it as often as it likes. The visibility
+/// says how a reach meets the record type's sharing (ADR-0038).
 /// </summary>
 public sealed class PolicySubject
 {
     private readonly Func<Permission, CancellationToken, Task<RecordAccess>> _reach;
     private readonly Dictionary<string, RecordAccess> _known = new(StringComparer.Ordinal);
 
-    public PolicySubject(Guid principalId, Func<Permission, CancellationToken, Task<RecordAccess>> reach)
+    public PolicySubject(Guid principalId, Func<Permission, CancellationToken, Task<RecordAccess>> reach, RecordVisibility? visibility = null)
     {
         ArgumentNullException.ThrowIfNull(reach);
         PrincipalId = principalId;
         _reach = reach;
+        Visibility = visibility ?? RecordVisibility.WithoutShares;
     }
 
     public Guid PrincipalId { get; }
+
+    public RecordVisibility Visibility { get; }
 
     public async Task<RecordAccess> ReachAsync(Permission permission, CancellationToken cancellationToken)
     {
@@ -96,5 +103,16 @@ public static class RecordErrors
     public const string Forbidden = "data.record.forbidden";
 }
 
-/// <summary>One record type's policy as registered: the entity, the record type name record-scoped assignments use, and the permission that reads it.</summary>
-public sealed record RecordPolicyRegistration(Type RecordType, string Name, Permission Read);
+/// <summary>How a refused read by id was answered, as its audit event says.</summary>
+public static class RecordAnswers
+{
+    public const string NotFound = "not_found";
+    public const string Forbidden = "forbidden";
+}
+
+/// <summary>
+/// One record type's policy as registered: the entity, the record type name record-scoped assignments use (its code), the
+/// permission that reads it, and its display name, what people call these records ("Purchase orders"), which a merge
+/// preview shows (ADR-0038).
+/// </summary>
+public sealed record RecordPolicyRegistration(Type RecordType, string Name, Permission Read, string DisplayName);
