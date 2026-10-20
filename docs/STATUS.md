@@ -17,17 +17,15 @@ The running state of the current slice, kept current by Claude Code at the end o
 | D4 Home and the header | done | main | merged 2026-10-19 (179fbfa); seven commits (79cb00f to 096dff9); ADR-0033; acme, bravo and echo carry D4, smoke 11 of 11 and e2e 11 of 11 on echo |
 | A4 Entitlements | done | main | merged 2026-10-20 (94ad0d3); seven commits after the prompt (8879856), 33bcea1 to 465c70e; ADR-0034; the refresh question closed: 30 seconds, accepted; the shell reads /me/context only while its tab is visible; acme, bravo and echo on the Enterprise plan, smoke 11 of 11 and e2e 14 of 14 on echo at review |
 | A5 Feature flags | done | main | merged 2026-10-20 (999abbf); six commits after the prompt (adccccb), 67031f7 to 83bbd1b; ADR-0035; the permission names accepted (`tenancy.flags.*`, `tenancy.kill_switches.manage`); a kill switch is on wherever any applicable rule says so, and a rule that says false is refused; the last-known rows of flags and entitlements are one upsert each; the import kill switch on echo worked both ways within a minute at review, smoke 11 of 11 and e2e 15 of 15 on echo |
-| A6 Settings | review | slice/s2-a6 | stacked on slice/s2-a5 (on slice/s2-a4), neither merged yet; five commits after the prompt (ce511f5), 891a27a to the status commit; ADR-0036; the control plane and acme, bravo and echo carry A6 (`kernel_settings`, the sessions' idle limit); smoke 11 of 11 and e2e 18 of 18 on echo, where a child unit's validity set on the Settings page was what an invitation into it took, a 30-minute idle limit was what a new sign-in's `/me` answered, and a colour scheme chosen in one browser applied in another; the settings tests reset what they set |
-| A7 Delegation and access reviews | | | |
+| A6 Settings | done | main | merged 2026-10-20 (04408a4); six commits after the prompt (ce511f5), 891a27a to ce0564a; ADR-0036; the permission names kept (`settings.values.read`, `settings.values.manage`); an invitation is valid for 3 days by default, TF-018's 72 hours; the control plane and acme, bravo and echo carry A6, smoke 11 of 11 and e2e 18 of 18 on echo |
+| A7 Delegation and access reviews | next | | |
 | A8 Cross-organisation access and lifecycle | | | |
 | A9 Explanation and segregation of duties | | | |
 | S2-close | | | |
 
 ## Open questions
 
-- A6 is stacked on `slice/s2-a5`, which is stacked on `slice/s2-a4`: neither was merged when A6 began, and A6 builds on both (`/me/context`'s parts, the catalogue). Merge A4, then A5, then A6.
-- A6 names its permissions `settings.values.read` and `settings.values.manage`, not `settings.read` and `settings.manage` as section A6 says: a permission name has three parts, `module.resource.action`, and the build refuses two (ADR-0036, decision 6). `settings.values.manage` is high risk, since the session limits are among the values. Confirm, or say which names to use.
-- An invitation is valid for 7 days by default, as section A6 says (`identity.invitation.valid_days`), where TF-018 says 72 hours. The PRD is not amended. Confirm 7 days and amend TF-018, or say 3.
+None.
 
 ## Later items
 
