@@ -65,12 +65,12 @@ test.describe("settings on a unit (ADR-0036)", () => {
     await row.getByRole("button", { name: /^Change/ }).click();
     const dialog = page.getByRole("dialog", { name: /^Change/ });
     await expect(dialog).toContainText(`/ ${childUnit}.`);
-    await dialog.getByRole("textbox", { name: "Value" }).fill("3");
+    await dialog.getByRole("textbox", { name: "Value" }).fill("5");
     await dialog.getByRole("button", { name: "Save" }).click();
-    await expect(row).toContainText("3 days");
+    await expect(row).toContainText("5 days");
     await expect(row).toContainText(/Set here by .+ on /);
 
-    // Invited into the unit: the link expires three days from now, as the unit says.
+    // Invited into the unit: the link expires five days from now, as the unit says, not in the default three.
     await open(page, "/users");
     await page.getByRole("button", { name: "Invite a person" }).click();
     const invite = page.getByRole("dialog", { name: "Invite a person" });
@@ -82,7 +82,7 @@ test.describe("settings on a unit (ADR-0036)", () => {
     await invite.getByRole("button", { name: "Invite" }).click();
     const answer = (await (await created).json()) as { invitation_expires_at: string };
     const expires = new Date(answer.invitation_expires_at).getTime();
-    expect(Math.abs(expires - (Date.now() + 3 * day))).toBeLessThan(5 * 60_000);
+    expect(Math.abs(expires - (Date.now() + 5 * day))).toBeLessThan(5 * 60_000);
     const done = page.getByRole("dialog", { name: `${name} is invited` });
     await expect(done).toContainText(`expires on ${await page.evaluate((at) => new Date(at).toLocaleString(), answer.invitation_expires_at)}`);
     await page.screenshot({ path: "test-results/settings-invitation-echo.png" });

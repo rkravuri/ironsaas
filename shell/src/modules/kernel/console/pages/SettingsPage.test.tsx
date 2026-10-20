@@ -34,7 +34,7 @@ const tenantList = {
   scope: "tenant",
   unit: null,
   data: [
-    view("identity.invitation.valid_days", "identity", { requirement: "A whole number from 1 to 30.", minimum: 1, maximum: 30, scopes: ["tenant", "unit"], default: 7, value: 7 }),
+    view("identity.invitation.valid_days", "identity", { requirement: "A whole number from 1 to 30.", minimum: 1, maximum: 30, scopes: ["tenant", "unit"], default: 3, value: 3 }),
     view("identity.session.idle_minutes", "identity", { value: 30, set_here: true, source: { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" } }),
   ],
 };
@@ -48,7 +48,7 @@ const warehouseList = {
       minimum: 1,
       maximum: 30,
       scopes: ["tenant", "unit"],
-      default: 7,
+      default: 3,
       value: 14,
       source: { level: "unit", unit: { id: operations.id, name: "Operations", path: "Acme / Operations" }, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" },
     }),

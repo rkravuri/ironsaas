@@ -31,6 +31,7 @@ The running state of the current slice, kept current by Claude Code at the end o
 
 ## Later items
 
+- Before S2 closes: each e2e run creates its own child unit named after the run and checks only inside it, so leftovers never affect a later run. Today every run adds invited accounts to echo's one `E2E branch`, and a check that lists the unit must accept every kind a test ever left there.
 - Before S2 closes: the shell test suite passes reliably on a loaded machine. Find the slow tests, bound the workers, and keep explicit timeouts only where a test renders something heavy; today a test can time out at 5 seconds when `make shell-check` runs right after `make test`.
 - Dependabot's first pull requests bump actions to new majors; their CI runs are red until the pins are checked one by one.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).

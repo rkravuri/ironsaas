@@ -114,7 +114,7 @@
       "module": "identity",
       "type": "number",
       "description": "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.",
-      "default": 7,
+      "default": 3,
       "scopes": [
         "tenant",
         "unit"

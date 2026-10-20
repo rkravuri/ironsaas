@@ -370,7 +370,7 @@ const invitation = (value: number, source: Record<string, unknown>, setHere: boo
     minimum: 1,
     maximum: 30,
     scopes: ["tenant", "unit"],
-    default: 7,
+    default: 3,
     value,
     source,
     set_here: setHere,
@@ -380,7 +380,7 @@ const invitation = (value: number, source: Record<string, unknown>, setHere: boo
 export const tenantSettings = {
   scope: "tenant",
   unit: null,
-  data: [invitation(7, notSet, false), absolute, idle(30, { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" }, true)],
+  data: [invitation(3, notSet, false), absolute, idle(30, { level: "tenant", unit: null, changed_by: ravi, changed_at: "2026-10-19T10:00:00Z" }, true)],
 };
 
 /** North's settings: the invitation validity inherited from Operations, the unit above it. */

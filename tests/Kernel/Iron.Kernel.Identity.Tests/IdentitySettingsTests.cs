@@ -85,20 +85,21 @@ public class IdentitySettingsTests(IdentityFixture fixture)
 
         var elsewhere = await InvitedAsync(scope.ServiceProvider, root);
         await invitations.InviteAsync(elsewhere, ct);
-        Assert.Equal(time.GetUtcNow() + TimeSpan.FromDays(7), elsewhere.InvitationExpiresAt);
+        // The default: three days, TF-018's 72 hours.
+        Assert.Equal(time.GetUtcNow() + TimeSpan.FromHours(72), elsewhere.InvitationExpiresAt);
 
         try
         {
             Assert.True((await writer.SetAsync(IdentitySettings.InvitationValidDays.Key, SettingPlace.Unit(region), JsonSerializer.SerializeToElement(14), ct)).IsSuccess);
-            Assert.True((await writer.SetAsync(IdentitySettings.InvitationValidDays.Key, SettingPlace.Tenant, JsonSerializer.SerializeToElement(3), ct)).IsSuccess);
+            Assert.True((await writer.SetAsync(IdentitySettings.InvitationValidDays.Key, SettingPlace.Tenant, JsonSerializer.SerializeToElement(5), ct)).IsSuccess);
 
-            // Into the branch, which sits in the region: the region's 14 days, over the tenant's 3.
+            // Into the branch, which sits in the region: the region's 14 days, over the tenant's 5.
             var intoBranch = await InvitedAsync(scope.ServiceProvider, branch);
             await invitations.InviteAsync(intoBranch, ct);
             Assert.Equal(time.GetUtcNow() + TimeSpan.FromDays(14), intoBranch.InvitationExpiresAt);
 
             await invitations.InviteAsync(elsewhere, ct);
-            Assert.Equal(time.GetUtcNow() + TimeSpan.FromDays(3), elsewhere.InvitationExpiresAt);
+            Assert.Equal(time.GetUtcNow() + TimeSpan.FromDays(5), elsewhere.InvitationExpiresAt);
         }
         finally
         {
