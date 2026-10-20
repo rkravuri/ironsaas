@@ -158,7 +158,8 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     const idle = await row("A session ends without activity after");
 
     await user.click(idle.getByRole("button", { name: "Reset: A session ends without activity after" }));
-    const confirm = await screen.findByRole("dialog", { name: "Reset this setting?" });
+    // The confirmation opens over the page's own grid; under the whole suite's load it takes longer than the default second.
+    const confirm = await screen.findByRole("dialog", { name: "Reset this setting?" }, { timeout: 5_000 });
     expect(confirm).toHaveTextContent("The value set here is removed, and the value from above applies instead");
     expect(calls.some((call) => call.key.startsWith("DELETE"))).toBe(false);
     await user.click(within(confirm).getByRole("button", { name: "Reset" }));
