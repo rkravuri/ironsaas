@@ -33,6 +33,12 @@ S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the
 |---|---|---|---|
 | | | | |
 
+## Maintenance
+
+| Task | State | Branch | Notes |
+|---|---|---|---|
+| M1 Dependabot's pull requests | done | main | merged 2026-10-20; gitleaks reads a pull request's commits (`pull-requests: read` for its job alone; every pull request's scan had failed with 403); #12's seven .NET updates taken without `Microsoft.CodeAnalysis.CSharp`, which moves with EF Core by hand; #10 (jest-dom 7) and #11 (React Router 8) merged with no code change, make shell-check and make shell-a11y passing on each and on both; TypeScript majors held until typescript-eslint accepts them |
+
 ## Open questions
 
 None.
@@ -68,5 +74,5 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - No API disables a person or deletes a unit: each browser test run leaves its inactive `E2E run <run>` unit with its people, and each smoke run its inactive `Smoke <run>` unit with one person.
 - The browser test that moves echo between Standard and Enterprise takes about a minute and a quarter and leaves echo on Enterprise, also when it fails; the smoke's `plan-change` step leaves a tenant on the plan it had.
 - Since S2-close the `smoke` tenant is provisioned again on the laptop (on Standard), beside acme, bravo and echo; their administrators' invitations are in `secret/tenants/<slug>/fleet`.
-- Dependabot proposes versions only after 14 days (its cooldown) and majors outside its groups; three majors it proposed need work of their own: React Router 8, jest-dom 7 and TypeScript 7.
+- Dependabot proposes versions only after 14 days (its cooldown) and majors outside its groups. Two it is told to leave, each with its reason in `.github/dependabot.yml`: `Microsoft.CodeAnalysis.CSharp`, which must match the Roslyn that EF Core's design package pulls (5.9.0 beside EF Core 10.0.12's 5.0.0 does not restore, NU1107), so it is raised by hand with the EF Core that asks for it; and TypeScript majors, until typescript-eslint accepts them (8.72.0 asks for typescript below 6.1). React Router 8 and jest-dom 7 are in since M1.
 - The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
