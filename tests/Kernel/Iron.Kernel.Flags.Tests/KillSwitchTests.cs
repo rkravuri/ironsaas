@@ -105,6 +105,27 @@ public class KillSwitchTests(FlagsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TheGatesDecisionForAnExplanationIsTheChecksAnswerAndWritesNothing()
+    {
+        await PublishAsync(Rules.Set(15, [Rules.Global(Imports, true, reason: "Imports wait for a fix.")]));
+        var request = new FlagRequest([new FlagRequirement(Imports, MustBeOn: false)], _administrator, "POST /api/v1/roles/import", "/api/v1/roles/import");
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var gate = scope.ServiceProvider.GetRequiredService<IFlagGate>();
+        var events = scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking().Where(e => e.EventType == FlagsAuditEvents.AccessDenied && e.ActorId == _administrator);
+        var before = await events.CountAsync(TestContext.Current.CancellationToken);
+
+        var decided = await gate.DecideAsync(request, TestContext.Current.CancellationToken);
+        var afterDeciding = await events.CountAsync(TestContext.Current.CancellationToken);
+        var checkedAnswer = await gate.CheckAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(checkedAnswer, decided);
+        Assert.Equal((false, FlagErrors.Killed, "Imports wait for a fix."), (decided.Allowed, decided.ErrorCode, decided.Reason));
+        Assert.Equal(before, afterDeciding);
+        Assert.Equal(before + 1, await events.CountAsync(TestContext.Current.CancellationToken));
+        await PublishAsync(Rules.Set(16, []));
+    }
+
+    [Fact]
     public async Task ATenantsOwnKillSwitchStopsThatTenantOnly()
     {
         await PublishAsync(Rules.Set(12, [], 12, [Rules.Tenant(Imports, "acme", true, reason: "Acme asked for it.")]));

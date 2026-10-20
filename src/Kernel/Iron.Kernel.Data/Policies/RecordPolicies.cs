@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Contexts;
@@ -27,7 +28,29 @@ public interface IRecordPolicies
     /// <summary>One record for an action by the signed-in principal: not found when they may not see it, forbidden when they may see it but not act.</summary>
     Task<Result<T>> FindAsync<T>(Guid id, string action, CancellationToken cancellationToken)
         where T : BusinessRecord;
+
+    /// <summary>
+    /// What <c>FindAsync</c> would answer this principal for a record of a type, named as its policy names it, and why;
+    /// nothing is audited (ADR-0039). A type with no policy answers <see cref="RecordPolicyAnswers.NoPolicy"/>.
+    /// </summary>
+    Task<RecordPolicyExplanation> ExplainAsync(string recordType, Guid recordId, string action, Guid principalId, CancellationToken cancellationToken);
 }
+
+/// <summary>A record policy's answer, as an explanation names it.</summary>
+public static class RecordPolicyAnswers
+{
+    public const string Allowed = "allowed";
+    public const string NotFound = RecordAnswers.NotFound;
+    public const string Forbidden = RecordAnswers.Forbidden;
+    public const string NoPolicy = "no_policy";
+}
+
+/// <summary>
+/// One record and an action, explained (ADR-0039): allowed, with what let the reader see the record (<see cref="VisibleBy"/>);
+/// not found, because no such record exists or the reader may not see it; forbidden, because they may see it and the
+/// policy refuses the action.
+/// </summary>
+public sealed record RecordPolicyExplanation(string RecordType, Guid RecordId, string Action, string Answer, bool Exists, string? VisibleBy);
 
 /// <summary>A record type's policy bound to one principal: apply it to a query, or open one record for an action.</summary>
 public sealed class PolicyEvaluation<T>
@@ -85,30 +108,62 @@ public sealed class PolicyEvaluation<T>
     public async Task<Result<T>> FindAsync(Guid id, string action, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(action);
-        var readable = await ReadableAsync(_set(), cancellationToken).ConfigureAwait(false);
-        var record = await readable.SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
+        var (record, decision) = await DecideAsync(id, action, cancellationToken).ConfigureAwait(false);
         if (record is null)
         {
             await RefusedAsync(id, action, RecordAnswers.NotFound, cancellationToken).ConfigureAwait(false);
             return NotFound();
         }
 
-        if (!string.Equals(action, RecordActions.Read, StringComparison.Ordinal))
+        if (decision != PolicyDecision.Allowed)
         {
-            var decision = await _policy.DecideAsync(record, action, Subject, cancellationToken).ConfigureAwait(false);
-            if (decision != PolicyDecision.Allowed)
-            {
-                _logger.LogWarning("The {RecordType} policy refused {Action} on {RecordId} to principal {PrincipalId}: {Decision}.", _registration.Name, action, id, Subject.PrincipalId, decision);
-                var notVisible = decision == PolicyDecision.NotVisible;
-                await RefusedAsync(id, action, notVisible ? RecordAnswers.NotFound : RecordAnswers.Forbidden, cancellationToken).ConfigureAwait(false);
-                return notVisible
-                    ? NotFound()
-                    : Error.Forbidden(RecordErrors.Forbidden, $"You may see this record but not {action.Replace('_', ' ')} it.");
-            }
+            _logger.LogWarning("The {RecordType} policy refused {Action} on {RecordId} to principal {PrincipalId}: {Decision}.", _registration.Name, action, id, Subject.PrincipalId, decision);
+            var notVisible = decision == PolicyDecision.NotVisible;
+            await RefusedAsync(id, action, notVisible ? RecordAnswers.NotFound : RecordAnswers.Forbidden, cancellationToken).ConfigureAwait(false);
+            return notVisible
+                ? NotFound()
+                : Error.Forbidden(RecordErrors.Forbidden, $"You may see this record but not {action.Replace('_', ' ')} it.");
         }
 
         await ReadByIdAsync(record, action, cancellationToken).ConfigureAwait(false);
         return record;
+    }
+
+    /// <summary>What <see cref="FindAsync"/> would answer, and why, with nothing audited (ADR-0039): the same decision.</summary>
+    public async Task<RecordPolicyExplanation> ExplainAsync(Guid id, string action, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(action);
+        var (record, decision) = await DecideAsync(id, action, cancellationToken).ConfigureAwait(false);
+        if (record is null)
+        {
+            var exists = await _set().AsNoTracking().AnyAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
+            return new RecordPolicyExplanation(_registration.Name, id, action, RecordPolicyAnswers.NotFound, exists, null);
+        }
+
+        var reach = await Subject.ReachAsync(_registration.Read, cancellationToken).ConfigureAwait(false);
+        var visibleBy = await Subject.Visibility.ReasonAsync(record, reach, cancellationToken).ConfigureAwait(false) ?? VisibleBy.Scope;
+        var answer = decision switch
+        {
+            PolicyDecision.Allowed => RecordPolicyAnswers.Allowed,
+            PolicyDecision.NotVisible => RecordPolicyAnswers.NotFound,
+            _ => RecordPolicyAnswers.Forbidden,
+        };
+        return new RecordPolicyExplanation(_registration.Name, id, action, answer, true, visibleBy);
+    }
+
+    /// <summary>The one decision for a record and an action: the record if the subject may read it, then the policy for any other action.</summary>
+    private async Task<(T? Record, PolicyDecision Decision)> DecideAsync(Guid id, string action, CancellationToken cancellationToken)
+    {
+        var readable = await ReadableAsync(_set(), cancellationToken).ConfigureAwait(false);
+        var record = await readable.SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
+        if (record is null)
+        {
+            return (null, PolicyDecision.NotVisible);
+        }
+
+        return string.Equals(action, RecordActions.Read, StringComparison.Ordinal)
+            ? (record, PolicyDecision.Allowed)
+            : (record, await _policy.DecideAsync(record, action, Subject, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>The scope rule following the sharing mode, then the policy: what the reader may read, before the working unit.</summary>
@@ -184,6 +239,19 @@ public sealed class RecordPolicies(
     IUnitReach? units = null,
     IRecordAudit? audit = null) : IRecordPolicies
 {
+    private static readonly MethodInfo ExplainOf = typeof(RecordPolicies).GetMethod(nameof(ExplainCoreAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    public Task<RecordPolicyExplanation> ExplainAsync(string recordType, Guid recordId, string action, Guid principalId, CancellationToken cancellationToken)
+    {
+        var registration = registrations.FirstOrDefault(r => string.Equals(r.Name, recordType, StringComparison.Ordinal));
+        return registration is null
+            ? Task.FromResult(new RecordPolicyExplanation(recordType, recordId, action, RecordPolicyAnswers.NoPolicy, false, null))
+            : (Task<RecordPolicyExplanation>)ExplainOf.MakeGenericMethod(registration.RecordType).Invoke(this, [principalId, recordId, action, cancellationToken])!;
+    }
+
+    private Task<RecordPolicyExplanation> ExplainCoreAsync<T>(Guid principalId, Guid recordId, string action, CancellationToken cancellationToken)
+        where T : BusinessRecord => For<T>(principalId).ExplainAsync(recordId, action, cancellationToken);
+
     public PolicyEvaluation<T> For<T>(Guid principalId)
         where T : BusinessRecord
     {

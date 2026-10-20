@@ -1,6 +1,7 @@
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
+using Iron.Kernel.Authorization.Data;
 using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Authorization.Services;
@@ -22,25 +23,49 @@ public sealed class PermissionEvaluator(
     public async ValueTask<AccessDecision> EvaluateAsync(AccessRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-
-        IReadOnlySet<string> granted;
-        try
-        {
-            granted = await grants.PermissionsAtAsync(request.PrincipalId, request.Scope, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            logger.LogError(exception, "Permission check unavailable for principal {PrincipalId} on {Operation} at {Scope}; access denied (fail closed).", request.PrincipalId, request.Operation, request.Scope);
-            return await DenyAsync(request, AccessDecision.Unavailable, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (granted.Contains(request.Permission.Name))
+        var (explanation, failure) = await DecideAsync(request, cancellationToken).ConfigureAwait(false);
+        if (explanation.Allowed)
         {
             return AccessDecision.Allow;
         }
 
-        logger.LogWarning("Permission {Permission} denied for principal {PrincipalId} on {Operation} at {Scope}.", request.Permission.Name, request.PrincipalId, request.Operation, request.Scope);
-        return await DenyAsync(request, AccessDecision.NotGranted, cancellationToken).ConfigureAwait(false);
+        if (failure is not null)
+        {
+            logger.LogError(failure, "Permission check unavailable for principal {PrincipalId} on {Operation} at {Scope}; access denied (fail closed).", request.PrincipalId, request.Operation, request.Scope);
+        }
+        else
+        {
+            logger.LogWarning("Permission {Permission} denied for principal {PrincipalId} on {Operation} at {Scope}.", request.Permission.Name, request.PrincipalId, request.Operation, request.Scope);
+        }
+
+        return await DenyAsync(request, explanation.Reason, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The check with what decided it, and without a denial's log line, count and audit event (ADR-0039).</summary>
+    public async ValueTask<AccessExplanation> ExplainAsync(AccessRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return (await DecideAsync(request, cancellationToken).ConfigureAwait(false)).Explanation;
+    }
+
+    /// <summary>The one decision of a check, for the filters and for an explanation: the grants at the scope, and those that give the permission.</summary>
+    private async Task<(AccessExplanation Explanation, Exception? Failure)> DecideAsync(AccessRequest request, CancellationToken cancellationToken)
+    {
+        ScopedGrants at;
+        try
+        {
+            at = await grants.AtAsync(request.PrincipalId, request.Scope, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return (new AccessExplanation(false, AccessDecision.Unavailable, []), exception);
+        }
+
+        var allowed = at.Permissions.Contains(request.Permission.Name);
+        var granting = allowed
+            ? at.Giving(request.Permission.Name).Select(g => new GrantingAssignment(g.AssignmentId ?? Guid.Empty, g.RoleId ?? Guid.Empty, g.RoleCode ?? string.Empty, g.RoleName ?? string.Empty, Scopes.NameOf(g.Kind), g.ScopeId, g.RecordType)).ToList()
+            : [];
+        return (new AccessExplanation(allowed, allowed ? AccessDecision.Granted : AccessDecision.NotGranted, granting, at.Acting?.DelegatorId, at.Acting?.Limit), null);
     }
 
     private async Task<AccessDecision> DenyAsync(AccessRequest request, string reason, CancellationToken cancellationToken)

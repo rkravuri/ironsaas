@@ -9,6 +9,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Api.Modules;
 
+/// <summary>Endpoint metadata: the module whose endpoints these are. MapModules puts it on every endpoint of a module.</summary>
+public sealed class ModuleMetadata(string name)
+{
+    public string Name { get; } = name;
+}
+
 /// <summary>The modules a host runs, in the order the host listed them.</summary>
 public sealed class ModuleCollection(IReadOnlyList<IModule> modules)
 {
@@ -65,16 +71,15 @@ public static class ModuleExtensions
         var modules = endpoints.ServiceProvider.GetRequiredService<ModuleCollection>();
         foreach (var module in modules.Modules)
         {
+            // Every endpoint knows its module, so an explanation can group the actions by module (ADR-0039).
+            var group = endpoints.MapGroup(string.Empty).WithMetadata(new ModuleMetadata(module.Name));
             if (module.Licence is { } licence)
             {
-                var group = endpoints.MapGroup(string.Empty).WithMetadata(new LicensedModuleMetadata(licence.Code));
+                group.WithMetadata(new LicensedModuleMetadata(licence.Code));
                 group.AddEndpointFilter(new EntitlementFilter());
-                module.MapEndpoints(group);
             }
-            else
-            {
-                module.MapEndpoints(endpoints);
-            }
+
+            module.MapEndpoints(group);
         }
 
         // One /me/context for the parts the modules registered (entitlements, flags, settings): the shell reads one call.

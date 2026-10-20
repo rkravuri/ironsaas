@@ -27,7 +27,15 @@ public sealed record EntitlementDecision(bool Allowed, string? ErrorCode, string
 /// </summary>
 public interface IEntitlementGate
 {
+    /// <summary>The answer the filters act on; a refusal is logged, counted and audited.</summary>
     ValueTask<EntitlementDecision> CheckAsync(EntitlementRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The same answer without its side effects, for explaining someone's access (ADR-0039): the gate's check runs as
+    /// <see cref="CheckAsync"/> runs it, and nothing is logged, counted or audited. A gate with no side effects needs
+    /// nothing more.
+    /// </summary>
+    ValueTask<EntitlementDecision> DecideAsync(EntitlementRequest request, CancellationToken cancellationToken) => CheckAsync(request, cancellationToken);
 }
 
 /// <summary>Endpoint metadata: the endpoint belongs to a licensed module. MapModules puts it on every endpoint of such a module.</summary>
@@ -103,6 +111,25 @@ public static class EntitlementCheck
     /// <summary>A write is any method but GET, HEAD and OPTIONS: a read-only module refuses it (TF-040 AC2).</summary>
     public static bool IsWrite(string method) => !ReadMethods.Contains(method, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// What an endpoint asks of the gate, or null when it names nothing licensed: the request the filter checks and the
+    /// explainer decides (ADR-0039), built from the same metadata.
+    /// </summary>
+    public static EntitlementRequest? RequestFor(EndpointMetadataCollection metadata, string method, Guid? principalId, string operation, string path)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        var licence = metadata.GetMetadata<LicensedModuleMetadata>()?.Licence;
+        var features = metadata.GetOrderedMetadata<FeatureMetadata>().Select(f => f.Feature).Distinct(StringComparer.Ordinal).ToList();
+        return licence is null && features.Count == 0 ? null : new EntitlementRequest(licence, features, IsWrite(method), principalId, operation, path);
+    }
+
+    /// <summary>The answer when no gate is registered: something licensed that cannot be confirmed is refused.</summary>
+    public static EntitlementDecision Unconfirmed(EntitlementRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return EntitlementDecision.Refuse(request.Licence is null ? EntitlementErrors.FeatureDisabled : EntitlementErrors.ModuleDisabled, "This is not part of your organisation's subscription.", EntitlementReasons.Unknown, request.Licence ?? request.Features[0]);
+    }
+
     /// <summary>The problem to answer, or null when the endpoint names nothing licensed or everything it names is entitled.</summary>
     public static async ValueTask<IResult?> RefusalAsync(HttpContext http, Guid? principalId)
     {
@@ -113,19 +140,15 @@ public static class EntitlementCheck
             return null;
         }
 
-        var licence = metadata.GetMetadata<LicensedModuleMetadata>()?.Licence;
-        var features = metadata.GetOrderedMetadata<FeatureMetadata>().Select(f => f.Feature).Distinct(StringComparer.Ordinal).ToList();
-        if ((licence is null && features.Count == 0) || !http.Items.TryAdd(CheckedKey, true))
+        var request = RequestFor(metadata, http.Request.Method, principalId, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/");
+        if (request is null || !http.Items.TryAdd(CheckedKey, true))
         {
             // Nothing licensed, or a filter of an outer group checked this request already.
             return null;
         }
 
         var gate = http.RequestServices.GetService<IEntitlementGate>();
-        var request = new EntitlementRequest(licence, features, IsWrite(http.Request.Method), principalId, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/");
-        var decision = gate is null
-            ? EntitlementDecision.Refuse(licence is null ? EntitlementErrors.FeatureDisabled : EntitlementErrors.ModuleDisabled, "This is not part of your organisation's subscription.", EntitlementReasons.Unknown, licence ?? features[0])
-            : await gate.CheckAsync(request, http.RequestAborted).ConfigureAwait(false);
+        var decision = gate is null ? Unconfirmed(request) : await gate.CheckAsync(request, http.RequestAborted).ConfigureAwait(false);
         if (decision.Allowed)
         {
             return null;

@@ -12,7 +12,20 @@ namespace Iron.Kernel.Flags.Services;
 /// </summary>
 public sealed class FlagGate(IFlagClients clients, IAuditWriter audit, FlagsMetrics metrics, ILogger<FlagGate> logger) : IFlagGate
 {
+    /// <summary>The filters' check: the decision, and for a refusal its log line, count and audit event.</summary>
     public async ValueTask<FlagDecision> CheckAsync(FlagRequest request, CancellationToken cancellationToken)
+    {
+        var decision = await DecideAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!decision.Allowed)
+        {
+            await RefuseAsync(request, decision, cancellationToken).ConfigureAwait(false);
+        }
+
+        return decision;
+    }
+
+    /// <summary>The decision alone, for the filters' check and for an explanation (ADR-0039): the flags evaluated for the request's principal, no side effects.</summary>
+    public async ValueTask<FlagDecision> DecideAsync(FlagRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         var client = await clients.ForAsync(request.PrincipalId ?? Guid.Empty, cancellationToken).ConfigureAwait(false);
@@ -26,11 +39,9 @@ public sealed class FlagGate(IFlagClients clients, IAuditWriter audit, FlagsMetr
             }
 
             var reason = details.FlagMetadata?.GetString(IronFlagProvider.RuleReasonKey);
-            var decision = requirement.Key.StartsWith(Flag.KillSwitchPrefix, StringComparison.Ordinal)
+            return requirement.Key.StartsWith(Flag.KillSwitchPrefix, StringComparison.Ordinal)
                 ? FlagDecision.Refuse(FlagErrors.Killed, Killed(requirement.Key, reason), requirement.Key, reason)
                 : FlagDecision.Refuse(FlagErrors.Disabled, "This is not available to you yet.", requirement.Key, reason);
-            await RefuseAsync(request, decision, cancellationToken).ConfigureAwait(false);
-            return decision;
         }
 
         return FlagDecision.Allow;
