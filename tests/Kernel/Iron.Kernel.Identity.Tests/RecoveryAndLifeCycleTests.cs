@@ -81,7 +81,7 @@ public class RecoveryAndLifeCycleTests(IdentityFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-017 AC1", "TF-012", "ADR-0046")]
+    [Proves("TF-017 AC1", "ADR-0046")]
     public async Task ARefusedPasswordLeavesTheLinkOpenAndUsingTheLinkLiftsALock()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -107,7 +107,7 @@ public class RecoveryAndLifeCycleTests(IdentityFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-017 AC3", "ADR-0046")]
+    [Proves("TF-017 AC3", "TF-017 AC4", "ADR-0046")]
     public async Task AChangeNeedsTheCurrentPasswordAndEndsTheOtherSessionsWhenAsked()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -121,6 +121,7 @@ public class RecoveryAndLifeCycleTests(IdentityFixture fixture)
         var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
 
         var wrongCurrent = await passwords.ChangeAsync(user.Id, here.Id, "not the password", NewPassword, true, ct);
+        var counted = await context.LoginThrottles.AsNoTracking().Where(t => t.LoginId == user.LoginId).Select(t => t.Failures).SingleAsync(ct);
         var keptOthers = await passwords.ChangeAsync(user.Id, here.Id, Password, NewPassword, false, ct);
         var liveAfterKeeping = await context.Sessions.CountAsync(s => s.PrincipalId == user.Id && s.EndedAt == null, ct);
         var endedOthers = await passwords.ChangeAsync(user.Id, here.Id, NewPassword, "and another passphrase", true, ct);
@@ -129,6 +130,7 @@ public class RecoveryAndLifeCycleTests(IdentityFixture fixture)
 
         Assert.Equal(IdentityErrors.PasswordCurrentWrong, wrongCurrent.Error.Code);
         Assert.Equal("current_password", Assert.Single(wrongCurrent.Error.Fields).Field);
+        Assert.Equal(1, counted); // like a failed sign-in, towards the lockout
         Assert.True(keptOthers.IsSuccess);
         Assert.Equal(2, liveAfterKeeping);
         Assert.True(endedOthers.IsSuccess);

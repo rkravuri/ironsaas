@@ -21,7 +21,7 @@ public class PasswordPolicyTests(IdentityFixture fixture)
     private const string CommonPassword = "qwertyuiop123";
 
     [Fact]
-    [Proves("TF-012", "ADR-0036", "ADR-0046")]
+    [Proves("TF-012 AC4", "ADR-0036", "ADR-0046")]
     public async Task ThePolicyStartsAtItsDefaultsAndEachSettingKeepsToItsLimits()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -59,7 +59,7 @@ public class PasswordPolicyTests(IdentityFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-012", "ADR-0046")]
+    [Proves("TF-012 AC4", "ADR-0046")]
     public async Task TheTenantsSettingsChangeTheRulesOnTheNextCheck()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -208,7 +208,7 @@ public class PasswordPolicyTests(IdentityFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-012", "ADR-0046")]
+    [Proves("TF-012 AC2", "ADR-0046")]
     public async Task FailuresOutsideTheWindowDoNotAddUpAndASuccessForgetsThem()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -239,7 +239,7 @@ public class PasswordPolicyTests(IdentityFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-012", "ADR-0046")]
+    [Proves("TF-012 AC5", "ADR-0046")]
     public async Task APasswordPastTheMaximumAgeSignsInToARecoveryLinkInsteadOfASession()
     {
         var ct = TestContext.Current.CancellationToken;

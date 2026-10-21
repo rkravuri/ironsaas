@@ -72,7 +72,7 @@ describe("the password forms", () => {
     expect(screen.getByText("Choose a password that is not common.")).toBeInTheDocument();
   });
 
-  it("check the tenant's minimum length before sending [TF-012, ADR-0046]", async () => {
+  it("check the tenant's minimum length before sending [TF-012 AC4, ADR-0046]", async () => {
     const { calls } = stubFetch({
       ...anonymous,
       "GET /auth/password-policy": () => json(policy({ minimum_length: 16 })),
@@ -186,7 +186,7 @@ describe("the sign-in page and passwords", () => {
     expect(alert).toHaveTextContent("corr-lock");
   });
 
-  it("sends a right password past its maximum age to the recovery page with the code the API gave [TF-012, ADR-0046]", async () => {
+  it("sends a right password past its maximum age to the recovery page with the code the API gave [TF-012 AC5, ADR-0046]", async () => {
     stubFetch({
       ...anonymous,
       "GET /auth/password-policy": () => json(policy()),

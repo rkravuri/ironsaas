@@ -88,7 +88,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`an invitation's page in the ${scheme} scheme shows the policy in words, with no WCAG 2.1 AA violation [TF-172 AC1, TF-012, TF-018 AC1]`, async ({
+  test(`an invitation's page in the ${scheme} scheme shows the policy in words, with no WCAG 2.1 AA violation [TF-172 AC1, TF-018 AC1, ADR-0046]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -169,7 +169,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`the password expiry warning in the ${scheme} scheme says when and where to change it, with no WCAG 2.1 AA violation [TF-172 AC1, TF-012, ADR-0046]`, async ({
+  test(`the password expiry warning in the ${scheme} scheme says when and where to change it, with no WCAG 2.1 AA violation [TF-172 AC1, TF-012 AC5, ADR-0046]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

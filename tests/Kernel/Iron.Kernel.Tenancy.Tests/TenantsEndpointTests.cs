@@ -125,7 +125,7 @@ public class TenantsEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    [Proves("TF-017", "ADR-0046")]
+    [Proves("ADR-0046")]
     public async Task TheOperatorAsksForAnAdministratorsRecoveryWithAReasonAndTheControlPlaneAuditsIt()
     {
         var ct = TestContext.Current.CancellationToken;

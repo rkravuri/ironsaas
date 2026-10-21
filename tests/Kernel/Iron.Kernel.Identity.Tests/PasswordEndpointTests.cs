@@ -53,7 +53,7 @@ public class PasswordEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    [Proves("TF-012", "ADR-0046")]
+    [Proves("ADR-0046")]
     public async Task ThePolicyIsReadWithoutSigningInSoTheFormsCanSayItBeforeAnyoneTypes()
     {
         using var answer = await _client.GetAsync(new Uri("/auth/password-policy", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -147,7 +147,7 @@ public class PasswordEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    [Proves("TF-017 AC3", "ADR-0046")]
+    [Proves("TF-017 AC3", "TF-017 AC4", "ADR-0046")]
     public async Task ChangingThePasswordEndsTheOtherSessionsAndTheChangeIsInTheSecurityActivity()
     {
         var (unit, _) = await UnitsAsync();
@@ -236,7 +236,7 @@ public class PasswordEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    [Proves("TF-012", "ADR-0046")]
+    [Proves("TF-012 AC5", "ADR-0046")]
     public async Task ASignInWithAnExpiredPasswordAnswersARecoveryCodeAndNoSession()
     {
         var ct = TestContext.Current.CancellationToken;

@@ -81,7 +81,7 @@ describe("My profile's Security tab", () => {
     ]);
   });
 
-  it("puts a wrong current password on its field and a reused one on the history rule [TF-017, TF-012 AC3]", async () => {
+  it("puts a wrong current password on its field and a reused one on the history rule [TF-017 AC4, TF-012 AC3]", async () => {
     let answer = 0;
     stubFetch({
       "GET /api/v1/me": () => json(me()),
@@ -154,7 +154,7 @@ describe("My profile's Security tab", () => {
 describe("the password expiry warning", () => {
   const at = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
-  it("shows in the last fourteen days before the maximum age, with the way to change it, and not before [TF-012, ADR-0046]", async () => {
+  it("shows in the last fourteen days before the maximum age, with the way to change it, and not before [TF-012 AC5, ADR-0046]", async () => {
     // The dates before the banner reads the time, as the API's answer comes before the page draws.
     const soon = at(3);
     const later = at(30);
