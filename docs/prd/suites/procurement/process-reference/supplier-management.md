@@ -7,12 +7,12 @@
 | Module | Supplier management (`SUP-`), with the parts it cannot be read without: the supplier master in the Business Foundation PRD (BF-101 to BF-108) and the supplier purchasing profile in the purchasing PRD (PUR-021 to PUR-024) |
 | Suite | eProcurement Suite, on IronSaaS Foundation |
 | Required by | PM-001 (the pack), PM-002 (external practitioner review), PM-003 (research log, living documentation) |
-| Version | 0.2, for the external practitioner's review |
+| Version | 0.3, for the external practitioner's review |
 | Date | 2026-10-21 |
 | Place in the repository | `docs/prd/suites/procurement/process-reference/supplier-management.md` |
 | Status | The owner accepted every gap of section 7 on 2026-10-21 and asked for two areas to be designed apart: supplier information change management (section 8.2) and periodic supplier information collection, SIM (section 8.3). Section 9 is the brief for the practitioner. |
 
-Change log: 0.2, 2026-10-21, all gaps accepted; section 8 holds the design of the gaps and of the two areas, the kernel requirements they need (TF-247 governed changes among them) and the domain model decisions; maps 3.4 and 3.5 added. 0.1, 2026-10-21, first draft in the design session.
+Change log: 0.3, 2026-10-21, in the repository (task SUP-gaps): section 2 gains a row for every requirement the decisions of section 8 made, in Supplier management and the documents beside it, and marks the four requirements they retired; the maps of sections 3.1, 3.3, 3.4 and 3.5 are BPMN 2.0 files in `supplier-management/` beside this pack (ADR-0045); nothing else changed. 0.2, 2026-10-21, all gaps accepted; section 8 holds the design of the gaps and of the two areas, the kernel requirements they need (TF-247 governed changes among them) and the domain model decisions; maps 3.4 and 3.5 added. 0.1, 2026-10-21, first draft in the design session.
 
 ## 1. Scope
 
@@ -44,24 +44,85 @@ Every requirement maps to a PCF element and to a step of the maps in section 3 (
 | SUP-005 Supplier onboarding configuration | 4.2.5.1 | Configuration (no step) |
 | SUP-006 Organisation approval of an enablement | 4.2.3.1 | SM-10 |
 | SUP-021 Supplier status control | 4.2.5.1 | V7 |
-| SUP-022 Supplier change approval | 4.2.5.1 | V5 |
-| SUP-023 Supplier bank account verification | 4.2.5.1 | SM-06, V5 |
+| SUP-022 Supplier change approval (retired 2026-10-21; replaced by SUP-201 to SUP-204 and SUP-206 to SUP-211) | 4.2.5.1 | V5 |
+| SUP-023 Supplier bank account verification (retired 2026-10-21; replaced by SUP-162 to SUP-164 and SUP-205) | 4.2.5.1 | SM-06, V5 |
 | SUP-024 Supplier merge | 4.2.5.1 | V8 |
 | SUP-041 Supplier documents and compliance expiry | 4.2.3.2 | V6 |
-| SUP-042 Supplier questionnaires | 4.2.3.2 | SM-07, V6 |
+| SUP-042 Supplier questionnaires (retired 2026-10-21; replaced by SUP-181 and SUP-221 to SUP-231) | 4.2.3.2 | SM-07, V6 |
 | SUP-043 Supplier risk flags | 4.2.1.7 | E3, V6 |
 | SUP-061 Supplier 360 view and lists | 4.2.5.1 | All steps (read) |
 | SUP-062 Supplier performance indicators | 4.2.5.2, 4.2.5.4 | SM-11 |
 | SUP-063 Supplier reports | 4.2.5.2 | SM-11 |
 | SUP-101 Company data in the portal | 4.2.5.1 | SM-04, V5 |
-| SUP-102 Questionnaires and documents in the portal | 4.2.3.2 | SM-07, V6 |
+| SUP-102 Questionnaires and documents in the portal (retired 2026-10-21; replaced by SUP-225, SPX-008 and SPX-029) | 4.2.3.2 | SM-07, V6 |
 | SUP-121 Notification keys | supporting | All steps |
 | BF-101 to BF-108 Supplier master, addresses, contacts, sites, bank accounts, defaults, categories, enablement | 4.2.5.1, PCF 10869 | SM-04 to SM-10 |
 | PUR-021 to PUR-024 Supplier purchasing profile | 4.2.3.1 | SM-10 |
 
+The requirements written from the decisions of section 8 on 2026-10-21 (task SUP-gaps), in Supplier management and in the documents beside it. "Supporting" marks a kernel mechanism the steps rely on; "no step" records an exclusion (PM-001 AC2): a requirement of a later product that these maps do not draw.
+
+| Requirement | PCF | Map step |
+|---|---|---|
+| SUP-141 Supplier request | 4.2.3.1 | SM-01, SM-02 |
+| SUP-142 Supplier request approval | 4.2.3.1 | SM-02, SM-03, E5, E6 |
+| SUP-007 Supplier risk tier | 4.2.1.7 | SM-05, V6 |
+| SUP-161 Identifier re-verification | 4.2.3.2 | SM-05, V6, C4 |
+| SUP-162 Automated bank account verification | 4.2.3.2 | SM-06, CM-05 |
+| SUP-163 Bank account call-back | 4.2.3.2 | SM-06, CM-05 |
+| SUP-164 Cooling period and the payment check | 4.2.5.1 | CM-07 |
+| SUP-165 Sanctions and watch-list screening | 4.2.1.7 | SM-05, V6, E3 |
+| SUP-181 Qualification by scope | 4.2.3.2 | SM-07, V6 |
+| SUP-182 Quality-relevant items and categories | 4.2.5.4 | SM-07 (V4) |
+| SUP-183 Regulated qualification: the approved supplier list | 4.2.3.2, 4.2.5.4 | SM-07, SM-09 (V4) |
+| SUP-184 Supplier audits and findings | 4.2.5.4 | SM-07 (V4), V6 |
+| SUP-025 Offboarding | 4.2.5.1 | V7 |
+| SUP-201 Change requests for every change | 4.2.5.1 | CM-01, C1 to C6 |
+| SUP-202 Field classes of the supplier record | 4.2.5.1 | CM-02 |
+| SUP-203 Decisions per field | 4.2.5.1 | CM-04 |
+| SUP-204 Routing and segregation | 4.2.5.1 | CM-04 |
+| SUP-205 Bank account changes | 4.2.5.1 | CM-05, CM-07 |
+| SUP-206 Effective dates | 4.2.5.1 | CM-06 |
+| SUP-207 Concurrency and one pending change per field | 4.2.5.1 | CM-06 |
+| SUP-208 Impact preview | 4.2.5.1 | CM-03 |
+| SUP-209 Notifications of changes | 4.2.5.1 | CM-07 |
+| SUP-210 Signatures and history of changes | 4.2.5.1 | CM-04, CM-07 |
+| SUP-211 Change measures | 4.2.5.2 | CM-01 to CM-07 |
+| SUP-044 Supplier contact data protection | 4.2.5.1 | SM-04, V7 |
+| SUP-221 Information request templates | 4.2.5.1 | SI-01 |
+| SUP-222 Information requests and campaigns | 4.2.5.1 | SI-01, SI-03 |
+| SUP-223 Schedules and triggers | 4.2.5.1 | SI-02, SI-09 |
+| SUP-224 Due dates, reminders, escalation and non-response | 4.2.5.1 | SI-03, SI-09 |
+| SUP-225 Responding to an information request | 4.2.5.1 | SI-04, SI-05 |
+| SUP-226 Review per section | 4.2.3.2 | SI-06 |
+| SUP-227 Applying approved answers through change management | 4.2.5.1 | SI-08, C3 |
+| SUP-228 Documents from responses | 4.2.3.2 | SI-08 |
+| SUP-229 Outcomes of a response | 4.2.3.2 | SI-07 |
+| SUP-230 The response record and its versions | 4.2.5.1 | SI-08 |
+| SUP-231 Tracking requests and campaigns | 4.2.5.2 | SI-03 to SI-09 |
+| SUP-064 Onboarding measures | 4.2.5.2 | SM-01 to SM-11, CM-01 to CM-07, SI-01 to SI-09 |
+| BF-104 Supplier sites, with their purposes | 4.2.5.1, PCF 10869 | SM-04, SM-07 (V4) |
+| BF-204 Country accelerator packs: India's Udyam classification, GSTIN and PAN status checks, MSME rules | 4.2.5.1, PCF 10869 | SM-05, V6 |
+| PUR-026 Supplier segments | 4.2.3.1 | SM-10, V6 |
+| ORD-010 Approved supplier, site and material for quality-relevant lines | 4.2.3.2 | SM-09 (V4) |
+| ORD-011 Open orders take a supplier change | 4.2.5.1 | CM-03, CM-06 |
+| CON-007 Quality agreements | 4.2.3.2 | SM-07 (V4) |
+| RCV-029 Day of acceptance | supporting (accounts payable, outside 4.2) | no step: receiving, which these maps do not draw (G7) |
+| INV-011 Payment terms of micro and small suppliers (India) | supporting (accounts payable, outside 4.2) | no step: invoicing, which these maps do not draw (G7) |
+| INV-046 Bank account check at payment release | 4.2.5.1 | CM-07 (the cooling period at payment) |
+| INV-086 Ageing of what is owed to micro and small suppliers (India) | supporting (accounts payable, outside 4.2) | no step: invoicing (G7) |
+| INV-087 Data for MSME Form 1 (India) | supporting (accounts payable, outside 4.2) | no step: invoicing (G7) |
+| SPX-008 Answering without a portal account | 4.2.5.1 | SI-04 |
+| SPX-029 Information requests in the portal | 4.2.5.1 | SI-04 |
+| SPX-030 The supplier's change requests and their outcome | 4.2.5.1 | CM-04, C2 |
+| TF-206 Connector configuration: identity and tax status, bank account, sanctions | supporting | SM-05, SM-06, CM-05, C4 |
+| TF-242 Forms engine, extended | supporting | SI-01 to SI-06 |
+| TF-245 Mapping form answers to records | supporting | SI-03, SI-08 |
+| TF-246 One-time verified access for external respondents | supporting | SI-04 |
+| TF-247 Governed changes to records | supporting | CM-01 to CM-07 |
+
 ## 3. Process maps
 
-The maps are drawn here in Mermaid for review; each lane is a role. After acceptance they are also kept as BPMN 2.0 files beside this pack, so any BPMN tool opens them (PM-001 names BPMN). Step identifiers (SM-01 and so on) are stable and are cited by the requirements.
+The maps are drawn here in Mermaid for review; each lane is a role. Since their acceptance they are also kept as BPMN 2.0 files beside this pack, so any BPMN tool opens them (PM-001 names BPMN): `supplier-management/main-flow.bpmn` (3.1), `exceptions.bpmn` (3.3), `change-management.bpmn` (3.4) and `information-collection.bpmn` (3.5), each checked against the BPMN 2.0 schema by `make prd-check` (ADR-0045). Step identifiers (SM-01 and so on) are stable and are cited by the requirements.
 
 ### 3.1 Main flow: a new supplier, from request to first order
 

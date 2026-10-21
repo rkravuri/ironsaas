@@ -7,14 +7,14 @@
 | Document title | Invoicing: invoices, matching, approval for payment and credit notes, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `INV-`, in blocks of twenty per area (ADR-0041); the table is `invoicing-requirements.csv` |
-| Version | 1.2 (the review of L2, 2026-10-20) |
-| Date | 2026-10-20 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
+| Version | 1.3 (SUP-gaps, 2026-10-21: the bank account check at payment release and India's MSME terms and reports) |
+| Date | 2026-10-21 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps, 2026-10-21) await the design session's review. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`; its module was called Payables), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Finance masters, budgets, tax codes, payment terms and suppliers are the Business PRD's; orders and receipts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): INV-121 names the invoice acknowledgement template (from BF-162), and INV-122 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
+Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): INV-046 asks Supplier management at payment release whether a bank account may be paid (gap G5); INV-011 caps a micro or small supplier's payment terms, INV-086 ages what is owed to them by 15 and 45 days, and INV-087 produces the data of MSME Form 1 (gap G7); no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): INV-121 names the invoice acknowledgement template (from BF-162), and INV-122 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
 
 ## 1. Vision and goals
 
@@ -63,6 +63,7 @@ erDiagram
   INVOICE_LINE ||--o{ INVOICE_LINE_SOURCE : "sourced from"
   INVOICE ||--o{ CREDIT_NOTE : "reversed by"
   INVOICE ||--o{ PAYMENT_STATUS : "paid as"
+  INVOICE ||--o| DELAY_REASON : "late to a micro or small supplier (India)"
 ```
 
 `ORGANISATION` is the kernel's unit; `ORDER_LINE` and `RECEIPT_LINE` are the Orders and Receiving products'. They are drawn for context.
@@ -254,6 +255,24 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* INV-001, BF-071, BF-204
 
 **Notes:** Was FF-129. It depends on the country packs (BF-204), whose e-invoice field rules it applies (ADR-0042). Decision F-08 confirmed.
+
+#### INV-011 Payment terms of micro and small suppliers (India)
+*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Invoices
+
+**Requirement:** For a supplier that the Indian pack classifies as a micro or small enterprise (BF-204), an invoice's due date shall be no later than 45 days after the day of acceptance (RCV-029) where the payment terms were agreed in writing, and 15 days after it where they were not; a longer term from the supplier or the order is cut to that limit, and the invoice shows the limit and why. An issued order's payment terms count as agreed in writing; a non-order invoice has none. The classification used is the one valid on the day of acceptance.
+
+**Why:** The MSMED Act's section 15 sets these limits, interest at three times the bank rate runs on what is paid late (section 16), and the Income-tax Act lets the buyer deduct a late payment to such a supplier only when it pays (section 43B(h)). Due dates that respect the law keep the buyer out of both.
+
+**Acceptance criteria:**
+
+- AC1 Given a micro supplier, an order with net 60 days and goods accepted on 1 June, When the invoice is created, Then its due date is 16 July, 45 days after acceptance, and the invoice shows the limit.
+- AC2 Given a small supplier and a non-order invoice for a service rendered on 1 June, When created, Then its due date is 16 June, 15 days after acceptance.
+- AC3 Given a medium enterprise or a trader, When an invoice is created, Then its terms are not cut.
+- AC4 Given a due date edited past the limit, When saved, Then it is refused naming the limit and the supplier's classification. (error case)
+
+*Depends on:* INV-008, RCV-029, BF-101, BF-204
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack). Decision: an issued order's payment terms are the written agreement and a non-order invoice has none, and the classification is the one valid on the day of acceptance; a practitioner in India confirms both before the pack is built.
 
 ### 6.2 Matching and controls (INV-021 to INV-040)
 
@@ -463,6 +482,24 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was FF-202, the payment status codes; the reference data of the masters is BF-205. AC2 is written for the split, after INV-043 AC2.
 
+#### INV-046 Bank account check at payment release
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Approval and payment
+
+**Requirement:** Releasing an invoice for payment (INV-043) shall ask Supplier management whether the payment's bank account may be paid on the payment date (SUP-164): verified and valid on that date, out of its cooling period, checked again when it changed within the re-check window, and the person releasing not one who requested or approved its change within the cooling period (TF-036). A release the answer refuses is refused with its reason; the payment instruction carries the account valid and verified on the payment date (BF-105).
+
+**Why:** Payment release is the last moment to stop money going to a fraudulent account; the check belongs there, and its answer belongs to the product that verified the account.
+
+**Acceptance criteria:**
+
+- AC1 Given an account in its cooling period, When an invoice to be paid to it is released, Then it is refused naming the first day the account may be paid. (error case)
+- AC2 Given an account changed 10 days ago, When an invoice is released, Then the account is checked again first, and the release completes when the check passes.
+- AC3 Given a person who approved the account's change two days ago, When they release a payment to it, Then it is refused naming the segregation rule. (error case)
+- AC4 Given an account verified and out of its period, When an invoice is released, Then the release completes with that account on the payment instruction.
+
+*Depends on:* INV-043, SUP-164, BF-105, TF-036
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G5 of the supplier management pack). Invoicing calls Supplier management, the earliest product, through its Contracts (ADR-0042).
+
 ### 6.4 Configuration (INV-061 to INV-080)
 
 #### INV-061 Matching configuration
@@ -589,6 +626,40 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was FF-161, the invoice measures; the order cycle times are ORD-082.
 
+#### INV-086 Ageing of what is owed to micro and small suppliers (India)
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Lists and reports
+
+**Requirement:** For suppliers the Indian pack classifies as micro or small (BF-204), a report shall age the unpaid amounts from their day of acceptance (RCV-029) in three bands, within 15 days, from 16 to 45 days, and over 45 days, per supplier and organisation, with totals; it is a report of section 11.3 (INV-084).
+
+**Why:** The limits of 15 and 45 days are the law's; finance needs to see what is about to cross them, and what has.
+
+**Acceptance criteria:**
+
+- AC1 Given unpaid invoices of a micro supplier accepted 10, 30 and 50 days ago, When the report runs, Then they fall in the bands within 15 days, 16 to 45 days, and over 45 days.
+- AC2 Given a supplier classified medium, When the report runs, Then it is not listed.
+- AC3 Given a user without the invoicing report permission, When the report is run, Then it is refused. (error case)
+
+*Depends on:* INV-084, INV-011, RCV-029, BF-204
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack).
+
+#### INV-087 Data for MSME Form 1 (India)
+*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Lists and reports
+
+**Requirement:** For each half-year (April to September, October to March), the product shall produce the data of the half-yearly MSME Form 1: for each micro or small supplier with amounts outstanding more than 45 days after their day of acceptance, its name, its PAN, the amount due, the date from which it is due, and the reason for the delay, which finance records on each such invoice.
+
+**Why:** A specified company files MSME Form 1 twice a year; its data are already in the invoices, the receipts and the supplier's classification.
+
+**Acceptance criteria:**
+
+- AC1 Given an invoice of a micro supplier accepted on 1 April, due on 16 May and unpaid on 30 September, When the April to September data is produced, Then it lists the supplier's name, its PAN, the amount and the date from which it is due, with the recorded reason.
+- AC2 Given an outstanding invoice over the limit without a reason recorded, When the data is produced, Then it is listed as missing its reason and finance is asked for one. (error case)
+- AC3 Given an invoice paid within 45 days of acceptance, When the data is produced, Then it is not listed.
+
+*Depends on:* INV-086, BF-204
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack). Decision: the form's fields as the pack's research log reads them; a practitioner in India confirms them and the filing rules before the pack is built.
+
 ### 6.6 Templates and notifications (INV-121 to INV-140)
 
 #### INV-121 Invoice acknowledgement template
@@ -659,6 +730,8 @@ From the archived PRD's section 7.1. The open-to-invoice formula is in the Recei
 | Tolerances | Percentage or value ranges around the reference for quantity, unit price, line amount and total; stamped over-receipt tolerance wins over system settings; action per tolerance type: block or hold. |
 | Duplicate invoice | No two live invoices (not cancelled or rejected) of a supplier share the supplier invoice number. |
 | Credit notes | Reference an approved invoice; reverse consumption and budget as negative movement; never delete source rows. |
+| Payment release checks the account | A release asks Supplier management whether the account may be paid on the date and by whom; no payment in a cooling period, a re-check in the re-check window (INV-046, SUP-164). |
+| MSME terms (India) | A micro or small supplier's due date is at most 45 days after acceptance, or 15 without terms agreed in writing (INV-011, BF-204). |
 
 ### 8.2 State machines
 
@@ -726,7 +799,7 @@ From the archived PRD's section 8.1: invoice lines follow the kernel's partition
 
 ### 11.3 Reports
 
-From the archived PRD's section 8.4: invoices by status and age; invoice holds and disputes; received not invoiced (accrual) by period and legal entity; cycle times (invoice to approval); first-pass match rate.
+From the archived PRD's section 8.4: invoices by status and age; invoice holds and disputes; received not invoiced (accrual) by period and legal entity; cycle times (invoice to approval); first-pass match rate. Since 2026-10-21, for India: the ageing of what is owed to micro and small suppliers (INV-086) and the data for MSME Form 1 (INV-087).
 
 ### 11.4 Search, exports and analytics feed
 
@@ -745,8 +818,8 @@ Last (ADR-0042): it calls Orders, Receiving and Requests, and no product depends
 ### 12.2 What it uses
 
 - Kernel, cited by its requirements: TF-035 and TF-234 (for its supplier views), TF-057 (settings), TF-084 (row locks), TF-090 (approvals), TF-105 (webhooks), TF-120 and TF-123 (jobs), TF-171 (the grid), TF-203 (saved views and exports), TF-208 (the AI service). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
-- Business: BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-204 (country packs); and through their use, BF-074 (HSN and SAC codes), BF-083 (bill-to), BF-105 (bank accounts for payment), BF-143 (approvers), BF-163 (number series).
-- Earlier products: Orders (INV-001, INV-022 and INV-024 on ORD-005, the stamped match levels and tolerances); Receiving (the approved receipts and the buckets, which it updates for the invoiced quantities: INV-001 to INV-003, INV-021, INV-027, INV-042, INV-044, INV-082 and INV-083); Requests (INV-004 and INV-007 on REQ-003, the split rules).
+- Business: BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (the supplier and, with the Indian pack, its MSME classification), BF-204 (country packs, the MSME rules among them); and through their use, BF-074 (HSN and SAC codes), BF-083 (bill-to), BF-105 (bank accounts for payment), BF-143 (approvers), BF-163 (number series).
+- Earlier products: Supplier management (INV-046 on SUP-164, whether a bank account may be paid on a date, and by whom); Orders (INV-001, INV-022 and INV-024 on ORD-005, the stamped match levels and tolerances); Receiving (the approved receipts and the buckets, which it updates for the invoiced quantities: INV-001 to INV-003, INV-021, INV-027, INV-042, INV-044, INV-082 and INV-083; and the day of acceptance, INV-011, INV-086 on RCV-029); Requests (INV-004 and INV-007 on REQ-003, the split rules).
 
 ### 12.3 Events
 
@@ -776,6 +849,8 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 | P0 | Process reference packs | INV-045 |
 | P4 | Invoicing and matching | INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, INV-008, INV-021, INV-022, INV-023, INV-024, INV-025, INV-026, INV-027, INV-041, INV-042, INV-043, INV-061, INV-062, INV-081, INV-082, INV-083, INV-084, INV-085, INV-101 |
 | P6 | Completeness | INV-009, INV-010, INV-044 |
+
+INV-011, INV-046, INV-086 and INV-087 are new with SUP-gaps (2026-10-21) and were never in the archived plan; the technical PRD's section 7.2 places them with Invoicing (PR5).
 
 ## 16. Decisions and open points
 

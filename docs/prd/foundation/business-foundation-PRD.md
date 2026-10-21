@@ -793,7 +793,7 @@ The supplier record and its parts, which every product reads, and its enablement
 
 *Depends on:* BF-101, TF-074
 
-**Notes:** Was FF-029, the account data and the rule that an unverified account is not used for payment; the verification is SUP-023. AC1 and AC2 are written for the split from the requirement's own clauses. Decision F-05 confirmed.
+**Notes:** Was FF-029, the account data and the rule that an unverified account is not used for payment; the verification was SUP-023 and since 2026-10-21 is SUP-162 to SUP-164 and SUP-205. AC1 and AC2 are written for the split from the requirement's own clauses. Decision F-05 confirmed.
 
 #### BF-106 Supplier configuration defaults
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Supplier master
@@ -1249,7 +1249,7 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1, where they apply 
 
 | ID | Decision | Where applied |
 |---|---|---|
-| F-05 | Supplier bank changes need a second approver and an out-of-band verification checklist | BF-105, SUP-023 |
+| F-05 | Supplier bank changes need a second approver and an out-of-band verification checklist | BF-105, SUP-163 and SUP-205 (SUP-023 until 2026-10-21) |
 | F-08 | Tax codes with components; place-of-supply rule as a setting; e-invoice fields prepared; Indian GST as an accelerator pack | BF-071, BF-204, INV-010 |
 | F-11 | Manual exchange rates with revision workflow; rate feed connector later | BF-070 |
 | F-13 | Organisation (business unit) separation of master data, operations and visibility built into the functional foundation | Section 2.2, BF-001 to BF-005, BF-108, BF-203 |

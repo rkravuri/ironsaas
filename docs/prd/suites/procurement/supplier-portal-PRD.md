@@ -7,14 +7,14 @@
 | Document title | The supplier portal and the Supplier Network experience: one portal for all suppliers of all customers, Product Requirements Document of a surface |
 | Layer | A surface of the eProcurement Suite, on IronSaaS Foundation, not a product (ADR-0029, ADR-0043): the supplier's screens are served through the kernel's Supplier Network plane (TF-230 to TF-239), and each product contributes its supplier views in its own PRD's section 7 |
 | Identifier prefix | `SPX-`, in blocks of twenty per area (ADR-0041); the table is `supplier-portal-requirements.csv` |
-| Version | 1.2 (the review of L2, 2026-10-20) |
-| Date | 2026-10-20 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
+| Version | 1.3 (SUP-gaps, 2026-10-21: information requests, the one-time verified link and the supplier's change requests) |
+| Date | 2026-10-21 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps, 2026-10-21) await the design session's review. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), the Technical Foundation PRD's section 3.6, ADR-0029 and ADR-0041. |
 | Dependency | The network itself (identity, registry, relationships, action index, delegated access, profile propagation) is the kernel's TF-230 to TF-239; the supplier record is the Business PRD's; the documents are the products'. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): SPX-007 holds the channels a new supplier starts with (from BF-106 and SUP-005); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as the eProcurement Suite's surface on IronSaaS Foundation (ADR-0043), beside the products whose supplier views it composes; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
+Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): SPX-008 lets a contact without an account answer an information request through a one-time verified link (gap G13), SPX-029 shows each customer's information requests, and SPX-030 each change request with the outcome of each field; SPX-025 depends on SUP-201 and SUP-205, which replaced the retired SUP-022 and SUP-023; SPX-022's inbox names information requests instead of questionnaires; no requirement of this document retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): SPX-007 holds the channels a new supplier starts with (from BF-106 and SUP-005); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as the eProcurement Suite's surface on IronSaaS Foundation (ADR-0043), beside the products whose supplier views it composes; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier portal's own screens and the Supplier Network experience moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. The supplier views of each product moved to that product.
 
 ## 1. Vision and goals
 
@@ -70,7 +70,8 @@ The portal's own screens are this document's (section 5). Every other supplier s
 | Invoices | INV-101 | `invoicing-PRD.md` |
 | Catalogue | CAT-061 | `catalogue-PRD.md` |
 | Company data | SUP-101 | `supplier-management-PRD.md` |
-| Questionnaires and documents | SUP-102 | `supplier-management-PRD.md` |
+| Information requests and their documents | SUP-225, through SPX-029 and SPX-008 (SUP-102 until 2026-10-21) | `supplier-management-PRD.md` |
+| Change requests and their outcome | SUP-203, through SPX-030 | `supplier-management-PRD.md` |
 | Contracts | CON-061 | `contracts-PRD.md` |
 
 ## 5. Requirements
@@ -199,6 +200,24 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was FF-035, BF-106, FF-171 and SUP-005: the portal channels a new supplier starts with, which BF-106 set as a default and SUP-005 as an onboarding setting; one requirement at the review of L2, 2026-10-20 (ADR-0043).
 
+#### SPX-008 Answering without a portal account
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Portal
+
+**Requirement:** A supplier contact without a Supplier Network account shall answer one information request (SUP-225) through a one-time verified link (TF-246): sent to a contact the customer knows, opened with a code sent to that contact's email address, limited to that one request, and expiring. The page shows the customer's name and nothing else of the customer. A change to a critical field made this way is still verified out of band before it applies (SUP-205). Once the Supplier Network exists, a contact who answered this way is invited to join it.
+
+**Why:** Gap G13: some suppliers answer one questionnaire a year and will never use a portal; they should not have to register to do it, and nothing they send this way may skip the customer's checks.
+
+**Acceptance criteria:**
+
+- AC1 Given a link for an information request, When the contact enters the emailed code, Then only that request's form opens, with the customer's name.
+- AC2 Given a bank account submitted through a link, When the response is approved, Then the account is still verified, automatically or by call-back, before it applies.
+- AC3 Given a link already used to submit, When the contact opens it again, Then it is refused, saying the customer can send a new link. (error case)
+- AC4 Given the Supplier Network in service, When a contact submits through a link, Then the contact is invited to join it.
+
+*Depends on:* TF-246, SUP-225, SUP-205
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G13 of the supplier management pack). It works before the Supplier Network exists (S8), so supplier information collection ships with Supplier management (PR1) and moves into the portal with the supplier side (PR8, SPX-029). Accepting one invitation through a link, as TF-246 allows, comes with the invitation itself (SUP-001, PR8). With SUP-225 and SPX-029 it replaces SUP-102, retired.
+
 ### 5.2 Supplier Network experience (SPX-021 to SPX-040)
 
 These rest on the kernel's Supplier Network plane, TF-230 to TF-239.
@@ -223,7 +242,7 @@ These rest on the kernel's Supplier Network plane, TF-230 to TF-239.
 #### SPX-022 Unified inbox across customers
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier Network experience
 
-**Requirement:** The supplier portal shall show one inbox of items needing action across all customers (orders awaiting acknowledgement, shipment notices due, receipts to review, invoices held or disputed, questionnaires, tasks, documents expiring) with the customer name and organisation on each item, filters by customer, type, status and due date, sorting by due date, and a count per customer.
+**Requirement:** The supplier portal shall show one inbox of items needing action across all customers (orders awaiting acknowledgement, shipment notices due, receipts to review, invoices held or disputed, information requests, tasks, documents expiring) with the customer name and organisation on each item, filters by customer, type, status and due date, sorting by due date, and a count per customer.
 
 **Why:** Suppliers work for many customers; one list saves time.
 
@@ -284,9 +303,9 @@ These rest on the kernel's Supplier Network plane, TF-230 to TF-239.
 - AC2 Given customer B declines with a reason, When viewed, Then the reason is shown for B only.
 - AC3 Given a change rejected by a customer's validation (for example an unsupported bank code format), When received, Then the supplier sees the validation message for that customer. (error case)
 
-*Depends on:* TF-235, SUP-023, SUP-022
+*Depends on:* TF-235, SUP-201, SUP-205
 
-**Notes:** Was FF-194.
+**Notes:** Was FF-194. Since 2026-10-21 a profile change becomes a change request in each customer (SUP-201), and a bank change a critical one (SUP-205); SUP-022 and SUP-023, on which it depended, are retired into them, and the outcome of each field is SPX-030's.
 
 #### SPX-026 Supplier users and roles in the network
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier Network experience
@@ -339,6 +358,41 @@ These rest on the kernel's Supplier Network plane, TF-230 to TF-239.
 
 **Notes:** Was FF-197.
 
+#### SPX-029 Information requests in the portal
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier Network experience
+
+**Requirement:** The supplier shall see every customer's information requests in its inbox (SPX-022), each with the customer, the due date and the state; open one in that customer's context; fill it in with drafts saved and what is still missing shown; confirm or change the pre-filled values; attach evidence with its issue and expiry dates; see a returned section with the reviewer's comment beside each question and edit only that section; and, once submitted, read it with its state.
+
+**Why:** Suppliers answer for many customers; one place for every customer's requests, each in its customer's context, is the network's promise.
+
+**Acceptance criteria:**
+
+- AC1 Given requests from two customers, When the inbox loads, Then each shows its customer, its due date and its state.
+- AC2 Given a returned section, When it is opened, Then the comments show beside their questions and only that section can be edited.
+- AC3 Given an attachment saved with an expiry date in the past, When saved, Then it is refused. (error case)
+- AC4 Given a submitted response, When viewed, Then it is read-only, with its state.
+
+*Depends on:* SPX-022, SUP-225, SUP-226, TF-233
+
+**Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's section 8.3). With SUP-225 and SPX-008 it replaces SUP-102, retired, whose AC2 and AC4 it keeps (AC4 and AC3 here). It obeys the ownership rule (SPX-006).
+
+#### SPX-030 The supplier's change requests and their outcome
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier Network experience
+
+**Requirement:** For each customer, the supplier shall see its change requests, whatever their source (its own edits, its network profile, its information responses), with each field's outcome: applied, with its date; waiting, for approval, verification or its effective date; rejected, with the customer's reason; or a question to answer, which it answers there.
+
+**Why:** A supplier that does not know whether its new bank account was accepted calls the buyer, or worse, keeps invoicing to the old one.
+
+**Acceptance criteria:**
+
+- AC1 Given a change request whose address applied and whose phone was rejected, When viewed, Then both outcomes show, the date for one and the reason for the other.
+- AC2 Given a question from the customer's reviewer, When the supplier answers, Then the field returns to the reviewer.
+- AC3 Given another supplier's change request, When asked for by its identifier, Then it is refused (SPX-006). (error case)
+
+*Depends on:* SPX-025, SUP-203, TF-235
+
+**Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's section 8.2, rule 1: the supplier sees which changes were applied and why the others were not).
+
 ## 6. Rules
 
 From the archived PRD's section 7.1:
@@ -359,9 +413,9 @@ From the archived PRD's section 7.1:
 
 The surface sits above the products (ADR-0042): it may use any of them, and none depends on it.
 
-- Kernel: TF-025 (impersonation), TF-035 (record policies), TF-040 (entitlements, for the modules a customer enabled), TF-097 (tasks), TF-151 (digests), TF-230 to TF-236 and TF-239 (the Supplier Network plane), TF-243 (access in what is sent).
+- Kernel: TF-025 (impersonation), TF-035 (record policies), TF-040 (entitlements, for the modules a customer enabled), TF-097 (tasks), TF-151 (digests), TF-230 to TF-236 and TF-239 (the Supplier Network plane), TF-243 (access in what is sent), TF-246 (one-time verified access, SPX-008).
 - Business: BF-103 (contacts), BF-108 (enablement per organisation).
-- Products: Supplier management (SPX-021 on SUP-001 and SUP-002, SPX-025 on SUP-022 and SUP-023, SPX-028 on SUP-062), Orders (SPX-024 on ORD-021), Receiving (SPX-024 on RCV-001), Invoicing (SPX-024 on INV-002), and every product's supplier views (section 4).
+- Products: Supplier management (SPX-021 on SUP-001 and SUP-002, SPX-025 on SUP-201 and SUP-205, SPX-028 on SUP-062, SPX-008 on SUP-205 and SUP-225, SPX-029 on SUP-225 and SUP-226, SPX-030 on SUP-203), Orders (SPX-024 on ORD-021), Receiving (SPX-024 on RCV-001), Invoicing (SPX-024 on INV-002), and every product's supplier views (section 4).
 
 A supplier user acts with the supplier role in a delegated token (TF-234), never with a tenant role; each product's supplier views answer to that role.
 
@@ -373,6 +427,8 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 |---|---|---|
 | P2 | Suppliers and orders | SPX-001, SPX-002, SPX-004, SPX-005, SPX-006, SPX-021, SPX-022, SPX-023, SPX-024 |
 | P6 | Completeness | SPX-003, SPX-025, SPX-026, SPX-027, SPX-028 |
+
+SPX-008, SPX-029 and SPX-030 are new with SUP-gaps (2026-10-21) and were never in the archived plan; the technical PRD's section 7.2 places SPX-008 with Supplier management in the tenant (PR1), since it needs no network, and SPX-029 and SPX-030 with the supplier side (PR8).
 
 ## 10. Decisions and open points
 
