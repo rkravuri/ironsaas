@@ -9,7 +9,7 @@
 | Identifier prefix | `SPX-`, in blocks of twenty per area (ADR-0041); the table is `supplier-portal-requirements.csv` |
 | Version | 1.3 (SUP-gaps, 2026-10-21: information requests, the one-time verified link and the supplier's change requests) |
 | Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps, 2026-10-21) await the design session's review. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), the Technical Foundation PRD's section 3.6, ADR-0029 and ADR-0041. |
 | Dependency | The network itself (identity, registry, relationships, action index, delegated access, profile propagation) is the kernel's TF-230 to TF-239; the supplier record is the Business PRD's; the documents are the products'. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |

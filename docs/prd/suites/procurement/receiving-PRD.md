@@ -9,12 +9,12 @@
 | Identifier prefix | `RCV-`, in blocks of twenty per area (ADR-0041); the table is `receiving-requirements.csv` |
 | Version | 1.3 (SUP-gaps, 2026-10-21: the day of acceptance) |
 | Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps, 2026-10-21) await the design session's review. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. RCV-029's reading of the MSMED Act stays open, to be confirmed by a practitioner in India. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Units of measure and warehouses are the Business PRD's; orders and invoices are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): RCV-029 records each line's day of acceptance, from which the MSME payment terms are counted (gap G7); no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): RCV-141 names the receipt and return note templates (from BF-162), and RCV-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
+Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): RCV-029 records each line's day of acceptance, from which the MSME payment terms are counted (gap G7); no requirement retired. At SUP-gaps' review the same day, RCV-001 came to depend on RCV-142 rather than the reverse, so that no requirement depends on one of a later slice, which `make prd-check` now refuses. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): RCV-141 names the receipt and return note templates (from BF-162), and RCV-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Shipment notices, receipts, returns and the received and invoiced buckets moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Warehouses went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -89,7 +89,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a quantity above open quantity, When submitted, Then it is refused naming the line. (error case)
 - AC3 Given an approved notice, When a receipt is created, Then its lines are offered with announced quantities.
 
-*Depends on:* ORD-006, TF-035, TF-234
+*Depends on:* ORD-006, RCV-142, TF-035, TF-234
 
 **Notes:** Was FF-090. It obeys the supplier portal's ownership rule, SPX-006, and depends on the kernel requirements that enforce it (ADR-0042).
 
@@ -267,7 +267,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* RCV-021, RCV-024, RCV-045, BF-204
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack): the acceptance date that starts the MSME clock. Decision: the delivery date of a goods receipt is its received date, the rendering date of a service entry is the end of the period it covers, and the rules apply to every receipt while the payment cap that uses them applies only to micro and small suppliers (INV-011); a practitioner in India confirms the reading of sections 2(b) and 15 of the MSMED Act.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack): the acceptance date that starts the MSME clock. Decision: the delivery date of a goods receipt is its received date, the rendering date of a service entry is the end of the period it covers, and the rules apply to every receipt while the payment cap that uses them applies only to micro and small suppliers (INV-011). To be confirmed by a practitioner in India, with the reading of sections 2(b) and 15 of the MSMED Act.
 
 ### 6.3 Service receipts (RCV-041 to RCV-060)
 
@@ -500,9 +500,9 @@ Service receipts by amount (RCV-041), expanded in the split: the service entry a
 - AC2 Given a service entry partly accepted with a reason (RCV-046), When the acceptance is saved, Then the supplier's primary contact is told with the reason in the key's template.
 - AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
 
-*Depends on:* BF-164, RCV-001, RCV-046, RCV-061
+*Depends on:* BF-164, RCV-046, RCV-061
 
-**Notes:** Was BF-164, the keys and starter templates of Receiving. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
+**Notes:** Was BF-164, the keys and starter templates of Receiving. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism. Changed 2026-10-21 at SUP-gaps' review: the requirements that raise its keys in a later slice (RCV-001, with the supplier side) depend on this declaration, not the reverse, so no requirement depends on one of a later slice (`make prd-check`).
 
 ## 7. Supplier views
 

@@ -9,7 +9,7 @@
 | Identifier prefix | `PUR-`, in blocks of twenty per area (ADR-0041); the table is `purchasing-requirements.csv` |
 | Version | 1.1 (SUP-gaps, 2026-10-21: supplier segments, and preferred status only for qualified categories) |
 | Date | 2026-10-21 |
-| Status | Accepted at the design session's review of L2, 2026-10-20, which decided what moved here; the permission names in section 9 are proposed. The changes of 1.1 await the design session's review. |
+| Status | Accepted at the design session's review of L2, 2026-10-20, which decided what moved here; the permission names in section 9 are proposed. The changes of 1.1 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. |
 | Inputs | The Business Foundation PRD (`../../foundation/business-foundation-PRD.md`), the requirements that moved from it, ADR-0043's decision 8, the map (`../../requirements-map.md`). |
 | Dependency | The supplier record, people, categories, locations, legal entities and the approval configurations are the Business PRD's; every mechanism is a kernel capability cited by its TF identifier. The suite's products read this master through its Contracts; it never reads a product. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[New]` not in the current product, standard practice. A requirement moved from another document says what it was at the start of its notes, with every identifier it had. |
@@ -125,7 +125,7 @@ Decided 2026-10-21 with the supplier management pack's section 8.5:
 **Notes:** Was FF-022 and BF-101, the match levels of its commercial defaults and its portal settings (the allowed channels), and its preferred flag, which is now per category (PUR-022). Moved at the review of L2, 2026-10-20 (ADR-0043).
 
 #### PUR-022 Preferred status per category and supplier suggestions
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Supplier purchasing profile
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier purchasing profile
 
 **Requirement:** A supplier's purchasing profile shall hold its preferred or approved status for each category it serves (BF-107), and the suite's supplier suggestions on request and order lines shall use them: the preferred suppliers of the line's category first, then the approved ones, never a supplier on hold. Where the tenant requires qualification for a category, a supplier may be preferred or approved for it only while it is qualified for it: this master asks through an extension point it declares, the qualification of a supplier for a scope, which answers qualified, not qualified, or not required; and when the product that qualifies suppliers reports that a qualification ended (disqualified, or its requalification lapsed), the status for that category is withdrawn and the buyer owner is told.
 
@@ -143,7 +143,7 @@ Decided 2026-10-21 with the supplier management pack's section 8.5:
 
 *Depends on:* PUR-021, BF-107, BF-042
 
-**Notes:** Was FF-038 and BF-107, the preferred status and the suggestions; the categories a supplier serves stay BF-107's. Moved at the review of L2, 2026-10-20 (ADR-0043). Changed 2026-10-21 (SUP-gaps, gap G2 of the supplier management pack): preferred status only for qualified scopes. This master sits below the suite's products and never depends on one (ADR-0043), so it declares the extension point (section 8.5) and Supplier management implements it (SUP-181), and reports an ended qualification through this master's Contracts. Decision: a category the tenant has not marked as requiring qualification keeps today's rule, and so does a tenant without Supplier management; the owner confirms.
+**Notes:** Was FF-038 and BF-107, the preferred status and the suggestions; the categories a supplier serves stay BF-107's. Moved at the review of L2, 2026-10-20 (ADR-0043). Changed 2026-10-21 (SUP-gaps, gap G2 of the supplier management pack): preferred status only for qualified scopes. This master sits below the suite's products and never depends on one (ADR-0043), so it declares the extension point (section 8.5) and Supplier management implements it (SUP-181), and reports an ended qualification through this master's Contracts. Decided 2026-10-21 at the review: a category the tenant has not marked as requiring qualification keeps today's rule, and so does a tenant without Supplier management.
 
 #### PUR-023 Purchasing terms per organisation
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier purchasing profile
@@ -197,7 +197,7 @@ Decided 2026-10-21 with the supplier management pack's section 8.5:
 **Notes:** Was FF-002 and BF-061, the default match levels for products and services of a legal entity's chart of accounts, which the purchasing master now holds for the legal entity. Moved at the review of L2, 2026-10-20, with the other match levels (ADR-0043).
 
 #### PUR-026 Supplier segments
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Supplier purchasing profile
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier purchasing profile
 
 **Requirement:** A supplier's purchasing profile shall hold one segment: strategic, preferred, approved or transactional. The tenant's segment rules set it each night from the supplier's spend over the last twelve months (by bands), its categories and its risk tier, the first matching rule winning; a permitted user may set it by hand with a reason, and a segment set by hand stays until it is changed by hand, with the rules' proposal shown beside it. A new supplier starts as transactional. Lists, reviews and reports filter by segment, and the segment report shows the strategic share: strategic suppliers as a share of active suppliers. The facts only a product holds, a supplier's risk tier and its spend, come through an extension point this master declares, the supplier facts for segment rules, which Supplier management implements.
 
@@ -213,7 +213,7 @@ Decided 2026-10-21 with the supplier management pack's section 8.5:
 
 *Depends on:* PUR-021, BF-107, TF-057, TF-120
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G9 of the supplier management pack). The risk tier is Supplier management's (SUP-007), and so is the twelve-month spend it keeps from the order events it already hears (SUP-062); this master asks for both through the extension point of section 8.5 and never depends on a product (ADR-0043). Decision: rules run nightly, the first matching rule wins, a segment set by hand wins over the rules until changed by hand, and a new supplier starts as transactional; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G9 of the supplier management pack). The risk tier is Supplier management's (SUP-007), and so is the twelve-month spend it keeps from the order events it already hears (SUP-062); this master asks for both through the extension point of section 8.5 and never depends on a product (ADR-0043). Decided 2026-10-21 at the review: rules run nightly, the first matching rule wins, a segment set by hand wins over the rules until changed by hand, and a new supplier starts as transactional.
 
 ### 5.3 Person's purchasing profile (PUR-041 to PUR-060)
 
@@ -350,13 +350,13 @@ PUR-041 holds a part of BF-021, which was new at the split. PUR-026 is new with 
 
 Decided at the review of L2, 2026-10-20 (ADR-0043, decision 8): the Foundation holds mechanisms and generic masters, and a suite brings its own content, even when the screen that edits it is in the Foundation. What moved here, and where each remaining part went, is in the map's section "Moved after the split".
 
+Decided at the review of SUP-gaps, 2026-10-21: a category that does not require qualification, and a tenant without Supplier management, keep today's rule for preferred status (PUR-022); segment rules run nightly, the first matching rule wins, a segment set by hand wins until changed by hand, and a new supplier starts as transactional (PUR-026).
+
 ### 12.2 Open points
 
 | Question | Default used |
 |---|---|
 | The permission names of section 9 | As proposed, until the slice that builds the module |
-| May a category that does not require qualification, or a tenant without Supplier management, keep preferred status without a qualification? (PUR-022) | Yes: the extension point answers not required, and today's rule applies |
-| How are segment rules applied? (PUR-026) | Nightly, the first matching rule wins, a segment set by hand wins until changed by hand, and a new supplier starts as transactional |
 
 ## 13. Glossary
 

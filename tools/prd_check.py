@@ -24,7 +24,10 @@ and the identifier of every problem:
 - a process reference pack (PM-001), a markdown file in a folder named `process-reference/` beside the documents of its
   suite, whose section 2 names an identifier no document holds, leaves out a live requirement of the document it is
   the pack of (`process-reference/supplier-management.md` is the pack of `supplier-management-PRD.md`), or maps one
-  without its PCF element or its map step (PM-001 AC2).
+  without its PCF element or its map step (PM-001 AC2);
+- against the build plan (the technical PRD's section 7.2): a live business or suite requirement in no slice or in two,
+  a retired one in a slice, an identifier no document holds, and a requirement that depends on one placed in a later
+  slice, except through an event or as a known case listed in KNOWN_LATER with its reason.
 
 The Foundation's documents sit in foundation/, each suite's in suites/<suite>/; the product method, the map and the
 archive stay at the top of docs/prd. A pack's BPMN maps are checked against the BPMN 2.0 schema by
@@ -74,6 +77,13 @@ TAGS = {"Core", "Extended", "Carried", "Improved", "Gap", "New", "Decision", "La
 # A retired requirement says what replaced it: "Replaced by SUP-201 to SUP-212 and SPX-029." A range names every
 # identifier between its ends.
 REPLACED_BY = re.compile(r"Replaced by ([^.]*)")
+# The build plan: the business and suite slices are the rows of the technical PRD's section 7.2, in their order.
+PLAN_DOCUMENT = "foundation/technical-foundation-PRD.md"
+PLAN_SECTION = "### 7.2 "
+PLAN_ROW = re.compile(r"^\| (\d+) \| ([^|]+?) \| ([^|]+?) \|[^|]*\|$")
+# Dependencies on a later slice that are known and accepted, each with its reason: (requirement, dependency) -> why.
+# None since SUP-gaps' review (2026-10-21), which turned the five it found around.
+KNOWN_LATER: dict[tuple[str, str], str] = {}
 IDENTIFIER_RANGE = re.compile(r"\b([A-Z]{2,3})-(\d{3})(?: to (?:[A-Z]{2,3}-)?(\d{3}))?")
 
 # Dependencies point down the layers (ADR-0029, ADR-0042, ADR-0043): the kernel, the business layer (the two are the
@@ -319,6 +329,58 @@ def check_pack(path: Path, live: dict[str, tuple[Document, Requirement]]) -> lis
     for requirement in owned:
         if not requirement.retired and requirement.id not in mapped:
             problems.append(f"{name}: {requirement.id} of {document_name} has no row in section 2 (PM-001 AC2)")
+    return problems
+
+
+def plan_slices() -> list[tuple[int, str, list[str]]]:
+    """The rows of the build plan: their order, their slice and the requirements they build, remarks in brackets aside."""
+    path = PRD / PLAN_DOCUMENT
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    if PLAN_SECTION not in text:
+        return []
+    section = text[text.index(PLAN_SECTION):]
+    following = re.search(r"^## ", section, flags=re.MULTILINE)
+    rows = []
+    for line in section[: following.start() if following else None].splitlines():
+        match = PLAN_ROW.match(line)
+        if match:
+            rows.append((int(match.group(1)), match.group(2).strip(), identifiers_in(re.sub(r"\([^)]*\)", "", match.group(3)))))
+    return rows
+
+
+def check_plan(live: dict[str, tuple[Document, Requirement]]) -> list[str]:
+    """Every live business and suite requirement is in one slice, and depends on none placed in a later one, except
+    through an event: the plan's own rule, "no requirement depends on one in a later row"."""
+    rows = plan_slices()
+    if not rows:
+        return []
+    where = f"{PLAN_DOCUMENT} section 7.2"
+    placed: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    problems = []
+    for order, name, identifiers in rows:
+        for identifier in identifiers:
+            placed[identifier].append((order, name))
+            if identifier not in live:
+                problems.append(f"{where}: {name} builds {identifier}, which no document holds")
+    for identifier, (document, requirement) in live.items():
+        # The plan's rows hold the business layer and the suites; the kernel's slices are section 7.1's, the method stands outside.
+        if requirement.prefix != "BF" and suite_of(document.name) is None:
+            continue
+        slices = placed.get(identifier, [])
+        if requirement.retired:
+            if slices:
+                problems.append(f"{where}: {identifier} is retired but placed in {slices[0][1]}; place its successors")
+            continue
+        if len(slices) != 1:
+            problems.append(f"{where}: {identifier} is in {'no slice' if not slices else 'more than one slice'}; every business and suite requirement is in one")
+            continue
+        order, name = slices[0]
+        for dependency in requirement.depends_on:
+            if dependency.endswith("(event)") or dependency not in placed:
+                continue
+            their_order, their_name = placed[dependency][0]
+            if their_order > order and (identifier, dependency) not in KNOWN_LATER:
+                problems.append(f"{document.name}: {identifier}, built in {name}, depends on {dependency}, placed in a later slice ({their_name}); depend on it through an event, turn the dependency around, or move one of them")
     return problems
 
 
@@ -573,6 +635,7 @@ def check() -> int:
         problems += check_map(archive, live)
     for pack in packs():
         problems += check_pack(pack, live)
+    problems += check_plan(live)
     for problem in problems:
         print(problem)
     if problems:
@@ -583,6 +646,9 @@ def check() -> int:
         print(f"{document.name:48} {len(document.requirements):4} requirements" + (f", {retired} retired" if retired else ""))
     for pack in packs():
         print(f"{pack.relative_to(PRD).as_posix():48} a process reference pack, its section 2 complete")
+    slices = plan_slices()
+    if slices:
+        print(f"{PLAN_DOCUMENT + ' section 7.2':48} {len(slices):4} slices, each requirement in one, none depending on a later one")
     map_rows = read_csv(MAP_CSV)
     later = sum(1 for row in map_rows if not row["old_id"].startswith("FF-"))
     print(f"{'requirements-map.csv':48} {len(map_rows) - later:4} rows, one per FF identifier, and {later} moves after the split")

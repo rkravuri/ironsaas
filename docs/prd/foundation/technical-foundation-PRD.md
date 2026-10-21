@@ -3603,7 +3603,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's section 8.4). Built in S4 with the forms engine. Its first user is supplier information collection, whose change proposals become supplier change requests on the governed changes of TF-247 (SUP-227); the forms engine knows nothing of governed changes, so it can ship before them (section 7.1). Templates, responses, sections and their versions are the forms engine's; the requests that target records are the product's (the pack's section 8.5, decision 6).
 
 #### TF-246 One-time verified access for external respondents  
-*Priority:* **Should** · *Tag:* `[Core]` `[New]` `[Decision]` · *Area:* Forms engine
+*Priority:* **Should** · *Tag:* `[Core]` `[New]` · *Area:* Forms engine
 
 **Requirement:** A module shall be able to send a one-time verified link to an external contact it already knows, for one purpose: answering one form instance, or accepting one invitation. The link names its purpose and its contact; opening it asks for a code sent to that contact's email address, valid for 10 minutes; a verified link opens its purpose and nothing else, holds no session beyond it, ends when its purpose is submitted or when it expires (14 days after it was sent, unless the module sets less), and locks for an hour after five wrong codes. Every send, opening, code check and submission is audited with the contact's address, and the module that sent the link may revoke it at any time.
 
@@ -3621,12 +3621,12 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* TF-060, TF-072, TF-150, TF-242
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G13 of the supplier management pack). Built in S4 with the forms engine; its part is `Iron.Kernel.Identity`'s, beside invitations (section 2.1). It is not a login: no password, no session beyond its purpose, and the Supplier Network (TF-230) stays the way a supplier works. Decision: the code's validity (10 minutes), the link's validity (14 days at most) and the lock after five wrong codes in an hour are proposed defaults; the owner confirms them. What a module does with what arrives this way is the module's: Supplier management still verifies a critical field out of band (SUP-205, SPX-008).
+**Notes:** New 2026-10-21 (SUP-gaps, gap G13 of the supplier management pack). Built in S4 with the forms engine; its part is `Iron.Kernel.Identity`'s, beside invitations (section 2.1). It is not a login: no password, no session beyond its purpose, and the Supplier Network (TF-230) stays the way a supplier works. Decided 2026-10-21 at the review: the code's validity (10 minutes), the link's validity (14 days at most) and the lock after five wrong codes in an hour are the defaults. What a module does with what arrives this way is the module's: Supplier management still verifies a critical field out of band (SUP-205, SPX-008).
 
 ### 4.31 Governed changes (TF-247, 1 requirement)
 
 #### TF-247 Governed changes to records  
-*Priority:* **Must** · *Tag:* `[Core]` `[New]` `[Decision]` · *Area:* Governed changes
+*Priority:* **Must** · *Tag:* `[Core]` `[New]` · *Area:* Governed changes
 
 **Requirement:** The kernel shall govern changes to the records a module registers. A change is a change request: the record, its source, who asked, a reason, evidence, an effective date, and field-level changes, each with its old and its new value. The module declares a class for each field of a governed entity, uncontrolled, controlled or critical, and a floor below which a tenant may not lower it; the tenant may raise a class. Uncontrolled changes apply at once and are recorded. Controlled and critical changes are routed through the workflow engine (TF-090) by the approval configuration of the module's document type, and decided field by field: approve, reject with a reason, or return a question to the requester; a request may end partly applied. Nobody decides a change they requested (TF-036). An approved change applies on its effective date, by a job, and only when each field's old value is still the current value; otherwise that field stops and returns to review. A field has at most one pending change; a second waits for the first to end. The module adds its own steps through hooks: a verification that must pass before a critical field applies, the notifications after a change applies, and the impact preview of the documents that use the values. Every applied change is in the field-level history (TF-062) with its request.
 
@@ -3646,7 +3646,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* TF-036, TF-062, TF-090, TF-094, TF-120
 
-**Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's sections 8.2, 8.4 and 8.5). Built in S5, after the workflow engine; its module is `Iron.Kernel.Changes` (section 2.1). Supplier management is its first user (SUP-201 to SUP-211) and adds through hooks only what is a supplier's own: bank verification, the cooling period, and the announcement to the contacts known before a change (ADR-0043, decision 8). No version tables: a record holds its current values, a future-dated change waits as an approved request, and history is TF-062's (the pack's section 8.5, decision 2). Decision: a module sets a floor per field and a tenant may raise a class but never lower it below the floor; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's sections 8.2, 8.4 and 8.5). Built in S5, after the workflow engine; its module is `Iron.Kernel.Changes` (section 2.1). Supplier management is its first user (SUP-201 to SUP-211) and adds through hooks only what is a supplier's own: bank verification, the cooling period, and the announcement to the contacts known before a change (ADR-0043, decision 8). No version tables: a record holds its current values, a future-dated change waits as an approved request, and history is TF-062's (the pack's section 8.5, decision 2). Decided 2026-10-21 at the review: a module sets a floor per field and a tenant may raise a class but never lower it below the floor.
 
 ## 5. Non-functional targets
 
@@ -3802,6 +3802,8 @@ The names P1 to P6 of the archived functional PRD's build plan are kept in the p
 | D-19 | One Supplier Portal for all suppliers of all tenants; suppliers see and act on documents of many customers easily | P16; section 3.6; area "Supplier Network" (TF-230 to TF-239); product PRD area "Supplier Network experience" |
 | D-20 | Functional foundations and modules must be backed by industry research and strong process documentation | P17; TF-240; product PRD area "Process reference and research basis" |
 
+Decided at the review of SUP-gaps, 2026-10-21 (they were O-13 and O-14 for a day): a one-time verified link's code is valid 10 minutes, the link at most 14 days, and five wrong codes lock it for an hour (TF-246); a module sets a floor per field, and a tenant may raise a field's class but never lower it below the floor (TF-247).
+
 ### 8.2 Open points
 
 | ID | Question | Why it matters | Default used |
@@ -3815,8 +3817,6 @@ The names P1 to P6 of the archived functional PRD's build plan are kept in the p
 | O-10 | Should suppliers log in to the network with their own corporate SSO in version 1? | Supplier adoption | Password and MFA first; SSO for suppliers in a later slice |
 | O-11 | Laptop reference machine (32 GB memory assumed): is that available to every developer? | Local stack size | Yes assumed; a slim profile without the telemetry stack is provided |
 | O-12 | Which industry frameworks are the primary references (APQC PCF, CIPS, ISM, Peppol and UBL, UNSPSC)? | Research basis | All listed are used; see product PRD section 2.4 |
-| O-13 | How long are a one-time verified link and its code valid, and when does it lock? (TF-246, 2026-10-21) | Safety against guessing, ease for a supplier who answers once a year | The code 10 minutes, the link at most 14 days, a lock for an hour after five wrong codes |
-| O-14 | May a tenant lower a field's class below its module's floor? (TF-247, 2026-10-21) | A critical field, a bank account above all, must never change unverified | No: a module sets a floor per field; a tenant may raise a class but not lower it below the floor |
 
 ### 8.3 Risks
 

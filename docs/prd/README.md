@@ -43,4 +43,4 @@ Requirements depend down the layers: the kernel, the business layer, a suite's s
 
 A new suite gets its own folder, `suites/<suite>/`, with its documents' prefixes added to `tools/prd_check.py` and its process order beside the eProcurement Suite's.
 
-The markdown is the source: after editing a document, `make prd-csv` writes its CSV, and `make prd-check` checks every document, its CSV and the map (CI runs it). The build plan in slices is section 7 of the technical PRD. Each slice has a plan under `docs/slices/`.
+The markdown is the source: after editing a document, `make prd-csv` writes its CSV, and `make prd-check` checks every document, its CSV and the map (CI runs it). The build plan in slices is section 7 of the technical PRD: every business and suite requirement is in one slice of its section 7.2 and depends on none placed in a later one, except through an event, which `make prd-check` holds. Each slice has a plan under `docs/slices/`.

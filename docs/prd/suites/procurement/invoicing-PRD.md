@@ -9,7 +9,7 @@
 | Identifier prefix | `INV-`, in blocks of twenty per area (ADR-0041); the table is `invoicing-requirements.csv` |
 | Version | 1.3 (SUP-gaps, 2026-10-21: the bank account check at payment release and India's MSME terms and reports) |
 | Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps, 2026-10-21) await the design session's review. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. INV-011's and INV-087's readings of India's MSME rules stay open, to be confirmed by a practitioner in India. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`; its module was called Payables), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Finance masters, budgets, tax codes, payment terms and suppliers are the Business PRD's; orders and receipts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
@@ -272,7 +272,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* INV-008, RCV-029, BF-101, BF-204
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack). Decision: an issued order's payment terms are the written agreement and a non-order invoice has none, and the classification is the one valid on the day of acceptance; a practitioner in India confirms both before the pack is built.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack). Decision: an issued order's payment terms are the written agreement and a non-order invoice has none, and the classification is the one valid on the day of acceptance; to be confirmed by a practitioner in India before the pack is built.
 
 ### 6.2 Matching and controls (INV-021 to INV-040)
 
@@ -658,7 +658,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* INV-086, BF-204
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack). Decision: the form's fields as the pack's research log reads them; a practitioner in India confirms them and the filing rules before the pack is built.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G7 of the supplier management pack). Decision: the form's fields as the pack's research log reads them; to be confirmed by a practitioner in India, with the filing rules, before the pack is built.
 
 ### 6.6 Templates and notifications (INV-121 to INV-140)
 

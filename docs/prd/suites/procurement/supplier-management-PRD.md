@@ -9,12 +9,12 @@
 | Identifier prefix | `SUP-`, in blocks of twenty per area (ADR-0041); the table is `supplier-management-requirements.csv` |
 | Version | 1.3 (SUP-gaps, 2026-10-21: every gap of the process reference pack closed) |
 | Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 await the design session's review, and the pack's external practitioner review (PM-002) before the first slice. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 were accepted at the design session's review of 2026-10-21, with the changes section 16.2 names; the pack's external practitioner review (PM-002) comes before the first slice. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041; since 1.3 the process reference pack, `process-reference/supplier-management.md` (PM-001), whose section 8 is the specification of the areas added and its section 2 the map of every requirement to a PCF element and a map step. |
 | Dependency | The supplier record and its parts are the Business PRD's (BF-101 to BF-108); every mechanism is a kernel capability cited by its TF identifier. The supplier's own screens are served through the supplier portal surface (`supplier-portal-PRD.md`). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. `[Retired]` replaced by the requirements its notes name, its identifier never reused. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.3, 2026-10-21: SUP-gaps, from the process reference pack (version 0.2, all thirteen gaps accepted). New areas: supplier requests (SUP-141, SUP-142), verification and screening (SUP-161 to SUP-165), qualification (SUP-181 to SUP-184), supplier information change management (SUP-201 to SUP-211) and periodic supplier information collection, SIM (SUP-221 to SUP-231); new SUP-007 (risk tier), SUP-025 (offboarding), SUP-044 (contact data protection) and SUP-064 (onboarding measures); SUP-001, SUP-004, SUP-005, SUP-021, SUP-061, SUP-063, SUP-101 and SUP-121 changed; SUP-022, SUP-023, SUP-042 and SUP-102 retired, each naming its successors. The areas stand in the process's order, so the sections are numbered anew. The domain model follows the pack's section 8.5. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): SUP-005 holds the sections and documents a new supplier must complete (from BF-106), its portal channels moved to the supplier portal (SPX-007), and SUP-121 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
+Change log: 1.3, 2026-10-21: SUP-gaps, from the process reference pack (version 0.2, all thirteen gaps accepted). New areas: supplier requests (SUP-141, SUP-142), verification and screening (SUP-161 to SUP-165), qualification (SUP-181 to SUP-184), supplier information change management (SUP-201 to SUP-211) and periodic supplier information collection, SIM (SUP-221 to SUP-231); new SUP-007 (risk tier), SUP-025 (offboarding), SUP-044 (contact data protection) and SUP-064 (onboarding measures); SUP-001, SUP-004, SUP-005, SUP-021, SUP-061, SUP-063, SUP-101 and SUP-121 changed; SUP-022, SUP-023, SUP-042 and SUP-102 retired, each naming its successors. The areas stand in the process's order, so the sections are numbered anew; no requirement's identifier changed. The domain model follows the pack's section 8.5. Accepted at the review of 2026-10-21: its defaults decided, SUP-044, SUP-165, SUP-183 and SUP-226 changed as section 16.2 says, and SUP-001, SUP-002 and SUP-121 turned their dependency so that no requirement depends on one of a later slice. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): SUP-005 holds the sections and documents a new supplier must complete (from BF-106), its portal channels moved to the supplier portal (SPX-007), and SUP-121 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The supplier's life cycle moved here from the Functional Foundation PRD 1.2, its words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -131,7 +131,7 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 **Notes:** New 2026-10-21 (SUP-gaps, gap G1 of the supplier management pack). Map steps SM-01 and SM-02.
 
 #### SUP-142 Supplier request approval
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Supplier requests
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier requests
 
 **Requirement:** A supplier request shall run the supplier request approval configuration (BF-141), with its expected spend, category, unit, country and urgency as registered fields. A buyer or supplier manager reviews it for duplicates and existing suppliers (SM-02). An approved request becomes the invitation of a new supplier (SUP-001), or, when the reviewer finds the supplier already exists, its enablement for the unit (BF-108, SUP-006). A refused request is closed with its reasons and the requester is told (E6). An approved request whose invitation expires or whose registration is abandoned is reminded, resent, or closed with a reason (E5). Until the supplier side exists, a buyer creates the supplier from an approved request, within what its risk tier allows (SUP-005).
 
@@ -147,7 +147,7 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 
 *Depends on:* SUP-141, SUP-006, BF-108, BF-141, TF-090
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G1). Map steps SM-02 and SM-03, exceptions E5 and E6. The invitation itself is SUP-001's, which since 2026-10-21 starts from an approved request (SUP-001 AC5). Decision: a request is required before every invitation unless the tenant turns the setting off; a buyer may raise a request, which the configuration may approve at once; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G1). Map steps SM-02 and SM-03, exceptions E5 and E6. The invitation itself is SUP-001's, which since 2026-10-21 starts from an approved request (SUP-001 AC5). Decided 2026-10-21 at the review: a request is required before every invitation unless the tenant turns the setting off; a buyer may raise a request, which the configuration may approve at once.
 
 ### 6.2 Onboarding (SUP-001 to SUP-020)
 
@@ -167,7 +167,7 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 - AC5 Given a tenant that requires a supplier request, When a buyer invites a supplier without an approved request, Then it is refused naming the missing request. (error case)
 - AC6 Given an approved request, When the buyer invites from it, Then the invitation is pre-filled with the request's name, country, contact and category, and links back to the request.
 
-*Depends on:* TF-018, TF-232, SUP-142
+*Depends on:* TF-018, TF-232, SUP-142, SUP-121
 
 **Notes:** Was FF-020. Changed 2026-10-21 (SUP-gaps, gap G1): an invitation starts from an approved supplier request where the tenant requires one (AC5, AC6).
 
@@ -184,7 +184,7 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 - AC2 Given a mandatory document missing, When submitted, Then the section and document are named and submission is refused. (error case)
 - AC3 Given progress saved, When the contact returns, Then the wizard resumes where they left.
 
-*Depends on:* SUP-001, SUP-005, TF-028, TF-164
+*Depends on:* SUP-001, SUP-005, SUP-121, TF-028, TF-164
 
 **Notes:** Was FF-021. Since 2026-10-21 it depends on SUP-005, whose enabled sections it shows, and SUP-005 no longer on it, so the onboarding configuration can come before the supplier side (the technical PRD's section 7.2).
 
@@ -225,7 +225,7 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 **Notes:** Was FF-024. Changed 2026-10-21 (SUP-gaps, gaps G4, G6 and G12): the publishing criteria take the information requests the risk tier requires, the identifier verification and the sanctions screening (AC4, AC5); a required information request replaces the required questionnaire of SUP-042, retired.
 
 #### SUP-005 Supplier onboarding configuration
-*Priority:* **Must** · *Tag:* `[Improved]` `[Decision]` · *Area:* Onboarding
+*Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Onboarding
 
 **Requirement:** Settings for enabled registration sections and for what a new supplier must meet, chosen by its risk tier (SUP-007), its categories and its country: the sections, documents and information requests (SUP-222) it must complete, the checks it must pass (SUP-161 to SUP-165) and the approvals it needs; bank verification rules and duplicate thresholds. A supplier created by a buyer without a registration (variant V1) is allowed only in the lowest risk tier. The channels a new supplier starts with are the supplier portal's, its terms the supplier master's.
 
@@ -242,7 +242,7 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 
 *Depends on:* TF-057, SUP-007, SUP-163, SUP-222
 
-**Notes:** Was FF-171, FF-035 and BF-106: FF-171 whole, with the sections and documents BF-106 set for a new supplier merged in at the review of L2, 2026-10-20 (ADR-0043). Its portal channels moved to the supplier portal (SPX-007); the supplier defaults it named are BF-106's and PUR-024's. Rewritten 2026-10-21 (SUP-gaps, gap G12): what a new supplier must meet is chosen by risk tier, category and country, and the buyer-created supplier is allowed only in the lowest tier (AC5, AC6); AC2 now names the call-back of SUP-163, which replaced SUP-023's checklist. Decision: when the requirements of several categories or countries apply, the supplier must meet all of them; the owner confirms. It comes with Supplier management in the tenant (PR1), and its registration sections reach the supplier with the registration wizard (SUP-002, PR8).
+**Notes:** Was FF-171, FF-035 and BF-106: FF-171 whole, with the sections and documents BF-106 set for a new supplier merged in at the review of L2, 2026-10-20 (ADR-0043). Its portal channels moved to the supplier portal (SPX-007); the supplier defaults it named are BF-106's and PUR-024's. Rewritten 2026-10-21 (SUP-gaps, gap G12): what a new supplier must meet is chosen by risk tier, category and country, and the buyer-created supplier is allowed only in the lowest tier (AC5, AC6); AC2 now names the call-back of SUP-163, which replaced SUP-023's checklist. Decided 2026-10-21 at the review: when the requirements of several categories or countries apply, the supplier must meet all of them. It comes with Supplier management in the tenant (PR1), and its registration sections reach the supplier with the registration wizard (SUP-002, PR8).
 
 #### SUP-006 Organisation approval of an enablement
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Onboarding
@@ -261,7 +261,7 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 **Notes:** Was FF-182, its optional organisation approval; the enablement is BF-108. AC1 and AC2 are written for the split from the requirement's own clauses.
 
 #### SUP-007 Supplier risk tier
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Onboarding
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Onboarding
 
 **Requirement:** Each supplier shall have a risk tier, low, medium, high or critical, computed by the tenant's tier rules from its categories, its country, its spend over the last twelve months and its screening and verification results, the highest tier any rule gives winning; a permitted user may change it by hand with a reason. The tier decides what onboarding requires (SUP-005), the intervals of re-verification and requalification (SUP-161, SUP-181), whether a bank change needs the call-back (SUP-163), and how changes are routed (SUP-204). Every change of tier is recorded with its reason, and when the tier rises, what the new tier requires and the supplier lacks is raised and the buyer owner is told. The tier is computed at registration, after every screening or verification result, and each night for spend; it answers the purchasing master's supplier facts with the spend (PUR-026).
 
@@ -277,14 +277,14 @@ Anyone may need a new supplier; the request is approved before an invitation goe
 
 *Depends on:* BF-101, BF-107, TF-057, TF-120, ORD-006 (event)
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G12 of the supplier management pack). Its spend comes from the order issued events, as the indicators' counts do (SUP-062, ADR-0042). The risk tier is the eProcurement Suite's, not the Foundation's (ADR-0043, decision 8). Decision: four tiers, low, medium, high and critical, with the highest rule winning, and the times it is computed; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G12 of the supplier management pack). Its spend comes from the order issued events, as the indicators' counts do (SUP-062, ADR-0042). The risk tier is the eProcurement Suite's, not the Foundation's (ADR-0043, decision 8). Decided 2026-10-21 at the review: four tiers, low, medium, high and critical, with the highest rule winning, and the times it is computed.
 
 ### 6.3 Verification and screening (SUP-161 to SUP-180)
 
 A supplier's identifiers, bank accounts and sanctions status are checked through the kernel's verification and screening connectors (TF-206), at registration and again over time (gaps G4 to G6, map steps SM-05 and SM-06, exception E3). The providers are chosen per country when the connectors are built; these requirements name the checks.
 
 #### SUP-161 Identifier re-verification
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Verification and screening
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Verification and screening
 
 **Requirement:** A supplier's identifiers shall be verified through the identity and tax status connectors (TF-206) at registration and again on a schedule set by risk tier and country: for India, the GSTIN's registration status, the PAN's status and that the PAN is the one inside the GSTIN, and the Udyam classification (BF-204); elsewhere, the checks the country's connector offers. A result that differs from the record creates a change request from the source re-verification (SUP-201) for the fields it touches, and the tenant's rules decide whether the supplier goes on hold until a person decides. Each result is kept with its date, the provider's reference and its outcome.
 
@@ -300,7 +300,7 @@ A supplier's identifiers, bank accounts and sanctions status are checked through
 
 *Depends on:* TF-206, TF-120, BF-204, SUP-007, SUP-021, SUP-201
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G4). Map steps SM-05 and V6, source C4 of the change management map. Its connectors come with the kernel's S7 (TF-206); until then the verification at registration is the buyer's, recorded by hand. Decision: identifiers are verified again every year for tiers low and medium and every quarter for high and critical, and a cancelled or suspended tax registration puts the supplier on hold; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G4). Map steps SM-05 and V6, source C4 of the change management map. Its connectors come with the kernel's S7 (TF-206); until then the verification at registration is the buyer's, recorded by hand. Decided 2026-10-21 at the review: identifiers are verified again every year for tiers low and medium and every quarter for high and critical, and a cancelled or suspended tax registration puts the supplier on hold.
 
 #### SUP-162 Automated bank account verification
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Verification and screening
@@ -321,7 +321,7 @@ A supplier's identifiers, bank accounts and sanctions status are checked through
 **Notes:** New 2026-10-21 (SUP-gaps, gap G5); with SUP-163, SUP-164 and SUP-205 it replaces SUP-023, retired. Map steps SM-06 and CM-05. Its connectors come with the kernel's S7 (TF-206); until then every bank change needs the call-back (SUP-163).
 
 #### SUP-163 Bank account call-back
-*Priority:* **Must** · *Tag:* `[Improved]` `[Decision]` · *Area:* Verification and screening
+*Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Verification and screening
 
 **Requirement:** A bank account shall be verified out of band by a call-back where no automated check is available for its country, and, beside the automated check, for the risk tiers the tenant names: the approver calls the supplier at a number known before the change, never one given in it, records who confirmed, when and how, and attaches the evidence. A bank change that needs the call-back cannot be approved until it is recorded, and the approver is a second person, never the one who entered the change.
 
@@ -337,10 +337,10 @@ A supplier's identifiers, bank accounts and sanctions status are checked through
 
 *Depends on:* SUP-007, SUP-162, BF-103, BF-105
 
-**Notes:** New in this area 2026-10-21 (SUP-gaps, gap G5): the checklist of SUP-023, retired, kept as the call-back. Map steps SM-06 and CM-05. Decision F-05 asked for the checklist on every bank change; gap G5 keeps it for the critical tiers beside an automated check. Decision: the call-back is required wherever no automated check is available, and beside one for the tier critical by default, which the tenant may widen; the owner confirms.
+**Notes:** New in this area 2026-10-21 (SUP-gaps, gap G5): the checklist of SUP-023, retired, kept as the call-back. Map steps SM-06 and CM-05. Decision F-05 asked for the checklist on every bank change; gap G5 keeps it for the critical tiers beside an automated check. Decided 2026-10-21 at the review: the call-back is required wherever no automated check is available, and beside one for the tier critical by default, which the tenant may widen.
 
 #### SUP-164 Cooling period and the payment check
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Verification and screening
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Verification and screening
 
 **Requirement:** After a bank account is added or changed, a cooling period (3 business days by default, by the tenant's business calendar, TF-099) shall pass before the first payment to it. Supplier management answers, through its Contracts, whether an account may be paid on a date, and to whom: the account must be verified, valid on that date and out of its cooling period; for an account changed within the re-check window (30 days by default), the answer first runs the check again (the automated check, or the call-back where none is available); and the answer names the people who requested and approved the account's change, whom the releasing product refuses as the releaser within the cooling period (TF-036).
 
@@ -356,12 +356,12 @@ A supplier's identifiers, bank accounts and sanctions status are checked through
 
 *Depends on:* SUP-162, SUP-163, BF-105, TF-036, TF-099
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G5). Map step CM-07. Invoicing asks it at payment release (INV-046), since a later product calls an earlier one (ADR-0042). Decision: the pack asks for a re-check at payment release for accounts changed within the period, which would never fire if the cooling period blocked every payment in it; the proposed reading is a cooling period of 3 business days in which nothing is paid, and a re-check window of 30 days in which every release checks again; the owner confirms both lengths.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G5). Map step CM-07. Invoicing asks it at payment release (INV-046), since a later product calls an earlier one (ADR-0042). Decided 2026-10-21 at the review: the pack asks for a re-check at payment release for accounts changed within the period, which would never fire if the cooling period blocked every payment in it; the reading is a cooling period of 3 business days in which nothing is paid, and a re-check window of 30 days in which every release checks again.
 
 #### SUP-165 Sanctions and watch-list screening
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Verification and screening
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Verification and screening
 
-**Requirement:** Suppliers shall be screened through the sanctions connector (TF-206), with their legal name, trade names and country, at registration (SM-05), on a schedule, and when the provider reports a change of a list. A possible match puts the supplier on hold (SUP-021) with the match as the reason and opens a compliance case; compliance decides, with the evidence kept (the list entry, the provider's answer, the decision, who decided and when): a true match keeps the supplier on hold or offboards it (SUP-025); a false positive is cleared with a reason, and is not raised again for the same list entry unless the entry changes.
+**Requirement:** Suppliers shall be screened through the sanctions connector (TF-206), with their legal name, trade names and country, at registration (SM-05), on a schedule, when the provider reports a change of a list, and when a change to the legal name, a trade name or the country applies (SUP-201). A possible match puts the supplier on hold (SUP-021) with the match as the reason and opens a compliance case; compliance decides, with the evidence kept (the list entry, the provider's answer, the decision, who decided and when): a true match keeps the supplier on hold or offboards it (SUP-025); a false positive is cleared with a reason, and is not raised again for the same list entry unless the entry changes.
 
 **Why:** Paying a sanctioned party breaks the law wherever the tenant operates; screening only at onboarding misses the parties listed later.
 
@@ -373,17 +373,18 @@ A supplier's identifiers, bank accounts and sanctions status are checked through
 - AC4 Given the same list entry changed by its list, When screened, Then a new case is opened.
 - AC5 Given a person outside compliance, When they decide a case, Then it is refused. (error case)
 - AC6 Given screening unavailable at registration, When the checks run, Then approval waits and the buyer owner is told; a supplier is not approved unscreened. (error case)
+- AC7 Given an approved supplier whose legal name changes, When the change applies, Then the supplier is screened again with the new name, and the same for a trade name or the country.
 
-*Depends on:* TF-206, TF-120, SUP-021, SUP-025
+*Depends on:* TF-206, TF-120, SUP-021, SUP-025, SUP-201
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G6). Map steps SM-05 and V6, exception E3. Its connector comes with the kernel's S7 (TF-206). Decision: screening runs monthly by default and on every list change the provider reports, and the names screened are the legal and trade names with the country; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G6). Map steps SM-05 and V6, exception E3. Its connector comes with the kernel's S7 (TF-206). Decided 2026-10-21 at the review: screening runs monthly by default, on every list change the provider reports, and when a change to the legal name, a trade name or the country applies (AC7, added at the review); the names screened are the legal and trade names with the country.
 
 ### 6.4 Qualification (SUP-181 to SUP-200)
 
 A supplier is qualified for what it will supply, not once for everything (gap G2); for regulated tenants, a licensed feature qualifies it by manufacturing site and material, with the quality unit's signature (gap G3, variant V4). Map step SM-07.
 
 #### SUP-181 Qualification by scope
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Qualification
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Qualification
 
 **Requirement:** A supplier's qualification shall be held per scope: a category, a region, a unit, or, with regulated qualification, a manufacturing site and material (SUP-183). Each has a status: pending, qualified, conditionally qualified (with its conditions and an end date), disqualified (with a reason), or requalification due. The tenant names which scopes require qualification, and for each the evidence (information requests, documents, an audit when required) and its approvers. Requalification is scheduled by risk tier and runs as an information request (SUP-223); a conditional qualification past its end date becomes requalification due. Supplier management answers the purchasing master's question whether a supplier is qualified for a scope (PUR-022), and reports through the master's Contracts when a qualification ends.
 
@@ -400,7 +401,7 @@ A supplier is qualified for what it will supply, not once for everything (gap G2
 
 *Depends on:* SUP-007, SUP-223, PUR-022, BF-042, TF-090
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G2); SUP-042's qualification questionnaires, retired, are its evidence through supplier information collection. Map steps SM-07 and V6. It implements the purchasing master's extension point for qualification (PUR-022, the purchasing PRD's section 8.5). One qualification entity with a scope kind (the pack's section 8.5, decision 4). Decision: no scope requires qualification until the tenant names it, and requalification falls due every 3 years for tier low, 2 for medium and 1 for high and critical; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G2); SUP-042's qualification questionnaires, retired, are its evidence through supplier information collection. Map steps SM-07 and V6. It implements the purchasing master's extension point for qualification (PUR-022, the purchasing PRD's section 8.5). One qualification entity with a scope kind (the pack's section 8.5, decision 4). Decided 2026-10-21 at the review: no scope requires qualification until the tenant names it, and requalification falls due every 3 years for tier low, 2 for medium and 1 for high and critical.
 
 #### SUP-182 Quality-relevant items and categories
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Qualification
@@ -421,9 +422,9 @@ A supplier is qualified for what it will supply, not once for everything (gap G2
 **Notes:** New 2026-10-21 (SUP-gaps, gap G3, variant V4). The marking is held by Supplier management for the items and categories of the Business masters, since it belongs to the licensed feature, not to every tenant's items.
 
 #### SUP-183 Regulated qualification: the approved supplier list
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Qualification
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Qualification
 
-**Requirement:** With the feature, the approved supplier list shall hold, for each supplier, manufacturing site (BF-104, purpose manufacturing) and quality-relevant material, a qualification of the scope site and material (SUP-181): its status, its evidence (information responses, documents, audits, SUP-184), the risk assessment that sets its requalification interval, and the quality agreement in force, which Contracts reports through its events (CON-007). The quality unit approves a combination with an electronic signature (TF-063, meaning approved, re-authentication required) and may approve it conditionally, with its conditions shown to buyers. Supplier management answers, through its Contracts, whether a supplier, site and material may be ordered.
+**Requirement:** With the feature, the approved supplier list shall hold, for each supplier, manufacturing site (BF-104, purpose manufacturing) and quality-relevant material, a qualification of the scope site and material (SUP-181): its status, its evidence (information responses, documents, audits, SUP-184), the risk assessment that sets its requalification interval, and the quality agreement in force, which Contracts reports through its events (CON-007). The quality unit approves a combination with an electronic signature (TF-063, meaning approved, re-authentication required) and may approve it conditionally, with its conditions shown to buyers. Supplier management answers, through its Contracts, whether a supplier, site and material may be ordered: an approved combination may, and a conditionally approved one may too, with its conditions, unless the tenant's setting is approved only.
 
 **Why:** A regulated buyer must show an inspector that every starting material came from a supplier and site the quality unit approved for it, under a written agreement (EU GMP chapters 5 and 7, Annex 16; ICH Q7, Q9 and Q10). Procurement suites leave this to quality systems; holding it where orders are placed closes the gap between the two.
 
@@ -434,13 +435,14 @@ A supplier is qualified for what it will supply, not once for everything (gap G2
 - AC3 Given a tenant that requires a quality agreement and a combination without one in force, When approval is attempted, Then it is refused naming the missing agreement. (error case)
 - AC4 Given a site that does not serve the manufacturing purpose, When it is chosen for a combination, Then it is refused. (error case)
 - AC5 Given the combination of Pune and material 4711 approved, When Orders asks whether that supplier may supply material 4711 from Pune, Then the answer is yes; from its site in Mumbai, no, naming the missing approval.
+- AC6 Given a conditionally approved combination and a tenant whose setting is approved only, When Orders asks whether it may be ordered, Then the answer is no, naming the conditional approval; with the default setting the answer is yes, with its conditions. (error case)
 
-*Depends on:* SUP-181, SUP-182, SUP-184, BF-104, TF-063, TF-219, CON-007 (event)
+*Depends on:* SUP-181, SUP-182, SUP-184, BF-104, TF-057, TF-063, TF-219, CON-007 (event)
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G3, variant V4). Map steps SM-07 and SM-09. The approved supplier list is the one qualification entity with the scope site and material (the pack's section 8.5, decision 4). Orders checks it at submission (ORD-010). Decision: a quality agreement in force is required before approval by default, which the tenant may turn off, and a conditional approval allows ordering with its conditions shown; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G3, variant V4). Map steps SM-07 and SM-09. The approved supplier list is the one qualification entity with the scope site and material (the pack's section 8.5, decision 4). Orders checks it at submission (ORD-010). Decided 2026-10-21 at the review: a quality agreement in force is required before approval by default, which the tenant may turn off; a conditional approval allows ordering by default, a tenant setting that a strict tenant switches to approved only (AC6).
 
 #### SUP-184 Supplier audits and findings
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Qualification
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Qualification
 
 **Requirement:** With the feature, audits of a supplier and its sites shall be recorded: type (on site, remote, or on paper), date, auditors, scope and outcome; each finding with its classification (critical, major or minor), the corrective and preventive action agreed, its owner, its due date, and its closure with evidence. A combination with an open critical finding cannot be approved, and an approved one that receives a critical finding becomes conditionally qualified until the quality unit decides.
 
@@ -455,7 +457,7 @@ A supplier is qualified for what it will supply, not once for everything (gap G2
 
 *Depends on:* SUP-182, TF-120, TF-160
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G3). Map steps SM-07 and V6. Decision: a new critical finding turns an approved combination conditional at once, rather than leaving the decision to the quality unit alone; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G3). Map steps SM-07 and V6. Decided 2026-10-21 at the review: a new critical finding turns an approved combination conditional at once, rather than leaving the decision to the quality unit alone.
 
 ### 6.5 Changes and status (SUP-021 to SUP-040)
 
@@ -533,7 +535,7 @@ Since 2026-10-21 every change to an approved supplier goes through supplier info
 **Notes:** Was FF-037.
 
 #### SUP-025 Offboarding
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Changes and status
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Changes and status
 
 **Requirement:** Before a supplier is deactivated, an offboarding checklist shall be completed: its open orders, receipts in approval and submitted invoices listed, each closed, cancelled or moved, or the deactivation confirmed with them open by a permitted user with a reason; its portal users' access to this tenant removed and its one-time links revoked (TF-246); its records given the retention class relationship ended, from which their retention period runs (TF-066); and the reason recorded. A deactivated supplier is re-onboarded only through a supplier request (SUP-141) that reopens the same record, with its history kept, and its checks and approvals run again by its risk tier.
 
@@ -548,7 +550,7 @@ Since 2026-10-21 every change to an approved supplier goes through supplier info
 
 *Depends on:* SUP-141, BF-103, TF-066, TF-246
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G8). Map step V7, the open documents counted from the events of Orders, Receiving and Invoicing (section 12.3). Decision: a permitted user may deactivate with open documents and a reason, and the retention class is named relationship ended; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G8). Map step V7, the open documents counted from the events of Orders, Receiving and Invoicing (section 12.3). Decided 2026-10-21 at the review: a permitted user may deactivate with open documents and a reason, and the retention class is named relationship ended.
 
 ### 6.6 Supplier information change management (SUP-201 to SUP-220)
 
@@ -573,7 +575,7 @@ An approved supplier's data changes often. Each change is quick when it is harml
 **Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2). Map step CM-01 and its sources C1 to C6. With SUP-202 to SUP-204 and SUP-206 to SUP-211 it replaces SUP-022, retired.
 
 #### SUP-202 Field classes of the supplier record
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Supplier information change management
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier information change management
 
 **Requirement:** Every field and section of the supplier record (BF-101 to BF-108, PUR-021 to PUR-024) shall have a class, set per tenant from these defaults. Uncontrolled: the descriptive fields (website, description, logo, the trade name's display form), applied at once, recorded, and the buyer owner told. Controlled: addresses other than the remit-to address, contacts other than those that receive orders or payment advice, sites, categories, documents, diversity and classification attributes, and the terms per unit; approved by the configured approvers before they apply. Critical: bank accounts, the legal name, tax identifiers, the remit-to address, the contacts that receive orders or payment advice, and the Udyam classification; approved, then verified, then applied, and a bank change starts the cooling period. A tenant may raise a field's class; a critical field stays critical.
 
@@ -588,7 +590,7 @@ An approved supplier's data changes often. Each change is quick when it is harml
 
 *Depends on:* SUP-201, TF-247
 
-**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2). Map step CM-02. Decision: the critical fields' floor is critical, so no tenant can let a bank account change without verification, while a controlled field may be set uncontrolled; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2). Map step CM-02. Decided 2026-10-21 at the review: the critical fields' floor is critical, so no tenant can let a bank account change without verification, while a controlled field may be set uncontrolled.
 
 #### SUP-203 Decisions per field
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier information change management
@@ -645,7 +647,7 @@ An approved supplier's data changes often. Each change is quick when it is harml
 **Notes:** New in this area 2026-10-21 (SUP-gaps, gap G5 and the pack's section 8.2, rule 8): with SUP-162 to SUP-164 it replaces SUP-023, retired, and keeps its notification of the primary contact and the buyer owner. Map steps CM-05 and CM-07.
 
 #### SUP-206 Effective dates
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Supplier information change management
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier information change management
 
 **Requirement:** A change may apply now or on a future date (a move to a new address next month); until then the record keeps its current value and the approved request waits. The record keeps its current values only; its field-level history shows each value with the dates it was valid (TF-062). Documents copy what they need when issued (an order keeps the address it was issued with), and a payment uses the bank account valid and verified on the payment date.
 
@@ -660,7 +662,7 @@ An approved supplier's data changes often. Each change is quick when it is harml
 
 *Depends on:* SUP-201, TF-062, TF-247
 
-**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2, rule 4, and section 8.5, decisions 2 and 3). Map step CM-06. Decision: a controlled or critical change cannot be dated back, so a payment or an order is never made under a value that was not approved at the time; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2, rule 4, and section 8.5, decisions 2 and 3). Map step CM-06. Decided 2026-10-21 at the review: a controlled or critical change cannot be dated back, so a payment or an order is never made under a value that was not approved at the time.
 
 #### SUP-207 Concurrency and one pending change per field
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier information change management
@@ -680,7 +682,7 @@ An approved supplier's data changes often. Each change is quick when it is harml
 **Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2, rules 5 and 6). Map step CM-06.
 
 #### SUP-208 Impact preview
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Supplier information change management
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Supplier information change management
 
 **Requirement:** Before a controlled or critical change is approved, its reviewers shall see the open documents that use the values it changes, as every product answers through the business layer's use of master records (BF-207), and decide whether open orders take the new values; the change's event carries that decision, and Orders applies it (ORD-011). Payments always use the bank account valid and verified on the payment date.
 
@@ -694,7 +696,7 @@ An approved supplier's data changes often. Each change is quick when it is harml
 
 *Depends on:* SUP-201, BF-207
 
-**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2, rule 7). Map step CM-03. Supplier management is the first product and never calls a later one (ADR-0042): the open documents come through BF-207, and the open orders take the new values through the event Orders hears. Decision: a missing answer does not block a change but needs the reviewer's reason; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.2, rule 7). Map step CM-03. Supplier management is the first product and never calls a later one (ADR-0042): the open documents come through BF-207, and the open orders take the new values through the event Orders hears. Decided 2026-10-21 at the review: a missing answer does not block a change but needs the reviewer's reason.
 
 #### SUP-209 Notifications of changes
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier information change management
@@ -800,9 +802,9 @@ An approved supplier's data changes often. Each change is quick when it is harml
 **Notes:** Was FF-039.
 
 #### SUP-044 Supplier contact data protection
-*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Compliance and risk
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Compliance and risk
 
-**Requirement:** Supplier contacts and the supplier's portal users known to the tenant are personal data. Supplier management shall declare their fields in the kernel's data map (TF-196) with their purpose (managing the supplier relationship; receiving orders and payment advice) and their retention (until the relationship ends, then the period the tenant sets, 2 years by default); the lawful basis is the contract with the supplier, recorded in the data map (TF-197). An access request returns what the tenant holds about a contact across its supplier records. An erasure request anonymises the contact everywhere except where audit and law require the identity to stay (approvals, signatures, call-back records, the documents the contact sent), which keep it with access restricted to auditors. A contact who receives orders or payment advice cannot be erased while that role is theirs. A verification or screening provider that receives contacts' names is a sub-processor the tenant sees (TF-198).
+**Requirement:** Supplier contacts and the supplier's portal users known to the tenant are personal data. Supplier management shall declare their fields in the kernel's data map (TF-196) with their purpose (managing the supplier relationship; receiving orders and payment advice) and their retention: the contact entry is kept until the relationship ends, then for the period the tenant sets, 2 years by default, and then anonymised; the records under a legal retention of their own (signed approvals, the audit trail, invoices, call-back records, the documents the contact sent) keep the person's name for as long as they are kept, with access restricted to those who may read them. The lawful basis is the contract with the supplier, recorded in the data map (TF-197). An access request returns what the tenant holds about a contact across its supplier records. An erasure request anonymises the contact entry, and leaves the records under a legal retention as they are. A contact who receives orders or payment advice cannot be erased while that role is theirs. A verification or screening provider that receives contacts' names is a sub-processor the tenant sees (TF-198).
 
 **Why:** Under the DPDP Act 2023 and the GDPR a supplier's contacts have the same rights as anyone; the audit trail of a bank change must still show who confirmed it.
 
@@ -810,13 +812,13 @@ An approved supplier's data changes often. Each change is quick when it is harml
 
 - AC1 Given a supplier contact, When the data map is opened, Then its fields show their purpose, retention and lawful basis.
 - AC2 Given an access request for a person who is a contact of two suppliers, When it is answered, Then both suppliers' data about the person are in the export.
-- AC3 Given an erasure request for a former contact, When executed, Then the contact's name, email and phone are anonymised on the supplier records, and the approvals and call-back records they took part in keep their identity, readable by auditors only.
+- AC3 Given an erasure request for a former contact, When executed, Then the contact entry's name, email and phone are anonymised, and the signed approvals and call-back records they took part in keep their name, for as long as those records are kept.
 - AC4 Given an erasure request for the contact who receives payment advice, When executed, Then it is refused until another contact takes that role. (error case)
-- AC5 Given a relationship that ended longer ago than the retention period, When the retention job runs, Then its contacts' personal fields are anonymised.
+- AC5 Given a relationship that ended more than 2 years ago, When the retention job runs, Then its contact entries are anonymised, and an invoice and the audit trail that name a contact keep the name until their own retention ends.
 
-*Depends on:* TF-196, TF-197, TF-198, BF-103, SUP-025
+*Depends on:* TF-196, TF-197, TF-198, TF-066, BF-103, SUP-025
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G10). Map steps SM-04 and V7. Decision: contacts are kept 2 years after the relationship ends by default, and the lawful basis is the contract, not consent; the owner confirms. Its privacy requests run on the kernel's (TF-196, S6).
+**Notes:** New 2026-10-21 (SUP-gaps, gap G10). Map steps SM-04 and V7. Decided 2026-10-21 at the review: only the contact entry is anonymised, 2 years after the relationship ends by default; records under a legal retention (signed approvals, the audit trail, invoices) keep the person's name for as long as they are kept (TF-066); the lawful basis is the contract, not consent. Its privacy requests run on the kernel's (TF-196, S6).
 
 ### 6.8 Periodic supplier information collection, SIM (SUP-221 to SUP-240)
 
@@ -857,7 +859,7 @@ Buyers, compliance and quality teams collect information from suppliers again an
 **Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, point 1). Map steps SI-01 and SI-03.
 
 #### SUP-223 Schedules and triggers
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Periodic supplier information collection
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Periodic supplier information collection
 
 **Requirement:** A request or campaign runs once, recurs (yearly, quarterly or another interval), or is triggered by an event: a supplier document about to expire (SUP-041), its lead time 45 days by default; a requalification falling due (SUP-181, SUP-183); a category added to the supplier; or a change of its risk tier (SUP-007). A trigger does not send a second request while one of the same template is open for the supplier.
 
@@ -872,10 +874,10 @@ Buyers, compliance and quality teams collect information from suppliers again an
 
 *Depends on:* SUP-222, SUP-041, SUP-007, TF-120
 
-**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, point 2). Map steps SI-02 and SI-09. Decision: an expiry triggers a request 45 days before the expiry date by default; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, point 2). Map steps SI-02 and SI-09. Decided 2026-10-21 at the review: an expiry triggers a request 45 days before the expiry date by default.
 
 #### SUP-224 Due dates, reminders, escalation and non-response
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Periodic supplier information collection
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Periodic supplier information collection
 
 **Requirement:** Each request shall have a due date. Reminders go to the supplier's contacts 7 days before it, on the day, and every 7 days after; a request overdue by the template's escalation days (14 by default) is escalated to the buyer owner; then the template's non-response rule applies: warn, block new orders, unpublish, or put the supplier on hold, as SUP-041's expiry actions do. The rule lifts when a response is approved.
 
@@ -890,7 +892,7 @@ Buyers, compliance and quality teams collect information from suppliers again an
 
 *Depends on:* SUP-222, SUP-041, TF-120, TF-150
 
-**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, point 3). Map steps SI-03 and SI-09, and the reminders between SI-03 and SI-04. Decision: the reminder days and the escalation after 14 days are proposed defaults, set per template; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, point 3). Map steps SI-03 and SI-09, and the reminders between SI-03 and SI-04. Decided 2026-10-21 at the review: the reminder days and the escalation after 14 days are defaults, set per template.
 
 #### SUP-225 Responding to an information request
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Periodic supplier information collection
@@ -911,9 +913,9 @@ Buyers, compliance and quality teams collect information from suppliers again an
 **Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, point 4). Map steps SI-04 and SI-05. With TF-246 it works before the Supplier Network exists (S8); the portal's view of it is SPX-029, and with SPX-008 and SPX-029 it replaces SUP-102, retired.
 
 #### SUP-226 Review per section
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Periodic supplier information collection
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Periodic supplier information collection
 
-**Requirement:** Each section shall be reviewed by its reviewers (finance for financial documents, quality for certificates), who approve, reject or return it, with comments per question for a return. A returned section goes back to the supplier and the rest waits. A response is approved when every section is approved; a rejected section ends the response as rejected, with the reasons, and the request stays open for a new response until it is answered or cancelled.
+**Requirement:** Each section shall be reviewed by its reviewers (finance for financial documents, quality for certificates), who approve, reject or return it, with comments per question for a return. A returned section goes back to the supplier and the rest waits. By default sections are decided independently: an approved section's answers count once the review ends, a rejected section's do not, and the request stays open for a new answer to the rejected section until it is answered or cancelled. A template may be marked all or nothing: then a rejected section rejects the whole response, with the reasons, and the request stays open for a new response. A response is approved when every section is approved.
 
 **Why:** Each team decides what it knows; a supplier fixes only what was returned.
 
@@ -923,15 +925,17 @@ Buyers, compliance and quality teams collect information from suppliers again an
 - AC2 Given a section returned with a comment on one question, When the supplier opens the response, Then only that section can be edited and the comment shows beside the question.
 - AC3 Given every section approved, When the last approval is recorded, Then the response is approved and its application starts (SUP-227).
 - AC4 Given a person outside a section's reviewers, When they approve it, Then it is refused. (error case)
+- AC5 Given a template decided section by section, a financial section approved and a quality section rejected, When the review ends, Then the financial answers are applied, the quality answers are not, and the supplier is asked again for the quality section only.
+- AC6 Given a template marked all or nothing and one section rejected, When the review ends, Then no answer of the response is applied and the request stays open for a new response. (error case)
 
 *Depends on:* SUP-225, TF-242
 
-**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, review point 2). Map step SI-06. Decision: a rejected section rejects the whole response and the request stays open for a new one; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, the pack's section 8.3, review point 2). Map step SI-06. Decided 2026-10-21 at the review: sections are decided independently by default; a template may be marked all or nothing, and then a rejected section rejects the whole response (AC5, AC6).
 
 #### SUP-227 Applying approved answers through change management
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Periodic supplier information collection
 
-**Requirement:** When a response is approved, its changed mapped answers shall be applied automatically, by a change request from the source approved information response (SUP-201): uncontrolled and controlled fields apply at once, since the section's review approved them; critical fields still go through verification before they apply (a bank account from a form is verified like any other, SUP-205). The response links to its change request, and the change request to its response.
+**Requirement:** When a response's review ends, the changed mapped answers of its approved sections (SUP-226) shall be applied automatically, by a change request from the source approved information response (SUP-201): uncontrolled and controlled fields apply at once, since the section's review approved them; critical fields still go through verification before they apply (a bank account from a form is verified like any other, SUP-205). The response links to its change request, and the change request to its response.
 
 **Why:** A reviewer should not retype what a supplier wrote and a reviewer approved; and no form, however reviewed, may put an unverified bank account on a supplier.
 
@@ -948,7 +952,7 @@ Buyers, compliance and quality teams collect information from suppliers again an
 #### SUP-228 Documents from responses
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Periodic supplier information collection
 
-**Requirement:** The attachments of an approved response shall become supplier documents (SUP-041) of their document type, with their issue and expiry dates, so the next expiry triggers the next collection (SUP-223).
+**Requirement:** The attachments of a response's approved sections shall become supplier documents (SUP-041) of their document type, with their issue and expiry dates, so the next expiry triggers the next collection (SUP-223).
 
 **Why:** A certificate collected once must not be lost in a response; its expiry plans the next request.
 
@@ -965,7 +969,7 @@ Buyers, compliance and quality teams collect information from suppliers again an
 #### SUP-229 Outcomes of a response
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Periodic supplier information collection
 
-**Requirement:** By its template's outcome rules, an approved response shall set its outcomes: the qualification status of a scope (SUP-181), the evidence of a regulated qualification for the quality unit's signature (SUP-183), risk flags (SUP-043), and the supplier's scores. Each outcome names the response it came from.
+**Requirement:** By its template's outcome rules, a response whose review ended shall set its outcomes from its approved sections: the qualification status of a scope (SUP-181), the evidence of a regulated qualification for the quality unit's signature (SUP-183), risk flags (SUP-043), and the supplier's scores. Each outcome names the response it came from.
 
 **Why:** A qualification questionnaire's purpose is the decision it supports; the system should take that decision as the template says, and show where it came from.
 
@@ -1070,7 +1074,7 @@ Buyers, compliance and quality teams collect information from suppliers again an
 **Notes:** Was FF-163. Extended 2026-10-21 (SUP-gaps, gap G11): the reports of the new areas and the measures of SUP-064 and SUP-211 (AC5).
 
 #### SUP-064 Onboarding measures
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Relationship and performance
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Relationship and performance
 
 **Requirement:** Every step of every map of the process reference pack (SM-01 to SM-11, CM-01 to CM-07, SI-01 to SI-09) shall be timestamped when it starts and when it ends, and every wait marked as the supplier's or the tenant's. From them the product computes, per period, category, risk tier and unit: supplier setup time (an approved record to active, APQC measure 106476); onboarding cycle time from a complete request to transaction-ready, as median and 90th percentile, split into supplier waiting and internal waiting; first-pass completeness; self-service share; verified bank before first payment; duplicate rate; valid mandatory documents; requalification on time; and, for Indian suppliers, MSE classification coverage. Each is shown beside the pack's target (its section 5), whether it is met in words and not by colour alone.
 
@@ -1086,7 +1090,7 @@ Buyers, compliance and quality teams collect information from suppliers again an
 
 *Depends on:* SUP-063, SUP-141, SUP-201, SUP-222, INV-043 (event)
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G11); the pack's targets (its section 5) were accepted as proposed. Verified bank before first payment counts the payments Invoicing publishes (INV-043, ADR-0042); the strategic supplier share is the purchasing master's (PUR-026). Decision: a wait is the supplier's while the supplier holds the next action (an invitation, a returned question, an information request), and the tenant's otherwise; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G11); the pack's targets (its section 5) were accepted as proposed. Verified bank before first payment counts the payments Invoicing publishes (INV-043, ADR-0042); the strategic supplier share is the purchasing master's (PUR-026). Decided 2026-10-21 at the review: a wait is the supplier's while the supplier holds the next action (an invitation, a returned question, an information request), and the tenant's otherwise.
 
 ### 6.10 Supplier access (SUP-081 to SUP-100)
 
@@ -1107,9 +1111,9 @@ Portal ownership (was FF-036) moved to the supplier portal surface at the checkp
 - AC2 Given a supplier's bank account change applied (SUP-205), When it applies, Then the supplier's primary contact and the buyer owner are told in the key's template, and the contacts known before the change get the announcement.
 - AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
 
-*Depends on:* BF-164, SUP-001, SUP-002, SUP-041, SUP-142, SUP-165, SUP-181, SUP-203, SUP-205, SUP-209, SUP-224, SUP-226
+*Depends on:* BF-164, SUP-041, SUP-142, SUP-165, SUP-181, SUP-203, SUP-205, SUP-209, SUP-224, SUP-226
 
-**Notes:** Was BF-164, the keys and starter templates of Supplier management. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism. Extended 2026-10-21 (SUP-gaps): the keys of the new areas; the change rejected and bank account changed keys of SUP-022 and SUP-023, retired, are now SUP-203's and SUP-205's.
+**Notes:** Was BF-164, the keys and starter templates of Supplier management. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism. Extended 2026-10-21 (SUP-gaps): the keys of the new areas; the change rejected and bank account changed keys of SUP-022 and SUP-023, retired, are now SUP-203's and SUP-205's. Changed 2026-10-21 at SUP-gaps' review: the requirements that raise its keys in a later slice (SUP-001 and SUP-002, with the supplier side) depend on this declaration, not the reverse, so no requirement depends on one of a later slice (`make prd-check`).
 
 ## 7. Supplier views
 
@@ -1227,7 +1231,9 @@ stateDiagram-v2
   InReview --> Returned: a section returned
   Returned --> Submitted: answered again
   InReview --> Approved: every section approved
-  InReview --> Rejected: a section rejected
+  InReview --> PartlyApproved: a section rejected, sections decided independently
+  PartlyApproved --> InProgress: the rejected section answered again
+  InReview --> Rejected: a section rejected, all or nothing
   Rejected --> InProgress: new response
   Sent --> Cancelled
   Opened --> Cancelled
@@ -1338,7 +1344,7 @@ Proposed 2026-10-21 for the new areas, decided by the slice that builds them: `s
 
 ## 14. Configuration
 
-From the archived PRD's section 8.5: supplier onboarding sections and required documents; duplicate detection thresholds. Since 2026-10-21, each a kernel setting (TF-057) declared by this module: whether invitations need an approved request (SUP-142); the risk tier rules (SUP-007) and what each tier, category and country requires (SUP-005); the re-verification schedule and the hold rules (SUP-161); the call-back tiers (SUP-163); the cooling period and the re-check window (SUP-164); the screening schedule (SUP-165); the scopes that require qualification, their evidence and the requalification intervals (SUP-181); whether a quality agreement is required before approval (SUP-183); the field classes (SUP-202); the information request templates' reminders, escalation and non-response rules (SUP-224) and the expiry lead time (SUP-223); and the contacts' retention after a relationship ends (SUP-044).
+From the archived PRD's section 8.5: supplier onboarding sections and required documents; duplicate detection thresholds. Since 2026-10-21, each a kernel setting (TF-057) declared by this module: whether invitations need an approved request (SUP-142); the risk tier rules (SUP-007) and what each tier, category and country requires (SUP-005); the re-verification schedule and the hold rules (SUP-161); the call-back tiers (SUP-163); the cooling period and the re-check window (SUP-164); the screening schedule (SUP-165); the scopes that require qualification, their evidence and the requalification intervals (SUP-181); whether a quality agreement is required before approval, and whether a conditionally approved combination may be ordered or only an approved one (SUP-183, ORD-010); the templates decided all or nothing (SUP-226); the field classes (SUP-202); the information request templates' reminders, escalation and non-response rules (SUP-224) and the expiry lead time (SUP-223); and the contacts' retention after a relationship ends (SUP-044).
 
 ## 15. Slices
 
@@ -1394,7 +1400,7 @@ Accepted by the owner on 2026-10-21, the thirteen gaps of the process reference 
 
 ### 16.2 Open points
 
-None from the split. The defaults SUP-gaps chose where the pack states no rule are tagged `[Decision]` in their requirements, each with its question in the notes, for the owner to confirm: SUP-005, SUP-007, SUP-025, SUP-044, SUP-064, SUP-142, SUP-161, SUP-163, SUP-164, SUP-165, SUP-181, SUP-183, SUP-184, SUP-202, SUP-206, SUP-208, SUP-223, SUP-224 and SUP-226. The pack's external practitioner review (PM-002) records its findings before the first slice.
+None from the split. The defaults SUP-gaps chose where the pack states no rule were decided at the design session's review on 2026-10-21, each marked "decided 2026-10-21" in its notes. The review changed four: sections are decided independently unless a template is marked all or nothing (SUP-226); a conditional approval may be ordered unless the tenant sets approved only (SUP-183, ORD-010); screening also runs when the legal name, a trade name or the country changes (SUP-165); and only the contact entry is anonymised after two years, while records under a legal retention keep the person's name (SUP-044). Open: the readings of India's MSME rules, to be confirmed by a practitioner in India (BF-204, RCV-029, INV-011, INV-087). The pack's external practitioner review (PM-002) records its findings before the first slice.
 
 ## 17. Glossary
 

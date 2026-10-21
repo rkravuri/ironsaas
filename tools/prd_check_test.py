@@ -37,7 +37,7 @@ class PrdCheckTest(unittest.TestCase):
     def setUp(self) -> None:
         self.folder = tempfile.TemporaryDirectory()
         self.prd = Path(self.folder.name)
-        self.saved = {name: getattr(prd_check, name) for name in ["PRD", "ARCHIVE", "MAP_MD", "MAP_CSV", "DOCUMENTS"]}
+        self.saved = {name: getattr(prd_check, name) for name in ["PRD", "ARCHIVE", "MAP_MD", "MAP_CSV", "DOCUMENTS", "KNOWN_LATER"]}
         prd_check.PRD = self.prd
         prd_check.ARCHIVE = self.prd / "archive" / "functional-foundation-p2p-PRD-v1.md"
         prd_check.MAP_MD = self.prd / "requirements-map.md"
@@ -301,6 +301,34 @@ class PrdCheckTest(unittest.TestCase):
         self.assert_refused("section 2 maps ORD-002, which no document holds")
         self.with_a_pack(["| ORD-001 Orders |  | OR-01 |"])
         self.assert_refused("section 2 maps ORD-001 without its PCF element or its map step")
+
+    def with_a_plan(self, rows: list[str]) -> None:
+        """The technical PRD's build plan, section 7.2, with these rows (order, slice, builds, needs)."""
+        table = "| Order | Slice | Builds | Needs |\n|---|---|---|---|\n" + "\n".join(rows) + "\n"
+        self.files["foundation/technical-foundation-PRD.md"] = "# Kernel\n\n" + block("TF-001", "Tenant registry", "Tenancy", GOOD) + "## 7. Build plan\n\n### 7.2 The business and suite slices\n\n" + table + "\n## 8. Decisions\n"
+
+    def test_a_plan_with_every_requirement_in_one_slice_and_no_later_dependency_passes(self) -> None:
+        """Every business and suite requirement is in one slice, and none depends on a later one. [ADR-0042]"""
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 (its import later) | |", "| 2 | PR2 Requests | REQ-001 | B1 |", "| 3 | PR3 Orders | ORD-001 | PR2 |"])
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+        self.assertIn("3 slices, each requirement in one", output)
+
+    def test_a_dependency_on_a_later_slice_is_refused_unless_known(self) -> None:
+        """A requirement depends on none placed in a later slice, except through an event or as a listed known case. [ADR-0042]"""
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 | |", "| 2 | PR2 Orders first | ORD-001 | B1 |", "| 3 | PR3 Requests | REQ-001 | PR2 |"])
+        self.assert_refused("ORD-001, built in PR2 Orders first, depends on REQ-001, placed in a later slice (PR3 Requests)")
+        prd_check.KNOWN_LATER = {("ORD-001", "REQ-001"): "A known case, with its reason."}
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+
+    def test_a_requirement_in_no_slice_or_a_retired_one_in_a_slice_is_refused(self) -> None:
+        """Every live business and suite requirement is in one slice, and a retired one in none. [ADR-0042, ADR-0041]"""
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 | |", "| 2 | PR2 Requests | REQ-001 | B1 |"])
+        self.assert_refused("ORD-001 is in no slice; every business and suite requirement is in one")
+        self.retire_the_request("Was FF-002. Retired 2026-10-21. Replaced by REQ-002.")
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 | |", "| 2 | PR2 Requests | REQ-001, REQ-002 | B1 |", "| 3 | PR3 Orders | ORD-001 | PR2 |"])
+        self.assert_refused("REQ-001 is retired but placed in PR2 Requests; place its successors")
 
 
 if __name__ == "__main__":

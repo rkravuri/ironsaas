@@ -7,14 +7,14 @@
 | Document title | Purchase requests: controlled demand with budget, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `REQ-`, in blocks of twenty per area (ADR-0041); the table is `requests-requirements.csv` |
-| Version | 1.2 (the review of L2, 2026-10-20) |
-| Date | 2026-10-20 |
+| Version | 1.3 (SUP-gaps' review, 2026-10-21: no dependency on a later slice) |
+| Date | 2026-10-21 |
 | Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, items, units, locations and suppliers are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): REQ-001's ship-to defaults from the purchasing master (PUR-041), REQ-023 takes its buyer from PUR-001, and REQ-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
+Change log: 1.3, 2026-10-21, at SUP-gaps' review: REQ-081, the notification keys, no longer depends on REQ-023, which raises its line assigned key in a later slice; REQ-023 depends on REQ-081 instead, so that no requirement depends on one of a later slice (`make prd-check`); no requirement's words changed. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): REQ-001's ship-to defaults from the purchasing master (PUR-041), REQ-023 takes its buyer from PUR-001, and REQ-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase requests moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed. Ship-to locations went to the Business PRD.
 
 ## 1. Vision and goals
 
@@ -276,7 +276,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a buyer of two purchasing groups, When they open their work queue, Then it shows the approved lines of both groups and can be filtered by group.
 - AC3 Given a line whose category and unit no purchasing group serves, When it is approved, Then it has no buyer and the queue shows it as unassigned. (error case)
 
-*Depends on:* REQ-007, PUR-001
+*Depends on:* REQ-007, REQ-081, PUR-001
 
 **Notes:** New at the review of the PRD split, 2026-10-20: purchasing groups assign the buyer and filter the work queue (PUR-001, BF-007 until the review of L2 moved it to the eProcurement Suite's purchasing master). They give no access, so a buyer still needs a role over the line's unit to open it.
 
@@ -350,9 +350,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a request rejected (REQ-007), When the rejection is saved, Then the requester is told in the key's template.
 - AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
 
-*Depends on:* BF-164, REQ-007, REQ-008, REQ-023
+*Depends on:* BF-164, REQ-007, REQ-008
 
-**Notes:** Was BF-164, the keys and starter templates of Requests. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
+**Notes:** Was BF-164, the keys and starter templates of Requests. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism. Changed 2026-10-21 at SUP-gaps' review: the requirements that raise its keys in a later slice (REQ-023, with Orders) depend on this declaration, not the reverse, so no requirement depends on one of a later slice (`make prd-check`).
 
 ## 7. Supplier views
 

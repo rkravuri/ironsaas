@@ -1,6 +1,6 @@
 # ADR-0045: Process maps as BPMN files, checked against the BPMN 2.0 schema
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-21
 **Decided by:** Product owner and architect
 

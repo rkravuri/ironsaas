@@ -9,7 +9,7 @@
 | Identifier prefix | `CON-`, in blocks of twenty per area (ADR-0041); the table is `contracts-requirements.csv` |
 | Version | 1.3 (SUP-gaps, 2026-10-21: quality agreements) |
 | Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps, 2026-10-21) await the design session's review. |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Suppliers and items are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
@@ -173,7 +173,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 **Notes:** Was FF-186, the contracts; the catalogues are CAT-007.
 
 #### CON-007 Quality agreements
-*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Contracts
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Contracts
 
 **Requirement:** With Supplier management's regulated qualification (its licensed feature `supplier_management.gxp_qualification`), a contract of the type quality agreement shall name the supplier, the manufacturing sites and the quality-relevant materials it covers, each a combination on Supplier management's approved supplier list, whether pending or approved (SUP-183); it runs the contract approval with the quality unit among its approvers, and its publishing, expiry and termination are published as events, from which Supplier management shows each combination's agreement in force.
 
@@ -188,7 +188,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 *Depends on:* CON-001, CON-003, SUP-183, TF-046
 
-**Notes:** New 2026-10-21 (SUP-gaps, gap G3 of the supplier management pack). Contracts calls Supplier management, the earlier product, to check the combinations (ADR-0042); Supplier management hears of the agreement through these events (`CON-007 (event)` in SUP-183). Decision: an agreement may cover a combination still pending, since agreements are often signed before approval; the quality unit approves every quality agreement; the owner confirms.
+**Notes:** New 2026-10-21 (SUP-gaps, gap G3 of the supplier management pack). Contracts calls Supplier management, the earlier product, to check the combinations (ADR-0042); Supplier management hears of the agreement through these events (`CON-007 (event)` in SUP-183). Decided 2026-10-21 at the review: an agreement may cover a combination still pending, since agreements are often signed before approval; the quality unit approves every quality agreement.
 
 ### 6.2 Consumption and renewal (CON-021 to CON-040)
 
