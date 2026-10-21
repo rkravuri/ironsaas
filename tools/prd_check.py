@@ -17,10 +17,18 @@ and the identifier of every problem:
 - a CSV that differs from its markdown in any cell, and a map whose markdown and CSV differ;
 - a dependency on an identifier no document holds, one that points up a layer (the kernel, the business layer, a
   suite's shared masters, its products, its surfaces), one on a later product of its suite's process order unless it
-  is marked "(event)" (ADR-0042), and one from a suite's document on another suite's (ADR-0043).
+  is marked "(event)" (ADR-0042), and one from a suite's document on another suite's (ADR-0043);
+- a retired requirement (tagged `[Retired]`) whose notes do not say "Replaced by" with successors that a document
+  holds and that are not retired themselves, and a dependency on a retired requirement: its identifier is never
+  reused (ADR-0041, decision 3), and what depended on it depends on its successors;
+- a process reference pack (PM-001), a markdown file in a folder named `process-reference/` beside the documents of its
+  suite, whose section 2 names an identifier no document holds, leaves out a live requirement of the document it is
+  the pack of (`process-reference/supplier-management.md` is the pack of `supplier-management-PRD.md`), or maps one
+  without its PCF element or its map step (PM-001 AC2).
 
 The Foundation's documents sit in foundation/, each suite's in suites/<suite>/; the product method, the map and the
-archive stay at the top of docs/prd.
+archive stay at the top of docs/prd. A pack's BPMN maps are checked against the BPMN 2.0 schema by
+tools/Iron.ProcessMaps, which `make prd-check` runs after this check (ADR-0045).
 
 Standard library only, so CI needs nothing but Python 3. Exit status 1 when anything is wrong.
 """
@@ -58,9 +66,15 @@ DOCUMENTS = {
     "suites/procurement/purchasing-PRD.md": "PUR",
 }
 NOT_REQUIREMENT_DOCUMENTS = {"README.md", "requirements-map.md"}
+# Process reference packs (PM-001) live in a folder of this name beside their suite's documents, with their BPMN maps.
+PACK_FOLDER = "process-reference"
 # The sections every product PRD of a suite has; a later suite states its own when its first PRD is written.
 PRODUCT_SECTIONS = {"procurement": ["Supplier views", "Records and signatures"]}
-TAGS = {"Core", "Extended", "Carried", "Improved", "Gap", "New", "Decision", "Later"}
+TAGS = {"Core", "Extended", "Carried", "Improved", "Gap", "New", "Decision", "Later", "Retired"}
+# A retired requirement says what replaced it: "Replaced by SUP-201 to SUP-212 and SPX-029." A range names every
+# identifier between its ends.
+REPLACED_BY = re.compile(r"Replaced by ([^.]*)")
+IDENTIFIER_RANGE = re.compile(r"\b([A-Z]{2,3})-(\d{3})(?: to (?:[A-Z]{2,3}-)?(\d{3}))?")
 
 # Dependencies point down the layers (ADR-0029, ADR-0042, ADR-0043): the kernel, the business layer (the two are the
 # Foundation), a suite's shared masters, its products, its surfaces. The product method binds every layer and stands
@@ -88,6 +102,16 @@ def layer_of(name: str, prefix: str) -> int | None:
     if suite_of(name) is None:
         return None
     return 2 if prefix in MASTERS else 4 if prefix in SURFACES else 3
+
+
+def identifiers_in(text: str) -> list[str]:
+    """'SUP-201 to SUP-203 and SPX-029' -> SUP-201, SUP-202, SUP-203, SPX-029; 'BF-101 to 108' reads the same way."""
+    found = []
+    for match in IDENTIFIER_RANGE.finditer(text):
+        prefix, first = match.group(1), int(match.group(2))
+        last = int(match.group(3)) if match.group(3) else first
+        found += [f"{prefix}-{number:03d}" for number in range(first, last + 1)]
+    return found
 
 COLUMNS = ["id", "area", "title", "priority", "tag", "requirement", "rationale", "acceptance_criteria", "depends_on", "notes", "was"]
 ARCHIVE_COLUMNS = COLUMNS[:-1]
@@ -128,6 +152,15 @@ class Requirement:
     def was(self) -> list[str]:
         match = WAS.match(self.notes)
         return IDENTIFIER.findall(match.group(1)) if match else []
+
+    @property
+    def retired(self) -> bool:
+        return "Retired" in self.tags
+
+    @property
+    def replaced_by(self) -> list[str]:
+        match = REPLACED_BY.search(self.notes)
+        return identifiers_in(match.group(1)) if match else []
 
     def row(self) -> dict[str, str]:
         return {
@@ -243,12 +276,64 @@ def documents() -> tuple[list[Document], list[str]]:
     problems = []
     found = {path.relative_to(PRD).as_posix() for path in PRD.rglob("*.md") if not path.relative_to(PRD).as_posix().startswith("archive/")}
     found -= NOT_REQUIREMENT_DOCUMENTS
-    found = {name for name in found if not name.endswith("-scope.md")}
+    found = {name for name in found if not name.endswith("-scope.md") and f"/{PACK_FOLDER}/" not in f"/{name}"}
     for name in sorted(found - DOCUMENTS.keys()):
         problems.append(f"{name}: a document the check does not know; add it with its prefix to DOCUMENTS in tools/prd_check.py")
     for name in sorted(DOCUMENTS.keys() - found):
         problems.append(f"{name}: listed in tools/prd_check.py but missing")
     return [parse(PRD / name) for name in DOCUMENTS if name in found], problems
+
+
+def packs() -> list[Path]:
+    """The process reference packs: the markdown files of every process-reference folder (PM-001)."""
+    return sorted(path for path in PRD.rglob(f"{PACK_FOLDER}/*.md"))
+
+
+def check_pack(path: Path, live: dict[str, tuple[Document, Requirement]]) -> list[str]:
+    """A pack's section 2 maps every live requirement of its document to a PCF element and a map step (PM-001 AC2)."""
+    name = path.relative_to(PRD).as_posix()
+    document_name = f"{path.parent.parent.relative_to(PRD).as_posix()}/{path.stem}-PRD.md"
+    problems = []
+    rows: list[list[str]] = []
+    in_section = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            in_section = line.startswith("## 2.")
+        elif in_section and line.startswith("| ") and IDENTIFIER_RANGE.match(line[2:]):
+            rows.append([cell.strip() for cell in line.strip().strip("|").split(" | ")])
+    if not rows:
+        return [f"{name}: its section 2 maps no requirement"]
+    mapped: set[str] = set()
+    for cells in rows:
+        # The cell starts with the identifier or the range it maps; the title after it may cite others.
+        identifiers = identifiers_in(IDENTIFIER_RANGE.match(cells[0]).group(0))
+        for identifier in identifiers:
+            if identifier not in live:
+                problems.append(f"{name}: section 2 maps {identifier}, which no document holds")
+        if len(cells) < 3 or not cells[1] or not cells[2]:
+            problems.append(f"{name}: section 2 maps {cells[0].split(' ')[0]} without its PCF element or its map step")
+        mapped.update(identifiers)
+    owned = [requirement for document, requirement in live.values() if document.name == document_name]
+    if not owned:
+        problems.append(f"{name}: a pack of {document_name}, which the check does not know")
+    for requirement in owned:
+        if not requirement.retired and requirement.id not in mapped:
+            problems.append(f"{name}: {requirement.id} of {document_name} has no row in section 2 (PM-001 AC2)")
+    return problems
+
+
+def check_retired(document: Document, requirement: Requirement, live: dict[str, tuple[Document, Requirement]]) -> list[str]:
+    """A retired requirement names its successors, each held and live; the identifier stays, never reused (ADR-0041)."""
+    where = f"{document.name}: {requirement.id}"
+    if not requirement.replaced_by:
+        return [f"{where}: retired, but its notes do not say 'Replaced by' and its successors"]
+    problems = []
+    for successor in requirement.replaced_by:
+        if successor not in live:
+            problems.append(f"{where}: replaced by {successor}, which no document holds")
+        elif live[successor][1].retired:
+            problems.append(f"{where}: replaced by {successor}, which is retired too")
+    return problems
 
 
 def check_requirements(document: Document, prefix: str) -> list[str]:
@@ -333,6 +418,10 @@ def check_dependencies(document: Document, requirement: Requirement, live: dict[
         identifier, event = f"{match.group(1)}-{match.group(2)}", bool(match.group(3))
         if identifier not in live:
             problems.append(f"{where} depends on {identifier}, which no document holds")
+            continue
+        if live[identifier][1].retired and not requirement.retired:
+            successors = ", ".join(live[identifier][1].replaced_by) or "its successors"
+            problems.append(f"{where} depends on {identifier}, which is retired; depend on what replaced it ({successors})")
             continue
         own, theirs = requirement.prefix, match.group(1)
         their_document = live[identifier][0]
@@ -477,16 +566,23 @@ def check() -> int:
         problems += compare(document, COLUMNS)
         for requirement in document.requirements:
             problems += check_dependencies(document, requirement, live)
+            if requirement.retired:
+                problems += check_retired(document, requirement, live)
     if archive:
         problems += compare(archive, ARCHIVE_COLUMNS)
         problems += check_map(archive, live)
+    for pack in packs():
+        problems += check_pack(pack, live)
     for problem in problems:
         print(problem)
     if problems:
         print(f"\nprd-check: {len(problems)} problems")
         return 1
     for document in live_documents:
-        print(f"{document.name:48} {len(document.requirements):4} requirements")
+        retired = sum(1 for requirement in document.requirements if requirement.retired)
+        print(f"{document.name:48} {len(document.requirements):4} requirements" + (f", {retired} retired" if retired else ""))
+    for pack in packs():
+        print(f"{pack.relative_to(PRD).as_posix():48} a process reference pack, its section 2 complete")
     map_rows = read_csv(MAP_CSV)
     later = sum(1 for row in map_rows if not row["old_id"].startswith("FF-"))
     print(f"{'requirements-map.csv':48} {len(map_rows) - later:4} rows, one per FF identifier, and {later} moves after the split")
