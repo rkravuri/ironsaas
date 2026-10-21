@@ -83,10 +83,32 @@ await report.StepAsync("tenant", ["TF-180 AC2"], async () =>
     throw new SmokeException($"tenant {options.Tenant} is {status}; the smoke needs an active or provisioning tenant");
 });
 
+// Ready means the tenant's API answers its readiness through the ingress. Just after provisioning the ingress may not
+// route to the API yet, while its container starts, and the tenant's shell then answers every path with its page and
+// 200; that is not the API (the release after M3 failed on it). So the step waits, at most 90 seconds, for a 200 with
+// the API's JSON status.
 await report.StepAsync("health", ["TF-001 AC1"], async () =>
 {
-    var answer = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/health/ready", host: host, cancellationToken: ct)).Expect(HttpStatusCode.OK, "readiness through the ingress");
-    return $"{host} ready: {answer.Text("status")}";
+    var limit = TimeSpan.FromSeconds(90);
+    var started = TimeProvider.System.GetTimestamp();
+    while (true)
+    {
+        var answer = await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/health/ready", host: host, cancellationToken: ct);
+        var status = answer.Text("status");
+        var waited = TimeProvider.System.GetElapsedTime(started);
+        if (answer.Status == HttpStatusCode.OK && status is not null)
+        {
+            return waited < TimeSpan.FromSeconds(1) ? $"{host} ready: {status}" : $"{host} ready: {status}, after {waited.TotalSeconds:0} s of waiting for the API's answer";
+        }
+
+        if (waited > limit)
+        {
+            var seen = answer.Body is null ? "an answer that is not the API's JSON (the tenant's shell answers when the API is not routed)" : $"status {status ?? "missing"}";
+            throw new SmokeException($"{host} not ready through the ingress after {limit.TotalSeconds:0} s: the last answer was {(int)answer.Status}, {seen}");
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
+    }
 });
 
 string? smokeToken = null;
