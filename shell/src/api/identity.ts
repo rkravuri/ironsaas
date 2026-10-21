@@ -177,10 +177,11 @@ export const login = (loginId: string, password: string) =>
 
 export const logout = () => request("/auth/logout", { method: "POST" });
 
+/** The token from the link's fragment, in the body: never in a path an access log or a trace keeps (ADR-0046). */
 export const acceptInvitation = (token: string, password: string, displayName: string | undefined) =>
-  request(`/auth/invitations/${encodeURIComponent(token)}/accept`, {
+  request("/auth/invitations/accept", {
     method: "POST",
-    body: { password, display_name: displayName },
+    body: { token, password, display_name: displayName },
   });
 
 export const fetchUsers = (query: string, signal?: AbortSignal) =>
@@ -222,7 +223,7 @@ export const fetchPasswordPolicy = (signal?: AbortSignal) =>
 
 /** Sets a new password with a recovery link (TF-017): once, within 15 minutes; every session of the person ends. */
 export const recoverPassword = (token: string, password: string) =>
-  request(`/auth/recovery/${encodeURIComponent(token)}`, { method: "POST", body: { password } });
+  request("/auth/recovery", { method: "POST", body: { token, password } });
 
 /** Changes your own password with the current one; the other sessions end unless you say not to (TF-017 AC3). */
 export const changePassword = (currentPassword: string, newPassword: string, endOtherSessions: boolean) =>

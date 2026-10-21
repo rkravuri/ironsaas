@@ -40,8 +40,10 @@ export function shellRoutes(
       ),
       errorElement: <RouteErrorPage />,
     },
+    // The links carry their code in the fragment (ADR-0046); /invitations/:token keeps the links issued before working.
+    { path: "/invitations", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
     { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
-    { path: "/recovery/:token", element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
+    { path: "/recovery", element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
     ...extra,
     {
       path: "/",

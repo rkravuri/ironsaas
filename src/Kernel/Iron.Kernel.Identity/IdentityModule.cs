@@ -50,6 +50,8 @@ public sealed class IdentityModule : IModule
         configuration.GetSection(AdministratorRecoveryOptions.SectionName).Bind(recovery);
         services.AddSingleton(recovery);
         services.AddScoped<IUnitCommand, AdministratorRecoveryCommand>();
+        // The handover place is the secret store's to give (ADR-0046); without it, nothing is handed over.
+        services.TryAddSingleton<Iron.Kernel.Handover.IOperatorHandover, Iron.Kernel.Handover.NoOperatorHandover>();
 
         var serviceAccounts = configuration.GetSection(ServiceAccountSeedOptions.SectionName).Get<List<ServiceAccountSeedOptions>>() ?? [];
         services.AddSingleton(new ServiceAccountSeeds(serviceAccounts));

@@ -61,6 +61,37 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
         await EnsureSuccessAsync(response, "write", path, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task WriteOnceAsync(string path, IReadOnlyDictionary<string, string> values, TimeSpan lifetime, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        if (lifetime <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, "A one-time place needs a lifetime above zero.");
+        }
+
+        // The lifetime first, on the path's metadata, so the version written next is deleted by the store when it ends;
+        // then the value with check-and-set 0, which the store refuses if anything was ever written there.
+        var after = $"{(long)Math.Ceiling(lifetime.TotalSeconds)}s";
+        using (var metadata = await _http.PostAsJsonAsync(MetadataUri(path), new MetadataEnvelope(after), cancellationToken).ConfigureAwait(false))
+        {
+            await EnsureSuccessAsync(metadata, "set the lifetime of", path, cancellationToken).ConfigureAwait(false);
+        }
+
+        using var response = await _http.PostAsJsonAsync(DataUri(path), new WriteOnceEnvelope(new WriteOptions(0), values), cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, "write once to", path, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task DeleteAsync(string path, CancellationToken cancellationToken)
+    {
+        using var response = await _http.DeleteAsync(MetadataUri(path), cancellationToken).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
+        await EnsureSuccessAsync(response, "delete", path, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<bool> IsReachableAsync(CancellationToken cancellationToken)
     {
         try
@@ -84,6 +115,16 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
         await EnsureSuccessAsync(response, "write the policy for", policyName, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task CreateDepositPolicyAsync(string policyName, string pathPattern, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pathPattern);
+        var pattern = pathPattern.Trim('/');
+        var rules = $"path \"{_mount}/data/{pattern}\" {{ capabilities = [\"create\", \"update\"] }}\npath \"{_mount}/metadata/{pattern}\" {{ capabilities = [\"create\", \"update\"] }}";
+        using var response = await _http.PutAsJsonAsync(new Uri($"v1/sys/policies/acl/{policyName}", UriKind.Relative), new PolicyEnvelope(rules), cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, "write the policy for", policyName, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(policies);
@@ -100,6 +141,12 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         return new Uri($"v1/{_mount}/data/{path.Trim('/')}", UriKind.Relative);
+    }
+
+    private Uri MetadataUri(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return new Uri($"v1/{_mount}/metadata/{path.Trim('/')}", UriKind.Relative);
     }
 
     private static async Task EnsureSuccessAsync(HttpResponseMessage response, string operation, string path, CancellationToken cancellationToken)
@@ -122,6 +169,12 @@ internal sealed record ReadEnvelope([property: JsonPropertyName("data")] ReadDat
 internal sealed record ReadData([property: JsonPropertyName("data")] Dictionary<string, JsonElement>? Data);
 
 internal sealed record WriteEnvelope([property: JsonPropertyName("data")] IReadOnlyDictionary<string, string> Data);
+
+internal sealed record WriteOptions([property: JsonPropertyName("cas")] int CheckAndSet);
+
+internal sealed record WriteOnceEnvelope([property: JsonPropertyName("options")] WriteOptions Options, [property: JsonPropertyName("data")] IReadOnlyDictionary<string, string> Data);
+
+internal sealed record MetadataEnvelope([property: JsonPropertyName("delete_version_after")] string DeleteVersionAfter);
 
 internal sealed record PolicyEnvelope([property: JsonPropertyName("policy")] string Policy);
 

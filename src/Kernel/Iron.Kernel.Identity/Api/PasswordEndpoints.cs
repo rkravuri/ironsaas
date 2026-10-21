@@ -23,7 +23,8 @@ public sealed record PasswordPolicyResponse(int MinimumLength, int MaximumLength
     }
 }
 
-public sealed record RecoverPasswordRequest(string Password);
+/// <summary>The link's code comes in the body, from its fragment, never in a path a log or a trace keeps (ADR-0046).</summary>
+public sealed record RecoverPasswordRequest(string Token, string Password);
 
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword, bool? EndOtherSessions);
 
@@ -34,6 +35,7 @@ public sealed class RecoverPasswordRequestValidator : AbstractValidator<RecoverP
 {
     public RecoverPasswordRequestValidator()
     {
+        RuleFor(r => r.Token).NotEmpty().MaximumLength(100);
         RuleFor(r => r.Password).NotEmpty().MaximumLength(1024);
     }
 }
@@ -67,7 +69,7 @@ internal static class PasswordEndpoints
     {
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
         auth.MapGet("/password-policy", PolicyAsync).AllowAnonymous().Produces<PasswordPolicyResponse>(StatusCodes.Status200OK).WithName("PasswordPolicy").WithSummary("The tenant's password rules, for the forms that set a password.");
-        auth.MapPost("/recovery/{token}", RecoverAsync).Validate<RecoverPasswordRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("RecoverPassword").WithSummary("Set a new password with a recovery link: one use, 15 minutes; every session of the person ends.");
+        auth.MapPost("/recovery", RecoverAsync).Validate<RecoverPasswordRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("RecoverPassword").WithSummary("Set a new password with a recovery link: one use, 15 minutes; every session of the person ends.");
 
         endpoints.MapPost("/api/v1/me/password", ChangeAsync).Validate<ChangePasswordRequest>().RequireSignedIn().WithTags("me").Produces(StatusCodes.Status204NoContent).WithName("ChangePassword").WithSummary("Change your password with the current one; end your other sessions unless you say not to.");
         endpoints.MapGet("/api/v1/me/security-events", SecurityEventsAsync).RequireSignedIn().WithTags("me").Produces<ListResponse<SecurityEventResponse>>(StatusCodes.Status200OK).WithName("MySecurityEvents").WithSummary("Your security activity, newest first: password changes, recovery links, lockouts, deactivation.");
@@ -76,9 +78,9 @@ internal static class PasswordEndpoints
     private static async Task<IResult> PolicyAsync(PasswordPolicy policy, CancellationToken cancellationToken) =>
         TypedResults.Ok(PasswordPolicyResponse.From(await policy.RulesAsync(cancellationToken)));
 
-    private static async Task<IResult> RecoverAsync(string token, RecoverPasswordRequest request, HttpContext http, PasswordService passwords, CancellationToken cancellationToken)
+    private static async Task<IResult> RecoverAsync(RecoverPasswordRequest request, HttpContext http, PasswordService passwords, CancellationToken cancellationToken)
     {
-        var result = await passwords.RecoverAsync(token, request.Password, cancellationToken);
+        var result = await passwords.RecoverAsync(request.Token, request.Password, cancellationToken);
         return ApiResults.From(result, http, principal => TypedResults.Ok(PrincipalResponse.From(principal)));
     }
 

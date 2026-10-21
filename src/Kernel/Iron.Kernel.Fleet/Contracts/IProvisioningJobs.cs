@@ -44,7 +44,42 @@ public sealed record ProvisioningJobInfo(
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
     IReadOnlyList<ProvisioningStepInfo> Steps,
-    JobRequest? Request = null);
+    JobRequest? Request = null,
+    Guid? RequestedById = null,
+    DateTimeOffset? HandedOverAt = null);
+
+/// <summary>What a job's command handed over to the operator (ADR-0046): an invitation or a recovery link, whose, and until when.</summary>
+public sealed record JobHandover(string Kind, string Subject, string LinkPath, DateTimeOffset ExpiresAt);
+
+/// <summary>Where a job's handover stands for the one who asks.</summary>
+public enum HandoverState
+{
+    /// <summary>The job handed nothing over, or has not finished.</summary>
+    None,
+
+    /// <summary>Given now, once: the place is deleted.</summary>
+    Given,
+
+    /// <summary>Given earlier; it is not shown again.</summary>
+    Taken,
+
+    /// <summary>Its link stopped working before anyone took it; the place is deleted.</summary>
+    Expired,
+
+    /// <summary>Waiting for the operator who asked for the job; someone else asked.</summary>
+    NotYours,
+}
+
+public sealed record JobHandoverAnswer(HandoverState State, JobHandover? Item = null);
+
+/// <summary>
+/// A job's handover (ADR-0046): the item its command wrote to the job's one-time place in the store, given once to the
+/// principal who asked for the job and then deleted. It never travels through the job's output, a log line or a trace.
+/// </summary>
+public interface IJobHandovers
+{
+    Task<JobHandoverAnswer> TakeAsync(Guid jobId, Guid askerId, CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// Provisioning jobs as the control plane uses them: one request per tenant at a time; the fleet worker picks up

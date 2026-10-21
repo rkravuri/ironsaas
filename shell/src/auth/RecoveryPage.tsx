@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation, useParams } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Alert, Anchor, Button, Container, Paper, PasswordInput, Stack, Text, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { ApiError } from "@/api/client";
@@ -24,15 +24,16 @@ type PageState =
   | { kind: "error"; message: string; correlationId: string | undefined };
 
 /**
- * The page behind a recovery link: /recovery/{token} (TF-017, ADR-0046). An administrator or the operator issued the
+ * The page behind a recovery link: /recovery#{code} (TF-017, ADR-0046). The code is in the fragment, which the browser
+ * never sends to a server, and goes to the API in the body. An administrator or the operator issued the
  * link, or the sign-in found the password expired. The new password follows the tenant's policy, in words before the
  * person types; saving it ends every session of the account. A link works once, for 15 minutes: one that does not work
  * any more says to ask the administrator, since a password refused by the policy leaves the link open.
  */
 export function RecoveryPage() {
   const { t } = useTranslation();
-  const { token = "" } = useParams();
   const location = useLocation();
+  const token = location.hash.slice(1);
   const expired = (location.state as RecoveryState | null)?.expired === true;
   const policy = usePasswordPolicy();
   const [state, setState] = useState<PageState>({ kind: "form" });

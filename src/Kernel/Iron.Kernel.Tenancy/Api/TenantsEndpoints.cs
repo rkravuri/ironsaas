@@ -54,6 +54,12 @@ public sealed class AdministratorRecoveryRequestValidator : AbstractValidator<Ad
     }
 }
 
+/// <summary>
+/// A job's handover in the provisioning report (ADR-0046): its state, and once, to the operator who asked, the link with
+/// the tenant's address, whose it is and until when. Afterwards the state says it was given.
+/// </summary>
+public sealed record HandoverResponse(string State, string? Kind = null, string? Subject = null, string? Link = null, DateTimeOffset? ExpiresAt = null, DateTimeOffset? HandedOverAt = null);
+
 public sealed record ProvisioningResponse(
     Guid JobId,
     JobKind Kind,
@@ -65,12 +71,13 @@ public sealed record ProvisioningResponse(
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
     IReadOnlyList<ProvisioningStepInfo> Steps,
-    JobRequest? Request = null)
+    JobRequest? Request = null,
+    HandoverResponse? Handover = null)
 {
-    public static ProvisioningResponse From(ProvisioningJobInfo job)
+    public static ProvisioningResponse From(ProvisioningJobInfo job, HandoverResponse? handover = null)
     {
         ArgumentNullException.ThrowIfNull(job);
-        return new ProvisioningResponse(job.Id, job.Kind, job.Status, job.CurrentStep, job.Error, job.Output, job.RequestedAt, job.StartedAt, job.FinishedAt, job.Steps, job.Request);
+        return new ProvisioningResponse(job.Id, job.Kind, job.Status, job.CurrentStep, job.Error, job.Output, job.RequestedAt, job.StartedAt, job.FinishedAt, job.Steps, job.Request, handover);
     }
 }
 
@@ -103,7 +110,7 @@ internal static class TenantsEndpoints
         tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
         tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
         tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason; the job's output is the link, valid 15 minutes and once.");
-        tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ProvisioningResponse>(StatusCodes.Status200OK).WithName("GetProvisioning").WithSummary("The latest job of the tenant.");
+        tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ProvisioningResponse>(StatusCodes.Status200OK).WithName("GetProvisioning").WithSummary("The latest job of the tenant; once it completed, the invitation or recovery link it handed over, given once to the operator who asked and then deleted.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, TenancyDbContext context, CancellationToken cancellationToken)
@@ -167,16 +174,35 @@ internal static class TenantsEndpoints
         return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
     }
 
-    private static async Task<IResult> ProvisioningAsync(string slug, HttpContext http, IProvisioningJobs jobs, TenantRegistry registry, CancellationToken cancellationToken)
+    private static async Task<IResult> ProvisioningAsync(string slug, HttpContext http, IProvisioningJobs jobs, IJobHandovers handovers, ICurrentPrincipal actor, TenantRegistry registry, CancellationToken cancellationToken)
     {
-        if (await registry.FindAsync(slug, cancellationToken) is null)
+        var tenant = await registry.FindAsync(slug, cancellationToken);
+        if (tenant is null)
         {
             return ApiResults.Problem(Error.NotFound(TenancyErrors.TenantNotFound, $"There is no tenant '{slug}'."), http);
         }
 
         var job = await jobs.LatestAsync(slug, cancellationToken);
-        return job is null
-            ? ApiResults.Problem(Error.NotFound("fleet.job.not_found", $"Tenant '{slug}' has no provisioning job yet."), http)
-            : TypedResults.Ok(ProvisioningResponse.From(job));
+        if (job is null)
+        {
+            return ApiResults.Problem(Error.NotFound("fleet.job.not_found", $"Tenant '{slug}' has no provisioning job yet."), http);
+        }
+
+        // The link the job handed over, once, to the operator who asked (ADR-0046); the answer is no-store, so no cache keeps it.
+        var answer = job.Status == ProvisioningStatus.Completed ? await handovers.TakeAsync(job.Id, actor.Id, cancellationToken) : new JobHandoverAnswer(HandoverState.None);
+        HandoverResponse? handover = answer.State switch
+        {
+            HandoverState.Given when answer.Item is { } item => new HandoverResponse("given", item.Kind, item.Subject, $"https://{tenant.Hostnames[0]}{item.LinkPath}", item.ExpiresAt),
+            HandoverState.Taken => new HandoverResponse("taken", HandedOverAt: job.HandedOverAt),
+            HandoverState.Expired => new HandoverResponse("expired"),
+            HandoverState.NotYours => new HandoverResponse("not_yours"),
+            _ => null,
+        };
+        if (answer.State == HandoverState.Given)
+        {
+            http.Response.Headers.CacheControl = "no-store";
+        }
+
+        return TypedResults.Ok(ProvisioningResponse.From(job, handover));
     }
 }

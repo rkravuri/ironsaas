@@ -51,6 +51,10 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("finished_at");
 
+                    b.Property<DateTimeOffset?>("HandedOverAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("handed_over_at");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -75,6 +79,10 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)")
                         .HasColumnName("requested_by");
+
+                    b.Property<Guid?>("RequestedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_id");
 
                     b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("timestamp with time zone")
@@ -112,6 +120,9 @@ namespace Iron.Kernel.Fleet.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_provisioning_jobs");
+
+                    b.HasIndex("RequestedById")
+                        .HasDatabaseName("ix_provisioning_jobs_requested_by_id");
 
                     b.HasIndex("TenantSlug", "RequestedAt")
                         .HasDatabaseName("ix_provisioning_jobs_tenant_slug_requested_at");

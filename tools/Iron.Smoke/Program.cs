@@ -26,6 +26,10 @@ var fleetSecretPath = $"tenants/{options.Tenant}/fleet";
 var smokeSecretPath = $"tenants/{options.Tenant}/smoke";
 
 string? operatorToken = null;
+
+// The administrator's invitation link of a tenant this run provisioned: the provisioning report gives it once, to the
+// operator who asked, and never in the job's output (ADR-0046).
+string? invitationLink = null;
 await report.StepAsync("control-token", ["ADR-0015", "ADR-0017"], async () =>
 {
     var answer = (await api.SendAsync(HttpMethod.Post, options.ControlUrl, "/connect/token", basic: (options.OperatorClientId, options.OperatorSecret), form: "grant_type=client_credentials", cancellationToken: ct)).Expect(HttpStatusCode.OK, "operator token");
@@ -67,7 +71,8 @@ await report.StepAsync("tenant", ["TF-180 AC2"], async () =>
             var jobStatus = job.Text("status");
             if (jobStatus == "completed")
             {
-                return $"tenant {options.Tenant} provisioned by job {job.Text("job_id")}";
+                invitationLink = GivenLink(job);
+                return $"tenant {options.Tenant} provisioned by job {job.Text("job_id")}{(invitationLink is null ? string.Empty : "; its invitation handed over once")}";
             }
 
             if (jobStatus == "failed")
@@ -145,23 +150,30 @@ await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
         return "administrator password known from an earlier run";
     }
 
-    // No password known: a new tenant's administrator accepts the invitation; one who is active already (a store that
-    // healed, an invitation accepted by hand) gets a new password from the operator's recovery in the next step.
-    var fleet = await store.ReadAsync(fleetSecretPath, ct) ?? throw new SmokeException($"no secret at {fleetSecretPath}");
-    var link = fleet.GetValueOrDefault("invitation_link");
+    // No password known: a tenant this run provisioned hands its administrator's invitation over in the report. For one
+    // provisioned before, an update re-issues the invitation while the administrator is still Invited, handed over the
+    // same way; one who is active already (a store that healed, an invitation accepted by hand) gets a new password from
+    // the operator's recovery in the next step.
+    var link = invitationLink;
     if (link is null)
     {
-        return "no password and no invitation known: the recovery step sets one";
+        (await api.SendAsync(HttpMethod.Post, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/update", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.Accepted, "ask for an update, which re-issues an open invitation");
+        link = GivenLink(await CompletedJobAsync(null, TimeSpan.FromSeconds(300)));
     }
 
-    var token = link[(link.LastIndexOf('/') + 1)..];
+    if (link is null)
+    {
+        return "no password known, and the administrator is no longer invited: the recovery step sets one";
+    }
+
+    var token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..];
     var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
 
     // The password is kept before the accept: if the answer is lost on the way (a resent request meets a spent
     // invitation), the login step still has what the accept used.
     await store.WriteAsync(smokeSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator_password"] = password }, ct);
     administratorPassword = password;
-    var accepted = await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth/invitations/{Uri.EscapeDataString(token)}/accept", host: host, json: new { password, display_name = "Smoke Administrator" }, cancellationToken: ct);
+    var accepted = await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/invitations/accept", host: host, json: new { token, password, display_name = "Smoke Administrator" }, cancellationToken: ct);
     if (accepted.Status == HttpStatusCode.OK)
     {
         return $"invitation accepted for {options.AdministratorLoginId}; password kept at {smokeSecretPath}";
@@ -171,23 +183,36 @@ await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
 });
 
 // The operator's recovery (S3 T2, ADR-0046), on every run: the control plane asks the fleet for a link with a reason, the
-// unit issues it and audits the operator and the reason, the link sets a new password once and ends every session, a second
-// use is refused, the old password no longer signs in, and both planes' audit trails show the request. The new password
-// is kept at the smoke's path, so a run that did not know the password ends knowing it.
+// unit issues it, audits the operator and the reason, and hands the link over through the store; the report gives it once
+// to this operator and never again, and the job's output holds no link. The link sets a new password once and ends every
+// session, a second use is refused, the old password no longer signs in, and both planes' audit trails show the request.
+// The new password is kept at the smoke's path, so a run that did not know the password ends knowing it.
 var recoveryReason = $"The smoke proves the operator's recovery ({TimeProvider.System.GetUtcNow():yyyy-MM-dd HH:mm} UTC)";
 await report.StepAsync("recovery", ["TF-017 AC1", "TF-017 AC2", "ADR-0046"], async () =>
 {
     var before = administratorPassword;
     var requested = (await api.SendAsync(HttpMethod.Post, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/administrator-recovery", bearer: operatorToken, json: new { reason = recoveryReason }, cancellationToken: ct)).Expect(HttpStatusCode.Accepted, "ask for the administrator's recovery link");
     var jobId = requested.Text("job_id");
-    var output = await JobOutputAsync(jobId);
-    var token = output[(output.LastIndexOf('/') + 1)..];
+    var completed = await CompletedJobAsync(jobId, TimeSpan.FromSeconds(120));
+    var link = GivenLink(completed) ?? throw new SmokeException($"the recovery job completed without handing its link over: {completed.Body}");
+    if ((completed.Text("output") ?? string.Empty).Contains("/recovery", StringComparison.Ordinal))
+    {
+        throw new SmokeException("the recovery job's output holds a link");
+    }
+
+    var later = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/provisioning", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "read the report again");
+    if (GivenLink(later) is not null)
+    {
+        throw new SmokeException("the report gave the recovery link a second time");
+    }
+
+    var token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..];
     var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
-    (await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth/recovery/{Uri.EscapeDataString(token)}", host: host, json: new { password }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "set the password with the link");
+    (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/recovery", host: host, json: new { token, password }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "set the password with the link");
     await store.WriteAsync(smokeSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator_password"] = password }, ct);
     administratorPassword = password;
 
-    var again = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth/recovery/{Uri.EscapeDataString(token)}", host: host, json: new { password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) }, cancellationToken: ct)).Expect(HttpStatusCode.NotFound, "the link used twice");
+    var again = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/recovery", host: host, json: new { token, password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) }, cancellationToken: ct)).Expect(HttpStatusCode.NotFound, "the link used twice");
     var old = before is null || before == password
         ? "no earlier password to try"
         : $"the earlier password answers {(int)(await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/login", host: host, json: new { login_id = options.AdministratorLoginId, password = before }, cancellationToken: ct)).Expect(HttpStatusCode.Unauthorized, "the earlier password").Status}";
@@ -210,7 +235,7 @@ await report.StepAsync("recovery", ["TF-017 AC1", "TF-017 AC2", "ADR-0046"], asy
         throw new SmokeException("the control plane's audit trail has no administrator_recovery_requested with the run's reason");
     }
 
-    return $"job {jobId} issued a link for {options.AdministratorLoginId}; it set the password once, a second use answers 404 {again.Text("error_code")}; {old}; both audit trails show the reason";
+    return $"job {jobId} handed a link for {options.AdministratorLoginId} over once, none in its output; it set the password once, a second use answers 404 {again.Text("error_code")}; {old}; both audit trails show the reason";
 });
 
 string? cookie = null;
@@ -312,31 +337,37 @@ await report.StepAsync("kill-switch", ["ADR-0035"], () => access.KillSwitchAsync
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
 
-// The recovery job's output once it completes: the link, whose last segment is the code.
-async Task<string> JobOutputAsync(string? jobId)
+// The report of a job once it completed, read once at that moment, since that read is the one the job's handover is given
+// with (ADR-0046). A null job id waits for the latest job, the one just requested.
+async Task<Answer> CompletedJobAsync(string? jobId, TimeSpan limit)
 {
-    var deadline = TimeProvider.System.GetUtcNow().AddSeconds(120);
+    var deadline = TimeProvider.System.GetUtcNow().Add(limit);
     while (TimeProvider.System.GetUtcNow() < deadline)
     {
-        var job = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/provisioning", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "read the recovery job");
-        if (job.Text("job_id") == jobId)
+        var job = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/provisioning", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "read the job");
+        if (jobId is null || job.Text("job_id") == jobId)
         {
             switch (job.Text("status"))
             {
                 case "completed":
-                    return job.Text("output") is { } output && output.Contains("/recovery/", StringComparison.Ordinal)
-                        ? output
-                        : throw new SmokeException($"the recovery job completed without a link: {job.Text("output")}");
+                    return job;
                 case "failed":
-                    throw new SmokeException($"the recovery job failed: {job.Text("error")}");
+                    throw new SmokeException($"job {job.Text("job_id")} failed: {job.Text("error")}");
             }
         }
 
         await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
     }
 
-    throw new SmokeException($"the recovery job {jobId} did not finish within 120 s; is the fleet worker up?");
+    throw new SmokeException($"the job did not finish within {limit.TotalSeconds:0} s; is the fleet worker up?");
 }
+
+// The link a report gives once, or null.
+static string? GivenLink(Answer job) =>
+    job.Body is { ValueKind: JsonValueKind.Object } body && body.TryGetProperty("handover", out var handover) && handover.ValueKind == JsonValueKind.Object
+        && handover.TryGetProperty("state", out var state) && state.GetString() == "given" && handover.TryGetProperty("link", out var link)
+        ? link.GetString()
+        : null;
 
 static int CountSpans(JsonElement root)
 {

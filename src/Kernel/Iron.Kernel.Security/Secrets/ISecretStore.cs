@@ -14,6 +14,17 @@ public interface ISecretStore
 
     /// <summary>True when the store answers and is unsealed.</summary>
     Task<bool> IsReachableAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Writes the pairs at a path only if nothing was ever written there, and has the store delete them after
+    /// <paramref name="lifetime"/>: a one-time place for something handed over (ADR-0046).
+    /// </summary>
+    Task WriteOnceAsync(string path, IReadOnlyDictionary<string, string> values, TimeSpan lifetime, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This store has no one-time places.");
+
+    /// <summary>Deletes a path with every version it had, so nothing can bring it back.</summary>
+    Task DeleteAsync(string path, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This store deletes nothing.");
 }
 
 /// <summary>
@@ -24,6 +35,13 @@ public interface ISecretStoreAdmin
 {
     /// <summary>Creates or replaces a policy that allows reading the given paths (relative to the mount) and nothing else.</summary>
     Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Creates or replaces a policy that allows writing new values at the paths matching a pattern (relative to the mount,
+    /// <c>*</c> for the last segment) and nothing else, not even reading them back: a place to deposit, for ADR-0046.
+    /// </summary>
+    Task CreateDepositPolicyAsync(string policyName, string pathPattern, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This store has no deposit policies.");
 
     /// <summary>Creates a token that carries only the given policies. The caller stores it; the store cannot show it again.</summary>
     Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken);

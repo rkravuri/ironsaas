@@ -21,7 +21,8 @@ namespace Iron.Kernel.Identity.Api;
 
 public sealed record LoginRequest(string LoginId, string Password);
 
-public sealed record AcceptInvitationRequest(string Password, string? DisplayName);
+/// <summary>The invitation's token comes in the body, from the link's fragment, never in a path a log or a trace keeps (ADR-0046).</summary>
+public sealed record AcceptInvitationRequest(string Token, string Password, string? DisplayName);
 
 public sealed record PrincipalResponse(Guid Id, string LoginId, string DisplayName, PrincipalType Type, PrincipalStatus Status, string? Email, string? Locale, string? TimeZone)
 {
@@ -116,13 +117,14 @@ public sealed class AcceptInvitationRequestValidator : AbstractValidator<AcceptI
 {
     public AcceptInvitationRequestValidator()
     {
+        RuleFor(r => r.Token).NotEmpty().MaximumLength(100);
         RuleFor(r => r.Password).NotEmpty().MaximumLength(1024);
         RuleFor(r => r.DisplayName).MaximumLength(Principal.DisplayNameMaxLength);
     }
 }
 
 /// <summary>
-/// <c>/auth/login</c>, <c>/auth/logout</c> and <c>/auth/invitations/{token}/accept</c> are the anonymous and signed-in
+/// <c>/auth/login</c>, <c>/auth/logout</c> and <c>/auth/invitations/accept</c> are the anonymous and signed-in
 /// doors of a unit (TF-011, TF-018, TF-029); <c>/api/v1/me</c> is what the shell asks first after login.
 /// </summary>
 internal static class AuthEndpoints
@@ -138,7 +140,7 @@ internal static class AuthEndpoints
 
         auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("Login").WithSummary("Sign in with login identifier and password.");
         auth.MapPost("/logout", LogoutAsync).RequireSignedIn().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
-        auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account.");
+        auth.MapPost("/invitations/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account; the token comes from the link's fragment.");
 
         endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
         endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
@@ -187,9 +189,9 @@ internal static class AuthEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> AcceptInvitationAsync(string token, AcceptInvitationRequest request, HttpContext http, InvitationService invitations, CancellationToken cancellationToken)
+    private static async Task<IResult> AcceptInvitationAsync(AcceptInvitationRequest request, HttpContext http, InvitationService invitations, CancellationToken cancellationToken)
     {
-        var result = await invitations.AcceptAsync(token, request.Password, request.DisplayName, cancellationToken);
+        var result = await invitations.AcceptAsync(request.Token, request.Password, request.DisplayName, cancellationToken);
         return ApiResults.From(result, http, principal => TypedResults.Ok(PrincipalResponse.From(principal)));
     }
 

@@ -26,10 +26,10 @@ const anonymous = { "GET /api/v1/me": () => problem(401, { error_code: "auth.una
 const recovery = () =>
   renderWithProviders(
     <Routes>
-      <Route path="/recovery/:token" element={<RecoveryPage />} />
+      <Route path="/recovery" element={<RecoveryPage />} />
       <Route path="/login" element={<LoginPage autoFocus={false} />} />
     </Routes>,
-    { route: "/recovery/the-code" },
+    { route: "/recovery#the-code" },
   );
 
 const setPassword = async (password: string) => {
@@ -44,7 +44,7 @@ describe("the password forms", () => {
     stubFetch({
       ...anonymous,
       "GET /auth/password-policy": () => json(policy()),
-      "POST /auth/recovery/the-code": () =>
+      "POST /auth/recovery": () =>
         problem(400, {
           error_code: "identity.password.common",
           detail: "This password is on the list of the most common passwords.",
@@ -83,14 +83,14 @@ describe("the password forms", () => {
     await setPassword("fifteen letters");
 
     expect(await screen.findByText("Use at least 16 characters.")).toBeInTheDocument();
-    expect(calls.some((call) => call.key.startsWith("POST /auth/recovery/"))).toBe(false);
+    expect(calls.some((call) => call.key === "POST /auth/recovery")).toBe(false);
   });
 
   it("save a new password once with a recovery link and say every session ended [TF-017 AC1, ADR-0046]", async () => {
     const { calls } = stubFetch({
       ...anonymous,
       "GET /auth/password-policy": () => json(policy()),
-      "POST /auth/recovery/the-code": () => json({ id: "u1" }),
+      "POST /auth/recovery": () => json({ id: "u1" }),
     });
     recovery();
 
@@ -98,15 +98,15 @@ describe("the password forms", () => {
 
     expect(await screen.findByText(/every session of your account has ended/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
-    const sent = calls.find((call) => call.key === "POST /auth/recovery/the-code");
-    expect(JSON.parse(sent?.init?.body as string)).toEqual({ password: "a brand new passphrase" });
+    const sent = calls.find((call) => call.key === "POST /auth/recovery");
+    expect(JSON.parse(sent?.init?.body as string)).toEqual({ token: "the-code", password: "a brand new passphrase" });
   });
 
   it("say a used, replaced or expired recovery link does not work and to ask the administrator [TF-017 AC2, ADR-0046]", async () => {
     stubFetch({
       ...anonymous,
       "GET /auth/password-policy": () => json(policy()),
-      "POST /auth/recovery/the-code": () => problem(404, { error_code: "identity.recovery.invalid" }, "corr-used"),
+      "POST /auth/recovery": () => problem(404, { error_code: "identity.recovery.invalid" }, "corr-used"),
     });
     recovery();
 
@@ -122,7 +122,7 @@ describe("the password forms", () => {
     stubFetch({
       ...anonymous,
       "GET /auth/password-policy": () => json(policy()),
-      "POST /auth/invitations/inv/accept": () =>
+      "POST /auth/invitations/accept": () =>
         problem(400, {
           error_code: "identity.password.is_login_id",
           errors: [{ field: "password", code: "is_login_id", message: "Choose a password that is not your login." }],
@@ -130,9 +130,9 @@ describe("the password forms", () => {
     });
     renderWithProviders(
       <Routes>
-        <Route path="/invitations/:token" element={<InvitationPage />} />
+        <Route path="/invitations" element={<InvitationPage />} />
       </Routes>,
-      { route: "/invitations/inv" },
+      { route: "/invitations#inv" },
     );
 
     const rules = await screen.findByRole("list", { name: "Your password needs" });
@@ -196,7 +196,7 @@ describe("the sign-in page and passwords", () => {
     renderWithProviders(
       <Routes>
         <Route path="/login" element={<LoginPage autoFocus={false} />} />
-        <Route path="/recovery/:token" element={<RecoveryPage />} />
+        <Route path="/recovery" element={<RecoveryPage />} />
       </Routes>,
       { route: "/login" },
     );

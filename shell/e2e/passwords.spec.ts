@@ -26,7 +26,7 @@ test.describe("passwords and a person's life cycle", () => {
       .click();
     const shown = page.getByRole("dialog", { name: /^A recovery link for/ });
     const link = await shown.getByRole("textbox", { name: "Recovery link" }).inputValue();
-    expect(link).toMatch(/\/recovery\/[A-Za-z0-9_-]+$/);
+    expect(link).toMatch(/\/recovery#[A-Za-z0-9_-]+$/);
     await page.screenshot({ path: "test-results/e2e/recovery-link-issued.png" });
     await shown.getByRole("button", { name: "Done" }).click();
 
@@ -36,6 +36,8 @@ test.describe("passwords and a person's life cycle", () => {
     const theirs = await context.newPage();
     const chosen = `recovered on ${Date.now()} with a long phrase`;
     const setPassword = async (value: string) => {
+      // Through a blank page: the same address again, fragment and all, would not load the page anew.
+      await theirs.goto("about:blank");
       await theirs.goto(link);
       await theirs.getByLabel(/^New password/).fill(value);
       await theirs.getByLabel(/^Repeat the new password/).fill(value);

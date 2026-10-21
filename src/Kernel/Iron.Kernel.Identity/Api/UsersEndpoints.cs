@@ -227,7 +227,7 @@ internal static class UsersEndpoints
         }
 
         var result = await users.IssueRecoveryAsync(target.Value, cancellationToken);
-        return ApiResults.From(result, http, link => TypedResults.Ok(new RecoveryLinkResponse($"/recovery/{link.Token}", link.ExpiresAt)));
+        return ApiResults.From(result, http, link => TypedResults.Ok(new RecoveryLinkResponse(Links.Recovery(link.Token), link.ExpiresAt)));
     }
 
     private static async Task<IResult> DeactivateAsync(Guid id, HttpContext http, UserService users, IOrganisationUnits units, LoginThrottles throttles, CancellationToken cancellationToken)
@@ -253,7 +253,7 @@ internal static class UsersEndpoints
         var result = await users.ReactivateAsync(target.Value, cancellationToken);
         return ApiResults.From(result, http, done => TypedResults.Ok(new ReactivateUserResponse(
             UserResponse.From(done.Principal),
-            done.InvitationToken is { } token ? $"/invitations/{token}" : null,
+            done.InvitationToken is { } token ? Links.Invitation(token) : null,
             done.InvitationToken is null ? null : done.Principal.InvitationExpiresAt)));
     }
 
@@ -272,6 +272,6 @@ internal static class UsersEndpoints
         var result = await users.CreateAsync(request.LoginId, request.DisplayName, request.HomeUnitId, cancellationToken);
         return ApiResults.From(result, http, created => TypedResults.Created(
             $"{ApiRouting.Prefix}/users/{created.Principal.Id}",
-            new CreateUserResponse(UserResponse.From(created.Principal), $"/invitations/{created.InvitationToken}", created.InvitationExpiresAt)));
+            new CreateUserResponse(UserResponse.From(created.Principal), Links.Invitation(created.InvitationToken), created.InvitationExpiresAt)));
     }
 }

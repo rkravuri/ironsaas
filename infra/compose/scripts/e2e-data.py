@@ -106,7 +106,9 @@ def create_person(cookie, run, prefix, display_name, unit):
     """A person homed at the unit who signs in: invited, then accepted with a password made here."""
     login_id, secret = f"{prefix}-{run}@{TENANT}.localhost", password()
     person_id, link = create_user(cookie, login_id, display_name, unit["id"])
-    status, data, _ = send(INGRESS, "POST", f"/auth{link}/accept", {"password": secret}, {"Host": HOST})
+    # The token is in the link's fragment, which no server receives; it goes in the body (ADR-0046).
+    token = link.split("#", 1)[1]
+    status, data, _ = send(INGRESS, "POST", "/auth/invitations/accept", {"token": token, "password": secret}, {"Host": HOST})
     if status != 200:
         raise SystemExit(f"the invitation of {login_id} was not accepted: {status} {data}")
     log(f"Created {login_id} in {unit['name']}.")

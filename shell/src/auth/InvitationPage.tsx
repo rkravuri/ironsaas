@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 import { Alert, Anchor, Button, Container, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { ApiError } from "@/api/client";
@@ -20,12 +20,16 @@ type InvitationState =
   | { kind: "error"; message: string; correlationId: string | undefined };
 
 /**
- * The page behind an invitation link: /invitations/{token}. The invitee sets a password under the tenant's policy, shown
- * in words before they type (TF-012, TF-018); a password the API refuses keeps the form and names the rule it failed.
+ * The page behind an invitation link: /invitations#{token}. The token is in the fragment, which the browser never sends to
+ * a server, and goes to the API in the body (ADR-0046); /invitations/{token}, the form before, still works. The invitee
+ * sets a password under the tenant's policy, shown in words before they type (TF-012, TF-018); a password the API
+ * refuses keeps the form and names the rule it failed.
  */
 export function InvitationPage() {
   const { t } = useTranslation();
-  const { token = "" } = useParams();
+  const location = useLocation();
+  const params = useParams();
+  const token = location.hash.length > 1 ? location.hash.slice(1) : (params.token ?? "");
   const policy = usePasswordPolicy();
   const [state, setState] = useState<InvitationState>({ kind: "form" });
   const [submitting, setSubmitting] = useState(false);

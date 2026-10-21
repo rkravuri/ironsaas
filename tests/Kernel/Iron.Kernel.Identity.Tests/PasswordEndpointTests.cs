@@ -113,13 +113,14 @@ public class PasswordEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         using var issued = await SendAsync(HttpMethod.Post, $"/api/v1/users/{person.Id}/recovery-link", asAdministrator);
         using var link = await JsonAsync(issued);
         var path = link.RootElement.GetProperty("recovery_link").GetString()!;
-        using var common = await _client.PostAsJsonAsync($"/auth{path}", new { password = "qwertyuiop123" }, TestContext.Current.CancellationToken);
-        using var set = await _client.PostAsJsonAsync($"/auth{path}", new { password = NewPassword }, TestContext.Current.CancellationToken);
-        using var again = await _client.PostAsJsonAsync($"/auth{path}", new { password = "another new passphrase" }, TestContext.Current.CancellationToken);
+        var code = path[(path.IndexOf('#', StringComparison.Ordinal) + 1)..];
+        using var common = await _client.PostAsJsonAsync("/auth/recovery", new { token = code, password = "qwertyuiop123" }, TestContext.Current.CancellationToken);
+        using var set = await _client.PostAsJsonAsync("/auth/recovery", new { token = code, password = NewPassword }, TestContext.Current.CancellationToken);
+        using var again = await _client.PostAsJsonAsync("/auth/recovery", new { token = code, password = "another new passphrase" }, TestContext.Current.CancellationToken);
         using var signedIn = await _client.PostAsJsonAsync("/auth/login", new { login_id = person.LoginId, password = NewPassword }, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, issued.StatusCode);
-        Assert.StartsWith("/recovery/", path, StringComparison.Ordinal);
+        Assert.StartsWith("/recovery#", path, StringComparison.Ordinal); // the code in the fragment, which no server receives (ADR-0046)
         Assert.Equal(_time.GetUtcNow() + TimeSpan.FromMinutes(15), link.RootElement.GetProperty("expires_at").GetDateTimeOffset());
         Assert.Equal(IdentityErrors.PasswordCommon, await ProblemAsync(common, HttpStatusCode.BadRequest));
         Assert.Equal(HttpStatusCode.OK, set.StatusCode);
@@ -262,7 +263,7 @@ public class PasswordEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         using var expired = await client.PostAsJsonAsync("/auth/login", new { login_id = loginId, password = NewPassword }, ct);
         using var problem = await JsonAsync(expired);
         var code = problem.RootElement.GetProperty("recovery_token").GetString();
-        using var renewed = await client.PostAsJsonAsync($"/auth/recovery/{code}", new { password = "a renewed passphrase" }, ct);
+        using var renewed = await client.PostAsJsonAsync("/auth/recovery", new { token = code, password = "a renewed passphrase" }, ct);
 
         Assert.Equal(time.GetUtcNow(), meBody.RootElement.GetProperty("password_expires_at").GetDateTimeOffset());
         Assert.Equal(HttpStatusCode.Unauthorized, expired.StatusCode);

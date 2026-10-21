@@ -70,7 +70,7 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
     } catch (error) {
       if (error instanceof ApiError && error.errorCode === "identity.password.expired" && error.recoveryToken) {
         const state: RecoveryState = { expired: true };
-        void navigate(`/recovery/${encodeURIComponent(error.recoveryToken)}`, { state });
+        void navigate(`/recovery#${error.recoveryToken}`, { state });
         return;
       }
       setProblem({

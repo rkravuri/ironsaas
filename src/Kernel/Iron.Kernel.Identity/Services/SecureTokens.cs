@@ -18,3 +18,14 @@ public static class SecureTokens
 
     private static string Base64UrlEncode(byte[] bytes) => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }
+
+/// <summary>
+/// The links a person opens (ADR-0046): the shell's page, with the code in the fragment. A browser never sends a fragment
+/// to a server, so the code is in no access log, referrer or trace on the way; the page posts it in a request's body.
+/// </summary>
+public static class Links
+{
+    public static string Invitation(string token) => $"/invitations#{token}";
+
+    public static string Recovery(string code) => $"/recovery#{code}";
+}

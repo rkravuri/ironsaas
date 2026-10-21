@@ -2,6 +2,7 @@ using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Seeding;
 using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Handover;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Microsoft.EntityFrameworkCore;
@@ -46,8 +47,10 @@ public sealed class ServiceAccountSeeds(IReadOnlyList<ServiceAccountSeedOptions>
 /// <summary>
 /// Creates the first administrator in Invited status with an invitation token and the tenant-administrator role, and
 /// the configured service accounts, Active, each with its role. Runs after the Authorization seeder (order 100).
-/// Without the configuration, each part does nothing. The invitation token is written to the log once, at creation,
-/// because no email leaves a unit in S1; the fleet prints the link (T14). Then every principal without a home unit gets
+/// Without the configuration, each part does nothing. No email leaves a unit yet, so the invitation link is handed over
+/// to the operator who asked, through the one-time place the fleet gives the command (ADR-0046): never in a log line or
+/// the command's output. Run from source without a place, the link goes to the console for the developer, not to the
+/// log (where the scrubbing rule would hide it anyway). Then every principal without a home unit gets
 /// the root unit the Authorization seeder created (TF-034). Running again changes nothing, except that an existing
 /// service account takes the secret the seed was given when it differs (ADR-0028).
 /// </summary>
@@ -61,6 +64,7 @@ public sealed class IdentitySeeder(
     IOrganisationUnits units,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
+    IOperatorHandover handover,
     ILogger<IdentitySeeder> logger) : ISeeder
 {
     public int Order => 200;
@@ -189,7 +193,7 @@ public sealed class IdentitySeeder(
             {
                 // A seed that runs again (a provisioning step resumed) issues a fresh invitation; the earlier link is void.
                 var fresh = await invitations.InviteAsync(existing, cancellationToken).ConfigureAwait(false);
-                logger.LogInformation("The administrator {LoginId} ({PrincipalId}) is still Invited; a new invitation was issued. Invitation token: {Token}", loginId, existing.Id, fresh);
+                await HandOverAsync(existing, fresh, "is still Invited; a new invitation was issued", cancellationToken).ConfigureAwait(false);
                 return;
             }
 
@@ -208,6 +212,23 @@ public sealed class IdentitySeeder(
             throw new InvalidOperationException($"The tenant-administrator role could not be assigned: {assigned.Error.Message}. Run the Authorization seeder first.");
         }
 
-        logger.LogInformation("Created the first administrator {LoginId} ({PrincipalId}) in Invited status. Invitation token: {Token}", loginId, administrator.Id, token);
+        await HandOverAsync(administrator, token, "was created in Invited status", cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The invitation link goes to the operator through the handover place, valid as long as the invitation. The log line
+    /// says what happened and that it was handed over, never the link.
+    /// </summary>
+    private async Task HandOverAsync(Principal administrator, string token, string what, CancellationToken cancellationToken)
+    {
+        if (handover.IsAvailable)
+        {
+            await handover.DepositAsync(new OperatorHandoverItem(OperatorHandoverItem.Invitation, administrator.LoginId, Links.Invitation(token), administrator.InvitationExpiresAt!.Value), cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("The administrator {LoginId} ({PrincipalId}) {What}. Handed over an invitation to the operator who asked, valid until {ExpiresAt}.", administrator.LoginId, administrator.Id, what, administrator.InvitationExpiresAt);
+            return;
+        }
+
+        logger.LogInformation("The administrator {LoginId} ({PrincipalId}) {What}. No handover place: the invitation link is on the console.", administrator.LoginId, administrator.Id, what);
+        await Console.Out.WriteLineAsync($"For local development, the invitation of {administrator.LoginId}: {Links.Invitation(token)}").ConfigureAwait(false);
     }
 }

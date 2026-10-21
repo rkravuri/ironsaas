@@ -53,7 +53,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0043](0043-ironsaas-foundation-and-suites.md) | IronSaaS Foundation and suites: the Suite layer, deployment by purchase, one repository | Accepted |
 | [0044](0044-naming-what-a-test-proves-and-the-traceability-matrix.md) | Naming what a test proves, the traceability matrix, and a check sequence that holds under load | Accepted |
 | [0045](0045-process-maps-as-bpmn-files-checked-against-the-schema.md) | Process maps as BPMN files, checked against the BPMN 2.0 schema | Accepted |
-| [0046](0046-passwords-lockout-and-recovery.md) | Passwords: the policy, lockout without revealing accounts, and three ways to recover | Proposed |
+| [0046](0046-passwords-lockout-and-recovery.md) | Passwords: the policy, lockout without revealing accounts, and three ways to recover | Accepted |
 
 ## Reading order
 

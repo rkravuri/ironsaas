@@ -80,7 +80,7 @@ describe("the user record's actions", () => {
       "GET /api/v1/me": () => json(me([], manager)),
       "GET /api/v1/users/u1": () => json(person()),
       "GET /api/v1/me/access?unit=sales": () => json({ scope: "unit:sales", permissions: manager }),
-      "POST /api/v1/users/u1/recovery-link": () => json({ recovery_link: "/recovery/the-code", expires_at: expires }),
+      "POST /api/v1/users/u1/recovery-link": () => json({ recovery_link: "/recovery#the-code", expires_at: expires }),
     });
     page();
 
@@ -91,7 +91,7 @@ describe("the user record's actions", () => {
     fireEvent.click(within(confirm).getByRole("button", { name: "Issue the link" }));
 
     const shown = await screen.findByRole("dialog", { name: "A recovery link for Ada Lovelace" });
-    expect(within(shown).getByLabelText("Recovery link")).toHaveValue(`${window.location.origin}/recovery/the-code`);
+    expect(within(shown).getByLabelText("Recovery link")).toHaveValue(`${window.location.origin}/recovery#the-code`);
     expect(within(shown).getByRole("button", { name: "Copy the link" })).toBeInTheDocument();
     expect(shown).toHaveTextContent("is shown only now");
   });
@@ -132,7 +132,7 @@ describe("the user record's actions", () => {
       "POST /api/v1/users/u1/reactivate": () =>
         json({
           user: { ...person({ status: "invited" }), home_unit_id: "sales", home_unit: undefined },
-          invitation_link: "/invitations/new-one",
+          invitation_link: "/invitations#new-one",
           invitation_expires_at: inAnHour(),
         }),
     });
@@ -152,7 +152,7 @@ describe("the user record's actions", () => {
 
     const shown = await screen.findByRole("dialog", { name: "Ada Lovelace is reactivated" });
     expect(within(shown).getByLabelText("Invitation link")).toHaveValue(
-      `${window.location.origin}/invitations/new-one`,
+      `${window.location.origin}/invitations#new-one`,
     );
     expect(calls.some((call) => call.key === "POST /api/v1/users/u1/reactivate")).toBe(true);
   });

@@ -1,6 +1,7 @@
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Handover;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Microsoft.EntityFrameworkCore;
@@ -27,8 +28,9 @@ public sealed class AdministratorRecoveryOptions
 /// The operator's recovery link for a tenant administrator (TF-017, ADR-0046): the control plane cannot reach a unit's
 /// database, so the fleet runs this command in the unit with the request. It issues the link only for an active person
 /// who holds the tenant administrator role for the whole tenant, records it as their security event and in the tenant's
-/// audit trail with the operator and the reason, and prints the code once for the fleet to read, as the seed prints
-/// the first invitation. Exit code 0 when the link was issued; 1 when the request is refused, with the reason logged.
+/// audit trail with the operator and the reason, and hands the link over through the one-time place the fleet gave it
+/// (ADR-0046): the control plane gives it once to the operator who asked. The link is never in a log line or the
+/// command's output. Exit code 0 when the link was handed over; 1 when the request is refused, with the reason logged.
 /// </summary>
 public sealed class AdministratorRecoveryCommand(
     AdministratorRecoveryOptions options,
@@ -36,12 +38,19 @@ public sealed class AdministratorRecoveryCommand(
     PasswordService passwords,
     ITenantAdministrators administrators,
     IUnitOfWork unitOfWork,
+    IOperatorHandover handover,
     ILogger<AdministratorRecoveryCommand> logger) : IUnitCommand
 {
     public string Name => DatabaseCommands.RecoverAdministrator;
 
     public async Task<int> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
+        if (!handover.IsAvailable)
+        {
+            logger.LogError("No recovery link was issued: the command has no handover place (Handover:Path and Handover:Token), which only the fleet gives.");
+            return 1;
+        }
+
         var result = await IssueAsync(cancellationToken).ConfigureAwait(false);
         if (result.IsFailure)
         {
@@ -49,11 +58,13 @@ public sealed class AdministratorRecoveryCommand(
             return 1;
         }
 
-        logger.LogInformation("A recovery link for {LoginId} was issued at the operator's request; it works once, for 15 minutes. Recovery token: {Token}", Principal.NormaliseLoginId(options.LoginId), result.Value);
+        var loginId = Principal.NormaliseLoginId(options.LoginId);
+        await handover.DepositAsync(new OperatorHandoverItem(OperatorHandoverItem.Recovery, loginId, Links.Recovery(result.Value.Token), result.Value.ExpiresAt), cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("Handed over a recovery link for {LoginId} to the operator who asked; it works once, until {ExpiresAt}.", loginId, result.Value.ExpiresAt);
         return 0;
     }
 
-    public async Task<Result<string>> IssueAsync(CancellationToken cancellationToken)
+    public async Task<Result<RecoveryLink>> IssueAsync(CancellationToken cancellationToken)
     {
         var loginId = Principal.NormaliseLoginId(options.LoginId);
         var operatorName = options.Operator?.Trim();
@@ -78,6 +89,6 @@ public sealed class AdministratorRecoveryCommand(
         var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["operator"] = operatorName, ["source"] = "control_plane" };
         var token = await passwords.OpenRecoveryAsync(principal, SecurityEventActors.Operator, operatorName, reason, details, cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        return token;
+        return new RecoveryLink(token, principal.RecoveryExpiresAt!.Value);
     }
 }

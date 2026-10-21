@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Fleet.Services;
 
-public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) : IProvisioningJobs
+/// <summary>Jobs as the control plane asks for them; each records the principal who asked, to whom its handover goes (ADR-0046).</summary>
+public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time, ICurrentPrincipal asker) : IProvisioningJobs
 {
     public Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, CancellationToken cancellationToken) =>
         RequestAsync(tenantSlug, kind, null, cancellationToken);
@@ -34,7 +35,7 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) 
             return latest.ToInfo(await StepsOfAsync(latest.Id, cancellationToken).ConfigureAwait(false));
         }
 
-        var job = new ProvisioningJob(tenant, kind, time.GetUtcNow(), request);
+        var job = new ProvisioningJob(tenant, kind, time.GetUtcNow(), request, asker.Id);
         context.ProvisioningJobs.Add(job);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return job.ToInfo();

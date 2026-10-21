@@ -1,6 +1,6 @@
 # ADR-0046: Passwords: the policy, lockout without revealing accounts, and three ways to recover
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-21
 **Decided by:** Product owner and architect
 
@@ -59,6 +59,8 @@ Email arrives with S4's notifications. Until then, links are handed over by a pe
 
 **There are three ways to issue one.**
 
+Every link is the shell's page with its code in the URL's fragment: `/invitations#<token>`, `/recovery#<code>`. A browser never sends a fragment to a server, so opening a link puts its code in no access log (the ingress's, the shell's), no referrer and no trace. The page posts the code in the request's body: `POST /auth/invitations/accept` and `POST /auth/recovery`. Links issued before this change (`/invitations/<token>`) still open.
+
 1. **An administrator, for a person in scope.**
    - This needs `identity.users.manage` at the person's home unit.
    - The link lets its holder sign in as the person, so the administrator must also hold every permission the person holds, tenant-wide and anywhere. This is ADR-0031's rule 1 for granting a role. Without it, a unit's administrator could take over a tenant administrator homed in that unit (`identity.recovery.escalation`).
@@ -75,7 +77,17 @@ Email arrives with S4's notifications. Until then, links are handed over by a pe
 2. The control plane records the request in its audit trail, naming the operator, the administrator and the reason. It creates a job of the new kind `Recover`, which carries all three.
 3. The fleet runs the image's `recover-admin` command in the unit, with the request in its environment.
 4. The command issues the link only for an active person who holds the tenant administrator role for the whole tenant. It records the operator and the reason in the tenant's own audit trail and in the person's security activity. It prints the code once, as the seed prints the first invitation.
-5. The job's output is the link, valid for 15 minutes and once. A recovery job never changes the tenant's status, and a new request is always a new job.
+5. The link is handed over as the next rule says, never in the job's output. A recovery job never changes the tenant's status, and a new request is always a new job.
+
+**A link from the operator's path never appears in a fleet job's output, a log line or a trace.** This covers the recovery link and the first administrator's invitation, at provisioning or re-issued by an update.
+
+- The fleet gives the image command a one-time place, `tenants/<slug>/handover/<job id>`, emptied first. It also gives a token that lives 10 minutes and may write the tenant's handover places and nothing else: not even read them back. The unit's own token stays read-only.
+- The command writes the link there once, with check-and-set 0. The store deletes it when the link stops working: 15 minutes for a recovery link, the invitation's own lifetime for an invitation. The command's log line says it handed something over, never the link.
+- The control plane's provisioning report (`GET /api/v1/tenants/{slug}/provisioning`) gives the link once, to the principal who asked for the job, after the job completed, as `handover` with `no-store`. It then deletes the place. Afterwards the report says it was given; anyone else is told it waits for the operator who asked, and is not given it.
+- `make recover-admin`, `make provision` and `make update-unit` print it once. Nothing keeps it.
+- The scrubbing rule is the second line. Every log provider (the console's, OpenTelemetry's) and every span pass a rule that replaces a link's code with `[redacted]`: a code is 32 or more base64url characters after `/invitations` or `/recovery`, or after "invitation token" or "recovery code". This holds in a message and in its values, in a span's name and its tags.
+- Tests prove that neither a job's output, a step's output or error, nor a line the fleet or the commands logged holds a link. They also prove the link is given once and to nobody else, and that the deposit token cannot read and the unit's token cannot write.
+- A host run from source, with no store and so no place, writes the dev administrator's link to the console for the developer, not to a log.
 
 `make recover-admin TENANT=x REASON="..."` wraps the call. The smoke runs this recovery on every run, which also gives a run that did not know the administrator's password a new one.
 
@@ -98,6 +110,8 @@ Email arrives with S4's notifications. Until then, links are handed over by a pe
 ## Options considered
 
 - Composition rules (an upper case letter, a digit, a symbol): not chosen. They push people to predictable patterns, and NIST SP 800-63B advises against them.
+- The link in the job's output or the fleet's secret, as the first invitation was until T2's review: not chosen. Everyone who can read jobs reads it, it outlives its use, and it reached the fleet's logs.
+- Response wrapping, a single-use token for the link: not chosen. The wrapping token would be a link of its own, and it would travel in the job's output.
 - Fetching the common list (a breach service) at runtime: not chosen. It sends something derived from the password out of the unit, and the CSP keeps every external host out.
 - Lockout as the principal's Locked status: not chosen. It would reveal which identifiers exist, since unknown ones could not lock. It would also end the owner's sessions on someone else's guesses.
 - A recovery link valid for longer, or reusable until it expires: not chosen. TF-017 asks for one use and 15 minutes, and a link handed over by a person must be used at once anyway.
@@ -110,5 +124,5 @@ Email arrives with S4's notifications. Until then, links are handed over by a pe
 - A lockout says nothing about whether an account exists, and never signs anyone out.
 - A tenant whose administrator is locked out of their password can be recovered without a database session, and both trails say who asked and why.
 - Test runs deactivate the people they create, and earlier runs' leftovers with them.
-- The recovery link appears in the fleet job's output and log for its 15 minutes, as the first invitation's link does. It is consumed on use. Moving both out of the job's output, to a place only the operator reads, comes with S6's operator console.
+- A link reaches only the operator who asked, once. If that answer is lost on the way, the operator asks again: a new recovery job, or an update that re-issues the invitation. The handover places need a policy for the control plane outside the laptop and CI, where it uses the store's root token today. That comes with S6's operator console.
 - To revisit: the self-service link by email (S4), and MFA and step-up (T3), which add security events. When email exists, decide whether an administrator's link should still be shown on screen.

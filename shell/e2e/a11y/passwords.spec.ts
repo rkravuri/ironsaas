@@ -69,11 +69,11 @@ for (const scheme of schemes) {
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await anonymous(page);
-    await page.route("**/auth/recovery/a-code", (route) =>
+    await page.route("**/auth/recovery", (route) =>
       route.fulfill(refuse("common", "password", "Choose a password that is not common.")),
     );
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
-    await page.goto("/recovery/a-code");
+    await page.goto("/recovery#a-code");
 
     const rules = page.getByRole("list", { name: "Your password needs" });
     await expect(rules).toContainText("Not one of your last 10 passwords.");
@@ -94,7 +94,7 @@ for (const scheme of schemes) {
     await page.setViewportSize({ width: 1280, height: 900 });
     await anonymous(page);
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
-    await page.goto("/invitations/a-token");
+    await page.goto("/invitations#a-token");
 
     await expect(page.getByRole("list", { name: "Your password needs" })).toContainText("At least 12 characters.");
     await page.screenshot({ path: `test-results/a11y/invitation-${scheme}.png`, fullPage: true });
@@ -109,7 +109,7 @@ for (const scheme of schemes) {
     const locked = { ...record, locked_until: new Date(Date.now() + 10 * 60_000).toISOString() };
     await page.route(`**/api/v1/users/${record.id}`, (route) => route.fulfill({ json: locked }));
     await page.route(`**/api/v1/users/${record.id}/recovery-link`, (route) =>
-      route.fulfill({ json: { recovery_link: "/recovery/a-code-shown-once", expires_at: "2026-10-21T10:15:00Z" } }),
+      route.fulfill({ json: { recovery_link: "/recovery#a-code-shown-once", expires_at: "2026-10-21T10:15:00Z" } }),
     );
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
     await page.goto(`/users/${record.id}`);
@@ -143,7 +143,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
     await confirm.getByRole("button", { name: "Issue the link" }).click();
     const shown = page.getByRole("dialog", { name: `A recovery link for ${record.display_name}` });
-    await expect(shown.getByRole("textbox", { name: "Recovery link" })).toHaveValue(/\/recovery\/a-code-shown-once$/);
+    await expect(shown.getByRole("textbox", { name: "Recovery link" })).toHaveValue(/\/recovery#a-code-shown-once$/);
     await expect(shown.getByRole("textbox", { name: "Recovery link" })).toBeFocused();
     await page.screenshot({ path: `test-results/a11y/user-recovery-link-${scheme}.png` });
     await expectNoViolation(page);

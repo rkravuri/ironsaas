@@ -2,11 +2,13 @@ using System.Text.Json;
 using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Handover;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Iron.Kernel.Identity.Tests;
@@ -233,7 +235,7 @@ public class RecoveryAndLifeCycleTests(IdentityFixture fixture)
 
     [Fact]
     [Proves("TF-017 AC1", "ADR-0046")]
-    public async Task TheOperatorsRecoveryIsForAnActiveTenantAdministratorAndNamesTheOperatorAndTheReason()
+    public async Task TheOperatorsRecoveryIsForAnActiveTenantAdministratorNamesTheOperatorAndTheReasonAndHandsTheLinkOverUnlogged()
     {
         var ct = TestContext.Current.CancellationToken;
         const string Operator = "operator@control.test";
@@ -248,30 +250,53 @@ public class RecoveryAndLifeCycleTests(IdentityFixture fixture)
             reader = (await IdentityFixture.CreateActiveUserAsync(scope.ServiceProvider, $"reader-{Ids.New():N}@acme.test", Password)).LoginId;
         }
 
-        ServiceProvider Recovering(string? loginId, string? reason) => fixture.BuildServices(new FakeTimeProvider(), connectionString: tenant, settings: new Dictionary<string, string?>
-        {
-            ["Recovery:LoginId"] = loginId,
-            ["Recovery:Operator"] = Operator,
-            ["Recovery:Reason"] = reason,
-        });
+        var handedOver = new CapturingHandover();
+        var logs = new CapturingLogs();
+        ServiceProvider Recovering(string? loginId, string? reason, bool withPlace = true) => fixture.BuildServices(
+            new FakeTimeProvider(),
+            connectionString: tenant,
+            settings: new Dictionary<string, string?>
+            {
+                ["Recovery:LoginId"] = loginId,
+                ["Recovery:Operator"] = Operator,
+                ["Recovery:Reason"] = reason,
+            },
+            configure: services =>
+            {
+                services.AddLogging(logging => logging.AddProvider(logs));
+                if (withPlace)
+                {
+                    services.AddSingleton<IOperatorHandover>(handedOver);
+                }
+            });
 
         await using var forTheAdministrator = Recovering(IdentityFixture.AdministratorLoginId, Reason);
         await using var forAReader = Recovering(reader, Reason);
         await using var withoutReason = Recovering(IdentityFixture.AdministratorLoginId, " ");
+        await using var withoutPlace = Recovering(IdentityFixture.AdministratorLoginId, Reason, withPlace: false);
         var issued = await DatabaseCommands.RunAsync(forTheAdministrator, [DatabaseCommands.RecoverAdministrator], ct);
         var notAnAdministrator = await DatabaseCommands.RunAsync(forAReader, [DatabaseCommands.RecoverAdministrator], ct);
         var noReason = await DatabaseCommands.RunAsync(withoutReason, [DatabaseCommands.RecoverAdministrator], ct);
+        var noPlace = await DatabaseCommands.RunAsync(withoutPlace, [DatabaseCommands.RecoverAdministrator], ct);
+        var deposited = Assert.Single(handedOver.Items);
+        var code = deposited.LinkPath[(deposited.LinkPath.IndexOf('#', StringComparison.Ordinal) + 1)..];
         await using var scopeAfter = forTheAdministrator.CreateAsyncScope();
         var command = (AdministratorRecoveryCommand)scopeAfter.ServiceProvider.GetServices<IUnitCommand>().Single(c => c.Name == DatabaseCommands.RecoverAdministrator);
-        var token = await command.IssueAsync(ct);
-        var used = await scopeAfter.ServiceProvider.GetRequiredService<PasswordService>().RecoverAsync(token.Value, NewPassword, ct);
+        var replaced = await command.IssueAsync(ct);
+        var stale = await scopeAfter.ServiceProvider.GetRequiredService<PasswordService>().RecoverAsync(code, NewPassword, ct);
+        var used = await scopeAfter.ServiceProvider.GetRequiredService<PasswordService>().RecoverAsync(replaced.Value.Token, NewPassword, ct);
         var administrator = await scopeAfter.ServiceProvider.GetRequiredService<IdentityDbContext>().Principals.AsNoTracking().SingleAsync(p => p.LoginId == IdentityFixture.AdministratorLoginId, ct);
         var events = await PasswordPolicyTests.SecurityEventsAsync(scopeAfter.ServiceProvider, administrator.Id);
         var audit = await scopeAfter.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
             .Where(e => e.EventType == IdentityAuditEvents.RecoveryLinkIssued && e.RecordId == administrator.Id).ToListAsync(ct);
 
-        Assert.Equal((0, 1, 1), (issued, notAnAdministrator, noReason));
+        Assert.Equal((0, 1, 1, 1), (issued, notAnAdministrator, noReason, noPlace));
+        Assert.Equal((OperatorHandoverItem.Recovery, IdentityFixture.AdministratorLoginId), (deposited.Kind, deposited.Subject));
+        Assert.StartsWith("/recovery#", deposited.LinkPath, StringComparison.Ordinal);
+        Assert.Equal(IdentityErrors.RecoveryInvalid, stale.Error.Code); // the handed-over link was replaced by the newer one
         Assert.True(used.IsSuccess);
+        Assert.Contains(logs.Lines, line => line.Contains("Handed over a recovery link", StringComparison.Ordinal));
+        Assert.DoesNotContain(logs.Lines, line => line.Contains(code, StringComparison.Ordinal) || line.Contains("/recovery#", StringComparison.Ordinal));
         var operatorEvents = events.Where(e => e.Kind == SecurityEventKinds.RecoveryLinkIssued).ToList();
         Assert.Equal(2, operatorEvents.Count);
         Assert.All(operatorEvents, e => Assert.Equal((SecurityEventActors.Operator, Operator, Reason), (e.Actor, e.ActorName, e.Reason)));
@@ -291,8 +316,74 @@ public class RecoveryAndLifeCycleTests(IdentityFixture fixture)
         return user;
     }
 
+    [Fact]
+    [Proves("TF-018 AC1", "ADR-0046")]
+    public async Task TheSeedHandsTheFirstAdministratorsInvitationOverAndLogsNoLink()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var handedOver = new CapturingHandover();
+        var logs = new CapturingLogs();
+        var tenant = await fixture.CreateTenantDatabaseAsync($"seedhandover_{Ids.New():N}");
+        var administrator = $"first-{Ids.New():N}@acme.test";
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(), administrator, services =>
+        {
+            services.AddLogging(logging => logging.AddProvider(logs));
+            services.AddSingleton<IOperatorHandover>(handedOver);
+        }, connectionString: tenant);
+
+        var seeded = await DatabaseCommands.RunAsync(provider, [DatabaseCommands.Seed], ct);
+        var deposited = Assert.Single(handedOver.Items);
+        var token = deposited.LinkPath[(deposited.LinkPath.IndexOf('#', StringComparison.Ordinal) + 1)..];
+        await using var scope = provider.CreateAsyncScope();
+        var accepted = await scope.ServiceProvider.GetRequiredService<InvitationService>().AcceptAsync(token, Password, null, ct);
+
+        Assert.Equal(0, seeded);
+        Assert.Equal((OperatorHandoverItem.Invitation, administrator), (deposited.Kind, deposited.Subject));
+        Assert.StartsWith("/invitations#", deposited.LinkPath, StringComparison.Ordinal);
+        Assert.True(accepted.IsSuccess);
+        Assert.Contains(logs.Lines, line => line.Contains("Handed over an invitation", StringComparison.Ordinal));
+        Assert.DoesNotContain(logs.Lines, line => line.Contains(token, StringComparison.Ordinal) || line.Contains("/invitations#", StringComparison.Ordinal));
+    }
+
     private sealed class ActorPrincipal(Guid id) : ICurrentPrincipal
     {
         public Guid Id => id;
+    }
+
+    /// <summary>The fleet's handover place as a command sees it: what was deposited, in order.</summary>
+    private sealed class CapturingHandover : IOperatorHandover
+    {
+        public List<OperatorHandoverItem> Items { get; } = [];
+
+        public bool IsAvailable => true;
+
+        public Task DepositAsync(OperatorHandoverItem item, CancellationToken cancellationToken)
+        {
+            Items.Add(item);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>Every log line the command wrote, formatted as a provider would write it.</summary>
+    private sealed class CapturingLogs : ILoggerProvider
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<string> Lines { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => new Logger(this);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(CapturingLogs owner) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+                owner.Lines.Enqueue(formatter(state, exception));
+        }
     }
 }

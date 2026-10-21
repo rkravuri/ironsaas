@@ -139,7 +139,7 @@ public class HostTests
         await using var fleet = Production<Iron.Host.Fleet.FleetHost>();
 
         string[] health = ["ANY /health/live", "ANY /health/ready"];
-        string[] serving = ["ANY /health/live", "ANY /health/ready", "GET /.well-known/jwks.json", "GET /auth/password-policy", "POST /auth/invitations/{token}/accept", "POST /auth/login", "POST /auth/recovery/{token}", "POST /connect/token"];
+        string[] serving = ["ANY /health/live", "ANY /health/ready", "GET /.well-known/jwks.json", "GET /auth/password-policy", "POST /auth/invitations/accept", "POST /auth/login", "POST /auth/recovery", "POST /connect/token"];
         Assert.Equal(serving, Anonymous(api.Services));
         Assert.Equal(serving, Anonymous(controlPlane.Services));
         Assert.Equal(health, Anonymous(worker.Services));

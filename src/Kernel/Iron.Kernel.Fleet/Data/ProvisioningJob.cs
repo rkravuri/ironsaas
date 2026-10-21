@@ -15,7 +15,7 @@ public sealed class ProvisioningJob : AuditedEntity
     public const int ReasonMaxLength = 500;
     public const int RequestedByMaxLength = 254;
 
-    public ProvisioningJob(TenantId tenant, JobKind kind, DateTimeOffset now, JobRequest? request = null)
+    public ProvisioningJob(TenantId tenant, JobKind kind, DateTimeOffset now, JobRequest? request = null, Guid? requestedById = null)
     {
         if (tenant.IsEmpty)
         {
@@ -29,6 +29,7 @@ public sealed class ProvisioningJob : AuditedEntity
         Subject = Cut(request?.Subject, SubjectMaxLength);
         Reason = Cut(request?.Reason, ReasonMaxLength);
         RequestedBy = Cut(request?.RequestedBy, RequestedByMaxLength);
+        RequestedById = requestedById;
     }
 
     public string TenantSlug { get; private set; }
@@ -48,7 +49,7 @@ public sealed class ProvisioningJob : AuditedEntity
 
     public DateTimeOffset? FinishedAt { get; private set; }
 
-    /// <summary>What the operator needs when the job is done: the invitation link of the first administrator.</summary>
+    /// <summary>What the last step reported, for the operator. Never a link or a code: those are handed over (ADR-0046).</summary>
     public string? Output { get; private set; }
 
     /// <summary>Whom the job is about: the administrator a recovery job recovers.</summary>
@@ -60,9 +61,17 @@ public sealed class ProvisioningJob : AuditedEntity
     /// <summary>Who asked, as the control plane names them.</summary>
     public string? RequestedBy { get; private set; }
 
+    /// <summary>The principal who asked: the only one the job's handover is given to (ADR-0046). Null for a job from before.</summary>
+    public Guid? RequestedById { get; private set; }
+
+    /// <summary>When the job's handover was given to the one who asked; it is not given again.</summary>
+    public DateTimeOffset? HandedOverAt { get; private set; }
+
     public JobRequest? Request => Subject is null && Reason is null && RequestedBy is null ? null : new JobRequest(Subject, Reason, RequestedBy);
 
     public bool IsOpen => Status is ProvisioningStatus.Requested or ProvisioningStatus.Running;
+
+    public void HandedOver(DateTimeOffset now) => HandedOverAt = now;
 
     /// <summary>A Failed job is asked to run again: it continues from the failed step (TF-002 AC2).</summary>
     public void Reopen(DateTimeOffset now)
@@ -115,7 +124,9 @@ public sealed class ProvisioningJob : AuditedEntity
         StartedAt,
         FinishedAt,
         (steps ?? []).Select(s => new ProvisioningStepInfo(s.Name, s.Order, s.Status.ToString().ToLowerInvariant(), s.StartedAt, s.FinishedAt, s.DurationMs, s.Output, s.Error)).ToList(),
-        Request);
+        Request,
+        RequestedById,
+        HandedOverAt);
 
     private static string? Cut(string? value, int length) => value is { Length: > 0 } && value.Length > length ? value[..length] : value;
 }

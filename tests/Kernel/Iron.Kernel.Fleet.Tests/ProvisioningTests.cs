@@ -11,6 +11,7 @@ using Iron.Kernel.Tenancy.Contracts;
 using Iron.Kernel.Tenancy.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
 
@@ -22,7 +23,7 @@ public class ProvisioningTests(FleetFixture fixture)
 {
     [Fact]
     [Proves("TF-002 AC1", "ADR-0018")]
-    public async Task AJobRunsEveryStepActivatesTheTenantAndReportsTheInvitationLink()
+    public async Task AJobRunsEveryStepActivatesTheTenantAndHandsTheInvitationOver()
     {
         var time = FleetFixture.Clock();
         var runtime = new RecordingRuntime();
@@ -39,7 +40,9 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.All(job.Steps, step => Assert.Equal("completed", step.Status));
         Assert.All(job.Steps, step => Assert.NotNull(step.DurationMs));
         Assert.Equal([StepNames.Reserve, StepNames.Database, StepNames.Storage, StepNames.Secrets, StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify], job.Steps.Select(s => s.Name));
-        Assert.Contains($"https://{slug}.localhost/invitations/{RecordingRuntime.InvitationToken}", job.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(RecordingRuntime.InvitationToken, job.Output, StringComparison.Ordinal);
+        var handover = await scope.ServiceProvider.GetRequiredService<IJobHandovers>().TakeAsync(job.Id, SystemPrincipal.SystemId, TestContext.Current.CancellationToken);
+        Assert.Equal((HandoverState.Given, $"/invitations#{RecordingRuntime.InvitationToken}"), (handover.State, handover.Item?.LinkPath));
 
         var tenant = await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken);
         Assert.Equal(TenantStatus.Active, tenant!.Status);
@@ -262,6 +265,12 @@ public class ProvisioningTests(FleetFixture fixture)
         var slug = await RegisterAndRequestAsync(provider, "golf");
         var harness = new ProvisioningWorkerHarness(provider);
         Assert.True(await harness.RunNextAsync());
+        await using (var given = provider.CreateAsyncScope())
+        {
+            // The operator takes the invitation, which deletes its place, as after any provisioning (ADR-0046).
+            var job = (await given.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, ct))!;
+            Assert.Equal(HandoverState.Given, (await given.ServiceProvider.GetRequiredService<IJobHandovers>().TakeAsync(job.Id, SystemPrincipal.SystemId, ct)).State);
+        }
 
         using var root = new OpenBaoSecretStore(fixture.StoreOptions());
         var before = (await root.ReadAsync($"tenants/{slug}/unit", ct))!;
@@ -359,11 +368,58 @@ public class ProvisioningTests(FleetFixture fixture)
 
         Assert.Equal(ProvisioningStatus.Completed, completed.Status);
         Assert.Equal([StepNames.Recover], completed.Steps.Select(s => s.Name));
-        Assert.Equal($"recovery link for admin@golf.test, valid 15 minutes and once: https://{tenant.Hostnames[0]}/recovery/{RecordingRuntime.RecoveryToken}", completed.Output);
+        Assert.Equal("recovery link for admin@golf.test handed over: it waits in the store for the operator who asked, once, for 15 minutes", completed.Output);
         Assert.Equal(("admin@golf.test", "Operator One", Reason), (command["Recovery__LoginId"], command["Recovery__Operator"], command["Recovery__Reason"]));
         Assert.Equal(ProvisioningStatus.Failed, refused.Status);
         Assert.Contains("not_administrator", refused.Error, StringComparison.Ordinal);
         Assert.Equal(TenantStatus.Active, tenant.Status); // a recovery changes a person, never the tenant
+    }
+
+    [Fact]
+    [Proves("ADR-0046")]
+    public async Task ALinkFromTheOperatorsPathIsHandedOverOnceToWhoAskedAndIsInNoOutputAndNoLogLine()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var runtime = new RecordingRuntime();
+        var logs = new CapturingLogs();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime, services => services.AddLogging(logging => logging.AddProvider(logs)));
+        var slug = await RegisterAndRequestAsync(provider, "india");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            Assert.True((await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestAdministratorRecoveryAsync(slug, null, "Lost password (ticket 4711)", "Operator One", ct)).IsSuccess);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+
+        await using var check = provider.CreateAsyncScope();
+        var context = check.ServiceProvider.GetRequiredService<FleetDbContext>();
+        var jobs = await context.ProvisioningJobs.AsNoTracking().Where(j => j.TenantSlug == slug).OrderBy(j => j.RequestedAt).ToListAsync(ct);
+        var steps = await context.ProvisioningSteps.AsNoTracking().Where(s => jobs.Select(j => j.Id).Contains(s.JobId)).ToListAsync(ct);
+        var handovers = check.ServiceProvider.GetRequiredService<IJobHandovers>();
+        var someoneElse = await handovers.TakeAsync(jobs[1].Id, Ids.New(), ct);
+        var asked = await handovers.TakeAsync(jobs[1].Id, SystemPrincipal.SystemId, ct);
+        var again = await handovers.TakeAsync(jobs[1].Id, SystemPrincipal.SystemId, ct);
+        var invitation = await handovers.TakeAsync(jobs[0].Id, SystemPrincipal.SystemId, ct);
+        using var root = new OpenBaoSecretStore(fixture.StoreOptions());
+        var left = await root.ReadAsync(HandoverPlaces.PathOf(slug, jobs[1].Id), ct);
+
+        // Neither code is in a job's output, a step's output or error, or any line the fleet logged.
+        var written = jobs.Select(j => $"{j.Output} {j.Error}").Concat(steps.Select(s => $"{s.Output} {s.Error}")).Concat(logs.Lines).ToList();
+        Assert.NotEmpty(logs.Lines);
+        foreach (var code in new[] { RecordingRuntime.InvitationToken, RecordingRuntime.RecoveryToken })
+        {
+            Assert.DoesNotContain(written, line => line.Contains(code, StringComparison.Ordinal));
+        }
+
+        Assert.DoesNotContain(written, line => line.Contains("/recovery#", StringComparison.Ordinal) || line.Contains("/invitations#", StringComparison.Ordinal));
+        Assert.Equal(HandoverState.NotYours, someoneElse.State);
+        Assert.Equal((HandoverState.Given, "recovery", $"/recovery#{RecordingRuntime.RecoveryToken}"), (asked.State, asked.Item?.Kind, asked.Item?.LinkPath));
+        Assert.Equal(HandoverState.Taken, again.State);
+        Assert.Equal(HandoverState.Given, invitation.State);
+        Assert.Null(left); // the place is deleted as it is given
+        Assert.Equal(4, runtime.Refused); // each command's token could not read back, and the unit's token could not write
     }
 
     /// <summary>The steps of an update, in order (ADR-0028): the three in-process steps heal, the rest re-apply the unit.</summary>

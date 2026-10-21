@@ -35,6 +35,7 @@ public sealed class FleetModule : IModule
 
         services.AddIronDbContext<FleetDbContext>();
         services.AddScoped<IProvisioningJobs, ProvisioningJobs>();
+        services.AddScoped<IJobHandovers, JobHandovers>();
         services.AddScoped<ProvisioningRunner>();
         services.TryAddSingleton<IProcessRunner, ProcessRunner>();
         if (string.Equals(options.Units.Runtime, FleetOptions.FleetUnitsOptions.ComposeRuntime, StringComparison.OrdinalIgnoreCase))

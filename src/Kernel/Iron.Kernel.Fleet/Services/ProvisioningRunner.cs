@@ -56,7 +56,7 @@ public sealed class ProvisioningRunner(
             return job.ToInfo(await StepsAsync(job.Id, cancellationToken).ConfigureAwait(false));
         }
 
-        var provisioning = new ProvisioningContext(tenant, options, job.Request);
+        var provisioning = new ProvisioningContext(tenant, options, job.Request, job.Id);
         string? lastOutput = null;
         foreach (var step in ordered)
         {

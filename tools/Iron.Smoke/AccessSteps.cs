@@ -44,10 +44,11 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
             var loginId = $"smoke-reader-{run}@{options.Hostname}";
             var created = (await TenantAsync(HttpMethod.Post, "/api/v1/users", admin, new { login_id = loginId, display_name = $"Smoke reader {run}", home_unit_id = unitId }, cancellationToken).ConfigureAwait(false))
                 .Expect(HttpStatusCode.Created, "invite the reader");
-            var link = created.Body!.Value.GetProperty("invitation_link").GetString();
+            var link = created.Body!.Value.GetProperty("invitation_link").GetString() ?? throw new SmokeException("the invitation answer has no link");
             personId = created.Body!.Value.GetProperty("user").GetProperty("id").GetString();
             var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
-            (await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth{link}/accept", host: options.Hostname, json: new { password, display_name = $"Smoke reader {run}" }, cancellationToken: cancellationToken).ConfigureAwait(false))
+            var token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..];
+            (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/invitations/accept", host: options.Hostname, json: new { token, password, display_name = $"Smoke reader {run}" }, cancellationToken: cancellationToken).ConfigureAwait(false))
                 .Expect(HttpStatusCode.OK, "accept the invitation");
 
             // The read-only system role: every read permission, here bounded by the unit and the units below it.
