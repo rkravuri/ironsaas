@@ -106,7 +106,8 @@ public sealed class Api : IDisposable
         string? setCookie = null;
         if (response.Headers.TryGetValues("Set-Cookie", out var cookies))
         {
-            setCookie = cookies.Select(c => c.Split(';')[0]).FirstOrDefault(c => c.Contains('=', StringComparison.Ordinal));
+            // The cookie set, not one cleared: a sign-in's last step clears the sign-in cookie as it sets the session (ADR-0047).
+            setCookie = cookies.Select(c => c.Split(';')[0]).FirstOrDefault(c => c.IndexOf('=', StringComparison.Ordinal) is var at && at > 0 && at < c.Length - 1);
         }
 
         return new Answer(response.StatusCode, body, correlation, setCookie);

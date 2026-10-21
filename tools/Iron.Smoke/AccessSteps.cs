@@ -10,7 +10,7 @@ namespace Iron.Smoke;
 /// administrator and an operator meet them. Each restores what it changed, also when it fails, and says so if it could
 /// not; what a step makes carries the run's short id, apart from earlier runs. Each wait is timed and reported.
 /// </summary>
-public sealed class AccessSteps(Api api, SmokeOptions options, string operatorToken, string administratorPassword, string run)
+public sealed class AccessSteps(Api api, SmokeOptions options, string operatorToken, Func<CancellationToken, Task<string>> signInAdministrator, string run)
 {
     private const string RoleTransferRefused = "entitlements.feature_disabled";
     private const string Killed = "flags.killed";
@@ -24,7 +24,7 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
     /// </summary>
     public async Task<string> ScopedRoleAsync(CancellationToken cancellationToken)
     {
-        var admin = await SignInAsync(options.AdministratorLoginId, administratorPassword, cancellationToken).ConfigureAwait(false);
+        var admin = await signInAdministrator(cancellationToken).ConfigureAwait(false);
         string? unitId = null;
         string? assignmentId = null;
         string? reader = null;
@@ -108,7 +108,7 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
     /// </summary>
     public async Task<string> PlanChangeAsync(CancellationToken cancellationToken)
     {
-        var admin = await SignInAsync(options.AdministratorLoginId, administratorPassword, cancellationToken).ConfigureAwait(false);
+        var admin = await signInAdministrator(cancellationToken).ConfigureAwait(false);
         var before = await PlanAsync(cancellationToken).ConfigureAwait(false);
         var restore = new Restore();
         var changed = false;
@@ -146,7 +146,7 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
     /// </summary>
     public async Task<string> KillSwitchAsync(CancellationToken cancellationToken)
     {
-        var admin = await SignInAsync(options.AdministratorLoginId, administratorPassword, cancellationToken).ConfigureAwait(false);
+        var admin = await signInAdministrator(cancellationToken).ConfigureAwait(false);
         var restore = new Restore();
         string? planBefore = null;
         var switchedOn = false;
