@@ -45,3 +45,4 @@ infra/compose/.control-factor-key
 
 # The smoke tool writes its report on every run; CI uploads it as an artifact (release.yml). Not source.
 smoke-report.json
+__pycache__/
