@@ -429,11 +429,11 @@ A supplier is qualified for what it will supply, not once for everything (gap G2
 
 **Acceptance criteria:**
 
-- AC1 Given evidence complete for a supplier, its site in Pune and material API-123, When the quality unit approves with re-authentication, Then the combination is approved, and the signature shows the signer's name, the time and the meaning.
+- AC1 Given evidence complete for a supplier, its site in Pune and material 4711, When the quality unit approves with re-authentication, Then the combination is approved, and the signature shows the signer's name, the time and the meaning.
 - AC2 Given an approval without re-authentication, When attempted, Then it is refused. (error case)
 - AC3 Given a tenant that requires a quality agreement and a combination without one in force, When approval is attempted, Then it is refused naming the missing agreement. (error case)
 - AC4 Given a site that does not serve the manufacturing purpose, When it is chosen for a combination, Then it is refused. (error case)
-- AC5 Given the combination of Pune and API-123 approved, When Orders asks whether that supplier may supply API-123 from Pune, Then the answer is yes; from its site in Mumbai, no, naming the missing approval.
+- AC5 Given the combination of Pune and material 4711 approved, When Orders asks whether that supplier may supply material 4711 from Pune, Then the answer is yes; from its site in Mumbai, no, naming the missing approval.
 
 *Depends on:* SUP-181, SUP-182, SUP-184, BF-104, TF-063, TF-219, CON-007 (event)
 

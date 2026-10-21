@@ -243,8 +243,8 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given an approved combination of supplier S, its site in Pune and item API-123, When an order line for API-123 to S is created, Then Pune is offered and filled in.
-- AC2 Given a line for API-123 to S with its site in Mumbai, not approved, When the order is submitted, Then it is refused naming the line, the site and the missing approval. (error case)
+- AC1 Given an approved combination of supplier S, its site in Pune and item 4711, When an order line for item 4711 to S is created, Then Pune is offered and filled in.
+- AC2 Given a line for item 4711 to S with its site in Mumbai, not approved, When the order is submitted, Then it is refused naming the line, the site and the missing approval. (error case)
 - AC3 Given a combination approved with increased incoming inspection as its condition, When the order is submitted, Then it is allowed and the line shows the condition.
 - AC4 Given a tenant without the feature, When an order is submitted, Then no line is checked for a combination.
 

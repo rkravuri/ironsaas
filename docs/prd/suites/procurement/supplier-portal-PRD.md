@@ -254,7 +254,7 @@ These rest on the kernel's Supplier Network plane, TF-230 to TF-239.
 
 *Depends on:* TF-233
 
-**Notes:** Was FF-191.
+**Notes:** Was FF-191. Changed 2026-10-21 (SUP-gaps): the inbox lists information requests, which replaced questionnaires (SUP-221 to SUP-231, SPX-029).
 
 #### SPX-023 Customer switcher and customer context
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Supplier Network experience

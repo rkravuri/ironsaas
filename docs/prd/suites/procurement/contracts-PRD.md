@@ -181,7 +181,7 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Acceptance criteria:**
 
-- AC1 Given a quality agreement covering supplier S, its site in Pune and material API-123, When it is published, Then its event names the agreement and the combination, and the combination shows the agreement in force.
+- AC1 Given a quality agreement covering supplier S, its site in Pune and material 4711, When it is published, Then its event names the agreement and the combination, and the combination shows the agreement in force.
 - AC2 Given a published quality agreement whose end date passes, When the expiry job runs, Then its expiry is published as an event naming the combinations it covered.
 - AC3 Given a quality agreement naming a combination that is not on the approved supplier list, When saved, Then it is refused naming the combination. (error case)
 - AC4 Given a quality agreement whose approval chain has no approver from the quality unit, When it is submitted, Then it is refused naming the missing approver. (error case)
