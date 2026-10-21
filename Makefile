@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -169,6 +169,10 @@ update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit 
 	@test -n "$(TENANT)" || (echo "usage: make update-unit TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=update $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
+recover-admin: ## Ask the fleet for a one-time, 15-minute recovery link for a tenant's administrator, with a reason both audit trails keep (ADR-0046): make recover-admin TENANT=acme REASON="..." [ADMIN=admin@acme.localhost]
+	@test -n "$(TENANT)" && test -n "$(REASON)" || (echo 'usage: make recover-admin TENANT=acme REASON="why, for the audit trails" [ADMIN=admin@acme.localhost]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=administrator-recovery REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) "$(ADMIN)"
+
 apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
 	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) DRY_RUN=$(or $(DRY_RUN),0) $(COMPOSE_DIR)/scripts/apply-plan.sh $(TENANT) $(PLAN) "$(STARTS)" "$(ENDS)"
@@ -217,7 +221,7 @@ smoke: env ## Run the smoke test against the local stack (control plane, fleet a
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
 	SMOKE_TENANT=$(TEST_TENANT) SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
 
-e2e: shell-node env ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate it (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
+e2e: shell-node env ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate its people and units whatever the result (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	password=$$(python3 -c 'import json,sys,urllib.request; r=urllib.request.Request("http://localhost:8200/v1/secret/data/tenants/" + sys.argv[2] + "/smoke", headers={"X-Vault-Token": sys.argv[1]}); print(json.load(urllib.request.urlopen(r))["data"]["data"]["administrator_password"])' "$$OPENBAO_ROOT_TOKEN" "$(TEST_TENANT)" 2>/dev/null) \
 	  || { echo "No administrator password at secret/tenants/$(TEST_TENANT)/smoke: run make smoke TENANT=$(TEST_TENANT) first."; exit 1; }; \

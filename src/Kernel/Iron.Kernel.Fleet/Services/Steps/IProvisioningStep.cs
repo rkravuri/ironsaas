@@ -7,11 +7,17 @@ namespace Iron.Kernel.Fleet.Services.Steps;
 /// What every step gets: the tenant, the fleet settings, and the secret paths where earlier steps left what later steps
 /// need. Nothing generated lives only in memory, so a job can resume from a failed step in another process.
 /// </summary>
-public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions options)
+public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions options, JobRequest? request = null, Guid? jobId = null)
 {
+    /// <summary>The job the steps run for; its handover place is named after it (ADR-0046).</summary>
+    public Guid JobId { get; } = jobId ?? Guid.Empty;
+
     public TenantRecord Tenant { get; } = tenant;
 
     public FleetOptions Options { get; } = options;
+
+    /// <summary>What the job was asked for beyond its kind: a recovery job's administrator, reason and operator.</summary>
+    public JobRequest? Request { get; } = request;
 
     public string Slug => Tenant.Slug;
 
@@ -40,6 +46,12 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
     public string SettingsSecretPaths => $"tenants/{Slug}/settings/*";
 
     public string UnitPolicy => $"tenant-{Slug}";
+
+    /// <summary>The policy of the short-lived tokens that may write the tenant's handover places, and nothing else.</summary>
+    public string HandoverPolicy => $"tenant-{Slug}-handover";
+
+    /// <summary>The job's one-time place (ADR-0046): an image command writes the link there, the control plane takes it once.</summary>
+    public string HandoverPath => HandoverPlaces.PathOf(Slug, JobId);
 
     public string ConnectionString(string role, string password) =>
         $"Host={Options.Database.UnitHost};Port={Options.Database.UnitPort};Database={Tenant.DatabaseName};Username={role};Password={password}";
@@ -70,4 +82,5 @@ public static class StepNames
     public const string Unit = "unit";
     public const string Verify = "verify";
     public const string Remove = "remove";
+    public const string Recover = "recover";
 }

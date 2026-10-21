@@ -4,10 +4,10 @@ Kernel module (ADR-0029). Schema `kernel_tenancy`. The tenant registry and the c
 
 | Folder | Holds |
 |---|---|
-| `Contracts/` | `ITenantRegistry` and `TenantRecord` (the fleet reads tenants and moves their status), `ITenantEntitlements` (the fleet's secrets step writes a tenant's entitlements to the store again), `TenantStatus`, `SizeClass`, `TenancyPermissions` (`tenancy.tenants.read`, `tenancy.tenants.manage`, `tenancy.tenants.provision`, `tenancy.entitlements.read`, `tenancy.entitlements.manage`), `TenancyErrors`, `TenancyAuditEvents` |
+| `Contracts/` | `ITenantRegistry` and `TenantRecord` (the fleet reads tenants and moves their status), `ITenantEntitlements` (the fleet's secrets step writes a tenant's entitlements to the store again), `TenantStatus`, `SizeClass`, `TenancyPermissions` (`tenancy.tenants.read`, `tenancy.tenants.manage`, `tenancy.tenants.provision`, `tenancy.entitlements.read`, `tenancy.entitlements.manage`, `tenancy.administrators.recover`), `TenancyErrors`, `TenancyAuditEvents` |
 | `Data/` | `TenancyDbContext`, `Tenant` (with its plan, grace days, entitlements revision and the revision the store holds), `TenantHostname` (unique across the platform), `Plan` (modules as jsonb, features as text[]), `TenantEntitlement`, `EntitlementChange` (append-only), the design-time factory, generated `Migrations/` |
 | `Services/` | `TenantRegistry` (create with unique slug and hostnames and the plan's entitlements, find, set status, request provisioning), `PlanService` and `PlanSeeder` (Standard and Enterprise), `EntitlementService` (preview, apply, the document for the store), `EntitlementPublisher` (writes it after a commit) and `EntitlementReconciler` (the fleet's minute loop), `UnitCatalogue` with `licensing-catalogue.json`, `TenancyOptions` |
-| `Api/` | `GET /api/v1/tenants`, `GET /api/v1/tenants/{slug}`, `POST /api/v1/tenants`, `POST /api/v1/tenants/{slug}/provision`, `GET /api/v1/tenants/{slug}/provisioning`; `GET /api/v1/plans`, `GET /api/v1/plans/{code}`, `PUT /api/v1/plans/{code}`, `GET /api/v1/tenants/{slug}/entitlements`, `POST /api/v1/tenants/{slug}/plan`, `GET /api/v1/tenants/{slug}/entitlements/history` |
+| `Api/` | `GET /api/v1/tenants`, `GET /api/v1/tenants/{slug}`, `POST /api/v1/tenants`, `POST /api/v1/tenants/{slug}/provision`, `POST /api/v1/tenants/{slug}/administrator-recovery`, `GET /api/v1/tenants/{slug}/provisioning`; `GET /api/v1/plans`, `GET /api/v1/plans/{code}`, `PUT /api/v1/plans/{code}`, `GET /api/v1/tenants/{slug}/entitlements`, `POST /api/v1/tenants/{slug}/plan`, `GET /api/v1/tenants/{slug}/entitlements/history` |
 
 ## Plans and entitlements (TF-040 to TF-045, ADR-0034)
 
@@ -28,6 +28,10 @@ What a tenant may use is decided here and nowhere else. Kernel modules are the p
 - **To the unit.** After every committed change the effective entitlements go to the store at `tenants/<slug>/entitlements` (key `document`, Iron.Kernel.Entitlements' `EntitlementsDocument`), and the tenant's `published_revision` follows. When the store refuses, the fleet worker's `EntitlementReconciler` writes every tenant whose copy is behind, every minute (`Tenancy:Reconcile:Seconds`). The fleet's secrets step writes them again on every provisioning and update, so a store that lost them heals with the unit.
 - `make apply-plan TENANT=echo PLAN=Enterprise` shows the preview and applies it (`DRY_RUN=1` previews only; `STARTS` and `ENDS` set the dates); the seeded plans are `standard` (no `authorization.role_transfer`, 14 grace days) and `enterprise` (with it, 30 grace days).
 
+
+## A tenant administrator's recovery (TF-017, ADR-0046)
+
+`POST /api/v1/tenants/{slug}/administrator-recovery` with `reason` and an optional `login_id` (the tenant's first administrator by default) needs `tenancy.administrators.recover`, a critical permission only the control plane's administrators hold. A tenant that is not active is refused (`tenancy.tenant.not_provisionable`, 409); an empty reason too (400). It writes `tenancy.administrator_recovery_requested` with the reason, the administrator and the operator, and creates a `Recover` job carrying them; the answer is the job (202). When the fleet has run the unit's `recover-admin`, the provisioning report (`GET /api/v1/tenants/{slug}/provisioning`) gives its `handover` (`state`, `kind`, `subject`, `link`, `expires_at`) once, to the operator who asked, with `no-store`, then says it was given; anyone else gets `not_yours`. The first administrator's invitation reaches the operator who asked for the provisioning or the update the same way (ADR-0046). The unit audits its side with the same operator and reason. `make recover-admin TENANT=x REASON="..."` is the call from the laptop.
 
 ## Feature flags and kill switches (TF-050 to TF-053, ADR-0035)
 

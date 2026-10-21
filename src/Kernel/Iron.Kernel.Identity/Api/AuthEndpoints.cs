@@ -2,6 +2,7 @@ using FluentValidation;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
+using Iron.Kernel.Api.Problems;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Audit.Contracts;
@@ -20,7 +21,8 @@ namespace Iron.Kernel.Identity.Api;
 
 public sealed record LoginRequest(string LoginId, string Password);
 
-public sealed record AcceptInvitationRequest(string Password, string? DisplayName);
+/// <summary>The invitation's token comes in the body, from the link's fragment, never in a path a log or a trace keeps (ADR-0046).</summary>
+public sealed record AcceptInvitationRequest(string Token, string Password, string? DisplayName);
 
 public sealed record PrincipalResponse(Guid Id, string LoginId, string DisplayName, PrincipalType Type, PrincipalStatus Status, string? Email, string? Locale, string? TimeZone)
 {
@@ -45,7 +47,8 @@ public sealed record HomeUnitResponse(Guid Id, string Name, string Code);
 
 /// <summary>
 /// Who is signed in. <c>permissions</c> are held for the whole tenant; <c>permissions_anywhere</c> at any scope, which
-/// is what the shell's navigation shows (ADR-0031). The API still decides per row and per unit.
+/// is what the shell's navigation shows (ADR-0031). The API still decides per row and per unit. <c>password_expires_at</c>
+/// is when the password reaches the tenant's maximum age, null while the age is off; the shell warns in the last 14 days.
 /// </summary>
 public sealed record MeResponse(
     Guid Id,
@@ -60,7 +63,8 @@ public sealed record MeResponse(
     MeDelegations Delegations,
     HomeUnitResponse? WorkingUnit,
     bool AllUnits,
-    WorkingUnitsResponse WorkingUnits);
+    WorkingUnitsResponse WorkingUnits,
+    DateTimeOffset? PasswordExpiresAt = null);
 
 /// <summary>A unit the person may work for, with its depth and its path of names, for the header's menu on the tree.</summary>
 public sealed record WorkingUnitChoiceResponse(Guid Id, string Name, string Code, int Depth, IReadOnlyList<UnitPathStep> Path);
@@ -113,13 +117,14 @@ public sealed class AcceptInvitationRequestValidator : AbstractValidator<AcceptI
 {
     public AcceptInvitationRequestValidator()
     {
+        RuleFor(r => r.Token).NotEmpty().MaximumLength(100);
         RuleFor(r => r.Password).NotEmpty().MaximumLength(1024);
         RuleFor(r => r.DisplayName).MaximumLength(Principal.DisplayNameMaxLength);
     }
 }
 
 /// <summary>
-/// <c>/auth/login</c>, <c>/auth/logout</c> and <c>/auth/invitations/{token}/accept</c> are the anonymous and signed-in
+/// <c>/auth/login</c>, <c>/auth/logout</c> and <c>/auth/invitations/accept</c> are the anonymous and signed-in
 /// doors of a unit (TF-011, TF-018, TF-029); <c>/api/v1/me</c> is what the shell asks first after login.
 /// </summary>
 internal static class AuthEndpoints
@@ -135,7 +140,7 @@ internal static class AuthEndpoints
 
         auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("Login").WithSummary("Sign in with login identifier and password.");
         auth.MapPost("/logout", LogoutAsync).RequireSignedIn().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
-        auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account.");
+        auth.MapPost("/invitations/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account; the token comes from the link's fragment.");
 
         endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
         endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
@@ -145,6 +150,7 @@ internal static class AuthEndpoints
         endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").Produces<AccessResponse>(StatusCodes.Status200OK).WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=), over a unit and the units below it (&include_children=true), or at a record (?record_type=&record_id=, with &unit= for the record's unit).");
         TokenEndpoints.Map(endpoints);
         UsersEndpoints.Map(endpoints);
+        PasswordEndpoints.Map(endpoints);
     }
 
     private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken)
@@ -156,8 +162,17 @@ internal static class AuthEndpoints
         }
 
         var outcome = result.Value;
-        SessionCookie.Set(http, options, outcome.Token);
-        return TypedResults.Ok(new LoginResponse(PrincipalResponse.From(outcome.Principal), Session(outcome.Session.Id, outcome.Session.CreatedAt, outcome.Session.ExpiresAt, outcome.Session.IdleExpiresAt(options.Session.Idle))));
+        if (outcome.RecoveryToken is { } recovery)
+        {
+            // The password was right but is too old (TF-012): no session, and the code of a recovery link to set a new one.
+            var problem = ProblemFactory.Create(Error.Unauthorized(IdentityErrors.PasswordExpired, LoginService.ExpiredMessage), http);
+            problem.Extensions["recovery_token"] = recovery;
+            return TypedResults.Problem(problem);
+        }
+
+        SessionCookie.Set(http, options, outcome.Token!);
+        var session = outcome.Session!;
+        return TypedResults.Ok(new LoginResponse(PrincipalResponse.From(outcome.Principal), Session(session.Id, session.CreatedAt, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle))));
     }
 
     private static async Task<IResult> LogoutAsync(HttpContext http, RequestPrincipal principal, SessionService sessions, IdentityOptions options, IAuditWriter audit, CancellationToken cancellationToken)
@@ -174,9 +189,9 @@ internal static class AuthEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<IResult> AcceptInvitationAsync(string token, AcceptInvitationRequest request, HttpContext http, InvitationService invitations, CancellationToken cancellationToken)
+    private static async Task<IResult> AcceptInvitationAsync(AcceptInvitationRequest request, HttpContext http, InvitationService invitations, CancellationToken cancellationToken)
     {
-        var result = await invitations.AcceptAsync(token, request.Password, request.DisplayName, cancellationToken);
+        var result = await invitations.AcceptAsync(request.Token, request.Password, request.DisplayName, cancellationToken);
         return ApiResults.From(result, http, principal => TypedResults.Ok(PrincipalResponse.From(principal)));
     }
 
@@ -229,6 +244,8 @@ internal static class AuthEndpoints
         var working = current.WorkingUnitId is { } workingId ? options.Units.FirstOrDefault(u => u.Id == workingId) : null;
         var workingUnit = working is null ? homeUnit : new HomeUnitResponse(working.Id, working.Name, working.Code);
         var choices = new WorkingUnitsResponse([.. options.Units.Select(u => new WorkingUnitChoiceResponse(u.Id, u.Name, u.Code, u.Depth, u.Path))], options.AllUnitsAvailable);
+        var rules = await services.GetRequiredService<PasswordPolicy>().RulesAsync(cancellationToken);
+        var changedAt = rules.MaximumAgeDays == 0 ? null : await services.GetRequiredService<IdentityDbContext>().Principals.AsNoTracking().Where(p => p.Id == current.Id && p.PasswordHash != null).Select(p => p.PasswordChangedAt).SingleOrDefaultAsync(cancellationToken);
         return new MeResponse(
             current.Id,
             current.LoginId,
@@ -242,7 +259,8 @@ internal static class AuthEndpoints
             new MeDelegations(given, received),
             current.Kind == AuthenticationKind.Session ? workingUnit : null,
             allUnits,
-            choices);
+            choices,
+            changedAt?.AddDays(rules.MaximumAgeDays));
     }
 
     private static async Task<IResult> WorkForAsync(WorkForRequest request, HttpContext http, RequestPrincipal principal, SessionService sessions, CancellationToken cancellationToken)

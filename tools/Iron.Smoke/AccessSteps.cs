@@ -19,7 +19,8 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
 
     /// <summary>
     /// A person homed at a unit of the run's own, with the read-only role at that unit and the units below it, lists only
-    /// that unit's people and is answered not found for the tenant's administrator.
+    /// that unit's people and is answered not found for the tenant's administrator. The person is deactivated at the end,
+    /// whatever the result (T2), with the readers earlier runs left active, so runs leave nobody behind.
     /// </summary>
     public async Task<string> ScopedRoleAsync(CancellationToken cancellationToken)
     {
@@ -27,6 +28,7 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
         string? unitId = null;
         string? assignmentId = null;
         string? reader = null;
+        string? personId = null;
         var restore = new Restore();
         var finished = false;
         try
@@ -42,10 +44,11 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
             var loginId = $"smoke-reader-{run}@{options.Hostname}";
             var created = (await TenantAsync(HttpMethod.Post, "/api/v1/users", admin, new { login_id = loginId, display_name = $"Smoke reader {run}", home_unit_id = unitId }, cancellationToken).ConfigureAwait(false))
                 .Expect(HttpStatusCode.Created, "invite the reader");
-            var link = created.Body!.Value.GetProperty("invitation_link").GetString();
-            var personId = created.Body!.Value.GetProperty("user").GetProperty("id").GetString();
+            var link = created.Body!.Value.GetProperty("invitation_link").GetString() ?? throw new SmokeException("the invitation answer has no link");
+            personId = created.Body!.Value.GetProperty("user").GetProperty("id").GetString();
             var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
-            (await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth{link}/accept", host: options.Hostname, json: new { password, display_name = $"Smoke reader {run}" }, cancellationToken: cancellationToken).ConfigureAwait(false))
+            var token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..];
+            (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/invitations/accept", host: options.Hostname, json: new { token, password, display_name = $"Smoke reader {run}" }, cancellationToken: cancellationToken).ConfigureAwait(false))
                 .Expect(HttpStatusCode.OK, "accept the invitation");
 
             // The read-only system role: every read permission, here bounded by the unit and the units below it.
@@ -79,6 +82,14 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
                 await restore.Async("remove the reader's role", async () =>
                     (await TenantAsync(HttpMethod.Delete, $"/api/v1/role-assignments/{assignmentId}", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.NoContent, "remove the role")).ConfigureAwait(false);
             }
+
+            if (personId is not null)
+            {
+                await restore.Async("deactivate the reader", async () =>
+                    (await TenantAsync(HttpMethod.Post, $"/api/v1/users/{personId}/deactivate", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "deactivate the reader")).ConfigureAwait(false);
+            }
+
+            await restore.Async("deactivate the readers of earlier runs", () => DeactivateEarlierReadersAsync(admin, cancellationToken)).ConfigureAwait(false);
 
             if (unitId is not null)
             {
@@ -204,6 +215,21 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
             }
 
             await Task.Delay(PollInterval, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// The smoke readers runs before T2 left active, since nobody could be deactivated then: each is deactivated now, so a
+    /// tenant the smoke ran on keeps no active test people.
+    /// </summary>
+    private async Task DeactivateEarlierReadersAsync(string admin, CancellationToken cancellationToken)
+    {
+        var readers = Uri.EscapeDataString("login_id:startswith:smoke-reader-");
+        var active = Uri.EscapeDataString("status:eq:active");
+        var left = (await TenantAsync(HttpMethod.Get, $"/api/v1/users?page_size=100&fields=id&filter={readers}&filter={active}", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "the readers earlier runs left");
+        foreach (var person in Items(left))
+        {
+            (await TenantAsync(HttpMethod.Post, $"/api/v1/users/{person.GetProperty("id").GetString()}/deactivate", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "deactivate an earlier reader");
         }
     }
 

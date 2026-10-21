@@ -130,6 +130,118 @@
           "whole_number": true
         },
         {
+          "key": "identity.lockout.duration_minutes",
+          "module": "identity",
+          "type": "number",
+          "description": "How long a locked login identifier stays locked, in minutes.",
+          "default": 15,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 5 to 120.",
+          "choices": null,
+          "minimum": 5,
+          "maximum": 120,
+          "whole_number": true
+        },
+        {
+          "key": "identity.lockout.threshold",
+          "module": "identity",
+          "type": "number",
+          "description": "How many failed sign-ins within the window lock a login identifier.",
+          "default": 5,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 3 to 10.",
+          "choices": null,
+          "minimum": 3,
+          "maximum": 10,
+          "whole_number": true
+        },
+        {
+          "key": "identity.lockout.window_minutes",
+          "module": "identity",
+          "type": "number",
+          "description": "The window in which failed sign-ins are counted, in minutes.",
+          "default": 15,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 5 to 60.",
+          "choices": null,
+          "minimum": 5,
+          "maximum": 60,
+          "whole_number": true
+        },
+        {
+          "key": "identity.password.common_check",
+          "module": "identity",
+          "type": "boolean",
+          "description": "Refuse a new password that is on the list of the most common passwords. Always on.",
+          "default": true,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "Always on: a common password is refused for every tenant.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "identity.password.history_depth",
+          "module": "identity",
+          "type": "number",
+          "description": "How many of a person's previous passwords may not be used again; 0 allows any.",
+          "default": 10,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 0 to 24.",
+          "choices": null,
+          "minimum": 0,
+          "maximum": 24,
+          "whole_number": true
+        },
+        {
+          "key": "identity.password.maximum_age_days",
+          "module": "identity",
+          "type": "number",
+          "description": "After how many days a password must be changed, with a warning 14 days before; 0 is off.",
+          "default": 0,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "Off (0), or a whole number of days from 30 to 365.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": true
+        },
+        {
+          "key": "identity.password.minimum_length",
+          "module": "identity",
+          "type": "number",
+          "description": "The fewest characters a new password may have.",
+          "default": 12,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 8 to 64.",
+          "choices": null,
+          "minimum": 8,
+          "maximum": 64,
+          "whole_number": true
+        },
+        {
           "key": "identity.session.absolute_hours",
           "module": "identity",
           "type": "number",

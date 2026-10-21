@@ -90,7 +90,7 @@ describe("inviting a person", () => {
               updated_at: "2026-10-19T10:00:00Z",
               version: 1,
             },
-            invitation_link: "/invitations/secret-token",
+            invitation_link: "/invitations#secret-token",
             invitation_expires_at: "2026-10-22T10:00:00Z",
           },
           201,
@@ -108,7 +108,7 @@ describe("inviting a person", () => {
 
     const done = await screen.findByRole("dialog", { name: "Grace Hopper is invited" });
     expect(within(done).getByLabelText("Invitation link")).toHaveValue(
-      `${window.location.origin}/invitations/secret-token`,
+      `${window.location.origin}/invitations#secret-token`,
     );
     expect(within(done).getByRole("button", { name: "Copy the link" })).toBeInTheDocument();
     expect(done).toHaveTextContent(/Email delivery comes later: send this link to them yourself/);

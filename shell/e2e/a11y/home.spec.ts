@@ -189,6 +189,17 @@ for (const scheme of schemes) {
     await page.screenshot({ path: `test-results/a11y/profile-preferences-${scheme}.png` });
     await expectNoViolation(page);
 
+    // Security (T2): change the password under the policy in words, then the security activity, newest first.
+    await page.keyboard.press("ArrowRight");
+    const security = page.getByRole("tabpanel", { name: "Security" });
+    await expect(security.getByRole("list", { name: "Your password needs" })).toContainText("At least 12 characters.");
+    await expect(security.getByRole("checkbox", { name: /End my other sessions/ })).toBeChecked();
+    await expect(security.getByRole("table", { name: "Your security activity" })).toContainText(
+      "Platform Operator, the platform operator",
+    );
+    await page.screenshot({ path: `test-results/a11y/profile-security-${scheme}.png`, fullPage: true });
+    await expectNoViolation(page);
+
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("tabpanel", { name: "Session" })).toContainText("Ends at the latest at");
     await page.screenshot({ path: `test-results/a11y/profile-session-${scheme}.png` });
@@ -212,7 +223,7 @@ for (const scheme of schemes) {
                 status: "invited",
                 home_unit_id: record.home_unit.id,
               },
-              invitation_link: "/invitations/a-token-shown-once",
+              invitation_link: "/invitations#a-token-shown-once",
               invitation_expires_at: "2026-10-22T10:00:00Z",
             },
           })
@@ -232,7 +243,7 @@ for (const scheme of schemes) {
     await dialog.getByRole("button", { name: "Invite" }).click();
     const done = page.getByRole("dialog", { name: "Katherine Johnson is invited" });
     await expect(done.getByRole("textbox", { name: "Invitation link" })).toHaveValue(
-      /\/invitations\/a-token-shown-once$/,
+      /\/invitations#a-token-shown-once$/,
     );
     await expect(done).toContainText("Email delivery comes later");
     await page.screenshot({ path: `test-results/a11y/invite-link-${scheme}.png` });

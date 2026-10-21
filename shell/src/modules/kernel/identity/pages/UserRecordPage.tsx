@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -8,13 +9,15 @@ import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { useRecentName } from "@/home/recent";
 import { AccessTab } from "./AccessTab";
+import { UserActions } from "./UserActions";
 import { userStatus } from "./user-status";
 
 const when = (value: string | null): string => (value ? new Date(value).toLocaleString() : "");
 
 /**
- * One user on the record template (A2): the details and the Access tab. A user outside the reader's scope answers
- * 404 from the API, and the page says "not found" the same way as for an id that does not exist (ADR-0031).
+ * One user on the record template (A2): the details and the Access tab, with the actions an administrator of the
+ * person's unit may take (T2): unlock, a recovery link, deactivate and reactivate. A user outside the reader's scope
+ * answers 404 from the API, and the page says "not found" the same way as for an id that does not exist (ADR-0031).
  */
 export function UserRecordPage() {
   const { t } = useTranslation();
@@ -56,7 +59,10 @@ export function UserRecordPage() {
 function UserRecordView({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
   useRecentName(user.display_name);
+  const [now] = useState(() => Date.now());
+  const locked = user.locked_until != null && Date.parse(user.locked_until) > now;
   const rows: [string, string][] = [
+    ...(locked ? [[t("users.lockedUntil"), when(user.locked_until ?? null)] as [string, string]] : []),
     [t("users.email"), user.email ?? ""],
     [t("users.homeUnit"), user.home_unit?.name ?? t("users.record.noHomeUnit")],
     [t("users.lastLogin"), when(user.last_login_at) || t("users.never")],
@@ -84,7 +90,9 @@ function UserRecordView({ user }: { user: UserRecord }) {
         meta: [
           { label: t("users.type"), value: t(`users.types.${user.type}`, { defaultValue: user.type }) },
           ...(user.home_unit ? [{ label: t("users.homeUnit"), value: user.home_unit.name }] : []),
+          ...(locked ? [{ label: t("users.login"), value: t("users.loginLocked") }] : []),
         ],
+        actions: <UserActions user={user} />,
       }}
       tabs={[
         { value: "details", label: t("users.record.details"), panel: details },

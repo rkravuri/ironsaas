@@ -16,7 +16,19 @@ public enum JobKind
     Deprovision,
     /// <summary>Re-render and re-apply the unit of an Active tenant: a new image tag, a new template, a new hostname.</summary>
     Update,
+
+    /// <summary>
+    /// A recovery link for a tenant administrator, at the operator's request with a reason (TF-017, ADR-0046): the unit's
+    /// <c>recover-admin</c> command issues it, and the job's output is the link. The tenant's status does not change.
+    /// </summary>
+    Recover,
 }
+
+/// <summary>
+/// What a job was asked for beyond its kind: whom it is about, why, and who asked. A recovery job carries all three; the
+/// tenant's audit trail names the operator and the reason (ADR-0046).
+/// </summary>
+public sealed record JobRequest(string? Subject, string? Reason, string? RequestedBy);
 
 public sealed record ProvisioningStepInfo(string Name, int Order, string Status, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, int? DurationMs, string? Output, string? Error);
 
@@ -31,7 +43,43 @@ public sealed record ProvisioningJobInfo(
     DateTimeOffset RequestedAt,
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
-    IReadOnlyList<ProvisioningStepInfo> Steps);
+    IReadOnlyList<ProvisioningStepInfo> Steps,
+    JobRequest? Request = null,
+    Guid? RequestedById = null,
+    DateTimeOffset? HandedOverAt = null);
+
+/// <summary>What a job's command handed over to the operator (ADR-0046): an invitation or a recovery link, whose, and until when.</summary>
+public sealed record JobHandover(string Kind, string Subject, string LinkPath, DateTimeOffset ExpiresAt);
+
+/// <summary>Where a job's handover stands for the one who asks.</summary>
+public enum HandoverState
+{
+    /// <summary>The job handed nothing over, or has not finished.</summary>
+    None,
+
+    /// <summary>Given now, once: the place is deleted.</summary>
+    Given,
+
+    /// <summary>Given earlier; it is not shown again.</summary>
+    Taken,
+
+    /// <summary>Its link stopped working before anyone took it; the place is deleted.</summary>
+    Expired,
+
+    /// <summary>Waiting for the operator who asked for the job; someone else asked.</summary>
+    NotYours,
+}
+
+public sealed record JobHandoverAnswer(HandoverState State, JobHandover? Item = null);
+
+/// <summary>
+/// A job's handover (ADR-0046): the item its command wrote to the job's one-time place in the store, given once to the
+/// principal who asked for the job and then deleted. It never travels through the job's output, a log line or a trace.
+/// </summary>
+public interface IJobHandovers
+{
+    Task<JobHandoverAnswer> TakeAsync(Guid jobId, Guid askerId, CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// Provisioning jobs as the control plane uses them: one request per tenant at a time; the fleet worker picks up
@@ -44,6 +92,12 @@ public interface IProvisioningJobs
     /// with <c>fleet.job.in_progress</c> while one is Requested or Running.
     /// </summary>
     Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// As <see cref="RequestAsync(string, JobKind, CancellationToken)"/>, with what the job is for. A job with a request is
+    /// never reopened: a new request may have a new reason, so it gets a new job.
+    /// </summary>
+    Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, JobRequest? request, CancellationToken cancellationToken);
 
     Task<ProvisioningJobInfo?> LatestAsync(string tenantSlug, CancellationToken cancellationToken);
 }

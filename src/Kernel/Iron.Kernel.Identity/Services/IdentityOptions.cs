@@ -35,11 +35,10 @@ public sealed class IdentityOptions
         public TimeSpan Touch => TimeSpan.FromSeconds(TouchSeconds);
     }
 
+    /// <summary>The password policy is the tenant's settings since T2 (IdentitySettings, ADR-0046); only the upper bound is here.</summary>
     public sealed class PasswordOptions
     {
-        /// <summary>TF-012: 12 by default. The common-password list and history arrive in S3.</summary>
-        public int MinimumLength { get; set; } = 12;
-
+        /// <summary>The most characters a password may have: enough for any passphrase, and a bound on the hashing work.</summary>
         public int MaximumLength { get; set; } = 1024;
     }
 

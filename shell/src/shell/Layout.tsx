@@ -15,6 +15,7 @@ import { useActingChoice } from "./acting";
 import { ActingBand, ActingForControl } from "./ActingFor";
 import { HelpButton } from "./HelpPanel";
 import { KillSwitchBanner } from "./KillSwitchBanner";
+import { PasswordExpiryBanner } from "./PasswordExpiryBanner";
 import { ProfileMenu } from "./ProfileMenu";
 import { Search, SearchButton } from "./Search";
 import { useWorkingUnitChoice } from "./working-unit";
@@ -101,6 +102,7 @@ export function Layout() {
         <WorkingUnitFailure choice={working} />
         <ActingBand choice={acting} />
         <KillSwitchBanner />
+        <PasswordExpiryBanner />
         <Outlet />
       </AppShell.Main>
       <Search />

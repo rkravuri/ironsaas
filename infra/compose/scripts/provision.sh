@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Registers a tenant in the control plane and asks the fleet to provision it (ACTION=deprovision takes the unit down, ACTION=update re-applies it),
+# Registers a tenant in the control plane and asks the fleet to provision it (ACTION=deprovision takes the unit down, ACTION=update re-applies it,
+# ACTION=administrator-recovery asks for a recovery link for the tenant's administrator with REASON, ADR-0046),
 # as an operator (client credentials), then follows the job until it ends and prints every step with its duration.
+# A link the job handed over (the first administrator's invitation, a recovery link) is printed once: the control plane
+# gives it once, to the operator who asked, and deletes it; it is never in the job's output (ADR-0046).
 # Usage: provision.sh <tenant> <administrator email>   with CONTROL_URL and OPERATOR_SECRET in the environment.
 set -euo pipefail
 
@@ -11,11 +14,12 @@ client_id="${OPERATOR_CLIENT_ID:-operator}"
 secret="${OPERATOR_SECRET:?OPERATOR_SECRET is required}"
 action="${ACTION:-provision}"
 timeout="${PROVISION_TIMEOUT_SECONDS:-900}"
+reason="${REASON:-}"
 
-python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" <<'PY'
+python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" <<'PY'
 import base64, json, sys, time, urllib.error, urllib.request
 
-control, client_id, secret, tenant, administrator, action, timeout = sys.argv[1:]
+control, client_id, secret, tenant, administrator, action, timeout, reason = sys.argv[1:]
 timeout = int(timeout)
 
 def call(method, path, body=None, token=None, form=None):
@@ -56,7 +60,12 @@ if action == "provision":
     else:
         sys.exit(f"Reading the tenant failed ({status}): {existing}")
 
-status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", token=access)
+if action == "administrator-recovery":
+    # The reason goes to both audit trails; an empty administrator means the tenant's first one.
+    body = {"reason": reason, "login_id": administrator if administrator not in ("", "-") else None}
+    status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", body=body, token=access)
+else:
+    status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", token=access)
 if status == 202:
     print(f"{action.capitalize()} requested: job {job['job_id']} is {job['status']}.")
 elif status == 409:
@@ -87,4 +96,12 @@ else:
 if job["status"] == "failed":
     sys.exit(f"Job {job['job_id']} failed at step {job.get('current_step')}: {job.get('error')}\nFix the cause and run the same command again; the job continues from that step.")
 print(f"Job {job['job_id']} completed. {job.get('output') or ''}")
+handover = job.get("handover") or {}
+if handover.get("state") == "given":
+    what = "invitation" if handover.get("kind") == "invitation" else "recovery link"
+    print(f"The {what} of {handover.get('subject')}, shown once and valid until {handover.get('expires_at')}:")
+    print(f"  {handover.get('link')}")
+    print("Give it to them now; it is not shown again, and nothing keeps it.")
+elif handover.get("state") == "expired":
+    print("The job's link expired before it was taken; ask again.")
 PY

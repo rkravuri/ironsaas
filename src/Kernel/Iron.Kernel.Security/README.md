@@ -15,3 +15,5 @@ Tests: `tests/Kernel/Iron.Kernel.Security.Tests`.
 ## Secrets (T12, ADR-0016)
 
 `Iron.Kernel.Security.Secrets`: `ISecretStore` with `OpenBaoSecretStore` (KV version 2 over HTTP), `AddIronSecrets()` on the configuration builder (the unit's secret becomes configuration at start), `AddIronSecretStore()` (the store and its readiness check when `Secrets:Address` and `Secrets:Token` are configured). Settings: `Secrets:Address`, `Secrets:Token`, `Secrets:Mount` (`secret`), `Secrets:Path` (`tenants/<id>`).
+
+One-time places (ADR-0046): `ISecretStore.WriteOnceAsync` writes a path only if nothing was ever written there (check-and-set 0) and has the store delete it after a lifetime (`delete_version_after`); `DeleteAsync` removes a path with every version. `ISecretStoreAdmin.CreateDepositPolicyAsync` makes a policy that may write at a path pattern and not read. `StoreOperatorHandover` is `IOperatorHandover` (Iron.Kernel) for an image command the fleet gives a place: the `Handover` section, `Path` and `Token`, set only by the fleet. Without them a process hands nothing over (`NoOperatorHandover`).

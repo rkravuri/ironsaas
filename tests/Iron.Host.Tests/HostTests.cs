@@ -124,7 +124,11 @@ public class HostTests
         throw new InvalidOperationException("Foundation.slnx was not found above the test's folder.");
     }
 
-    /// <summary>TF-030 AC3: the anonymous list is health, login, invitation acceptance, the token endpoint and the public keys, and nothing else. Adding to it is a reviewed change.</summary>
+    /// <summary>
+    /// TF-030 AC3: the anonymous list is health, login, invitation acceptance, the password policy and the recovery link
+    /// (T2: both are for a person without a session), the token endpoint and the public keys, and nothing else. Adding to it
+    /// is a reviewed change.
+    /// </summary>
     [Fact]
     [Proves("TF-030 AC3", "ADR-0014")]
     public async Task TheAnonymousAllowListIsFixedOutsideDevelopment()
@@ -135,7 +139,7 @@ public class HostTests
         await using var fleet = Production<Iron.Host.Fleet.FleetHost>();
 
         string[] health = ["ANY /health/live", "ANY /health/ready"];
-        string[] serving = ["ANY /health/live", "ANY /health/ready", "GET /.well-known/jwks.json", "POST /auth/invitations/{token}/accept", "POST /auth/login", "POST /connect/token"];
+        string[] serving = ["ANY /health/live", "ANY /health/ready", "GET /.well-known/jwks.json", "GET /auth/password-policy", "POST /auth/invitations/accept", "POST /auth/login", "POST /auth/recovery", "POST /connect/token"];
         Assert.Equal(serving, Anonymous(api.Services));
         Assert.Equal(serving, Anonymous(controlPlane.Services));
         Assert.Equal(health, Anonymous(worker.Services));
@@ -154,7 +158,7 @@ public class HostTests
         Assert.Contains("ANY /health/live", anonymous);
         Assert.Contains("ANY /health/ready", anonymous);
         Assert.All(
-            anonymous.Where(e => !e.Contains("/health/", StringComparison.Ordinal) && !e.StartsWith("POST /auth/", StringComparison.Ordinal) && !e.Contains("/connect/", StringComparison.Ordinal) && !e.Contains("/.well-known/", StringComparison.Ordinal)),
+            anonymous.Where(e => !e.Contains("/health/", StringComparison.Ordinal) && !e.Contains(" /auth/", StringComparison.Ordinal) && !e.Contains("/connect/", StringComparison.Ordinal) && !e.Contains("/.well-known/", StringComparison.Ordinal)),
             e => Assert.True(e.Contains("/openapi", StringComparison.Ordinal) || e.Contains("/scalar", StringComparison.Ordinal), e));
     }
 

@@ -353,7 +353,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
         Assert.Equal("invited", user.GetProperty("status").GetString());
         Assert.Equal(east, user.GetProperty("home_unit_id").GetGuid());
         var link = body.RootElement.GetProperty("invitation_link").GetString()!;
-        Assert.StartsWith("/invitations/", link, StringComparison.Ordinal);
+        Assert.StartsWith("/invitations#", link, StringComparison.Ordinal); // the token in the fragment, which no server receives (ADR-0046)
         Assert.Equal(PermissionErrors.PermissionDenied, await ProblemAsync(elsewhere, HttpStatusCode.Forbidden));
         Assert.Equal(IdentityErrors.LoginIdTaken, await ProblemAsync(taken, HttpStatusCode.Conflict));
         await using (var scope = _app!.Services.CreateAsyncScope())
@@ -363,7 +363,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
             Assert.Equal(manager.Id, audit.ActorId);
         }
 
-        using var accepted = await _client.PostAsJsonAsync($"/auth{link}/accept", new { password = Password }, TestContext.Current.CancellationToken);
+        using var accepted = await _client.PostAsJsonAsync("/auth/invitations/accept", new { token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..], password = Password }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
         Assert.False(string.IsNullOrEmpty(await LoginAsync(loginId)));
     }

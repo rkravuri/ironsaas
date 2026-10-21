@@ -4,9 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Fleet.Services;
 
-public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) : IProvisioningJobs
+/// <summary>Jobs as the control plane asks for them; each records the principal who asked, to whom its handover goes (ADR-0046).</summary>
+public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time, ICurrentPrincipal asker) : IProvisioningJobs
 {
-    public async Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, CancellationToken cancellationToken)
+    public Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, CancellationToken cancellationToken) =>
+        RequestAsync(tenantSlug, kind, null, cancellationToken);
+
+    public async Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, JobRequest? request, CancellationToken cancellationToken)
     {
         if (!TenantId.TryParse(tenantSlug, out var tenant))
         {
@@ -24,14 +28,14 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time) 
             return Error.Conflict(FleetErrors.JobInProgress, $"Provisioning job {latest.Id} for '{tenant.Value}' is {latest.Status.ToString().ToLowerInvariant()}.");
         }
 
-        if (latest is { Status: ProvisioningStatus.Failed } && latest.Kind == kind)
+        if (request is null && latest is { Status: ProvisioningStatus.Failed, Request: null } && latest.Kind == kind)
         {
             latest.Reopen(time.GetUtcNow());
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return latest.ToInfo(await StepsOfAsync(latest.Id, cancellationToken).ConfigureAwait(false));
         }
 
-        var job = new ProvisioningJob(tenant, kind, time.GetUtcNow());
+        var job = new ProvisioningJob(tenant, kind, time.GetUtcNow(), request, asker.Id);
         context.ProvisioningJobs.Add(job);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return job.ToInfo();

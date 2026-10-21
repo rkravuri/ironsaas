@@ -26,6 +26,19 @@ public static class SecretStoreServiceCollectionExtensions
         var options = new SecretStoreOptions();
         configuration.GetSection(SecretStoreOptions.SectionName).Bind(options);
         services.AddSingleton(options);
+
+        // The handover place (ADR-0046): only an image command the fleet runs is given one.
+        var handover = new HandoverOptions();
+        configuration.GetSection(HandoverOptions.SectionName).Bind(handover);
+        services.AddSingleton(handover);
+        if (handover.IsConfigured && options.IsConfigured)
+        {
+            services.AddSingleton<Iron.Kernel.Handover.IOperatorHandover>(provider => new StoreOperatorHandover(options, handover, provider.GetService<TimeProvider>() ?? TimeProvider.System));
+        }
+        else
+        {
+            services.AddSingleton<Iron.Kernel.Handover.IOperatorHandover, Iron.Kernel.Handover.NoOperatorHandover>();
+        }
         if (options.IsConfigured)
         {
             services.AddSingleton(_ => new OpenBaoSecretStore(options));
@@ -58,4 +71,10 @@ public sealed class UnconfiguredSecretStore : ISecretStore, ISecretStoreAdmin
     public Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
 
     public Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
+
+    public Task WriteOnceAsync(string path, IReadOnlyDictionary<string, string> values, TimeSpan lifetime, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
+
+    public Task DeleteAsync(string path, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
+
+    public Task CreateDepositPolicyAsync(string policyName, string pathPattern, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
 }

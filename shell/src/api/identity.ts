@@ -71,6 +71,8 @@ export const MeSchema = z.object({
   working_unit: HomeUnitSchema.nullable().optional(),
   all_units: z.boolean().optional(),
   working_units: z.object({ units: z.array(WorkingUnitChoiceSchema), all_units_available: z.boolean() }).optional(),
+  /** When the password reaches the tenant's maximum age (TF-012); null while the age is off. */
+  password_expires_at: z.string().nullable().optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 
@@ -94,9 +96,13 @@ export type User = z.infer<typeof UserSchema>;
 export const UserListSchema = listSchema(UserSchema);
 export type UserList = z.infer<typeof UserListSchema>;
 
-/** GET /api/v1/users/{id}: one user with the home unit by name; a user outside the reader's scope answers 404. */
+/**
+ * GET /api/v1/users/{id}: one user with the home unit by name, and until when their login is locked (TF-012), null when
+ * it is not; a user outside the reader's scope answers 404.
+ */
 export const UserRecordSchema = UserSchema.omit({ home_unit_id: true }).extend({
   home_unit: HomeUnitSchema.nullable(),
+  locked_until: z.string().nullable().optional(),
 });
 export type UserRecord = z.infer<typeof UserRecordSchema>;
 
@@ -171,10 +177,11 @@ export const login = (loginId: string, password: string) =>
 
 export const logout = () => request("/auth/logout", { method: "POST" });
 
+/** The token from the link's fragment, in the body: never in a path an access log or a trace keeps (ADR-0046). */
 export const acceptInvitation = (token: string, password: string, displayName: string | undefined) =>
-  request(`/auth/invitations/${encodeURIComponent(token)}/accept`, {
+  request("/auth/invitations/accept", {
     method: "POST",
-    body: { password, display_name: displayName },
+    body: { token, password, display_name: displayName },
   });
 
 export const fetchUsers = (query: string, signal?: AbortSignal) =>
@@ -199,3 +206,75 @@ export interface NewUser {
 
 export const createUser = (body: NewUser) =>
   request("/api/v1/users", { method: "POST", body, schema: CreatedUserSchema });
+
+/** GET /auth/password-policy: the tenant's password rules (TF-012), anonymous, for every form that sets a password. */
+export const PasswordPolicySchema = z.object({
+  minimum_length: z.number(),
+  maximum_length: z.number(),
+  common_check: z.boolean(),
+  history_depth: z.number(),
+  maximum_age_days: z.number(),
+  warning_days: z.number(),
+});
+export type PasswordPolicy = z.infer<typeof PasswordPolicySchema>;
+
+export const fetchPasswordPolicy = (signal?: AbortSignal) =>
+  request("/auth/password-policy", { schema: PasswordPolicySchema, ...(signal ? { signal } : {}) });
+
+/** Sets a new password with a recovery link (TF-017): once, within 15 minutes; every session of the person ends. */
+export const recoverPassword = (token: string, password: string) =>
+  request("/auth/recovery", { method: "POST", body: { token, password } });
+
+/** Changes your own password with the current one; the other sessions end unless you say not to (TF-017 AC3). */
+export const changePassword = (currentPassword: string, newPassword: string, endOtherSessions: boolean) =>
+  request("/api/v1/me/password", {
+    method: "POST",
+    body: { current_password: currentPassword, new_password: newPassword, end_other_sessions: endOtherSessions },
+  });
+
+/** One of your security events (TF-019): what, when, by whom (yourself, an administrator, the operator, the system), why. */
+export const SecurityEventSchema = z.object({
+  id: z.string(),
+  kind: z.string(),
+  occurred_at: z.string(),
+  actor: z.string(),
+  actor_name: z.string().nullable(),
+  reason: z.string().nullable(),
+});
+export type SecurityEvent = z.infer<typeof SecurityEventSchema>;
+export const SecurityEventListSchema = listSchema(SecurityEventSchema);
+
+/** How many security events My profile shows at once, newest first. */
+export const securityEventsPageSize = 50;
+
+export const fetchSecurityEvents = (signal?: AbortSignal) =>
+  request(`/api/v1/me/security-events?page_size=${securityEventsPageSize}`, {
+    schema: SecurityEventListSchema,
+    ...(signal ? { signal } : {}),
+  });
+
+/** A recovery link an administrator issued, shown once: its path and when it stops working. */
+export const RecoveryLinkSchema = z.object({ recovery_link: z.string(), expires_at: z.string() });
+export type RecoveryLink = z.infer<typeof RecoveryLinkSchema>;
+
+/** A person reactivated, and a new invitation's link when they never set a password. */
+export const ReactivatedUserSchema = z.object({
+  user: UserSchema,
+  invitation_link: z.string().nullable(),
+  invitation_expires_at: z.string().nullable(),
+});
+export type ReactivatedUser = z.infer<typeof ReactivatedUserSchema>;
+
+const userAction = (id: string, action: string) => `/api/v1/users/${encodeURIComponent(id)}/${action}`;
+
+export const unlockUser = (id: string) =>
+  request(userAction(id, "unlock"), { method: "POST", schema: UserRecordSchema });
+
+export const issueRecoveryLink = (id: string) =>
+  request(userAction(id, "recovery-link"), { method: "POST", schema: RecoveryLinkSchema });
+
+export const deactivateUser = (id: string) =>
+  request(userAction(id, "deactivate"), { method: "POST", schema: UserRecordSchema });
+
+export const reactivateUser = (id: string) =>
+  request(userAction(id, "reactivate"), { method: "POST", schema: ReactivatedUserSchema });

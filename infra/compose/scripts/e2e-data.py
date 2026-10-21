@@ -6,10 +6,13 @@ setup (the default) creates, under the root, the run's unit "E2E run <run>" and 
 run's id: the first holds the child-unit administrator (who reads the users of the branch and below) and a colleague;
 the second and third each hold a colleague, and a person homed at the second reads the users of both, so the header
 offers them a choice of unit (A8). They hold no role in the first branch, whose access review the delegation test runs
-(A7). Every person is new and signs in with a password made here. It prints shell exports for make e2e.
+(A7). In the run's unit itself, outside the branches, a person whose password the recovery test sets with a link and
+whom it then deactivates (S3 T2). Every person is new and signs in with a password made here. It prints shell exports
+for make e2e.
 
-teardown deactivates the run's units, the deepest first (E2E_RUN_UNIT_ID). People stay, in an inactive unit: no API
-disables a person yet.
+teardown deactivates the people homed in the run's units, those of earlier runs that are still active too (runs before
+S3 T2 could not deactivate anyone), then the run's units, the deepest first (E2E_RUN_UNIT_ID). make e2e runs it whatever
+the tests' result, so a run leaves no active people behind.
 
 The three roles the tests grant are the tenant's, not a run's: they are created once and kept as they are.
 
@@ -103,7 +106,9 @@ def create_person(cookie, run, prefix, display_name, unit):
     """A person homed at the unit who signs in: invited, then accepted with a password made here."""
     login_id, secret = f"{prefix}-{run}@{TENANT}.localhost", password()
     person_id, link = create_user(cookie, login_id, display_name, unit["id"])
-    status, data, _ = send(INGRESS, "POST", f"/auth{link}/accept", {"password": secret}, {"Host": HOST})
+    # The token is in the link's fragment, which no server receives; it goes in the body (ADR-0046).
+    token = link.split("#", 1)[1]
+    status, data, _ = send(INGRESS, "POST", "/auth/invitations/accept", {"token": token, "password": secret}, {"Host": HOST})
     if status != 200:
         raise SystemExit(f"the invitation of {login_id} was not accepted: {status} {data}")
     log(f"Created {login_id} in {unit['name']}.")
@@ -143,6 +148,7 @@ def setup():
 
     child_id, child_login, child_password = create_person(admin, run, "child-admin", "Child administrator", child)
     two_id, two_login, two_password = create_person(admin, run, "two-units", "Two-unit reader", second)
+    recover_id, recover_login, _ = create_person(admin, run, "recovering", "Recovering person", run_unit)
     colleague_id, _ = create_user(admin, f"colleague-{run}@{TENANT}.localhost", "A colleague", child["id"])
     for unit, prefix in ((second, "second-colleague"), (third, "third-colleague")):
         create_user(admin, f"{prefix}-{run}@{TENANT}.localhost", f"A colleague in {unit['name']}", unit["id"])
@@ -172,19 +178,38 @@ def setup():
         "E2E_TWO_UNITS_PASSWORD": two_password,
         "E2E_SECOND_UNIT": second["name"],
         "E2E_THIRD_UNIT": third["name"],
+        "E2E_RECOVER_ID": recover_id,
+        "E2E_RECOVER_LOGIN_ID": recover_login,
     }
     for name, value in exports.items():
         print(f"export {name}={shlex.quote(value)}")
 
 
+def deactivate_people(admin, units):
+    """Every active or invited person homed at one of these units, deactivated: they cannot sign in, their sessions end."""
+    ids = [unit["id"] for unit in units]
+    left = 0
+    for start in range(0, len(ids), 50):
+        chosen = urllib.parse.quote("home_unit_id:in:" + ",".join(ids[start:start + 50]))
+        people = api("GET", f"/api/v1/users?page_size=200&fields=id,status&filter={chosen}", admin)["data"]
+        for person in people:
+            if person["status"] != "disabled":
+                api("POST", f"/api/v1/users/{person['id']}/deactivate", admin, expect=(200,))
+                left += 1
+    return left
+
+
 def teardown():
     run_unit_id = os.environ.get("E2E_RUN_UNIT_ID", "")
-    if not run_unit_id:
-        log("No run unit to deactivate.")
-        return
     admin = administrator()
     units = api("GET", "/api/v1/organisation-units", admin)["data"]
     by_id = {unit["id"]: unit for unit in units}
+    # The people of every run's units, this one's and earlier ones', by the codes setup gives them.
+    runs = [unit for unit in units if unit["code"].startswith("e2e-")]
+    log(f"Deactivated {deactivate_people(admin, runs)} person(s) homed in the browser tests' units.")
+    if not run_unit_id:
+        log("No run unit to deactivate.")
+        return
     if run_unit_id not in by_id:
         log(f"The run unit {run_unit_id} is not in the tree.")
         return

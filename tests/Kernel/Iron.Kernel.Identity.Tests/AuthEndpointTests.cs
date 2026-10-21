@@ -144,7 +144,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         var ct = TestContext.Current.CancellationToken;
         using var wrongPassword = await _client.PostAsJsonAsync("/auth/login", new { login_id = loginId, password = "wrong" }, ct);
         using var unknownLogin = await _client.PostAsJsonAsync("/auth/login", new { login_id = $"nobody-{Ids.New():N}@example.org", password = "wrong" }, ct);
-        using var invitation = await _client.PostAsJsonAsync($"/auth/invitations/{Ids.New():N}/accept", new { password = Password, display_name = "Somebody" }, ct);
+        using var invitation = await _client.PostAsJsonAsync("/auth/invitations/accept", new { token = Ids.New().ToString("N"), password = Password, display_name = "Somebody" }, ct);
         using var token = await _client.PostAsync(new Uri("/connect/token", UriKind.Relative), new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials", ["client_id"] = "nobody", ["client_secret"] = "nothing" }), ct);
         using var keys = await Get("/.well-known/jwks.json", cookie: null);
         using var live = await Get("/health/live", cookie: null);
@@ -197,11 +197,11 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
             token = await IdentityFixture.ReinviteAdministratorAsync(scope.ServiceProvider);
         }
 
-        using var tooShort = await _client.PostAsJsonAsync($"/auth/invitations/{token}/accept", new { password = "short" }, TestContext.Current.CancellationToken);
+        using var tooShort = await _client.PostAsJsonAsync("/auth/invitations/accept", new { token, password = "short" }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
         Assert.Equal(IdentityErrors.PasswordTooShort, await ErrorCode(tooShort));
 
-        using var accepted = await _client.PostAsJsonAsync($"/auth/invitations/{token}/accept", new { password = Password, display_name = "Acme Admin" }, TestContext.Current.CancellationToken);
+        using var accepted = await _client.PostAsJsonAsync("/auth/invitations/accept", new { token, password = Password, display_name = "Acme Admin" }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
 
         using var login = await _client.PostAsJsonAsync("/auth/login", new { login_id = IdentityFixture.AdministratorLoginId, password = Password }, TestContext.Current.CancellationToken);
@@ -216,7 +216,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         Assert.Equal(IdentityFixture.Tenant.Id.Value, homeUnit.GetProperty("code").GetString());
         Assert.Equal(JsonValueKind.String, homeUnit.GetProperty("name").ValueKind);
 
-        using var unknown = await _client.PostAsJsonAsync($"/auth/invitations/{SecureTokens.New()}/accept", new { password = Password }, TestContext.Current.CancellationToken);
+        using var unknown = await _client.PostAsJsonAsync("/auth/invitations/accept", new { token = SecureTokens.New(), password = Password }, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
     }
 

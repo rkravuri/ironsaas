@@ -16,6 +16,7 @@ import { densities, setDensity, useDensity, type Density } from "@/design/densit
 import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 import { unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
 import { PersonalDelegations } from "@/modules/kernel/console/pages/PersonalDelegations";
+import { SecurityTab } from "./SecurityTab";
 import { userStatus } from "./user-status";
 
 const when = (value: string | number) => new Date(value).toLocaleString();
@@ -24,7 +25,8 @@ const isDensity = (value: string): value is Density => (densities as readonly st
 
 /**
  * My profile (D4) on the record template: the person's name, login identifier, home unit and status, then their
- * details, their own access in words, their preferences (A6), and their session. A signed-in principal is active by construction: the API ends
+ * details, their own access in words, their preferences (A6), their password and security activity (T2), and their
+ * session. A signed-in principal is active by construction: the API ends
  * the sessions of anyone who is not (SessionService), so the status needs no request of its own.
  */
 export function ProfilePage() {
@@ -49,6 +51,7 @@ export function ProfilePage() {
         { value: "access", label: t("profile.tabs.access"), panel: <MyAccess /> },
         { value: "delegations", label: t("profile.tabs.delegations"), panel: <PersonalDelegations /> },
         { value: "preferences", label: t("profile.tabs.preferences"), panel: <MyPreferences /> },
+        { value: "security", label: t("profile.tabs.security"), panel: <SecurityTab /> },
         { value: "session", label: t("profile.tabs.session"), panel: <MySession me={me} /> },
       ]}
     />

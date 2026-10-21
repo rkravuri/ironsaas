@@ -76,6 +76,14 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     /// <summary>The organisation unit the principal belongs to (TF-034), an id in Authorization's tree; null until the seed or an administrator sets it.</summary>
     public Guid? HomeUnitId { get; private set; }
 
+    /// <summary>When the current password was set, which its maximum age counts from (TF-012); null without a password.</summary>
+    public DateTimeOffset? PasswordChangedAt { get; private set; }
+
+    /// <summary>SHA-256 of the code of an open recovery link (TF-017): one at a time, 15 minutes, consumed on use.</summary>
+    public string? RecoveryTokenHash { get; private set; }
+
+    public DateTimeOffset? RecoveryExpiresAt { get; private set; }
+
     public bool CanLogIn => Status == PrincipalStatus.Active && PasswordHash is not null;
 
     public static string NormaliseLoginId(string? loginId) => (loginId ?? string.Empty).Trim().ToLowerInvariant();
@@ -92,10 +100,11 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     public bool HasOpenInvitation(DateTimeOffset now) => InvitationTokenHash is not null && InvitationExpiresAt is not null && InvitationExpiresAt > now;
 
     /// <summary>The invitee set a password: the account becomes Active and the token is gone (TF-018 AC1).</summary>
-    public void AcceptInvitation(string passwordHash, string? displayName)
+    public void AcceptInvitation(string passwordHash, string? displayName, DateTimeOffset? passwordSetAt = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
         PasswordHash = passwordHash;
+        PasswordChangedAt = passwordSetAt;
         InvitationTokenHash = null;
         InvitationExpiresAt = null;
         Status = PrincipalStatus.Active;
@@ -106,11 +115,34 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
         }
     }
 
-    public void SetPassword(string passwordHash)
+    /// <summary>A new password, by a change or a recovery link (TF-017); its maximum age counts from now.</summary>
+    public void SetPassword(string passwordHash, DateTimeOffset? now = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
         PasswordHash = passwordHash;
+        PasswordChangedAt = now ?? PasswordChangedAt;
     }
+
+    /// <summary>Opens a recovery link, replacing any earlier one, which stops working (TF-017).</summary>
+    public void OpenRecovery(string tokenHash, DateTimeOffset expiresAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
+        RecoveryTokenHash = tokenHash;
+        RecoveryExpiresAt = expiresAt;
+    }
+
+    public bool HasOpenRecovery(DateTimeOffset now) => RecoveryTokenHash is not null && RecoveryExpiresAt is not null && RecoveryExpiresAt > now;
+
+    /// <summary>The recovery link was used: it is consumed, whatever happens next (TF-017 AC1, AC2).</summary>
+    public void ConsumeRecovery()
+    {
+        RecoveryTokenHash = null;
+        RecoveryExpiresAt = null;
+    }
+
+    /// <summary>The password is past the tenant's maximum age at <paramref name="now"/>; never while the age is off (0).</summary>
+    public bool PasswordExpired(DateTimeOffset now, int maximumAgeDays) =>
+        maximumAgeDays > 0 && PasswordHash is not null && PasswordChangedAt is { } changed && now >= changed.AddDays(maximumAgeDays);
 
     public void RecordFailedLogin(DateTimeOffset now)
     {
@@ -124,7 +156,25 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
         LastLoginAt = now;
     }
 
-    public void Disable() => Status = PrincipalStatus.Disabled;
+    public bool IsDeactivated => Status == PrincipalStatus.Disabled;
+
+    /// <summary>
+    /// Deactivated (TF-010 AC3): the person cannot sign in, and an open invitation or recovery link stops working with
+    /// it, so neither can bring them back. Ending their sessions is the caller's, in the same transaction.
+    /// </summary>
+    public void Deactivate()
+    {
+        Status = PrincipalStatus.Disabled;
+        InvitationTokenHash = null;
+        InvitationExpiresAt = null;
+        ConsumeRecovery();
+    }
+
+    /// <summary>
+    /// A deactivated person comes back: Active with the password they had, or Invited when they never set one, and then
+    /// the caller opens a new invitation, since the old one closed at deactivation.
+    /// </summary>
+    public void Reactivate() => Status = PasswordHash is null ? PrincipalStatus.Invited : PrincipalStatus.Active;
 
     public void SetHomeUnit(Guid unitId)
     {
@@ -135,6 +185,4 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
 
         HomeUnitId = unitId;
     }
-
-    public void Activate() => Status = PrincipalStatus.Active;
 }

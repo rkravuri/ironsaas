@@ -52,7 +52,7 @@ test.describe("home and the header (D4)", () => {
     await dialog.getByRole("button", { name: "Invite" }).click();
 
     const done = page.getByRole("dialog", { name: `${name} is invited` });
-    await expect(done.getByRole("textbox", { name: "Invitation link" })).toHaveValue(/\/invitations\/[^/]+$/);
+    await expect(done.getByRole("textbox", { name: "Invitation link" })).toHaveValue(/\/invitations#[A-Za-z0-9_-]+$/);
     await expect(done).toContainText("Email delivery comes later");
     await page.screenshot({ path: "test-results/e2e/invite-link.png" });
 
@@ -61,6 +61,6 @@ test.describe("home and the header (D4)", () => {
     await expect(page.locator("[data-panel=record-header]")).toContainText("Invited");
     await expect(page.locator("[data-panel=record-header]")).toContainText(childUnit);
     // Shown once: the record page does not carry the link.
-    await expect(page.getByText(/\/invitations\//)).toHaveCount(0);
+    await expect(page.getByText(/\/invitations#/)).toHaveCount(0);
   });
 });

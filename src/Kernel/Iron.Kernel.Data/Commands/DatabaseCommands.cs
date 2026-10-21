@@ -13,7 +13,9 @@ namespace Iron.Kernel.Data.Commands;
 /// The commands a host image answers besides serving: <c>migrate</c> applies every module's migrations and grants the
 /// app role its privileges, <c>seed</c> runs every seeder, <c>schema-check</c> checks the unit's schemas against TF-080,
 /// <c>grant [role]</c> grants the privileges again. The fleet runs them against a new tenant database (T14); the
-/// pipeline runs <c>schema-check</c> after migrating (T18).
+/// pipeline runs <c>schema-check</c> after migrating (T18). A module adds a command of its own as an
+/// <see cref="IUnitCommand"/>, named here so the host knows it before it is built: <c>recover-admin</c>, the operator's
+/// recovery link for a tenant administrator (ADR-0046).
 /// </summary>
 public static class DatabaseCommands
 {
@@ -21,11 +23,12 @@ public static class DatabaseCommands
     public const string Seed = "seed";
     public const string SchemaCheck = "schema-check";
     public const string Grant = "grant";
+    public const string RecoverAdministrator = "recover-admin";
 
     public static bool IsCommand(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant;
+        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant or RecoverAdministrator;
     }
 
     /// <summary>The arguments without the command, for the web host builder.</summary>
@@ -85,9 +88,22 @@ public static class DatabaseCommands
                 var violations = await provider.GetRequiredService<SchemaCheckRunner>().RunAsync(cancellationToken).ConfigureAwait(false);
                 return violations.Count == 0 ? 0 : 1;
             default:
-                throw new ArgumentException($"'{args[0]}' is not a command. Use {Migrate}, {Seed}, {SchemaCheck} or {Grant}.", nameof(args));
+                var command = provider.GetServices<IUnitCommand>().FirstOrDefault(c => string.Equals(c.Name, args[0], StringComparison.Ordinal))
+                    ?? throw new ArgumentException($"'{args[0]}' is not a command of this host. Use {Migrate}, {Seed}, {SchemaCheck} or {Grant}.", nameof(args));
+                return await command.RunAsync(args[1..], cancellationToken).ConfigureAwait(false);
         }
     }
+}
+
+/// <summary>
+/// A command a module adds to the image (ADR-0046): the host runs it in a scope of its own, like the database commands, and
+/// its exit code is the process's. Its name must also be one of <see cref="DatabaseCommands"/>' names.
+/// </summary>
+public interface IUnitCommand
+{
+    string Name { get; }
+
+    Task<int> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken);
 }
 
 /// <summary>Applies the pending migrations of every registered module context, in registration order.</summary>

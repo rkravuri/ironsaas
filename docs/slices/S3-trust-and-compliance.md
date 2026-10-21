@@ -16,14 +16,14 @@ To be written in the design session.
 
 | ID | Requirement | Priority | Built before S3 | Notes for the design session |
 |---|---|---|---|---|
-| TF-012 | Password policy, history and lockout | Must | Argon2id, the fixed failure message and the count of failed attempts (S1) | the lockout also bounds the smoke's and the e2e's sign-ins |
+| TF-012 | Password policy, history and lockout | Must | Argon2id, the fixed failure message and the count of failed attempts (S1) | T2 (ADR-0046): the policy as tenant settings, history and lockout. AC2's email of the lockout is S4's, with notifications: the lockout is recorded and shown in My profile until then |
 | TF-013 | Multi-factor authentication | Must | | |
 | TF-014 | Single sign-on with OpenID Connect | Must | the in-house client credentials grant (ADR-0015); OpenIddict deferred to the authorization code flow | |
 | TF-015 | Single sign-on with SAML 2.0 | Should | | also in S7's description |
 | TF-016 | Automatic user provisioning (SCIM 2.0) | Should | | also in S7's description |
-| TF-017 | Password recovery and change | Must | | an operator needs it when a tenant's administrator password is lost; a store healed after a loss leaves the administrator without one |
+| TF-017 | Password recovery and change | Must | | T2 (ADR-0046): a one-time, 15-minute link issued by an administrator or by the operator through the control plane, and the change with the current one. The link to the verified email, which the person asks for themself, is S4's |
 | TF-018 | User invitations | Must | invitation and acceptance (S1); the validity as a unit setting (A6) | the invitation by email is S4's notifications |
-| TF-019 | Account security events to the user | Should | | needs S4's notifications for the email |
+| TF-019 | Account security events to the user | Should | | T2 records the events and shows them in My profile, each also audited. AC1 (the email of a new device's login within a minute), AC2 (the email's link to the active sessions with end-session actions, which T5's sessions console brings) and AC3 (a failed send still audited) are about the email: S4's, as exceptions when S3 closes |
 | TF-022 | Session management console | Must | server-side sessions (S1); Sign out in My profile ends the session in every tab of the browser (D4) | "Sign out everywhere" waits for it |
 | TF-023 | Service accounts and client credentials | Must | the client credentials grant with 15-minute tokens (S1) | |
 | TF-024 | API keys for simple integrations | Should | the `ApiKey` principal type (S1) | also in S7's description |
@@ -62,7 +62,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 | Task | What it builds | Requirements | State |
 |---|---|---|---|
 | T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | done (main, df1e35e) |
-| T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | outline |
+| T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | in review (slice/s3-t2) |
 | T3 | MFA and step-up re-authentication | TF-013 | outline |
 | T4 | Single sign-on with OpenID Connect | TF-014 | outline |
 | T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-022, TF-025, TF-026, TF-028, TF-029 | outline |

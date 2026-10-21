@@ -2,6 +2,7 @@ using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Seeding;
 using Iron.Kernel.Identity.Api;
 using Iron.Kernel.Identity.Contracts;
@@ -16,7 +17,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Iron.Kernel.Identity;
 
 /// <summary>
-/// Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029).
+/// Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029);
+/// the password policy, lockout, recovery links and security events (TF-012, TF-017, TF-019, ADR-0046).
 /// Replaces the default system principal with the request principal, so hosts list it after Audit and Authorization
 /// and call <c>UseIronIdentity</c> after UseIronTenant. The session limits and an invitation's validity are settings
 /// (ADR-0036), so a host that lists Identity lists the Settings module too.
@@ -44,6 +46,13 @@ public sealed class IdentityModule : IModule
         configuration.GetSection(AdministratorSeedOptions.SectionName).Bind(seed);
         services.AddSingleton(seed);
 
+        var recovery = new AdministratorRecoveryOptions();
+        configuration.GetSection(AdministratorRecoveryOptions.SectionName).Bind(recovery);
+        services.AddSingleton(recovery);
+        services.AddScoped<IUnitCommand, AdministratorRecoveryCommand>();
+        // The handover place is the secret store's to give (ADR-0046); without it, nothing is handed over.
+        services.TryAddSingleton<Iron.Kernel.Handover.IOperatorHandover, Iron.Kernel.Handover.NoOperatorHandover>();
+
         var serviceAccounts = configuration.GetSection(ServiceAccountSeedOptions.SectionName).Get<List<ServiceAccountSeedOptions>>() ?? [];
         services.AddSingleton(new ServiceAccountSeeds(serviceAccounts));
 
@@ -56,6 +65,11 @@ public sealed class IdentityModule : IModule
         services.AddHttpContextAccessor();
         services.AddIronDbContext<IdentityDbContext>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+        services.AddSingleton<CommonPasswords>();
+        services.AddScoped<PasswordPolicy>();
+        services.AddScoped<LoginThrottles>();
+        services.AddScoped<SecurityEventLog>();
+        services.AddScoped<PasswordService>();
         services.AddScoped<SessionService>();
         services.AddScoped<LoginService>();
         services.AddScoped<InvitationService>();
@@ -68,6 +82,8 @@ public sealed class IdentityModule : IModule
         services.AddScoped<ISeeder, IdentitySeeder>();
         services.AddScoped<IValidator<LoginRequest>, LoginRequestValidator>();
         services.AddScoped<IValidator<AcceptInvitationRequest>, AcceptInvitationRequestValidator>();
+        services.AddScoped<IValidator<RecoverPasswordRequest>, RecoverPasswordRequestValidator>();
+        services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

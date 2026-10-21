@@ -1,6 +1,7 @@
 import type { RouteObject } from "react-router";
 import { InvitationPage } from "@/auth/InvitationPage";
 import { LoginPage } from "@/auth/LoginPage";
+import { RecoveryPage } from "@/auth/RecoveryPage";
 import { HomePage } from "@/home/HomePage";
 import { declaredRoutes, type ModuleManifest } from "@/modules/registry";
 import { RouteErrorPage } from "./ErrorBoundary";
@@ -39,7 +40,10 @@ export function shellRoutes(
       ),
       errorElement: <RouteErrorPage />,
     },
+    // The links carry their code in the fragment (ADR-0046); /invitations/:token keeps the links issued before working.
+    { path: "/invitations", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
     { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
+    { path: "/recovery", element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
     ...extra,
     {
       path: "/",

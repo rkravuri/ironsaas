@@ -208,6 +208,20 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
         logger.LogInformation("Session {SessionId} ended: {Reason}.", sessionId, reason);
     }
 
+    /// <summary>Ends every live session of a principal but <paramref name="keepSessionId"/>, the one asking (TF-017: "End my other sessions").</summary>
+    public async Task<int> EndOthersAsync(Guid principalId, Guid? keepSessionId, string reason, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        var sessions = await context.Sessions.Where(s => s.PrincipalId == principalId && s.EndedAt == null && s.Id != keepSessionId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var session in sessions)
+        {
+            session.End(now, reason);
+        }
+
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return sessions.Count;
+    }
+
     /// <summary>Ends every live session of a principal (TF-010 AC3, TF-029).</summary>
     public async Task<int> EndAllAsync(Guid principalId, string reason, CancellationToken cancellationToken)
     {

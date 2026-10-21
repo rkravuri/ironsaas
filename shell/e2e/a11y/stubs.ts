@@ -361,6 +361,52 @@ export const assignments = [
   assignmentRow(3, roles[1], "tenant", null),
 ];
 
+/** The tenant's password policy as GET /auth/password-policy answers it (TF-012): the defaults. */
+export const passwordPolicy = {
+  minimum_length: 12,
+  maximum_length: 1024,
+  common_check: true,
+  history_depth: 10,
+  maximum_age_days: 0,
+  warning_days: 14,
+};
+
+/** A person's security activity, newest first (TF-019, ADR-0046): one of each kind of actor. */
+export const securityEvents = [
+  {
+    id: "01a18000-0000-7000-8000-000000000003",
+    kind: "password_set_by_recovery",
+    occurred_at: "2026-10-21T09:05:00Z",
+    actor: "self",
+    actor_name: null,
+    reason: null,
+  },
+  {
+    id: "01a18000-0000-7000-8000-000000000002",
+    kind: "recovery_link_issued",
+    occurred_at: "2026-10-21T09:00:00Z",
+    actor: "operator",
+    actor_name: "Platform Operator",
+    reason: "The administrator lost their password (ticket 4711)",
+  },
+  {
+    id: "01a18000-0000-7000-8000-000000000001",
+    kind: "login_locked",
+    occurred_at: "2026-10-21T08:40:00Z",
+    actor: "system",
+    actor_name: null,
+    reason: null,
+  },
+];
+
+/** The policy and the person's security activity, for the pages that set a password and My profile's Security tab. */
+export async function stubPasswords(target: Page): Promise<void> {
+  await target.route("**/auth/password-policy", (route) => route.fulfill({ json: passwordPolicy }));
+  await target.route("**/api/v1/me/security-events?**", (route) =>
+    route.fulfill({ json: envelope(route.request().url(), securityEvents) }),
+  );
+}
+
 /**
  * The two people of the home page (D4): a tenant administrator at the root, and a child-unit administrator who reads
  * the users of North and the units below it, and nothing else.
@@ -438,6 +484,7 @@ export async function stubHome(target: Page, who: Who, session = sessionFromNow(
     route.fulfill({ json: { scope: "unit", permissions: principal.permissions_anywhere } }),
   );
   await target.route("**/api/v1/role-assignments/mine", (route) => route.fulfill({ json: { data: mine[who] } }));
+  await stubPasswords(target);
   // The person's own delegations (A7): one given and over, so /me holds no active one and the header has no control.
   await target.route("**/api/v1/delegations/mine", (route) =>
     route.fulfill({

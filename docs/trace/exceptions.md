@@ -10,7 +10,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 |---|---|---|
 | TF-001 AC3 | A unit does not refuse its users while its tenant is Suspended: S1 built the registry's statuses, and the lifecycle operations are TF-004's, in S6. | 2026-10-21 |
 | TF-003 AC2 | No job runs in a tenant's worker yet; the jobs engine is S4. The worker's heartbeat span carries the tenant (`HeartbeatTests`, ADR-0011). | 2026-10-21 |
-| TF-010 AC3 | No API disables a principal yet; S3 T2 brings the account states and T5 the revocation of a person's sessions. | 2026-10-21 |
 | TF-020 AC1 | No refresh token exists yet: S1 issues access tokens by the client credentials grant only (ADR-0015); the authorization code flow with refresh rotation comes with S3 T4. | 2026-10-21 |
 | TF-020 AC3 | The signing key is read from the store and not rotated yet; key rotation is S3 T9 (TF-075). | 2026-10-21 |
 | TF-021 AC2 | The concurrent session limit is S3 T5, with the sessions console. | 2026-10-21 |

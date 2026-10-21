@@ -5,7 +5,7 @@ public static class IdentityPermissions
 {
     public static readonly Permission UsersRead = new("identity.users.read", "List and view users and service accounts", Risk.Low);
 
-    public static readonly Permission UsersManage = new("identity.users.manage", "Invite, change, disable and re-enable users", Risk.High);
+    public static readonly Permission UsersManage = new("identity.users.manage", "Invite, change, deactivate and reactivate users, unlock their login and issue their recovery links", Risk.High);
 
     public static IReadOnlyList<Permission> All => [UsersRead, UsersManage];
 }
@@ -17,8 +17,42 @@ public static class IdentityErrors
     public const string LoginInvalid = "identity.login.invalid";
     public const string InvitationNotFound = "identity.invitation.not_found";
     public const string InvitationExpired = "identity.invitation.expired";
+    // A password the tenant's policy refuses (TF-012, ADR-0046): one code per rule, and the field error's code is the rule.
     public const string PasswordTooShort = "identity.password.too_short";
+    public const string PasswordTooLong = "identity.password.too_long";
     public const string PasswordIsLoginId = "identity.password.is_login_id";
+    public const string PasswordCommon = "identity.password.common";
+    public const string PasswordReused = "identity.password.reused";
+
+    /// <summary>The current password given to change it is not the current password (TF-017).</summary>
+    public const string PasswordCurrentWrong = "identity.password.current_wrong";
+
+    /// <summary>The password is past the tenant's maximum age: the answer carries a recovery code to set a new one (TF-012).</summary>
+    public const string PasswordExpired = "identity.password.expired";
+
+    /// <summary>Too many failed sign-ins for this login identifier, known or not (TF-012, ADR-0046).</summary>
+    public const string LoginLocked = "identity.login.locked";
+
+    /// <summary>No recovery link with this code is open: never issued, used already, replaced by a newer one, or expired.</summary>
+    public const string RecoveryInvalid = "identity.recovery.invalid";
+
+    /// <summary>A recovery link for a person who cannot sign in: deactivated, a service account, or never activated.</summary>
+    public const string RecoveryNotAllowed = "identity.recovery.not_allowed";
+
+    /// <summary>An administrator asked for a recovery link for someone holding permissions they do not hold (ADR-0046).</summary>
+    public const string RecoveryEscalation = "identity.recovery.escalation";
+
+    /// <summary>The operator's recovery names someone who is not a tenant administrator of the whole tenant (ADR-0046).</summary>
+    public const string RecoveryNotAdministrator = "identity.recovery.not_administrator";
+
+    /// <summary>A change that does not apply to the person as they are: deactivating someone deactivated, and the like.</summary>
+    public const string UserStatusConflict = "identity.user.status_conflict";
+
+    /// <summary>Deactivating this person would leave the tenant without an active tenant administrator (A2's guard).</summary>
+    public const string UserLastAdministrator = "identity.user.last_administrator";
+
+    /// <summary>A person may not deactivate themselves: another administrator does it, so the tenant always keeps one.</summary>
+    public const string UserSelf = "identity.user.self";
     public const string LoginIdTaken = "identity.login_id.taken";
     public const string ClientInvalid = "identity.client.invalid";
 
@@ -75,4 +109,60 @@ public static class IdentityAuditEvents
 
     /// <summary>An administrator created a user in a unit and opened their invitation (A2).</summary>
     public const string UserCreated = "identity.user_created";
+
+    /// <summary>A person changed their own password with the current one (TF-017).</summary>
+    public const string PasswordChanged = "identity.password_changed";
+
+    /// <summary>A recovery link was issued: by an administrator, by the operator with a reason, or at a sign-in with an expired password.</summary>
+    public const string RecoveryLinkIssued = "identity.recovery_link_issued";
+
+    /// <summary>A recovery link was used: it is consumed and every session of the person ended.</summary>
+    public const string RecoveryLinkUsed = "identity.recovery_link_used";
+
+    /// <summary>A password was set through a recovery link (TF-017).</summary>
+    public const string PasswordSetByRecovery = "identity.password_set_by_recovery";
+
+    /// <summary>A login identifier reached the failure threshold and is locked (TF-012); known or not.</summary>
+    public const string LoginLocked = "identity.login_locked";
+
+    /// <summary>An administrator unlocked a login identifier.</summary>
+    public const string LoginUnlocked = "identity.login_unlocked";
+
+    /// <summary>An administrator deactivated a person: they cannot sign in, their sessions ended, their tokens are refused.</summary>
+    public const string UserDeactivated = "identity.user_deactivated";
+
+    /// <summary>An administrator reactivated a person.</summary>
+    public const string UserReactivated = "identity.user_reactivated";
+}
+
+/// <summary>
+/// The kinds of a person's security events (TF-019, ADR-0046), shown in My profile under "Security activity". Each is also
+/// written as the audit event of the same name with the <c>identity.</c> prefix. MFA and impersonation add theirs later.
+/// </summary>
+public static class SecurityEventKinds
+{
+    public const string PasswordChanged = "password_changed";
+    public const string RecoveryLinkIssued = "recovery_link_issued";
+    public const string RecoveryLinkUsed = "recovery_link_used";
+    public const string PasswordSetByRecovery = "password_set_by_recovery";
+    public const string LoginLocked = "login_locked";
+    public const string LoginUnlocked = "login_unlocked";
+    public const string UserDeactivated = "user_deactivated";
+    public const string UserReactivated = "user_reactivated";
+
+    public static IReadOnlyList<string> All => [PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated];
+
+    /// <summary>The audit event a security event is written as.</summary>
+    public static string AuditEventOf(string kind) => $"identity.{kind}";
+}
+
+/// <summary>Who caused a security event, for the shell to say in words: the person, an administrator, the operator, or the system.</summary>
+public static class SecurityEventActors
+{
+    public const string Self = "self";
+    public const string Administrator = "administrator";
+    public const string Operator = "operator";
+
+    /// <summary>Nobody in particular: a lockout after failed sign-ins, a link issued because the password expired.</summary>
+    public const string System = "system";
 }
