@@ -208,6 +208,12 @@ public abstract partial class SettingDefinition
 
     public bool IsSecret => Type == SettingType.SecretReference;
 
+    /// <summary>
+    /// A change of this setting is a high-risk action: setting or resetting it needs a recent authentication (TF-248,
+    /// ADR-0047), as the MFA policy does. Declared with <see cref="Setting{T}.RequiringRecentAuthentication"/>.
+    /// </summary>
+    public bool NeedsRecentAuthentication { get; protected set; }
+
     /// <summary>What a value must be, in words: the type, the choices or the rule.</summary>
     public string Requirement => Type switch
     {
@@ -274,6 +280,13 @@ public sealed class Setting<T> : SettingDefinition
     public T Read(JsonElement value) => _read(value);
 
     public JsonElement ToJson(T value) => _write(value);
+
+    /// <summary>Marks a change of the setting as a high-risk action, behind a recent authentication (TF-248). Once, where it is declared.</summary>
+    public Setting<T> RequiringRecentAuthentication()
+    {
+        NeedsRecentAuthentication = true;
+        return this;
+    }
 }
 
 /// <summary>The factories for settings, one per type (TF-057).</summary>

@@ -229,6 +229,10 @@ public sealed partial class RecoverStep(IUnitRuntime runtime, ISecretStore secre
         environment["Recovery__LoginId"] = request.Subject;
         environment["Recovery__Operator"] = request.RequestedBy;
         environment["Recovery__Reason"] = request.Reason;
+        if (request.ResetFactors)
+        {
+            environment["Recovery__ResetFactors"] = "true";
+        }
         await UnitEnvironment.AddHandoverAsync(environment, context, secrets, admin, cancellationToken).ConfigureAwait(false);
 
         var result = await runtime.RunCommandAsync(context.ToUnit(environment), ["recover-admin"], cancellationToken).ConfigureAwait(false);
@@ -237,7 +241,8 @@ public sealed partial class RecoverStep(IUnitRuntime runtime, ISecretStore secre
             throw new InvalidOperationException($"recover-admin exited with {result.ExitCode}: {MigrateStep.Tail(result.Output)}");
         }
 
-        return $"recovery link for {request.Subject} handed over: it waits in the store for the operator who asked, once, for 15 minutes";
+        var factors = request.ResetFactors ? "; the administrator's second factors were reset" : string.Empty;
+        return $"recovery link for {request.Subject} handed over: it waits in the store for the operator who asked, once, for 15 minutes{factors}";
     }
 
     [GeneratedRegex("Handed over a recovery link", RegexOptions.CultureInvariant)]

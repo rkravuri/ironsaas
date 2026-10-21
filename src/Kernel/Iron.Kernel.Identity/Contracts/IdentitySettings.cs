@@ -45,10 +45,57 @@ public static class IdentitySettings
     public static readonly Setting<int> LockoutDurationMinutes = Setting.WholeNumber(
         "identity.lockout.duration_minutes", "How long a locked login identifier stays locked, in minutes.", 15, 5, 120, SettingScopes.Tenant);
 
+    // The MFA policy (TF-013 AC1, ADR-0047). Changing any of it is itself a high-risk action, behind a recent
+    // authentication (TF-248). It applies to people; a service account keeps its client credentials.
+
+    public static readonly Setting<string> MfaRequiredFor = Setting.Choice(
+        "identity.mfa.required_for", "Who must sign in with a second factor: nobody, the people who hold the roles of identity.mfa.roles, or everyone.", MfaRequirement.Roles, MfaRequirement.All, SettingScopes.Tenant)
+        .RequiringRecentAuthentication();
+
+    public static readonly Setting<System.Text.Json.JsonElement> MfaRoles = Setting.Json(
+        "identity.mfa.roles", "The codes of the roles whose holders must have a second factor when it is required for roles. Empty: every role that holds a high-risk or critical permission.", "[]", SettingScopes.Tenant,
+        SettingRule.Must(
+            value => value.ValueKind == System.Text.Json.JsonValueKind.Array && value.EnumerateArray().All(code => code.ValueKind == System.Text.Json.JsonValueKind.String && !string.IsNullOrWhiteSpace(code.GetString())),
+            "A list of role codes, for example [\"tenant-administrator\"]; an empty list means the roles that hold a high-risk or critical permission."))
+        .RequiringRecentAuthentication();
+
+    public static readonly Setting<string> MfaAllowedFactors = Setting.Choice(
+        "identity.mfa.allowed_factors", "Which second factors people may enrol: an authenticator app, passkeys, or both. A factor enrolled before a change keeps working.", MfaFactorChoice.Both, MfaFactorChoice.All, SettingScopes.Tenant)
+        .RequiringRecentAuthentication();
+
+    public static readonly Setting<int> MfaGraceDays = Setting.WholeNumber(
+        "identity.mfa.grace_days", "How many days a person who must have a second factor may still sign in without one, counted from the first sign-in that found it required; 0 sends them to enrolment at once.", 0, 0, 14, SettingScopes.Tenant)
+        .RequiringRecentAuthentication();
+
+    public static readonly Setting<bool> MfaPasskeySignIn = Setting.Boolean(
+        "identity.mfa.passkey_sign_in", "Let people sign in with a passkey alone, without their password: the passkey proves both what they have and, by its own check, who they are.", false, SettingScopes.Tenant)
+        .RequiringRecentAuthentication();
+
     public static IReadOnlyList<SettingDefinition> All =>
     [
         SessionIdleMinutes, SessionAbsoluteHours, InvitationValidDays,
         PasswordMinimumLength, PasswordCommonCheck, PasswordHistoryDepth, PasswordMaximumAgeDays,
         LockoutThreshold, LockoutWindowMinutes, LockoutDurationMinutes,
+        MfaRequiredFor, MfaRoles, MfaAllowedFactors, MfaGraceDays, MfaPasskeySignIn,
     ];
+}
+
+/// <summary>The values of <c>identity.mfa.required_for</c>.</summary>
+public static class MfaRequirement
+{
+    public const string Nobody = "nobody";
+    public const string Roles = "roles";
+    public const string Everyone = "everyone";
+
+    public static IReadOnlyList<string> All => [Nobody, Roles, Everyone];
+}
+
+/// <summary>The values of <c>identity.mfa.allowed_factors</c>.</summary>
+public static class MfaFactorChoice
+{
+    public const string Both = "both";
+    public const string AuthenticatorApp = "authenticator_app";
+    public const string Passkeys = "passkeys";
+
+    public static IReadOnlyList<string> All => [Both, AuthenticatorApp, Passkeys];
 }

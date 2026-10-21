@@ -56,7 +56,20 @@ public sealed record UserRecordResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     int Version,
-    DateTimeOffset? LockedUntil = null);
+    DateTimeOffset? LockedUntil = null,
+    int Factors = 0,
+    bool TakeoverAllowed = false);
+
+/// <summary>Why an administrator resets a person's factors: required, and kept in the person's security activity.</summary>
+public sealed record ResetFactorsRequest(string Reason);
+
+public sealed class ResetFactorsRequestValidator : AbstractValidator<ResetFactorsRequest>
+{
+    public ResetFactorsRequestValidator()
+    {
+        RuleFor(r => r.Reason).NotEmpty().MaximumLength(SecurityEvent.ReasonMaxLength);
+    }
+}
 
 /// <summary>A recovery link for the administrator to pass on, shown once (TF-017): its path and when it stops working.</summary>
 public sealed record RecoveryLinkResponse(string RecoveryLink, DateTimeOffset ExpiresAt);
@@ -108,8 +121,9 @@ internal static class UsersEndpoints
         users.MapGet("/{id:guid}", GetAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("GetUser").WithSummary("One user or service account you may see.");
         users.MapPost("/", CreateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Validate<CreateUserRequest>().Produces<CreateUserResponse>(StatusCodes.Status201Created).WithName("CreateUser").WithSummary("Create a user in a unit and answer the invitation link.");
         users.MapPost("/{id:guid}/unlock", UnlockAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("UnlockUser").WithSummary("Lift the lock on a person's login after too many failed sign-ins.");
-        users.MapPost("/{id:guid}/recovery-link", RecoveryLinkAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<RecoveryLinkResponse>(StatusCodes.Status200OK).WithName("IssueRecoveryLink").WithSummary("Issue a recovery link for a person, shown once: one use, 15 minutes; it replaces any earlier link.");
-        users.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("DeactivateUser").WithSummary("Deactivate a person: they cannot sign in, their sessions end and their tokens are refused.");
+        users.MapPost("/{id:guid}/recovery-link", RecoveryLinkAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<RecoveryLinkResponse>(StatusCodes.Status200OK).WithName("IssueRecoveryLink").WithSummary("Issue a recovery link for a person, shown once: one use, 15 minutes; it replaces any earlier link.");
+        users.MapPost("/{id:guid}/factors/reset", ResetFactorsAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Validate<ResetFactorsRequest>().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("ResetFactors").WithSummary("Remove a person's second factors and recovery codes, with a reason, for someone whose permissions you hold; their sessions end.");
+        users.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("DeactivateUser").WithSummary("Deactivate a person: they cannot sign in, their sessions end and their tokens are refused.");
         users.MapPost("/{id:guid}/reactivate", ReactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<ReactivateUserResponse>(StatusCodes.Status200OK).WithName("ReactivateUser").WithSummary("Reactivate a person; one who never set a password gets a new invitation.");
     }
 
@@ -143,7 +157,7 @@ internal static class UsersEndpoints
         return ApiResults.List(page.Map(UserResponse.From), http, query);
     }
 
-    private static async Task<IResult> GetAsync(Guid id, HttpContext http, IdentityDbContext context, IRecordAccess access, ICurrentPrincipal reader, IOrganisationUnits units, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAsync(Guid id, HttpContext http, IdentityDbContext context, IRecordAccess access, ICurrentPrincipal reader, CancellationToken cancellationToken)
     {
         var visible = await VisibleAsync(context, access, reader, cancellationToken);
         var principal = await visible.SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
@@ -152,12 +166,17 @@ internal static class UsersEndpoints
             return ApiResults.Problem(Error.NotFound(IdentityErrors.UserNotFound, "There is no user with this id that you may see."), http);
         }
 
-        return TypedResults.Ok(await RecordAsync(principal, units, http.RequestServices.GetRequiredService<LoginThrottles>(), cancellationToken));
+        return TypedResults.Ok(await RecordAsync(principal, http.RequestServices, cancellationToken));
     }
 
-    private static async Task<UserRecordResponse> RecordAsync(Principal principal, IOrganisationUnits units, LoginThrottles throttles, CancellationToken cancellationToken)
+    private static async Task<UserRecordResponse> RecordAsync(Principal principal, IServiceProvider services, CancellationToken cancellationToken)
     {
-        var home = principal.HomeUnitId is { } unitId ? await units.FindAsync(unitId, cancellationToken) : null;
+        var home = principal.HomeUnitId is { } unitId ? await services.GetRequiredService<IOrganisationUnits>().FindAsync(unitId, cancellationToken) : null;
+
+        // How many factors the person has, and whether the reader holds every permission the person holds, so the record
+        // offers "Reset factors" and the recovery link only where the escalation rule lets the reader use them (ADR-0047).
+        var factors = await services.GetRequiredService<IdentityDbContext>().Factors.CountAsync(f => f.PrincipalId == principal.Id, cancellationToken);
+        var takeover = principal.Type == PrincipalType.User && await services.GetRequiredService<UserService>().MayTakeOverAsync(principal.Id, cancellationToken);
         return new UserRecordResponse(
             principal.Id,
             principal.LoginId,
@@ -170,7 +189,9 @@ internal static class UsersEndpoints
             principal.CreatedAt,
             principal.UpdatedAt,
             principal.Version,
-            await throttles.LockedUntilAsync(principal.LoginId, cancellationToken));
+            await services.GetRequiredService<LoginThrottles>().LockedUntilAsync(principal.LoginId, cancellationToken),
+            factors,
+            takeover);
     }
 
     /// <summary>
@@ -206,7 +227,7 @@ internal static class UsersEndpoints
         return TypedResults.Problem(problem);
     }
 
-    private static async Task<IResult> UnlockAsync(Guid id, HttpContext http, UserService users, IOrganisationUnits units, LoginThrottles throttles, CancellationToken cancellationToken)
+    private static async Task<IResult> UnlockAsync(Guid id, HttpContext http, UserService users, CancellationToken cancellationToken)
     {
         var target = await ManageableAsync(id, http, "unlock", cancellationToken);
         if (target.IsFailure)
@@ -215,7 +236,7 @@ internal static class UsersEndpoints
         }
 
         var result = await users.UnlockAsync(target.Value, cancellationToken);
-        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, units, throttles, cancellationToken));
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
     }
 
     private static async Task<IResult> RecoveryLinkAsync(Guid id, HttpContext http, UserService users, CancellationToken cancellationToken)
@@ -230,7 +251,7 @@ internal static class UsersEndpoints
         return ApiResults.From(result, http, link => TypedResults.Ok(new RecoveryLinkResponse(Links.Recovery(link.Token), link.ExpiresAt)));
     }
 
-    private static async Task<IResult> DeactivateAsync(Guid id, HttpContext http, UserService users, IOrganisationUnits units, LoginThrottles throttles, CancellationToken cancellationToken)
+    private static async Task<IResult> DeactivateAsync(Guid id, HttpContext http, UserService users, CancellationToken cancellationToken)
     {
         var target = await ManageableAsync(id, http, "deactivate", cancellationToken);
         if (target.IsFailure)
@@ -239,7 +260,19 @@ internal static class UsersEndpoints
         }
 
         var result = await users.DeactivateAsync(target.Value, cancellationToken);
-        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, units, throttles, cancellationToken));
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
+    }
+
+    private static async Task<IResult> ResetFactorsAsync(Guid id, ResetFactorsRequest request, HttpContext http, UserService users, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "reset the second factors of", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await users.ResetFactorsAsync(target.Value, request.Reason, cancellationToken);
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
     }
 
     private static async Task<IResult> ReactivateAsync(Guid id, HttpContext http, UserService users, CancellationToken cancellationToken)

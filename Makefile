@@ -169,9 +169,9 @@ update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit 
 	@test -n "$(TENANT)" || (echo "usage: make update-unit TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=update $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
-recover-admin: ## Ask the fleet for a one-time, 15-minute recovery link for a tenant's administrator, with a reason both audit trails keep (ADR-0046): make recover-admin TENANT=acme REASON="..." [ADMIN=admin@acme.localhost]
-	@test -n "$(TENANT)" && test -n "$(REASON)" || (echo 'usage: make recover-admin TENANT=acme REASON="why, for the audit trails" [ADMIN=admin@acme.localhost]' && exit 1)
-	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=administrator-recovery REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) "$(ADMIN)"
+recover-admin: ## Ask the fleet for a one-time, 15-minute recovery link for a tenant's administrator, with a reason both audit trails keep (ADR-0046), and RESET_FACTORS=1 to reset their second factors too (ADR-0047): make recover-admin TENANT=acme REASON="..." [ADMIN=admin@acme.localhost] [RESET_FACTORS=1]
+	@test -n "$(TENANT)" && test -n "$(REASON)" || (echo 'usage: make recover-admin TENANT=acme REASON="why, for the audit trails" [ADMIN=admin@acme.localhost] [RESET_FACTORS=1]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=administrator-recovery REASON="$(REASON)" RESET_FACTORS=$(or $(RESET_FACTORS),0) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) "$(ADMIN)"
 
 apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
 	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)

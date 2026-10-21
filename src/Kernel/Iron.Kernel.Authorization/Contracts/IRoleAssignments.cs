@@ -18,6 +18,9 @@ public interface IRoleAssignments
     /// <summary>The codes of the roles a principal holds for the whole tenant, in code order.</summary>
     Task<IReadOnlyList<string>> RoleCodesOfAsync(Guid principalId, CancellationToken cancellationToken);
 
+    /// <summary>The codes of the roles a principal holds at any scope, the tenant, a unit or a record, in code order (the MFA policy, ADR-0047).</summary>
+    Task<IReadOnlyList<string>> RoleCodesAnywhereAsync(Guid principalId, CancellationToken cancellationToken);
+
     /// <summary>Every permission the principal holds through its tenant-wide roles, in name order. The shell builds its navigation from it.</summary>
     Task<IReadOnlyList<string>> PermissionsOfAsync(Guid principalId, CancellationToken cancellationToken);
 

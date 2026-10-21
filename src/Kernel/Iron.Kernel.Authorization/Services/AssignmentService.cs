@@ -41,6 +41,8 @@ public sealed class AssignmentService(
     IAuditWriter audit,
     ICurrentPrincipal actor,
     ConflictService segregation,
+    PermissionCatalogue catalogue,
+    IRecentAuthentication recent,
     ILogger<AssignmentService> logger)
 {
     public const string RecordType = "role_assignment";
@@ -169,6 +171,13 @@ public sealed class AssignmentService(
         if (conflicts.FirstOrDefault(c => c.Rule.Mode == ConflictModes.Block) is { } blocking)
         {
             return Error.Conflict(AuthorizationErrors.SodConflict, await segregation.RefusalAsync(blocking, principalId, cancellationToken).ConfigureAwait(false));
+        }
+
+        // Granting a role that holds a high-risk or critical permission is itself a high-risk action (TF-248): it needs a
+        // recent authentication, asked last, so a grant that would be refused anyway never asks for a password.
+        if (role.Permissions.Any(name => catalogue.Find(name)?.Risk is Risk.High or Risk.Critical) && recent.Require() is { IsFailure: true } stale)
+        {
+            return stale.Error;
         }
 
         var assignment = new RoleAssignment(role.Id, principalId, scope);

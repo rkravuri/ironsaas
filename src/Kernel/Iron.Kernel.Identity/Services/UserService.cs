@@ -17,8 +17,8 @@ public sealed record ReactivatedUser(Principal Principal, string? InvitationToke
 /// Users created by an administrator (A2): a login id, a display name and a home unit, in Invited status with an open
 /// invitation. The endpoint checks <c>identity.users.manage</c> at the home unit first; email delivery is S4, so the
 /// caller passes the link on. The principal, its invitation and the audit events are one transaction. The same
-/// administrator unlocks a person's login, issues their recovery link, deactivates and reactivates them (TF-010, TF-012,
-/// TF-017, ADR-0046); each is a security event of the person's.
+/// administrator unlocks a person's login, issues their recovery link, resets their second factors, deactivates and
+/// reactivates them (TF-010, TF-012, TF-013, TF-017, ADR-0046, ADR-0047); each is a security event of the person's.
 /// </summary>
 public sealed class UserService(
     IdentityDbContext context,
@@ -27,6 +27,7 @@ public sealed class UserService(
     LoginThrottles throttles,
     SessionService sessions,
     SecurityEventLog securityEvents,
+    FactorService factors,
     IOrganisationUnits units,
     IRoleAssignments roleAssignments,
     ITenantAdministrators administrators,
@@ -61,6 +62,50 @@ public sealed class UserService(
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return new RecoveryLink(token, principal.RecoveryExpiresAt!.Value);
     }
+
+    /// <summary>
+    /// An administrator resets a person's second factors (TF-013 AC3, ADR-0047): a person who lost their device signs in
+    /// with their password and enrols again at once. Like a recovery link it lets someone else in as the person, so the
+    /// administrator must hold every permission the person holds (ADR-0046's rule); a reason is required, the endpoint
+    /// asks for a recent authentication, and every session of the person ends. Nobody resets their own: they remove a
+    /// factor in My profile.
+    /// </summary>
+    public async Task<Result<Principal>> ResetFactorsAsync(Principal principal, string reason, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (principal.Type != PrincipalType.User)
+        {
+            return Error.Conflict(IdentityErrors.UserStatusConflict, $"{principal.DisplayName} is a service account, which signs in with its client credentials and has no second factor.");
+        }
+
+        if (principal.Id == actor.Id)
+        {
+            return Error.Conflict(IdentityErrors.UserSelf, "You cannot reset your own factors. Remove a factor in My profile, or ask another administrator.");
+        }
+
+        var missing = await MissingPermissionsAsync(principal.Id, cancellationToken).ConfigureAwait(false);
+        if (missing.Count > 0)
+        {
+            return Error.Forbidden(IdentityErrors.FactorResetEscalation, $"Resetting the factors lets {principal.DisplayName}'s password alone sign them in, so you can do it only for someone whose permissions you hold yourself. You do not hold: {string.Join(", ", missing)}.");
+        }
+
+        if (!await factors.HasAnyAsync(principal.Id, cancellationToken).ConfigureAwait(false))
+        {
+            return Error.Conflict(IdentityErrors.FactorNone, $"{principal.DisplayName} has no second factor to reset.");
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        var ended = await sessions.EndAllAsync(principal.Id, SessionEndReasons.Revoked, cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["sessions_ended"] = ended.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+        await factors.ResetAsync(principal, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), reason.Trim(), details, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return principal;
+    }
+
+    /// <summary>Whether the actor holds every permission the person holds, the rule for a recovery link and a factor reset (ADR-0046).</summary>
+    public async Task<bool> MayTakeOverAsync(Guid principalId, CancellationToken cancellationToken) =>
+        principalId != actor.Id && (await MissingPermissionsAsync(principalId, cancellationToken).ConfigureAwait(false)).Count == 0;
 
     /// <summary>Lifts the lock on a person's login identifier (TF-012 AC2).</summary>
     public async Task<Result<Principal>> UnlockAsync(Principal principal, CancellationToken cancellationToken)

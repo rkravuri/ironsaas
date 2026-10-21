@@ -64,6 +64,14 @@ public sealed class LoginThrottle : AuditedEntity
         return true;
     }
 
+    /// <summary>Locks the identifier now, as reaching the threshold does: ten wrong second-factor codes in a row (TF-013 AC2).</summary>
+    public void Lock(DateTimeOffset now, TimeSpan duration)
+    {
+        LockedUntil = now + duration;
+        Failures = 0;
+        WindowStartedAt = null;
+    }
+
     /// <summary>A success or an administrator's unlock: no failures counted, no lock.</summary>
     public void Clear()
     {

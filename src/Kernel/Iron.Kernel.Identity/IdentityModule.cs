@@ -18,7 +18,8 @@ namespace Iron.Kernel.Identity;
 
 /// <summary>
 /// Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029);
-/// the password policy, lockout, recovery links and security events (TF-012, TF-017, TF-019, ADR-0046).
+/// the password policy, lockout, recovery links and security events (TF-012, TF-017, TF-019, ADR-0046); second factors,
+/// the MFA policy and step-up re-authentication (TF-013, TF-248, ADR-0047).
 /// Replaces the default system principal with the request principal, so hosts list it after Audit and Authorization
 /// and call <c>UseIronIdentity</c> after UseIronTenant. The session limits and an invitation's validity are settings
 /// (ADR-0036), so a host that lists Identity lists the Settings module too.
@@ -84,6 +85,23 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IValidator<AcceptInvitationRequest>, AcceptInvitationRequestValidator>();
         services.AddScoped<IValidator<RecoverPasswordRequest>, RecoverPasswordRequestValidator>();
         services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordRequestValidator>();
+
+        // Second factors and step-up (TF-013, TF-248, ADR-0047).
+        services.AddSingleton<FactorProtector>();
+        services.AddScoped<Passkeys>();
+        services.AddScoped<RecoveryCodes>();
+        services.AddScoped<MfaPolicy>();
+        services.AddScoped<AuthenticationChallenges>();
+        services.AddScoped<FactorService>();
+        services.AddScoped<ReauthenticationService>();
+        services.Replace(ServiceDescriptor.Singleton<IRecentAuthentication, RequestRecentAuthentication>());
+        services.AddScoped<IValidator<SecondFactorRequest>, SecondFactorRequestValidator>();
+        services.AddScoped<IValidator<ConfirmAuthenticatorAppRequest>, ConfirmAuthenticatorAppRequestValidator>();
+        services.AddScoped<IValidator<RegisterPasskeyRequest>, RegisterPasskeyRequestValidator>();
+        services.AddScoped<IValidator<RenameFactorRequest>, RenameFactorRequestValidator>();
+        services.AddScoped<IValidator<ReauthenticateRequest>, ReauthenticateRequestValidator>();
+        services.AddScoped<IValidator<PasskeySignInRequest>, PasskeySignInRequestValidator>();
+        services.AddScoped<IValidator<ResetFactorsRequest>, ResetFactorsRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

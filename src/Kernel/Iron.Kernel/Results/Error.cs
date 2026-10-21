@@ -35,6 +35,12 @@ public sealed class Error
     /// <summary>Field-level problems; empty unless the kind is Validation.</summary>
     public IReadOnlyList<FieldError> Fields { get; }
 
+    /// <summary>
+    /// Facts a client acts on, beyond the code: how many seconds to wait before trying again, for example. The problem
+    /// carries each as an extension of its own name. Never a secret or anything about another person.
+    /// </summary>
+    public IReadOnlyDictionary<string, object> Extensions { get; init; } = new Dictionary<string, object>(StringComparer.Ordinal);
+
     public static Error Validation(string code, string message, params FieldError[] fields)
         => new(ErrorKind.Validation, code, message, fields);
 

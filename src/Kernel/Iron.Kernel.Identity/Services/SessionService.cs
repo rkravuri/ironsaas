@@ -19,12 +19,13 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     /// runs once the session has its id and before the row is written; login uses it to make the new session's principal
     /// the request's principal, so the rows it writes carry the user as created_by.
     /// </summary>
-    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null)
+    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null, string? secondFactor = null)
     {
         ArgumentNullException.ThrowIfNull(principal);
         var token = SecureTokens.New();
         var (idle, absolute) = await LimitsAsync(cancellationToken).ConfigureAwait(false);
         var session = new Session(principal.Id, SecureTokens.Hash(token), time.GetUtcNow(), absolute, idle);
+        session.ProvedWith(secondFactor);
         beforeSave?.Invoke(session);
         context.Sessions.Add(session);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -48,7 +49,21 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     {
         ArgumentNullException.ThrowIfNull(principal);
         ArgumentNullException.ThrowIfNull(session);
-        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt, session.ActingForId, session.WorkingUnitId, session.AllUnits);
+        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt, session.ActingForId, session.WorkingUnitId, session.AllUnits)
+        {
+            // A session from before T3 has no authentication time of its own: its start is the last time anyone proved it.
+            AuthenticatedAt = session.AuthenticatedAt ?? session.CreatedAt,
+        };
+    }
+
+    /// <summary>The person proved who they are again in this session (TF-248): high-risk actions may go on for a few minutes.</summary>
+    public async Task<DateTimeOffset> ReauthenticatedAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        var session = await context.Sessions.SingleAsync(s => s.Id == sessionId, cancellationToken).ConfigureAwait(false);
+        session.Reauthenticated(now);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return now;
     }
 
     /// <summary>

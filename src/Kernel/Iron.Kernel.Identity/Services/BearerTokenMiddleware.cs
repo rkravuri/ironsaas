@@ -44,7 +44,7 @@ public sealed class BearerTokenMiddleware(RequestDelegate next, ILogger<BearerTo
                 }
                 else
                 {
-                    RequestPrincipal.Set(context, new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, claims.TokenId, claims.ExpiresAt, claims.ExpiresAt, AuthenticationKind.Token, principal.HomeUnitId));
+                    RequestPrincipal.Set(context, new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, claims.TokenId, claims.ExpiresAt, claims.ExpiresAt, AuthenticationKind.Token, principal.HomeUnitId) { AuthenticatedAt = claims.IssuedAt });
                 }
             }
         }

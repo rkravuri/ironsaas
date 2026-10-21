@@ -9,7 +9,8 @@ public sealed record FieldProblem(string Field, string Code, string Message);
 
 /// <summary>
 /// Turns an <see cref="Error"/> into RFC 9457 problem details (TF-100): type, title, status, detail, instance, plus the
-/// extensions <c>error_code</c>, <c>correlation_id</c> and, for validation, <c>errors</c>.
+/// extensions <c>error_code</c>, <c>correlation_id</c> and, for validation, <c>errors</c>; and the error's own extensions,
+/// such as <c>retry_after_seconds</c> during a second factor's cooling period (ADR-0047).
 /// </summary>
 public static class ProblemFactory
 {
@@ -63,6 +64,11 @@ public static class ProblemFactory
         if (error.Fields.Count > 0)
         {
             problem.Extensions[ErrorsKey] = error.Fields.Select(f => new FieldProblem(f.Field, f.Code, f.Message)).ToArray();
+        }
+
+        foreach (var (name, value) in error.Extensions)
+        {
+            problem.Extensions.TryAdd(name, value);
         }
 
         return problem;

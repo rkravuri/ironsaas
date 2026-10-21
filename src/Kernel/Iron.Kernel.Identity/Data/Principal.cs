@@ -84,7 +84,69 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
 
     public DateTimeOffset? RecoveryExpiresAt { get; private set; }
 
+    /// <summary>Wrong second-factor codes in a row since the last right one (TF-013 AC2); a right one or a lock sets it to zero.</summary>
+    public int SecondFactorFailures { get; private set; }
+
+    /// <summary>Until when no code is checked, after every third wrong one in a row (TF-013 AC2).</summary>
+    public DateTimeOffset? SecondFactorCoolingUntil { get; private set; }
+
+    /// <summary>
+    /// When a sign-in first found that the tenant's policy requires a factor of this person and they had none: the grace
+    /// a tenant may give counts from here (ADR-0047). Cleared when the person enrols.
+    /// </summary>
+    public DateTimeOffset? MfaRequiredSince { get; private set; }
+
     public bool CanLogIn => Status == PrincipalStatus.Active && PasswordHash is not null;
+
+    /// <summary>Every this many wrong codes in a row start a cooling period (TF-013 AC2).</summary>
+    public const int CoolingEvery = 3;
+
+    /// <summary>This many wrong codes in a row lock the login as too many wrong passwords do (TF-012, TF-013 AC2).</summary>
+    public const int SecondFactorLockAfter = 10;
+
+    public static readonly TimeSpan FirstCooling = TimeSpan.FromSeconds(60);
+
+    public static readonly TimeSpan LongestCooling = TimeSpan.FromMinutes(15);
+
+    public bool IsCooling(DateTimeOffset now) => SecondFactorCoolingUntil is { } until && until > now;
+
+    /// <summary>
+    /// Counts a wrong second-factor code. Every third in a row starts a cooling period of 60 seconds, doubling with each
+    /// further three, up to 15 minutes; the tenth in a row answers true, the caller locks the login, and the count starts
+    /// again, as a lockout's does.
+    /// </summary>
+    public bool RecordSecondFactorFailure(DateTimeOffset now)
+    {
+        SecondFactorFailures++;
+        if (SecondFactorFailures >= SecondFactorLockAfter)
+        {
+            SecondFactorFailures = 0;
+            SecondFactorCoolingUntil = null;
+            return true;
+        }
+
+        if (SecondFactorFailures % CoolingEvery == 0)
+        {
+            var doublings = (SecondFactorFailures / CoolingEvery) - 1;
+            var cooling = FirstCooling * Math.Pow(2, doublings);
+            SecondFactorCoolingUntil = now + (cooling < LongestCooling ? cooling : LongestCooling);
+        }
+
+        return false;
+    }
+
+    /// <summary>A right second factor: no failures counted, no cooling.</summary>
+    public void RecordSecondFactorSuccess()
+    {
+        SecondFactorFailures = 0;
+        SecondFactorCoolingUntil = null;
+    }
+
+    /// <summary>The policy requires a factor of the person, who has none: the grace counts from the first time this is found.</summary>
+    public DateTimeOffset MfaRequiredFrom(DateTimeOffset now) => MfaRequiredSince ??= now;
+
+    /// <summary>The person enrolled a factor, or no longer needs one.</summary>
+    public void MfaSatisfied() => MfaRequiredSince = null;
 
     public static string NormaliseLoginId(string? loginId) => (loginId ?? string.Empty).Trim().ToLowerInvariant();
 

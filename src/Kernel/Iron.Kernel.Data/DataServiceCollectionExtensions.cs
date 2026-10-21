@@ -34,6 +34,9 @@ public static class DataServiceCollectionExtensions
         // Until a host registers the request principal (Identity, T10), the system principal acts. Workers keep it.
         services.TryAddSingleton<ICurrentPrincipal>(SystemPrincipal.Instance);
 
+        // Nobody signs in until Identity is there, so nothing needs a recent sign-in; Identity replaces it (TF-248).
+        services.TryAddSingleton<IRecentAuthentication>(NoSignInRecentAuthentication.Instance);
+
         services.AddSingleton(new DatabaseOptions { AppRole = appRole });
         services.AddScoped<SharedConnection>();
         services.AddScoped<UnitOfWork>();
