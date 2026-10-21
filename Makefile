@@ -222,7 +222,7 @@ e2e: shell-node env ## Set up the run's own unit with its people, run the Playwr
 	  || { echo "The run's unit for the browser tests could not be set up on $(TEST_TENANT)."; exit 1; }; \
 	eval "$$scoped"; \
 	(cd shell && E2E_BASE_URL=$${E2E_BASE_URL:-https://$(TEST_TENANT).localhost} E2E_LOGIN_ID=admin@$(TEST_TENANT).localhost E2E_PASSWORD="$$password" \
-	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) npx playwright test); \
+	  E2E_TENANT=$(TEST_TENANT) E2E_CONTROL_URL=$(CONTROL_URL) E2E_OPERATOR_SECRET="$${OPERATOR_SECRET:-$(DEV_OPERATOR_SECRET)}" npx playwright test); \
 	status=$$?; \
 	E2E_TENANT=$(TEST_TENANT) E2E_ADMIN_PASSWORD="$$password" python3 $(COMPOSE_DIR)/scripts/e2e-data.py teardown || status=1; \
 	exit $$status

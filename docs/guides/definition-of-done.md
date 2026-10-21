@@ -17,7 +17,7 @@ What a change needs before it is merged to main. The pull request template summa
 - [ ] A decision was made (a library, a pattern, a boundary, a trade-off): its ADR is in `docs/adr/`, listed in the index, and named from the code or the guide that applies it.
 - [ ] A module was added: the placement test is answered in its README, its projects declare `<IronLayer>` and live in their layer's folder, and its schema carries the layer prefix (ADR-0029).
 - [ ] An entity changed: the migration is generated with `make ef-add`, read once, formatted with `make format`, committed with the entity, and the module's model test passes.
-- [ ] An endpoint was added: it declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`; a new anonymous endpoint is a reviewed addition to the fixed list in `Iron.Host.Tests`.
+- [ ] An endpoint was added: it declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`, and each success it answers with `.Produces<T>(status)` (TF-100 AC3); a new anonymous endpoint is a reviewed addition to the fixed list in `Iron.Host.Tests`.
 - [ ] A permission was added: it is in the module's Contracts, in the module's `Permissions`, and seeded into the system roles that should carry it.
 - [ ] A licensed module or a feature was added: the module declares its licence and features (a kernel module declares none), the endpoints that need a feature say so, `make catalogue` was run and the catalogue committed (ADR-0034).
 - [ ] A flag was added or retired: it is declared in the module's Contracts with its owner and purpose, a release or experiment flag with its removal date; a retired flag is marked so in the catalogue in the same change; `make catalogue` was run (ADR-0035). A kill switch is the kernel's only.

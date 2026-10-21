@@ -51,7 +51,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0041](0041-one-requirements-document-per-layer-and-product.md) | One requirements document per layer and product | Accepted |
 | [0042](0042-dependencies-down-the-layers-and-along-the-process.md) | Dependencies go down the layers, and along the process between products | Accepted |
 | [0043](0043-ironsaas-foundation-and-suites.md) | IronSaaS Foundation and suites: the Suite layer, deployment by purchase, one repository | Accepted |
-| [0044](0044-naming-what-a-test-proves-and-the-traceability-matrix.md) | Naming what a test proves, the traceability matrix, and a check sequence that holds under load | Proposed |
+| [0044](0044-naming-what-a-test-proves-and-the-traceability-matrix.md) | Naming what a test proves, the traceability matrix, and a check sequence that holds under load | Accepted |
 
 ## Reading order
 

@@ -79,6 +79,8 @@ If the store lost its data anyway, the recovery is two commands: `make up-contro
 
 A kill switch stays on while the store does not answer, and through a restart: the unit keeps the last rules it read, without expiry. A unit that has never read any rules runs on the code defaults, with nothing stopped, and alerts (section 10).
 
+**A hostname no unit serves.** The ingress answers it itself with `404 page not found`, over HTTP and HTTPS, and no unit receives the request: Traefik routes a request only to the unit whose hostname it names (TF-003 AC3, ADR-0019). Checked by hand on 2026-10-21 (S3 T1), with the units acme, bravo, echo and smoke running: `curl -sk -H 'Host: nobody.localhost' https://localhost/api/v1/me` and the same over `http` answered 404 `404 page not found`, while `https://echo.localhost/health/live` answered 200.
+
 What the fleet renders is in `infra/compose/units/<slug>/` (git-ignored): one `compose.yaml` from the embedded template and the unit's `.env`. `docker compose -p tenant-acme ps`, `logs` and `images` work on it directly; `images` is the quick way to confirm a unit runs the image you just built.
 
 ## 6. The control plane

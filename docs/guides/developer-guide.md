@@ -170,6 +170,7 @@ The app role cannot change or delete audit rows; PostgreSQL refuses it. `make mi
 - Lists: declare the fields once in a `ListFields<T>` (snake_case names, pointing at the entity properties, with a default sort), parse with `ListQueryParser.Parse(http.Request.Query, fields)`, apply with `.ApplyListQuery(query, fields).ToPageAsync(query.Page, ct)` and return `ApiResults.List(page, http, query)`. That works for an entity marked `IOwnAccessRule` (its module applies its own access rule; `ITenantWide` is one); a business record pages through its policy (see Record policies).
 - Request bodies: write an `AbstractValidator<TRequest>`, register it in the module's `AddServices`, and add `.Validate<TRequest>()` to the endpoint.
 - Never catch exceptions to return an error status; let the unexpected exception handler produce the 500 problem with the correlation id. Return `Error`s for expected failures.
+- Declare every success the handler answers on the mapping, since an `IResult` tells the OpenAPI document nothing: `.Produces<ListResponse<UserResponse>>(StatusCodes.Status200OK)` for a list, `.Produces<UserResponse>(StatusCodes.Status201Created)` for a create, `.Produces(StatusCodes.Status204NoContent)` for a delete. The host test refuses an operation that does not say what it needs, or answers a success without a schema (TF-100 AC3).
 - The OpenAPI document and the Scalar browser are at `/openapi/v1.json` and `/scalar/v1` in Development.
 
 ## An endpoint with a permission (ADR-0012)
@@ -561,7 +562,7 @@ The home page, the search and the help panel read the manifests, so a module app
 | Accessibility | `make shell-a11y` | the gallery against WCAG 2.1 AA with axe in a real browser; no stack needed |
 | Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace, then a role scoped to a unit, a plan change and a kill switch reaching the API, each restored |
 | Browser | `make e2e` | login, home, the search, the grid, inviting a person, a child-unit administrator's view, delegation and reviews, settings, working across units, explaining access and conflict rules, and a plan and a kill switch reaching the shell within a minute, in a real browser, each run in a unit of its own |
-| Pipeline's stage | `make integration` | platform and control plane from images, then the smoke |
+| Pipeline's stage | `make integration` | platform and control plane from images, then the smoke; in the release workflow the browser tests follow against the same tenant (ADR-0044) |
 | Traceability | `make trace` | each requirement criterion and decision with the tests that prove it and their last results, and the criteria of the done slices that nothing proves (ADR-0044) |
 | Every check in order | `make verify` | `make prd-check`, `make test`, `make shell-check`, `make shell-a11y`, `make format-check` and `make trace`, one after another; the check before a push, with the stack running or not |
 

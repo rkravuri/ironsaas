@@ -1,8 +1,8 @@
 # ADR-0044: Naming what a test proves, the traceability matrix, and a check sequence that holds under load
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-21
-**Decided by:** S3 T1, for the design session's review
+**Decided by:** Product owner and architect, at the review of S3 T1
 
 ## Context
 
@@ -45,7 +45,7 @@ The grammar is one regular expression, held in the analyzer, the shell's lint ru
 
 ### 4. CI and the release
 
-Each CI job that runs tests uploads its result files; a `trace` job after them, whatever they answered, runs `make trace` and uploads `artifacts/trace` as `traceability-matrix` on every run. The browser tests and the smoke need the stack and show as not run there. The release workflow's `trace` job waits for CI's run of the same commit, takes its result files and the integration stage's smoke report, builds the matrix and keeps it for 90 days as `traceability-matrix-<commit>` with the run that built and tagged the images. T8's validation pack starts from it.
+Each CI job that runs tests uploads its result files; a `trace` job after them, whatever they answered, runs `make trace` and uploads `artifacts/trace` as `traceability-matrix` on every run. The browser tests and the smoke need the stack and show as not run there. The release workflow's integration stage runs the smoke and then the browser tests (`make e2e`) against the tenant it provisions, and tags the images `integration` only when both pass (added at T1's review). Its `trace` job waits for CI's run of the same commit, takes its result files with the stage's smoke report and browser test results, builds the matrix and keeps it for 90 days as `traceability-matrix-<commit>` with the run that built and tagged the images. T8's validation pack starts from it.
 
 ### 5. A check sequence that holds under load
 

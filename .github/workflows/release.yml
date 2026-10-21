@@ -2,7 +2,7 @@ name: Release
 
 # A push to main (ADR-0022): the five images are built and pushed to GitHub Container Registry tagged with the commit,
 # scanned, and then proven on the runner: the platform and the control plane start from those images, the fleet
-# provisions a tenant, and the smoke test runs against it. Green runs tag the images "integration". The traceability
+# provisions a tenant, and the smoke test and the browser tests run against it. Green runs tag the images "integration". The traceability
 # matrix of the commit, CI's results with the smoke's, is kept with the run that built the images (ADR-0044).
 
 on:
@@ -74,7 +74,8 @@ jobs:
     name: Integration on the runner
     runs-on: ubuntu-latest
     needs: images
-    timeout-minutes: 30
+    # The smoke takes a few minutes and the browser tests about five more (ADR-0044).
+    timeout-minutes: 45
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -102,12 +103,64 @@ jobs:
             docker pull "${{ steps.repo.outputs.repository }}/$image:${{ github.sha }}"
           done
 
+      # The stage's throw-away secrets, made once so the smoke and the browser tests reach the control plane with the same
+      # operator; they live only on this runner.
+      - name: Throw-away secrets
+        id: secrets
+        run: |
+          operator="ci-operator-$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
+          reader="ci-reader-$(head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
+          echo "::add-mask::$operator"
+          echo "::add-mask::$reader"
+          echo "operator=$operator" >> "$GITHUB_OUTPUT"
+          echo "reader=$reader" >> "$GITHUB_OUTPUT"
+
       - name: Platform, control plane, provisioning and smoke
         env:
           IMAGE_REPOSITORY: ${{ steps.repo.outputs.repository }}
           IMAGE_TAG: ${{ github.sha }}
+          OPERATOR_SECRET: ${{ steps.secrets.outputs.operator }}
+          SMOKE_READER_SECRET: ${{ steps.secrets.outputs.reader }}
           SMOKE_REPORT: ${{ github.workspace }}/smoke-report.json
         run: infra/compose/scripts/ci-integration.sh acme
+
+      - name: Set up Node (for the browser tests)
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: shell/package-lock.json
+
+      - name: Install the shell's packages and Chromium
+        working-directory: shell
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      # The browser tests against the tenant the stage provisioned, in a unit of their own, as make e2e runs them on the
+      # laptop: the administrator's password is the one the smoke kept in the store. Their JUnit file joins the matrix.
+      - name: Browser tests against the provisioned tenant
+        env:
+          OPERATOR_SECRET: ${{ steps.secrets.outputs.operator }}
+        run: make e2e TENANT=acme
+
+      - name: Upload the browser tests' results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-e2e
+          path: artifacts/test-results
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Upload the browser tests' screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-screenshots
+          path: shell/test-results/e2e
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload the smoke report
         if: always()
@@ -139,8 +192,8 @@ jobs:
           done
 
   # The matrix of the commit the images were built from: CI's result files for the same commit, which this job waits
-  # for, and the smoke's report from the integration stage, kept for 90 days with this run (TF-218, ADR-0044). T8's
-  # validation pack is built from it.
+  # for, and the smoke's report and the browser tests' results from the integration stage, kept for 90 days with this
+  # run (TF-218, ADR-0044). T8's validation pack is built from it.
   trace:
     name: Traceability matrix of the release
     runs-on: ubuntu-latest
@@ -176,6 +229,13 @@ jobs:
         with:
           name: smoke-report
           path: artifacts/test-results/smoke
+        continue-on-error: true
+
+      - name: The browser tests' results
+        uses: actions/download-artifact@v7
+        with:
+          name: test-results-e2e
+          path: artifacts/test-results
         continue-on-error: true
 
       - name: Build the matrix
