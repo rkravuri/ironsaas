@@ -158,6 +158,72 @@ public class HostTests
             e => Assert.True(e.Contains("/openapi", StringComparison.Ordinal) || e.Contains("/scalar", StringComparison.Ordinal), e));
     }
 
+    [Fact]
+    [Proves("TF-100 AC3", "ADR-0009")]
+    public async Task EveryOperationOfTheOpenApiDocumentsSaysWhatItNeedsAndCarriesItsSchemas()
+    {
+        await using var api = new WebApplicationFactory<Iron.Host.Api.ApiHost>().WithWebHostBuilder(host => host.UseEnvironment(Environments.Development));
+        await using var controlPlane = new WebApplicationFactory<Iron.Host.ControlPlane.ControlPlaneHost>().WithWebHostBuilder(host => host.UseEnvironment(Environments.Development));
+
+        var problems = (await DocumentProblemsAsync(api)).Select(problem => $"api: {problem}")
+            .Concat((await DocumentProblemsAsync(controlPlane)).Select(problem => $"control plane: {problem}"))
+            .ToList();
+
+        Assert.True(problems.Count == 0, $"{problems.Count} operation(s) of the OpenAPI documents fall short of TF-100 AC3:{Environment.NewLine}{string.Join(Environment.NewLine, problems)}");
+    }
+
+    private static async Task<IReadOnlyList<string>> DocumentProblemsAsync<TEntryPoint>(WebApplicationFactory<TEntryPoint> factory)
+        where TEntryPoint : class
+    {
+        using var client = factory.CreateClient();
+        using var answer = await Send(client, "/openapi/v1.json", "acme.localhost");
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        using var document = JsonDocument.Parse(await answer.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        return OpenApiProblems(document).ToList();
+    }
+
+    /// <summary>
+    /// What an operation of the document lacks: a note of what it needs (its permission, a signed-in principal or the
+    /// anonymous marker), a schema for its request body, a success response, and a schema for a success that has a body.
+    /// </summary>
+    private static IEnumerable<string> OpenApiProblems(JsonDocument document)
+    {
+        string[] methods = ["get", "put", "post", "delete", "patch"];
+        foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            foreach (var operation in path.Value.EnumerateObject().Where(o => methods.Contains(o.Name)))
+            {
+                var name = $"{operation.Name.ToUpperInvariant()} {path.Name}";
+                var description = operation.Value.TryGetProperty("description", out var text) ? text.GetString() ?? string.Empty : string.Empty;
+                if (!description.StartsWith("Requires permission `", StringComparison.Ordinal)
+                    && !description.StartsWith(Iron.Kernel.Api.OpenApi.OpenApiExtensions.AccessSignedIn, StringComparison.Ordinal)
+                    && !description.StartsWith(Iron.Kernel.Api.OpenApi.OpenApiExtensions.AccessAnonymous, StringComparison.Ordinal))
+                {
+                    yield return $"{name} does not say what it needs";
+                }
+
+                if (operation.Value.TryGetProperty("requestBody", out var body) && !HasSchema(body))
+                {
+                    yield return $"{name} has a request body without a schema";
+                }
+
+                var successes = operation.Value.GetProperty("responses").EnumerateObject().Where(r => r.Name.StartsWith('2')).ToList();
+                if (successes.Count == 0)
+                {
+                    yield return $"{name} documents no success response";
+                }
+
+                foreach (var success in successes.Where(r => r.Name is not ("202" or "204") && !HasSchema(r.Value)))
+                {
+                    yield return $"{name} answers {success.Name} without a schema";
+                }
+            }
+        }
+    }
+
+    private static bool HasSchema(JsonElement element) =>
+        element.TryGetProperty("content", out var content) && content.EnumerateObject().Any(media => media.Value.TryGetProperty("schema", out _));
+
     private static WebApplicationFactory<TEntryPoint> Production<TEntryPoint>()
         where TEntryPoint : class =>
         new WebApplicationFactory<TEntryPoint>().WithWebHostBuilder(host => host.UseEnvironment(Environments.Production));

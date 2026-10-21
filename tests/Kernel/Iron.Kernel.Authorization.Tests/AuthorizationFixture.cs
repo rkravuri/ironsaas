@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Npgsql;
 
@@ -88,14 +89,20 @@ public sealed class AuthorizationFixture : IAsyncLifetime
     }
 
     /// <summary>The services a host would have for this module, with a controllable clock, principal and audit writer.</summary>
-    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null)
+    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null, ILoggerProvider? logs = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(time);
         services.AddSingleton(principal);
         services.AddSingleton<IAuditWriter>(audit);
         services.AddSingleton<IPrincipals>(Principals);
-        services.AddLogging();
+        services.AddLogging(logging =>
+        {
+            if (logs is not null)
+            {
+                logging.AddProvider(logs);
+            }
+        });
         services.AddIronDatabase(connectionString ?? ConnectionString);
         services.AddModules(new ConfigurationBuilder().Build(), [new AuthorizationModule(), new DutyProbeModule()]);
         return services.BuildServiceProvider();
@@ -236,5 +243,28 @@ public sealed class RecordingAuditWriter : IAuditWriter
     {
         Events.Add(auditEvent);
         return Task.CompletedTask;
+    }
+}
+
+/// <summary>Keeps every log line a test's services write, so a test can find an alert's line (TF-031 AC4).</summary>
+public sealed class CapturingLogs : ILoggerProvider
+{
+    public ConcurrentQueue<(LogLevel Level, string Category, string Message)> Lines { get; } = new();
+
+    public ILogger CreateLogger(string categoryName) => new Logger(this, categoryName);
+
+    public void Dispose()
+    {
+    }
+
+    private sealed class Logger(CapturingLogs owner, string category) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            owner.Lines.Enqueue((logLevel, category, formatter(state, exception)));
     }
 }

@@ -93,9 +93,9 @@ internal static class UsersEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var users = endpoints.MapApiGroup("users");
-        users.MapGet("/", ListAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().WithName("ListUsers").WithSummary("List the users and service accounts you may see.");
-        users.MapGet("/{id:guid}", GetAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().WithName("GetUser").WithSummary("One user or service account you may see.");
-        users.MapPost("/", CreateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Validate<CreateUserRequest>().WithName("CreateUser").WithSummary("Create a user in a unit and answer the invitation link.");
+        users.MapGet("/", ListAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().Produces<ListResponse<UserResponse>>(StatusCodes.Status200OK).WithName("ListUsers").WithSummary("List the users and service accounts you may see.");
+        users.MapGet("/{id:guid}", GetAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("GetUser").WithSummary("One user or service account you may see.");
+        users.MapPost("/", CreateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Validate<CreateUserRequest>().Produces<CreateUserResponse>(StatusCodes.Status201Created).WithName("CreateUser").WithSummary("Create a user in a unit and answer the invitation link.");
     }
 
     /// <summary>The principals whose home unit the reader holds <c>identity.users.read</c> at; one predicate in the query.</summary>

@@ -30,8 +30,8 @@ internal static class TokenEndpoints
 
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost(TokenPath, TokenAsync).AllowAnonymous().WithTags("oauth").WithName("Token").WithSummary("Client credentials grant: an access token for a service account.");
-        endpoints.MapGet(JwksPath, (SigningKeys keys) => TypedResults.Ok(keys.JsonWebKeySet())).AllowAnonymous().WithTags("oauth").WithName("JsonWebKeySet").WithSummary("The public keys that sign access tokens.");
+        endpoints.MapPost(TokenPath, TokenAsync).AllowAnonymous().WithTags("oauth").Produces<TokenResponse>(StatusCodes.Status200OK).WithName("Token").WithSummary("Client credentials grant: an access token for a service account.");
+        endpoints.MapGet(JwksPath, (SigningKeys keys) => TypedResults.Ok(keys.JsonWebKeySet())).AllowAnonymous().WithTags("oauth").Produces<JsonWebKeySetResponse>(StatusCodes.Status200OK).WithName("JsonWebKeySet").WithSummary("The public keys that sign access tokens.");
     }
 
     private static async Task<IResult> TokenAsync(HttpContext http, IdentityDbContext context, IPasswordHasher hasher, TokenService tokens, TokenOptions options, IAuditWriter audit, CancellationToken cancellationToken)

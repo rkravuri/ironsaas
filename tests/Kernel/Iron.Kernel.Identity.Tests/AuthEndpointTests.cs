@@ -14,6 +14,7 @@ using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Services;
 using Iron.Kernel.Settings;
 using Iron.Kernel.Telemetry;
+using Iron.Kernel.Telemetry.Health;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -44,6 +45,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton<TimeProvider>(_time);
         builder.Services.AddSingleton(IdentityFixture.Tenant);
         builder.Services.AddIronApi();
+        builder.Services.AddIronHealth();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
@@ -54,6 +56,7 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         _app.UseIronApi();
         _app.UseIronIdentity();
         _app.MapModules();
+        _app.MapIronHealth();
         await _app.StartAsync(TestContext.Current.CancellationToken);
         _client = _app.GetTestClient();
     }
@@ -129,6 +132,52 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-031 AC3", "ADR-0014")]
+    public async Task TheAnonymousOperationsWorkWithoutATokenAndShowNothingOfTheTenant()
+    {
+        var loginId = $"anonymous-{Ids.New():N}@acme.test";
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            await IdentityFixture.CreateActiveUserAsync(scope.ServiceProvider, loginId, Password, "Anonymous Probe");
+        }
+
+        var ct = TestContext.Current.CancellationToken;
+        using var wrongPassword = await _client.PostAsJsonAsync("/auth/login", new { login_id = loginId, password = "wrong" }, ct);
+        using var unknownLogin = await _client.PostAsJsonAsync("/auth/login", new { login_id = $"nobody-{Ids.New():N}@example.org", password = "wrong" }, ct);
+        using var invitation = await _client.PostAsJsonAsync($"/auth/invitations/{Ids.New():N}/accept", new { password = Password, display_name = "Somebody" }, ct);
+        using var token = await _client.PostAsync(new Uri("/connect/token", UriKind.Relative), new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials", ["client_id"] = "nobody", ["client_secret"] = "nothing" }), ct);
+        using var keys = await Get("/.well-known/jwks.json", cookie: null);
+        using var live = await Get("/health/live", cookie: null);
+        using var ready = await Get("/health/ready", cookie: null);
+
+        // Each works without a token: it answers as it is meant to, never "not authenticated".
+        Assert.Equal(HttpStatusCode.Unauthorized, wrongPassword.StatusCode);
+        Assert.Equal(IdentityErrors.LoginInvalid, await ErrorCode(wrongPassword));
+        Assert.Equal(HttpStatusCode.Unauthorized, unknownLogin.StatusCode);
+        Assert.Equal(IdentityErrors.LoginInvalid, await ErrorCode(unknownLogin));
+        Assert.True(invitation.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest or HttpStatusCode.Gone, $"invitation: {invitation.StatusCode}");
+        Assert.Equal(HttpStatusCode.Unauthorized, token.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, keys.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, live.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
+
+        // Nothing tenant-specific: not the tenant, its hostname, a person's login or name, or the database. An unknown
+        // login and a wrong password read the same, so the answer does not say whether an account exists.
+        var database = new Npgsql.NpgsqlConnectionStringBuilder(fixture.ConnectionString).Database!;
+        string[] secrets = ["acme", IdentityFixture.Tenant.PrimaryHostname, loginId, "Anonymous Probe", IdentityFixture.AdministratorDisplayName, database, "Host="];
+        foreach (var answer in new[] { wrongPassword, unknownLogin, invitation, token, keys, live, ready })
+        {
+            var body = await answer.Content.ReadAsStringAsync(ct);
+            foreach (var secret in secrets)
+            {
+                Assert.False(body.Contains(secret, StringComparison.OrdinalIgnoreCase), $"{answer.RequestMessage?.RequestUri} answered with '{secret}': {body}");
+            }
+        }
+
+        Assert.Equal(await DetailOf(wrongPassword), await DetailOf(unknownLogin));
+    }
+
+    [Fact]
     [Proves("ADR-0014")]
     public async Task WithoutACookieProtectedEndpointsAnswerNotAuthenticated()
     {
@@ -187,6 +236,12 @@ public class AuthEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(path, UriKind.Relative));
         request.Headers.Add("Cookie", cookie);
         return await _client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private static async Task<string?> DetailOf(HttpResponseMessage response)
+    {
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        return problem.RootElement.TryGetProperty("detail", out var detail) ? detail.GetString() : null;
     }
 
     private static async Task<string?> ErrorCode(HttpResponseMessage response)

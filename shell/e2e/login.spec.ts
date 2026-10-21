@@ -9,7 +9,7 @@ test.describe("login", () => {
     await page.getByRole("button", { name: /sign in/i }).click();
 
     const alert = page.getByRole("alert");
-    await expect(alert).toContainText(/wrong|not active/i);
+    await expect(alert).toContainText("The login details are not correct.");
     await expect(alert).toContainText(/correlation id/i);
   });
 

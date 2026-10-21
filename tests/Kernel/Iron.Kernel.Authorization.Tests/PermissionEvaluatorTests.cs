@@ -1,9 +1,11 @@
+using System.Diagnostics.Metrics;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Iron.Kernel.Authorization.Tests;
@@ -109,22 +111,48 @@ public class PermissionEvaluatorTests(AuthorizationFixture fixture)
     }
 
     [Fact]
-    [Proves("ADR-0012")]
-    public async Task WhenTheDatabaseIsUnavailableAccessIsDenied()
+    [Proves("TF-031 AC4", "ADR-0012")]
+    public async Task WhenTheDatabaseIsUnavailableAccessIsDeniedAndTheAlertIsRaised()
     {
         var audit = new RecordingAuditWriter();
+        var logs = new CapturingLogs();
+        var unavailable = 0;
+        using var denials = new MeterListener();
+        denials.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter == AuthorizationMetrics.Meter && instrument.Name == "authz.denials")
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        denials.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == "reason" && Equals(tag.Value, AccessDecision.Unavailable))
+                {
+                    Interlocked.Add(ref unavailable, (int)value);
+                }
+            }
+        });
+        denials.Start();
         await using var provider = fixture.BuildServices(
             new FakeTimeProvider(),
             new FixedPrincipal(SystemPrincipal.SystemId),
             audit,
-            connectionString: "Host=localhost;Port=1;Database=nowhere;Username=nobody;Password=nothing;Timeout=1");
+            connectionString: "Host=localhost;Port=1;Database=nowhere;Username=nobody;Password=nothing;Timeout=1",
+            logs: logs);
         await using var scope = provider.CreateAsyncScope();
         var evaluator = scope.ServiceProvider.GetRequiredService<IPermissionEvaluator>();
 
         var decision = await evaluator.EvaluateAsync(ReadRoles(Ids.New()), TestContext.Current.CancellationToken);
 
+        // Fail closed: denied, and the denial audited with its reason.
         Assert.False(decision.Allowed);
         Assert.Equal(AccessDecision.Unavailable, decision.Reason);
         Assert.Equal(AccessDecision.Unavailable, Assert.Single(audit.Events).Details?["reason"]);
+        // The alert: authz.denials counts the denial as unavailable, and the log carries the ALERT line.
+        Assert.True(unavailable >= 1, "authz.denials did not count a denial with reason unavailable.");
+        Assert.Contains(logs.Lines, line => line.Level == LogLevel.Error && line.Message.StartsWith("ALERT: the permission check is unavailable", StringComparison.Ordinal));
     }
 }

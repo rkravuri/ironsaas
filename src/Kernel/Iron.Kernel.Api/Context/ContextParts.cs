@@ -47,7 +47,7 @@ public static class ContextPartExtensions
     public static IEndpointRouteBuilder MapContext(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-        endpoints.MapGet(Path, BuildAsync).RequireSignedIn().WithTags("me").WithName("MyContext").WithSummary("What applies to you in this tenant now: its entitlements and the flags (settings join in A6).");
+        endpoints.MapGet(Path, BuildAsync).RequireSignedIn().WithTags("me").Produces<SortedDictionary<string, object>>(StatusCodes.Status200OK).WithName("MyContext").WithSummary("What applies to you in this tenant now: its entitlements and the flags (settings join in A6).");
         return endpoints;
     }
 

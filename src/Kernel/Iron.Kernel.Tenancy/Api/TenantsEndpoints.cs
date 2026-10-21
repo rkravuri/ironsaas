@@ -81,13 +81,13 @@ internal static class TenantsEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var tenants = endpoints.MapApiGroup("tenants");
-        tenants.MapGet("/", ListAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("ListTenants").WithSummary("List the tenants of the platform.");
-        tenants.MapGet("/{slug}", GetAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("GetTenant").WithSummary("One tenant with its hostnames.");
-        tenants.MapPost("/", CreateAsync).RequirePermission(TenancyPermissions.TenantsManage).Validate<CreateTenantRequest>().WithName("CreateTenant").WithSummary("Register a tenant in Provisioning status.");
-        tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
-        tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
-        tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
-        tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).WithName("GetProvisioning").WithSummary("The latest job of the tenant.");
+        tenants.MapGet("/", ListAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ListResponse<TenantRecord>>(StatusCodes.Status200OK).WithName("ListTenants").WithSummary("List the tenants of the platform.");
+        tenants.MapGet("/{slug}", GetAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<TenantRecord>(StatusCodes.Status200OK).WithName("GetTenant").WithSummary("One tenant with its hostnames.");
+        tenants.MapPost("/", CreateAsync).RequirePermission(TenancyPermissions.TenantsManage).Validate<CreateTenantRequest>().Produces<TenantRecord>(StatusCodes.Status201Created).WithName("CreateTenant").WithSummary("Register a tenant in Provisioning status.");
+        tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
+        tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
+        tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
+        tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ProvisioningResponse>(StatusCodes.Status200OK).WithName("GetProvisioning").WithSummary("The latest job of the tenant.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, TenancyDbContext context, CancellationToken cancellationToken)

@@ -104,20 +104,21 @@ internal static class ConflictRulesEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var rules = endpoints.MapApiGroup("conflict-rules");
-        rules.MapGet("/", ListRulesAsync).RequirePermission(AuthorizationPermissions.SodRead).WithName("ListConflictRules").WithSummary("The conflict rules of this tenant.");
-        rules.MapPost("/", CreateAsync).RequirePermission(AuthorizationPermissions.SodManage).Validate<ConflictRuleRequest>().WithName("CreateConflictRule").WithSummary("Define a conflict rule between two permissions or roles, to block or warn.");
-        rules.MapPut("/{id:guid}", UpdateAsync).RequirePermission(AuthorizationPermissions.SodManage).Validate<ConflictRuleRequest>().WithName("UpdateConflictRule").WithSummary("Change a conflict rule.");
-        rules.MapDelete("/{id:guid}", DeleteAsync).RequirePermission(AuthorizationPermissions.SodManage).WithName("DeleteConflictRule").WithSummary("Remove a conflict rule.");
+        rules.MapGet("/", ListRulesAsync).RequirePermission(AuthorizationPermissions.SodRead).Produces<ListResponse<ConflictRuleResponse>>(StatusCodes.Status200OK).WithName("ListConflictRules").WithSummary("The conflict rules of this tenant.");
+        rules.MapPost("/", CreateAsync).RequirePermission(AuthorizationPermissions.SodManage).Validate<ConflictRuleRequest>().Produces<ConflictRuleResponse>(StatusCodes.Status201Created).WithName("CreateConflictRule").WithSummary("Define a conflict rule between two permissions or roles, to block or warn.");
+        rules.MapPut("/{id:guid}", UpdateAsync).RequirePermission(AuthorizationPermissions.SodManage).Validate<ConflictRuleRequest>().Produces<ConflictRuleResponse>(StatusCodes.Status200OK).WithName("UpdateConflictRule").WithSummary("Change a conflict rule.");
+        rules.MapDelete("/{id:guid}", DeleteAsync).RequirePermission(AuthorizationPermissions.SodManage).Produces(StatusCodes.Status204NoContent).WithName("DeleteConflictRule").WithSummary("Remove a conflict rule.");
 
         var report = endpoints.MapApiGroup("conflict-report");
-        report.MapGet("/", ListEntriesAsync).RequirePermission(AuthorizationPermissions.SodRead).WithName("ListConflicts").WithSummary("The conflicts that exist, by person, rule, the two grants that cause each, and the unit concerned.");
-        report.MapGet("/runs/latest", LatestRunAsync).RequirePermission(AuthorizationPermissions.SodRead).WithName("GetLatestConflictRun").WithSummary("When the report last ran in full, and what it found.");
-        report.MapPost("/runs", RunAsync).RequirePermission(AuthorizationPermissions.SodManage).WithName("RunConflictReport").WithSummary("Compute the report now, for everyone.");
+        report.MapGet("/", ListEntriesAsync).RequirePermission(AuthorizationPermissions.SodRead).Produces<ListResponse<ConflictEntryResponse>>(StatusCodes.Status200OK).WithName("ListConflicts").WithSummary("The conflicts that exist, by person, rule, the two grants that cause each, and the unit concerned.");
+        report.MapGet("/runs/latest", LatestRunAsync).RequirePermission(AuthorizationPermissions.SodRead).Produces<LatestRunResponse>(StatusCodes.Status200OK).WithName("GetLatestConflictRun").WithSummary("When the report last ran in full, and what it found.");
+        report.MapPost("/runs", RunAsync).RequirePermission(AuthorizationPermissions.SodManage).Produces<ConflictRunResponse>(StatusCodes.Status200OK).WithName("RunConflictReport").WithSummary("Compute the report now, for everyone.");
 
         endpoints.MapApiGroup("role-assignments").MapPost("/conflicts", GrantConflictsAsync)
             .RequirePermission(AuthorizationPermissions.AssignmentsManage)
             .ScopedByRow()
             .Validate<GrantRoleRequest>()
+            .Produces<GrantConflictsResponse>(StatusCodes.Status200OK)
             .WithName("PreviewGrantConflicts")
             .WithSummary("The conflicts granting this role at this scope would create, before the grant: block rules refuse it, warn rules list it.");
     }

@@ -31,10 +31,10 @@ internal static class FilesEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var files = endpoints.MapApiGroup("files");
-        files.MapPost("/", UploadAsync).RequirePermission(FilesPermissions.FilesUpload).WithName("UploadFile").WithSummary("Upload a file (multipart form, field \"file\").");
-        files.MapGet("/{id:guid}", GetAsync).RequirePermission(FilesPermissions.FilesRead).WithName("GetFile").WithSummary("The file's details.");
-        files.MapGet("/{id:guid}/content", DownloadAsync).RequirePermission(FilesPermissions.FilesRead).WithName("DownloadFile").WithSummary("The file's content, verified against its stored hash.");
-        files.MapDelete("/{id:guid}", DeleteAsync).RequirePermission(FilesPermissions.FilesDelete).WithName("DeleteFile").WithSummary("Delete a file (kept for retention).");
+        files.MapPost("/", UploadAsync).RequirePermission(FilesPermissions.FilesUpload).Produces<FileResponse>(StatusCodes.Status201Created).WithName("UploadFile").WithSummary("Upload a file (multipart form, field \"file\").");
+        files.MapGet("/{id:guid}", GetAsync).RequirePermission(FilesPermissions.FilesRead).Produces<FileResponse>(StatusCodes.Status200OK).WithName("GetFile").WithSummary("The file's details.");
+        files.MapGet("/{id:guid}/content", DownloadAsync).RequirePermission(FilesPermissions.FilesRead).Produces(StatusCodes.Status200OK, typeof(byte[]), "application/octet-stream").WithName("DownloadFile").WithSummary("The file's content, verified against its stored hash.");
+        files.MapDelete("/{id:guid}", DeleteAsync).RequirePermission(FilesPermissions.FilesDelete).Produces(StatusCodes.Status204NoContent).WithName("DeleteFile").WithSummary("Delete a file (kept for retention).");
     }
 
     private static async Task<IResult> UploadAsync(HttpContext http, FileService service, CancellationToken cancellationToken)

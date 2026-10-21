@@ -45,10 +45,10 @@ internal static class SettingsEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var settings = endpoints.MapApiGroup("settings");
-        settings.MapGet("/", ListAsync).RequirePermission(SettingsPermissions.Read).ScopedByRow().WithName("ListSettings").WithSummary("Every setting a place may hold (scope=tenant, or scope=unit&unit=<id>), with its effective value there and where it comes from.");
-        settings.MapGet("/{key}/history", HistoryAsync).RequirePermission(SettingsPermissions.Read).ScopedByRow().WithName("GetSettingHistory").WithSummary("Every change of a setting at a place, newest first, with who and when.");
-        settings.MapPut("/{key}", SaveAsync).RequireSignedIn().WithName("SaveSetting").WithSummary("Set a value for the tenant, a unit, or yourself; settings.values.manage at that place for the first two.");
-        settings.MapDelete("/{key}", ResetAsync).RequireSignedIn().WithName("ResetSetting").WithSummary("Remove the value at a place, so the inherited value applies; settings.values.manage at that place for a tenant or a unit.");
+        settings.MapGet("/", ListAsync).RequirePermission(SettingsPermissions.Read).ScopedByRow().Produces<SettingsListResponse>(StatusCodes.Status200OK).WithName("ListSettings").WithSummary("Every setting a place may hold (scope=tenant, or scope=unit&unit=<id>), with its effective value there and where it comes from.");
+        settings.MapGet("/{key}/history", HistoryAsync).RequirePermission(SettingsPermissions.Read).ScopedByRow().Produces<ListResponse<SettingChangeResponse>>(StatusCodes.Status200OK).WithName("GetSettingHistory").WithSummary("Every change of a setting at a place, newest first, with who and when.");
+        settings.MapPut("/{key}", SaveAsync).RequireSignedIn().Produces<SettingView>(StatusCodes.Status200OK).WithName("SaveSetting").WithSummary("Set a value for the tenant, a unit, or yourself; settings.values.manage at that place for the first two.");
+        settings.MapDelete("/{key}", ResetAsync).RequireSignedIn().Produces<SettingView>(StatusCodes.Status200OK).WithName("ResetSetting").WithSummary("Remove the value at a place, so the inherited value applies; settings.values.manage at that place for a tenant or a unit.");
     }
 
     private static async Task<IResult> ListAsync(string? scope, Guid? unit, HttpContext http, SettingsConsole console, CancellationToken cancellationToken)

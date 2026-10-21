@@ -32,7 +32,10 @@ interface LoginPageProps {
   autoFocus?: boolean;
 }
 
-/** The fixed message on failure is the API's (TF-030): the page never says which of the two was wrong. */
+/**
+ * One fixed message for every failure, the API's own (TF-011 AC2): the page never says whether the account exists, which
+ * of the two was wrong, or whether the account is active; the correlation id goes with it when the API gave one.
+ */
 export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -61,14 +64,10 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
       await session.signedIn();
       void navigate(returnTo, { replace: true });
     } catch (error) {
-      if (error instanceof ApiError) {
-        setProblem({
-          message: error.status === 401 || error.status === 400 ? t("login.failed") : error.message,
-          correlationId: error.correlationId,
-        });
-      } else {
-        setProblem({ message: t("errors.unexpected"), correlationId: undefined });
-      }
+      setProblem({
+        message: t("login.failed"),
+        correlationId: error instanceof ApiError ? error.correlationId : undefined,
+      });
     } finally {
       setSubmitting(false);
     }

@@ -51,8 +51,8 @@ internal static class RecordSharingEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var sharing = endpoints.MapApiGroup("record-sharing");
-        sharing.MapGet("/{recordType}/{id:guid}", GetAsync).RequireSignedIn().WithName("GetRecordSharing").WithSummary("Who sees this record beyond its unit: private, shared with listed units, or the whole tenant.");
-        sharing.MapPut("/{recordType}/{id:guid}", ChangeAsync).RequireSignedIn().Validate<ChangeSharingRequest>().WithName("ChangeRecordSharing").WithSummary("Change who sees this record beyond its unit; the record's policy decides who may. Audited with the units before and after.");
+        sharing.MapGet("/{recordType}/{id:guid}", GetAsync).RequireSignedIn().Produces<RecordSharingResponse>(StatusCodes.Status200OK).WithName("GetRecordSharing").WithSummary("Who sees this record beyond its unit: private, shared with listed units, or the whole tenant.");
+        sharing.MapPut("/{recordType}/{id:guid}", ChangeAsync).RequireSignedIn().Validate<ChangeSharingRequest>().Produces<RecordSharingResponse>(StatusCodes.Status200OK).WithName("ChangeRecordSharing").WithSummary("Change who sees this record beyond its unit; the record's policy decides who may. Audited with the units before and after.");
     }
 
     private static async Task<IResult> GetAsync(string recordType, Guid id, HttpContext http, IRecordSharing sharing, AuthorizationDbContext context, CancellationToken cancellationToken)
