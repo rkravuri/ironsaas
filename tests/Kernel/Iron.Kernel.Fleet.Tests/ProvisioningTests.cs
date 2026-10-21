@@ -376,6 +376,71 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0047")]
+    public async Task ARecoveryJobAsksTheUnitToResetTheAdministratorsFactorsOnlyWhenTheOperatorSaysSo()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var slug = await RegisterAndRequestAsync(provider, "hotel");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        const string Reason = "Lost password and phone (ticket 4712)";
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            Assert.True((await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestAdministratorRecoveryAsync(slug, null, Reason, "Operator One", ct)).IsSuccess);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var requested = await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestAdministratorRecoveryAsync(slug, null, Reason, "Operator One", ct, resetFactors: true);
+            Assert.True(requested.Value.Request!.ResetFactors);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        await using var check = provider.CreateAsyncScope();
+        var completed = (await check.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, ct))!;
+        var commands = runtime.Commands.Where(c => c.Command == "recover-admin").Select(c => c.Unit.Environment).ToList();
+        var audit = await check.ServiceProvider.GetRequiredService<Iron.Kernel.Audit.Data.AuditDbContext>().Events.AsNoTracking()
+            .Where(e => e.EventType == TenancyAuditEvents.AdministratorRecoveryRequested && e.Target == slug)
+            .Select(e => e.Details!)
+            .ToListAsync(ct);
+
+        Assert.Equal(2, commands.Count);
+        Assert.False(commands[0].ContainsKey("Recovery__ResetFactors"));
+        Assert.Equal("true", commands[1]["Recovery__ResetFactors"]);
+        Assert.EndsWith("; the administrator's second factors were reset", completed.Output, StringComparison.Ordinal);
+        Assert.Equal(["false", "true"], audit.Select(details => JsonDocument.Parse(details).RootElement.GetProperty("reset_factors").GetString()).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    [Proves("ADR-0047")]
+    public async Task TheUnitsFactorKeyIsMadeOnceAtProvisioningAndKeptByAnUpdate()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var slug = await RegisterAndRequestAsync(provider, "india");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        using var root = new OpenBaoSecretStore(fixture.StoreOptions());
+        var first = (await root.ReadAsync($"tenants/{slug}/unit", ct))![SecretsStep.FactorKeyKey];
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            Assert.True((await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestUpdateAsync(slug, ct)).IsSuccess);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        var after = (await root.ReadAsync($"tenants/{slug}/unit", ct))![SecretsStep.FactorKeyKey];
+
+        Assert.Equal(32, Convert.FromBase64String(first).Length);
+        Assert.Equal(first, after); // a new key would leave every authenticator app's secret unreadable
+    }
+
+    [Fact]
     [Proves("ADR-0046")]
     public async Task ALinkFromTheOperatorsPathIsHandedOverOnceToWhoAskedAndIsInNoOutputAndNoLogLine()
     {
