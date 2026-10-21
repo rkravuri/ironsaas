@@ -118,7 +118,7 @@ export function SecondFactorStep({
                     autoComplete="off"
                     spellCheck={false}
                     required
-                    ff="var(--iron-font-mono)"
+                    styles={{ input: { fontFamily: "var(--iron-font-mono)" } }}
                   />
                 )}
                 <Button

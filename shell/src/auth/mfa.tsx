@@ -11,6 +11,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Textarea,
   TextInput,
   UnstyledButton,
 } from "@mantine/core";
@@ -298,7 +299,15 @@ function AppSetup<T>({
             <Group align="flex-start" gap="lg">
               <QrCode value={setup.uri} label={t("mfa.app.qrLabel")} />
               <Stack gap="xs" style={{ flex: 1, minWidth: 220 }}>
-                <TextInput label={t("mfa.app.secret")} value={setup.secret} readOnly ff="var(--iron-font-mono)" />
+                {/* In groups of four, as apps take a typed key with or without spaces; the whole key, wrapped, never cut off. */}
+                <Textarea
+                  label={t("mfa.app.secret")}
+                  value={setup.secret.match(/.{1,4}/g)?.join(" ") ?? setup.secret}
+                  readOnly
+                  autosize
+                  minRows={1}
+                  styles={{ input: { fontFamily: "var(--iron-font-mono)" } }}
+                />
                 <CopyButton value={setup.secret}>
                   {({ copied, copy }) => (
                     <Button

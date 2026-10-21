@@ -128,7 +128,7 @@ export function ReauthenticationForm({ onConfirmed, onCancel }: { onConfirmed: (
                 autoComplete="off"
                 spellCheck={false}
                 required
-                ff="var(--iron-font-mono)"
+                styles={{ input: { fontFamily: "var(--iron-font-mono)" } }}
               />
             ))}
           {typedFactor && hasApp && hasRecovery && (

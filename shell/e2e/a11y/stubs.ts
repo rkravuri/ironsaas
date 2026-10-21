@@ -312,7 +312,7 @@ export const roles = [
   roleRow(5, "user-reader", "User reader", "Lists the people of a unit.", false, "user", ["identity.users.read"]),
 ];
 
-const envelope = <T>(url: string, rows: T[]) => ({
+export const envelope = <T>(url: string, rows: T[]) => ({
   data: rows,
   meta: {
     page_number: 1,

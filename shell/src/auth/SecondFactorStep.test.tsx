@@ -110,7 +110,7 @@ describe("signing in with a second factor", () => {
     await typePassword(user);
     await screen.findByRole("heading", { name: "Set up a second factor" });
     expect(await screen.findByRole("img", { name: "QR code for your authenticator app" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Key to type into the app")).toHaveValue("JBSWY3DPEHPK3PXP");
+    expect(screen.getByLabelText("Key to type into the app")).toHaveValue("JBSW Y3DP EHPK 3PXP");
     await fill(user, screen.getByLabelText(/code the app shows now/i), "654321");
     await user.click(screen.getByRole("button", { name: "Save the authenticator app" }));
 
