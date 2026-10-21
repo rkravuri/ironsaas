@@ -4,6 +4,7 @@ using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
 using Iron.Kernel.Api.Validation;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Fleet.Contracts;
 using Iron.Kernel.Tenancy.Contracts;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Tenancy.Api;
 
@@ -40,6 +42,18 @@ public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenan
     }
 }
 
+/// <summary>The operator's request for a tenant administrator's recovery link: why, and whom when not the first administrator.</summary>
+public sealed record AdministratorRecoveryRequest(string Reason, string? LoginId);
+
+public sealed class AdministratorRecoveryRequestValidator : AbstractValidator<AdministratorRecoveryRequest>
+{
+    public AdministratorRecoveryRequestValidator()
+    {
+        RuleFor(r => r.Reason).NotEmpty().WithMessage("Say why, in words the tenant's administrators will read.").MaximumLength(TenantRegistry.RecoveryReasonMaxLength);
+        RuleFor(r => r.LoginId).MaximumLength(254);
+    }
+}
+
 public sealed record ProvisioningResponse(
     Guid JobId,
     JobKind Kind,
@@ -50,12 +64,13 @@ public sealed record ProvisioningResponse(
     DateTimeOffset RequestedAt,
     DateTimeOffset? StartedAt,
     DateTimeOffset? FinishedAt,
-    IReadOnlyList<ProvisioningStepInfo> Steps)
+    IReadOnlyList<ProvisioningStepInfo> Steps,
+    JobRequest? Request = null)
 {
     public static ProvisioningResponse From(ProvisioningJobInfo job)
     {
         ArgumentNullException.ThrowIfNull(job);
-        return new ProvisioningResponse(job.Id, job.Kind, job.Status, job.CurrentStep, job.Error, job.Output, job.RequestedAt, job.StartedAt, job.FinishedAt, job.Steps);
+        return new ProvisioningResponse(job.Id, job.Kind, job.Status, job.CurrentStep, job.Error, job.Output, job.RequestedAt, job.StartedAt, job.FinishedAt, job.Steps, job.Request);
     }
 }
 
@@ -87,6 +102,7 @@ internal static class TenantsEndpoints
         tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
         tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
         tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
+        tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason; the job's output is the link, valid 15 minutes and once.");
         tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ProvisioningResponse>(StatusCodes.Status200OK).WithName("GetProvisioning").WithSummary("The latest job of the tenant.");
     }
 
@@ -138,6 +154,16 @@ internal static class TenantsEndpoints
     private static async Task<IResult> DeprovisionAsync(string slug, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
     {
         var result = await registry.RequestDeprovisioningAsync(slug, cancellationToken);
+        return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
+    }
+
+    private static async Task<IResult> RecoverAdministratorAsync(string slug, AdministratorRecoveryRequest request, HttpContext http, TenantRegistry registry, ICurrentPrincipal actor, CancellationToken cancellationToken)
+    {
+        // The operator by name, as the control plane's Identity knows them; their id when no directory is hosted.
+        var directory = http.RequestServices.GetService<IPrincipals>();
+        var found = directory is null ? null : await directory.FindAsync([actor.Id], cancellationToken);
+        var operatorName = found is not null && found.TryGetValue(actor.Id, out var summary) ? summary.DisplayName : actor.Id.ToString("D");
+        var result = await registry.RequestAdministratorRecoveryAsync(slug, request.LoginId, request.Reason, operatorName, cancellationToken);
         return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
     }
 

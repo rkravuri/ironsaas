@@ -49,7 +49,14 @@ public sealed class ProvisioningRunner(
         await audit.WriteAsync(new AuditEvent(JobStartedEvent, AuditOutcome.Success, principal.Id, tenant.Slug, null, "provisioning_job", job.Id), cancellationToken).ConfigureAwait(false);
         logger.LogInformation("Provisioning job {JobId} for tenant {Slug} started.", job.Id, tenant.Slug);
 
-        var provisioning = new ProvisioningContext(tenant, options);
+        if (job.Kind == JobKind.Recover && tenant.Status != TenantStatus.Active)
+        {
+            job.Fail(time.GetUtcNow(), $"Tenant '{tenant.Slug}' is {tenant.Status.ToString().ToLowerInvariant()}; only an active tenant's administrator can be recovered.");
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return job.ToInfo(await StepsAsync(job.Id, cancellationToken).ConfigureAwait(false));
+        }
+
+        var provisioning = new ProvisioningContext(tenant, options, job.Request);
         string? lastOutput = null;
         foreach (var step in ordered)
         {
@@ -86,11 +93,15 @@ public sealed class ProvisioningRunner(
             }
         }
 
-        var finalStatus = job.Kind == JobKind.Deprovision ? TenantStatus.Decommissioned : TenantStatus.Active;
-        var moved = await tenants.SetStatusAsync(tenant.Slug, finalStatus, cancellationToken).ConfigureAwait(false);
-        if (moved.IsFailure)
+        // A recovery job changes a person in the unit, not the tenant: its status stays as it is.
+        if (job.Kind != JobKind.Recover)
         {
-            throw new InvalidOperationException($"The tenant could not be set {finalStatus}: {moved.Error.Message}");
+            var finalStatus = job.Kind == JobKind.Deprovision ? TenantStatus.Decommissioned : TenantStatus.Active;
+            var moved = await tenants.SetStatusAsync(tenant.Slug, finalStatus, cancellationToken).ConfigureAwait(false);
+            if (moved.IsFailure)
+            {
+                throw new InvalidOperationException($"The tenant could not be set {finalStatus}: {moved.Error.Message}");
+            }
         }
 
         job.Complete(time.GetUtcNow(), lastOutput);

@@ -25,8 +25,11 @@ public sealed class TenantRegistry(
     EntitlementService entitlements,
     ITenantEntitlements publisher,
     ITenantFlags flags,
+    ICurrentPrincipal actor,
     ILogger<TenantRegistry> logger) : ITenantRegistry
 {
+    public const int RecoveryReasonMaxLength = 500;
+
     public async Task<Result<TenantRecord>> CreateAsync(NewTenant request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -166,16 +169,50 @@ public sealed class TenantRegistry(
         return await RequestJobAsync(tenant, JobKind.Update, TenancyAuditEvents.UpdateRequested, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Result<ProvisioningJobInfo>> RequestJobAsync(Tenant tenant, JobKind kind, string auditEvent, CancellationToken cancellationToken)
+    /// <summary>
+    /// The operator's recovery link for a tenant administrator (TF-017, ADR-0046): a reason is required, the administrator
+    /// is the tenant's first unless another is named, and the job carries the operator's name. The control plane audits
+    /// the request here, naming the operator, the administrator and the reason; the unit audits the link it issues with
+    /// the same operator and reason, so both planes' trails tell the same story. Only an active tenant.
+    /// <paramref name="operatorName"/> is how the operator is named in both trails.
+    /// </summary>
+    public async Task<Result<ProvisioningJobInfo>> RequestAdministratorRecoveryAsync(string slug, string? loginId, string? reason, string operatorName, CancellationToken cancellationToken)
+    {
+        var why = reason?.Trim();
+        if (string.IsNullOrEmpty(why))
+        {
+            return Error.Validation(TenancyErrors.RecoveryReasonRequired, "Say why the administrator needs a recovery link: the tenant's administrators read it in their audit trail.", new FieldError("reason", "required", "Say why."));
+        }
+
+        var tenant = await context.Tenants.AsNoTracking().SingleOrDefaultAsync(t => t.Slug == slug, cancellationToken).ConfigureAwait(false);
+        if (tenant is null)
+        {
+            return Error.NotFound(TenancyErrors.TenantNotFound, $"There is no tenant '{slug}'.");
+        }
+
+        if (tenant.Status != TenantStatus.Active)
+        {
+            return Error.Conflict(TenancyErrors.NotProvisionable, $"Tenant '{slug}' is {tenant.Status.ToString().ToLowerInvariant()}; only an active tenant's administrator can be recovered.");
+        }
+
+        var administrator = string.IsNullOrWhiteSpace(loginId) ? tenant.AdministratorLoginId : loginId.Trim().ToLowerInvariant();
+        var request = new JobRequest(administrator, why.Length > RecoveryReasonMaxLength ? why[..RecoveryReasonMaxLength] : why, operatorName);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator"] = administrator, ["operator"] = operatorName };
+        return await RequestJobAsync(tenant, JobKind.Recover, TenancyAuditEvents.AdministratorRecoveryRequested, cancellationToken, request, details).ConfigureAwait(false);
+    }
+
+    private async Task<Result<ProvisioningJobInfo>> RequestJobAsync(Tenant tenant, JobKind kind, string auditEvent, CancellationToken cancellationToken, JobRequest? request = null, IReadOnlyDictionary<string, string>? extra = null)
     {
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
-        var job = await jobs.RequestAsync(tenant.Slug, kind, cancellationToken).ConfigureAwait(false);
+        var job = await jobs.RequestAsync(tenant.Slug, kind, request, cancellationToken).ConfigureAwait(false);
         if (job.IsFailure)
         {
             return job.Error;
         }
 
-        await audit.WriteAsync(new AuditEvent(auditEvent, AuditOutcome.Success, tenant.UpdatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["job_id"] = job.Value.Id.ToString("D"), ["kind"] = kind.ToString().ToLowerInvariant() }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(extra ?? new Dictionary<string, string>(), StringComparer.Ordinal) { ["job_id"] = job.Value.Id.ToString("D"), ["kind"] = kind.ToString().ToLowerInvariant() };
+        var actorId = request is null ? tenant.UpdatedBy : actor.Id;
+        await audit.WriteAsync(new AuditEvent(auditEvent, AuditOutcome.Success, actorId, tenant.Slug, details, "tenant", tenant.Id, request?.Reason), cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         logger.LogInformation("{Kind} requested for tenant {Slug}: job {JobId}.", kind, tenant.Slug, job.Value.Id);
         return job.Value;

@@ -11,7 +11,11 @@ public sealed class ProvisioningJob : AuditedEntity
         TenantSlug = string.Empty;
     }
 
-    public ProvisioningJob(TenantId tenant, JobKind kind, DateTimeOffset now)
+    public const int SubjectMaxLength = 254;
+    public const int ReasonMaxLength = 500;
+    public const int RequestedByMaxLength = 254;
+
+    public ProvisioningJob(TenantId tenant, JobKind kind, DateTimeOffset now, JobRequest? request = null)
     {
         if (tenant.IsEmpty)
         {
@@ -22,6 +26,9 @@ public sealed class ProvisioningJob : AuditedEntity
         Kind = kind;
         Status = ProvisioningStatus.Requested;
         RequestedAt = now;
+        Subject = Cut(request?.Subject, SubjectMaxLength);
+        Reason = Cut(request?.Reason, ReasonMaxLength);
+        RequestedBy = Cut(request?.RequestedBy, RequestedByMaxLength);
     }
 
     public string TenantSlug { get; private set; }
@@ -43,6 +50,17 @@ public sealed class ProvisioningJob : AuditedEntity
 
     /// <summary>What the operator needs when the job is done: the invitation link of the first administrator.</summary>
     public string? Output { get; private set; }
+
+    /// <summary>Whom the job is about: the administrator a recovery job recovers.</summary>
+    public string? Subject { get; private set; }
+
+    /// <summary>Why it was asked for, in the operator's words; a recovery job always has one.</summary>
+    public string? Reason { get; private set; }
+
+    /// <summary>Who asked, as the control plane names them.</summary>
+    public string? RequestedBy { get; private set; }
+
+    public JobRequest? Request => Subject is null && Reason is null && RequestedBy is null ? null : new JobRequest(Subject, Reason, RequestedBy);
 
     public bool IsOpen => Status is ProvisioningStatus.Requested or ProvisioningStatus.Running;
 
@@ -96,5 +114,8 @@ public sealed class ProvisioningJob : AuditedEntity
         RequestedAt,
         StartedAt,
         FinishedAt,
-        (steps ?? []).Select(s => new ProvisioningStepInfo(s.Name, s.Order, s.Status.ToString().ToLowerInvariant(), s.StartedAt, s.FinishedAt, s.DurationMs, s.Output, s.Error)).ToList());
+        (steps ?? []).Select(s => new ProvisioningStepInfo(s.Name, s.Order, s.Status.ToString().ToLowerInvariant(), s.StartedAt, s.FinishedAt, s.DurationMs, s.Output, s.Error)).ToList(),
+        Request);
+
+    private static string? Cut(string? value, int length) => value is { Length: > 0 } && value.Length > length ? value[..length] : value;
 }

@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -168,6 +168,10 @@ run-fleet: env ## Run the fleet worker on the laptop with the Compose runtime (i
 update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit (new images, new template): make update-unit TENANT=acme
 	@test -n "$(TENANT)" || (echo "usage: make update-unit TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=update $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
+
+recover-admin: ## Ask the fleet for a one-time, 15-minute recovery link for a tenant's administrator, with a reason both audit trails keep (ADR-0046): make recover-admin TENANT=acme REASON="..." [ADMIN=admin@acme.localhost]
+	@test -n "$(TENANT)" && test -n "$(REASON)" || (echo 'usage: make recover-admin TENANT=acme REASON="why, for the audit trails" [ADMIN=admin@acme.localhost]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=administrator-recovery REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) "$(ADMIN)"
 
 apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
 	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)

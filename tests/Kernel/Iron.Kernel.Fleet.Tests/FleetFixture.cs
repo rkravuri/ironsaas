@@ -132,6 +132,7 @@ public sealed class FleetCollection : ICollectionFixture<FleetFixture>
 public sealed class RecordingRuntime : IUnitRuntime
 {
     public const string InvitationToken = "TEST-INVITATION-TOKEN";
+    public const string RecoveryToken = "TEST-RECOVERY-TOKEN";
 
     public List<(string Command, UnitDefinition Unit)> Commands { get; } = [];
 
@@ -154,7 +155,12 @@ public sealed class RecordingRuntime : IUnitRuntime
             return Task.FromResult(new CommandResult(1, failure.Message));
         }
 
-        var output = name == "seed" ? $"Created the first administrator {unit.Tenant.AdministratorLoginId} in Invited status. Invitation token: {InvitationToken}\n" : $"{name} done\n";
+        var output = name switch
+        {
+            "seed" => $"Created the first administrator {unit.Tenant.AdministratorLoginId} in Invited status. Invitation token: {InvitationToken}\n",
+            "recover-admin" => $"A recovery link for {unit.Environment["Recovery__LoginId"]} was issued at the operator's request. Recovery token: {RecoveryToken}\n",
+            _ => $"{name} done\n",
+        };
         return Task.FromResult(new CommandResult(0, output));
     }
 

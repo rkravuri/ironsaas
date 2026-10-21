@@ -7,15 +7,18 @@ using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit;
+using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Fleet;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Telemetry;
+using Iron.Kernel.Tenancy.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -119,6 +122,47 @@ public class TenantsEndpointTests(TenancyFixture fixture) : IAsyncLifetime
 
         using var provision = await Send(HttpMethod.Post, "/api/v1/tenants/foxtrot/provision", reader);
         Assert.Equal(HttpStatusCode.Forbidden, provision.StatusCode);
+    }
+
+    [Fact]
+    [Proves("TF-017", "ADR-0046")]
+    public async Task TheOperatorAsksForAnAdministratorsRecoveryWithAReasonAndTheControlPlaneAuditsIt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        const string Reason = "The administrator lost their password (ticket 4711)";
+        var operatorId = await Grant(SystemRoles.TenantAdministrator);
+        var readerId = await Grant(SystemRoles.ReadOnly);
+        var slug = $"rec-{Ids.New():N}"[..20];
+        using (var created = await Send(HttpMethod.Post, "/api/v1/tenants", operatorId, new { slug, display_name = "Recovering", administrator_login_id = "admin@recovering.test" }))
+        {
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        using var whileProvisioning = await Send(HttpMethod.Post, $"/api/v1/tenants/{slug}/administrator-recovery", operatorId, new { reason = Reason });
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            Assert.True((await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().SetStatusAsync(slug, TenantStatus.Active, ct)).IsSuccess);
+        }
+
+        using var byReader = await Send(HttpMethod.Post, $"/api/v1/tenants/{slug}/administrator-recovery", readerId, new { reason = Reason });
+        using var withoutReason = await Send(HttpMethod.Post, $"/api/v1/tenants/{slug}/administrator-recovery", operatorId, new { reason = "" });
+        using var requested = await Send(HttpMethod.Post, $"/api/v1/tenants/{slug}/administrator-recovery", operatorId, new { reason = Reason });
+        using var job = JsonDocument.Parse(await requested.Content.ReadAsStringAsync(ct));
+        await using var check = _app!.Services.CreateAsyncScope();
+        var audit = await check.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+            .SingleAsync(e => e.EventType == TenancyAuditEvents.AdministratorRecoveryRequested && e.Target == slug, ct);
+
+        Assert.Equal(TenancyErrors.NotProvisionable, await ErrorCode(whileProvisioning));
+        Assert.Equal(HttpStatusCode.Forbidden, byReader.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, withoutReason.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, requested.StatusCode);
+        Assert.Equal("recover", job.RootElement.GetProperty("kind").GetString());
+        var request = job.RootElement.GetProperty("request");
+        Assert.Equal(("admin@recovering.test", Reason), (request.GetProperty("subject").GetString(), request.GetProperty("reason").GetString()));
+        Assert.Equal((operatorId, Reason), (audit.ActorId, audit.Reason));
+        using var details = JsonDocument.Parse(audit.Details!);
+        Assert.Equal("admin@recovering.test", details.RootElement.GetProperty("administrator").GetString());
+        Assert.Equal(operatorId.ToString("D"), details.RootElement.GetProperty("operator").GetString()); // no directory here: the operator by id
     }
 
     private async Task<Guid> Grant(string role)

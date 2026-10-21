@@ -50,6 +50,7 @@ public sealed class TenancyModule : IModule
         services.AddScoped<IValidator<ReplaceFlagRulesRequest>, ReplaceFlagRulesRequestValidator>();
         services.AddScoped<IValidator<KillSwitchRequest>, KillSwitchRequestValidator>();
         services.AddScoped<IValidator<CreateTenantRequest>, CreateTenantRequestValidator>();
+        services.AddScoped<IValidator<AdministratorRecoveryRequest>, AdministratorRecoveryRequestValidator>();
         services.AddScoped<IValidator<SavePlanRequest>, SavePlanRequestValidator>();
         services.AddScoped<IValidator<ApplyPlanRequest>, ApplyPlanRequestValidator>();
 

@@ -321,6 +321,51 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.Null(await storage.CheckAsync(ct));
     }
 
+    [Fact]
+    [Proves("TF-017 AC1", "ADR-0046")]
+    public async Task ARecoveryJobRunsTheUnitsCommandWithTheOperatorsRequestAndAnswersTheLink()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var slug = await RegisterAndRequestAsync(provider, "golf");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        const string Reason = "The administrator lost their password (ticket 4711)";
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var registry = scope.ServiceProvider.GetRequiredService<TenantRegistry>();
+            Assert.Equal(TenancyErrors.RecoveryReasonRequired, (await registry.RequestAdministratorRecoveryAsync(slug, null, " ", "Operator One", ct)).Error.Code);
+            var requested = await registry.RequestAdministratorRecoveryAsync(slug, null, Reason, "Operator One", ct);
+            Assert.True(requested.IsSuccess, requested.IsFailure ? requested.Error.Message : null);
+            Assert.Equal((JobKind.Recover, $"admin@golf.test"), (requested.Value.Kind, requested.Value.Request!.Subject));
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        ProvisioningJobInfo completed;
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            completed = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, ct))!;
+            runtime.FailNext = ("recover-admin", "No recovery link was issued (identity.recovery.not_administrator)");
+            Assert.True((await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestAdministratorRecoveryAsync(slug, "someone@golf.test", Reason, "Operator One", ct)).IsSuccess);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        await using var check = provider.CreateAsyncScope();
+        var refused = (await check.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, ct))!;
+        var command = runtime.Commands.Where(c => c.Command == "recover-admin").Select(c => c.Unit.Environment).First();
+        var tenant = (await check.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, ct))!;
+
+        Assert.Equal(ProvisioningStatus.Completed, completed.Status);
+        Assert.Equal([StepNames.Recover], completed.Steps.Select(s => s.Name));
+        Assert.Equal($"recovery link for admin@golf.test, valid 15 minutes and once: https://{tenant.Hostnames[0]}/recovery/{RecordingRuntime.RecoveryToken}", completed.Output);
+        Assert.Equal(("admin@golf.test", "Operator One", Reason), (command["Recovery__LoginId"], command["Recovery__Operator"], command["Recovery__Reason"]));
+        Assert.Equal(ProvisioningStatus.Failed, refused.Status);
+        Assert.Contains("not_administrator", refused.Error, StringComparison.Ordinal);
+        Assert.Equal(TenantStatus.Active, tenant.Status); // a recovery changes a person, never the tenant
+    }
+
     /// <summary>The steps of an update, in order (ADR-0028): the three in-process steps heal, the rest re-apply the unit.</summary>
     private static readonly string[] UpdateSteps = [StepNames.Database, StepNames.Storage, StepNames.Secrets, StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify];
 

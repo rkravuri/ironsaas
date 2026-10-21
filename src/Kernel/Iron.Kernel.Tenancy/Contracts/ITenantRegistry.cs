@@ -62,7 +62,13 @@ public static class TenancyPermissions
     /// <summary>Flipping a kill switch stops a critical path for tenants (TF-051 AC4): the control plane's administrators only.</summary>
     public static readonly Permission KillSwitchesManage = new("tenancy.kill_switches.manage", "Turn kill switches on and off, with a reason", Risk.Critical);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage];
+    /// <summary>
+    /// A recovery link for a tenant's administrator (TF-017, ADR-0046): whoever holds it signs in as that administrator, so
+    /// it is the control plane's administrators' only, with a reason the tenant's audit trail shows.
+    /// </summary>
+    public static readonly Permission AdministratorsRecover = new("tenancy.administrators.recover", "Issue a recovery link for a tenant's administrator, with a reason", Risk.Critical);
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover];
 }
 
 public static class TenancyErrors
@@ -83,6 +89,9 @@ public static class TenancyErrors
     public const string FlagValueType = "tenancy.flag.value_type";
     public const string FlagRulesChanged = "tenancy.flag.rules_changed";
     public const string KillSwitchReasonRequired = "tenancy.kill_switch.reason_required";
+
+    /// <summary>The operator's recovery needs a reason: the tenant's administrators read it in their audit trail.</summary>
+    public const string RecoveryReasonRequired = "tenancy.recovery.reason_required";
     public const string KillSwitchFalseRule = "tenancy.kill_switch.false_rule";
     public const string KillSwitchUnknown = "tenancy.kill_switch.unknown";
 }
@@ -98,6 +107,9 @@ public static class TenancyAuditEvents
     public const string PlanApplied = "tenancy.plan_applied";
     public const string FlagRulesChanged = "tenancy.flag_rules_changed";
     public const string KillSwitchFlipped = "tenancy.kill_switch_flipped";
+
+    /// <summary>The operator asked for a tenant administrator's recovery link, with a reason (ADR-0046); the unit audits its side.</summary>
+    public const string AdministratorRecoveryRequested = "tenancy.administrator_recovery_requested";
 }
 
 /// <summary>

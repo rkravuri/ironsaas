@@ -187,6 +187,52 @@ public sealed class VerifyStep(IUnitRuntime runtime, ISecretStore secrets, Secre
     }
 }
 
+/// <summary>
+/// The one step of a recovery job (TF-017, ADR-0046): the image's <c>recover-admin</c> command in the unit, with the
+/// administrator, the operator and the reason, as the owner role like the seed. The command checks that the person is an
+/// active tenant administrator, records the operator and the reason in the tenant's audit trail, and prints the code once;
+/// the step answers the link, which is the job's output for the operator to pass on. A refusal fails the step with the
+/// command's reason. Never run again on its own: a new request is a new job with a new link.
+/// </summary>
+public sealed partial class RecoverStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
+{
+    public string Name => StepNames.Recover;
+
+    public int Order => 1;
+
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Recover];
+
+    public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var request = context.Request ?? throw new InvalidOperationException("A recovery job carries its administrator, reason and operator; this one has none.");
+        if (string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Reason) || string.IsNullOrWhiteSpace(request.RequestedBy))
+        {
+            throw new InvalidOperationException("A recovery job needs the administrator's login, the reason and the operator.");
+        }
+
+        var environment = await UnitEnvironment.ForUnitAsync(context, secrets, fleetStore, cancellationToken).ConfigureAwait(false);
+        UnitEnvironment.AddHostnames(environment, context.Tenant.Hostnames);
+        var database = await secrets.ReadAsync(context.DatabaseSecretPath, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("The tenant's database secret is missing.");
+        environment["ConnectionStrings__Database"] = context.ConnectionString(context.OwnerRole, database[DatabaseStep.OwnerPasswordKey]);
+        environment["Recovery__LoginId"] = request.Subject;
+        environment["Recovery__Operator"] = request.RequestedBy;
+        environment["Recovery__Reason"] = request.Reason;
+
+        var result = await runtime.RunCommandAsync(context.ToUnit(environment), ["recover-admin"], cancellationToken).ConfigureAwait(false);
+        var match = RecoveryToken().Match(result.Output);
+        if (!result.Succeeded || !match.Success)
+        {
+            throw new InvalidOperationException($"recover-admin exited with {result.ExitCode}: {MigrateStep.Tail(result.Output)}");
+        }
+
+        return $"recovery link for {request.Subject}, valid 15 minutes and once: https://{context.Tenant.Hostnames[0]}/recovery/{match.Groups["token"].Value}";
+    }
+
+    [GeneratedRegex("Recovery token: (?<token>[A-Za-z0-9_-]+)", RegexOptions.CultureInvariant)]
+    private static partial Regex RecoveryToken();
+}
+
 public static class ProvisioningContextExtensions
 {
     public static UnitDefinition ToUnit(this ProvisioningContext context, IReadOnlyDictionary<string, string> environment)

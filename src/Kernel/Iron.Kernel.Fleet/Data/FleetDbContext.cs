@@ -22,6 +22,10 @@ public sealed class FleetDbContext(DbContextOptions<FleetDbContext> options) : M
             job.Property(j => j.CurrentStep).HasMaxLength(50);
             job.Property(j => j.Error).HasMaxLength(2000);
             job.Property(j => j.Output).HasMaxLength(2000);
+            job.Property(j => j.Subject).HasMaxLength(ProvisioningJob.SubjectMaxLength);
+            job.Property(j => j.Reason).HasMaxLength(ProvisioningJob.ReasonMaxLength);
+            job.Property(j => j.RequestedBy).HasMaxLength(ProvisioningJob.RequestedByMaxLength);
+            job.Ignore(j => j.Request);
             job.HasIndex(j => new { j.TenantSlug, j.RequestedAt });
         });
 
