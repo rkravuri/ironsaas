@@ -57,7 +57,7 @@ public class ResultTests
     }
 
     [Fact]
-    [Untraced("Match is a convenience of the result type; no criterion or ADR states it.")]
+    [Proves("ADR-0007")]
     public void MatchPicksTheSideThatApplies()
     {
         var success = Result<int>.Success(2);

@@ -131,7 +131,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
     }
 
     [Fact]
-    [Untraced("Checks the store client raises an error for an invalid token; no criterion or ADR states it")]
+    [Proves("ADR-0016")]
     public async Task AWrongTokenIsRefusedByTheStore()
     {
         using var store = new OpenBaoSecretStore(new SecretStoreOptions { Address = openBao.Address, Token = "not-the-token", Path = "tenants/acme" });

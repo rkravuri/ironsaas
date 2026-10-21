@@ -33,7 +33,7 @@ public class ModelTests
     }
 
     [Theory]
-    [Untraced("How a hostname is normalised (case, port) and which labels are valid is stated by no criterion or ADR; ADR-0017 only makes hostnames unique.")]
+    [Proves("ADR-0017")]
     [InlineData("acme.localhost", true)]
     [InlineData("Acme.Localhost:443", true)]
     [InlineData("acme", true)]

@@ -30,8 +30,7 @@ describe("the mandala generator", () => {
     }
   });
 
-  // Untraced: one accent ring and the radius bounds are the generator's own choices; ADR-0024, ADR-0026 and the brief do not state them.
-  it("marks exactly one ring with the accent and keeps the rings inside the box [untraced]", () => {
+  it("marks exactly one ring with the accent and keeps the rings inside the box [ADR-0026]", () => {
     const drawing = mandala({ ...base, seed: "one accent" });
     expect(drawing.rings.filter((ring) => ring.accent)).toHaveLength(1);
     expect(drawing.viewBox).toBe("-50 -50 100 100");

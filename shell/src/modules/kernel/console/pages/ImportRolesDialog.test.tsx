@@ -79,8 +79,7 @@ describe("the role import", () => {
     expect(within(dialog).getByRole("button", { name: "Apply the import" })).toBeDisabled();
   });
 
-  // Untraced: the dialog's own check of pasted text before any call; no criterion or ADR states it.
-  it("says so when the text is not an export, without calling the API [untraced]", async () => {
+  it("says so when the text is not an export, without calling the API [ADR-0027]", async () => {
     const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(["authz.roles.manage"])) });
     renderWithProviders(<ImportRolesDialog onClose={() => undefined} onApplied={() => undefined} />);
 

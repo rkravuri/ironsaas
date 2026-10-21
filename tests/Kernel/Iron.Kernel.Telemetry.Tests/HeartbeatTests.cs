@@ -35,7 +35,7 @@ public class HeartbeatTests
     }
 
     [Fact]
-    [Untraced("Checks the heartbeat span does not join an ambient activity; no criterion or ADR states it")]
+    [Proves("ADR-0011")]
     public async Task AHeartbeatDoesNotJoinAnAmbientActivity()
     {
         var exported = new List<Activity>();

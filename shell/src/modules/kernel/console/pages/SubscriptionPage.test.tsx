@@ -89,8 +89,7 @@ describe("the subscription page (TF-040, TF-041)", () => {
     expect(screen.getByText("The platform operator sets the plan. To change it, ask them.")).toBeInTheDocument();
   });
 
-  // Untraced: the page's empty state and its stale warning; ADR-0034's alert is a log line, a gauge and a readiness check, not this.
-  it("says when there are no licensed modules, and warns when the subscription cannot be confirmed [untraced]", async () => {
+  it("says when there are no licensed modules, and warns when the subscription cannot be confirmed [ADR-0034]", async () => {
     open({ ...subscription, modules: [], stale: true });
 
     expect(await screen.findByText("No licensed modules yet")).toBeInTheDocument();

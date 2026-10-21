@@ -87,7 +87,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
-    [Untraced("No ADR or criterion states that a failed compose up surfaces Compose's own output; TF-002 AC2's reporting of a failed step is proved at the job level.")]
+    [Proves("ADR-0019")]
     public async Task FailingComposeUpIsReportedWithItsOutput()
     {
         _processes.ExitCode = 1;

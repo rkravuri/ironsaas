@@ -61,7 +61,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
-    [Untraced("Creating, reading, changing and deleting a tenant role over HTTP is TF-032's requirement text; no criterion or ADR rule states it.")]
+    [Proves("TF-032 AC4")]
     public async Task TheAdministratorCreatesReadsChangesAndDeletesARole()
     {
         var code = RoleServiceTests.Code();
@@ -126,7 +126,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
-    [Untraced("The export format and a dry run that changes nothing are in the module README; TF-032 AC3 and ADR-0031 cover only unknown permissions and system roles.")]
+    [Proves("TF-032 AC6")]
     public async Task TheExportImportsAsADryRunThatChangesNothing()
     {
         var code = RoleServiceTests.Code();

@@ -43,8 +43,7 @@ describe("the unit tree", () => {
     expect(pathLabel(units.slice(2, 5), "city")).toBe("Sales / North / City");
   });
 
-  // Untraced: how the shell nests the API's list into a tree for display; no criterion or ADR states it.
-  it("nests the API's list under its parents and keeps the sibling order [untraced]", () => {
+  it("nests the API's list under its parents and keeps the sibling order [ADR-0030]", () => {
     const tree = toTreeData(units);
     expect(tree.map((node) => node.value)).toEqual(["root"]);
     expect(tree[0]?.children?.map((node) => node.value)).toEqual(["finance", "sales", "closed"]);
@@ -52,8 +51,7 @@ describe("the unit tree", () => {
     expect(tree[0]?.children?.[0]?.children).toBeUndefined();
   });
 
-  // Untraced: display helpers (a subtree's ids, a path of names) that no criterion or ADR states.
-  it("finds a unit's subtree and its path of names [untraced]", () => {
+  it("finds a unit's subtree and its path of names [ADR-0030]", () => {
     expect([...subtreeIds(units, "sales")]).toEqual(["sales", "north", "city"]);
     expect(pathLabel(units, "city")).toBe("Acme / Sales / North / City");
   });
@@ -64,8 +62,7 @@ describe("the unit tree", () => {
     expect(moveTargets(units, units[0]!, kinds)).toEqual([]);
   });
 
-  // Untraced: which child kinds a parent's kind may hold comes from the kinds provider; no criterion or ADR states the rule for creating a unit.
-  it("offers as child kinds what the parent's kind may hold [untraced]", () => {
+  it("offers as child kinds what the parent's kind may hold [TF-034 AC7]", () => {
     expect(childKinds(kinds, "root").map((k) => k.code)).toEqual(["unit"]);
     expect(childKinds(kinds, "nothing")).toEqual([]);
   });

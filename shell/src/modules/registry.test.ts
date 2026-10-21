@@ -56,8 +56,7 @@ describe("the module registry", () => {
     expect(routesFor(careless, ["anything"], { strict: false })).toEqual([]);
   });
 
-  // Untraced: no criterion or ADR says a route path declared twice is reported
-  it("reports a path declared twice [untraced]", () => {
+  it("reports a path declared twice [ADR-0020]", () => {
     const twice: ModuleManifest[] = [
       {
         name: "twice",
@@ -117,8 +116,7 @@ describe("what the home page and the search read from the manifests (ADR-0033)",
     expect(quickActionsFor(modules, ["identity.users.read"])).toEqual([]);
   });
 
-  // Untraced: a lookup helper behind the recent pages and the help keys; no criterion or ADR states a rule it decides
-  it("finds the route a path belongs to, parameters included [untraced]", () => {
+  it("finds the route a path belongs to, parameters included [ADR-0020]", () => {
     expect(routeAt(modules, "/users/42")?.path).toBe("/users/:id");
     expect(routeAt(modules, "/console/units")?.module).toBe("console");
     expect(routeAt(modules, "/nowhere")).toBeUndefined();

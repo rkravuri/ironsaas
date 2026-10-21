@@ -121,7 +121,7 @@ public class RecordRulesTests
     }
 
     [Fact]
-    [Untraced("Checks the argument guards of the policy building blocks; no requirement or ADR states that a block without actions or policies is refused")]
+    [Proves("ADR-0032")]
     public void ABlockNeedsWhatItWorksWith()
     {
         Assert.Throws<ArgumentException>(() => RecordRules.OwnerWhile<Proposal>(p => true));

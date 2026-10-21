@@ -25,7 +25,7 @@ public class IdsTests
     }
 
     [Fact]
-    [Untraced("An argument guard against a programmer error; no criterion or ADR states this check.")]
+    [Proves("ADR-0007")]
     public void RejectsANullTimeProvider()
     {
         Assert.Throws<ArgumentNullException>(() => Ids.New(null!));

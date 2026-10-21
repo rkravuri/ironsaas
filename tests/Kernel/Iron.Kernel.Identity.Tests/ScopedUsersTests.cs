@@ -77,7 +77,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    [Proves("TF-033 AC3", "TF-222 AC1", "ADR-0031")]
+    [Proves("TF-033 AC1", "TF-033 AC3", "TF-222 AC1", "ADR-0031")]
     public async Task AReaderOfAUnitWithItsChildrenSeesThoseUsersOnlyAndAUserOutsideIsNotFound()
     {
         var (sales, east, marketing) = await TreeAsync();
@@ -332,7 +332,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    [Proves("TF-010 AC1", "TF-010 AC2", "TF-018 AC1", "TF-033 AC1", "TF-033 AC3")]
+    [Proves("TF-010 AC1", "TF-010 AC2", "TF-018 AC1", "TF-033 AC3")]
     public async Task AUserIsCreatedOnlyWhereTheCreatorManagesUsersAndTheInvitationLinkWorks()
     {
         var (sales, east, marketing) = await TreeAsync();

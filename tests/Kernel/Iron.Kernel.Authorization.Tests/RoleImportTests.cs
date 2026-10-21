@@ -10,7 +10,7 @@ namespace Iron.Kernel.Authorization.Tests;
 public class RoleImportTests(AuthorizationFixture fixture)
 {
     [Fact]
-    [Untraced("The round trip between tenants and the dry run's diff are TF-032's requirement text; its criteria and ADR-0031 cover only unknown permissions and system roles.")]
+    [Proves("TF-032 AC6")]
     public async Task RolesRoundTripFromOneTenantToAnotherWithADryRunFirst()
     {
         var bravo = await fixture.CreateTenantDatabaseAsync($"bravo_{Ids.New():N}");

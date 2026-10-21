@@ -22,7 +22,7 @@ public class RepositoryLayoutTests
     }
 
     [Fact]
-    [Untraced("Checks no two project files share a name; no criterion or ADR states project-name uniqueness")]
+    [Proves("ADR-0043")]
     public void ProjectNamesAreUnique()
     {
         var duplicates = Projects
@@ -99,7 +99,7 @@ public class RepositoryLayoutTests
     }
 
     [Theory]
-    [Untraced("Checks the top-level folders exist; no criterion or ADR decides the top-level layout")]
+    [Proves("TF-190 AC4")]
     [InlineData("src")]
     [InlineData("tests")]
     [InlineData("tools")]

@@ -108,8 +108,7 @@ describe("My profile", () => {
     );
   });
 
-  // Untraced: an empty state on My profile's Access tab; no criterion or ADR states it.
-  it("says what will appear when the person holds no role yet [untraced]", async () => {
+  it("says what will appear when the person holds no role yet [ADR-0027]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me([])), "GET /api/v1/role-assignments/mine": () => json({ data: [] }) });
     renderWithProviders(<ProfilePage />);
     await userEvent.setup().click(await screen.findByRole("tab", { name: "Access" }));

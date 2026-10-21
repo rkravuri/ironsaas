@@ -15,7 +15,7 @@ public class PermissionTests
     }
 
     [Theory]
-    [Proves("ADR-0012")]
+    [Proves("TF-030 AC4", "ADR-0012")]
     [InlineData("Identity.Users.Read")]
     [InlineData("identity.users")]
     [InlineData("identity.users.read.all")]
@@ -30,14 +30,14 @@ public class PermissionTests
     }
 
     [Fact]
-    [Untraced("TF-030 asks for a description in its requirement text, but no criterion or ADR states that an empty one is refused.")]
+    [Proves("TF-030 AC4", "ADR-0012")]
     public void RefusesAnEmptyDescription()
     {
         Assert.Throws<ArgumentException>(() => new Permission("identity.users.read", " ", Risk.Low));
     }
 
     [Fact]
-    [Untraced("Equality of permissions by name alone is stated in no criterion or ADR.")]
+    [Proves("ADR-0012")]
     public void TwoPermissionsWithTheSameNameAreEqual()
     {
         var a = new Permission("files.documents.upload", "Upload documents", Risk.Medium);

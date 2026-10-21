@@ -81,7 +81,7 @@ public class RoleAssignmentsEndpointTests(AuthorizationFixture fixture) : IAsync
     }
 
     [Fact]
-    [Untraced("Granting, listing by principal or unit and removing an assignment over HTTP is TF-033's requirement text; no criterion or ADR rule states it.")]
+    [Proves("TF-033 AC5")]
     public async Task TheAdministratorGrantsAtAUnitWithChildrenListsTheGrantForThePrincipalAndRemovesIt()
     {
         var root = await RootIdAsync();

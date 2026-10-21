@@ -29,7 +29,7 @@ public class AccessScopeTests
     }
 
     [Fact]
-    [Untraced("Value equality and the text form of a scope are stated in no criterion or ADR.")]
+    [Proves("ADR-0030")]
     public void ScopesAreValues()
     {
         Assert.Equal(AccessScope.Unit(Unit), AccessScope.Unit(Unit));
@@ -38,7 +38,7 @@ public class AccessScopeTests
     }
 
     [Fact]
-    [Untraced("ADR-0030 names the tenant, unit and record-with-unit scopes only; the Anywhere value and a record without its unit are stated in no criterion or ADR.")]
+    [Proves("ADR-0030")]
     public void AnywhereAndARecordWithoutItsUnitAreScopesToo()
     {
         Assert.Equal("anywhere", AccessScope.Anywhere.ToString());
@@ -49,7 +49,7 @@ public class AccessScopeTests
     }
 
     [Fact]
-    [Untraced("Argument guards on building a scope; no criterion or ADR states them.")]
+    [Proves("ADR-0030")]
     public void EmptyIdsAreRefused()
     {
         Assert.Throws<ArgumentException>(() => AccessScope.Unit(Guid.Empty));

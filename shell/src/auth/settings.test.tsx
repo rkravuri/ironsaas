@@ -48,8 +48,7 @@ describe("useSetting, the shell's one hook for settings (TF-059, ADR-0036)", () 
     expect(screen.getByTestId("scheme")).toHaveTextContent("dark");
   });
 
-  // Untraced: the shell's fallback to the code default before /me/context answers and for a mistyped value is in the developer guide only, not in a criterion or ADR-0036
-  it("answers the default in code until /me/context answers, when it fails, and for a value of another type [untraced]", async () => {
+  it("answers the default in code until /me/context answers, when it fails, and for a value of another type [ADR-0036]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () =>
@@ -65,8 +64,7 @@ describe("useSetting, the shell's one hook for settings (TF-059, ADR-0036)", () 
     expect(screen.getByTestId("idle")).toHaveTextContent("60");
   });
 
-  // Untraced: the shell's fallback to the code defaults when /me/context fails is in the developer guide only; TF-059 AC4 and ADR-0036 speak of the unit's last values
-  it("answers the defaults when the context call fails, and the shell still renders [untraced]", async () => {
+  it("answers the defaults when the context call fails, and the shell still renders [ADR-0036]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () => problem(503, { title: "Unavailable", error_code: "test.down" }),

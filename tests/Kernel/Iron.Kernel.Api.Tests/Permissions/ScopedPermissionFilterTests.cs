@@ -87,14 +87,14 @@ public class ScopedPermissionFilterTests : IAsyncLifetime
     }
 
     [Fact]
-    [Untraced("The tenant-wide check for a record the lookup does not find is in the Iron.Kernel.Api README only, in no criterion or ADR.")]
+    [Proves("ADR-0030")]
     public async Task ARecordTheLookupDoesNotFindIsCheckedTenantWide()
     {
         Assert.Equal(AccessScope.Tenant, await ScopeOf($"/api/v1/things/{Ids.New()}"));
     }
 
     [Fact]
-    [Untraced("The tenant-wide check for a route value that is not an id is stated in no criterion or ADR.")]
+    [Proves("ADR-0030")]
     public async Task ARouteValueThatIsNotAnIdIsCheckedTenantWide()
     {
         Assert.Equal(AccessScope.Tenant, await ScopeOf("/api/v1/units/not-an-id"));

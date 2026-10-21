@@ -235,7 +235,7 @@ await report.StepAsync("trace", ["ADR-0010"], async () =>
 // short id names what they make, apart from earlier runs.
 var run = Convert.ToHexString(RandomNumberGenerator.GetBytes(3)).ToLowerInvariant();
 var access = new AccessSteps(api, options, operatorToken ?? string.Empty, administratorPassword ?? string.Empty, run);
-await report.StepAsync("scoped-role", ["TF-035 AC1", "ADR-0031"], () => access.ScopedRoleAsync(ct));
+await report.StepAsync("scoped-role", ["TF-033 AC1", "TF-035 AC1", "ADR-0031"], () => access.ScopedRoleAsync(ct));
 await report.StepAsync("plan-change", ["TF-046 AC1", "ADR-0034"], () => access.PlanChangeAsync(ct));
 await report.StepAsync("kill-switch", ["ADR-0035"], () => access.KillSwitchAsync(ct));
 

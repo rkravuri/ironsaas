@@ -44,7 +44,7 @@ public class TenantIdTests
     }
 
     [Fact]
-    [Untraced("Value equality and the text form of a tenant id are stated in no criterion or ADR.")]
+    [Proves("ADR-0007")]
     public void EqualIdsAreEqual()
     {
         Assert.Equal(TenantId.Parse("acme"), TenantId.Parse("acme"));

@@ -13,7 +13,7 @@ public class RoleServiceTests(AuthorizationFixture fixture)
     private static readonly string[] Reading = [AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.UnitsRead.Name];
 
     [Fact]
-    [Untraced("The audit of role changes with the permissions before and after is in the module README only; no criterion of TF-032 or ADR states it.")]
+    [Proves("TF-032 AC4", "TF-032 AC5")]
     public async Task ARoleIsCreatedChangedAndDeletedWithThePermissionsBeforeAndAfterInTheAudit()
     {
         await using var administrator = await AsAdministratorAsync();

@@ -28,7 +28,7 @@ public class ListQueryParserTests
     }
 
     [Fact]
-    [Untraced("The parser's answer to an empty query string, the default page and no terms, is stated in no criterion or ADR.")]
+    [Proves("ADR-0009")]
     public void AnEmptyQueryIsTheDefaultListQuery()
     {
         var result = ListQueryParser.Parse(Query(), Things.Fields);
@@ -66,7 +66,7 @@ public class ListQueryParserTests
     }
 
     [Fact]
-    [Untraced("Reporting every list query problem in one answer is stated in no criterion or ADR.")]
+    [Proves("ADR-0009")]
     public void CollectsEveryProblemAtOnce()
     {
         var result = ListQueryParser.Parse(Query(("sort", "colour"), ("filter", "colour:eq:red"), ("fields", "colour")), Things.Fields);

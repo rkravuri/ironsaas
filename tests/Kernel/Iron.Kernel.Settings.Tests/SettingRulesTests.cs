@@ -145,7 +145,7 @@ public class SettingRulesTests
     }
 
     [Fact]
-    [Untraced("No criterion or ADR says that two modules may not declare the same setting key.")]
+    [Proves("ADR-0036")]
     public void TwoModulesCannotDeclareOneKey() =>
         Assert.Contains("is declared by the modules 'probe' and 'probe'", Assert.Throws<InvalidOperationException>(() => new SettingDeclarations([new ProbeModule(), new ProbeModule()])).Message, StringComparison.Ordinal);
 

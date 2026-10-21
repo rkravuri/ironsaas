@@ -65,7 +65,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Theory]
-    [Untraced("The format of a unit code is stated by no criterion or ADR; ADR-0031 states it for role codes only.")]
+    [Proves("TF-034 AC5")]
     [InlineData("sales", true)]
     [InlineData("sales-north-2", true)]
     [InlineData("-sales", false)]
@@ -78,7 +78,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Fact]
-    [Untraced("Storing a unit code in lowercase is stated by no criterion or ADR.")]
+    [Proves("TF-034 AC5")]
     public void ACodeIsStoredInLowercase()
     {
         Assert.Equal("north", OrganisationUnit.ChildOf(Root, "North", " North ", KernelOrganisationKinds.Unit).Code);
@@ -99,7 +99,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Fact]
-    [Untraced("The tree order, depth first with siblings by name, is in the module README, not in a criterion or ADR.")]
+    [Proves("TF-034 AC8")]
     public void TheTreeIsListedDepthFirstWithSiblingsByName()
     {
         var sales = OrganisationUnit.ChildOf(Root, "Sales", "sales", KernelOrganisationKinds.Unit);

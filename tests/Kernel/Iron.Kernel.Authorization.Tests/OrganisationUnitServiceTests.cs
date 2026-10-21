@@ -34,7 +34,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
-    [Untraced("Which kinds a parent may hold is in the module README; ADR-0029 names the kinds extension point, but no criterion or ADR states the refusal.")]
+    [Proves("TF-034 AC7")]
     public async Task AKindTheProviderDoesNotKnowOrDoesNotAllowThereIsRefused()
     {
         await using var provider = Services();
@@ -51,7 +51,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
-    [Untraced("A unit code unique in the tenant is in the module README, not in a criterion or ADR.")]
+    [Proves("TF-034 AC5")]
     public async Task ACodeIsUniqueInTheTenant()
     {
         await using var provider = Services();
@@ -149,7 +149,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
-    [Untraced("Renaming a unit and the audit of its old and new name are in the module README, not in a criterion or ADR.")]
+    [Proves("TF-034 AC6")]
     public async Task ARenameIsAuditedWithTheOldAndTheNewName()
     {
         await using var provider = Services();
@@ -167,7 +167,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
-    [Untraced("The tree's depth-first order is in the module README, not in a criterion or ADR.")]
+    [Proves("TF-034 AC8")]
     public async Task TheTreeIsReadDepthFirstFromTheRoot()
     {
         await using var provider = Services();

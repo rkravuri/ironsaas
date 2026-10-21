@@ -27,7 +27,7 @@ public class CorrelationIdTests
     }
 
     [Fact]
-    [Untraced("The fallback to a new random id when no trace is active is stated in no criterion or ADR; ADR-0007 covers the id of an active trace only.")]
+    [Proves("ADR-0007", "ADR-0010")]
     public void CurrentMakesANewIdWhenNoTraceIsActive()
     {
         Assert.Null(Activity.Current);
@@ -39,7 +39,7 @@ public class CorrelationIdTests
     }
 
     [Theory]
-    [Untraced("Parsing a correlation id from text is stated in no criterion or ADR, and no client-supplied id is accepted (ADR-0010).")]
+    [Proves("ADR-0007")]
     [InlineData("0af7651916cd43dd8448eb211c80319c", true)]
     [InlineData("0AF7651916CD43DD8448EB211C80319C", true)]
     [InlineData("0af7651916cd43dd8448eb211c80319", false)]

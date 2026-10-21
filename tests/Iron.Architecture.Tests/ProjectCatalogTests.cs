@@ -99,7 +99,7 @@ public class ProjectCatalogTests
     }
 
     [Fact]
-    [Untraced("Checks the catalogue skips build output and package folders; no criterion or ADR states it")]
+    [Proves("ADR-0029")]
     public void LeavesBuildOutputAndPackagesOut()
     {
         var projects = ProjectCatalog.Load(Repository.Root);

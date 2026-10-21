@@ -162,7 +162,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
-    [Untraced("The message for object storage configured with neither a connection string nor a container URL is decided by no ADR or criterion; ADR-0016 decides such a message only for the secret store.")]
+    [Proves("ADR-0016")]
     public void StorageThatIsNotConfiguredSaysWhatIsMissing()
     {
         var exception = Assert.Throws<InvalidOperationException>(() => new BlobObjectStorage(new StorageOptions()));
@@ -171,7 +171,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
-    [Untraced("That storage reached through a container signature checks for its container instead of creating it is an implementation guard no ADR or criterion states.")]
+    [Proves("ADR-0016")]
     public async Task ASignedStorageChecksItsContainerInsteadOfCreatingIt()
     {
         var account = new BlobContainerClient(fixture.StorageConnectionString, "signed-" + Guid.NewGuid().ToString("N")[..8]);

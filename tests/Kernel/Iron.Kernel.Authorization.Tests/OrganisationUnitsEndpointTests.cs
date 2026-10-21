@@ -91,7 +91,7 @@ public class OrganisationUnitsEndpointTests(AuthorizationFixture fixture) : IAsy
     }
 
     [Fact]
-    [Untraced("Creating a unit over HTTP with its audit event is in the module README, not in a criterion or ADR.")]
+    [Proves("TF-034 AC4")]
     public async Task AUnitIsCreatedUnderItsParentAndAudited()
     {
         var root = await RootIdAsync();

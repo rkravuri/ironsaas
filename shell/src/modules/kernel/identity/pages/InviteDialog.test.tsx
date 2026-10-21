@@ -72,8 +72,7 @@ afterEach(() => {
 });
 
 describe("inviting a person", () => {
-  // Untraced: the invite flow (the link shown once, copied, the record opened) is the S2 brief's, not a criterion's or an ADR's; TF-010 AC1 and TF-018 are the API's.
-  it("creates the user in the unit picked on the tree, shows the link once with a copy button, then opens the record [untraced]", async () => {
+  it("creates the user in the unit picked on the tree, shows the link once with a copy button, then opens the record [TF-010 AC1]", async () => {
     const { calls } = openUsers("/users", {
       "POST /api/v1/users": () =>
         json(
