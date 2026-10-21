@@ -4,7 +4,8 @@ name: CI
 # integration tests pass on the run's PostgreSQL, Azurite and OpenBao, the shell lints, is formatted (ADR-0040),
 # type-checks, tests and builds, its gallery passes the
 # accessibility scan, no secret is in the history, no known critical or high vulnerability is in the dependencies, and
-# the requirement documents keep their identifiers, their map and their tables (ADR-0041).
+# the requirement documents keep their identifiers, their map and their tables (ADR-0041). Every run publishes the
+# traceability matrix: each test with what it proves and its result (TF-218, ADR-0044).
 
 on:
   pull_request:
@@ -47,6 +48,16 @@ jobs:
       - name: Test
         run: make test CONFIG=Release TEST_ARGS=--no-build
 
+      # The TRX files for the traceability matrix (ADR-0044), whatever the result.
+      - name: Upload the test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-dotnet
+          path: artifacts/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
   shell:
     name: Shell lint, tests and build
     runs-on: ubuntu-latest
@@ -70,6 +81,16 @@ jobs:
       # npm run check: lint, Prettier's check (ADR-0040), the type check, the tests and the build.
       - name: Lint, format check, type check, tests and build
         run: npm run check
+
+      # Vitest's JUnit file for the traceability matrix (ADR-0044), whatever the result.
+      - name: Upload the test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-shell
+          path: artifacts/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   shell-accessibility:
     name: Shell accessibility scan
@@ -109,6 +130,17 @@ jobs:
             shell/playwright-report
           if-no-files-found: ignore
           retention-days: 7
+
+      # The scan's JUnit file for the traceability matrix (ADR-0044), whatever the result.
+      - name: Upload the test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-a11y
+          path: artifacts/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
   platform-config:
     name: Compose files
     runs-on: ubuntu-latest
@@ -127,6 +159,48 @@ jobs:
       # PRDs' sections and every CSV against its markdown. Python 3 and its standard library, as the runner has them.
       - name: Check the requirement documents
         run: make prd-check
+
+      # The check's own tests' JUnit file for the traceability matrix (ADR-0044), whatever the result.
+      - name: Upload the test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-python
+          path: artifacts/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The matrix from the other jobs' result files: every requirement criterion and decision with the tests that prove it
+  # and their results, and the criteria of the done slices without a test (make trace, ADR-0044). It runs whatever the
+  # others did, so a failing run still shows what failed against what it proves; the browser tests and the smoke need
+  # the stack and show as not run here, and the release workflow adds the smoke's results.
+  trace:
+    name: Traceability matrix
+    runs-on: ubuntu-latest
+    needs: [dotnet, shell, shell-accessibility, platform-config]
+    if: always()
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Download the test results
+        uses: actions/download-artifact@v7
+        with:
+          pattern: test-results-*
+          merge-multiple: true
+          path: artifacts/test-results
+
+      - name: Build the matrix
+        run: make trace
+
+      - name: Upload the matrix
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: traceability-matrix
+          path: artifacts/trace
+          if-no-files-found: ignore
+          retention-days: 30
 
   secrets:
     name: Secret scan (gitleaks)

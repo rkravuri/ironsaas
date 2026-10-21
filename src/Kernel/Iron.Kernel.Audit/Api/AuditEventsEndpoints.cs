@@ -88,7 +88,7 @@ internal static class AuditEventsEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var events = endpoints.MapApiGroup("audit-events").RequirePermission(AuditPermissions.EventsRead);
-        events.MapGet("/", ListAsync).WithName("ListAuditEvents").WithSummary("Search the audit trail of this tenant.");
+        events.MapGet("/", ListAsync).Produces<ListResponse<AuditEventResponse>>(StatusCodes.Status200OK).WithName("ListAuditEvents").WithSummary("Search the audit trail of this tenant.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, AuditDbContext context, CancellationToken cancellationToken)

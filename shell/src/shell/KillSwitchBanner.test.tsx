@@ -61,8 +61,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("the kill-switch banner (TF-055, ADR-0035)", () => {
-  it("tells an administrator which path is stopped, since when and why, in words with an icon, above the page", async () => {
+describe("the kill-switch banner (TF-051, ADR-0035)", () => {
+  it("tells an administrator which path is stopped, since when and why, in words with an icon, above the page [ADR-0035]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/me/context": () => json(context([killed])),
@@ -83,7 +83,7 @@ describe("the kill-switch banner (TF-055, ADR-0035)", () => {
     expect(banner.closest("main")).toBe(work.closest("main"));
   });
 
-  it("shows nothing when the answer has no kill switches, as it is for a person who is not an administrator", async () => {
+  it("shows nothing when the answer has no kill switches, as it is for a person who is not an administrator [ADR-0035]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(["identity.users.read"])),
       "GET /api/v1/me/context": () => json(context([])),
@@ -94,7 +94,7 @@ describe("the kill-switch banner (TF-055, ADR-0035)", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("goes within 30 seconds of the operator turning the switch off, and says when no reason was given", async () => {
+  it("goes within 30 seconds of the operator turning the switch off, and says when no reason was given [ADR-0035]", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let answer = context([{ ...killed, reason: null }]);
     stubFetch({ "GET /api/v1/me": () => json(me(administrator)), "GET /api/v1/me/context": () => json(answer) });

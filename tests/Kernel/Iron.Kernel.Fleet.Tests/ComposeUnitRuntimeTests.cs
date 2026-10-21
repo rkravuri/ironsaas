@@ -31,6 +31,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
+    [Proves("ADR-0019")]
     public void TheTemplateIsEmbeddedAndEveryVariableItUsesIsRendered()
     {
         var template = ComposeUnitRuntime.Template();
@@ -47,6 +48,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
+    [Proves("ADR-0019")]
     public async Task ApplyRendersTheProjectAndRunsComposeUp()
     {
         var runtime = Runtime(HttpStatusCode.OK);
@@ -65,6 +67,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
+    [Proves("ADR-0019")]
     public async Task ACommandRunsTheApiImageOnThePlatformNetworkWithTheEnvironmentAndCleansUp()
     {
         var runtime = Runtime(HttpStatusCode.OK);
@@ -84,6 +87,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
+    [Proves("ADR-0019")]
     public async Task FailingComposeUpIsReportedWithItsOutput()
     {
         _processes.ExitCode = 1;
@@ -96,6 +100,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
+    [Proves("ADR-0019")]
     public async Task ReadinessGoesThroughTheIngressWithTheTenantHostname()
     {
         var ready = Runtime(HttpStatusCode.OK);
@@ -108,6 +113,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
+    [Proves("ADR-0019")]
     public async Task RemoveRunsComposeDown()
     {
         var runtime = Runtime(HttpStatusCode.OK);
@@ -118,6 +124,7 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
     }
 
     [Fact]
+    [Untraced("The env file's refusal of a value with a line break is an encoding guard that no ADR or criterion states.")]
     public void AnEnvFileRefusesLineBreaks()
     {
         Assert.Throws<InvalidOperationException>(() => ComposeUnitRuntime.EnvFile(new Dictionary<string, string> { ["KEY"] = "line\nbreak" }));

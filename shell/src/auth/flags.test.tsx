@@ -54,7 +54,7 @@ afterEach(() => {
 });
 
 describe("useFlag, the shell's one hook for flags (TF-054, ADR-0035)", () => {
-  it("answers each flag from /me/context through OpenFeature, and follows a change within 30 seconds", async () => {
+  it("answers each flag from /me/context through OpenFeature, and follows a change within 30 seconds [TF-054 AC1, ADR-0035]", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let answer = { entitlements, flags: flags(false, "warm") };
     stubFetch({ "GET /api/v1/me": () => json(me()), "GET /api/v1/me/context": () => json(answer) });
@@ -76,7 +76,7 @@ describe("useFlag, the shell's one hook for flags (TF-054, ADR-0035)", () => {
     expect(new Set(fifty).size).toBe(1);
   });
 
-  it("gives every flag its default when /me/context fails, and the shell still renders", async () => {
+  it("gives every flag its default when /me/context fails, and the shell still renders [TF-054 AC3]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () => problem(503, { title: "Unavailable", error_code: "test.down" }),
@@ -88,7 +88,7 @@ describe("useFlag, the shell's one hook for flags (TF-054, ADR-0035)", () => {
     expect(screen.getByTestId("limits")).toHaveTextContent("10");
   });
 
-  it("gives the defaults when the flags part is missing or does not parse, and keeps the entitlements", async () => {
+  it("gives the defaults when the flags part is missing or does not parse, and keeps the entitlements [TF-054 AC3, ADR-0035]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () => json({ entitlements, flags: { known: "yes" } }),
@@ -100,7 +100,7 @@ describe("useFlag, the shell's one hook for flags (TF-054, ADR-0035)", () => {
     expect(screen.getByTestId("release")).toHaveTextContent("false");
   });
 
-  it("forgets the values when the session ends: signed out, every flag has its default", async () => {
+  it("forgets the values when the session ends: signed out, every flag has its default [ADR-0035]", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let signedIn = true;
     const unauthorized = () => problem(401, { title: "Unauthorized", error_code: "identity.session.required" });

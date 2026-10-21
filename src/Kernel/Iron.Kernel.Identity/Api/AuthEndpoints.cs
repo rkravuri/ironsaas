@@ -133,16 +133,16 @@ internal static class AuthEndpoints
     {
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
 
-        auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().WithName("Login").WithSummary("Sign in with login identifier and password.");
-        auth.MapPost("/logout", LogoutAsync).RequireSignedIn().WithName("Logout").WithSummary("End the current session.");
-        auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account.");
+        auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("Login").WithSummary("Sign in with login identifier and password.");
+        auth.MapPost("/logout", LogoutAsync).RequireSignedIn().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
+        auth.MapPost("/invitations/{token}/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account.");
 
-        endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
-        endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
-        endpoints.MapPost("/api/v1/me/working-unit", WorkForAsync).RequireSignedIn().WithTags("me").WithName("WorkFor").WithSummary("Choose the unit you work for, among your home unit and the units of your roles, or all of them where your roles reach several; answers /me.");
-        endpoints.MapDelete("/api/v1/me/acting-for", StopActingAsync).RequireSignedIn().WithTags("me").WithName("StopActing").WithSummary("Act as yourself again; answers /me.");
-        endpoints.MapGet("/api/v1/directory", DirectoryAsync).RequireSignedIn().WithTags("me").WithName("Directory").WithSummary("A page of the active people of this tenant whose name or login contains the search (two characters at least), for choosing a delegate: display name and home unit name only.");
-        endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=), over a unit and the units below it (&include_children=true), or at a record (?record_type=&record_id=, with &unit= for the record's unit).");
+        endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
+        endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
+        endpoints.MapPost("/api/v1/me/working-unit", WorkForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("WorkFor").WithSummary("Choose the unit you work for, among your home unit and the units of your roles, or all of them where your roles reach several; answers /me.");
+        endpoints.MapDelete("/api/v1/me/acting-for", StopActingAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("StopActing").WithSummary("Act as yourself again; answers /me.");
+        endpoints.MapGet("/api/v1/directory", DirectoryAsync).RequireSignedIn().WithTags("me").Produces<ListResponse<DirectoryEntry>>(StatusCodes.Status200OK).WithName("Directory").WithSummary("A page of the active people of this tenant whose name or login contains the search (two characters at least), for choosing a delegate: display name and home unit name only.");
+        endpoints.MapGet("/api/v1/me/access", AccessAsync).RequireSignedIn().WithTags("me").Produces<AccessResponse>(StatusCodes.Status200OK).WithName("MyAccess").WithSummary("Your permissions at a unit (?unit=), over a unit and the units below it (&include_children=true), or at a record (?record_type=&record_id=, with &unit= for the record's unit).");
         TokenEndpoints.Map(endpoints);
         UsersEndpoints.Map(endpoints);
     }

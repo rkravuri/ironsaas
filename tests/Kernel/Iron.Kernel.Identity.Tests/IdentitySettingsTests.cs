@@ -21,6 +21,7 @@ public class IdentitySettingsTests(IdentityFixture fixture)
     private const string Password = "correct horse battery staple";
 
     [Fact]
+    [Proves("ADR-0036")]
     public async Task ANewSessionTakesTheTenantsIdleLimitAndAnOpenSessionKeepsItsOwn()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -61,6 +62,7 @@ public class IdentitySettingsTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public async Task WithoutATenantValueTheConfiguredSystemDefaultApplies()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), settings: new Dictionary<string, string?> { ["Identity:Session:IdleMinutes"] = "45", ["Identity:Session:AbsoluteHours"] = "6" });
@@ -70,6 +72,7 @@ public class IdentitySettingsTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-057 AC1", "TF-221 AC2", "ADR-0036")]
     public async Task AnInvitationTakesTheValidityOfTheUnitItIsSentIntoWalkingUpToTheTenant()
     {
         var ct = TestContext.Current.CancellationToken;

@@ -83,14 +83,14 @@ internal static class EntitlementEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var plans = endpoints.MapApiGroup("plans");
-        plans.MapGet("/", ListPlansAsync).RequirePermission(TenancyPermissions.EntitlementsRead).WithName("ListPlans").WithSummary("The plans: licensed modules, features and grace days.");
-        plans.MapGet("/{code}", GetPlanAsync).RequirePermission(TenancyPermissions.EntitlementsRead).WithName("GetPlan").WithSummary("One plan.");
-        plans.MapPut("/{code}", SavePlanAsync).RequirePermission(TenancyPermissions.EntitlementsManage).Validate<SavePlanRequest>().WithName("SavePlan").WithSummary("Create a plan or replace what it holds; refused for a module or feature this build cannot license.");
+        plans.MapGet("/", ListPlansAsync).RequirePermission(TenancyPermissions.EntitlementsRead).Produces<ListResponse<PlanResponse>>(StatusCodes.Status200OK).WithName("ListPlans").WithSummary("The plans: licensed modules, features and grace days.");
+        plans.MapGet("/{code}", GetPlanAsync).RequirePermission(TenancyPermissions.EntitlementsRead).Produces<PlanResponse>(StatusCodes.Status200OK).WithName("GetPlan").WithSummary("One plan.");
+        plans.MapPut("/{code}", SavePlanAsync).RequirePermission(TenancyPermissions.EntitlementsManage).Validate<SavePlanRequest>().Produces<PlanResponse>(StatusCodes.Status200OK).WithName("SavePlan").WithSummary("Create a plan or replace what it holds; refused for a module or feature this build cannot license.");
 
         var tenants = endpoints.MapApiGroup("tenants");
-        tenants.MapGet("/{slug}/entitlements", CurrentAsync).RequirePermission(TenancyPermissions.EntitlementsRead).WithName("GetTenantEntitlements").WithSummary("The tenant's plan, grace days, revision and entitlements.");
-        tenants.MapPost("/{slug}/plan", ApplyAsync).RequirePermission(TenancyPermissions.EntitlementsManage).Validate<ApplyPlanRequest>().WithName("ApplyPlan").WithSummary("Apply a plan to the tenant in one transaction; with dry_run, only the differences and warnings.");
-        tenants.MapGet("/{slug}/entitlements/history", HistoryAsync).RequirePermission(TenancyPermissions.EntitlementsRead).WithName("GetEntitlementHistory").WithSummary("Every change of the tenant's entitlements in order, with operator, before and after.");
+        tenants.MapGet("/{slug}/entitlements", CurrentAsync).RequirePermission(TenancyPermissions.EntitlementsRead).Produces<TenantEntitlementsResponse>(StatusCodes.Status200OK).WithName("GetTenantEntitlements").WithSummary("The tenant's plan, grace days, revision and entitlements.");
+        tenants.MapPost("/{slug}/plan", ApplyAsync).RequirePermission(TenancyPermissions.EntitlementsManage).Validate<ApplyPlanRequest>().Produces<PlanPreview>(StatusCodes.Status200OK).WithName("ApplyPlan").WithSummary("Apply a plan to the tenant in one transaction; with dry_run, only the differences and warnings.");
+        tenants.MapGet("/{slug}/entitlements/history", HistoryAsync).RequirePermission(TenancyPermissions.EntitlementsRead).Produces<ListResponse<EntitlementChangeResponse>>(StatusCodes.Status200OK).WithName("GetEntitlementHistory").WithSummary("Every change of the tenant's entitlements in order, with operator, before and after.");
     }
 
     private static async Task<IResult> ListPlansAsync(HttpContext http, TenancyDbContext context, CancellationToken cancellationToken)

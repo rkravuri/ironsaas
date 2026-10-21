@@ -21,6 +21,7 @@ public class PlanPreviewTests(TenancyFixture fixture)
         ["authz", "identity"]));
 
     [Fact]
+    [Proves("TF-042 AC2", "ADR-0034")]
     public async Task RemovingAModuleWarnsThatItsDataStaysAndChangingItsSeatsIsAChange()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 10, 20, 9, 0, 0, TimeSpan.Zero));

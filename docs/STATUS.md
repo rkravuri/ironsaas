@@ -1,6 +1,6 @@
 # Status
 
-The running state of the current slice, kept current by Claude Code at the end of every session. The slice plan is `docs/slices/S2-access-control-organisations-and-design.md`; the tasks are in `docs/prompts/S2.md`.
+The running state of the current slice, kept current by Claude Code at the end of every session. The slice plan is `docs/slices/S3-trust-and-compliance.md`; the tasks are in `docs/prompts/S3.md`. S2's record follows S3's.
 
 ## Slice S2
 
@@ -27,11 +27,24 @@ S2 is done: every task merged, the done-when of the plan's section 1 proven, the
 
 ## Slice S3
 
-S3 is next. The plan's skeleton is `docs/slices/S3-trust-and-compliance.md`; the tasks are written in the design session, into `docs/prompts/S3.md` and this table, now that the PRD split is merged.
+S3 is under way: T1 is in review. The plan's task table, with the later items folded into their tasks, is in `docs/slices/S3-trust-and-compliance.md`; T2 to T10 are outlines in `docs/prompts/S3.md`, sharpened in the design session before each starts.
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
-| | | | |
+| T1 Traceability | in review | slice/s3-t1 | prompt 43454fe, SECURITY.md's address 2d6f41b, then six commits 05b3e6b to d77d223; ADR-0044 (proposed). Every test names what it proves: 925 tests (585 .NET methods, 239 Vitest, 21 browser and 27 scan call sites, 14 smoke steps, 39 Python), 228 with criteria, 627 with decisions only, 70 untraced with their reasons; the analyzer (IRON0005 to IRON0007) and `iron/test-proves` refuse a test without its list. `make trace` writes the matrix (55 of 433 requirements and 130 of 1402 criteria have a test; S1 and S2: 50 requirements, 161 criteria, 122 with a test, 39 listed in `docs/trace/exceptions.md` for the review, none missing); CI publishes it on every run and the release keeps it with its images. Vitest's workers follow available memory; `make verify` passed three times in a row with the stack running (357, 345 and 321 s; 1 MB swapped in all). Smoke 14 of 14 and e2e 25 of 25 on echo, after `make images`, `make update-unit TENANT=echo` and `make up-control`: the laptop's images predated L2, whose header the browser tests wait for; with every kind's results the matrix shows all 925 tests passing |
+
+Decided in T1, each small enough for a line here:
+
+- A test that proves nothing a criterion or an ADR states is marked untraced with its reason (`[Untraced("why")]`, a title's `[untraced]` with `// Untraced: why` above), so the build still refuses a test that names nothing and the matrix lists them for the review.
+- A decision tag names any rule an ADR decided that no criterion states, a mechanism's behaviour as well as a rule of the build; `docs/design/design-language.md` is ADR-0024's brief, so its rules count as ADR-0024's.
+- A criterion with two halves proven by two tests (the shell hides a disabled module, the API refuses it) is named by both; a test that checks only part of a criterion's Then names the criterion when the part is the unit's own outcome, as the agents' reports record per test.
+- TF-033 AC1 says "forbidden"; a read outside the reader's scope answers not found (ADR-0031, ADR-0032), so those tests name TF-035 AC1 as amended, and TF-033 AC1 is named where the answer is a literal 403.
+- The analyzer project is the one Test project named `*.Testing.Analyzers`, which the layer rule now accepts; `Directory.Build.props` puts it into every Test project that is an Exe.
+- The result files live in `artifacts/test-results/<kind>` (not committed), the Playwright JUnit files outside `test-results/e2e` and `test-results/a11y`, which Playwright empties first.
+- A slice is done for the matrix when every task of its plan's table is done; the exceptions' first dates are T1's proposal date, 2026-10-21, until the review approves them.
+- The smoke's `tenant` step proves TF-180 AC2 only on a run that provisions, as the pipeline's integration stage always does; on the laptop it reuses the tenant.
+- Two browser tests had broken on main since L2 without a run to show it, because the laptop's images were older: the sign-in helper waited for any heading named "IronSaaS", which since L2 also finds the home page's "IronSaaS Foundation" (now an exact match); the Users grid test looked for `smoke-client` on the first page of fifty, which the accounts every run leaves on echo had pushed past (it now looks for the administrator, who sorts first).
+- `dotnet format` prints "Warnings were encountered while loading the workspace" for the projects that load the analyzer; the check still passes and finds every file.
 
 ## The PRD split
 
@@ -77,20 +90,28 @@ Decided while making the review's changes, as readings of decision 8 beyond its 
 
 ## Open questions
 
-1. `SECURITY.md` names `SECURITY_EMAIL_HERE`, as the review wrote it; the owner replaces it with the security address.
+For T1's review:
+
+1. The exceptions list (`docs/trace/exceptions.md`, 39 criteria of S1 and S2): approve the rows, or ask for the tests; the six under "Built, without a test" are real gaps.
+2. The 70 untraced tests (the matrix's section "Tests that prove no requirement and no decision"): for each, write the criterion or the decision it proves, or remove the test. Most check helpers' guards and defaults (page 50, currency codes, unit code format, hostname normalisation) that only a README or the code states.
+3. TF-030 AC2 asks for permissions "grouped by resource"; the role editor groups them by module. Amend the criterion or regroup.
+4. TF-033 AC1 says a record of another unit is "forbidden"; reads answer not found, as TF-035 AC1 was amended to say. Amend TF-033 AC1 the same way?
+5. TF-011 AC2's message is "The login details are not correct"; the API answers it, the shell's login page shows its own words.
+6. TF-130 AC4's counter of lost spans, which the S1 plan lists as built, does not exist; the exceptions list proposes S3 T10.
+7. `SECURITY.md` names `security@example.com`, as asked; `example.com` is a reserved domain that receives no mail, so reports go nowhere until the real address replaces it.
 
 ## Later items
 
 Carried into S3 and beyond; the S2 plan's closing notes group them by area. Settled by S2-close: each browser test run works in a unit of its own; the search announces its active result (a combobox, ADR-0033's search kept); the accessibility scan writes into `test-results/a11y`; the .NET suite runs on three shared services, four projects at a time, proven three times straight after the scan; the action pins and Dependabot's pull requests.
 
-- A password reset flow (S3, TF-017) is also what an operator needs when a tenant's administrator password is lost; until then the smoke and the browser tests use a tenant whose administrator password the smoke kept (`secret/tenants/<slug>/smoke`).
-- "Sign out everywhere" waits for the session console (TF-022); My profile offers Sign out, which ends the session in every tab of this browser (ADR-0033).
-- After an answer the shell estimates the idle end from the span `/me` showed, up to the server's touch interval (one minute) late (ADR-0033). A response header with the session's idle end would make it exact if a tenant shortens the limits.
-- Every refused request writes `entitlements.access_denied`; a client that keeps calling a refused endpoint fills the audit trail. The shell hides those calls; rate limits (S3) bound the rest.
-- The last-administrator guard counts tenant-wide assignments, not active principals (ADR-0031): a disabled last administrator still counts.
+- A password reset flow (S3 T2, TF-017) is also what an operator needs when a tenant's administrator password is lost; until then the smoke and the browser tests use a tenant whose administrator password the smoke kept (`secret/tenants/<slug>/smoke`).
+- "Sign out everywhere" waits for the session console (S3 T5, TF-022); My profile offers Sign out, which ends the session in every tab of this browser (ADR-0033).
+- After an answer the shell estimates the idle end from the span `/me` showed, up to the server's touch interval (one minute) late (ADR-0033). A response header with the session's idle end would make it exact if a tenant shortens the limits (folded into S3 T5).
+- Every refused request writes `entitlements.access_denied`; a client that keeps calling a refused endpoint fills the audit trail. The shell hides those calls; rate limits (S3 T9) bound the rest.
+- The last-administrator guard counts tenant-wide assignments, not active principals (ADR-0031): a disabled last administrator still counts (folded into S3 T2, which brings the locked state).
 - A record-scoped assignment does not check that its record exists: no module can name another module's records yet. TF-033 AC4 holds for units. A record-scoped assignment is not in an access review either (ADR-0037).
 - No kernel module declares a business record, so no module registers a record policy yet; the first business or suite module brings the first, and the architecture test then reads its `AddServices`. A module's own Entity Framework reads for background work are not checked by the build; they must not reach a response (ADR-0032).
-- System roles follow the permission catalogue when the seed runs, unchecked by the conflict rules: a new module's permissions in a system role show in the next report run, not as a refusal. A tenant role's change is checked at once (ADR-0039).
+- System roles follow the permission catalogue when the seed runs, unchecked by the conflict rules: a new module's permissions in a system role show in the next report run, not as a refusal. A tenant role's change is checked at once (ADR-0039). Folded into S3 T10: the seed's change shown in the report and raised as a privilege grant (TF-079).
 - A rule's change appears in the conflicts report at the next run, within a day, or at once with Run the report now; a record-scoped grant meets only a tenant grant or a grant on the same record in the rules; the grant dialog's conflict preview is not shown when the preview call fails, and the API still refuses a blocked grant (ADR-0039).
 - The explanation covers the checks an endpoint declares; checks a handler makes on its own are not explained, and an allowance says so in words (ADR-0039).
 - A delegator who loses a role loses it for their delegate at once in the process that changed it, and within the grants cache's 60 seconds in the others (ADR-0012, ADR-0037).
@@ -106,13 +127,13 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Testing Library names a tree item from all its content, the items below it included (Mantine's Tree gives the item no label of its own); check a parent item with a screen reader before the tree pattern spreads. jsdom hides Mantine's menus, so unit tests query them hidden or not and the browser specs prove what is visible.
 - Chromium reads a visually hidden word with a space before it ("North , chosen"); the browser specs match either spacing.
 - No module has a spot drawing of its own yet: the opener's slot stays empty until a module brings one through the illustration checklist.
-- The ADRs and prompts before ADR-0041 cite the archived FF identifiers; `docs/prd/requirements-map.md` translates them. The tests S3 tags with what they prove use every PRD's identifiers (TF-218).
-- No API disables a person or deletes a unit: each browser test run leaves its inactive `E2E run <run>` unit with its people, and each smoke run its inactive `Smoke <run>` unit with one person.
+- The ADRs and prompts before ADR-0041 cite the archived FF identifiers; `docs/prd/requirements-map.md` translates them. Since S3 T1 every test names what it proves in every PRD's identifiers (ADR-0044).
+- No API disables a person or deletes a unit: each browser test run leaves its inactive `E2E run <run>` unit with its people, and each smoke run its inactive `Smoke <run>` unit with one person (folded into S3 T2).
 - The browser test that moves echo between Standard and Enterprise takes about a minute and a quarter and leaves echo on Enterprise, also when it fails; the smoke's `plan-change` step leaves a tenant on the plan it had.
 - Since S2-close the `smoke` tenant is provisioned again on the laptop (on Standard), beside acme, bravo and echo; their administrators' invitations are in `secret/tenants/<slug>/fleet`.
-- Dependabot proposes versions only after 14 days (its cooldown) and majors outside its groups. Two it is told to leave, each with its reason in `.github/dependabot.yml`: `Microsoft.CodeAnalysis.CSharp`, which must match the Roslyn that EF Core's design package pulls (5.9.0 beside EF Core 10.0.12's 5.0.0 does not restore, NU1107), so it is raised by hand with the EF Core that asks for it; and TypeScript majors, until typescript-eslint accepts them (8.72.0 asks for typescript below 6.1). React Router 8 and jest-dom 7 are in since M1.
-- The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic).
+- Dependabot proposes versions only after 14 days (its cooldown) and majors outside its groups. Two it is told to leave, each with its reason in `.github/dependabot.yml`: `Microsoft.CodeAnalysis.CSharp`, which must match the Roslyn that EF Core's design package pulls (5.9.0 beside EF Core 10.0.12's 5.0.0 does not restore, NU1107), so it is raised by hand with the EF Core that asks for it; and TypeScript majors, until typescript-eslint accepts them (8.72.0 asks for typescript below 6.1). React Router 8 and jest-dom 7 are in since M1. Folded into S3 T10 (TF-076, the dependency policy with its fix times).
+- The chiseled images print a Kerberos probe message from Npgsql at start (cosmetic; folded into S3 T10 with the images' SBOM).
 - TF-244 is written, not built: until it is, a unit loads every module `Iron.Host.Api.UnitModules` lists, and no suite module exists yet. A plan cannot yet be refused for naming another group's module (TF-244 AC7); the catalogue's groups are what that check will read.
 - Decision 8 of ADR-0043 is applied to what the review listed. Read against it again when the second suite's PRDs are written: the business lookups and their seeds name procurement's reasons and charge types (BF-121, BF-122), and BF-005 lists procurement's settings among those set per organisation.
-- On a laptop that runs the stack, `make shell-check` straight after `make test` timed out a few different page tests at Vitest's 5-second limit, twice in L2 (load average near 6); run alone, every test passed both times. CI runs the two on separate runners. Raise the limit for the page tests, or keep running the shell's checks on their own, if it recurs.
+- Settled by S3 T1: the shell's page tests that timed out beside the stack straight after `make test` were swapping, not short of processor; Vitest takes one worker per 1.25 GiB of available memory, and `make verify` runs every check in order (ADR-0044).
 - Separate images per suite, and a suite in a repository of its own with the Foundation as packages, wait for ADR-0043's conditions (a separate team, release rhythm or licence).

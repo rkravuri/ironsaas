@@ -11,6 +11,7 @@ namespace Iron.Kernel.Data.Tests.Transactions;
 public class UnitOfWorkTests(PostgresFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0013")]
     public async Task DisposingWithoutCommitRollsBackTheSavedChanges()
     {
         await using var provider = Build();
@@ -34,6 +35,7 @@ public class UnitOfWorkTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0013")]
     public async Task CommitMakesTheSavedChangesVisible()
     {
         await using var provider = Build();
@@ -53,6 +55,7 @@ public class UnitOfWorkTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0013")]
     public async Task AnInnerScopeLeftWithoutCommitForcesTheWholeTransactionToRollBack()
     {
         await using var provider = Build();

@@ -6,7 +6,7 @@ const loginCell = (grid: Locator, value: string) =>
   grid.locator('[role="gridcell"][col-id="login_id"]', { hasText: value });
 
 test.describe("the Users grid", () => {
-  test("lists the tenant's users from the API with server paging and sorting", async ({ page }) => {
+  test("lists the tenant's users from the API with server paging and sorting [ADR-0021]", async ({ page }) => {
     await signIn(page);
     // Register the wait before loading the page, so the first request cannot be missed.
     const firstPage = page.waitForResponse(
@@ -17,10 +17,11 @@ test.describe("the Users grid", () => {
     expect(response.url()).toContain("page_size=50");
     expect(response.url()).toContain("sort=login_id");
 
-    // The grid draws the rows near its viewport only, and every run adds accounts to echo, so the smoke client's row may
-    // be out of sight: the page the API answered names it, and the administrator's row is first in the grid.
+    // The grid draws the rows near its viewport only, and every run adds accounts to the tenant, so the first page is read
+    // from the API's answer: by login identifier it starts with the administrator, whose row is first in the grid too.
+    // (It asked for the smoke client until more than fifty accounts sorted before it.)
     const answered = (await response.json()) as { data: { login_id: string }[] };
-    expect(answered.data.map((user) => user.login_id)).toContain("smoke-client");
+    expect(answered.data.map((user) => user.login_id)).toContain(loginId);
     const grid = page.getByRole("region", { name: "Users" });
     await expect(loginCell(grid, loginId)).toBeVisible();
 
@@ -34,7 +35,7 @@ test.describe("the Users grid", () => {
     await sorted;
   });
 
-  test("a filter becomes a filter term in the query", async ({ page }) => {
+  test("a filter becomes a filter term in the query [ADR-0021]", async ({ page }) => {
     await signIn(page);
     await open(page, "/users");
     const grid = page.getByRole("region", { name: "Users" });
@@ -58,7 +59,7 @@ test.describe("the Users grid", () => {
 });
 
 test.describe("the Users grid by keyboard", () => {
-  test("selects a row with Space and Enter, opens it with Ctrl+Enter, and the density switch changes the row height", async ({
+  test("selects a row with Space and Enter, opens it with Ctrl+Enter, and the density switch changes the row height [TF-172 AC2, ADR-0025, ADR-0027, ADR-0036]", async ({
     page,
   }) => {
     await signIn(page);

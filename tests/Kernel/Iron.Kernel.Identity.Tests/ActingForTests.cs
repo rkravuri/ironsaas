@@ -73,6 +73,7 @@ public class ActingForTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-037 AC3", "ADR-0037")]
     public async Task ADelegateActsForTheAdministratorWithTheDelegatedDutyOnlyAndEveryEventNamesBoth()
     {
         var (administrator, administratorCookie) = await PersonAsync("admin", SystemRoles.TenantAdministrator);
@@ -148,6 +149,7 @@ public class ActingForTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task WhenTheDelegationEndsTheNextRequestActsAsThePersonAndSaysSo()
     {
         var (administrator, administratorCookie) = await PersonAsync("admin", SystemRoles.TenantAdministrator);
@@ -193,6 +195,7 @@ public class ActingForTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task TheDirectoryAnswersADisplayNameAndAHomeUnitNameAPageAtATimeForTwoCharactersOrMore()
     {
         var tag = $"dir{Ids.New():N}"[..12];
@@ -220,6 +223,7 @@ public class ActingForTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task ATokenNeverActsForAnyone()
     {
         await using var scope = _app!.Services.CreateAsyncScope();

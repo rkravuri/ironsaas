@@ -10,6 +10,7 @@ public class OrganisationTreeRuleTests
     private static readonly OrganisationUnit Root = OrganisationUnit.Root("Acme", "acme", KernelOrganisationKinds.Root);
 
     [Fact]
+    [Proves("ADR-0030")]
     public void AChildsPathIsItsParentsPathAndItsOwnId()
     {
         var sales = OrganisationUnit.ChildOf(Root, "Sales", "sales", KernelOrganisationKinds.Unit);
@@ -23,6 +24,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void AUnitContainsItselfAndItsDescendantsOnly()
     {
         var sales = OrganisationUnit.ChildOf(Root, "Sales", "sales", KernelOrganisationKinds.Unit);
@@ -37,6 +39,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void MovingUnderADescendantIsACycleAndIsRefused()
     {
         var sales = OrganisationUnit.ChildOf(Root, "Sales", "sales", KernelOrganisationKinds.Unit);
@@ -47,6 +50,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void MovingTakesTheNewParentsPathAndDepth()
     {
         var sales = OrganisationUnit.ChildOf(Root, "Sales", "sales", KernelOrganisationKinds.Unit);
@@ -61,6 +65,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Theory]
+    [Proves("TF-034 AC5")]
     [InlineData("sales", true)]
     [InlineData("sales-north-2", true)]
     [InlineData("-sales", false)]
@@ -73,12 +78,14 @@ public class OrganisationTreeRuleTests
     }
 
     [Fact]
+    [Proves("TF-034 AC5")]
     public void ACodeIsStoredInLowercase()
     {
         Assert.Equal("north", OrganisationUnit.ChildOf(Root, "North", " North ", KernelOrganisationKinds.Unit).Code);
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void NoUnitSitsDeeperThanTheLimit()
     {
         var unit = Root;
@@ -92,6 +99,7 @@ public class OrganisationTreeRuleTests
     }
 
     [Fact]
+    [Proves("TF-034 AC8")]
     public void TheTreeIsListedDepthFirstWithSiblingsByName()
     {
         var sales = OrganisationUnit.ChildOf(Root, "Sales", "sales", KernelOrganisationKinds.Unit);
@@ -119,6 +127,7 @@ public class PrincipalGrantsTests
     private static readonly IReadOnlyList<Guid> FinancePath = [Root, Finance];
 
     [Fact]
+    [Proves("TF-033 AC2")]
     public void ATenantGrantAppliesEverywhere()
     {
         var grants = new PrincipalGrants([new Grant(RoleScopeKind.Tenant, null, null, ["a.b.read"])]);
@@ -129,6 +138,7 @@ public class PrincipalGrantsTests
     }
 
     [Fact]
+    [Proves("TF-033 AC1", "ADR-0030")]
     public void AUnitGrantAppliesToThatUnitOnlyAndNotTenantWide()
     {
         var grants = new PrincipalGrants([new Grant(RoleScopeKind.Unit, Sales, null, ["a.b.read"])]);
@@ -140,6 +150,7 @@ public class PrincipalGrantsTests
     }
 
     [Fact]
+    [Proves("TF-033 AC3")]
     public void AGrantWithChildrenAppliesToItsSubtree()
     {
         var grants = new PrincipalGrants([new Grant(RoleScopeKind.UnitWithChildren, Sales, null, ["a.b.read"])]);
@@ -150,6 +161,7 @@ public class PrincipalGrantsTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void ARecordGrantAppliesToThatRecordOfThatTypeOnly()
     {
         var grants = new PrincipalGrants([new Grant(RoleScopeKind.Record, Order, "order", ["a.b.read"])]);
@@ -160,6 +172,7 @@ public class PrincipalGrantsTests
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public void AnywhereHoldsEveryPermissionOfEveryGrant()
     {
         var grants = new PrincipalGrants(
@@ -173,6 +186,7 @@ public class PrincipalGrantsTests
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public void AGrantWithChildrenIsCoveredOnlyByGrantsThatReachTheWholeSubtree()
     {
         var grants = new PrincipalGrants(
@@ -188,6 +202,7 @@ public class PrincipalGrantsTests
     }
 
     [Fact]
+    [Proves("TF-033 AC2")]
     public void AnUnknownUnitGetsTheTenantWideGrantsOnly()
     {
         var grants = new PrincipalGrants(

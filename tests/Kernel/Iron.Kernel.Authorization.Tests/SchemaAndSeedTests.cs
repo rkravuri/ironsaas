@@ -12,6 +12,7 @@ namespace Iron.Kernel.Authorization.Tests;
 public class SchemaAndSeedTests(AuthorizationFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0008")]
     public async Task TheMigratedSchemaPassesTheSchemaCheck()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
@@ -20,6 +21,7 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0012", "ADR-0031")]
     public async Task SeedCreatesTheSystemRolesFromTheCatalogueAndRunsAgainWithoutDuplicates()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
@@ -41,6 +43,7 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task SeedCreatesOneRootUnitOfTheRootKindAndRunsAgainWithoutASecond()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
@@ -63,6 +66,7 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
 public class ModelTests
 {
     [Fact]
+    [Proves("ADR-0012")]
     public void TheModelHasNoChangesWithoutAMigration()
     {
         using var context = new AuthorizationDbContext(DesignTime.OptionsFor<AuthorizationDbContext>());

@@ -19,11 +19,11 @@ afterEach(() => {
 });
 
 describe("usePrefersReducedMotion", () => {
-  it("is false while the viewer has not asked for less motion", () => {
+  it("is false while the viewer has not asked for less motion [ADR-0025]", () => {
     expect(renderHook(() => usePrefersReducedMotion()).result.current).toBe(false);
   });
 
-  it("is true once the viewer has", () => {
+  it("is true once the viewer has [ADR-0025]", () => {
     vi.spyOn(window, "matchMedia").mockImplementation(mediaQueryList(true));
     expect(renderHook(() => usePrefersReducedMotion()).result.current).toBe(true);
   });

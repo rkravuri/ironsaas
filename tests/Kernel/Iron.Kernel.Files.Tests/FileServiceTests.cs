@@ -19,6 +19,7 @@ namespace Iron.Kernel.Files.Tests;
 public class ModelTests
 {
     [Fact]
+    [Proves("ADR-0012")]
     public void TheModelHasNoChangesWithoutAMigration()
     {
         using var context = new FilesDbContext(DesignTime.OptionsFor<FilesDbContext>());
@@ -35,6 +36,7 @@ public class FileServiceTests(FilesFixture fixture)
     private static readonly byte[] Content = Encoding.UTF8.GetBytes("Hello from the Files module. This is a small text file.");
 
     [Fact]
+    [Proves("ADR-0008")]
     public async Task TheMigratedSchemaPassesTheSchemaCheck()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -43,6 +45,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-160 AC1", "ADR-0016")]
     public async Task UploadRecordsTheHashAndDownloadVerifiesIt()
     {
         var uploader = Ids.New();
@@ -77,6 +80,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-160 AC1", "ADR-0016")]
     public async Task ACorruptedObjectFailsTheIntegrityCheckAndIsAudited()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -100,6 +104,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public async Task EmptyAndOversizedUploadsAreRefusedAndLeaveNothingBehind()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -120,6 +125,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008", "ADR-0016")]
     public async Task DeleteMarksTheRowAndHidesItFromReads()
     {
         var actor = Ids.New();
@@ -139,6 +145,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public async Task ReadinessNamesAMissingContainer()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), container: "nowhere");
@@ -155,6 +162,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public void StorageThatIsNotConfiguredSaysWhatIsMissing()
     {
         var exception = Assert.Throws<InvalidOperationException>(() => new BlobObjectStorage(new StorageOptions()));
@@ -163,6 +171,7 @@ public class FileServiceTests(FilesFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0016")]
     public async Task ASignedStorageChecksItsContainerInsteadOfCreatingIt()
     {
         var account = new BlobContainerClient(fixture.StorageConnectionString, "signed-" + Guid.NewGuid().ToString("N")[..8]);

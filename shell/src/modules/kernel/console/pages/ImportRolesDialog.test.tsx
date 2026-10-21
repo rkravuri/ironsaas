@@ -31,7 +31,7 @@ const paste = async () => {
 };
 
 describe("the role import", () => {
-  it("shows the dry run's diff first and applies only when asked", async () => {
+  it("shows the dry run's diff first and applies only when asked [ADR-0031]", async () => {
     const onApplied = vi.fn();
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(["authz.roles.manage"])),
@@ -64,7 +64,7 @@ describe("the role import", () => {
     expect(bodies[1]?.document).toEqual(exported);
   });
 
-  it("names the unknown permissions and does not let the import apply", async () => {
+  it("names the unknown permissions and does not let the import apply [TF-032 AC3]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(["authz.roles.manage"])),
       "POST /api/v1/roles/import": () =>
@@ -79,7 +79,7 @@ describe("the role import", () => {
     expect(within(dialog).getByRole("button", { name: "Apply the import" })).toBeDisabled();
   });
 
-  it("says so when the text is not an export, without calling the API", async () => {
+  it("says so when the text is not an export, without calling the API [ADR-0027]", async () => {
     const { calls } = stubFetch({ "GET /api/v1/me": () => json(me(["authz.roles.manage"])) });
     renderWithProviders(<ImportRolesDialog onClose={() => undefined} onApplied={() => undefined} />);
 

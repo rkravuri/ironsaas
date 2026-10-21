@@ -77,6 +77,7 @@ public class SettingsEndpointTests(SettingsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-057 AC2", "ADR-0036")]
     public async Task AValueThatBreaksTheRuleIsRefusedWithTheRuleOnTheFieldAndAScopeNotAllowedIsRefused()
     {
         using var refused = await JsonAsync(await SendAsync(HttpMethod.Put, $"/api/v1/settings/{ProbeSettings.Batch.Key}", _administrator, new { scope = "tenant", value = 5 }), HttpStatusCode.BadRequest);
@@ -93,6 +94,7 @@ public class SettingsEndpointTests(SettingsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-058 AC3", "TF-221 AC3", "ADR-0036")]
     public async Task AUnitsAdministratorChangesTheirUnitAndTheUnitsBelowButNotTheTenantNorAnotherUnit()
     {
         using (var below = await SendAsync(HttpMethod.Put, $"/api/v1/settings/{ProbeSettings.Batch.Key}", _branchAdministrator, new { scope = "unit", unit_id = _desk, value = 80 }))
@@ -122,6 +124,7 @@ public class SettingsEndpointTests(SettingsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-058 AC2", "ADR-0036")]
     public async Task ResetRemovesTheOverrideAndAnswersTheInheritedValueWithWhereItComesFromAndTheHistoryShowsBoth()
     {
         Assert.True((await SendAsync(HttpMethod.Put, $"/api/v1/settings/{ProbeSettings.Tone.Key}", _administrator, new { scope = "unit", unit_id = _branch, value = "brief" })).IsSuccessStatusCode);
@@ -150,6 +153,7 @@ public class SettingsEndpointTests(SettingsFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-057 AC3", "ADR-0036")]
     public async Task APersonSetsTheirOwnPreferenceWithoutAPermissionAndTheShellSeesNoSecretReference()
     {
         using var saved = await JsonAsync(await SendAsync(HttpMethod.Put, "/api/v1/settings/shell.density", _clerk, new { scope = "user", value = "compact" }), HttpStatusCode.OK);

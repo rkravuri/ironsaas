@@ -6,7 +6,7 @@ import { renderWithProviders, stubFetch } from "@/test/render";
 import { ConsolePage, DashboardPage, ListPage, RecordPage, WizardPage } from "./index";
 
 describe("the list template", () => {
-  it("opens with the title and one line, offers the density switch, and holds the grid", () => {
+  it("opens with the title and one line, offers the density switch, and holds the grid [ADR-0027]", () => {
     stubFetch({});
     renderWithProviders(
       <ListPage
@@ -28,7 +28,7 @@ describe("the list template", () => {
 });
 
 describe("the record template", () => {
-  it("shows the header with its status in words and switches panels through tabs", async () => {
+  it("shows the header with its status in words and switches panels through tabs [TF-172 AC3, ADR-0027]", async () => {
     stubFetch({});
     const user = userEvent.setup();
     renderWithProviders(
@@ -71,7 +71,7 @@ function Wizard() {
 }
 
 describe("the wizard template", () => {
-  it("walks the steps with back and next, and says finish on the last one", async () => {
+  it("walks the steps with back and next, and says finish on the last one [ADR-0027]", async () => {
     stubFetch({});
     const user = userEvent.setup();
     renderWithProviders(<Wizard />);
@@ -87,7 +87,7 @@ describe("the wizard template", () => {
 });
 
 describe("the console and dashboard templates", () => {
-  it("list the console's sections in a contents nav and under their headings", () => {
+  it("list the console's sections in a contents nav and under their headings [ADR-0027]", () => {
     stubFetch({});
     renderWithProviders(
       <ConsolePage
@@ -104,7 +104,7 @@ describe("the console and dashboard templates", () => {
     expect(screen.getByText("Mail field")).toBeInTheDocument();
   });
 
-  it("show a dashboard card per number in the display family", () => {
+  it("show a dashboard card per number in the display family [ADR-0027]", () => {
     stubFetch({});
     renderWithProviders(
       <DashboardPage

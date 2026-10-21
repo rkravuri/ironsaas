@@ -20,6 +20,7 @@ public class FlagRulesTests
         new(tenant, region, plan, principal ?? Ada, type, [North, Operations, Root]);
 
     [Theory]
+    [Proves("ADR-0035")]
     [InlineData("flags.example_release", "acme", 3038)]
     [InlineData("flags.example_release", "bravo", 1133)]
     [InlineData("flags.example_release", "echo", 8608)]
@@ -33,6 +34,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("TF-050 AC1", "ADR-0035")]
     public void TenPerCentOfTenThousandTenantsIsAboutATenthAndTheSameTenantAlwaysLandsTheSameWay()
     {
         var rule = Rules.Global(Release.Key, true, condition: FlagCondition.PercentageOf(10, RolloutSubject.Tenant));
@@ -46,6 +48,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("TF-050 AC2")]
     public void OffGloballyButOnForATenantIsOnForThatTenantAndOffForTheOthers()
     {
         IReadOnlyList<FlagRuleEntry> rules = [Rules.Global(Release.Key, false), Rules.Tenant(Release.Key, "echo", true)];
@@ -55,6 +58,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void TheMostSpecificScopeWinsUserThenUnitThenTenantThenRegionThenGlobal()
     {
         var tone = ExampleFlags.Tone;
@@ -74,6 +78,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void AUnitRuleReachesTheUnitsBelowItAndTheNearestUnitWins()
     {
         var tone = ExampleFlags.Tone;
@@ -88,6 +93,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void WithinAScopeTheOrderDecidesAndAConditionThatFailsPassesToTheNextRule()
     {
         var tone = ExampleFlags.Tone;
@@ -102,6 +108,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void AValueOfTheWrongTypeIsSkippedAndTheResultSaysWhy()
     {
         var wrong = Rules.Tenant(Release.Key, "echo", "yes");
@@ -117,6 +124,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void AKillSwitchIsOnWhereverAnyApplicableRuleSaysSoAndATenantRuleCannotExemptATenant()
     {
         var imports = KillSwitches.Imports;
@@ -144,6 +152,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("TF-052 AC3", "ADR-0035")]
     public void ADeclarationNeedsAnOwnerAPurposeARemovalDateForAReleaseAndADefaultOfItsType()
     {
         Assert.Contains("declares no owner", Assert.Throws<ArgumentException>(() => Flag.Boolean("sample.thing", FlagKind.Operational, "Does a thing", " ", null, false)).Message, StringComparison.Ordinal);
@@ -157,6 +166,7 @@ public class FlagRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void TheEvaluationContextCarriesTenantRegionPlanPrincipalTypeAndUnitsAndReadsBackTheSame()
     {
         var subject = Subject(type: "service");

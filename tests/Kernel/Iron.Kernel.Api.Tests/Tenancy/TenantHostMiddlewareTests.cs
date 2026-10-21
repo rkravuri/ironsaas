@@ -46,6 +46,7 @@ public class TenantHostMiddlewareTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task ServesItsOwnHostname()
     {
         using var response = await Send("/api/v1/ping", "acme.localhost");
@@ -54,6 +55,7 @@ public class TenantHostMiddlewareTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-100 AC1", "ADR-0011")]
     public async Task RefusesAnotherHostnameWithAProblemAndNeverReachesTheEndpoint()
     {
         using var response = await Send("/api/v1/ping", "bravo.localhost");
@@ -67,6 +69,7 @@ public class TenantHostMiddlewareTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task HealthProbesAreExemptFromTheHostnameCheck()
     {
         using var response = await Send("/health/live", "10.0.0.7:8080");

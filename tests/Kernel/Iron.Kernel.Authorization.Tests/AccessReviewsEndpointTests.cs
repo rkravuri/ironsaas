@@ -70,6 +70,7 @@ public class AccessReviewsEndpointTests(AuthorizationFixture fixture) : IAsyncLi
     }
 
     [Fact]
+    [Proves("TF-038 AC1", "TF-038 AC2", "TF-038 AC4", "ADR-0037")]
     public async Task TheReviewerOfAUnitDecidesItsItemsAndNobodyElseDoes()
     {
         var (north, store) = await TreeAsync();

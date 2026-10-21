@@ -61,7 +61,7 @@ afterEach(() => {
 });
 
 describe("the subscription page (TF-040, TF-041)", () => {
-  it("shows the plan, each module and feature with its status in words, why, until when, and the seats", async () => {
+  it("shows the plan, each module and feature with its status in words, why, until when, and the seats [TF-041 AC3, TF-172 AC3, ADR-0034]", async () => {
     open(subscription);
 
     expect(await screen.findByRole("heading", { level: 2, name: "Subscription" })).toBeInTheDocument();
@@ -89,7 +89,7 @@ describe("the subscription page (TF-040, TF-041)", () => {
     expect(screen.getByText("The platform operator sets the plan. To change it, ask them.")).toBeInTheDocument();
   });
 
-  it("says when there are no licensed modules, and warns when the subscription cannot be confirmed", async () => {
+  it("says when there are no licensed modules, and warns when the subscription cannot be confirmed [ADR-0034]", async () => {
     open({ ...subscription, modules: [], stale: true });
 
     expect(await screen.findByText("No licensed modules yet")).toBeInTheDocument();

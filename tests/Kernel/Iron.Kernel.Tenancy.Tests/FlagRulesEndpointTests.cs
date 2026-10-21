@@ -74,6 +74,7 @@ public class FlagRulesEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-053 AC1", "ADR-0035")]
     public async Task RulesAreReplacedWithTheirRevisionAuditedWithBeforeAndAfterAndTheirPathsMarkedBehind()
     {
         var slug = await CreateTenantAsync();
@@ -116,6 +117,7 @@ public class FlagRulesEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task ARuleForAnUnknownFlagAValueOfAnotherTypeOrATargetThatDoesNotExistIsRefused()
     {
         using var unknown = await SendAsync(HttpMethod.Put, "/api/v1/flags/flags.not_declared/rules", new { rules = new[] { new { scope = "global", value = true } } });
@@ -130,6 +132,7 @@ public class FlagRulesEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-051 AC3", "TF-051 AC4", "ADR-0035")]
     public async Task OnlyAnOperatorFlipsAKillSwitchAlwaysWithAReasonAndTheFlipIsInTheHistory()
     {
         var reader = await GrantAsync(Ids.New(), SystemRoles.ReadOnly);
@@ -167,6 +170,7 @@ public class FlagRulesEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task AKillSwitchRuleThatSaysFalseIsRefusedWithItsOwnCodeSinceRemovingTheRuleTurnsTheSwitchOff()
     {
         var tenant = await CreateTenantAsync();
@@ -181,6 +185,7 @@ public class FlagRulesEndpointTests(TenancyFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-052 AC1", "ADR-0035")]
     public async Task TheReportNamesFlagsPastTheirRemovalDateWithTheirOwnerAndRulesLeftForFlagsThatAreGone()
     {
         await using (var scope = _app!.Services.CreateAsyncScope())

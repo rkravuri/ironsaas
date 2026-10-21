@@ -2,25 +2,25 @@ import { describe, expect, it } from "vitest";
 import { contrastRatio, parseColour } from "./contrast";
 
 describe("the contrast ratio", () => {
-  it("is 21 for black on white and 1 for a colour on itself", () => {
+  it("is 21 for black on white and 1 for a colour on itself [ADR-0025]", () => {
     expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 5);
     expect(contrastRatio("#336699", "#336699")).toBeCloseTo(1, 5);
   });
 
-  it("matches the WCAG example of grey on white", () => {
+  it("matches the WCAG example of grey on white [ADR-0025]", () => {
     expect(contrastRatio("#777777", "#ffffff")).toBeCloseTo(4.48, 2);
   });
 
-  it("is the same whichever colour is the text", () => {
+  it("is the same whichever colour is the text [ADR-0025]", () => {
     expect(contrastRatio("#1f2430", "#faf8f3")).toBeCloseTo(contrastRatio("#faf8f3", "#1f2430"), 10);
   });
 
-  it("sees a translucent colour over its background", () => {
+  it("sees a translucent colour over its background [ADR-0025]", () => {
     expect(contrastRatio("rgba(0, 0, 0, 0.5)", "#ffffff")).toBeLessThan(contrastRatio("#000000", "#ffffff"));
     expect(contrastRatio("rgba(0, 0, 0, 0)", "#ffffff")).toBeCloseTo(1, 5);
   });
 
-  it("reads the forms Mantine emits", () => {
+  it("reads the forms Mantine emits [ADR-0025]", () => {
     expect(parseColour("#abc")).toEqual({ r: 170, g: 187, b: 204, a: 1 });
     expect(parseColour("#aabbcc80").a).toBeCloseTo(0.5, 1);
     expect(parseColour("rgba(12, 34, 56, 1)")).toEqual({ r: 12, g: 34, b: 56, a: 1 });

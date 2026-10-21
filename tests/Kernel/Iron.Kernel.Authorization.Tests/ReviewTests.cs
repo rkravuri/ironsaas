@@ -18,6 +18,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     private const string Op = "POST /api/v1/access-reviews";
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task StartingACampaignTakesASnapshotOfTheAssignmentsInItsUnitsWithTheirPaths()
     {
         var (north, store, south) = await TreeAsync();
@@ -51,6 +52,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-038 AC1", "TF-038 AC4", "ADR-0037")]
     public async Task AReviewerSeesAndDecidesOnlyTheItemsOfTheirUnitsAndANonReviewerIsRefused()
     {
         var (north, store, _) = await TreeAsync();
@@ -88,6 +90,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-038 AC2", "ADR-0037")]
     public async Task ARevokeEndsTheAssignmentAtOnceAConfirmKeepsItAndEachItemIsDecidedOnce()
     {
         var (north, _, _) = await TreeAsync();
@@ -125,6 +128,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task ARevokeKeepsTheLastTenantAdministratorAndSaysThatIsWhy()
     {
         var tenant = await fixture.CreateTenantDatabaseAsync($"review_{Ids.New():N}");
@@ -157,6 +161,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task NobodyDecidesTheirOwnAccessAnotherReviewerOfTheUnitOrAboveDoes()
     {
         var (north, store, _) = await TreeAsync();
@@ -191,6 +196,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task AnItemNobodyElseMayReviewGoesToTheCampaignOwnerWhoDecidesItWithoutTheReviewPermission()
     {
         // A tenant of its own, so no reviewer from another test reaches its units.
@@ -242,6 +248,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task ConfirmAllConfirmsAPageLeavesDecidedItemsAloneAndAClosedCampaignTakesNoDecisions()
     {
         var (north, _, _) = await TreeAsync();
@@ -274,6 +281,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task AUnitSevenDaysOverdueIsEscalatedOnceToTheCampaignOwner()
     {
         var (north, store, _) = await TreeAsync();
@@ -320,6 +328,7 @@ public class ReviewTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0037")]
     public async Task TheKernelEscalationNamesTheOwnerAndADueDateThatHasPassedIsRefused()
     {
         var owner = Ids.New();

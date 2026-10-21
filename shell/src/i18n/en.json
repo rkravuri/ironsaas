@@ -27,7 +27,7 @@
     "loginId": "Login identifier",
     "password": "Password",
     "submit": "Sign in",
-    "failed": "The login identifier or the password is wrong, or the account is not active.",
+    "failed": "The login details are not correct.",
     "required": "Required",
     "ended": {
       "idle": "You were signed out because nothing happened for a while. Sign in again to carry on.",
@@ -672,7 +672,45 @@
       "audit": "Audit",
       "tenancy": "Tenancy",
       "fleet": "Fleet",
-      "files": "Files"
+      "files": "Files",
+      "entitlements": "Entitlements",
+      "settings": "Settings"
+    },
+    "resources": {
+      "audit": {
+        "events": "Audit events"
+      },
+      "authz": {
+        "access": "Access explanations",
+        "assignments": "Role assignments",
+        "delegations": "Delegations",
+        "reviews": "Access reviews",
+        "roles": "Roles",
+        "sod": "Conflict rules",
+        "units": "Organisation units"
+      },
+      "entitlements": {
+        "seats": "Seats",
+        "subscription": "Subscription"
+      },
+      "files": {
+        "files": "Files"
+      },
+      "fleet": {
+        "jobs": "Provisioning jobs"
+      },
+      "identity": {
+        "users": "Users and service accounts"
+      },
+      "settings": {
+        "values": "Setting values"
+      },
+      "tenancy": {
+        "entitlements": "Tenant entitlements",
+        "flags": "Feature flags",
+        "kill_switches": "Kill switches",
+        "tenants": "Tenants"
+      }
     },
     "import": {
       "open": "Import roles",

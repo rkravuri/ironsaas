@@ -23,6 +23,7 @@ public class UndeclaredKeyTests
         """;
 
     [Fact]
+    [Proves("TF-059 AC1", "ADR-0036")]
     public void ReadingAKeyNobodyDeclaredDoesNotCompile()
     {
         var errors = Compile("""
@@ -38,6 +39,7 @@ public class UndeclaredKeyTests
     }
 
     [Fact]
+    [Proves("TF-059 AC1", "ADR-0036")]
     public void AKeyWrittenAsTextDoesNotCompile()
     {
         var errors = Compile("""
@@ -51,6 +53,7 @@ public class UndeclaredKeyTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void AValueReadAsAnotherTypeDoesNotCompile()
     {
         var errors = Compile("""
@@ -64,6 +67,7 @@ public class UndeclaredKeyTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void ADeclaredKeyReadAsItsTypeCompiles()
     {
         var errors = Compile("""

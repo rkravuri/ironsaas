@@ -64,6 +64,7 @@ public class RecordSharingEndpointTests(AuthorizationFixture fixture) : IAsyncLi
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task TheOwnersManagerSharesARecordWithAnotherUnitWhichThenReadsItButMayNotChangeIt()
     {
         var (north, south, west) = await TreeAsync();
@@ -122,6 +123,7 @@ public class RecordSharingEndpointTests(AuthorizationFixture fixture) : IAsyncLi
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task SharedWithNoOtherUnitAnUnknownTypeAndNobodySignedInAreRefused()
     {
         var (north, _, _) = await TreeAsync();

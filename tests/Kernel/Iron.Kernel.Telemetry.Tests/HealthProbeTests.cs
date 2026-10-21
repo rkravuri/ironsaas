@@ -6,6 +6,7 @@ namespace Iron.Kernel.Telemetry.Tests;
 public class HealthProbeTests(TelemetryFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0011")]
     public void RecognisesTheHealthCommandOnly()
     {
         Assert.True(HealthProbe.IsCommand(["health"]));
@@ -15,12 +16,14 @@ public class HealthProbeTests(TelemetryFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task ExitsZeroWhenTheProbeAnswersOk()
     {
         Assert.Equal(0, await HealthProbe.RunAsync(["health", "/health/live"], fixture.Client));
     }
 
     [Fact]
+    [Proves("ADR-0011")]
     public async Task ExitsOneWhenTheProbeIsNotReadyOrUnreachable()
     {
         Assert.Equal(1, await HealthProbe.RunAsync(["health", "/health/ready"], fixture.Client));

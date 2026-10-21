@@ -31,7 +31,8 @@ public sealed class PermissionEvaluator(
 
         if (failure is not null)
         {
-            logger.LogError(failure, "Permission check unavailable for principal {PrincipalId} on {Operation} at {Scope}; access denied (fail closed).", request.PrincipalId, request.Operation, request.Scope);
+            // TF-031 AC4's alert: this error line, as the other alerts write theirs, and authz.denials with reason unavailable.
+            logger.LogError(failure, "ALERT: the permission check is unavailable for principal {PrincipalId} on {Operation} at {Scope}; access denied (fail closed). Check the unit's database.", request.PrincipalId, request.Operation, request.Scope);
         }
         else
         {

@@ -14,6 +14,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     private readonly RecordingAuditWriter _audit = new();
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AUnitIsCreatedUnderItsParentWithItsPathAndAnAuditEvent()
     {
         await using var provider = Services();
@@ -33,6 +34,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-034 AC7")]
     public async Task AKindTheProviderDoesNotKnowOrDoesNotAllowThereIsRefused()
     {
         await using var provider = Services();
@@ -49,6 +51,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-034 AC5")]
     public async Task ACodeIsUniqueInTheTenant()
     {
         await using var provider = Services();
@@ -66,6 +69,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AMoveCarriesTheSubtreeAndKeepsEveryPathInStepWithItsParents()
     {
         await using var provider = Services();
@@ -94,6 +98,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AMoveUnderItselfOrADescendantIsACycleAndChangesNothing()
     {
         await using var provider = Services();
@@ -117,6 +122,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-034 AC2")]
     public async Task AUnitWithActiveChildrenIsNotDeactivatedAndALeafIs()
     {
         await using var provider = Services();
@@ -143,6 +149,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-034 AC6")]
     public async Task ARenameIsAuditedWithTheOldAndTheNewName()
     {
         await using var provider = Services();
@@ -160,6 +167,7 @@ public class OrganisationUnitServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-034 AC8")]
     public async Task TheTreeIsReadDepthFirstFromTheRoot()
     {
         await using var provider = Services();

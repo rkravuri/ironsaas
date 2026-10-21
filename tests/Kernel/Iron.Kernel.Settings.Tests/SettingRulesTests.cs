@@ -19,6 +19,7 @@ public class SettingRulesTests
     private static readonly Guid Warehouse = Guid.Parse("01a15100-0000-7000-8000-0000000000b3");
 
     [Theory]
+    [Proves("TF-057 AC2", "ADR-0036")]
     [InlineData("10", "A whole number from 15 to 480.")]
     [InlineData("481", "A whole number from 15 to 480.")]
     [InlineData("30.5", "A whole number from 15 to 480.")]
@@ -28,12 +29,14 @@ public class SettingRulesTests
         Assert.Equal(words, IdentitySettings.SessionIdleMinutes.Problem(Json(json)));
 
     [Theory]
+    [Proves("ADR-0036")]
     [InlineData("15")]
     [InlineData("480")]
     [InlineData("30")]
     public void AValueInsideTheRuleIsAccepted(string json) => Assert.Null(IdentitySettings.SessionIdleMinutes.Problem(Json(json)));
 
     [Fact]
+    [Proves("TF-057 AC2", "ADR-0036")]
     public void AChoiceNamesItsChoicesATextItsLengthAndASecretReferenceAPath()
     {
         Assert.Equal("One of: light, dark, auto.", ShellSettings.ColourScheme.Problem(Json("\"purple\"")));
@@ -47,6 +50,7 @@ public class SettingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void ADeclarationSaysWhatItIsAndItsDefaultKeepsItsOwnRule()
     {
         Assert.Contains("declares no description", Assert.Throws<ArgumentException>(() => Setting.Boolean("probe.quiet", " ", false, SettingScopes.Tenant)).Message, StringComparison.Ordinal);
@@ -57,6 +61,7 @@ public class SettingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void ASettingAllowsOnlyTheScopesItDeclares()
     {
         Assert.True(IdentitySettings.SessionIdleMinutes.Allows(SettingLevel.Tenant));
@@ -68,6 +73,7 @@ public class SettingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void ATypedDefinitionReadsItsValueAsItsType()
     {
         Assert.Equal(60, IdentitySettings.SessionIdleMinutes.DefaultValue);
@@ -78,6 +84,7 @@ public class SettingRulesTests
     }
 
     [Fact]
+    [Proves("TF-057 AC1", "ADR-0036")]
     public void TheOrderIsThePersonThenTheUnitsFromTheNearestUpThenTheTenantThenTheDefault()
     {
         var path = new[] { Warehouse, Operations, Root };
@@ -104,6 +111,7 @@ public class SettingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void ALevelTheDeclarationDoesNotAllowAndAValueItsRuleNoLongerAcceptsAreSkipped()
     {
         List<StoredValue> values =
@@ -120,6 +128,7 @@ public class SettingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void TheCatalogueListsEverySettingWithItsModuleAndTheShellGetsTypedKeysForTheVisibleOnes()
     {
         var catalogue = LicensingCatalogue.From([new SettingsModule(), new ProbeModule()]);
@@ -136,6 +145,7 @@ public class SettingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0036")]
     public void TwoModulesCannotDeclareOneKey() =>
         Assert.Contains("is declared by the modules 'probe' and 'probe'", Assert.Throws<InvalidOperationException>(() => new SettingDeclarations([new ProbeModule(), new ProbeModule()])).Message, StringComparison.Ordinal);
 

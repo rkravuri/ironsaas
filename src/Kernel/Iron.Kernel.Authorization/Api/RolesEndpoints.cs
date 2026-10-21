@@ -100,18 +100,18 @@ internal static class RolesEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var roles = endpoints.MapApiGroup("roles");
-        roles.MapGet("/", ListAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().WithName("ListRoles").WithSummary("List the roles of this tenant.");
+        roles.MapGet("/", ListAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().Produces<ListResponse<RoleResponse>>(StatusCodes.Status200OK).WithName("ListRoles").WithSummary("List the roles of this tenant.");
         // Export and import are an enterprise feature (ADR-0034): a tenant without it gets entitlements.feature_disabled.
-        roles.MapGet("/export", ExportAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().RequireFeature(AuthorizationFeatures.RoleTransfer.Code).WithName("ExportRoles").WithSummary("The tenant roles as a document another tenant can import.");
+        roles.MapGet("/export", ExportAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().RequireFeature(AuthorizationFeatures.RoleTransfer.Code).Produces<RoleExport>(StatusCodes.Status200OK).WithName("ExportRoles").WithSummary("The tenant roles as a document another tenant can import.");
         // An import is a critical path: the kill switch kill.imports stops it (flags.killed, ADR-0035).
-        roles.MapPost("/import", ImportAsync).RequirePermission(AuthorizationPermissions.RolesManage).RequireFeature(AuthorizationFeatures.RoleTransfer.Code).RequireFlagOff(KillSwitches.Imports.Key).Validate<ImportRolesRequest>().WithName("ImportRoles").WithSummary("Compare a role export with this tenant's roles, and apply it unless it is a dry run.");
-        roles.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().WithName("GetRole").WithSummary("One role.");
-        roles.MapPost("/", CreateAsync).RequirePermission(AuthorizationPermissions.RolesManage).Validate<CreateRoleRequest>().WithName("CreateRole").WithSummary("Create a tenant role.");
-        roles.MapPut("/{id:guid}", UpdateAsync).RequirePermission(AuthorizationPermissions.RolesManage).Validate<UpdateRoleRequest>().WithName("UpdateRole").WithSummary("Change a tenant role's name, description, principal type and permissions.");
-        roles.MapDelete("/{id:guid}", DeleteAsync).RequirePermission(AuthorizationPermissions.RolesManage).WithName("DeleteRole").WithSummary("Delete a tenant role that is not assigned.");
+        roles.MapPost("/import", ImportAsync).RequirePermission(AuthorizationPermissions.RolesManage).RequireFeature(AuthorizationFeatures.RoleTransfer.Code).RequireFlagOff(KillSwitches.Imports.Key).Validate<ImportRolesRequest>().Produces<ImportDiff>(StatusCodes.Status200OK).WithName("ImportRoles").WithSummary("Compare a role export with this tenant's roles, and apply it unless it is a dry run.");
+        roles.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().Produces<RoleResponse>(StatusCodes.Status200OK).WithName("GetRole").WithSummary("One role.");
+        roles.MapPost("/", CreateAsync).RequirePermission(AuthorizationPermissions.RolesManage).Validate<CreateRoleRequest>().Produces<RoleResponse>(StatusCodes.Status201Created).WithName("CreateRole").WithSummary("Create a tenant role.");
+        roles.MapPut("/{id:guid}", UpdateAsync).RequirePermission(AuthorizationPermissions.RolesManage).Validate<UpdateRoleRequest>().Produces<RoleResponse>(StatusCodes.Status200OK).WithName("UpdateRole").WithSummary("Change a tenant role's name, description, principal type and permissions.");
+        roles.MapDelete("/{id:guid}", DeleteAsync).RequirePermission(AuthorizationPermissions.RolesManage).Produces(StatusCodes.Status204NoContent).WithName("DeleteRole").WithSummary("Delete a tenant role that is not assigned.");
 
         var permissions = endpoints.MapApiGroup("permissions");
-        permissions.MapGet("/", Catalogue).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().WithName("ListPermissions").WithSummary("Every permission of this host, for the role editor.");
+        permissions.MapGet("/", Catalogue).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().Produces<PermissionsResponse>(StatusCodes.Status200OK).WithName("ListPermissions").WithSummary("Every permission of this host, for the role editor.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, AuthorizationDbContext context, CancellationToken cancellationToken)

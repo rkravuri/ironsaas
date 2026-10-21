@@ -20,7 +20,7 @@ const fresh = (): SessionTimes =>
   timesFromMe({ id: "s1", idle_expires_at: iso(start + hour), expires_at: iso(start + 12 * hour) }, start, 0);
 
 describe("the session clock", () => {
-  it("reads /me's times onto this browser's clock, with the idle span it shows", () => {
+  it("reads /me's times onto this browser's clock, with the idle span it shows [ADR-0033]", () => {
     expect(fresh()).toEqual({ sessionId: "s1", idleEndsAt: start + hour, endsAt: start + 12 * hour, idleSpan: hour });
 
     // The server's clock runs five minutes ahead of this browser's: the ends move back by five minutes, the span stays.
@@ -34,7 +34,7 @@ describe("the session clock", () => {
     expect(skewed.idleSpan).toBe(hour);
   });
 
-  it("keeps the largest idle span it has seen: an answer between two touches shows less", () => {
+  it("keeps the largest idle span it has seen: an answer between two touches shows less [ADR-0033]", () => {
     const touched = fresh();
     // Thirty seconds later the server has not written its activity time again: the answer shows a span 30 seconds short.
     const between = timesFromMe(
@@ -47,7 +47,7 @@ describe("the session clock", () => {
     expect(between.idleEndsAt).toBe(start + hour);
   });
 
-  it("keeps the idle span it knew when the idle end is the absolute limit", () => {
+  it("keeps the idle span it knew when the idle end is the absolute limit [ADR-0033]", () => {
     const near = start + 11.5 * hour;
     const capped = timesFromMe(
       { id: "s1", idle_expires_at: iso(start + 12 * hour), expires_at: iso(start + 12 * hour) },
@@ -59,7 +59,7 @@ describe("the session clock", () => {
     expect(capped.idleSpan).toBe(hour);
   });
 
-  it("is quiet until two minutes before the idle end, warns, then ends for idleness", () => {
+  it("is quiet until two minutes before the idle end, warns, then ends for idleness [ADR-0033]", () => {
     const times = fresh();
     expect(phaseAt(times, start)).toEqual({ kind: "active" });
     expect(nextChangeIn(times, start)).toBe(hour - warningLead);
@@ -73,7 +73,7 @@ describe("the session clock", () => {
     expect(nextChangeIn(times, start + hour)).toBeUndefined();
   });
 
-  it("moves the idle end with activity, never back and never past the absolute limit", () => {
+  it("moves the idle end with activity, never back and never past the absolute limit [ADR-0033]", () => {
     const times = fresh();
     const later = afterActivity(times, start + 30 * minute);
     expect(later.idleEndsAt).toBe(start + 90 * minute);
@@ -83,7 +83,7 @@ describe("the session clock", () => {
     expect(afterActivity(times, start + 11.5 * hour).idleEndsAt).toBe(start + 12 * hour);
   });
 
-  it("gives the final warning near the absolute limit, which activity cannot move", () => {
+  it("gives the final warning near the absolute limit, which activity cannot move [ADR-0033]", () => {
     const busy = afterActivity(fresh(), start + 12 * hour - minute);
     const now = start + 12 * hour - warningLead;
     expect(phaseAt(busy, now)).toEqual({ kind: "final", endsAt: start + 12 * hour });
@@ -95,7 +95,7 @@ describe("the session clock", () => {
     expect(phaseAt(busy, start + 12 * hour)).toEqual({ kind: "ended", reason: "absolute" });
   });
 
-  it("gives only the final warning when the idle end is the absolute limit", () => {
+  it("gives only the final warning when the idle end is the absolute limit [ADR-0033]", () => {
     // Active until three minutes before the absolute limit: the idle end is that limit, so the one warning is the final one.
     const times = afterActivity(fresh(), start + 12 * hour - 3 * minute);
     expect(phaseAt(times, start + 12 * hour - 2.5 * minute)).toEqual({ kind: "active" });
@@ -103,7 +103,7 @@ describe("the session clock", () => {
     expect(phaseAt(times, start + 12 * hour - 2 * minute).kind).toBe("final");
   });
 
-  it("joins what another tab knows: the later idle end of the same session wins", () => {
+  it("joins what another tab knows: the later idle end of the same session wins [ADR-0033]", () => {
     const mine = fresh();
     const theirs = afterActivity(mine, start + 40 * minute);
     expect(merge(mine, theirs)?.idleEndsAt).toBe(start + 100 * minute);
@@ -112,7 +112,7 @@ describe("the session clock", () => {
     expect(merge(undefined, theirs)).toBeUndefined();
   });
 
-  it("closes a warning in this tab when another tab's activity arrives", () => {
+  it("closes a warning in this tab when another tab's activity arrives [ADR-0033]", () => {
     const mine = fresh();
     const now = start + 59 * minute;
     expect(phaseAt(mine, now).kind).toBe("warning");

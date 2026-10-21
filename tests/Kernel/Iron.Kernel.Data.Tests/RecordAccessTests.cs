@@ -16,6 +16,7 @@ public class RecordAccessDatabaseTests(PostgresFixture fixture)
     private static readonly Guid Closed = Ids.New();
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task AListKeepsTheUnitsRecordsAndTheRecordsGrantedOneByOneInOneQuery()
     {
         var prefix = $"access-{Ids.New():N}";
@@ -38,6 +39,7 @@ public class RecordAccessDatabaseTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task ARowThatBelongsToAUnitAnotherWayIsKeptByTheSameRule()
     {
         var prefix = $"selector-{Ids.New():N}";
@@ -58,6 +60,7 @@ public class RecordAccessDatabaseTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-223 AC2")]
     public async Task ARecordOwnedByAUnitThatIsNotActiveIsRefusedOnSave()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), services => services.AddSingleton<IOrganisationUnitCheck>(new OnlyClosedIsInactive()));

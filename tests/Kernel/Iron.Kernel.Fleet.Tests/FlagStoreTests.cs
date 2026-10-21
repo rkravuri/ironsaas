@@ -17,6 +17,7 @@ namespace Iron.Kernel.Fleet.Tests;
 public class FlagStoreTests(FleetFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0035")]
     public async Task AGlobalKillSwitchIsOneWriteAndATenantRuleGoesToItsOwnPathTheUnitsTokenReads()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -57,6 +58,7 @@ public class FlagStoreTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task WhatTheStoreRefusedIsWrittenByTheFleetsReconcile()
     {
         var ct = TestContext.Current.CancellationToken;

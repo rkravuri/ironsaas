@@ -27,8 +27,8 @@ internal static class AccessExplainEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var access = endpoints.MapApiGroup("access");
-        access.MapGet("/actions", Actions).RequirePermission(AuthorizationPermissions.AccessExplain).ScopedByRow().WithName("ListExplainableActions").WithSummary("The actions whose access can be explained, by module, with the route values each needs.");
-        access.MapGet("/explain", ExplainAsync).RequirePermission(AuthorizationPermissions.AccessExplain).ScopedByRow().WithName("ExplainAccess").WithSummary("Why a person can or cannot perform an action, at a unit or on a record: the checks in the order a request meets them.");
+        access.MapGet("/actions", Actions).RequirePermission(AuthorizationPermissions.AccessExplain).ScopedByRow().Produces<ExplainableActionsResponse>(StatusCodes.Status200OK).WithName("ListExplainableActions").WithSummary("The actions whose access can be explained, by module, with the route values each needs.");
+        access.MapGet("/explain", ExplainAsync).RequirePermission(AuthorizationPermissions.AccessExplain).ScopedByRow().Produces<AccessExplanationResult>(StatusCodes.Status200OK).WithName("ExplainAccess").WithSummary("Why a person can or cannot perform an action, at a unit or on a record: the checks in the order a request meets them.");
     }
 
     private static IResult Actions(HttpContext http) => TypedResults.Ok(new ExplainableActionsResponse(http.RequestServices.GetRequiredService<AccessExplainer>().Actions()));

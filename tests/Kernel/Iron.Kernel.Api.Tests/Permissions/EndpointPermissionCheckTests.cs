@@ -15,6 +15,7 @@ public class EndpointPermissionCheckTests
     private static readonly Permission Unknown = new("sample.things.write", "Write things", Risk.High);
 
     [Fact]
+    [Proves("TF-030 AC1")]
     public async Task StartUpFailsNamingAnEndpointWithoutAPermissionOrAnonymousMarker()
     {
         await using var app = Build(catalogue: [Read], evaluator: true);
@@ -28,6 +29,7 @@ public class EndpointPermissionCheckTests
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task StartUpFailsForAPermissionNoModuleDeclared()
     {
         await using var app = Build(catalogue: [Read], evaluator: true);
@@ -40,6 +42,7 @@ public class EndpointPermissionCheckTests
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task StartUpFailsWhenProtectedEndpointsExistWithoutAnEvaluator()
     {
         await using var app = Build(catalogue: [Read], evaluator: false);
@@ -51,6 +54,7 @@ public class EndpointPermissionCheckTests
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task StartUpPassesWhenEveryEndpointIsDeclared()
     {
         await using var app = Build(catalogue: [Read], evaluator: true);
@@ -62,6 +66,7 @@ public class EndpointPermissionCheckTests
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public void TheRulesRefuseAFeatureNoModuleDeclaredAndALicensedEndpointWithoutAGate()
     {
         var licensing = new Iron.Kernel.Api.Modules.LicensingCatalogue([], [new Iron.Kernel.Api.Modules.FeatureEntry("sample.export", "sample", null, "Export things")]);
@@ -84,6 +89,7 @@ public class EndpointPermissionCheckTests
         pattern);
 
     [Fact]
+    [Proves("ADR-0012")]
     public void TheRulesNameBothMarkersOnOneEndpointAsAMistake()
     {
         var endpoint = new Microsoft.AspNetCore.Routing.RouteEndpoint(

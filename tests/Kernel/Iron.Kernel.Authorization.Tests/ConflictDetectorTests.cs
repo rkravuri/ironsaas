@@ -25,6 +25,7 @@ public class ConflictDetectorTests
     };
 
     [Fact]
+    [Proves("ADR-0039")]
     public void GrantsAtUnrelatedUnitsAreNoConflictAndAParentWithChildrenMeetsTheUnitBelow()
     {
         var unrelated = ConflictDetector.Find([Rule], [Unit("p.suppliers.create", Sales), Unit("p.suppliers.approve", Finance)], onlyNew: false);
@@ -39,6 +40,7 @@ public class ConflictDetectorTests
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public void OneGrantWhoseRoleHoldsBothSidesIsAConflictAtItsUnit()
     {
         var both = ConflictDetector.Find([Rule], [Unit("p.suppliers.create", Sales, also: "p.suppliers.approve")], onlyNew: false);
@@ -47,6 +49,7 @@ public class ConflictDetectorTests
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public void ARecordGrantMeetsATenantGrantAndTheSameRecordOnly()
     {
         var record = Ids.New();
@@ -60,6 +63,7 @@ public class ConflictDetectorTests
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public void ARoleSideIsHeldOnlyWithEveryPermissionOfTheRole()
     {
         var roles = new ConflictRuleView(Ids.New(), "Roles", ConflictModes.Warn, string.Empty, new ConflictSide(ConflictSides.Role, Creator.ToString("D")), new ConflictSide(ConflictSides.Role, Approver.ToString("D")));
@@ -72,6 +76,7 @@ public class ConflictDetectorTests
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public void OnlyTheConflictsANewGrantTakesPartInAreItsDoing()
     {
         var old = new[] { Unit("p.suppliers.create", Sales), Unit("p.suppliers.approve", Sales) };

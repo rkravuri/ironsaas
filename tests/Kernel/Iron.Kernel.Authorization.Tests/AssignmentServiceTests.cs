@@ -20,6 +20,7 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     ];
 
     [Fact]
+    [Proves("TF-031 AC2", "TF-032 AC1", "ADR-0031")]
     public async Task AnAdministratorGrantsAndRemovesARoleAtAUnitWithTheAuditAndTheCacheClearedAtOnce()
     {
         var (_, sales, _) = await TreeAsync();
@@ -54,6 +55,7 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AGrantNeedsEveryPermissionOfTheRoleAtTheScope()
     {
         var (root, sales, marketing) = await TreeAsync();
@@ -83,6 +85,7 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AGrantAtAUnitAloneDoesNotReachItsChildren()
     {
         var (_, sales, _) = await TreeAsync();
@@ -99,6 +102,7 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task ARemovalNeedsTheManagePermissionAtTheAssignmentsScope()
     {
         var (_, sales, marketing) = await TreeAsync();
@@ -117,6 +121,7 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task ARoleIsGrantedOnlyToAPrincipalOfItsTypeAndOnlyToAPrincipalThatExists()
     {
         var reader = await RoleAsync([AuthorizationPermissions.UnitsRead.Name]);
@@ -136,6 +141,7 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task TheLastTenantAdministratorCannotBeRemoved()
     {
         var tenant = await fixture.CreateTenantDatabaseAsync($"guard_{Ids.New():N}");
@@ -168,6 +174,7 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AReaderSeesTheAssignmentsAtTheUnitsTheyReadAndNoOthers()
     {
         var (_, sales, marketing) = await TreeAsync();

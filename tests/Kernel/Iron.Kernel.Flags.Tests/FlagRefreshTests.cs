@@ -25,6 +25,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
     private static readonly string Imports = KillSwitches.Imports.Key;
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task TheUnitReadsBothPathsEveryThirtySecondsAndLearnsAChangeWithoutARestart()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
@@ -54,6 +55,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-050 AC3", "ADR-0035")]
     public async Task LastKnownRulesStandThroughAnOutageOfDaysAndARestartDuringIt()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
@@ -83,6 +85,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-050 AC3", "ADR-0035")]
     public async Task OnlyWhenNothingIsKnownDoTheCodeDefaultsApplyAndTheAlertIsRaised()
     {
         await ForgetAsync();
@@ -118,6 +121,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task ProductCodeEvaluatesThroughOpenFeatureWithItsTypesAndAnUndeclaredFlagGetsTheCallersDefault()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
@@ -138,6 +142,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
     }
 
     [Theory]
+    [Proves("TF-056 AC2", "ADR-0035")]
     [InlineData("Flags:Provider", "unleash", "Flags:Provider is 'unleash', and this build has no such flag provider. The providers are: iron.")]
     [InlineData("Flags:Source", "store", "Flags:Source is 'store', but no secret store is configured")]
     [InlineData("Flags:Source", "database", "Flags:Source is 'database'. Use 'store' or 'configuration'.")]
@@ -152,6 +157,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-056 AC2", "ADR-0035")]
     public void AProviderThatDoesNotStartStopsTheHostAtStartWithAClearMessage()
     {
         var refused = Assert.Throws<InvalidOperationException>(() => new OpenFeatureBinding(new UnstartableProvider(), NullLogger<OpenFeatureBinding>.Instance));
@@ -244,6 +250,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task TwoWritersAtOnceKeepOneLastKnownRowAndNeitherFails()
     {
         var ct = TestContext.Current.CancellationToken;

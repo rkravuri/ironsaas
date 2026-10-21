@@ -70,6 +70,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task TheExplanationAgreesWithTheRealCallOverAMatrixOfCases()
     {
         var world = await WorldAsync();
@@ -137,6 +138,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-039 AC1", "ADR-0039")]
     public async Task ADenialNamesTheFirstFailingCheckAndTheChecksAfterItAreNotReached()
     {
         var world = await WorldAsync();
@@ -157,6 +159,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-039 AC2")]
     public async Task AnAllowanceNamesTheGrantingRoleAndScope()
     {
         var world = await WorldAsync();
@@ -172,6 +175,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-039 AC1", "ADR-0039")]
     public async Task ARecordPolicyAndActingForSomeoneAreExplained()
     {
         var world = await WorldAsync();
@@ -203,6 +207,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-039 AC3", "ADR-0039")]
     public async Task AnUnknownPersonIsNotFoundAndAnInvitedOneIsRefusedAtSignIn()
     {
         var world = await WorldAsync();
@@ -225,6 +230,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task ExplainingNeedsThePermissionAtThePersonsHomeUnitAndIsAudited()
     {
         var world = await WorldAsync();
@@ -242,6 +248,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task TheActionsAreListedByModuleWithTheRouteValuesTheyNeed()
     {
         var world = await WorldAsync();

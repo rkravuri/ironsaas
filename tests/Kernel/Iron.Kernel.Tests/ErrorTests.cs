@@ -3,6 +3,7 @@ namespace Iron.Kernel.Tests;
 public class ErrorTests
 {
     [Theory]
+    [Proves("ADR-0007")]
     [InlineData("identity.login.invalid_credentials")]
     [InlineData("authz.permission_denied")]
     [InlineData("tenancy.hostname.taken")]
@@ -13,6 +14,7 @@ public class ErrorTests
     }
 
     [Theory]
+    [Proves("ADR-0007")]
     [InlineData("")]
     [InlineData("nodots")]
     [InlineData("Identity.Login")]
@@ -28,12 +30,14 @@ public class ErrorTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void TheConstructorRejectsABadCode()
     {
         Assert.Throws<ArgumentException>(() => Error.NotFound("BadCode", "message"));
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void FactoriesSetTheKind()
     {
         Assert.Equal(ErrorKind.Validation, Error.Validation("tests.a.b", "m").Kind);
@@ -45,6 +49,7 @@ public class ErrorTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void FieldsAreEmptyUnlessGiven()
     {
         var plain = Error.Conflict("tests.a.b", "m");

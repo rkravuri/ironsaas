@@ -64,6 +64,7 @@ public class FlagFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task TheFlagsAreAskedAfterTheEntitlementsAndBeforeThePermission()
     {
         using var response = await SendAsync("/api/v1/gadgets/import", Alice);
@@ -76,6 +77,7 @@ public class FlagFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public async Task AKillSwitchAnswers503WithItsCodeTheReasonAndARetryTimeAndThePermissionIsNeverAsked()
     {
         _gate.Answer = FlagDecision.Refuse(FlagErrors.Killed, "Imports are stopped by the platform operator for now: a fix is coming. Try again later.", "kill.imports", "a fix is coming.");
@@ -92,6 +94,7 @@ public class FlagFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-054 AC2", "ADR-0035")]
     public async Task AFlagThatIsOffAnswers404WithItsCodeAndNobodySignedInHears401First()
     {
         _gate.Answer = FlagDecision.Refuse(FlagErrors.Disabled, "This is not available to you yet.", "flags.example_release", null);
@@ -107,6 +110,7 @@ public class FlagFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void TheStartUpCheckRefusesAnUndeclaredFlagAndAFlaggedEndpointWithoutAGate()
     {
         var catalogue = LicensingCatalogue.From([new GadgetsModule()]);

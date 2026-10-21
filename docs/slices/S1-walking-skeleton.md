@@ -34,7 +34,7 @@ The slice is done when this demo runs on a fresh WSL laptop:
 | TF-080 | Database conventions | Full conventions and the pipeline schema check | done |
 | TF-100 | REST conventions | Envelope, problem details with error code and correlation id, snake_case JSON, OpenAPI from code | done |
 | TF-101 | Paging, filter, sort | Offset paging capped at 200, multi-field sort, filter grammar, sparse fields, whitelist per resource | done |
-| TF-130 | Tracing | One trace per request with API and database spans; correlation id returned and shown on errors; loss counter | S4 (job links) |
+| TF-130 | Tracing | One trace per request with API and database spans; correlation id returned and shown on errors; requests complete while the collector is down. The counter of lost spans this row once listed was not built (corrected at S3 T1's review, 2026-10-21) | S4 (job links), S3 T10 (the lost-span counter) |
 | TF-160 | File storage | Storage interface (Azure Blob, against Azurite locally), one container per tenant with its own credentials, readiness probe | S4 (upload, versions, links) |
 | TF-170 | Application shell | Login and invitation pages, navigation from module manifests filtered by the session's permissions, router built once from every declared route with the guard at render time, error pages with the correlation id, session end on 401; English catalogue through react-i18next | S2 (entitlement and flag filters, locales) |
 | TF-171 | Design system | Grid wrapper over AG Grid Community with server paging, sorting, filtering, column chooser, lint rule | S2 to S5 (forms, saved views, panels) |

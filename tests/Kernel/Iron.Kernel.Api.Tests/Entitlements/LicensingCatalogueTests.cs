@@ -10,6 +10,7 @@ namespace Iron.Kernel.Api.Tests.Entitlements;
 public class LicensingCatalogueTests
 {
     [Fact]
+    [Proves("ADR-0034")]
     public void TheFileFormRoundTripsAndListsCodesInOrder()
     {
         var catalogue = LicensingCatalogue.From([new Sample("zeta", new("zeta", SubscriptionType.Platform), ["zeta.b", "zeta.a"]), new Sample("alpha", null, ["alpha.only"])]);
@@ -25,6 +26,7 @@ public class LicensingCatalogueTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void AFeatureDeclaredTwiceAndAnUnknownFormatAreRefused()
     {
         Assert.Throws<InvalidOperationException>(() => LicensingCatalogue.From([new Sample("one", null, ["shared.thing"]), new Sample("two", null, ["shared.thing"])]));
@@ -33,6 +35,7 @@ public class LicensingCatalogueTests
     }
 
     [Fact]
+    [Proves("ADR-0034", "ADR-0043")]
     public void TheFileGroupsBySuiteWithTheFoundationFirst()
     {
         var catalogue = LicensingCatalogue.From(
@@ -66,6 +69,7 @@ public class LicensingCatalogueTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void AnUnlicensedSuiteModuleAWrongSuiteAndAGroupNamedTwiceAreRefused()
     {
         Assert.Contains("declares no licence", Assert.Throws<InvalidOperationException>(() => LicensingCatalogue.From([new Sample("orders", null, [], "procurement")])).Message, StringComparison.Ordinal);
@@ -75,6 +79,7 @@ public class LicensingCatalogueTests
     }
 
     [Theory]
+    [Proves("ADR-0034")]
     [InlineData("authorization.role_transfer", true)]
     [InlineData("Authorization.RoleTransfer", false)]
     [InlineData("role_transfer", false)]
@@ -85,6 +90,7 @@ public class LicensingCatalogueTests
     }
 
     [Fact]
+    [Proves("ADR-0035")]
     public void TheCatalogueCarriesTheKillSwitchesAndEachModulesFlagsWithTheirDeclarations()
     {
         var catalogue = LicensingCatalogue.From([new Flagged("tone", Flag.String("tone.style", FlagKind.Experiment, "Tries a warmer tone", "Writers", new DateOnly(2027, 1, 1), "plain"))]);
@@ -98,6 +104,7 @@ public class LicensingCatalogueTests
     }
 
     [Fact]
+    [Proves("TF-052 AC2", "ADR-0035")]
     public void AFlagThatLeftTheCodeWhileActiveIsNamedAndARetiredOneIsKept()
     {
         var tone = Flag.String("tone.style", FlagKind.Experiment, "Tries a warmer tone", "Writers", new DateOnly(2027, 1, 1), "plain");

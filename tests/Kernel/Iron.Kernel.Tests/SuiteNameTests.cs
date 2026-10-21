@@ -7,6 +7,7 @@ namespace Iron.Kernel.Tests;
 public class SuiteNameTests
 {
     [Theory]
+    [Proves("ADR-0043")]
     [InlineData("Procurement", true)]
     [InlineData("School", true)]
     [InlineData("HumanResources", true)]
@@ -25,6 +26,7 @@ public class SuiteNameTests
     }
 
     [Theory]
+    [Proves("ADR-0043")]
     [InlineData("procurement", true)]
     [InlineData("school", true)]
     [InlineData("Procurement", false)]
@@ -37,6 +39,7 @@ public class SuiteNameTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void TheShortNameOfProcurementIsProcurementInLowercase()
     {
         Assert.Equal("procurement", SuiteName.ShortName("Procurement"));
@@ -44,6 +47,7 @@ public class SuiteNameTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void AnAssemblyBelongsToTheSuiteItsBuildWroteAndOtherwiseToTheFoundation()
     {
         // The build writes [assembly: AssemblyMetadata("IronSuite", "Procurement")] for a suite project (Directory.Build.props).

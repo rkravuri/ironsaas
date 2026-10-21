@@ -57,7 +57,7 @@ async function stubWorkingUnits(target: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the choice of the unit you work for in the ${scheme} scheme: the unit in the header, the menu on the tree, the Users page follows, and no WCAG 2.1 AA violation`, async ({
+  test(`the choice of the unit you work for in the ${scheme} scheme: the unit in the header, the menu on the tree, the Users page follows, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0038]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -98,7 +98,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`the merge preview in the ${scheme} scheme: the unit to merge into, what moves by kind in words, what stays behind, and no WCAG 2.1 AA violation`, async ({
+  test(`the merge preview in the ${scheme} scheme: the unit to merge into, what moves by kind in words, what stays behind, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -204,7 +204,7 @@ for (const scheme of schemes) {
     await expect(dialog).toBeHidden();
   });
 
-  test(`the sharing control in the ${scheme} scheme: who sees the record in words, the modes and the units on the tree, and no WCAG 2.1 AA violation`, async ({
+  test(`the sharing control in the ${scheme} scheme: who sees the record in words, the modes and the units on the tree, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0038]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });

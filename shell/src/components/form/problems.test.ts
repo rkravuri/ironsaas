@@ -22,7 +22,7 @@ const body = {
 };
 
 describe("fieldPath", () => {
-  it("turns the API's snake_case path into the form's camelCase path, indexes included", () => {
+  it("turns the API's snake_case path into the form's camelCase path, indexes included [ADR-0027]", () => {
     expect(fieldPath("display_name")).toBe("displayName");
     expect(fieldPath("items[0].unit_price")).toBe("items.0.unitPrice");
     expect(fieldPath("address.postal_code")).toBe("address.postalCode");
@@ -31,7 +31,7 @@ describe("fieldPath", () => {
 });
 
 describe("applyProblem", () => {
-  it("reads the problem as the API writes it and puts each field's messages on its field", () => {
+  it("reads the problem as the API writes it and puts each field's messages on its field [TF-171 AC3, ADR-0027]", () => {
     const problem = ProblemSchema.parse(body);
     const error = new ApiError(400, problem, undefined);
     const { result } = renderHook(() => useForm({ initialValues: { displayName: "", items: [{ unitPrice: 0 }] } }));
@@ -48,7 +48,7 @@ describe("applyProblem", () => {
     expect(summary?.correlationId).toBe("0f1e2d3c4b5a69788796a5b4c3d2e1f0");
   });
 
-  it("leaves the top empty when every problem found its field, and shows the problem itself when none did", () => {
+  it("leaves the top empty when every problem found its field, and shows the problem itself when none did [ADR-0027]", () => {
     const fielded = new ApiError(400, ProblemSchema.parse({ ...body, errors: body.errors.slice(0, 1) }), undefined);
     const { result } = renderHook(() => useForm({ initialValues: { displayName: "" } }));
     let summary: ReturnType<typeof applyProblem> | undefined;

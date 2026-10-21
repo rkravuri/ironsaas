@@ -27,7 +27,7 @@ interface Unit {
 test.describe("working across units", () => {
   test.skip(two.loginId === "", "make e2e sets up the data first");
 
-  test("a person with roles in two units chooses the unit they work for, and the Users page follows", async ({
+  test("a person with roles in two units chooses the unit they work for, and the Users page follows [TF-034 AC3, TF-222 AC3, ADR-0038]", async ({
     page,
   }) => {
     await signIn(page, two);
@@ -71,7 +71,7 @@ test.describe("working across units", () => {
     await expect(page.getByRole("button", { name: control(secondUnit) })).toBeVisible();
   });
 
-  test("an administrator previews a merge of two units, merges them, and the person homed at one is homed at the other", async ({
+  test("an administrator previews a merge of two units, merges them, and the person homed at one is homed at the other [ADR-0038]", async ({
     page,
   }) => {
     await signIn(page);

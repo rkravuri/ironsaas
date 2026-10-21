@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Iron.Kernel;
 
 namespace Iron.Architecture.Tests;
@@ -11,9 +10,8 @@ namespace Iron.Architecture.Tests;
 /// </summary>
 public class LayerBuildCheckTests
 {
-    private static readonly TimeSpan Limit = TimeSpan.FromMinutes(2);
-
     [Theory]
+    [Proves("ADR-0029", "ADR-0043")]
     [InlineData(null, null, "IRON0001")]
     [InlineData("Kernal", null, "IRON0002")]
     [InlineData("kernel", null, "IRON0002")]
@@ -32,7 +30,7 @@ public class LayerBuildCheckTests
         {
             var project = await WriteFixtureAsync(folder, layer, suite);
 
-            var (exitCode, output) = await RunDotnetAsync(["msbuild", project, "-t:IronCheckLayer", "-nologo", "-nodeReuse:false", "-v:q"]);
+            var (exitCode, output) = await DotnetCli.RunAsync(["msbuild", project, "-t:IronCheckLayer", "-nologo", "-nodeReuse:false", "-v:q"]);
 
             if (expectedError is null)
             {
@@ -51,6 +49,7 @@ public class LayerBuildCheckTests
     }
 
     [Theory]
+    [Proves("ADR-0043")]
     [InlineData("Suite", "Procurement", true)]
     [InlineData("Business", null, false)]
     public async Task ASuiteProjectCarriesItsSuiteIntoItsAssembly(string layer, string? suite, bool carried)
@@ -60,7 +59,7 @@ public class LayerBuildCheckTests
         {
             var project = await WriteFixtureAsync(folder, layer, suite);
 
-            var (exitCode, output) = await RunDotnetAsync(["msbuild", project, "-getItem:AssemblyMetadata", "-nologo", "-nodeReuse:false"]);
+            var (exitCode, output) = await DotnetCli.RunAsync(["msbuild", project, "-getItem:AssemblyMetadata", "-nologo", "-nodeReuse:false"]);
 
             Assert.True(exitCode == 0, output);
             // IModule.Suite reads this item's attribute (SuiteName.Of), so the suite is written once, in the project file.
@@ -90,42 +89,5 @@ public class LayerBuildCheckTests
         var project = Path.Combine(folder, "Fixture.csproj");
         await File.WriteAllTextAsync(project, $"<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>{layerElement}{suiteElement}</PropertyGroup></Project>", TestContext.Current.CancellationToken);
         return project;
-    }
-
-    private static async Task<(int ExitCode, string Output)> RunDotnetAsync(IEnumerable<string> arguments)
-    {
-        var start = new ProcessStartInfo(DotnetPath())
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (var argument in arguments)
-        {
-            start.ArgumentList.Add(argument);
-        }
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        timeout.CancelAfter(Limit);
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("dotnet did not start.");
-        var standardOutput = process.StandardOutput.ReadToEndAsync(timeout.Token);
-        var standardError = process.StandardError.ReadToEndAsync(timeout.Token);
-        await process.WaitForExitAsync(timeout.Token);
-        return (process.ExitCode, await standardOutput + await standardError);
-    }
-
-    /// <summary>The dotnet that runs this test: the CLI's own path when it says so, else the root above the shared runtime.</summary>
-    private static string DotnetPath()
-    {
-        var host = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
-        if (!string.IsNullOrEmpty(host) && File.Exists(host))
-        {
-            return host;
-        }
-
-        // The runtime lives in <root>/shared/Microsoft.NETCore.App/<version>/; the dotnet executable sits in <root>.
-        var runtime = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-        var root = Path.GetFullPath(Path.Combine(runtime, "..", "..", ".."));
-        return Path.Combine(root, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
     }
 }

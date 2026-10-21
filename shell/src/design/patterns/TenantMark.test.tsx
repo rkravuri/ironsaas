@@ -17,12 +17,12 @@ afterEach(() => {
 });
 
 describe("the tenant mark", () => {
-  it("differs between acme.localhost and bravo.localhost, and ignores case", () => {
+  it("differs between acme.localhost and bravo.localhost, and ignores case [ADR-0026]", () => {
     expect(pathsOf("acme.localhost")).not.toEqual(pathsOf("bravo.localhost"));
     expect(pathsOf("acme.localhost")).toEqual(pathsOf("ACME.localhost"));
   });
 
-  it("is hidden from assistive technology and carries its seed", () => {
+  it("is hidden from assistive technology and carries its seed [ADR-0026]", () => {
     const { container } = render(<TenantMark hostname="acme.localhost" size={24} />);
     const svg = container.querySelector("svg");
     expect(svg).toHaveAttribute("aria-hidden", "true");
@@ -30,7 +30,7 @@ describe("the tenant mark", () => {
     expect(svg).toHaveAttribute("width", "24");
   });
 
-  it("stays within the brief's parameters for any hostname", () => {
+  it("stays within the brief's parameters for any hostname [ADR-0026]", () => {
     for (const hostname of ["a", "smoke.localhost", "a-tenant-with-a-long-name.example.com"]) {
       const parameters = tenantMarkParameters(hostname);
       expect([6, 8, 12]).toContain(parameters.symmetry);
@@ -43,14 +43,14 @@ describe("the tenant mark", () => {
 });
 
 describe("the mandala's draw-in", () => {
-  it("animates when asked and the viewer allows motion", () => {
+  it("animates when asked and the viewer allows motion [ADR-0026]", () => {
     const { container } = render(
       <Mandala symmetry={6} rings={3} stroke={2} density={0.5} seed="draw" size={40} animate />,
     );
     expect(container.querySelector("path.iron-draw-in")).not.toBeNull();
   });
 
-  it("stands still when the viewer asked for less motion", () => {
+  it("stands still when the viewer asked for less motion [ADR-0026]", () => {
     vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
       matches: query === reducedMotionQuery,
       media: query,

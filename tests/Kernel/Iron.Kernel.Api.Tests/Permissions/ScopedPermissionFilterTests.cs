@@ -56,24 +56,28 @@ public class ScopedPermissionFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task WithoutAMarkerTheCheckIsTenantWide()
     {
         Assert.Equal(AccessScope.Tenant, await ScopeOf("/api/v1/things"));
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task ScopedByRowChecksThePermissionAnywhere()
     {
         Assert.Equal(AccessScope.Anywhere, await ScopeOf("/api/v1/rows"));
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task ScopedToUnitChecksAtTheUnitOfTheRoute()
     {
         Assert.Equal(AccessScope.Unit(UnitA), await ScopeOf($"/api/v1/units/{UnitA}"));
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task ScopedToRecordChecksAtTheRecordAndTheUnitThatOwnsIt()
     {
         var scope = await ScopeOf($"/api/v1/things/{Thing}");
@@ -83,12 +87,14 @@ public class ScopedPermissionFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task ARecordTheLookupDoesNotFindIsCheckedTenantWide()
     {
         Assert.Equal(AccessScope.Tenant, await ScopeOf($"/api/v1/things/{Ids.New()}"));
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task ARouteValueThatIsNotAnIdIsCheckedTenantWide()
     {
         Assert.Equal(AccessScope.Tenant, await ScopeOf("/api/v1/units/not-an-id"));

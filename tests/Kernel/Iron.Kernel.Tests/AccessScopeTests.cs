@@ -6,6 +6,7 @@ public class AccessScopeTests
     private static readonly Guid Record = Guid.Parse("01a15000-0000-7000-8000-000000000002");
 
     [Fact]
+    [Proves("ADR-0030")]
     public void TheTenantScopeHasNoUnitAndNoRecord()
     {
         Assert.Equal(AccessScopeKind.Tenant, AccessScope.Tenant.Kind);
@@ -15,6 +16,7 @@ public class AccessScopeTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void ARecordScopeCarriesTheUnitThatOwnsIt()
     {
         var scope = AccessScope.Record("purchase_order", Record, Unit);
@@ -27,6 +29,7 @@ public class AccessScopeTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void ScopesAreValues()
     {
         Assert.Equal(AccessScope.Unit(Unit), AccessScope.Unit(Unit));
@@ -35,6 +38,7 @@ public class AccessScopeTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void AnywhereAndARecordWithoutItsUnitAreScopesToo()
     {
         Assert.Equal("anywhere", AccessScope.Anywhere.ToString());
@@ -45,6 +49,7 @@ public class AccessScopeTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void EmptyIdsAreRefused()
     {
         Assert.Throws<ArgumentException>(() => AccessScope.Unit(Guid.Empty));
@@ -62,6 +67,7 @@ public class RecordAccessTests
     private static readonly Guid Other = Guid.Parse("01a15000-0000-7000-8000-0000000000c2");
 
     [Fact]
+    [Proves("ADR-0030")]
     public void EverythingAllowsAnyRecord()
     {
         Assert.True(RecordAccess.Everything.Allows(UnitB, Other));
@@ -69,6 +75,7 @@ public class RecordAccessTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void WithinAllowsTheUnitsRecordsAndTheRecordsGrantedOneByOne()
     {
         var access = RecordAccess.Within([UnitA, UnitA], [Granted]);
@@ -80,6 +87,7 @@ public class RecordAccessTests
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public void NothingAllowsNothing()
     {
         Assert.True(RecordAccess.Nothing.IsNothing);

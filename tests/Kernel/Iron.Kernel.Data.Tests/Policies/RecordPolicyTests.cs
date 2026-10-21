@@ -21,6 +21,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
     private readonly Guid _creator = Ids.New();
 
     [Fact]
+    [Proves("TF-035 AC2")]
     public async Task AListsPageAndTotalCountOnlyTheRecordsThePolicyLetsTheReaderSee()
     {
         await SeedAsync(_creator, [.. Enumerable.Range(0, 7).Select(i => new Proposal(_unitA, $"a-{i}")), .. Enumerable.Range(0, 5).Select(i => new Proposal(_unitB, $"b-{i}"))]);
@@ -41,6 +42,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-035 AC1", "ADR-0032")]
     public async Task AnotherUnitsRecordByIdIsNotFoundTheSameAsAnIdThatDoesNotExist()
     {
         var other = new Proposal(_unitB, "theirs");
@@ -61,6 +63,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task AVisibleRecordTheReaderMayNotUpdateIsForbidden()
     {
         var draft = new Proposal(_unitA, "draft");
@@ -82,6 +85,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task TheCreatorMayUpdateADraftAndSaveItButNotASubmittedRecord()
     {
         var draft = new Proposal(_unitA, "draft");
@@ -111,6 +115,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-035 AC1", "ADR-0032")]
     public async Task APolicyNarrowsTheScopeRuleAndNeverWidensIt()
     {
         var anvil = new Widget(_unitA, "anvil");
@@ -131,6 +136,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-035 AC1", "ADR-0032")]
     public async Task ARecordGrantedByItselfIsReadableOutsideTheReadersUnits()
     {
         var granted = new Widget(_unitB, "granted");
@@ -151,6 +157,7 @@ public class RecordPolicyTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public async Task ARecordTypeWithoutAPolicyCannotBeListedOrOpened()
     {
         await using var provider = Services(_reader, new TestRecordAccess(), _ => { });

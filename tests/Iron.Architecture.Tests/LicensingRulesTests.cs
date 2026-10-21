@@ -7,6 +7,7 @@ namespace Iron.Architecture.Tests;
 public class LicensingRulesTests
 {
     [Fact]
+    [Proves("ADR-0034", "ADR-0043")]
     public void EveryModuleDeclaresTheLicenceItsLayerAsksFor()
     {
         var violations = new List<string>();
@@ -32,6 +33,7 @@ public class LicensingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0034", "ADR-0043")]
     public void TheRuleRefusesALicensedKernelModuleAndAnUnlicensedSuiteModule()
     {
         Assert.Contains("never in a plan", Assert.Single(LicensingRules.Check("Iron.Kernel.Sample", ProjectLayer.Kernel, "sample", new ModuleLicence("sample", SubscriptionType.Platform))), StringComparison.Ordinal);
@@ -41,6 +43,7 @@ public class LicensingRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void AModuleReportsTheSuiteItsProjectDeclares()
     {
         Assert.Empty(LicensingRules.CheckSuite("Iron.Suites.Procurement.Orders", "Procurement", "orders", "procurement"));

@@ -27,7 +27,7 @@ function placementProblems(path: string, manifest: Pick<ModuleManifest, "name" |
 }
 
 describe("where a module's manifest sits (ADR-0043)", () => {
-  it("holds a suite module's declared suite to its folder, and a Foundation module to none", () => {
+  it("holds a suite module's declared suite to its folder, and a Foundation module to none [ADR-0043]", () => {
     expect(
       placementProblems("./suites/procurement/orders/manifest.tsx", { name: "orders", suite: "procurement" }),
     ).toEqual([]);
@@ -45,7 +45,7 @@ describe("where a module's manifest sits (ADR-0043)", () => {
     ]);
   });
 
-  it("finds every manifest in its place, and every one of them in the module list", () => {
+  it("finds every manifest in its place, and every one of them in the module list [ADR-0043]", () => {
     const found = Object.entries(manifestFiles).flatMap(([path, exports]) =>
       Object.values(exports)
         .filter(isManifest)

@@ -15,6 +15,7 @@ namespace Iron.Kernel.Tenancy.Tests;
 public class ModelTests
 {
     [Fact]
+    [Proves("ADR-0012")]
     public void TheTenancyModelHasNoChangesWithoutAMigration()
     {
         using var context = new TenancyDbContext(DesignTime.OptionsFor<TenancyDbContext>());
@@ -23,6 +24,7 @@ public class ModelTests
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public void TheFleetModelHasNoChangesWithoutAMigration()
     {
         using var context = new FleetDbContext(DesignTime.OptionsFor<FleetDbContext>());
@@ -31,6 +33,7 @@ public class ModelTests
     }
 
     [Theory]
+    [Proves("ADR-0017")]
     [InlineData("acme.localhost", true)]
     [InlineData("Acme.Localhost:443", true)]
     [InlineData("acme", true)]
@@ -49,6 +52,7 @@ public class ModelTests
 public class TenantRegistryTests(TenancyFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0008")]
     public async Task TheMigratedSchemasPassTheSchemaCheck()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -57,6 +61,7 @@ public class TenantRegistryTests(TenancyFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-001 AC2", "ADR-0017")]
     public async Task CreatesATenantWithADefaultHostnameAndRefusesDuplicates()
     {
         var operatorId = Ids.New();
@@ -90,6 +95,7 @@ public class TenantRegistryTests(TenancyFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public async Task RefusesABadSlugAndABadHostname()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId));
@@ -104,6 +110,7 @@ public class TenantRegistryTests(TenancyFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-002 AC3", "ADR-0017")]
     public async Task AProvisioningRequestCreatesOneOpenJobAndAnActiveTenantIsRefused()
     {
         var time = new FakeTimeProvider();

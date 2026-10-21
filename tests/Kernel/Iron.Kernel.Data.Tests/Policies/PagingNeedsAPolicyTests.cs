@@ -24,6 +24,7 @@ public class PagingNeedsAPolicyTests
         """;
 
     [Fact]
+    [Proves("TF-035 AC3", "ADR-0032")]
     public void PagingARawQueryOfABusinessRecordDoesNotCompile()
     {
         var errors = Compile("""
@@ -39,6 +40,7 @@ public class PagingNeedsAPolicyTests
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public void APolicyQueryCannotBeMadeOutsideThePolicies()
     {
         var errors = Compile("""
@@ -52,6 +54,7 @@ public class PagingNeedsAPolicyTests
     }
 
     [Fact]
+    [Proves("ADR-0032")]
     public void PagingThroughThePolicyAndPagingTenantWideDataCompile()
     {
         var errors = Compile("""

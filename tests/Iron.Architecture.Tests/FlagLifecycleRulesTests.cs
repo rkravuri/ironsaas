@@ -15,6 +15,7 @@ public class FlagLifecycleRulesTests
     private static readonly string CatalogueFile = Path.Combine(Repository.Root, "src", "Kernel", "Iron.Kernel.Tenancy", "Services", "licensing-catalogue.json");
 
     [Fact]
+    [Proves("ADR-0035")]
     public void NoFlagLeftTheCodeWhileTheCatalogueMarksItActive()
     {
         var file = LicensingCatalogue.Parse(File.ReadAllText(CatalogueFile));
@@ -25,6 +26,7 @@ public class FlagLifecycleRulesTests
     }
 
     [Fact]
+    [Proves("TF-052 AC2", "ADR-0035")]
     public void AFixtureFlagRemovedFromTheCodeIsNamedUntilTheCatalogueRetiresIt()
     {
         var flag = Flag.Boolean("fixture.bulk_edit", FlagKind.Release, "Lets a person change many things at once", "Fixture team", new DateOnly(2027, 1, 1), false);
@@ -39,6 +41,7 @@ public class FlagLifecycleRulesTests
     }
 
     [Fact]
+    [Proves("TF-052 AC3", "ADR-0035")]
     public void AFlagWithoutAnOwnerDoesNotBuild()
     {
         var refused = Assert.Throws<ArgumentException>(() => Flag.Boolean("fixture.ownerless", FlagKind.Operational, "Nobody's flag", string.Empty, null, false));

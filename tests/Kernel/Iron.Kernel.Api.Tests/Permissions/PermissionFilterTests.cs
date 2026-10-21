@@ -56,6 +56,7 @@ public class PermissionFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task NobodySignedInGets401AndTheHandlerNeverRuns()
     {
         using var response = await Send(principal: null);
@@ -67,6 +68,7 @@ public class PermissionFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public async Task ThePermittedPrincipalReachesTheHandler()
     {
         using var response = await Send(Alice);
@@ -80,6 +82,7 @@ public class PermissionFilterTests : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-100 AC1", "ADR-0012")]
     public async Task AnotherPrincipalGets403WithTheStableCodeAndThePermissionNamed()
     {
         using var response = await Send(Bob);

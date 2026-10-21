@@ -24,6 +24,9 @@ namespace Iron.Kernel.Tenancy.Api;
 /// <summary>A flag of the catalogue as the operator sees it: its declaration, its status, and how many rules it has.</summary>
 public sealed record FlagSummary(string Key, string Module, FlagType Type, FlagKind Kind, string Purpose, string Owner, DateOnly? RemoveBy, JsonElement Default, FlagStatus Status, int Rules);
 
+/// <summary>The catalogue's flags under <c>data</c>: the whole catalogue in one answer, so no list envelope.</summary>
+public sealed record FlagListResponse(IReadOnlyList<FlagSummary> Data);
+
 public sealed record ReplaceFlagRulesRequest(int? Revision, string? Reason, IReadOnlyList<FlagRuleInput> Rules);
 
 public sealed class ReplaceFlagRulesRequestValidator : AbstractValidator<ReplaceFlagRulesRequest>
@@ -48,6 +51,9 @@ public sealed class KillSwitchRequestValidator : AbstractValidator<KillSwitchReq
 /// <summary>A kill switch as the operator sees it: on for the whole platform or not, and the tenants it is on for.</summary>
 public sealed record KillSwitchState(string Path, string Flag, string Purpose, bool On, DateTimeOffset? Since, string? Reason, IReadOnlyList<string> Tenants);
 
+/// <summary>Every active kill switch under <c>data</c>: all of them in one answer, so no list envelope.</summary>
+public sealed record KillSwitchListResponse(IReadOnlyList<KillSwitchState> Data);
+
 public sealed record FlagChangeResponse(Guid Id, int Revision, string Kind, JsonElement Before, JsonElement After, string? Reason, Guid OperatorId, string? OperatorName, DateTimeOffset ChangedAt);
 
 /// <summary>
@@ -68,15 +74,15 @@ internal static class FlagEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var flags = endpoints.MapApiGroup("flags");
-        flags.MapGet("/", ListAsync).RequirePermission(TenancyPermissions.FlagsRead).WithName("ListFlags").WithSummary("The flags of the catalogue with their declarations, status and rule counts.");
-        flags.MapGet("/report", ReportAsync).RequirePermission(TenancyPermissions.FlagsRead).WithName("FlagReport").WithSummary("Flags past their removal date with their owner, and rules left for flags the catalogue no longer has.");
-        flags.MapGet("/{key}/rules", RulesAsync).RequirePermission(TenancyPermissions.FlagsRead).WithName("GetFlagRules").WithSummary("A flag's rules in order, with their revision.");
-        flags.MapPut("/{key}/rules", ReplaceAsync).RequirePermission(TenancyPermissions.FlagsManage).Validate<ReplaceFlagRulesRequest>().WithName("ReplaceFlagRules").WithSummary("Replace a flag's rules; a kill switch's need tenancy.kill_switches.manage and a reason.");
-        flags.MapGet("/{key}/history", HistoryAsync).RequirePermission(TenancyPermissions.FlagsRead).WithName("GetFlagHistory").WithSummary("Every change of a flag's rules in order, with operator, before, after and reason.");
+        flags.MapGet("/", ListAsync).RequirePermission(TenancyPermissions.FlagsRead).Produces<FlagListResponse>(StatusCodes.Status200OK).WithName("ListFlags").WithSummary("The flags of the catalogue with their declarations, status and rule counts.");
+        flags.MapGet("/report", ReportAsync).RequirePermission(TenancyPermissions.FlagsRead).Produces<FlagReportResult>(StatusCodes.Status200OK).WithName("FlagReport").WithSummary("Flags past their removal date with their owner, and rules left for flags the catalogue no longer has.");
+        flags.MapGet("/{key}/rules", RulesAsync).RequirePermission(TenancyPermissions.FlagsRead).Produces<FlagRuleList>(StatusCodes.Status200OK).WithName("GetFlagRules").WithSummary("A flag's rules in order, with their revision.");
+        flags.MapPut("/{key}/rules", ReplaceAsync).RequirePermission(TenancyPermissions.FlagsManage).Validate<ReplaceFlagRulesRequest>().Produces<FlagRuleList>(StatusCodes.Status200OK).WithName("ReplaceFlagRules").WithSummary("Replace a flag's rules; a kill switch's need tenancy.kill_switches.manage and a reason.");
+        flags.MapGet("/{key}/history", HistoryAsync).RequirePermission(TenancyPermissions.FlagsRead).Produces<ListResponse<FlagChangeResponse>>(StatusCodes.Status200OK).WithName("GetFlagHistory").WithSummary("Every change of a flag's rules in order, with operator, before, after and reason.");
 
         var switches = endpoints.MapApiGroup("kill-switches");
-        switches.MapGet("/", KillSwitchesAsync).RequirePermission(TenancyPermissions.FlagsRead).WithName("ListKillSwitches").WithSummary("Each kill switch: on for the platform or not, since when and why, and the tenants it is on for.");
-        switches.MapPut("/{path}", FlipAsync).RequirePermission(TenancyPermissions.KillSwitchesManage).Validate<KillSwitchRequest>().WithName("FlipKillSwitch").WithSummary("Turn a kill switch on or off, for the platform or one tenant, with a reason.");
+        switches.MapGet("/", KillSwitchesAsync).RequirePermission(TenancyPermissions.FlagsRead).Produces<KillSwitchListResponse>(StatusCodes.Status200OK).WithName("ListKillSwitches").WithSummary("Each kill switch: on for the platform or not, since when and why, and the tenants it is on for.");
+        switches.MapPut("/{path}", FlipAsync).RequirePermission(TenancyPermissions.KillSwitchesManage).Validate<KillSwitchRequest>().Produces<FlagRuleList>(StatusCodes.Status200OK).WithName("FlipKillSwitch").WithSummary("Turn a kill switch on or off, for the platform or one tenant, with a reason.");
     }
 
     private static async Task<IResult> ListAsync(TenancyDbContext context, UnitCatalogue catalogue, CancellationToken cancellationToken)
@@ -85,7 +91,7 @@ internal static class FlagEndpoints
         var flags = catalogue.Catalogue.Flags
             .Select(f => new FlagSummary(f.Key, f.Module, f.Type, f.Kind, f.Purpose, f.Owner, f.RemoveBy, f.Default, f.Status, counts.GetValueOrDefault(f.Key)))
             .ToList();
-        return TypedResults.Ok(new { data = flags });
+        return TypedResults.Ok(new FlagListResponse(flags));
     }
 
     private static async Task<IResult> ReportAsync(FlagReportService report, CancellationToken cancellationToken) => TypedResults.Ok(await report.BuildAsync(cancellationToken));
@@ -137,7 +143,7 @@ internal static class FlagEndpoints
             var tenants = rules.Where(r => r.FlagKey == flag.Key && r.Scope == FlagScope.Tenant && r.ValueJson.Trim() == "true").Select(r => r.TenantSlug!).Order(StringComparer.Ordinal).ToList();
             return new KillSwitchState(flag.Key[Flag.KillSwitchPrefix.Length..], flag.Key, flag.Purpose, platform is not null, platform?.CreatedAt, platform?.Reason, tenants);
         }).ToList();
-        return TypedResults.Ok(new { data = states });
+        return TypedResults.Ok(new KillSwitchListResponse(states));
     }
 
     private static async Task<IResult> HistoryAsync(string key, HttpContext http, TenancyDbContext context, CancellationToken cancellationToken)

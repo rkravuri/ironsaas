@@ -85,6 +85,7 @@ public class SharingTests(PostgresFixture fixture)
     private readonly Guid _manager = Ids.New();
 
     [Fact]
+    [Proves("TF-035 AC1", "TF-035 AC2", "TF-220 AC1", "TF-220 AC2", "ADR-0038")]
     public async Task EachModeDecidesWhoSeesTheRecordInListsAndByIdAndThePageCountsFollow()
     {
         var mineA = new Widget(_unitA, "a private");
@@ -126,6 +127,7 @@ public class SharingTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AReadByIdFromOutsideTheHomeUnitIsAuditedWithWhatAllowedItAndAReadAtHomeIsNot()
     {
         var atHome = new Widget(_unitA, "home");
@@ -153,6 +155,7 @@ public class SharingTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-035 AC1", "TF-222 AC2", "ADR-0038")]
     public async Task ARefusedReadIsAuditedAsTheReaderWasAnsweredAndAnIdOfNoRecordIsNot()
     {
         var theirs = new Widget(_unitB, "theirs");
@@ -178,6 +181,7 @@ public class SharingTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AListPageWithRecordsOfOtherUnitsWritesOneEventWithTheirIdsAndCount()
     {
         var atHome = new Widget(_unitA, "1 home");
@@ -202,6 +206,7 @@ public class SharingTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task ListsKeepToTheWorkingUnitAndBelowWhileAReadByIdDoesNot()
     {
         var inA = new Widget(_unitA, "in a");
@@ -228,6 +233,7 @@ public class SharingTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task ChangingTheSharingIsAPolicyActionAuditedWithTheUnitsBeforeAndAfter()
     {
         var widget = new Widget(_unitB, "to share");
@@ -263,6 +269,7 @@ public class SharingTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task ANewRecordTakesTheWorkingUnitUnlessTheCreatorChoseAnother()
     {
         var working = new FixedPrincipal(_reader, _unitA);
@@ -277,6 +284,7 @@ public class SharingTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AUnitsRecordsAndSharesMoveToAnotherUnitForAMerge()
     {
         var widget = new Widget(_unitB, "moves");

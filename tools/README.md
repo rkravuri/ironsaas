@@ -2,9 +2,10 @@
 
 | Tool | What it does |
 |---|---|
-| `Iron.Smoke` | The smoke test (TF-240): drives the running stack from the outside through the control plane and the ingress, provisions or reuses the `smoke` tenant, signs in with a token and with a cookie, proves the denials, and finds the request's trace in Tempo by its correlation id. `make smoke` on the laptop; the integration stage in the pipeline (T18). Writes `smoke-report.json`. |
-
+| `Iron.Smoke` | The smoke test: drives the running stack from the outside through the control plane and the ingress, provisions or reuses the `smoke` tenant, signs in with a token and with a cookie, proves the denials, finds the request's trace in Tempo by its correlation id, then a scoped role, a plan change and a kill switch. Each step names the criteria or decisions it proves (ADR-0044). `make smoke` on the laptop writes `artifacts/test-results/smoke/smoke-report.json`; the integration stage in the pipeline (T18) uploads its report. |
 | `prd_check.py` | The requirements check (ADR-0041): every identifier once across the documents in `docs/prd` and their CSVs, every identifier of the archived Functional Foundation PRD in the map, criteria in the Given, When, Then form with an error case, the product PRDs' sections, and each CSV equal to its markdown. `make prd-check` runs its tests (`prd_check_test.py`) and then the check, in CI too; `make prd-csv` writes the CSVs from the markdown. |
+| `trace.py` | The traceability matrix (TF-218, ADR-0044): every test of every kind with the requirement criteria and decisions it names, read from the sources, joined to its result from the last run's files under `artifacts/test-results`, into `artifacts/trace/matrix.md` and `matrix.json`. It fails on an identifier no document holds, a done slice's criterion without a test or an approved exception (`docs/trace/exceptions.md`), and a result it cannot place. `make trace` runs its tests (`trace_test.py`) and then the trace; CI publishes the matrix. |
+| `unittest_junit.py` | Runs a tool's Python tests as `unittest` does and, with `--junit <file>`, writes their results as JUnit for the matrix. |
 
 The scaffolding tool that creates a module or an entity from templates (TF-190) arrives after slice S1; the S1 modules are the templates it will copy.
 

@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe("the home page", () => {
-  it("greets the person by the time of day, with the Home drawing, and opens every module a tenant administrator may open", async () => {
+  it("greets the person by the time of day, with the Home drawing, and opens every module a tenant administrator may open [ADR-0033, ADR-0043]", async () => {
     signIn({ anywhere: administrator, atHome: administrator, unit: root });
     renderWithProviders(<HomePage />);
 
@@ -70,7 +70,7 @@ describe("the home page", () => {
     );
   });
 
-  it("shows a child-unit administrator only the openers it may open, and no quick action it cannot perform", async () => {
+  it("shows a child-unit administrator only the openers it may open, and no quick action it cannot perform [ADR-0033]", async () => {
     const { calls } = signIn({ anywhere: ["identity.users.read"], atHome: ["identity.users.read"], unit: branch });
     renderWithProviders(<HomePage />);
 
@@ -81,7 +81,7 @@ describe("the home page", () => {
     expect(calls.some((call) => call.key.startsWith("GET /api/v1/me/access"))).toBe(false);
   });
 
-  it("asks /me/access at the home unit: a permission held elsewhere does not make a quick action here", async () => {
+  it("asks /me/access at the home unit: a permission held elsewhere does not make a quick action here [ADR-0033]", async () => {
     signIn({
       anywhere: ["identity.users.read", "identity.users.manage"],
       atHome: ["identity.users.read"],
@@ -93,7 +93,7 @@ describe("the home page", () => {
     await waitFor(() => expect(screen.queryByRole("region", { name: "Quick actions" })).not.toBeInTheDocument());
   });
 
-  it("lists the pages opened last in this browser, newest first, leaving out those the person may no longer open", async () => {
+  it("lists the pages opened last in this browser, newest first, leaving out those the person may no longer open [ADR-0033]", async () => {
     rememberPage(principal, { path: "/console/roles", titleKey: "modules.console.roles", module: "console", at: 1 });
     rememberPage(principal, { path: "/users", titleKey: "modules.identity.users", module: "identity", at: 2 });
     rememberPage(principal, { path: "/users/42", titleKey: "modules.identity.users", module: "identity", at: 3 });
@@ -113,7 +113,7 @@ describe("the home page", () => {
     expect(recent).toHaveTextContent("Users, Identity");
   });
 
-  it("draws the marks in once per session", async () => {
+  it("draws the marks in once per session [ADR-0033]", async () => {
     signIn({ anywhere: administrator, atHome: administrator, unit: root });
     const first = renderWithProviders(<HomePage />);
     await screen.findByRole("article", { name: "Identity" });
@@ -127,7 +127,7 @@ describe("the home page", () => {
 });
 
 describe("the greeting", () => {
-  it("names the part of the day", () => {
+  it("names the part of the day [ADR-0033]", () => {
     expect([4, 5, 11, 12, 17, 18, 23].map(dayPart)).toEqual([
       "evening",
       "morning",
@@ -141,7 +141,7 @@ describe("the greeting", () => {
 });
 
 describe("the recent pages", () => {
-  it("keeps five, newest first, once each, per person, and survives a damaged store", () => {
+  it("keeps five, newest first, once each, per person, and survives a damaged store [ADR-0033]", () => {
     for (let n = 1; n <= 7; n += 1) {
       rememberPage(principal, { path: `/users/${n}`, titleKey: "modules.identity.users", module: "identity", at: n });
     }

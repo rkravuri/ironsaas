@@ -95,7 +95,7 @@ afterEach(() => {
 });
 
 describe("a person's preferences follow them to another browser (ADR-0036)", () => {
-  it("applies the person's own values after sign-in and keeps them as this browser's copy for the next first paint", async () => {
+  it("applies the person's own values after sign-in and keeps them as this browser's copy for the next first paint [ADR-0036]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () => json(context(["dark", "user"], ["compact", "user"])),
@@ -109,7 +109,7 @@ describe("a person's preferences follow them to another browser (ADR-0036)", () 
     expect(saves(calls)).toEqual([]);
   });
 
-  it("saves a change made in this browser as the person's own value", async () => {
+  it("saves a change made in this browser as the person's own value [ADR-0036]", async () => {
     let answer = context(["auto", "default"], ["comfortable", "default"]);
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me()),
@@ -134,7 +134,7 @@ describe("a person's preferences follow them to another browser (ADR-0036)", () 
     expect(screen.getByTestId("local")).toHaveTextContent("light comfortable");
   });
 
-  it("takes up the choice this browser had when the person has no value yet", async () => {
+  it("takes up the choice this browser had when the person has no value yet [ADR-0036]", async () => {
     window.localStorage.setItem(schemeStorageKey, "dark");
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me()),

@@ -10,6 +10,7 @@ namespace Iron.Kernel.Authorization.Tests;
 public class RoleImportTests(AuthorizationFixture fixture)
 {
     [Fact]
+    [Proves("TF-032 AC6")]
     public async Task RolesRoundTripFromOneTenantToAnotherWithADryRunFirst()
     {
         var bravo = await fixture.CreateTenantDatabaseAsync($"bravo_{Ids.New():N}");
@@ -46,6 +47,7 @@ public class RoleImportTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-032 AC3", "ADR-0031")]
     public async Task UnknownPermissionsAreShownInTheDryRunAndRefuseTheApplyAndSystemRolesAreNeverImported()
     {
         await using var target = await AdministratorAsync(fixture.ConnectionString);
@@ -69,6 +71,7 @@ public class RoleImportTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AnImportCannotGiveARolePermissionsTheImporterLacksTenantWide()
     {
         var importer = Ids.New();

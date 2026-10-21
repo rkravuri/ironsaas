@@ -10,6 +10,7 @@ namespace Iron.Kernel.Telemetry.Tests;
 public class TelemetryTests(TelemetryFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0007", "ADR-0010")]
     public async Task ARequestProducesASpanAndReturnsItsTraceIdAsCorrelationId()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/ping", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -34,6 +35,7 @@ public class TelemetryTests(TelemetryFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public void TheResourceNamesTheServiceAndTheTenant()
     {
         var attributes = fixture.TracerProvider.GetResource().Attributes.ToDictionary(a => a.Key, a => a.Value);
@@ -45,6 +47,7 @@ public class TelemetryTests(TelemetryFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public async Task LiveAnswersWithoutRunningChecks()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/health/live", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -56,6 +59,7 @@ public class TelemetryTests(TelemetryFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public async Task ReadyRunsTheTaggedChecksAndNamesTheFailingOne()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/health/ready", UriKind.Relative), TestContext.Current.CancellationToken);

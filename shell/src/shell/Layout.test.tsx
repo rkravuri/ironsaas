@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe("the header", () => {
-  it("opens the search with Ctrl+K: every page the principal may open and the quick actions; Enter opens the first match", async () => {
+  it("opens the search with Ctrl+K: every page the principal may open and the quick actions; Enter opens the first match [ADR-0033]", async () => {
     renderShell();
     const user = userEvent.setup();
     await screen.findByRole("button", { name: /signed in as admin/i });
@@ -91,7 +91,7 @@ describe("the header", () => {
     );
   });
 
-  it("reaches only what the principal may open: a reader of users finds no console page and no quick action", async () => {
+  it("reaches only what the principal may open: a reader of users finds no console page and no quick action [ADR-0033]", async () => {
     renderShell({ permissions: ["identity.users.read"] });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /^Search/ }));
@@ -105,7 +105,7 @@ describe("the header", () => {
     expect(palette.queryByText("Quick actions")).not.toBeInTheDocument();
   });
 
-  it("tells a screen reader which action Enter will open: the input points at the chosen option as the arrows move", async () => {
+  it("tells a screen reader which action Enter will open: the input points at the chosen option as the arrows move [ADR-0024, ADR-0033]", async () => {
     renderShell();
     const user = userEvent.setup();
     await screen.findByRole("button", { name: /signed in as admin/i });
@@ -130,7 +130,7 @@ describe("the header", () => {
     expect(palette.getByRole("group", { name: "Pages" })).toContainElement(second);
   });
 
-  it("closes the search with Escape and gives focus back where it was", async () => {
+  it("closes the search with Escape and gives focus back where it was [ADR-0033]", async () => {
     renderShell();
     const user = userEvent.setup();
     const help = await screen.findByRole("button", { name: "Help and keyboard shortcuts" });
@@ -146,7 +146,7 @@ describe("the header", () => {
     await waitFor(() => expect(help).toHaveFocus());
   });
 
-  it("opens help with the shell's keys and the current page's keys", async () => {
+  it("opens help with the shell's keys and the current page's keys [ADR-0033]", async () => {
     renderShell({ route: "/users" });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Help and keyboard shortcuts" }));
@@ -157,7 +157,7 @@ describe("the header", () => {
     expect(panel).toHaveTextContent(/The guide to each page will open from here/);
   });
 
-  it("puts Home first in the navigation and shows no control without a function", async () => {
+  it("puts Home first in the navigation and shows no control without a function [ADR-0033]", async () => {
     renderShell();
     const navigation = await screen.findByRole("navigation", { name: "Main navigation" });
     const links = within(navigation).getAllByRole("link");
@@ -168,7 +168,7 @@ describe("the header", () => {
 });
 
 describe("the colour scheme", () => {
-  it("is chosen in the profile menu, which shows the home unit, and survives a reload with the attribute set before React mounts", async () => {
+  it("is chosen in the profile menu, which shows the home unit, and survives a reload with the attribute set before React mounts [ADR-0025, ADR-0033]", async () => {
     const first = renderShell();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /signed in as admin/i }));

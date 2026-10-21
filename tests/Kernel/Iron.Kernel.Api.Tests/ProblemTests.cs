@@ -10,6 +10,7 @@ namespace Iron.Kernel.Api.Tests;
 public class ProblemTests(ApiFixture fixture)
 {
     [Fact]
+    [Proves("TF-100 AC4", "ADR-0009")]
     public async Task AnInvalidBodyReturnsFieldErrorsInSnakeCase()
     {
         using var response = await fixture.Client.PostAsJsonAsync(new Uri("/api/v1/things", UriKind.Relative), new CreateThing("", 0), TestContext.Current.CancellationToken);
@@ -23,6 +24,7 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public async Task AValidBodyPassesTheFilter()
     {
         using var response = await fixture.Client.PostAsJsonAsync(new Uri("/api/v1/things", UriKind.Relative), new CreateThing("hammer", 12), TestContext.Current.CancellationToken);
@@ -31,6 +33,7 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-100 AC1", "ADR-0009")]
     public async Task MalformedJsonIsAProblemWithACorrelationId()
     {
         using var content = new StringContent("{ not json", Encoding.UTF8, "application/json");
@@ -43,6 +46,7 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-100 AC1", "ADR-0009")]
     public async Task AnUnknownRouteIsAProblem()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/nothing-here", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -54,6 +58,7 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-100 AC1", "ADR-0009")]
     public async Task AServiceErrorMapsToItsStatusAndType()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things/missing", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -66,6 +71,7 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-100 AC1", "ADR-0009")]
     public async Task AnUnhandledExceptionIsA500ProblemWithoutInternals()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things/boom", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -78,6 +84,7 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0010")]
     public async Task TheCorrelationIdInTheBodyIsTheOneInTheHeader()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things/missing", UriKind.Relative), TestContext.Current.CancellationToken);

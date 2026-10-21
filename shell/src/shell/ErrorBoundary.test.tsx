@@ -7,7 +7,7 @@ import { ErrorView } from "./ErrorBoundary";
 const drawing = (name: string) => document.querySelector(`svg[data-drawing='${name}']`);
 
 describe("the error view", () => {
-  it("draws the closed gate for a 403 and says no access", () => {
+  it("draws the closed gate for a 403 and says no access [ADR-0024, ADR-0026]", () => {
     stubFetch({});
     renderWithProviders(
       <ErrorView error={new ApiError(403, { title: "Forbidden", error_code: "authz.forbidden" }, undefined)} />,
@@ -16,14 +16,14 @@ describe("the error view", () => {
     expect(screen.getByRole("heading", { name: "No access" })).toBeInTheDocument();
   });
 
-  it("draws the signpost for a page that does not exist", () => {
+  it("draws the signpost for a page that does not exist [ADR-0024]", () => {
     stubFetch({});
     renderWithProviders(<ErrorView error={{ status: 404, statusText: "Not Found", internal: false, data: null }} />);
     expect(drawing("lost")).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Not found" })).toBeInTheDocument();
   });
 
-  it("draws the broken clock for anything else, with the correlation id when there is one", () => {
+  it("draws the broken clock for anything else, with the correlation id when there is one [TF-130 AC2, ADR-0024]", () => {
     stubFetch({});
     renderWithProviders(
       <ErrorView error={new ApiError(500, { title: "The request failed.", correlation_id: "corr-500" }, undefined)} />,

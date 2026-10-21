@@ -4,7 +4,7 @@ import { IconPlayerPause } from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
 
 /**
- * The kill-switch banner (TF-055, ADR-0035): for an administrator, one calm line per path the platform operator has
+ * The kill-switch banner (TF-051, ADR-0035): for an administrator, one calm line per path the platform operator has
  * stopped, saying which, since when and why, with an icon beside the words. It sits in the page's flow at the top, so
  * it pushes the work down and never covers it. The API sends kill switches to administrators only, so the shell shows
  * what it is given and decides nothing.

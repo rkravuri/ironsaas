@@ -77,6 +77,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-033 AC1", "TF-033 AC3", "TF-222 AC1", "ADR-0031")]
     public async Task AReaderOfAUnitWithItsChildrenSeesThoseUsersOnlyAndAUserOutsideIsNotFound()
     {
         var (sales, east, marketing) = await TreeAsync();
@@ -104,6 +105,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-222 AC1", "TF-222 AC3", "ADR-0038")]
     public async Task APersonWithRolesInSeveralUnitsChoosesTheUnitTheyWorkForAndTheUsersListFollows()
     {
         var (sales, east, marketing) = await TreeAsync();
@@ -158,6 +160,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0038")]
     public async Task AUnitThatIsNotYoursOrAllUnitsWithoutARoleOverSeveralIsRefusedAndAStaleChoiceFallsBackHome()
     {
         var (sales, east, marketing) = await TreeAsync();
@@ -193,6 +196,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-223 AC1", "ADR-0038")]
     public async Task AMergeMovesThePeopleHomedAtTheUnitThatGoesAndThePreviewNamesThem()
     {
         var (sales, _, marketing) = await TreeAsync();
@@ -225,6 +229,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-039 AC3")]
     public async Task APersonOfAnotherTenantCannotBeExplained()
     {
         var (sales, _, _) = await TreeAsync();
@@ -256,6 +261,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task MeListsThePermissionsHeldAnywhereAndMeAccessThoseAtAUnit()
     {
         var (sales, east, marketing) = await TreeAsync();
@@ -279,6 +285,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task MeAccessWithTheUnitsBelowAnswersOnlyWhatIsHeldOverTheWholeSubtree()
     {
         var (sales, east, _) = await TreeAsync();
@@ -309,6 +316,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task ARoleWithoutTheUsersReadPermissionAnswers403()
     {
         var (sales, _, _) = await TreeAsync();
@@ -324,6 +332,7 @@ public class ScopedUsersTests(IdentityFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-010 AC1", "TF-010 AC2", "TF-018 AC1", "TF-033 AC3")]
     public async Task AUserIsCreatedOnlyWhereTheCreatorManagesUsersAndTheInvitationLinkWorks()
     {
         var (sales, east, marketing) = await TreeAsync();

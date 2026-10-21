@@ -42,7 +42,7 @@ async function open(
 
 for (const scheme of schemes) {
   for (const person of people) {
-    test(`the home page of a ${person.label} in the ${scheme} scheme shows what it may open and has no WCAG 2.1 AA violation`, async ({
+    test(`the home page of a ${person.label} in the ${scheme} scheme shows what it may open and has no WCAG 2.1 AA violation [TF-172 AC1, ADR-0033, ADR-0043]`, async ({
       page,
     }) => {
       await open(page, person.who, scheme);
@@ -79,7 +79,7 @@ for (const scheme of schemes) {
     });
   }
 
-  test(`the search in the ${scheme} scheme: Ctrl+K opens it, Escape closes it with focus back, Enter opens the match, and no WCAG 2.1 AA violation`, async ({
+  test(`the search in the ${scheme} scheme: Ctrl+K opens it, Escape closes it with focus back, Enter opens the match, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0033]`, async ({
     page,
   }) => {
     await open(page, "administrator", scheme);
@@ -117,7 +117,7 @@ for (const scheme of schemes) {
     await expect(page).toHaveURL(/\/me$/);
   });
 
-  test(`help in the ${scheme} scheme lists the shell's keys and the page's, and has no WCAG 2.1 AA violation`, async ({
+  test(`help in the ${scheme} scheme lists the shell's keys and the page's, and has no WCAG 2.1 AA violation [TF-172 AC1, ADR-0033]`, async ({
     page,
   }) => {
     await open(page, "administrator", scheme, "/me");
@@ -131,7 +131,7 @@ for (const scheme of schemes) {
     await expect(panel).toBeHidden();
   });
 
-  test(`the session warning in the ${scheme} scheme takes focus, announces itself, and has no WCAG 2.1 AA violation`, async ({
+  test(`the session warning in the ${scheme} scheme takes focus, announces itself, and has no WCAG 2.1 AA violation [TF-172 AC1, ADR-0033]`, async ({
     page,
   }) => {
     await open(page, "administrator", scheme, "/", sessionFromNow({ idleIn: 100_000 }));
@@ -143,7 +143,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`the final session warning in the ${scheme} scheme says the session cannot be extended, with no WCAG 2.1 AA violation`, async ({
+  test(`the final session warning in the ${scheme} scheme says the session cannot be extended, with no WCAG 2.1 AA violation [TF-172 AC1, ADR-0033]`, async ({
     page,
   }) => {
     await open(page, "administrator", scheme, "/", sessionFromNow({ endsIn: 100_000 }));
@@ -155,7 +155,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`My profile in the ${scheme} scheme sits on the record template, its tabs by keyboard, with no WCAG 2.1 AA violation`, async ({
+  test(`My profile in the ${scheme} scheme sits on the record template, its tabs by keyboard, with no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0027, ADR-0036, ADR-0037]`, async ({
     page,
   }) => {
     await open(page, "child", scheme, "/me");
@@ -195,7 +195,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`inviting a person in the ${scheme} scheme: the form, then the link shown once, with no WCAG 2.1 AA violation`, async ({
+  test(`inviting a person in the ${scheme} scheme: the form, then the link shown once, with no WCAG 2.1 AA violation [TF-172 AC1, ADR-0033]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

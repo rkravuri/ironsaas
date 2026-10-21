@@ -19,7 +19,7 @@ function Navigation() {
 }
 
 describe("the guards and the navigation", () => {
-  it("follow the permissions held anywhere: a reader of one unit's users sees the Users page (ADR-0031)", async () => {
+  it("follow the permissions held anywhere: a reader of one unit's users sees the Users page (ADR-0031) [ADR-0020, ADR-0031]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me([], ["identity.users.read"])) });
     renderWithProviders(
       <>
@@ -34,7 +34,7 @@ describe("the guards and the navigation", () => {
     expect(screen.getByTestId("navigation").textContent).toBe("/users /me");
   });
 
-  it("remove the Users page for a role without identity.users.read, and the page answers no access", async () => {
+  it("remove the Users page for a role without identity.users.read, and the page answers no access [ADR-0020]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me(["authz.units.read"], ["authz.units.read"])) });
     renderWithProviders(
       <>

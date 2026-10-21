@@ -15,6 +15,7 @@ import {
   Text,
   TextInput,
   Textarea,
+  Title,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { z } from "zod";
@@ -271,7 +272,11 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
   );
 }
 
-/** The role's fields; the permissions grouped by module, each with its description, its name and its risk. */
+/**
+ * The role's fields; the permissions grouped by module and, within a module, by resource (TF-030 AC2), each with its
+ * description, its name and its risk. The resource is the middle part of the name: `identity.users.read` is Identity's
+ * users.
+ */
 function RoleFields({
   form,
   catalogue,
@@ -285,11 +290,19 @@ function RoleFields({
 }) {
   const { t } = useTranslation();
   const modules = useMemo(() => {
-    const byModule = new Map<string, Permission[]>();
+    const byModule = new Map<string, Map<string, Permission[]>>();
     for (const permission of catalogue) {
-      byModule.set(permission.module, [...(byModule.get(permission.module) ?? []), permission]);
+      const resource = permission.name.split(".")[1] ?? permission.name;
+      const resources = byModule.get(permission.module) ?? new Map<string, Permission[]>();
+      resources.set(resource, [...(resources.get(resource) ?? []), permission]);
+      byModule.set(permission.module, resources);
     }
-    return [...byModule.entries()].sort(([a], [b]) => a.localeCompare(b));
+    return [...byModule.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([module, resources]) => ({
+        module,
+        resources: [...resources.entries()].sort(([a], [b]) => a.localeCompare(b)),
+      }));
   }, [catalogue]);
   const chosen = form.getValues().permissions;
   const toggle = (name: string, on: boolean) => {
@@ -336,23 +349,30 @@ function RoleFields({
       <Text size="sm" c="dimmed">
         {t("roles.form.permissionsHint")}
       </Text>
-      {modules.map(([module, permissions]) => (
+      {modules.map(({ module, resources }) => (
         <Fieldset key={module} legend={t(`roles.modules.${module}`, { defaultValue: module })} variant="filled">
-          <Stack gap="sm">
-            {permissions.map((permission) => (
-              <Checkbox
-                key={permission.name}
-                label={permission.description}
-                description={
-                  <Group gap="sm" component="span" wrap="wrap">
-                    <Code>{permission.name}</Code>
-                    <RiskLabel risk={permission.risk} />
-                  </Group>
-                }
-                checked={chosen.includes(permission.name)}
-                disabled={disabled}
-                onChange={(event) => toggle(permission.name, event.currentTarget.checked)}
-              />
+          <Stack gap="md">
+            {resources.map(([resource, permissions]) => (
+              <Stack key={resource} gap="sm" role="group" aria-labelledby={`resource-${module}-${resource}`}>
+                <Title order={4} size="h6" id={`resource-${module}-${resource}`}>
+                  {t(`roles.resources.${module}.${resource}`, { defaultValue: resource })}
+                </Title>
+                {permissions.map((permission) => (
+                  <Checkbox
+                    key={permission.name}
+                    label={permission.description}
+                    description={
+                      <Group gap="sm" component="span" wrap="wrap">
+                        <Code>{permission.name}</Code>
+                        <RiskLabel risk={permission.risk} />
+                      </Group>
+                    }
+                    checked={chosen.includes(permission.name)}
+                    disabled={disabled}
+                    onChange={(event) => toggle(permission.name, event.currentTarget.checked)}
+                  />
+                ))}
+              </Stack>
             ))}
           </Stack>
         </Fieldset>

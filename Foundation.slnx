@@ -60,6 +60,7 @@
     <Project Path="tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj" />
     <Project Path="tests/Iron.Host.Tests/Iron.Host.Tests.csproj" />
     <Project Path="tests/Iron.Testing/Iron.Testing.csproj" />
+    <Project Path="tests/Iron.Testing.Analyzers/Iron.Testing.Analyzers.csproj" />
   </Folder>
   <Folder Name="/tests/Kernel/">
     <Project Path="tests/Kernel/Iron.Kernel.Tests/Iron.Kernel.Tests.csproj" />

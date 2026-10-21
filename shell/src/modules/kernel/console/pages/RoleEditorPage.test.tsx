@@ -19,6 +19,12 @@ const catalogue = {
       risk: "low",
     },
     {
+      name: "authz.units.read",
+      module: "authz",
+      description: "List and view the organisation units",
+      risk: "low",
+    },
+    {
       name: "identity.users.read",
       module: "identity",
       description: "List and view users and service accounts",
@@ -53,8 +59,16 @@ const page = (route: string) =>
     { route },
   );
 
+/** A resource's group inside a module's fieldset, found from its heading, which names the group (aria-labelledby). */
+const resourceGroup = (module: HTMLElement, resource: string): HTMLElement => {
+  const heading = within(module).getByRole("heading", { name: resource });
+  const group = heading.closest<HTMLElement>('[role="group"]')!;
+  expect(group.getAttribute("aria-labelledby")).toBe(heading.id);
+  return group;
+};
+
 describe("the role editor", () => {
-  it("groups the permissions by module and shows each risk as a word", async () => {
+  it("groups the permissions by module and, within a module, by resource, and shows each risk as a word [TF-030 AC2, ADR-0024]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
@@ -63,16 +77,25 @@ describe("the role editor", () => {
     page("/console/roles/r1");
 
     const authz = (await screen.findByText("Authorization")).closest("fieldset")!;
-    expect(within(authz).getByRole("checkbox", { name: "Create, change and delete tenant roles" })).not.toBeChecked();
-    expect(authz).toHaveTextContent("High risk");
-    expect(authz).toHaveTextContent("authz.roles.manage");
+    const resources = within(authz).getAllByRole("group");
+    expect(resources.map((group) => within(group).getByRole("heading").textContent)).toEqual([
+      "Roles",
+      "Organisation units",
+    ]);
+    const roles = resourceGroup(authz, "Roles");
+    expect(within(roles).getByRole("checkbox", { name: "Create, change and delete tenant roles" })).not.toBeChecked();
+    expect(roles).toHaveTextContent("High risk");
+    expect(roles).toHaveTextContent("authz.roles.manage");
+    const units = resourceGroup(authz, "Organisation units");
+    expect(within(units).getByRole("checkbox", { name: "List and view the organisation units" })).not.toBeChecked();
     const identity = screen.getByText("Identity").closest("fieldset")!;
-    expect(within(identity).getByRole("checkbox", { name: "List and view users and service accounts" })).toBeChecked();
-    expect(identity).toHaveTextContent("Low risk");
+    const users = resourceGroup(identity, "Users and service accounts");
+    expect(within(users).getByRole("checkbox", { name: "List and view users and service accounts" })).toBeChecked();
+    expect(users).toHaveTextContent("Low risk");
     expect(screen.getByText("Tenant role")).toBeInTheDocument();
   });
 
-  it("creates a role with its code, type and permissions, and shows the API's refusal at the top", async () => {
+  it("creates a role with its code, type and permissions, and shows the API's refusal at the top [ADR-0031]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
@@ -102,7 +125,7 @@ describe("the role editor", () => {
     });
   });
 
-  it("keeps a system role read only and says why", async () => {
+  it("keeps a system role read only and says why [ADR-0031]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),
@@ -125,7 +148,7 @@ describe("the role editor", () => {
     expect(screen.getByRole("checkbox", { name: "List and view roles and their permissions" })).toBeDisabled();
   });
 
-  it("deletes a tenant role behind a confirmation and goes back to the list", async () => {
+  it("deletes a tenant role behind a confirmation and goes back to the list [TF-032 AC4]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(administrator)),
       "GET /api/v1/permissions": () => json(catalogue),

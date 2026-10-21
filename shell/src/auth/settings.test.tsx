@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 describe("useSetting, the shell's one hook for settings (TF-059, ADR-0036)", () => {
-  it("answers the effective value for the person from /me/context, typed by the declared keys", async () => {
+  it("answers the effective value for the person from /me/context, typed by the declared keys [ADR-0036]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () =>
@@ -48,7 +48,7 @@ describe("useSetting, the shell's one hook for settings (TF-059, ADR-0036)", () 
     expect(screen.getByTestId("scheme")).toHaveTextContent("dark");
   });
 
-  it("answers the default in code until /me/context answers, when it fails, and for a value of another type", async () => {
+  it("answers the default in code until /me/context answers, when it fails, and for a value of another type [ADR-0036]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () =>
@@ -64,7 +64,7 @@ describe("useSetting, the shell's one hook for settings (TF-059, ADR-0036)", () 
     expect(screen.getByTestId("idle")).toHaveTextContent("60");
   });
 
-  it("answers the defaults when the context call fails, and the shell still renders", async () => {
+  it("answers the defaults when the context call fails, and the shell still renders [ADR-0036]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me()),
       "GET /api/v1/me/context": () => problem(503, { title: "Unavailable", error_code: "test.down" }),

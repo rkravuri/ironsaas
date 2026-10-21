@@ -18,6 +18,7 @@ public class ModuleBoundaryRulesTests
     private const string PupilsContracts = "src/Suites/School/Iron.Suites.School.Pupils/Contracts/Iron.Suites.School.Pupils.Contracts.csproj";
 
     [Fact]
+    [Proves("ADR-0001")]
     public void AModuleMayUseTheVocabularyTheKernelLibrariesAndContracts()
     {
         var projects = new[]
@@ -33,6 +34,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("TF-190 AC2", "ADR-0001")]
     public void AModuleMustNotReferenceAnotherModule()
     {
         var projects = new[]
@@ -49,6 +51,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("TF-190 AC2", "ADR-0001")]
     public void AContractsProjectMayReferenceTheVocabularyOnly()
     {
         var projects = new[]
@@ -65,6 +68,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("TF-190 AC2", "ADR-0029")]
     public void AKernelLibraryMustNotReferenceAModule()
     {
         var projects = new[]
@@ -79,6 +83,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0007")]
     public void TheVocabularyReferencesNothing()
     {
         var projects = new[]
@@ -93,6 +98,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0029")]
     public void AHostMayComposeEveryLayerButNotReferenceAnotherHost()
     {
         var projects = new[]
@@ -113,6 +119,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("TF-190 AC2", "ADR-0029")]
     public void TheKernelMustNotReferenceTheBusinessLayerNotEvenItsContracts()
     {
         var projects = new[]
@@ -132,6 +139,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("TF-190 AC2", "ADR-0043")]
     public void TheFoundationMustNotReferenceASuiteNotEvenItsContracts()
     {
         var projects = new[]
@@ -150,6 +158,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("TF-190 AC2", "ADR-0043")]
     public void ASuiteMustNotReferenceAnotherSuiteNotEvenItsContracts()
     {
         var projects = new[]
@@ -169,6 +178,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void ASuitesProductUsesItsSharedMasterThroughItsContracts()
     {
         var projects = new[]
@@ -185,6 +195,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0029", "ADR-0043")]
     public void ALowerLayerIsUsedThroughItsContracts()
     {
         // A business module implements a kernel extension point; a suite's product uses business and kernel masters.
@@ -203,6 +214,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0029")]
     public void ALowerLayersModuleIsPrivateToo()
     {
         var projects = new[]
@@ -220,6 +232,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void AReferenceToAnUnknownProjectIsReported()
     {
         var projects = new[]
@@ -233,6 +246,7 @@ public class ModuleBoundaryRulesTests
     }
 
     [Fact]
+    [Proves("ADR-0029")]
     public void AReferenceToAProjectWithoutALayerIsRefused()
     {
         var projects = new[]

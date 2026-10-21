@@ -8,6 +8,7 @@ namespace Iron.Kernel.Data.Tests;
 public class ConventionsTests(PostgresFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0008")]
     public async Task TablesMadeFromTheConventionsPassTheSchemaCheck()
     {
         var violations = await SchemaCheck.RunAsync(fixture.DataSource, ["kernel_sample"], TestContext.Current.CancellationToken);
@@ -16,6 +17,7 @@ public class ConventionsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public async Task TheConventionsProduceSnakeCaseTablesWithTheStandardColumns()
     {
         await using var connection = await fixture.DataSource.OpenConnectionAsync(TestContext.Current.CancellationToken);
@@ -47,6 +49,7 @@ public class ConventionsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0029")]
     public void TheModelPassesTheModelCheckForAPlatformModule()
     {
         var options = new DbContextOptionsBuilder<SampleDbContext>().UseNpgsql(fixture.ConnectionString).Options;
@@ -56,6 +59,7 @@ public class ConventionsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-220 AC3")]
     public void TheModelCheckFlagsABusinessEntityWithoutAnOwningOrganisation()
     {
         var options = new DbContextOptionsBuilder<SampleDbContext>().UseNpgsql(fixture.ConnectionString).Options;
@@ -68,6 +72,7 @@ public class ConventionsTests(PostgresFixture fixture)
     }
 
     [Theory]
+    [Proves("ADR-0032")]
     [InlineData(false)]
     [InlineData(true)]
     public void TheModelCheckRefusesABusinessRecordCarryingEitherMarkerInEveryModule(bool isBusinessModule)

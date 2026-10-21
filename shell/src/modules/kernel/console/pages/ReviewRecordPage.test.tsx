@@ -116,7 +116,7 @@ afterEach(() => {
 
 describe("the access review page (TF-038)", () => {
   it(
-    "asks for the items still to decide, which the API keeps to the reviewer's units, and offers to confirm that page without the reviewer's own",
+    "asks for the items still to decide, which the API keeps to the reviewer's units, and offers to confirm that page without the reviewer's own [ADR-0037]",
     async () => {
       const { calls } = show();
 
@@ -132,7 +132,7 @@ describe("the access review page (TF-038)", () => {
   );
 
   it(
-    "asks for the decided items when the reviewer chooses them, and has nothing on that page to confirm",
+    "asks for the decided items when the reviewer chooses them, and has nothing on that page to confirm [ADR-0037]",
     async () => {
       const { calls } = show();
       const user = userEvent.setup();
@@ -151,7 +151,7 @@ describe("the access review page (TF-038)", () => {
   );
 
   it(
-    "confirms the page's open items behind a confirmation, and says how many",
+    "confirms the page's open items behind a confirmation, and says how many [ADR-0037]",
     async () => {
       const { calls } = show();
       const user = userEvent.setup();

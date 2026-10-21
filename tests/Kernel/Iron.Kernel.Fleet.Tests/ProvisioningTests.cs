@@ -21,6 +21,7 @@ namespace Iron.Kernel.Fleet.Tests;
 public class ProvisioningTests(FleetFixture fixture)
 {
     [Fact]
+    [Proves("TF-002 AC1", "ADR-0018")]
     public async Task AJobRunsEveryStepActivatesTheTenantAndReportsTheInvitationLink()
     {
         var time = FleetFixture.Clock();
@@ -57,6 +58,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-210 AC1", "TF-210 AC2", "ADR-0018")]
     public async Task TheUnitReachesOnlyItsOwnDatabaseStoragePathAndSecret()
     {
         var runtime = new RecordingRuntime();
@@ -115,6 +117,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-002 AC2", "ADR-0018")]
     public async Task AFailedStepStopsTheJobAndARerunContinuesFromIt()
     {
         var time = FleetFixture.Clock();
@@ -159,6 +162,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-002 AC3")]
     public async Task RunningAJobOfAnActiveTenantIsRefused()
     {
         var runtime = new RecordingRuntime();
@@ -177,6 +181,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-210 AC3", "ADR-0019")]
     public async Task DeprovisioningTakesTheUnitDownAndKeepsTheData()
     {
         var runtime = new RecordingRuntime();
@@ -217,6 +222,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0028")]
     public async Task AnUpdateMigratesSeedsAndReappliesTheUnitOfAnActiveTenant()
     {
         var runtime = new RecordingRuntime();
@@ -247,6 +253,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0028", "ADR-0034", "ADR-0035")]
     public async Task AnUpdateHealsAUnitWhoseSecretsWereDeletedFromTheStore()
     {
         var ct = TestContext.Current.CancellationToken;

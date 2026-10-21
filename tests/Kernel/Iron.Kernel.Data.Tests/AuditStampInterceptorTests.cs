@@ -12,6 +12,7 @@ public class AuditStampInterceptorTests(PostgresFixture fixture)
     private static readonly Guid Organisation = Ids.New();
 
     [Fact]
+    [Proves("ADR-0008")]
     public async Task AddingStampsCreatedAndUpdatedAndStartsTheVersionAtOne()
     {
         var actor = Ids.New();
@@ -41,6 +42,7 @@ public class AuditStampInterceptorTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public async Task ChangingStampsUpdatedAndIncrementsTheVersionButKeepsCreated()
     {
         var creator = Ids.New();
@@ -74,6 +76,7 @@ public class AuditStampInterceptorTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public async Task ASecondWriterOnAStaleVersionIsRejected()
     {
         var widget = new Widget(Organisation, "contended");
@@ -101,6 +104,7 @@ public class AuditStampInterceptorTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public async Task DeletingASoftDeletableMarksItAndHidesItFromQueries()
     {
         var actor = Ids.New();
@@ -139,6 +143,7 @@ public class AuditStampInterceptorTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public async Task AppendOnlyRowsGetCreatedStampsAndRefuseChanges()
     {
         var actor = Ids.New();
@@ -164,6 +169,7 @@ public class AuditStampInterceptorTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0008")]
     public void ABusinessRecordNeedsAnOwningOrganisation()
     {
         Assert.Throws<ArgumentException>(() => new Widget(Guid.Empty, "no owner"));

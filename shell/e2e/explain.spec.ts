@@ -18,7 +18,7 @@ test.describe("explaining access and conflict rules", () => {
   test.skip(childId === "" || colleagueId === "", "make e2e sets up the child unit's data first");
 
   for (const scheme of ["light", "dark"] as const) {
-    test(`names the first failing check of a child-unit person's role import in the ${scheme} scheme`, async ({
+    test(`names the first failing check of a child-unit person's role import in the ${scheme} scheme [TF-039 AC1, ADR-0039]`, async ({
       page,
     }) => {
       await page.emulateMedia({ colorScheme: scheme });
@@ -68,7 +68,7 @@ test.describe("explaining access and conflict rules", () => {
       expect(answer.body.checks.find((check) => check.result === "failed")?.check).toBe("permission");
     });
 
-    test(`refuses a grant that a blocking conflict rule forbids, with the rule named, in the ${scheme} scheme`, async ({
+    test(`refuses a grant that a blocking conflict rule forbids, with the rule named, in the ${scheme} scheme [TF-036 AC1, ADR-0039]`, async ({
       page,
     }) => {
       await page.emulateMedia({ colorScheme: scheme });

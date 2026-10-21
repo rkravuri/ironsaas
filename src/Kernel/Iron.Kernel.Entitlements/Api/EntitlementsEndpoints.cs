@@ -25,6 +25,9 @@ public sealed record ContextEntitlements(int Revision, string? Plan, DateTimeOff
 
 public sealed record SeatsResponse(int? Limit, int Assigned, int? Remaining);
 
+/// <summary>Every per-person module's seat usage under <c>data</c>: one row per module, so no list envelope.</summary>
+public sealed record SeatUsageResponse(IReadOnlyList<SeatUsage> Data);
+
 public sealed record SubscriptionModule(string Code, string Module, SubscriptionType SubscriptionType, EntitlementStatus Status, string Reason, DateOnly? StartsOn, DateOnly? EndsOn, DateOnly? GraceEndsOn, SeatsResponse? Seats);
 
 public sealed record SubscriptionFeature(string Code, string Description, string Module, string? Licence, EntitlementStatus Status, string Reason, DateOnly? StartsOn, DateOnly? EndsOn, DateOnly? GraceEndsOn);
@@ -64,13 +67,13 @@ internal static class EntitlementsEndpoints
 
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapApiGroup("subscription").MapGet("/", Subscription).RequirePermission(EntitlementsPermissions.SubscriptionRead).WithName("GetSubscription").WithSummary("The tenant's licensed modules and features with status, dates and reason, and seat usage.");
+        endpoints.MapApiGroup("subscription").MapGet("/", Subscription).RequirePermission(EntitlementsPermissions.SubscriptionRead).Produces<SubscriptionResponse>(StatusCodes.Status200OK).WithName("GetSubscription").WithSummary("The tenant's licensed modules and features with status, dates and reason, and seat usage.");
 
         var seats = endpoints.MapApiGroup("seats");
-        seats.MapGet("/", ListSeatsAsync).RequirePermission(EntitlementsPermissions.SeatsRead).WithName("ListSeats").WithSummary("The seats of per-person modules; filter=module:eq:<code>.");
-        seats.MapGet("/usage", UsageAsync).RequirePermission(EntitlementsPermissions.SeatsRead).WithName("SeatUsage").WithSummary("Per per-person module: the licensed count, the seats assigned and the seats left.");
-        seats.MapPost("/", AssignAsync).RequirePermission(EntitlementsPermissions.SeatsManage).Validate<AssignSeatRequest>().WithName("AssignSeat").WithSummary("Give a person a seat of a per-person module, within the licensed count.");
-        seats.MapDelete("/{id:guid}", UnassignAsync).RequirePermission(EntitlementsPermissions.SeatsManage).WithName("RemoveSeat").WithSummary("Take a seat back; the person loses the module on the next request.");
+        seats.MapGet("/", ListSeatsAsync).RequirePermission(EntitlementsPermissions.SeatsRead).Produces<ListResponse<SeatResponse>>(StatusCodes.Status200OK).WithName("ListSeats").WithSummary("The seats of per-person modules; filter=module:eq:<code>.");
+        seats.MapGet("/usage", UsageAsync).RequirePermission(EntitlementsPermissions.SeatsRead).Produces<SeatUsageResponse>(StatusCodes.Status200OK).WithName("SeatUsage").WithSummary("Per per-person module: the licensed count, the seats assigned and the seats left.");
+        seats.MapPost("/", AssignAsync).RequirePermission(EntitlementsPermissions.SeatsManage).Validate<AssignSeatRequest>().Produces<SeatResponse>(StatusCodes.Status201Created).WithName("AssignSeat").WithSummary("Give a person a seat of a per-person module, within the licensed count.");
+        seats.MapDelete("/{id:guid}", UnassignAsync).RequirePermission(EntitlementsPermissions.SeatsManage).Produces(StatusCodes.Status204NoContent).WithName("RemoveSeat").WithSummary("Take a seat back; the person loses the module on the next request.");
     }
 
     private static async Task<IResult> Subscription(EntitlementEvaluator entitlements, EntitlementCache cache, LicensingCatalogue catalogue, SeatService seats, CancellationToken cancellationToken)
@@ -124,7 +127,7 @@ internal static class EntitlementsEndpoints
     }
 
     private static async Task<IResult> UsageAsync(SeatService seats, CancellationToken cancellationToken) =>
-        TypedResults.Ok(new { data = (await seats.UsageAsync(cancellationToken)).Select(u => new { module = u.Module, limit = u.Limit, assigned = u.Assigned, remaining = u.Remaining }).ToList() });
+        TypedResults.Ok(new SeatUsageResponse(await seats.UsageAsync(cancellationToken)));
 
     private static async Task<IResult> AssignAsync(AssignSeatRequest request, HttpContext http, SeatService seats, CancellationToken cancellationToken)
     {

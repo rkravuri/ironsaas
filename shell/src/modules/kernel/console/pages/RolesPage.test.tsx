@@ -68,7 +68,7 @@ afterEach(() => {
 });
 
 describe("the roles page and role transfer (TF-046 AC2, ADR-0034)", () => {
-  it("offers Export and Import while the tenant's plan has role transfer", async () => {
+  it("offers Export and Import while the tenant's plan has role transfer [TF-046 AC2]", async () => {
     open("enabled");
 
     expect(await screen.findByRole("button", { name: "Export roles" })).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe("the roles page and role transfer (TF-046 AC2, ADR-0034)", () => {
     expect(screen.getByRole("link", { name: /New role/ })).toBeInTheDocument();
   });
 
-  it("hides both when the plan has no role transfer, and keeps the rest of the page", async () => {
+  it("hides both when the plan has no role transfer, and keeps the rest of the page [ADR-0034]", async () => {
     const { calls } = open("disabled");
 
     expect(await screen.findByRole("link", { name: /New role/ })).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe("the roles page and role transfer (TF-046 AC2, ADR-0034)", () => {
     expect(screen.queryByRole("button", { name: "Import roles" })).not.toBeInTheDocument();
   });
 
-  it("keeps Export and hides Import when role transfer is read only", async () => {
+  it("keeps Export and hides Import when role transfer is read only [ADR-0034]", async () => {
     open("read_only");
 
     expect(await screen.findByRole("button", { name: "Export roles" })).toBeInTheDocument();
@@ -95,8 +95,8 @@ describe("the roles page and role transfer (TF-046 AC2, ADR-0034)", () => {
   });
 });
 
-describe("the roles page and the import kill switch (TF-055, ADR-0035)", () => {
-  it("hides Import while kill.imports is on, and keeps Export and New role", async () => {
+describe("the roles page and the import kill switch (TF-051, ADR-0035)", () => {
+  it("hides Import while kill.imports is on, and keeps Export and New role [ADR-0035]", async () => {
     open("enabled", administrator, true);
 
     expect(await screen.findByRole("button", { name: "Export roles" })).toBeInTheDocument();

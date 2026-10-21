@@ -4,8 +4,9 @@ What a change needs before it is merged to main. The pull request template summa
 
 ## Every change
 
-- [ ] `make test` and `make shell-check` are green locally and in CI; `make format` (`dotnet format` and Prettier, ADR-0040) makes no change.
+- [ ] `make verify` is green locally (it runs `make prd-check`, `make test`, `make shell-check`, `make shell-a11y`, the format check and `make trace` in order), and CI is green; `make format` (`dotnet format` and Prettier, ADR-0040) makes no change.
 - [ ] New or changed behaviour has tests at the level that proves it: a unit test for a rule, an integration test on the container fixtures for anything that touches the database, the store or storage, a shell test for a page or a mapping.
+- [ ] Every new test names the requirement criteria or the decision it proves (`[Proves("TF-033 AC2")]`, a title ending `[TF-033 AC2]`, ADR-0044), read against the criterion's text, and `make trace` passes: no unknown identifier, and no criterion of a done slice without a test or an approved exception.
 - [ ] No warning was suppressed without a comment that says why.
 - [ ] No secret, credential or personal data is in the change; gitleaks in CI is the net, not the first check.
 - [ ] Documentation where behaviour changed: the README's first hour if the path changed, the developer guide if a way of doing things changed, the runbook if an operator's command or a symptom changed, the module's README if its responsibility changed.
@@ -16,7 +17,7 @@ What a change needs before it is merged to main. The pull request template summa
 - [ ] A decision was made (a library, a pattern, a boundary, a trade-off): its ADR is in `docs/adr/`, listed in the index, and named from the code or the guide that applies it.
 - [ ] A module was added: the placement test is answered in its README, its projects declare `<IronLayer>` and live in their layer's folder, and its schema carries the layer prefix (ADR-0029).
 - [ ] An entity changed: the migration is generated with `make ef-add`, read once, formatted with `make format`, committed with the entity, and the module's model test passes.
-- [ ] An endpoint was added: it declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`; a new anonymous endpoint is a reviewed addition to the fixed list in `Iron.Host.Tests`.
+- [ ] An endpoint was added: it declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`, and each success it answers with `.Produces<T>(status)` (TF-100 AC3); a new anonymous endpoint is a reviewed addition to the fixed list in `Iron.Host.Tests`.
 - [ ] A permission was added: it is in the module's Contracts, in the module's `Permissions`, and seeded into the system roles that should carry it.
 - [ ] A licensed module or a feature was added: the module declares its licence and features (a kernel module declares none), the endpoints that need a feature say so, `make catalogue` was run and the catalogue committed (ADR-0034).
 - [ ] A flag was added or retired: it is declared in the module's Contracts with its owner and purpose, a release or experiment flag with its removal date; a retired flag is marked so in the catalogue in the same change; `make catalogue` was run (ADR-0035). A kill switch is the kernel's only.

@@ -61,6 +61,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Proves("TF-032 AC4")]
     public async Task TheAdministratorCreatesReadsChangesAndDeletesARole()
     {
         var code = RoleServiceTests.Code();
@@ -91,6 +92,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Proves("TF-032 AC2", "ADR-0031")]
     public async Task ASystemRoleAnswers409AndABadCodeAnswers400WithTheField()
     {
         var readOnly = await RoleIdAsync(SystemRoles.ReadOnly);
@@ -103,6 +105,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Proves("ADR-0031")]
     public async Task AUnitAdministratorReadsRolesAndTheCatalogueButChangesNoRole()
     {
         var unitAdministrator = Ids.New();
@@ -123,6 +126,7 @@ public class RoleEditingEndpointTests(AuthorizationFixture fixture) : IAsyncLife
     }
 
     [Fact]
+    [Proves("TF-032 AC6")]
     public async Task TheExportImportsAsADryRunThatChangesNothing()
     {
         var code = RoleServiceTests.Code();

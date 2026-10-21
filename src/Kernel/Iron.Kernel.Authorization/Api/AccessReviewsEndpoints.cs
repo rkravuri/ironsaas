@@ -83,17 +83,18 @@ internal static class AccessReviewsEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var reviews = endpoints.MapApiGroup("access-reviews");
-        reviews.MapGet("/", ListAsync).RequireSignedIn().WithName("ListAccessReviews").WithSummary("The campaigns you manage (authz.reviews.manage) or review (authz.reviews.decide at one of their units), with progress.");
-        reviews.MapPost("/", StartAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).Validate<StartReviewRequest>().WithName("StartAccessReview").WithSummary("Start a campaign over units, with or without their children: the assignments there are taken as its items now.");
-        reviews.MapGet("/{id:guid}", GetAsync).RequireSignedIn().WithName("GetAccessReview").WithSummary("One campaign with the progress of what you may see, per unit, and its escalations.");
-        reviews.MapPost("/{id:guid}/close", CloseAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).WithName("CloseAccessReview").WithSummary("Close a campaign: no more decisions.");
-        reviews.MapGet("/{id:guid}/items", ItemsAsync).RequireSignedIn().WithName("ListAccessReviewItems").WithSummary("The items you decide: at the units where you hold authz.reviews.decide, and as the campaign's owner those nobody else may review; state=open or decided narrows them.");
+        reviews.MapGet("/", ListAsync).RequireSignedIn().Produces<ListResponse<ReviewSummaryResponse>>(StatusCodes.Status200OK).WithName("ListAccessReviews").WithSummary("The campaigns you manage (authz.reviews.manage) or review (authz.reviews.decide at one of their units), with progress.");
+        reviews.MapPost("/", StartAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).Validate<StartReviewRequest>().Produces<ReviewView>(StatusCodes.Status201Created).WithName("StartAccessReview").WithSummary("Start a campaign over units, with or without their children: the assignments there are taken as its items now.");
+        reviews.MapGet("/{id:guid}", GetAsync).RequireSignedIn().Produces<ReviewView>(StatusCodes.Status200OK).WithName("GetAccessReview").WithSummary("One campaign with the progress of what you may see, per unit, and its escalations.");
+        reviews.MapPost("/{id:guid}/close", CloseAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).Produces<ReviewView>(StatusCodes.Status200OK).WithName("CloseAccessReview").WithSummary("Close a campaign: no more decisions.");
+        reviews.MapGet("/{id:guid}/items", ItemsAsync).RequireSignedIn().Produces<ListResponse<ReviewItemView>>(StatusCodes.Status200OK).WithName("ListAccessReviewItems").WithSummary("The items you decide: at the units where you hold authz.reviews.decide, and as the campaign's owner those nobody else may review; state=open or decided narrows them.");
         reviews.MapPost("/{id:guid}/items/{itemId:guid}/decision", DecideAsync)
             .RequireSignedIn()
             .Validate<DecideItemRequest>()
+            .Produces<ReviewItemView>(StatusCodes.Status200OK)
             .WithName("DecideAccessReviewItem")
             .WithSummary("Confirm an assignment, or revoke it, which removes it at once; the last tenant administrator stays, and nobody decides their own access.");
-        reviews.MapPost("/{id:guid}/confirm", ConfirmAsync).RequireSignedIn().Validate<ConfirmItemsRequest>().WithName("ConfirmAccessReviewItems").WithSummary("Confirm a page of items at once; items decided meanwhile are left as they are, and none may be about your own access.");
+        reviews.MapPost("/{id:guid}/confirm", ConfirmAsync).RequireSignedIn().Validate<ConfirmItemsRequest>().Produces<ConfirmManyView>(StatusCodes.Status200OK).WithName("ConfirmAccessReviewItems").WithSummary("Confirm a page of items at once; items decided meanwhile are left as they are, and none may be about your own access.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, ReviewService reviews, CancellationToken cancellationToken)

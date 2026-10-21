@@ -18,6 +18,7 @@ namespace Iron.Kernel.Fleet.Tests;
 public class EntitlementStoreTests(FleetFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0034")]
     public async Task AnAppliedPlanReachesTheStoreAndTheUnitsTokenReadsItsOwnEntitlementsOnly()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -41,6 +42,7 @@ public class EntitlementStoreTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task AWriteTheStoreRefusedIsWrittenByTheFleetsReconcile()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -67,6 +69,7 @@ public class EntitlementStoreTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task AnUpdateWidensThePolicyOfAUnitMadeBeforeTheEntitlementsAndWritesThemAgain()
     {
         var ct = TestContext.Current.CancellationToken;

@@ -87,6 +87,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-036 AC1", "ADR-0039")]
     public async Task ABlockRuleRefusesAGrantThatCreatesItsConflictNamesItselfAndUnrelatedUnitsAreNoConflict()
     {
         var creator = await RoleAsync("Supplier creator", [AuthorizationPermissions.UnitsRead.Name]);
@@ -117,6 +118,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-036 AC2", "ADR-0039")]
     public async Task AWarnRuleAllowsTheGrantAndListsTheConflictAtOnceAndARemovalClearsIt()
     {
         var creator = await RoleAsync("Order creator", [AuthorizationPermissions.UnitsRead.Name]);
@@ -147,6 +149,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task ADelegationIsCheckedByTheDelegatesOwnRightsAndTheDelegatedDutiesAsIfHeldTogether()
     {
         // The administrator holds authz.roles.read tenant-wide; the receiving duty hands it over.
@@ -183,6 +186,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task ARoleChangeThatWouldCreateAConflictUnderABlockRuleIsRefusedWithTheRuleAndTheNumberOfPeople()
     {
         var counter = await RoleAsync("Stock counter", [AuthorizationPermissions.UnitsRead.Name]);
@@ -215,6 +219,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task ARoleChangeUnderAWarnRuleIsSavedAndTheReportListsItsNewConflictsAtOnce()
     {
         var keeper = await RoleAsync("Shelf keeper", [AuthorizationPermissions.UnitsRead.Name]);
@@ -242,6 +247,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("TF-036 AC3", "ADR-0039")]
     public async Task TheReportShowsTheConflictsOfARuleWithinADayOfItsChangeOnAFakeClock()
     {
         var creator = await RoleAsync("Invoice creator", [AuthorizationPermissions.UnitsRead.Name]);
@@ -272,6 +278,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task AReviewItemThatTakesPartInAConflictSaysSoByTheRulesName()
     {
         var creator = await RoleAsync("Payment creator", [AuthorizationPermissions.UnitsRead.Name]);
@@ -306,6 +313,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task RulesAreValidatedNamedInWordsAndEveryChangeIsAudited()
     {
         var creator = await RoleAsync("Ledger keeper", [AuthorizationPermissions.UnitsRead.Name]);

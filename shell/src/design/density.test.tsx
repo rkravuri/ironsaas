@@ -11,13 +11,13 @@ afterEach(() => {
 });
 
 describe("the density setting", () => {
-  it("is comfortable until the viewer chooses", () => {
+  it("is comfortable until the viewer chooses [ADR-0024, ADR-0025]", () => {
     expect(readDensity()).toBe("comfortable");
     const { result } = renderHook(() => useDensity());
     expect(result.current).toBe("comfortable");
   });
 
-  it("tells every reader, the root element and the storage about a change", () => {
+  it("tells every reader, the root element and the storage about a change [ADR-0025]", () => {
     const { result } = renderHook(() => useDensity());
     act(() => {
       setDensity("compact");
@@ -27,7 +27,7 @@ describe("the density setting", () => {
     expect(window.localStorage.getItem(densityStorageKey)).toBe("compact");
   });
 
-  it("still applies when the storage refuses", () => {
+  it("still applies when the storage refuses [ADR-0025]", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("blocked");
     });

@@ -16,7 +16,7 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the kill-switch banner in the ${scheme} scheme: the path, since when and the reason in words above the page, Import hidden, and no WCAG 2.1 AA violation`, async ({
+  test(`the kill-switch banner in the ${scheme} scheme: the path, since when and the reason in words above the page, Import hidden, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0035]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

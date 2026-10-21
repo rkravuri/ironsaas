@@ -15,7 +15,12 @@ export default defineConfig({
   workers: 1,
   // No retries: the page has no network and no motion during the scan, so a second run would only hide a real finding.
   retries: 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
+  // The JUnit file is make trace's (ADR-0044), outside test-results/a11y, which Playwright empties first.
+  reporter: [
+    ["list"],
+    ["junit", { outputFile: "../artifacts/test-results/a11y/junit.xml" }],
+    ...(process.env.CI ? [["html", { open: "never" }] as const] : []),
+  ],
   use: {
     baseURL: "http://localhost:4180",
     trace: "retain-on-failure",

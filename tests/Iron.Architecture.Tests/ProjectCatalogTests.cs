@@ -3,6 +3,7 @@ namespace Iron.Architecture.Tests;
 public class ProjectCatalogTests
 {
     [Theory]
+    [Proves("ADR-0029", "ADR-0043")]
     [InlineData("src/Kernel/Iron.Kernel/Iron.Kernel.csproj", "Kernel", ProjectKind.Vocabulary, null)]
     [InlineData("src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj", "Kernel", ProjectKind.Library, null)]
     [InlineData("src/Kernel/Iron.Kernel.Identity/Iron.Kernel.Identity.csproj", "Kernel", ProjectKind.Module, "Iron.Kernel.Identity")]
@@ -25,6 +26,7 @@ public class ProjectCatalogTests
     }
 
     [Fact]
+    [Proves("ADR-0029")]
     public void ReadsTheDeclaredLayerAsWritten()
     {
         const string xml = """
@@ -42,6 +44,7 @@ public class ProjectCatalogTests
     }
 
     [Fact]
+    [Proves("ADR-0043")]
     public void ReadsTheDeclaredSuiteAsWritten()
     {
         const string xml = """
@@ -61,6 +64,7 @@ public class ProjectCatalogTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void ReadsProjectReferencesByName()
     {
         const string xml = """
@@ -80,6 +84,7 @@ public class ProjectCatalogTests
     }
 
     [Fact]
+    [Proves("ADR-0001")]
     public void LoadsEveryProjectOfTheRepository()
     {
         var projects = ProjectCatalog.Load(Repository.Root);
@@ -94,6 +99,7 @@ public class ProjectCatalogTests
     }
 
     [Fact]
+    [Proves("ADR-0029")]
     public void LeavesBuildOutputAndPackagesOut()
     {
         var projects = ProjectCatalog.Load(Repository.Root);

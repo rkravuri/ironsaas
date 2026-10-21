@@ -15,6 +15,7 @@ namespace Iron.Kernel.Identity.Tests;
 public class ModelTests
 {
     [Fact]
+    [Proves("ADR-0012")]
     public void TheModelHasNoChangesWithoutAMigration()
     {
         using var context = new IdentityDbContext(DesignTime.OptionsFor<IdentityDbContext>());
@@ -29,6 +30,7 @@ public class ModelTests
 public class SeedAndInvitationTests(IdentityFixture fixture)
 {
     [Fact]
+    [Proves("ADR-0008", "ADR-0014")]
     public async Task TheMigratedSchemaPassesTheSchemaCheck()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider());
@@ -37,6 +39,7 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-088 AC1", "ADR-0014")]
     public async Task TheSeedCreatesTheFirstAdministratorInvitedWithTheAdministratorRoleAndASecondRunReissuesTheInvitation()
     {
         const string loginId = "seed-check@acme.test";
@@ -67,6 +70,7 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0030")]
     public async Task TheSeedGivesTheAdministratorAndTheServiceAccountsTheRootUnitOfKindRootAsHomeUnit()
     {
         await using var provider = fixture.BuildServices(new FakeTimeProvider());
@@ -90,6 +94,7 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-011 AC3", "TF-018 AC1", "ADR-0014")]
     public async Task AcceptingTheInvitationActivatesTheAccountWithAnArgon2idHashAndSpendsTheToken()
     {
         var time = new FakeTimeProvider();
@@ -112,6 +117,7 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-018 AC2")]
     public async Task AnExpiredInvitationIsRefusedAndNothingChanges()
     {
         var time = new FakeTimeProvider();
@@ -130,6 +136,7 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0028")]
     public async Task TheSeedGivesAnExistingServiceAccountTheNewSecretAndAuditsTheChange()
     {
         // What a healed unit sends (ADR-0028): the account exists with the secret the store lost, the seed brings a new one.
@@ -151,6 +158,7 @@ public class SeedAndInvitationTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-088 AC1", "ADR-0028")]
     public async Task TheSeedWritesNothingWhenAnExistingServiceAccountKeepsItsSecret()
     {
         const string clientId = "steady-client";

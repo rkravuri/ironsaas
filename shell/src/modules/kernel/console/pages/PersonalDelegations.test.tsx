@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe("a person's own delegations in My profile (TF-037)", () => {
-  it("shows what the person gives and holds in words, with Act for on the active one held and Delegate your duties", async () => {
+  it("shows what the person gives and holds in words, with Act for on the active one held and Delegate your duties [TF-172 AC3, ADR-0037]", async () => {
     show();
 
     expect(await screen.findByText("You hand user administration to Grace Hopper")).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("a person's own delegations in My profile (TF-037)", () => {
     expect(await screen.findByRole("button", { name: "Delegate your duties" })).toBeEnabled();
   });
 
-  it("ends a delegation behind a confirmation", async () => {
+  it("ends a delegation behind a confirmation [ADR-0037]", async () => {
     const { calls } = show();
     const user = userEvent.setup();
     await screen.findByText("You hand user administration to Grace Hopper");
@@ -73,7 +73,7 @@ describe("a person's own delegations in My profile (TF-037)", () => {
     await waitFor(() => expect(calls.map((call) => call.key)).toContain(`POST /api/v1/delegations/${given.id}/end`));
   });
 
-  it("does not delegate while acting for someone, and says why", async () => {
+  it("does not delegate while acting for someone, and says why [ADR-0037]", async () => {
     show(true);
 
     expect(await screen.findByText(/You are acting for someone, so you cannot delegate now/)).toBeInTheDocument();

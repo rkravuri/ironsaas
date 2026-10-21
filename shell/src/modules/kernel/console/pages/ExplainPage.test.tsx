@@ -119,7 +119,7 @@ afterEach(() => {
 });
 
 describe("explaining access (TF-039, ADR-0039)", () => {
-  it("names the first failing check of a denial, and the checks after it as not reached, in words", async () => {
+  it("names the first failing check of a denial, and the checks after it as not reached, in words [TF-039 AC1, ADR-0039]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(["authz.access.explain", "authz.units.read"])),
       "GET /api/v1/access/actions": () => json(actions),
@@ -154,7 +154,7 @@ describe("explaining access (TF-039, ADR-0039)", () => {
     expect(calls.some((call) => call.key === "GET /api/v1/access/explain?principal=p1&action=ImportRoles")).toBe(true);
   });
 
-  it("names the granting role and its scope for an allowance at a unit chosen on the tree", async () => {
+  it("names the granting role and its scope for an allowance at a unit chosen on the tree [TF-039 AC2, ADR-0039]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me(["authz.access.explain", "authz.units.read"])),
       "GET /api/v1/access/actions": () => json(actions),

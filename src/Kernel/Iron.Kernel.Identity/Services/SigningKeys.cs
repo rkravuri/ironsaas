@@ -4,6 +4,12 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Iron.Kernel.Identity.Services;
 
+/// <summary>One public key of the set, its members named as RFC 7517 names them.</summary>
+public sealed record JsonWebKeyResponse(string Kty, string Crv, string Use, string Alg, string Kid, string X, string Y);
+
+/// <summary>The JSON Web Key Set that <c>/.well-known/jwks.json</c> answers (RFC 7517 section 5).</summary>
+public sealed record JsonWebKeySetResponse(IReadOnlyList<JsonWebKeyResponse> Keys);
+
 /// <summary>
 /// The unit's token signing key (ES256): from configuration, from a file written on first start, or ephemeral with a
 /// warning. One key in S1; rotation keeps the previous public keys for validation (TF-020 AC3) and arrives with the
@@ -66,25 +72,11 @@ public sealed class SigningKeys : IDisposable
     public IReadOnlyList<SecurityKey> ValidationKeys { get; }
 
     /// <summary>The public keys as a JSON Web Key Set, for <c>/.well-known/jwks.json</c>.</summary>
-    public object JsonWebKeySet()
+    public JsonWebKeySetResponse JsonWebKeySet()
     {
         var parameters = _privateKey.ExportParameters(includePrivateParameters: false);
-        return new
-        {
-            keys = new[]
-            {
-                new
-                {
-                    kty = "EC",
-                    crv = "P-256",
-                    use = "sig",
-                    alg = "ES256",
-                    kid = KeyId,
-                    x = Base64UrlEncoder.Encode(parameters.Q.X!),
-                    y = Base64UrlEncoder.Encode(parameters.Q.Y!),
-                },
-            },
-        };
+        var key = new JsonWebKeyResponse("EC", "P-256", "sig", "ES256", KeyId, Base64UrlEncoder.Encode(parameters.Q.X!), Base64UrlEncoder.Encode(parameters.Q.Y!));
+        return new JsonWebKeySetResponse([key]);
     }
 
     public void Dispose() => _privateKey.Dispose();

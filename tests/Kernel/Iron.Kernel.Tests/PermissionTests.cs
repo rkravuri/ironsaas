@@ -3,6 +3,7 @@ namespace Iron.Kernel.Tests;
 public class PermissionTests
 {
     [Fact]
+    [Proves("ADR-0012")]
     public void SplitsItsNameIntoModuleResourceAndAction()
     {
         var permission = new Permission("identity.users.read", "List and view users", Risk.Low);
@@ -14,6 +15,7 @@ public class PermissionTests
     }
 
     [Theory]
+    [Proves("TF-030 AC4", "ADR-0012")]
     [InlineData("Identity.Users.Read")]
     [InlineData("identity.users")]
     [InlineData("identity.users.read.all")]
@@ -28,12 +30,14 @@ public class PermissionTests
     }
 
     [Fact]
+    [Proves("TF-030 AC4", "ADR-0012")]
     public void RefusesAnEmptyDescription()
     {
         Assert.Throws<ArgumentException>(() => new Permission("identity.users.read", " ", Risk.Low));
     }
 
     [Fact]
+    [Proves("ADR-0012")]
     public void TwoPermissionsWithTheSameNameAreEqual()
     {
         var a = new Permission("files.documents.upload", "Upload documents", Risk.Medium);

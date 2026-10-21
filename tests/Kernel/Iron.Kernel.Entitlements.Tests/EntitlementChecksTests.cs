@@ -71,6 +71,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("ADR-0039")]
     public async Task TheGatesDecisionForAnExplanationIsTheChecksAnswerAndWritesNothing()
     {
         await PublishAsync(Documents.With(10, [Documents.Fixture(EntitlementStatus.Disabled)]));
@@ -91,6 +92,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("TF-040 AC1", "TF-043 AC2", "ADR-0034")]
     public async Task ADisabledModuleIsRefusedWhateverThePermissionAndTheRefusalIsAudited()
     {
         await PublishAsync(Documents.With(10, [Documents.Fixture(EntitlementStatus.Disabled)]));
@@ -109,6 +111,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("TF-040 AC2")]
     public async Task AReadOnlyModuleAnswersReadsAndRefusesWrites()
     {
         await PublishAsync(Documents.With(11, [Documents.Fixture(EntitlementStatus.ReadOnly)]));
@@ -123,6 +126,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("TF-040 AC3")]
     public async Task AnExpiredModuleWorksThroughItsGraceAndIsRefusedAfterIt()
     {
         var ends = DateOnly.FromDateTime(_time.GetUtcNow().UtcDateTime).AddDays(-3);
@@ -142,6 +146,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("TF-046 AC3")]
     public async Task AFeatureOfADisabledModuleIsUnavailableEvenWhenItIsEnabledAlone()
     {
         await PublishAsync(Documents.With(13, [Documents.Fixture()], [Documents.Feature(FixtureModule.Bulk.Code)]));
@@ -159,6 +164,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("TF-046 AC1", "ADR-0034")]
     public async Task RoleExportAndImportNeedTheRoleTransferFeatureAndTheOtherRoleEndpointsDoNot()
     {
         await PublishAsync(Documents.With(15));
@@ -184,6 +190,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("TF-041 AC1", "TF-041 AC2", "TF-041 AC3", "ADR-0034")]
     public async Task SeatsAreRefusedAboveTheCountUsageIsReportedAndARemovedSeatLosesTheModuleOnTheNextRequest()
     {
         await ClearSeatsAsync();
@@ -230,6 +237,7 @@ public class EntitlementChecksTests(EntitlementsFixture fixture) : IAsyncLifetim
     }
 
     [Fact]
+    [Proves("ADR-0034")]
     public async Task TheContextAndTheSubscriptionSayWhatAppliesAndWhy()
     {
         await ClearSeatsAsync();

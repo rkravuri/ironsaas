@@ -74,7 +74,9 @@ test.describe("the import kill switch reaches the shell and the API within a min
     await killImports(false);
   });
 
-  test("on: the banner says why, Import is hidden and the API refuses it; off: all three return", async ({ page }) => {
+  test("on: the banner says why, Import is hidden and the API refuses it; off: all three return [TF-054 AC1, TF-054 AC2, ADR-0035]", async ({
+    page,
+  }) => {
     await killImports(false);
     await signIn(page);
     await page.goto("/console/roles");

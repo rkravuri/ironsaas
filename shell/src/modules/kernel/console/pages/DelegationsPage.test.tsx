@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 describe("the console's delegations page, for administrators (TF-037, ADR-0037)", () => {
-  it("lists others' delegations and offers to delegate for someone, with nothing chosen to end yet", async () => {
+  it("lists others' delegations and offers to delegate for someone, with nothing chosen to end yet [ADR-0037]", async () => {
     const { calls } = stubFetch({
       "GET /api/v1/me": () => json(me(["authz.delegations.manage"])),
       "GET /api/v1/delegations?page_number=1&page_size=50&sort=-starts_at": () => json(emptyList),

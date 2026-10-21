@@ -13,6 +13,7 @@ namespace Iron.Architecture.Tests;
 public class RecordPolicyRulesTests
 {
     [Fact]
+    [Proves("ADR-0032")]
     public void EveryBusinessRecordOfEveryModuleHasARegisteredPolicy()
     {
         var violations = new List<string>();
@@ -35,6 +36,7 @@ public class RecordPolicyRulesTests
     }
 
     [Fact]
+    [Proves("TF-035 AC3", "ADR-0032")]
     public void ABusinessRecordWithoutAPolicyIsRefusedAndOneWithAPolicyPasses()
     {
         var violations = RecordPolicyRules.Check(typeof(RecordPolicyRulesTests).Assembly);
@@ -46,6 +48,7 @@ public class RecordPolicyRulesTests
     }
 
     [Fact]
+    [Proves("TF-035 AC3", "ADR-0032")]
     public void TheRuleNamesEveryRecordWithoutAPolicy()
     {
         var violations = RecordPolicyRules.Unpoliced("Iron.Suites.Procurement.Sample", [typeof(PolicedRecord), typeof(UnpolicedRecord)], [typeof(PolicedRecord)]);

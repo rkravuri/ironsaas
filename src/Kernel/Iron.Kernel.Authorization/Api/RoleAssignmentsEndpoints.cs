@@ -66,11 +66,11 @@ internal static class RoleAssignmentsEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var assignments = endpoints.MapApiGroup("role-assignments");
-        assignments.MapGet("/", ListAsync).RequirePermission(AuthorizationPermissions.AssignmentsRead).ScopedByRow().WithName("ListRoleAssignments").WithSummary("The role assignments you may see, for a principal (filter=principal_id:eq:<id>) or a unit (filter=unit_id:eq:<id>).");
-        assignments.MapGet("/mine", MineAsync).RequireSignedIn().WithName("MyRoleAssignments").WithSummary("Your own role assignments, for My profile; no permission needed, since they are yours.");
-        assignments.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.AssignmentsRead).ScopedByRow().WithName("GetRoleAssignment").WithSummary("One role assignment you may see.");
-        assignments.MapPost("/", GrantAsync).RequirePermission(AuthorizationPermissions.AssignmentsManage).ScopedByRow().Validate<GrantRoleRequest>().WithName("GrantRole").WithSummary("Grant a role to a principal for the tenant, a unit, a unit with its children, or a record.");
-        assignments.MapDelete("/{id:guid}", RemoveAsync).RequirePermission(AuthorizationPermissions.AssignmentsManage).ScopedByRow().WithName("RemoveRoleAssignment").WithSummary("Remove a role assignment.");
+        assignments.MapGet("/", ListAsync).RequirePermission(AuthorizationPermissions.AssignmentsRead).ScopedByRow().Produces<ListResponse<AssignmentView>>(StatusCodes.Status200OK).WithName("ListRoleAssignments").WithSummary("The role assignments you may see, for a principal (filter=principal_id:eq:<id>) or a unit (filter=unit_id:eq:<id>).");
+        assignments.MapGet("/mine", MineAsync).RequireSignedIn().Produces<MyAssignmentsResponse>(StatusCodes.Status200OK).WithName("MyRoleAssignments").WithSummary("Your own role assignments, for My profile; no permission needed, since they are yours.");
+        assignments.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.AssignmentsRead).ScopedByRow().Produces<AssignmentView>(StatusCodes.Status200OK).WithName("GetRoleAssignment").WithSummary("One role assignment you may see.");
+        assignments.MapPost("/", GrantAsync).RequirePermission(AuthorizationPermissions.AssignmentsManage).ScopedByRow().Validate<GrantRoleRequest>().Produces<AssignmentView>(StatusCodes.Status201Created).WithName("GrantRole").WithSummary("Grant a role to a principal for the tenant, a unit, a unit with its children, or a record.");
+        assignments.MapDelete("/{id:guid}", RemoveAsync).RequirePermission(AuthorizationPermissions.AssignmentsManage).ScopedByRow().Produces(StatusCodes.Status204NoContent).WithName("RemoveRoleAssignment").WithSummary("Remove a role assignment.");
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, AssignmentService assignments, CancellationToken cancellationToken)

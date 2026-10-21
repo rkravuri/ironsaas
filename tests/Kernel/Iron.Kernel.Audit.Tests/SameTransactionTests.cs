@@ -13,6 +13,7 @@ namespace Iron.Kernel.Audit.Tests;
 public class SameTransactionTests(AuditFixture fixture)
 {
     [Fact]
+    [Proves("TF-060 AC1", "TF-084 AC3", "ADR-0013")]
     public async Task WithoutCommitNeitherTheChangeNorTheEventExists()
     {
         var alice = Ids.New();
@@ -31,6 +32,7 @@ public class SameTransactionTests(AuditFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-060 AC1", "ADR-0013")]
     public async Task WithCommitBothTheChangeAndTheEventExist()
     {
         var alice = Ids.New();

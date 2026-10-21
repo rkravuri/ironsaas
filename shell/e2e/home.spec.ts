@@ -6,7 +6,7 @@ const childUnit = process.env.E2E_CHILD_UNIT ?? "E2E branch";
 const domain = loginId.split("@")[1] ?? "smoke.localhost";
 
 test.describe("home and the header (D4)", () => {
-  test("the administrator signs in and lands on the home page", async ({ page }) => {
+  test("the administrator signs in and lands on the home page [TF-011 AC1, ADR-0033]", async ({ page }) => {
     await signIn(page);
 
     await expect(page).toHaveURL(/\/$/);
@@ -22,7 +22,7 @@ test.describe("home and the header (D4)", () => {
     await page.screenshot({ path: "test-results/e2e/home-administrator.png", fullPage: true });
   });
 
-  test("Ctrl+K, units, Enter opens the units page", async ({ page }) => {
+  test("Ctrl+K, units, Enter opens the units page [ADR-0033]", async ({ page }) => {
     await signIn(page);
 
     await page.keyboard.press("Control+K");
@@ -35,7 +35,9 @@ test.describe("home and the header (D4)", () => {
     await expect(page.getByRole("tree", { name: "Organisation units" })).toBeVisible();
   });
 
-  test("invites a person into the child unit, shows the link once and opens the new record", async ({ page }) => {
+  test("invites a person into the child unit, shows the link once and opens the new record [TF-010 AC1]", async ({
+    page,
+  }) => {
     await signIn(page);
     await open(page, "/users");
     const name = `Invited ${Date.now().toString(36)}`;

@@ -16,7 +16,7 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the subscription page in the ${scheme} scheme: the plan, modules and features in words, its contents by keyboard, and no WCAG 2.1 AA violation`, async ({
+  test(`the subscription page in the ${scheme} scheme: the plan, modules and features in words, its contents by keyboard, and no WCAG 2.1 AA violation [TF-041 AC3, TF-172 AC1, ADR-0024, ADR-0027]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -48,7 +48,7 @@ for (const scheme of schemes) {
     await expect(page).toHaveURL(/#subscription-features$/);
   });
 
-  test(`the subscription page in the ${scheme} scheme warns in words when it cannot be confirmed, with no WCAG 2.1 AA violation`, async ({
+  test(`the subscription page in the ${scheme} scheme warns in words when it cannot be confirmed, with no WCAG 2.1 AA violation [TF-172 AC1]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });

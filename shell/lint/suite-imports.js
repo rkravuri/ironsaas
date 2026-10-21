@@ -35,7 +35,7 @@ function resolve(file, source) {
   return undefined;
 }
 
-const suiteImports = {
+export const suiteImports = {
   meta: {
     type: "problem",
     docs: { description: "A module of one suite never imports from another suite (ADR-0043)." },
@@ -71,6 +71,3 @@ const suiteImports = {
     };
   },
 };
-
-/** The shell's own lint rules, under the prefix "iron/". */
-export const ironPlugin = { meta: { name: "iron" }, rules: { "suite-imports": suiteImports } };

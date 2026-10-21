@@ -7,6 +7,7 @@ namespace Iron.Kernel.Api.Tests;
 public class ListEndpointTests(ApiFixture fixture)
 {
     [Fact]
+    [Proves("TF-100 AC2", "ADR-0009")]
     public async Task AListReturnsTheEnvelopeInSnakeCase()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things?page_size=2", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -33,6 +34,7 @@ public class ListEndpointTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-101 AC2")]
     public async Task APageSizeAboveTheMaximumIsCappedAndReported()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things?page_size=500", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -45,6 +47,7 @@ public class ListEndpointTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-100 AC1", "TF-101 AC1", "ADR-0009")]
     public async Task AnUnknownFilterFieldIsAProblemThatNamesTheField()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things?filter=colour:eq:red", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -64,6 +67,7 @@ public class ListEndpointTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public async Task AnOperatorTheFieldDoesNotSupportIsNamed()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things?filter=name:gt:b", UriKind.Relative), TestContext.Current.CancellationToken);
@@ -74,6 +78,7 @@ public class ListEndpointTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public async Task FiltersSortsAndFieldsAreApplied()
     {
         using var response = await fixture.Client.GetAsync(
@@ -92,6 +97,7 @@ public class ListEndpointTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0009")]
     public async Task ANameFilterIgnoresCase()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/api/v1/things?filter=name:contains:RI", UriKind.Relative), TestContext.Current.CancellationToken);

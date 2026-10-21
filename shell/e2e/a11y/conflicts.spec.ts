@@ -26,7 +26,7 @@ async function choose(page: Page, field: ReturnType<Page["getByRole"]>, typed: s
 }
 
 for (const scheme of schemes) {
-  test(`the conflict rules in the ${scheme} scheme: the rules in words, the editor by keyboard, the report, and no WCAG 2.1 AA violation`, async ({
+  test(`the conflict rules in the ${scheme} scheme: the rules in words, the editor by keyboard, the report, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -96,7 +96,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`the grant dialog in the ${scheme} scheme: a conflict rule that refuses the grant, said in words before the confirm, and no WCAG 2.1 AA violation`, async ({
+  test(`the grant dialog in the ${scheme} scheme: a conflict rule that refuses the grant, said in words before the confirm, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0039]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
