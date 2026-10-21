@@ -8,6 +8,7 @@ import {
   Code,
   Group,
   Modal,
+  MultiSelect,
   NumberInput,
   SegmentedControl,
   Select,
@@ -20,7 +21,7 @@ import {
 import { IconHistory, IconPencil, IconRestore } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
-import { fetchUnits } from "@/api/authorization";
+import { fetchRoles, fetchUnits } from "@/api/authorization";
 import { fetchSettingHistory, fetchSettings, resetSetting, saveSetting, type SettingView } from "@/api/settings";
 import { useAccessAt } from "@/auth/access";
 import { contextQueryKey } from "@/auth/entitlements";
@@ -331,13 +332,21 @@ const isJson = (text: string) => {
   }
 };
 
-/** The form's value for the setting's type: JSON as text, everything else as it is. */
+/** The MFA policy's roles (ADR-0047): a list of role codes, chosen from the tenant's roles rather than typed as JSON. */
+const roleListKey = "identity.mfa.roles";
+
+/** The form's value for the setting's type: JSON as text, a role list as its codes, everything else as it is. */
 const initialValue = (setting: SettingView): unknown =>
-  setting.type === "json"
-    ? JSON.stringify(setting.value, null, 2)
-    : (setting.value ?? (setting.type === "boolean" ? false : ""));
+  setting.key === roleListKey
+    ? (Array.isArray(setting.value) ? setting.value : []).filter((code): code is string => typeof code === "string")
+    : setting.type === "json"
+      ? JSON.stringify(setting.value, null, 2)
+      : (setting.value ?? (setting.type === "boolean" ? false : ""));
 
 function editSchema(setting: SettingView, t: TFunction): z.ZodType<EditValues> {
+  if (setting.key === roleListKey) {
+    return z.object({ value: z.array(z.string()) });
+  }
   // The type only: the rule is the server's, and its words come back on the field (TF-057 AC2).
   switch (setting.type) {
     case "number":
@@ -374,8 +383,37 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
   const { t } = useTranslation();
   const schema = useMemo(() => editSchema(setting, t), [setting, t]);
   const form = useZodForm<EditValues>({ schema, initialValues: { value: initialValue(setting) } });
+  const roleList = setting.key === roleListKey;
+  const roles = useQuery({
+    queryKey: ["authz", "roles", "all"],
+    queryFn: ({ signal }) => fetchRoles("page_size=200&sort=name", signal),
+    enabled: roleList,
+  });
 
   const field = (() => {
+    if (roleList) {
+      const held = (form.values.value as string[] | undefined) ?? [];
+      const known = (roles.data?.data ?? []).map((role) => ({ value: role.code, label: role.name }));
+      // A code saved before its role was renamed or removed still shows, by its code, so it can be taken out.
+      const options = [
+        ...known,
+        ...held
+          .filter((code) => !known.some((role) => role.value === code))
+          .map((code) => ({ value: code, label: code })),
+      ];
+      return (
+        <MultiSelect
+          label={t("settings.edit.roles")}
+          description={t("settings.edit.rolesHint")}
+          data={options}
+          searchable
+          clearable
+          nothingFoundMessage={t("settings.edit.rolesNone")}
+          data-autofocus
+          {...form.getInputProps("value")}
+        />
+      );
+    }
     switch (setting.type) {
       case "number":
         return (
@@ -441,7 +479,11 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
       submitLabel={t("settings.edit.save")}
       secondary={{ label: t("settings.cancel"), onClick: onClose }}
       onSubmit={async (values) => {
-        const value = setting.type === "json" ? (JSON.parse(String(values.value)) as unknown) : values.value;
+        const value = roleList
+          ? values.value
+          : setting.type === "json"
+            ? (JSON.parse(String(values.value)) as unknown)
+            : values.value;
         await saveSetting(setting.key, place, typeof value === "string" ? value.trim() : value);
         await onSaved();
         onClose();

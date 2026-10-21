@@ -11,16 +11,21 @@ import { failedRule, usePasswordPolicy, type PasswordRule } from "@/auth/passwor
 import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
 import { EmptyState, LoadingState } from "@/components/panels";
+import { SecondFactors } from "./SecondFactors";
 
 const when = (value: string) => new Date(value).toLocaleString();
 
 const securityEventsKey = ["identity", "me", "security-events"] as const;
 
-/** My profile's Security tab (TF-012, TF-017, TF-019): change the password, then what happened to the account. */
+/**
+ * My profile's Security tab (TF-012, TF-013, TF-017, TF-019): change the password, the second factors and recovery codes,
+ * then what happened to the account.
+ */
 export function SecurityTab() {
   return (
     <Stack gap="xl">
       <ChangePassword />
+      <SecondFactors />
       <SecurityActivity />
     </Stack>
   );

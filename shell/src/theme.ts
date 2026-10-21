@@ -95,6 +95,9 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
     "--iron-ease-enter": tokens.motion.easing.enter,
     "--iron-ease-exit": tokens.motion.easing.exit,
     ...Object.fromEntries(accentNames.map((name) => [`--iron-accent-${name}`, `var(--mantine-color-${name}-text)`])),
+    // A QR code is read by a camera, which wants dark modules on a light ground: the light scheme's pair in both schemes.
+    "--iron-qr-ink": tokens.ink.light,
+    "--iron-qr-paper": tokens.paper.light,
   },
   light: {
     "--iron-ink": tokens.ink.light,

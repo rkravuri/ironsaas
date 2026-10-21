@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useSession } from "@/auth/session-context";
+import { useSignInHeld } from "@/auth/sign-in-hold";
 import { LoadingState } from "@/components/panels";
 import { ErrorView } from "./ErrorBoundary";
 import { ApiError } from "@/api/client";
@@ -67,7 +68,9 @@ export function RequirePermission({
 export function RedirectIfSignedIn({ children }: { children: ReactNode }) {
   const session = useSession();
   const location = useLocation();
-  if (session.status === "signed-in") {
+  // Not while the login page shows recovery codes: they are shown once, and the person goes on when they saved them.
+  const held = useSignInHeld();
+  if (session.status === "signed-in" && !held) {
     return <Navigate to={(location.state as LoginState | null)?.from ?? "/"} replace />;
   }
   return <>{children}</>;

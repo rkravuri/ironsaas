@@ -37,6 +37,7 @@
     "ag-grid-community": "36.2.0",
     "ag-grid-react": "36.2.0",
     "i18next": "26.5.2",
+    "qrcode-generator": "2.0.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-i18next": "17.1.0",

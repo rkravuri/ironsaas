@@ -20,6 +20,8 @@ export const ProblemSchema = z.object({
   errors: z.array(FieldProblemSchema).optional(),
   /** The code of a recovery link, when a sign-in found the password past its maximum age (TF-012, ADR-0046). */
   recovery_token: z.string().optional(),
+  /** How long to wait before a second factor is checked again, during a cooling period (TF-013 AC2, ADR-0047). */
+  retry_after_seconds: z.number().optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
@@ -59,6 +61,7 @@ export class ApiError extends Error {
   readonly detail: string | undefined;
   readonly errors: readonly FieldProblem[] | undefined;
   readonly recoveryToken: string | undefined;
+  readonly retryAfterSeconds: number | undefined;
 
   constructor(status: number, problem: Problem, correlationId: string | undefined) {
     super(problem.detail ?? problem.title ?? `The request failed with status ${status}.`);
@@ -69,6 +72,12 @@ export class ApiError extends Error {
     this.detail = problem.detail;
     this.errors = problem.errors;
     this.recoveryToken = problem.recovery_token;
+    this.retryAfterSeconds = problem.retry_after_seconds;
+  }
+
+  /** A high-risk action refused for an old sign-in (TF-248): the person confirms it is them, and it is sent again. */
+  get needsReauthentication(): boolean {
+    return this.status === 403 && this.errorCode === reauthenticationRequired;
   }
 
   get isUnauthenticated(): boolean {
@@ -85,6 +94,27 @@ export interface RequestOptions<T> {
   body?: unknown;
   schema?: z.ZodType<T>;
   signal?: AbortSignal;
+}
+
+/** The code of a refusal for an old sign-in (TF-248, ADR-0047). */
+export const reauthenticationRequired = "auth.reauthentication_required";
+
+/** Asks the person to confirm it is them; true when they did, false when they cancelled. */
+export type Reauthenticate = () => Promise<boolean>;
+let reauthenticator: Reauthenticate | undefined;
+
+/**
+ * The shell's one re-authentication dialog registers here (TF-248): a request refused for an old sign-in waits while the
+ * person confirms it is them, and is sent again once, so the action goes on without the person repeating it. Without a
+ * dialog, or when the person cancels, the refusal is thrown as any other.
+ */
+export function onReauthenticationRequired(handler: Reauthenticate): () => void {
+  reauthenticator = handler;
+  return () => {
+    if (reauthenticator === handler) {
+      reauthenticator = undefined;
+    }
+  };
 }
 
 type UnauthenticatedListener = (error: ApiError) => void;
@@ -125,6 +155,17 @@ export function onResponse(listener: ResponseListener): () => void {
  * Paths are absolute (`/api/v1/users`); the ingress routes them to the tenant's API (ADR-0020).
  */
 export async function request<T = unknown>(path: string, options: RequestOptions<T> = {}): Promise<T> {
+  try {
+    return await send(path, options);
+  } catch (error) {
+    if (error instanceof ApiError && error.needsReauthentication && reauthenticator && (await reauthenticator())) {
+      return send(path, options);
+    }
+    throw error;
+  }
+}
+
+async function send<T>(path: string, options: RequestOptions<T>): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   const init: RequestInit = {
     method: options.method ?? "GET",

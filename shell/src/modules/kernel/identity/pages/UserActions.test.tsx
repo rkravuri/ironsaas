@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { Route, Routes } from "react-router";
-import { json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
+import userEvent from "@testing-library/user-event";
+import { fill, json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
 import { UserRecordPage } from "./UserRecordPage";
 
 afterEach(() => {
@@ -155,5 +156,41 @@ describe("the user record's actions", () => {
       `${window.location.origin}/invitations#new-one`,
     );
     expect(calls.some((call) => call.key === "POST /api/v1/users/u1/reactivate")).toBe(true);
+  });
+
+  it("offer Reset factors only for a person with factors whose permissions the reader holds, and ask a reason [ADR-0046, ADR-0047]", async () => {
+    let record = person({ factors: 2, takeover_allowed: true });
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me([], manager)),
+      "GET /api/v1/users/u1": () => json(record),
+      "GET /api/v1/me/access?unit=sales": () => json({ scope: "unit:sales", permissions: manager }),
+      "POST /api/v1/users/u1/factors/reset": () => {
+        record = person({ factors: 0, takeover_allowed: true });
+        return json(record);
+      },
+    });
+    const view = page();
+    const user = userEvent.setup();
+
+    const header = await actionsOf();
+    await waitFor(() => expect(within(header).getByRole("button", { name: "Reset factors" })).toBeInTheDocument());
+    await user.click(within(header).getByRole("button", { name: "Reset factors" }));
+    const dialog = await screen.findByRole("dialog", { name: "Reset the second factors of Ada Lovelace?" });
+    await user.click(within(dialog).getByRole("button", { name: "Reset the factors" }));
+    expect(await within(dialog).findByText("Say why: it is kept with the reset.")).toBeInTheDocument();
+    await fill(user, within(dialog).getByLabelText(/^reason/i), "Lost her phone on the train");
+    await user.click(within(dialog).getByRole("button", { name: "Reset the factors" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const reset = calls.find((call) => call.key === "POST /api/v1/users/u1/factors/reset");
+    expect(JSON.parse(reset?.init?.body as string)).toEqual({ reason: "Lost her phone on the train" });
+    view.unmount();
+
+    // The escalation rule: the reader lacks a permission the person holds, so the record offers no reset.
+    record = person({ factors: 2, takeover_allowed: false });
+    page();
+    const again = await actionsOf();
+    await waitFor(() => expect(within(again).getByRole("button", { name: "Deactivate" })).toBeInTheDocument());
+    expect(within(again).queryByRole("button", { name: "Reset factors" })).toBeNull();
   });
 });
