@@ -61,7 +61,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 
 | Task | What it builds | Requirements | State |
 |---|---|---|---|
-| T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | in review (slice/s3-t1) |
+| T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | done (main, df1e35e) |
 | T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | outline |
 | T3 | MFA and step-up re-authentication | TF-013 | outline |
 | T4 | Single sign-on with OpenID Connect | TF-014 | outline |
