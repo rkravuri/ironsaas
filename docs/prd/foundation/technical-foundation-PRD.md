@@ -65,7 +65,7 @@ The kernel as it is after S2, by today's names (ADR-0029), then the modules plan
 | `Iron.Kernel.Api` (no schema) | REST conventions, envelope, problems, paging and filtering, the permission every endpoint declares (ADR-0009) | Core | Built (S1) |
 | `Iron.Kernel.Telemetry` (no schema) | OpenTelemetry traces, metrics and logs, correlation, scrubbing (ADR-0010) | Core | Built (S1) |
 | `Iron.Kernel.Security` (no schema) | Secrets from the store at start, security headers, CORS, signing keys (ADR-0010, ADR-0016) | Core | Built (S1) |
-| `Iron.Kernel.Identity` (`kernel_identity`) | Principals, passwords, sessions, invitations, access tokens and service accounts, a principal's home unit (ADR-0014, ADR-0015) | Core | Built (S1, A1) |
+| `Iron.Kernel.Identity` (`kernel_identity`) | Principals, passwords, sessions, invitations, access tokens and service accounts, a principal's home unit (ADR-0014, ADR-0015); later the one-time verified access for external respondents (TF-246) | Core | Built (S1, A1); TF-246 S4 |
 | `Iron.Kernel.Authorization` (`kernel_authz`) | Permission catalogue, roles and scoped assignments; the unit tree, its kinds as an extension point, scopes (ADR-0030, ADR-0031); record policies (ADR-0032); delegation of duties and access reviews (ADR-0037); cross-unit access, the working unit and the unit lifecycle (ADR-0038); explaining access and conflict rules (ADR-0039) | Core | Built (S1, S2) |
 | `Iron.Kernel.Audit` (`kernel_audit`) | The append-only audit trail in the unit of work, the cross-unit read audit (ADR-0013, ADR-0038) | Core | Built (S1, A8) |
 | `Iron.Kernel.Files` (`kernel_files`) | Object storage behind one interface and file metadata (ADR-0016); later the upload rules, rendering, numbering and signature capture (TF-161 to TF-166) | Core | Built in part (S1); the rest S4 |
@@ -81,10 +81,11 @@ The kernel as it is after S2, by today's names (ADR-0029), then the modules plan
 | `Iron.Kernel.Localization` (`kernel_localization`) | UI strings, translation workflow, locale formats, timezones (TF-140 to TF-145) | Core | Planned (S4) |
 | `Iron.Kernel.Notifications` (`kernel_notifications`) | Templates, channels, preferences, mandates, digests, delivery tracking (TF-150 to TF-156) | Core | Planned (S4) |
 | `Iron.Kernel.Workflow` (`kernel_workflow`) | Approval chains, the state machine framework, SLA timers, escalation, tasks, comments, the business calendar (TF-090 to TF-099); approvals, tasks and notifications respect access (TF-243) | Core | Planned (S5) |
-| `Iron.Kernel.Forms` (`kernel_forms`) | Form templates, instances on records, scored and signed responses (TF-242) | Core | Planned (S4) |
+| `Iron.Kernel.Forms` (`kernel_forms`) | Form templates, instances on records, scored and signed responses with their versions, section reviewers, attachments with their dates (TF-242); answers mapped to the fields modules declare, handed back as change proposals (TF-245) | Core | Planned (S4) |
+| `Iron.Kernel.Changes` (`kernel_changes`) | Governed changes to records: change requests with field-level values, field classes, decisions per field, effective dates, the concurrency check, one pending change per field, and the hooks a module adds (TF-247) | Core | Planned (S5, after the workflow engine) |
 | `Iron.Kernel.Extensibility` (`kernel_extensibility`) | Custom fields, custom lookups, plugin hooks, saved views, export definitions (TF-200 to TF-203) | Core | Planned (S5) |
 | `Iron.Kernel.Search` (no schema; PostgreSQL full text) | Unified search across record types with permission filtering (TF-204) | Extended | Planned (S5) |
-| `Iron.Kernel.Integration` (`kernel_integration`) | The import and export framework, file templates, connectors for ERP and HR systems (TF-205, TF-206, TF-114) | Core | Planned (S5, S7) |
+| `Iron.Kernel.Integration` (`kernel_integration`) | The import and export framework, file templates, connectors for ERP and HR systems, and the verification and screening connectors (identity and tax status, bank account, sanctions) (TF-205, TF-206, TF-114) | Core | Planned (S5, S7) |
 | `Iron.Kernel.Billing` (`kernel_billing`, control plane) | Plans with prices, subscriptions per user and per module, subscription invoices (TF-207) | Core | Planned (S6) |
 | `Iron.Kernel.Compliance` (`kernel_compliance`) | Validation evidence, signature manifestation, audit trail review, evidence packs (TF-067, TF-218, TF-219) | Core | Planned (S3) |
 | `Iron.Kernel.Mobile` (API surface) | Companion app readiness: native authentication, push, compact operations (TF-224) | Extended | Planned (S7) |
@@ -265,6 +266,40 @@ sequenceDiagram
 ```
 
 Compliance notes: the network is multi-tenant by nature, but it holds supplier-owned data plus a minimal customer-configurable index; tenants cannot see each other's relationships or indexes; the trust boundary and data minimisation are requirements TF-230 to TF-239.
+
+### 3.7 Domain model of governed changes and forms
+
+Decided 2026-10-21 with the supplier management pack's section 8.5, because these choices are expensive to change later. Entities, relationships and rules only; the tables are decided in the slice that builds them (S4 for forms, S5 for governed changes).
+
+```mermaid
+erDiagram
+  GOVERNED_ENTITY ||--|{ FIELD_CLASS : "declares, with a floor"
+  GOVERNED_RECORD ||--o{ CHANGE_REQUEST : "changed through"
+  CHANGE_REQUEST ||--|{ FIELD_CHANGE : "old and new value"
+  FIELD_CHANGE }o--|| FIELD_CLASS : "classed by"
+  FIELD_CHANGE ||--o| FIELD_DECISION : "approved, rejected or questioned"
+  CHANGE_REQUEST ||--o| APPROVAL_CHAIN : "routed by (TF-090)"
+  CHANGE_REQUEST ||--o{ CHANGE_EVIDENCE : "carries"
+  FORM_TEMPLATE ||--|{ TEMPLATE_VERSION : "versioned as"
+  TEMPLATE_VERSION ||--|{ FORM_SECTION : has
+  FORM_SECTION ||--|{ QUESTION : asks
+  FORM_SECTION }o--o{ REVIEWER : "reviewed by"
+  QUESTION }o--o| MAPPABLE_FIELD : "maps to (TF-245)"
+  FORM_INSTANCE }o--|| TEMPLATE_VERSION : "sent with"
+  FORM_INSTANCE }o--|| GOVERNED_RECORD : "about"
+  FORM_INSTANCE ||--o{ RESPONSE_VERSION : "answered by"
+  RESPONSE_VERSION ||--|{ ANSWER : holds
+  RESPONSE_VERSION ||--o{ SECTION_DECISION : "decided per section"
+  ANSWER ||--o{ ATTACHMENT : "evidence, with issue and expiry dates"
+  ANSWER ||--o| CHANGE_PROPOSAL : "handed to the owning module"
+  ONE_TIME_LINK }o--|| FORM_INSTANCE : "opens only (TF-246)"
+```
+
+- **Governed changes are a kernel mechanism** (TF-247). A module registers a governed entity and declares each field's class and floor; a tenant raises a class, never below the floor. A change request belongs to one record and carries its field changes, each with its old value, its new value and its decision. The approval chain is the workflow engine's; the field history is TF-062's.
+- **No version tables.** A record holds its current values. A change effective later waits as an approved change request and applies on its date. What a record held on a past day is read from its field-level history.
+- **Documents copy what they need when issued.** An order copies the supplier's address and terms when it is issued and keeps them; a payment always uses the bank account valid and verified on the payment date. Governed changes never reach back into issued documents; a product that wants an open document to take a new value does so itself.
+- **Forms in the kernel, requests in the product.** Templates, their versions, sections, questions, instances and response versions are the forms engine's (TF-242). A mapped answer becomes a change proposal handed to the module that owns the field (TF-245), never a direct write. The requests and campaigns that send forms to suppliers are Supplier management's.
+- **A one-time link is not a principal.** It opens one instance or one invitation for one known contact, and ends (TF-246).
 
 
 ## 4. Requirements
@@ -2931,17 +2966,21 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 #### TF-206 Connector configuration for external systems  
 *Priority:* **Should** · *Tag:* `[Extended]` · *Area:* Extensibility, search, integration and billing
 
-**Requirement:** Integration shall provide inbound (push from ERP through the API or files) and outbound (TF-114) connector configurations with credentials in the secrets store, field mappings with transformation rules, schedules, run history, error queues and reconciliation reports.
+**Requirement:** Integration shall provide inbound (push from ERP through the API or files) and outbound (TF-114) connector configurations with credentials in the secrets store, field mappings with transformation rules, schedules, run history, error queues and reconciliation reports. Verification and screening connectors are kinds of their own, each with one contract the modules call and a provider configured per country: identity and tax status (whether a tax or registration identifier is registered, its status, and the name it is registered to), bank account (whether an account exists and how closely its holder's name matches the one given), and sanctions (a name and country against the configured lists, answering each possible match with its list entry). Each answer keeps the provider's reference for audit.
 
-**Why:** Every enterprise customer integrates with an ERP.
+**Why:** Every enterprise customer integrates with an ERP. Verifying a supplier's identity, bank account and sanctions status is done through providers that differ by country; one contract per kind keeps the modules free of providers.
 
 **Acceptance criteria:**
 
 - AC1 Given an inbound file connector, When a file lands, Then it is imported through the import framework and the run recorded.
 - AC2 Given a mapping error, When run, Then rows land in the error queue with the reason. (error case)
 - AC3 Given a reconciliation report, When run, Then counts in both systems are compared and differences listed.
+- AC4 Given a bank account connector configured for India, When a module asks it to verify an account, Then the answer says whether the account exists and how closely the holder's name matches, with the provider's reference kept.
+- AC5 Given no connector of a kind configured for a country, When a module asks for that kind of check there, Then the answer says the check is not available, and the module's own rule decides what follows. (error case)
 
 *Depends on:* TF-114, TF-205, TF-073
+
+**Notes:** Extended 2026-10-21 (SUP-gaps, gaps G4 to G6 of the supplier management pack): the verification and screening kinds, which Supplier management's re-verification, bank verification and sanctions screening call (SUP-161, SUP-162, SUP-165). The requirements name the checks, not the providers; providers are chosen per country when the connectors are built (the pack's section 8.1). A provider that receives a supplier contact's name is a sub-processor the tenant sees (TF-198).
 
 #### TF-207 Subscription billing per user and module  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Extensibility, search, integration and billing
@@ -3516,14 +3555,14 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Written at the PRD split's checkpoint, the design session's answer to FF-184's clause that approvals, tasks and notifications respect the same access (`../requirements-map.md`).
 
-### 4.30 Forms engine (TF-242, 1 requirement)
+### 4.30 Forms engine and external respondents (TF-242, TF-245 and TF-246, 3 requirements)
 
 #### TF-242 Forms engine  
 *Priority:* **Should** · *Tag:* `[Core]` `[New]` · *Area:* Forms engine
 
-**Requirement:** The kernel shall provide forms: form templates with sections, questions of typed answers, validation, conditional questions, scoring and weights, and versions; instances of a template attached to a record; responses audited, with an optional electronic signature (TF-063). Supplier questionnaires, onboarding and supplier information forms, surveys and sourcing evaluations use it.
+**Requirement:** The kernel shall provide forms: form templates with sections, questions of typed answers, validation, conditional questions, scoring and weights, and versions; attachments with typed metadata, an issue date and an expiry date among them; instances of a template attached to a record; sections that name their own reviewers and are approved or returned on their own, a returned section going back to the respondent with comments per question while the others wait; answers pre-filled from the record (TF-245); responses audited, with an optional electronic signature (TF-063); and every response kept as a version, with a comparison of any two versions of the same instance's responses. Supplier information collection, onboarding forms, surveys and sourcing evaluations use it.
 
-**Why:** Four products need structured questions with answers that can be scored and signed; one engine keeps them alike and saves building it four times.
+**Why:** Four products need structured questions with answers that can be scored and signed; one engine keeps them alike and saves building it four times. Supplier information collection also needs evidence with its validity, review by the team each section belongs to (finance for financial statements, quality for certificates), and this year's answers set against last year's.
 
 **Acceptance criteria:**
 
@@ -3533,10 +3572,81 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC4 Given a template changed after an instance was sent, When the instance is opened, Then it shows the version it was sent with.
 - AC5 Given a template that requires a signature, When a response is submitted without the re-authentication the tenant requires, Then it is refused. (error case)
 - AC6 Given a response submitted, When the audit is searched for its record, Then the submitter, the time and the answers are there.
+- AC7 Given a question that asks for a certificate with its issue and expiry dates, When a response is submitted with an expiry date before the issue date, Then it is refused naming the question. (error case)
+- AC8 Given a template whose financial section names the finance reviewers, When a response is submitted, Then that section waits for a finance reviewer's decision, and each section's decision is recorded with its reviewer and time.
+- AC9 Given a section returned with a comment on one question, When the respondent opens the response, Then only that section can be edited, the comment shows beside its question, and the other sections keep their decisions.
+- AC10 Given a person who is not among a section's reviewers, When they approve that section, Then it is refused naming the section. (error case)
+- AC11 Given last year's and this year's responses to the same recurring instance, When they are compared, Then each changed answer is listed with both values, and unchanged answers are not.
 
-*Depends on:* TF-060, TF-063, TF-094
+*Depends on:* TF-060, TF-063, TF-094, TF-160
 
-**Notes:** Decided 2026-10-20: built in S4, before supplier questionnaires (SUP-042) and onboarding forms (SUP-002) need it; surveys and sourcing come later. Its module is `Iron.Kernel.Forms` (section 2.1).
+**Notes:** Decided 2026-10-20: built in S4, before supplier questionnaires (SUP-042, replaced by supplier information collection, SUP-221 to SUP-231, on 2026-10-21) and onboarding forms (SUP-002) need it; surveys and sourcing come later. Its module is `Iron.Kernel.Forms` (section 2.1). Extended 2026-10-21 (SUP-gaps, the supplier management pack's section 8.4): attachments with issue and expiry dates, section reviewers and decisions per section, pre-fill, and versions of responses with their comparison (AC7 to AC11).
+
+#### TF-245 Mapping form answers to records  
+*Priority:* **Should** · *Tag:* `[Core]` `[New]` · *Area:* Forms engine
+
+**Requirement:** A module shall declare which fields of its records are mappable (a field of a master record, a document type of its own, a custom field, TF-200), each with its type; a form question may map to one mappable field. When an instance is sent for a record, each mapped question is pre-filled with the field's current value, and the respondent confirms it or changes it. A mapped answer is never written to the record by the forms engine: when the response is approved, each changed mapped answer is handed to the module that owns the field as a change proposal (the field, its value when the instance was sent, the new value, and the response as source and evidence), and that module decides what happens, under its own rules, approvals and verification.
+
+**Why:** Forms collect what records already hold. Without mapping, a reviewer retypes approved answers into the record, with mistakes; with direct writes, a form would bypass the owning module's approvals and verification, and a bank account from a questionnaire would reach a payment unchecked.
+
+**Acceptance criteria:**
+
+- AC1 Given a question mapped to a supplier's website and a supplier whose record holds a website, When the instance is sent, Then the question shows the current website pre-filled.
+- AC2 Given a mapped answer the respondent changed, When the response is approved, Then the owning module receives one change proposal with the field, the value when sent, the new value and the response, and the record is unchanged until the module applies it.
+- AC3 Given a mapped answer confirmed unchanged, When the response is approved, Then no change proposal is made for it.
+- AC4 Given a question mapped to a field its module has not declared mappable, When the template is saved, Then it is refused naming the field. (error case)
+- AC5 Given an answer whose type does not fit its field (text for a date), When the response is submitted, Then it is refused naming the question. (error case)
+- AC6 Given a change proposal the owning module refuses (its module switched off for the tenant), When the response is approved, Then the response stays approved, the proposal is recorded as refused with the module's reason, and the reviewers are told. (error case)
+
+*Depends on:* TF-242, TF-200
+
+**Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's section 8.4). Built in S4 with the forms engine. Its first user is supplier information collection, whose change proposals become supplier change requests on the governed changes of TF-247 (SUP-227); the forms engine knows nothing of governed changes, so it can ship before them (section 7.1). Templates, responses, sections and their versions are the forms engine's; the requests that target records are the product's (the pack's section 8.5, decision 6).
+
+#### TF-246 One-time verified access for external respondents  
+*Priority:* **Should** · *Tag:* `[Core]` `[New]` `[Decision]` · *Area:* Forms engine
+
+**Requirement:** A module shall be able to send a one-time verified link to an external contact it already knows, for one purpose: answering one form instance, or accepting one invitation. The link names its purpose and its contact; opening it asks for a code sent to that contact's email address, valid for 10 minutes; a verified link opens its purpose and nothing else, holds no session beyond it, ends when its purpose is submitted or when it expires (14 days after it was sent, unless the module sets less), and locks for an hour after five wrong codes. Every send, opening, code check and submission is audited with the contact's address, and the module that sent the link may revoke it at any time.
+
+**Why:** Some suppliers answer one questionnaire a year and will never work in a portal; asking them to register first slows every collection and onboarding. A link that proves who opens it, does one thing and then ends, lets them answer safely, and lets supplier information collection run before the Supplier Network exists (S8).
+
+**Acceptance criteria:**
+
+- AC1 Given a link sent to a supplier contact for one information request, When the contact opens it and enters the emailed code, Then the request's form opens, and only that form.
+- AC2 Given a verified link, When its holder asks for any other form, record, file or page of the tenant, Then it is refused. (error case)
+- AC3 Given a link past its expiry, or one whose form was submitted, When it is opened, Then it is refused, saying the sender can send a new link. (error case)
+- AC4 Given five wrong codes within an hour, When a sixth is entered, Then the link is locked for an hour and the sender is told. (error case)
+- AC5 Given an email address that is not a contact on the record the link is for, When a module asks to send a link to it, Then it is refused. (error case)
+- AC6 Given a link revoked by the module that sent it, When it is opened, Then it is refused.
+- AC7 Given a link that was used, When the audit is searched for it, Then its send, its opening, every code check and its submission are there, each with the contact's address and the time.
+
+*Depends on:* TF-060, TF-072, TF-150, TF-242
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G13 of the supplier management pack). Built in S4 with the forms engine; its part is `Iron.Kernel.Identity`'s, beside invitations (section 2.1). It is not a login: no password, no session beyond its purpose, and the Supplier Network (TF-230) stays the way a supplier works. Decision: the code's validity (10 minutes), the link's validity (14 days at most) and the lock after five wrong codes in an hour are proposed defaults; the owner confirms them. What a module does with what arrives this way is the module's: Supplier management still verifies a critical field out of band (SUP-205, SPX-008).
+
+### 4.31 Governed changes (TF-247, 1 requirement)
+
+#### TF-247 Governed changes to records  
+*Priority:* **Must** · *Tag:* `[Core]` `[New]` `[Decision]` · *Area:* Governed changes
+
+**Requirement:** The kernel shall govern changes to the records a module registers. A change is a change request: the record, its source, who asked, a reason, evidence, an effective date, and field-level changes, each with its old and its new value. The module declares a class for each field of a governed entity, uncontrolled, controlled or critical, and a floor below which a tenant may not lower it; the tenant may raise a class. Uncontrolled changes apply at once and are recorded. Controlled and critical changes are routed through the workflow engine (TF-090) by the approval configuration of the module's document type, and decided field by field: approve, reject with a reason, or return a question to the requester; a request may end partly applied. Nobody decides a change they requested (TF-036). An approved change applies on its effective date, by a job, and only when each field's old value is still the current value; otherwise that field stops and returns to review. A field has at most one pending change; a second waits for the first to end. The module adds its own steps through hooks: a verification that must pass before a critical field applies, the notifications after a change applies, and the impact preview of the documents that use the values. Every applied change is in the field-level history (TF-062) with its request.
+
+**Why:** Every master needs controlled change: suppliers first, then items, legal entities, people, and the records of later suites. One mechanism keeps the rules alike (approval, segregation, effective dates, concurrency, history), and each module adds only what is its own. A change written straight to a record, by a person, an import or a form, is how bank fraud and silent master-data errors begin.
+
+**Acceptance criteria:**
+
+- AC1 Given a change request with an uncontrolled and a controlled field, When it is submitted, Then the uncontrolled field applies at once and is in the history, and the controlled field waits for approval.
+- AC2 Given one field approved and another rejected with a reason, When the decisions are recorded, Then the first applies, the second does not, and the requester sees both outcomes with the reason.
+- AC3 Given a change requested by a person, When the same person approves it, Then it is refused naming the segregation rule. (error case)
+- AC4 Given an approved change effective on the first of next month, When that day comes, Then the job applies it, and until then the record keeps its current value.
+- AC5 Given a change whose old value is no longer the record's value when it comes to apply, When the job runs, Then that field is not applied and returns to review, naming the field and both values. (error case)
+- AC6 Given a pending change to a field, When a second change to the same field is submitted, Then it waits until the first ends, and the requester is told why.
+- AC7 Given a module's verification hook on a critical field, When the change is approved, Then it applies only after the hook reports success, and a failed verification leaves the record unchanged with the reason on the request. (error case)
+- AC8 Given a tenant that lowers a field below its module's floor (a critical field to controlled), When the classes are saved, Then it is refused naming the field and its floor. (error case)
+- AC9 Given an applied change, When the record's history is opened, Then the field, the old and new values, the source, the requester, the deciders and the effective date are shown.
+
+*Depends on:* TF-036, TF-062, TF-090, TF-094, TF-120
+
+**Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's sections 8.2, 8.4 and 8.5). Built in S5, after the workflow engine; its module is `Iron.Kernel.Changes` (section 2.1). Supplier management is its first user (SUP-201 to SUP-211) and adds through hooks only what is a supplier's own: bank verification, the cooling period, and the announcement to the contacts known before a change (ADR-0043, decision 8). No version tables: a record holds its current values, a future-dated change waits as an approved request, and history is TF-062's (the pack's section 8.5, decision 2). Decision: a module sets a floor per field and a tenant may raise a class but never lower it below the floor; the owner confirms.
 
 ## 5. Non-functional targets
 
@@ -3629,8 +3739,8 @@ Each slice is a thin end-to-end increment that can be demonstrated. Numbers in b
 | S2 Access control and organisations | Permission catalogue, roles, assignments with scope, deny by default check at start-up, record policies, entitlements and flags evaluated, settings hierarchy, organisation ownership and sharing pattern on records, unit-scoped configuration | TF-032 to 039, 040 to 046, 050 to 056, 057 to 059, 221 to 223 | Done |
 | V Content visibility and suites | Visibility tags on records and people, the filter inside the query after roles and units, the explanation and the reviews; a tenant's suites installed by purchase, with a plan per suite beside the Foundation plan | TF-241, TF-244 | Before the first business slice |
 | S3 Trust and compliance | MFA, SSO (OIDC), sessions console, password policy and lockout, audit log with chain, change history, secrets from the store, security headers, rate limits, vulnerability pipeline | TF-012 to 019, 022 to 029, 061 to 069, 071 to 079, 218, 219 | Next |
-| S4 Platform services | Files with virus scan, notifications with templates and preferences, jobs with console, outbox and webhooks, import and export framework, localisation with a second language, the forms engine | TF-081 to 089, 110 to 114, 120 to 124, 131 to 136, 140 to 142, 145, 150 to 156, 161 to 166, 242 | |
-| S5 Workflow and extensibility | Generic approval engine, SLA timers, delegation, custom fields and lookups, plugin hooks, saved views, unified search; access in what is sent | TF-090 to 099, 200 to 205, 208, 243 | |
+| S4 Platform services | Files with virus scan, notifications with templates and preferences, jobs with console, outbox and webhooks, import and export framework, localisation with a second language, the forms engine with answers mapped to records and one-time verified access for external respondents | TF-081 to 089, 110 to 114, 120 to 124, 131 to 136, 140 to 142, 145, 150 to 156, 161 to 166, 242, 245, 246 | |
+| S5 Workflow and extensibility | Generic approval engine, SLA timers, delegation, custom fields and lookups, plugin hooks, saved views, unified search; access in what is sent; governed changes to records, after the approval engine | TF-090 to 099, 200 to 205, 208, 243, 247 | |
 | S6 Fleet and operations | Operator console, tenant console, release waves with canary tenants, fleet migration orchestrator, server-level backups with per-tenant restore drill, placement and density, cost attribution, subscription billing, SLO dashboards and alerts, status page, privacy requests, retention jobs | TF-004 to 009, 171 to 175, 181 to 183, 191 to 199, 207, 211 to 217 | |
 | S7 Partner and companion surfaces | Partner API gateway behaviour, SCIM, SAML, API keys, SDK generation, connectors, mobile companion readiness, later localisation of data | TF-102 to 109, 143, 144, 206, 224 | |
 | S8 Supplier Network | Network identity and registry, invitations and relationships, action index and inbox, delegated access to tenant units, profile propagation, network console; two tenant units and one supplier on the laptop | TF-230 to TF-239 | |
