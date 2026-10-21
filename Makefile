@@ -41,10 +41,13 @@ check: ## Run only the architecture checks (module boundaries, layout)
 	dotnet test --project tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj --configuration $(CONFIG)
 
 # The requirement documents in docs/prd (ADR-0041): every identifier once, every FF identifier in the map, criteria in
-# the Given, When, Then form with an error case, the product PRDs' sections, and each CSV equal to its markdown.
-prd-check: ## Check the requirement documents, their CSVs and the map (ADR-0041); the check's own tests first
+# the Given, When, Then form with an error case, the product PRDs' sections, and each CSV equal to its markdown; the
+# process reference packs' section 2 and their BPMN maps against the BPMN 2.0 schema (ADR-0045). The maps' check is
+# .NET, whose schema validation needs nothing installed; its own tests run with make test.
+prd-check: ## Check the requirement documents, their CSVs, the map and the packs' BPMN maps (ADR-0041, ADR-0045); the check's own tests first
 	python3 tools/prd_check_test.py --junit $(RESULTS)/python/prd-check.xml
 	python3 tools/prd_check.py
+	dotnet run --project tools/Iron.ProcessMaps --configuration $(CONFIG) -- docs/prd
 
 prd-csv: ## Write every requirement document's CSV, and the map's, from its markdown
 	python3 tools/prd_check.py --write-csv

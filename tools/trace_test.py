@@ -190,6 +190,14 @@ class TraceTest(unittest.TestCase):
         self.assertIn("more: ADR-0999 is not an ADR in docs/adr", problems)
         self.assertIn("more: 'AC1' is not a criterion (TF-033 AC2), a requirement (TF-033) or a decision (ADR-0029)", problems)
 
+    def test_a_retired_requirement_is_not_counted_and_a_test_names_its_successor(self) -> None:
+        """A retired requirement leaves the counts, and a test that still names it fails the trace naming what replaced it. [ADR-0041, ADR-0044]"""
+        retired = requirement("TF-003", "Resolution", 2).replace("`[Core]`", "`[Retired]`") + "**Notes:** Retired 2026-10-21. Replaced by TF-002.\n\n"
+        self.files["docs/prd/foundation/technical-foundation-PRD.md"] = "# Kernel\n\n" + requirement("TF-001", "Registry", 2) + requirement("TF-002", "Provisioning", 2) + retired
+        result = self.build()
+        self.assertEqual(sorted(result.requirements), ["TF-001", "TF-002"])
+        self.assertIn("ProbeTest.test_a_probe: TF-003 is retired; name what replaced it (TF-002)", "\n".join(result.problems))
+
     def test_a_test_that_names_nothing_is_refused(self) -> None:
         """A test whose title or docstring names nothing it proves fails the trace. [ADR-0044]"""
         self.files["shell/src/registry.test.ts"] = VITEST.replace(" [TF-001 AC1]", "")

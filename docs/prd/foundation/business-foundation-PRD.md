@@ -7,15 +7,15 @@
 | Document title | Business Foundation: the shared business masters and the business configuration of kernel mechanisms, Product Requirements Document |
 | Layer | Business (ADR-0029), which with the kernel is IronSaaS Foundation, what every tenant has (ADR-0043): modules `Iron.Business.<Module>` in `src/Business/`, schemas `business_<module>`; the modules are proposed in section 9 |
 | Identifier prefix | `BF-`, in blocks of twenty per area (ADR-0041); the table is `business-foundation-requirements.csv` |
-| Version | 1.2 (the review of L2, 2026-10-20: what only the eProcurement Suite needs moved to its purchasing PRD) |
-| Date | 2026-10-20 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
+| Version | 1.3 (SUP-gaps, 2026-10-21: supplier sites with purposes and the Indian pack's MSME rules and identifier checks) |
+| Date | 2026-10-21 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. The Indian pack's MSME readings (BF-204) stay open, to be confirmed by a practitioner in India. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../archive/functional-foundation-p2p-PRD-v1.md`), the map from its identifiers (`../requirements-map.md`), ADR-0029 and ADR-0041, and the split brief (`docs/prompts/PRD-split.md`). |
 | Dependency | Every mechanism (identity, roles, the unit tree, the approvals engine, audit, files, notifications, numbering, custom fields and lookups, imports, telemetry) is a kernel capability in the Technical Foundation PRD, cited by its TF identifier and never specified again here. The eProcurement Suite's products build on this document, and later suites will (ADR-0043); where a requirement here names a product's, it is an open point (section 12.2). |
 | Method | The product method (`../product-method.md`) is binding: a process reference pack before the first slice of each module (PM-001). |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): BF-007 and BF-201 moved whole to the eProcurement Suite's purchasing PRD (PUR-001, PUR-061), and their identifiers are not reused; BF-021, BF-061, BF-101, BF-106, BF-107, BF-108, BF-161, BF-162, BF-164, BF-202 and BF-203 keep the Foundation's part, and their suite parts moved to the purchasing PRD, Supplier management, the supplier portal and the products, as the map's section "Moved after the split" lists. 1.1, 2026-10-20: moved to `docs/prd/foundation/` beside the Technical Foundation PRD, the business layer of IronSaaS Foundation (ADR-0043); paths follow the move; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
+Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`../suites/procurement/process-reference/supplier-management.md`): BF-104 gives a supplier site its purposes (ordering, remittance, manufacturing), BF-204 gives the Indian pack the MSME classification, the GSTIN and PAN status checks and the MSME rules, BF-207 names the impact preview of supplier changes, and the domain model takes the pack's section 8.5; no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): BF-007 and BF-201 moved whole to the eProcurement Suite's purchasing PRD (PUR-001, PUR-061), and their identifiers are not reused; BF-021, BF-061, BF-101, BF-106, BF-107, BF-108, BF-161, BF-162, BF-164, BF-202 and BF-203 keep the Foundation's part, and their suite parts moved to the purchasing PRD, Supplier management, the supplier portal and the products, as the map's section "Moved after the split" lists. 1.1, 2026-10-20: moved to `docs/prd/foundation/` beside the Technical Foundation PRD, the business layer of IronSaaS Foundation (ADR-0043); paths follow the move; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint (section 12.1) and the new requirements: kinds and purchasing groups, people, HSN and SAC codes, projects as cost objects, lookups, approval configurations and the delegation of authority matrix, number series and notification templates, visibility tags on masters, bill-to locations, the use of masters by the products, the reconciliation of budgets. 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The requirements of the Functional Foundation PRD 1.2 that every product reads moved here under BF identifiers, their words unchanged except for names that changed (the layers, the kernel modules, the identifiers they cite and the section numbers of this document); the map lists every one.
 
 ## 1. Vision and goals
 
@@ -103,6 +103,8 @@ erDiagram
   BUDGET_LINE }o--|| ACCOUNT_STRING : "for"
   BUDGET_LINE ||--o{ BUDGET_CONSUMPTION : records
   SUPPLIER ||--o{ SUPPLIER_SITE : has
+  SUPPLIER_SITE ||--|{ SITE_PURPOSE : "serves as (ordering, remittance, manufacturing)"
+  SUPPLIER ||--o| MSME_CLASSIFICATION : "India pack (BF-204)"
   SUPPLIER ||--o{ SUPPLIER_CONTACT : has
   SUPPLIER ||--o{ SUPPLIER_BANK : has
   ORGANISATION ||--o{ LOCATION : "has (ship-to, bill-to, warehouse)"
@@ -116,6 +118,13 @@ erDiagram
 ```
 
 `ORGANISATION` is the kernel's unit (TF-034), drawn for context. Every master record (supplier, item, category, tax code, payment term, template) also carries an owning organisation and a sharing mode (not drawn). A person is linked to one kernel principal; an authority row of the delegation of authority matrix names a designation, a job grade or a role and a limit. Lookups, approval configurations and templates are configuration and are not drawn.
+
+Decided 2026-10-21 with the supplier management pack's section 8.5 (entities and rules; the tables are the slice's):
+
+- **One supplier site entity with purposes** (BF-104): ordering, remittance and manufacturing. A site may serve several. The eProcurement Suite's regulated qualification refers to manufacturing sites; it is the suite's, not this layer's.
+- **The MSME classification** is an attribute set the Indian pack adds to the supplier (BF-204): the Udyam number, the enterprise type and the date it was verified. A change to it is a critical change in Supplier management's change control.
+- **What the suite keeps.** A supplier's risk tier, its segment, its qualifications and its change requests are the eProcurement Suite's (ADR-0043, decision 8); this layer holds the record they are about.
+- **No version tables.** The supplier record holds its current values; what it held on a past day comes from its field-level history (TF-062), and a change effective later waits as an approved change request in the kernel's governed changes (TF-247).
 
 ## 5. Requirements
 
@@ -754,19 +763,21 @@ The supplier record and its parts, which every product reads, and its enablement
 #### BF-104 Supplier sites
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Supplier master
 
-**Requirement:** Sites (name, address, tax registration, contacts, bank link, status) with site-level approval when configured; orders may target a site; invoices carry the site's tax registration.
+**Requirement:** Sites (name, address, tax registration, contacts, bank link, status) with site-level approval when configured; each site serves one or more purposes: ordering (orders may target it), remittance (payments go to its bank link and remit-to address), and manufacturing (where the supplier makes what it sells, which a regulated qualification names); orders may target an ordering site; invoices carry the site's tax registration.
 
-**Why:** Multi-site suppliers.
+**Why:** Multi-site suppliers. One site record with purposes, rather than a separate list for each use, keeps one address, one tax registration and one status per place, whether the place takes orders, receives payments or makes goods.
 
 **Acceptance criteria:**
 
 - AC1 Given a site with a tax registration, When an invoice for that site is created, Then the registration is used.
 - AC2 Given a site without mandatory documents when required, When published, Then it is refused. (error case)
 - AC3 Given a site deactivated, When a new order is created, Then it is not offered.
+- AC4 Given a site that serves only the manufacturing purpose, When a new order chooses its site, Then that site is not offered.
+- AC5 Given a site saved with no purpose, When saved, Then it is refused naming the field. (error case)
 
 *Depends on:* BF-101
 
-**Notes:** Was FF-028.
+**Notes:** Was FF-028. Extended 2026-10-21 (SUP-gaps, the supplier management pack's section 8.5, decision 5): one supplier site entity with purposes; regulated qualification by supplier, site and material refers to manufacturing sites, and that qualification is the eProcurement Suite's (ADR-0043, decision 8).
 
 #### BF-105 Supplier bank accounts
 *Priority:* **Must** · *Tag:* `[Improved]` · *Area:* Supplier master
@@ -782,7 +793,7 @@ The supplier record and its parts, which every product reads, and its enablement
 
 *Depends on:* BF-101, TF-074
 
-**Notes:** Was FF-029, the account data and the rule that an unverified account is not used for payment; the verification is SUP-023. AC1 and AC2 are written for the split from the requirement's own clauses. Decision F-05 confirmed.
+**Notes:** Was FF-029, the account data and the rule that an unverified account is not used for payment; the verification was SUP-023 and since 2026-10-21 is SUP-162 to SUP-164 and SUP-205. AC1 and AC2 are written for the split from the requirement's own clauses. Decision F-05 confirmed.
 
 #### BF-106 Supplier configuration defaults
 *Priority:* **Should** · *Tag:* `[Carried]` · *Area:* Supplier master
@@ -1059,11 +1070,11 @@ Go-live and organisation readiness as contributions to the kernel's `IUnitReadin
 **Notes:** Was FF-188, the checklist's items, which this layer contributes to the kernel's IUnitReadiness; creating, deactivating and merging organisations are the kernel's TF-223 (A8). AC2 is written for the part, as BF-202 AC3 says it for the tenant. Its enabled suppliers are the eProcurement Suite's contribution since the review of L2, 2026-10-20 (PUR-081, ADR-0043).
 
 #### BF-204 Country accelerator packs
-*Priority:* **Should** · *Tag:* `[New]` · *Area:* Setup and data
+*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Setup and data
 
-**Requirement:** Country-specific rules shall be delivered as accelerator packs installed per tenant by operators and configured by tenant administrators: reference data (tax codes and components, classifications, document types), validation rules (identifier formats, e-invoice fields), computation rules (for example Indian GST: CGST and SGST for intra-state, IGST for inter-state by place of supply, reverse charge flags) and report formats; packs are versioned and upgradable without code changes to the products.
+**Requirement:** Country-specific rules shall be delivered as accelerator packs installed per tenant by operators and configured by tenant administrators: reference data (tax codes and components, classifications, document types), validation rules (identifier formats, e-invoice fields), computation rules (for example Indian GST: CGST and SGST for intra-state, IGST for inter-state by place of supply, reverse charge flags) and report formats; packs are versioned and upgradable without code changes to the products. The Indian pack also holds: the supplier's MSME classification under the Udyam registration (the Udyam number, the enterprise type, micro, small, medium or trader, and the date it was last verified); the status checks of the supplier's identifiers, run through the identity and tax status connectors (TF-206): the GSTIN's registration status (active, suspended, cancelled), the PAN's status (operative or inoperative), and that the PAN is the one inside the GSTIN (its characters 3 to 12); and the MSME rules: a micro or small enterprise is paid within the term agreed in writing and at most 45 days from the day of acceptance, or within 15 days where no term is agreed in writing; the day of acceptance is the day of delivery, unless the buyer objects in writing within 15 days, when it is the day the objection is removed; and the half-yearly MSME Form 1 reports what is outstanding to micro and small enterprises beyond 45 days.
 
-**Why:** Decision F-08: Indian GST as an accelerator pack; other countries later.
+**Why:** Decision F-08: Indian GST as an accelerator pack; other countries later. An Indian buyer that pays a micro or small supplier late owes interest and, under section 43B(h) of the Income-tax Act, may deduct the expense only when it pays; the classification and the day of acceptance must therefore be right, and a GSTIN that is cancelled puts the input tax credit at risk.
 
 **Acceptance criteria:**
 
@@ -1071,10 +1082,14 @@ Go-live and organisation readiness as contributions to the kernel's `IUnitReadin
 - AC2 Given no pack installed, When a line is taxed, Then plain tax codes apply without country rules.
 - AC3 Given a pack upgraded, When installed, Then existing documents keep their computed values and new documents use the new rules.
 - AC4 Given a pack installation by a tenant administrator without operator rights, When attempted, Then it is refused. (error case)
+- AC5 Given the Indian pack installed and a GSTIN whose characters 3 to 12 differ from the supplier's PAN, When the supplier is saved, Then it is refused naming both identifiers. (error case)
+- AC6 Given the Indian pack installed, When a supplier's MSME classification is recorded, Then it holds the Udyam number, an enterprise type of micro, small, medium or trader, and the date it was verified, and an enterprise type outside those four is refused. (error case)
+- AC7 Given the Indian pack's MSME rules, When the longest payment term is asked for a micro or small enterprise, Then it is 45 days from acceptance with a term agreed in writing and 15 days without, and no limit is given for a medium enterprise or a trader.
+- AC8 Given goods delivered on 1 June and an objection in writing on 20 June, When the day of acceptance is asked under the pack's rules, Then it is 1 June, because the objection came after 15 days.
 
-*Depends on:* BF-071, TF-088
+*Depends on:* BF-071, BF-101, TF-088, TF-206
 
-**Notes:** Was FF-176. Its dependency on e-invoicing readiness is reversed: INV-010 applies the packs' e-invoice field rules and depends on this requirement (ADR-0042). Decision G-05 default: operators install, tenant administrators configure.
+**Notes:** Was FF-176. Its dependency on e-invoicing readiness is reversed: INV-010 applies the packs' e-invoice field rules and depends on this requirement (ADR-0042). Decision G-05 default: operators install, tenant administrators configure. Extended 2026-10-21 (SUP-gaps, gaps G4 and G7 of the supplier management pack): the Udyam classification, the GSTIN and PAN status checks and the MSME rules; the eProcurement Suite's products use them (re-verification in Supplier management, the day of acceptance in Receiving, payment terms and reports in Invoicing). A supplier's risk tier and segment are not here: they are the suite's (ADR-0043, decision 8). Decision: a trader is recorded with its type, but the MSME payment rules do not apply to it, since a retail or wholesale trader's Udyam registration counts for priority sector lending only; the rules follow the MSMED Act, sections 15 and 22, as the pack's research log reads them, to be confirmed by a practitioner in India, with the effect of the MSMED Amendment Act 2026, before the pack is built.
 
 #### BF-205 Reference data from standards
 *Priority:* **Must** · *Tag:* `[New]` · *Area:* Setup and data
@@ -1125,7 +1140,7 @@ Go-live and organisation readiness as contributions to the kernel's `IUnitReadin
 
 *Depends on:* BF-004, BF-072, BF-102
 
-**Notes:** Written at the checkpoint, after the design session's first answer: the one place where Business must hear from the products. Every product whose documents use masters implements it, and its Dependencies section says so (section 6.2).
+**Notes:** Written at the checkpoint, after the design session's first answer: the one place where Business must hear from the products. Every product whose documents use masters implements it, and its Dependencies section says so (section 6.2). Since 2026-10-21 Supplier management's impact preview also asks it, before a supplier's address, contact, site or bank account changes, which open documents use them (SUP-208).
 
 ## 6. Kernel extension points
 
@@ -1234,7 +1249,7 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1, where they apply 
 
 | ID | Decision | Where applied |
 |---|---|---|
-| F-05 | Supplier bank changes need a second approver and an out-of-band verification checklist | BF-105, SUP-023 |
+| F-05 | Supplier bank changes need a second approver and an out-of-band verification checklist | BF-105, SUP-163 and SUP-205 (SUP-023 until 2026-10-21) |
 | F-08 | Tax codes with components; place-of-supply rule as a setting; e-invoice fields prepared; Indian GST as an accelerator pack | BF-071, BF-204, INV-010 |
 | F-11 | Manual exchange rates with revision workflow; rate feed connector later | BF-070 |
 | F-13 | Organisation (business unit) separation of master data, operations and visibility built into the functional foundation | Section 2.2, BF-001 to BF-005, BF-108, BF-203 |

@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Send surveys to people of the tenant or to suppliers, such as satisfaction surveys, supplier self-assessments or compliance attestations, and analyse their answers. A supplier questionnaire for qualification is Supplier management's (SUP-042); both stand on the same forms engine.
+Send surveys to people of the tenant or to suppliers, such as satisfaction surveys, supplier self-assessments or compliance attestations, and analyse their answers. A supplier questionnaire for qualification is Supplier management's, as periodic supplier information collection (SUP-221 to SUP-231, which replaced SUP-042 on 2026-10-21); both stand on the same forms engine.
 
 ## Users
 

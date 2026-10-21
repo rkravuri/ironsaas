@@ -59,6 +59,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Iron.Architecture.Tests/Iron.Architecture.Tests.csproj" />
     <Project Path="tests/Iron.Host.Tests/Iron.Host.Tests.csproj" />
+    <Project Path="tests/Iron.ProcessMaps.Tests/Iron.ProcessMaps.Tests.csproj" />
     <Project Path="tests/Iron.Testing/Iron.Testing.csproj" />
     <Project Path="tests/Iron.Testing.Analyzers/Iron.Testing.Analyzers.csproj" />
   </Folder>
@@ -79,6 +80,7 @@
     <Project Path="tests/Kernel/Iron.Kernel.Settings.Tests/Iron.Kernel.Settings.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/Iron.ProcessMaps/Iron.ProcessMaps.csproj" />
     <Project Path="tools/Iron.Smoke/Iron.Smoke.csproj" />
   </Folder>
 </Solution>

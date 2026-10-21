@@ -83,6 +83,24 @@ Decided while making the review's changes, as readings of decision 8 beyond its 
 - The purchasing master's permission names are proposed (`purchasing.groups.*`, `purchasing.profiles.*`, `purchasing.configuration.manage`), replacing `organisations.purchasing_groups.*`, which was never built; the slice that builds the module decides them.
 - The technical PRD's section 7.2 gains PR0, the purchasing master, after B4 and before PR1.
 
+## Supplier management's process reference pack
+
+The owner accepted all thirteen gaps of the supplier management pack (version 0.2) on 2026-10-21 and designed two areas apart, supplier information change management and periodic supplier information collection; `docs/prompts/SUP-gaps.md` writes them into the requirements. Documentation only, beside two checks.
+
+| Task | State | Branch | Notes |
+|---|---|---|---|
+| SUP-gaps Every gap into the requirements | in review | slice/sup-gaps | The pack is `docs/prd/suites/procurement/process-reference/supplier-management.md` (0.3), its four maps BPMN 2.0 files beside it, valid against OMG's schema and opened without a warning by bpmn.io's viewer. 52 new requirements: TF-245 to TF-247; SUP-007, SUP-025, SUP-044, SUP-064, SUP-141, SUP-142, SUP-161 to SUP-165, SUP-181 to SUP-184, SUP-201 to SUP-211, SUP-221 to SUP-231; PUR-026; ORD-010, ORD-011; CON-007; RCV-029; INV-011, INV-046, INV-086, INV-087; SPX-008, SPX-029, SPX-030. Changed: TF-206, TF-242, BF-104, BF-204 (BF-105 and BF-207 in their notes), PUR-022, SUP-001, SUP-002, SUP-004, SUP-005, SUP-021, SUP-061, SUP-063, SUP-101, SUP-121 (SUP-041 in its notes), SPX-022, SPX-025. Retired, each naming its successors: SUP-022, SUP-023, SUP-042, SUP-102. Every new requirement has its row in the pack's section 2 and in the technical PRD's section 7.2; the domain models of the technical, Business, purchasing and supplier management PRDs follow the pack's section 8.5. 30 defaults the pack did not state were tagged `[Decision]`. At the review (2026-10-21) the design session accepted the task with eight changes: every default decided, marked "decided 2026-10-21", except India's MSME readings (BF-204, RCV-029, INV-011, INV-087), which stay `[Decision]`, to be confirmed by a practitioner in India; sections decided independently unless a template is all or nothing (SUP-226); a conditional approval ordered unless the tenant sets approved only (SUP-183, ORD-010); screening again when the legal name, a trade name or the country changes (SUP-165); only the contact entry anonymised after two years, records under a legal retention keeping the name (SUP-044); `make prd-check` holding the plan's slice rule, the five older dependencies on a later slice turned around; ADR-0045 accepted. No existing requirement identifier changed; only the supplier management PRD's section numbers did |
+
+Decided in the task, each small enough for a line here, beside ADR-0045:
+
+- A replaced requirement is retired in place: the tag `[Retired]`, its words kept, and "Replaced by" with its successors in its notes. `make prd-check` refuses a retired requirement without successors, a successor no document holds or one retired too, and any dependency on a retired requirement; `make trace` leaves retired requirements out of its counts and refuses a test that names one (`docs/prd/README.md`).
+- A process reference pack is not a requirements document; `make prd-check` holds its section 2 to every live requirement of its module (PM-001 AC2), and a requirement a pack's maps do not draw is mapped as "no step", the exclusion PM-001 AC2 allows.
+- The BPMN maps' check is a .NET tool (`tools/Iron.ProcessMaps`), since Python's standard library cannot validate a schema and `xmllint` needs a system package; CI's job that runs `make prd-check` sets up the .NET SDK (ADR-0045, accepted at the review).
+- The purchasing master cannot depend on a product (ADR-0043), so preferred status by qualification (PUR-022) and segments by risk tier and spend (PUR-026) ask Supplier management through two extension points the master declares (the purchasing PRD's section 8.5).
+- Supplier management's areas are numbered in the process's order (requests, onboarding, verification, qualification, changes, change management, compliance, information collection, performance); only its own section 16 cited a section number, and it follows.
+- SUP-005 moved from PR8 to PR1, since the publishing criteria of PR1 need it; its registration sections reach the supplier with SUP-002 in PR8, which now depends on it instead of the other way round.
+- Orders gained ORD-011, beyond the brief's list, because the pack's rule 7 (reviewers decide whether open orders take a change) needs a behaviour in Orders, the later product.
+
 ## Maintenance
 
 | Task | State | Branch | Notes |
@@ -93,6 +111,9 @@ Decided while making the review's changes, as readings of decision 8 beyond its 
 ## Open questions
 
 1. `SECURITY.md` names `REAL_ADDRESS_HERE`, as the owner asked at T1's review; the owner replaces it with the security address.
+2. The release run after M3 (39541982335) failed at the smoke's `smoke-token` step (405), not at the store, which initialised in 6 seconds: the `health` step accepted a 200 without the API's status, most likely the tenant's shell answering before the API's route existed. The fix, the `health` step waiting for the API's `status: healthy`, is a task of its own when the owner asks for it.
+3. India's MSME readings (BF-204, RCV-029, INV-011, INV-087) stay `[Decision]`, to be confirmed by a practitioner in India, as the pack's research log asks.
+4. OMG's BPMN schema files carry no licence notice of their own; `docs/licences.md` reads them under the BPMN 2.0 specification's licence, which the owner confirms (ADR-0045).
 
 ## Later items
 
@@ -132,3 +153,5 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Settled by S3 T1: the shell's page tests that timed out beside the stack straight after `make test` were swapping, not short of processor; Vitest takes one worker per 1.25 GiB of available memory, and `make verify` runs every check in order (ADR-0044).
 - Separate images per suite, and a suite in a repository of its own with the Foundation as packages, wait for ADR-0043's conditions (a separate team, release rhythm or licence).
 - `init-store.sh`'s wait has no automated test: M3 proved it by hand against a store started late, since a test would need Docker and more than 90 seconds, or a fake store. The release's integration stage runs it on every release.
+- Settled at SUP-gaps' review: `make prd-check` holds the plan's rule that no business or suite requirement depends on one placed in a later slice, except through an event. The five older cases, all notification keys (SUP-121, REQ-081, ORD-142, RCV-142), were turned around: the requirement that raises a key depends on the declaration.
+- The process reference pack's Mermaid maps and its BPMN files are kept in step by hand (ADR-0045); a generator from one source is worth it when the second pack arrives.

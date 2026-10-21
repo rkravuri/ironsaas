@@ -37,7 +37,7 @@ class PrdCheckTest(unittest.TestCase):
     def setUp(self) -> None:
         self.folder = tempfile.TemporaryDirectory()
         self.prd = Path(self.folder.name)
-        self.saved = {name: getattr(prd_check, name) for name in ["PRD", "ARCHIVE", "MAP_MD", "MAP_CSV", "DOCUMENTS"]}
+        self.saved = {name: getattr(prd_check, name) for name in ["PRD", "ARCHIVE", "MAP_MD", "MAP_CSV", "DOCUMENTS", "KNOWN_LATER"]}
         prd_check.PRD = self.prd
         prd_check.ARCHIVE = self.prd / "archive" / "functional-foundation-p2p-PRD-v1.md"
         prd_check.MAP_MD = self.prd / "requirements-map.md"
@@ -247,6 +247,88 @@ class PrdCheckTest(unittest.TestCase):
         """A document lives in its layer's or its suite's folder. [ADR-0043]"""
         self.files["business-foundation-PRD.md"] = self.files["foundation/business-foundation-PRD.md"].replace("BF-001", "BF-002")
         self.assert_refused("business-foundation-PRD.md: a document the check does not know")
+
+    def retire_the_request(self, notes: str, orders_depend_on: str = "REQ-002, BF-001") -> None:
+        """REQ-001 retired, REQ-002 beside it as its successor, and Orders depending on what it is given (ADR-0041)."""
+        retired = block("REQ-001", "Requests", "Requests", GOOD, "BF-001", notes).replace("`[Carried]`", "`[Retired]`")
+        successor = block("REQ-002", "Requests again", "Requests", GOOD, "BF-001")
+        self.files["suites/procurement/requests-PRD.md"] = "# Requests\n\n" + retired + successor + PRODUCT_SECTIONS
+        self.files["suites/procurement/orders-PRD.md"] = "# Orders\n\n" + block("ORD-001", "Orders", "Orders", GOOD, orders_depend_on) + PRODUCT_SECTIONS
+
+    def test_a_retired_requirement_keeps_its_identifier_and_names_its_successors(self) -> None:
+        """A retired requirement stays in its document under its identifier, never reused, and names what replaced it. [ADR-0041]"""
+        self.retire_the_request("Was FF-002. Retired 2026-10-21. Replaced by REQ-002.")
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+        self.assertIn("2 requirements, 1 retired", output)
+
+    def test_a_retired_requirement_without_its_successors_is_refused(self) -> None:
+        """A retired requirement says what replaced it. [ADR-0041]"""
+        self.retire_the_request("Was FF-002. Retired 2026-10-21.")
+        self.assert_refused("REQ-001: retired, but its notes do not say 'Replaced by' and its successors")
+
+    def test_a_retired_requirement_replaced_by_one_no_document_holds_is_refused(self) -> None:
+        """The successors a retired requirement names exist. [ADR-0041]"""
+        self.retire_the_request("Was FF-002. Retired 2026-10-21. Replaced by REQ-002 to REQ-003.")
+        self.assert_refused("REQ-001: replaced by REQ-003, which no document holds")
+
+    def test_a_dependency_on_a_retired_requirement_is_refused(self) -> None:
+        """What depended on a retired requirement depends on its successors. [ADR-0041]"""
+        self.retire_the_request("Was FF-002. Retired 2026-10-21. Replaced by REQ-002.", orders_depend_on="REQ-001, BF-001")
+        self.assert_refused("ORD-001 depends on REQ-001, which is retired; depend on what replaced it (REQ-002)")
+
+    def with_a_pack(self, rows: list[str]) -> None:
+        """A process reference pack for Orders, with these rows in its section 2 (PM-001)."""
+        table = "| Requirement | PCF | Map step |\n|---|---|---|\n" + "\n".join(rows) + "\n"
+        self.files["suites/procurement/process-reference/orders.md"] = "# Pack: Orders\n\n## 1. Scope\n\nOrders.\n\n## 2. APQC PCF mapping\n\n" + table + "\n## 3. Process maps\n\nNone.\n"
+
+    def test_a_pack_that_maps_every_requirement_of_its_document_passes(self) -> None:
+        """A pack is not a requirements document, and its section 2 maps every live requirement of its module. [PM-001 AC2]"""
+        self.with_a_pack(["| ORD-001 Orders | 4.2.3.1 | OR-01 |", "| BF-001 Legal entities | 4.2.5.1 | OR-02 |"])
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+        self.assertIn("suites/procurement/process-reference/orders.md", output)
+
+    def test_a_pack_that_leaves_out_a_requirement_of_its_document_is_refused(self) -> None:
+        """Every live requirement of the module has its row in the pack's section 2; a retired one need not. [PM-001 AC2]"""
+        self.files["suites/procurement/orders-PRD.md"] = self.files["suites/procurement/orders-PRD.md"].replace(PRODUCT_SECTIONS, block("ORD-002", "Order lines", "Orders", GOOD, "ORD-001") + PRODUCT_SECTIONS)
+        self.with_a_pack(["| ORD-001 Orders | 4.2.3.1 | OR-01 |"])
+        self.assert_refused("suites/procurement/process-reference/orders.md: ORD-002 of suites/procurement/orders-PRD.md has no row in section 2 (PM-001 AC2)")
+
+    def test_a_pack_that_maps_an_unknown_requirement_or_no_step_is_refused(self) -> None:
+        """A pack maps only requirements a document holds, each to its PCF element and its map step. [PM-001 AC2]"""
+        self.with_a_pack(["| ORD-001 to ORD-002 Orders | 4.2.3.1 | OR-01 |"])
+        self.assert_refused("section 2 maps ORD-002, which no document holds")
+        self.with_a_pack(["| ORD-001 Orders |  | OR-01 |"])
+        self.assert_refused("section 2 maps ORD-001 without its PCF element or its map step")
+
+    def with_a_plan(self, rows: list[str]) -> None:
+        """The technical PRD's build plan, section 7.2, with these rows (order, slice, builds, needs)."""
+        table = "| Order | Slice | Builds | Needs |\n|---|---|---|---|\n" + "\n".join(rows) + "\n"
+        self.files["foundation/technical-foundation-PRD.md"] = "# Kernel\n\n" + block("TF-001", "Tenant registry", "Tenancy", GOOD) + "## 7. Build plan\n\n### 7.2 The business and suite slices\n\n" + table + "\n## 8. Decisions\n"
+
+    def test_a_plan_with_every_requirement_in_one_slice_and_no_later_dependency_passes(self) -> None:
+        """Every business and suite requirement is in one slice, and none depends on a later one. [ADR-0042]"""
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 (its import later) | |", "| 2 | PR2 Requests | REQ-001 | B1 |", "| 3 | PR3 Orders | ORD-001 | PR2 |"])
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+        self.assertIn("3 slices, each requirement in one", output)
+
+    def test_a_dependency_on_a_later_slice_is_refused_unless_known(self) -> None:
+        """A requirement depends on none placed in a later slice, except through an event or as a listed known case. [ADR-0042]"""
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 | |", "| 2 | PR2 Orders first | ORD-001 | B1 |", "| 3 | PR3 Requests | REQ-001 | PR2 |"])
+        self.assert_refused("ORD-001, built in PR2 Orders first, depends on REQ-001, placed in a later slice (PR3 Requests)")
+        prd_check.KNOWN_LATER = {("ORD-001", "REQ-001"): "A known case, with its reason."}
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+
+    def test_a_requirement_in_no_slice_or_a_retired_one_in_a_slice_is_refused(self) -> None:
+        """Every live business and suite requirement is in one slice, and a retired one in none. [ADR-0042, ADR-0041]"""
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 | |", "| 2 | PR2 Requests | REQ-001 | B1 |"])
+        self.assert_refused("ORD-001 is in no slice; every business and suite requirement is in one")
+        self.retire_the_request("Was FF-002. Retired 2026-10-21. Replaced by REQ-002.")
+        self.with_a_plan(["| 1 | B1 Masters | BF-001 | |", "| 2 | PR2 Requests | REQ-001, REQ-002 | B1 |", "| 3 | PR3 Orders | ORD-001 | PR2 |"])
+        self.assert_refused("REQ-001 is retired but placed in PR2 Requests; place its successors")
 
 
 if __name__ == "__main__":

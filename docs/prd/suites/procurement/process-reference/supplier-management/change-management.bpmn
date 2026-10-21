@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The supplier management pack's map: docs/prd/suites/procurement/process-reference/supplier-management.md, section 3.4. Drawn from the pack's Mermaid map; step identifiers as task names. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             id="supplier-management-change-management" name="Supplier management: supplier information change management"
+             targetNamespace="https://ironsaas.example/process-reference/supplier-management">
+  <collaboration id="collaboration-change-management">
+    <participant id="pool-change-management" name="Supplier management: supplier information change management" processRef="process-change-management"/>
+  </collaboration>
+  <process id="process-change-management" name="Supplier management: supplier information change management" isExecutable="false">
+    <laneSet id="lanes-change-management">
+      <lane id="lane-sources" name="Sources">
+        <flowNodeRef>C1</flowNodeRef>
+        <flowNodeRef>C2</flowNodeRef>
+        <flowNodeRef>C3</flowNodeRef>
+        <flowNodeRef>C4</flowNodeRef>
+        <flowNodeRef>C5</flowNodeRef>
+        <flowNodeRef>C6</flowNodeRef>
+      </lane>
+      <lane id="lane-system" name="System">
+        <flowNodeRef>CM-01</flowNodeRef>
+        <flowNodeRef>CM-02</flowNodeRef>
+        <flowNodeRef>CM-02-class</flowNodeRef>
+        <flowNodeRef>CM-03</flowNodeRef>
+        <flowNodeRef>CM-06</flowNodeRef>
+        <flowNodeRef>CM-07</flowNodeRef>
+        <flowNodeRef>end</flowNodeRef>
+      </lane>
+      <lane id="lane-reviewers" name="Reviewers">
+        <flowNodeRef>CM-04</flowNodeRef>
+        <flowNodeRef>CM-04-decision</flowNodeRef>
+        <flowNodeRef>CM-05</flowNodeRef>
+      </lane>
+    </laneSet>
+    <task id="C1" name="C1 Buyer edits"><outgoing>flow-C1-CM-01</outgoing></task>
+    <task id="C2" name="C2 Supplier edits in the portal"><incoming>flow-CM-04-decision-C2</incoming><outgoing>flow-C2-CM-01</outgoing></task>
+    <task id="C3" name="C3 Approved SIM response"><outgoing>flow-C3-CM-01</outgoing></task>
+    <task id="C4" name="C4 Re-verification result"><outgoing>flow-C4-CM-01</outgoing></task>
+    <task id="C5" name="C5 Import or ERP sync"><outgoing>flow-C5-CM-01</outgoing></task>
+    <task id="C6" name="C6 Network profile change"><outgoing>flow-C6-CM-01</outgoing></task>
+    <task id="CM-01" name="CM-01 Create the change request: field-level old and new values"><incoming>flow-C1-CM-01</incoming><incoming>flow-C2-CM-01</incoming><incoming>flow-C3-CM-01</incoming><incoming>flow-C4-CM-01</incoming><incoming>flow-C5-CM-01</incoming><incoming>flow-C6-CM-01</incoming><outgoing>flow-CM-01-CM-02</outgoing></task>
+    <task id="CM-02" name="CM-02 Classify each field: uncontrolled, controlled, critical"><incoming>flow-CM-01-CM-02</incoming><outgoing>flow-CM-02-CM-02-class</outgoing></task>
+    <exclusiveGateway id="CM-02-class" name="Class of the field?"><incoming>flow-CM-02-CM-02-class</incoming><outgoing>flow-CM-02-class-CM-06</outgoing><outgoing>flow-CM-02-class-CM-03</outgoing></exclusiveGateway>
+    <task id="CM-03" name="CM-03 Impact preview: open documents that use the values"><incoming>flow-CM-02-class-CM-03</incoming><outgoing>flow-CM-03-CM-04</outgoing></task>
+    <task id="CM-04" name="CM-04 Review per field: approve, reject, ask the supplier"><incoming>flow-CM-03-CM-04</incoming><outgoing>flow-CM-04-CM-04-decision</outgoing></task>
+    <exclusiveGateway id="CM-04-decision" name="Decision for the field?"><incoming>flow-CM-04-CM-04-decision</incoming><outgoing>flow-CM-04-decision-CM-05</outgoing><outgoing>flow-CM-04-decision-CM-06</outgoing><outgoing>flow-CM-04-decision-C2</outgoing></exclusiveGateway>
+    <task id="CM-05" name="CM-05 Verify critical fields: automatic check and call-back"><incoming>flow-CM-04-decision-CM-05</incoming><outgoing>flow-CM-05-CM-06</outgoing></task>
+    <task id="CM-06" name="CM-06 Apply on the effective date; check the old value is still current"><incoming>flow-CM-02-class-CM-06</incoming><incoming>flow-CM-04-decision-CM-06</incoming><incoming>flow-CM-05-CM-06</incoming><outgoing>flow-CM-06-CM-07</outgoing></task>
+    <task id="CM-07" name="CM-07 Notify, record history, start the cooling period for a bank"><incoming>flow-CM-06-CM-07</incoming><outgoing>flow-CM-07-end</outgoing></task>
+    <endEvent id="end" name="Change applied"><incoming>flow-CM-07-end</incoming></endEvent>
+    <sequenceFlow id="flow-C1-CM-01" sourceRef="C1" targetRef="CM-01"/>
+    <sequenceFlow id="flow-C2-CM-01" sourceRef="C2" targetRef="CM-01"/>
+    <sequenceFlow id="flow-C3-CM-01" sourceRef="C3" targetRef="CM-01"/>
+    <sequenceFlow id="flow-C4-CM-01" sourceRef="C4" targetRef="CM-01"/>
+    <sequenceFlow id="flow-C5-CM-01" sourceRef="C5" targetRef="CM-01"/>
+    <sequenceFlow id="flow-C6-CM-01" sourceRef="C6" targetRef="CM-01"/>
+    <sequenceFlow id="flow-CM-01-CM-02" sourceRef="CM-01" targetRef="CM-02"/>
+    <sequenceFlow id="flow-CM-02-CM-02-class" sourceRef="CM-02" targetRef="CM-02-class"/>
+    <sequenceFlow id="flow-CM-02-class-CM-06" name="uncontrolled" sourceRef="CM-02-class" targetRef="CM-06"/>
+    <sequenceFlow id="flow-CM-02-class-CM-03" name="controlled or critical" sourceRef="CM-02-class" targetRef="CM-03"/>
+    <sequenceFlow id="flow-CM-03-CM-04" sourceRef="CM-03" targetRef="CM-04"/>
+    <sequenceFlow id="flow-CM-04-CM-04-decision" sourceRef="CM-04" targetRef="CM-04-decision"/>
+    <sequenceFlow id="flow-CM-04-decision-CM-05" name="critical approved" sourceRef="CM-04-decision" targetRef="CM-05"/>
+    <sequenceFlow id="flow-CM-04-decision-CM-06" name="controlled approved" sourceRef="CM-04-decision" targetRef="CM-06"/>
+    <sequenceFlow id="flow-CM-04-decision-C2" name="question" sourceRef="CM-04-decision" targetRef="C2"/>
+    <sequenceFlow id="flow-CM-05-CM-06" sourceRef="CM-05" targetRef="CM-06"/>
+    <sequenceFlow id="flow-CM-06-CM-07" sourceRef="CM-06" targetRef="CM-07"/>
+    <sequenceFlow id="flow-CM-07-end" sourceRef="CM-07" targetRef="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="diagram-change-management" name="Supplier management: supplier information change management">
+    <bpmndi:BPMNPlane id="plane-change-management" bpmnElement="collaboration-change-management">
+      <bpmndi:BPMNShape id="pool-change-management-shape" bpmnElement="pool-change-management" isHorizontal="true"><dc:Bounds x="0" y="0" width="2190" height="1080"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-sources-shape" bpmnElement="lane-sources" isHorizontal="true"><dc:Bounds x="30" y="0" width="2160" height="760"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-system-shape" bpmnElement="lane-system" isHorizontal="true"><dc:Bounds x="30" y="760" width="2160" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-reviewers-shape" bpmnElement="lane-reviewers" isHorizontal="true"><dc:Bounds x="30" y="920" width="2160" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C1-shape" bpmnElement="C1"><dc:Bounds x="100" y="35" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C2-shape" bpmnElement="C2"><dc:Bounds x="100" y="155" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C3-shape" bpmnElement="C3"><dc:Bounds x="100" y="275" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C4-shape" bpmnElement="C4"><dc:Bounds x="100" y="395" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C5-shape" bpmnElement="C5"><dc:Bounds x="100" y="515" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C6-shape" bpmnElement="C6"><dc:Bounds x="100" y="635" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-01-shape" bpmnElement="CM-01"><dc:Bounds x="290" y="795" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-02-shape" bpmnElement="CM-02"><dc:Bounds x="480" y="795" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-02-class-shape" bpmnElement="CM-02-class" isMarkerVisible="true"><dc:Bounds x="715" y="815" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="690" y="869" width="100" height="40"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-03-shape" bpmnElement="CM-03"><dc:Bounds x="860" y="795" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-04-shape" bpmnElement="CM-04"><dc:Bounds x="1050" y="955" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-04-decision-shape" bpmnElement="CM-04-decision" isMarkerVisible="true"><dc:Bounds x="1285" y="975" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="1189" y="935" width="100" height="40"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-05-shape" bpmnElement="CM-05"><dc:Bounds x="1430" y="955" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-06-shape" bpmnElement="CM-06"><dc:Bounds x="1620" y="795" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CM-07-shape" bpmnElement="CM-07"><dc:Bounds x="1810" y="795" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-shape" bpmnElement="end"><dc:Bounds x="2052" y="822" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow-C1-CM-01-edge" bpmnElement="flow-C1-CM-01"><di:waypoint x="240" y="80"/><di:waypoint x="265" y="80"/><di:waypoint x="265" y="840"/><di:waypoint x="290" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-C2-CM-01-edge" bpmnElement="flow-C2-CM-01"><di:waypoint x="240" y="200"/><di:waypoint x="265" y="200"/><di:waypoint x="265" y="840"/><di:waypoint x="290" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-C3-CM-01-edge" bpmnElement="flow-C3-CM-01"><di:waypoint x="240" y="320"/><di:waypoint x="265" y="320"/><di:waypoint x="265" y="840"/><di:waypoint x="290" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-C4-CM-01-edge" bpmnElement="flow-C4-CM-01"><di:waypoint x="240" y="440"/><di:waypoint x="265" y="440"/><di:waypoint x="265" y="840"/><di:waypoint x="290" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-C5-CM-01-edge" bpmnElement="flow-C5-CM-01"><di:waypoint x="240" y="560"/><di:waypoint x="265" y="560"/><di:waypoint x="265" y="840"/><di:waypoint x="290" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-C6-CM-01-edge" bpmnElement="flow-C6-CM-01"><di:waypoint x="240" y="680"/><di:waypoint x="265" y="680"/><di:waypoint x="265" y="840"/><di:waypoint x="290" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-01-CM-02-edge" bpmnElement="flow-CM-01-CM-02"><di:waypoint x="430" y="840"/><di:waypoint x="480" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-02-CM-02-class-edge" bpmnElement="flow-CM-02-CM-02-class"><di:waypoint x="620" y="840"/><di:waypoint x="715" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-02-class-CM-06-edge" bpmnElement="flow-CM-02-class-CM-06"><di:waypoint x="740" y="815"/><di:waypoint x="740" y="773"/><di:waypoint x="1690" y="773"/><di:waypoint x="1690" y="795"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-02-class-CM-03-edge" bpmnElement="flow-CM-02-class-CM-03"><di:waypoint x="765" y="840"/><di:waypoint x="860" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-03-CM-04-edge" bpmnElement="flow-CM-03-CM-04"><di:waypoint x="1000" y="840"/><di:waypoint x="1025" y="840"/><di:waypoint x="1025" y="1000"/><di:waypoint x="1050" y="1000"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-04-CM-04-decision-edge" bpmnElement="flow-CM-04-CM-04-decision"><di:waypoint x="1190" y="1000"/><di:waypoint x="1285" y="1000"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-04-decision-CM-05-edge" bpmnElement="flow-CM-04-decision-CM-05"><di:waypoint x="1335" y="1000"/><di:waypoint x="1430" y="1000"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-04-decision-CM-06-edge" bpmnElement="flow-CM-04-decision-CM-06"><di:waypoint x="1310" y="975"/><di:waypoint x="1310" y="840"/><di:waypoint x="1620" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-04-decision-C2-edge" bpmnElement="flow-CM-04-decision-C2"><di:waypoint x="1310" y="1025"/><di:waypoint x="1310" y="1047"/><di:waypoint x="78" y="1047"/><di:waypoint x="78" y="200"/><di:waypoint x="100" y="200"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-05-CM-06-edge" bpmnElement="flow-CM-05-CM-06"><di:waypoint x="1570" y="1000"/><di:waypoint x="1595" y="1000"/><di:waypoint x="1595" y="840"/><di:waypoint x="1620" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-06-CM-07-edge" bpmnElement="flow-CM-06-CM-07"><di:waypoint x="1760" y="840"/><di:waypoint x="1810" y="840"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-CM-07-end-edge" bpmnElement="flow-CM-07-end"><di:waypoint x="1950" y="840"/><di:waypoint x="2052" y="840"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

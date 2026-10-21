@@ -7,14 +7,14 @@
 | Document title | Purchase orders: compliant ordering from approved suppliers, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `ORD-`, in blocks of twenty per area (ADR-0041); the table is `orders-requirements.csv` |
-| Version | 1.2 (the review of L2, 2026-10-20) |
-| Date | 2026-10-20 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
+| Version | 1.3 (SUP-gaps, 2026-10-21: the approved combination at submission, and open orders taking a supplier change) |
+| Date | 2026-10-21 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, terms and suppliers are the Business PRD's; requests, receipts, invoices and contracts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): ORD-005 takes its match levels from the purchasing master, ORD-022 holds the acknowledgement reminder days (from BF-161), ORD-141 names the order and change order templates (from BF-162), and ORD-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): ORD-010 lets a line for a quality-relevant item be ordered only from an approved supplier, site and material, checked at submission (gap G3); ORD-011 lets open orders take a supplier change the reviewer chose them to take (its section 8.2, rule 7); the domain model draws the line's manufacturing site; no requirement retired. At SUP-gaps' review the same day, ORD-009 came to depend on ORD-142 rather than the reverse, and ORD-142's AC2 took a key of its own slice (order acknowledged), so that no requirement depends on one of a later slice, which `make prd-check` now refuses. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): ORD-005 takes its match levels from the purchasing master, ORD-022 holds the acknowledgement reminder days (from BF-161), ORD-141 names the order and change order templates (from BF-162), and ORD-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -61,9 +61,10 @@ erDiagram
   PURCHASE_ORDER ||--|{ ORDER_LINE : has
   PURCHASE_ORDER ||--o{ ORDER_VERSION : "changed as"
   ORDER_LINE }o--o| CONTRACT_ITEM : "consumes"
+  ORDER_LINE }o--o| SUPPLIER_SITE : "made at (quality-relevant item)"
 ```
 
-`ORGANISATION` is the kernel's unit; `SUPPLIER` the Business master; `CONTRACT_ITEM` the Contracts product's. They are drawn for context.
+`ORGANISATION` is the kernel's unit; `SUPPLIER` and `SUPPLIER_SITE` the Business masters; `CONTRACT_ITEM` the Contracts product's. They are drawn for context. An order copies the supplier's address and terms when it is issued and keeps them; it takes a supplier's later change only by a change order (ORD-011, the supplier management pack's section 8.5).
 
 ## 5. Processes
 
@@ -229,9 +230,45 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC3 Given confirmation disabled, When the requester views the order, Then no confirm action appears. (edge)
 - AC4 Given a requester confirming receipt for a line not theirs, When attempted, Then it is refused. (error case)
 
-*Depends on:* ORD-006, RCV-021 (event)
+*Depends on:* ORD-006, ORD-142, RCV-021 (event)
 
 **Notes:** Was FF-085. Orders hears of receipts and invoices from their events (ADR-0042); the requester's receipt confirmation is Receiving's, RCV-027, which says the same from its side.
+
+#### ORD-010 Approved supplier, site and material for quality-relevant lines
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Orders
+
+**Requirement:** With Supplier management's regulated qualification (its licensed feature `supplier_management.gxp_qualification`), an order line for a quality-relevant item (SUP-182) shall name the manufacturing site the material comes from, offered from the supplier's approved combinations for that item and filled in when there is only one; submission shall check, through Supplier management's Contracts, that the supplier, site and material are an approved combination (SUP-183), and refuse the order naming each line that is not. A conditionally approved combination is allowed, with its conditions shown on the line, unless the tenant's setting in Supplier management is approved only (SUP-183), when it is refused like a combination not approved.
+
+**Why:** EU GMP chapter 5.26: starting materials only from approved suppliers, and for a regulated buyer that means the supplier's approved site for that material. The check belongs at submission, before the order commits anyone.
+
+**Acceptance criteria:**
+
+- AC1 Given an approved combination of supplier S, its site in Pune and item 4711, When an order line for item 4711 to S is created, Then Pune is offered and filled in.
+- AC2 Given a line for item 4711 to S with its site in Mumbai, not approved, When the order is submitted, Then it is refused naming the line, the site and the missing approval. (error case)
+- AC3 Given a combination approved with increased incoming inspection as its condition, When the order is submitted, Then it is allowed and the line shows the condition.
+- AC4 Given a tenant without the feature, When an order is submitted, Then no line is checked for a combination.
+- AC5 Given a conditionally approved combination and a tenant whose setting is approved only, When the order is submitted, Then it is refused naming the line and the conditional approval. (error case)
+
+*Depends on:* ORD-004, SUP-182, SUP-183, BF-104
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G3 of the supplier management pack, variant V4). Orders calls Supplier management, an earlier product, through its Contracts (ADR-0042). Decided 2026-10-21 at the review: a conditional approval allows ordering with its conditions shown, by default, and a strict tenant sets Supplier management's setting to approved only, which this check follows (AC5); the site is filled in when the supplier has one approved site for the item.
+
+#### ORD-011 Open orders take a supplier change
+*Priority:* **Could** · *Tag:* `[New]` · *Area:* Orders
+
+**Requirement:** When a supplier change applies (Supplier management's event, SUP-208) and its reviewer chose that open orders take the new values, the open orders of that supplier that use the old values shall take them: an order not yet issued at once, an issued order by a change order with the new values (ORD-023); an order on hold, closed for receiving and invoicing, or cancelled is left as it was and listed for its buyer. An order whose reviewer left it keeps the values it was issued with.
+
+**Why:** A supplier that moves its remit-to address or its ordering contact should not receive forty orders that still point at the old one; and an issued order changes only by a change order the supplier sees.
+
+**Acceptance criteria:**
+
+- AC1 Given a reviewer's choice that open orders take a new ordering address, When the change applies, Then each issued open order gets a change order with the new address, and each order in draft takes it at once.
+- AC2 Given a reviewer's choice that open orders keep their values, When the change applies, Then the orders keep the address they were issued with.
+- AC3 Given an open order on hold, When the change applies, Then it is not changed and is listed for its buyer with the reason. (error case)
+
+*Depends on:* ORD-023, SUP-208
+
+**Notes:** New 2026-10-21 (SUP-gaps, the supplier management pack's section 8.2, rule 7). Orders hears the change applied from Supplier management's event. Decided 2026-10-21 at the review: the change order is how an issued order takes the new values, and an order on hold or closed is listed rather than changed.
 
 ### 6.2 Acknowledgement and change (ORD-021 to ORD-040)
 
@@ -462,12 +499,12 @@ The received and invoiced quantities Orders keeps on its order lines from Receiv
 **Acceptance criteria:**
 
 - AC1 Given a tenant with the eProcurement Suite, When it is provisioned, Then each key of Orders exists with its English starter template and its default audience.
-- AC2 Given an order issued for a requester's line (ORD-009), When it is issued, Then the requester is told with the order number in the key's template.
+- AC2 Given an order acknowledged by its supplier (ORD-021), When the acknowledgement is saved, Then the buyer owner is told in the key's template.
 - AC3 Given a starter template that names a placeholder its key does not offer, When the module's declarations are checked at start, Then the start fails naming the key and the placeholder. (error case)
 
-*Depends on:* BF-164, ORD-009, ORD-021, ORD-022
+*Depends on:* BF-164, ORD-021, ORD-022
 
-**Notes:** Was BF-164, the keys and starter templates of Orders. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
+**Notes:** Was BF-164, the keys and starter templates of Orders. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism. Changed 2026-10-21 at SUP-gaps' review: the requirements that raise its keys in a later slice (ORD-009, with Receiving; AC2 now takes a key of this slice, order acknowledged, instead of ORD-009's) depend on this declaration, not the reverse, so no requirement depends on one of a later slice (`make prd-check`).
 
 ## 7. Supplier views
 
@@ -502,6 +539,7 @@ From the archived PRD's section 7.1:
 |---|---|
 | Match level stamp | Resolved once at order approval: supplier value for the line type, else chart of account value, else system default; never changed afterwards. |
 | Closure | A line closed for receiving accepts no receipts; closed for invoicing accepts no invoices; close-short sets both and releases remaining budget reservation. |
+| Approved combination | With regulated qualification, a line for a quality-relevant item names its manufacturing site, and the order is submitted only when the supplier, site and material are an approved combination (ORD-010, SUP-183). |
 
 ### 8.2 State machines
 
@@ -586,12 +624,12 @@ Fifth (ADR-0042): it calls Supplier management, Contracts and Requests, and hear
 - Kernel, cited by its requirements: TF-035 and TF-234 (record policies and delegated access, for its supplier view), TF-090 (approvals), TF-120 and TF-123 (jobs), TF-150 (notifications), TF-162 (rendering), TF-171 (the grid), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
 - Business: BF-001 (legal entities), BF-061 (charts), BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (suppliers); and through their use, BF-074 (HSN and SAC codes on lines), BF-083 (bill-to), BF-108 (enablement), BF-143 (approvers), BF-162 and BF-163 (templates, number series).
 - The suite's purchasing master (ADR-0043): PUR-001 (spend by purchasing group), PUR-021, PUR-023 and PUR-025 (the match levels it stamps), PUR-022 (supplier suggestions).
-- Earlier products: Supplier management (ORD-004 on SUP-041, documents that block orders, and the supplier's status and risk flags); Contracts (ORD-008 on CON-021, the release recorded at issue and returned on cancellation); Requests (ORD-001 and ORD-003 on REQ-003, the converted lines and their splits): a buyer converts an approved request on this product's screen, which reads its lines and marks them converted at once (REQ-021).
+- Earlier products: Supplier management (ORD-004 on SUP-041, documents that block orders, and the supplier's status and risk flags; ORD-010 on SUP-182 and SUP-183, the approved combinations of supplier, site and material; ORD-011 on SUP-208, the supplier change applied); Contracts (ORD-008 on CON-021, the release recorded at issue and returned on cancellation); Requests (ORD-001 and ORD-003 on REQ-003, the converted lines and their splits): a buyer converts an approved request on this product's screen, which reads its lines and marks them converted at once (REQ-021).
 
 ### 12.3 Events
 
 - Publishes: order issued, changed, acknowledged, declined, held, released, closed and cancelled (Supplier management's indicators and warnings; the ERP, section 11.2).
-- Subscribes: from Receiving, the bucket changes, received and invoiced (ORD-043, ORD-061, ORD-121, `RCV-081 (event)`), and goods received for the requester's notifications (ORD-009, `RCV-021 (event)`).
+- Subscribes: from Receiving, the bucket changes, received and invoiced (ORD-043, ORD-061, ORD-121, `RCV-081 (event)`), and goods received for the requester's notifications (ORD-009, `RCV-021 (event)`); from Supplier management, supplier change applied, with the reviewer's choice for open orders (ORD-011, SUP-208).
 
 ### 12.4 Extension points it implements
 
@@ -616,6 +654,8 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 | P2 | Suppliers and orders | ORD-001, ORD-002, ORD-003, ORD-004, ORD-005, ORD-006, ORD-021, ORD-022, ORD-061, ORD-101 |
 | P4 | Invoicing and matching | ORD-081, ORD-082, ORD-121 |
 | P5 | Catalogue, contracts, change orders | ORD-007, ORD-008, ORD-009, ORD-023, ORD-041, ORD-042, ORD-043, ORD-062 |
+
+ORD-010 and ORD-011 are new with SUP-gaps (2026-10-21) and were never in the archived plan; the technical PRD's section 7.2 places them with Orders (PR3).
 
 ## 16. Decisions and open points
 

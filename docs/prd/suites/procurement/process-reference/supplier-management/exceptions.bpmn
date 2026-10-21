@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The supplier management pack's map: docs/prd/suites/procurement/process-reference/supplier-management.md, section 3.3. Drawn from the pack's Mermaid map; step identifiers as task names. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             id="supplier-management-exceptions" name="Supplier management: exceptions"
+             targetNamespace="https://ironsaas.example/process-reference/supplier-management">
+  <collaboration id="collaboration-exceptions">
+    <participant id="pool-exceptions" name="Supplier management: exceptions" processRef="process-exceptions"/>
+  </collaboration>
+  <process id="process-exceptions" name="Supplier management: exceptions" isExecutable="false">
+    <laneSet id="lanes-exceptions">
+      <lane id="lane-buyer" name="Buyer">
+        <flowNodeRef>E1-raised</flowNodeRef>
+        <flowNodeRef>E1</flowNodeRef>
+        <flowNodeRef>E1-handled</flowNodeRef>
+        <flowNodeRef>E5-raised</flowNodeRef>
+        <flowNodeRef>E5</flowNodeRef>
+        <flowNodeRef>E5-handled</flowNodeRef>
+      </lane>
+      <lane id="lane-supplier" name="Supplier, then a reviewer">
+        <flowNodeRef>E2-raised</flowNodeRef>
+        <flowNodeRef>E2</flowNodeRef>
+        <flowNodeRef>E2-handled</flowNodeRef>
+      </lane>
+      <lane id="lane-compliance" name="Compliance">
+        <flowNodeRef>E3-raised</flowNodeRef>
+        <flowNodeRef>E3</flowNodeRef>
+        <flowNodeRef>E3-handled</flowNodeRef>
+      </lane>
+      <lane id="lane-system" name="System">
+        <flowNodeRef>E4-raised</flowNodeRef>
+        <flowNodeRef>E4</flowNodeRef>
+        <flowNodeRef>E4-handled</flowNodeRef>
+        <flowNodeRef>E6-raised</flowNodeRef>
+        <flowNodeRef>E6</flowNodeRef>
+        <flowNodeRef>E6-handled</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="E1-raised" name="E1 Duplicate found at SM-02 or SM-05"><outgoing>flow-E1-raised-E1</outgoing></startEvent>
+    <task id="E1" name="E1 Mark not a duplicate with a reason, or reuse the existing supplier"><incoming>flow-E1-raised-E1</incoming><outgoing>flow-E1-E1-handled</outgoing></task>
+    <endEvent id="E1-handled" name="Request goes on"><incoming>flow-E1-E1-handled</incoming></endEvent>
+    <startEvent id="E5-raised" name="E5 Invitation expired or registration abandoned"><outgoing>flow-E5-raised-E5</outgoing></startEvent>
+    <task id="E5" name="E5 Remind, resend, or close the request with a reason"><incoming>flow-E5-raised-E5</incoming><outgoing>flow-E5-E5-handled</outgoing></task>
+    <endEvent id="E5-handled" name="Request resent or closed"><incoming>flow-E5-E5-handled</incoming></endEvent>
+    <startEvent id="E2-raised" name="E2 Verification fails at SM-05 or SM-06"><outgoing>flow-E2-raised-E2</outgoing></startEvent>
+    <task id="E2" name="E2 Supplier corrects; a second failure goes to a reviewer; no publishing meanwhile"><incoming>flow-E2-raised-E2</incoming><outgoing>flow-E2-E2-handled</outgoing></task>
+    <endEvent id="E2-handled" name="Verified or decided"><incoming>flow-E2-E2-handled</incoming></endEvent>
+    <startEvent id="E3-raised" name="E3 Sanctions or watch-list hit"><outgoing>flow-E3-raised-E3</outgoing></startEvent>
+    <task id="E3" name="E3 Supplier on hold; compliance decides; decision recorded with evidence"><incoming>flow-E3-raised-E3</incoming><outgoing>flow-E3-E3-handled</outgoing></task>
+    <endEvent id="E3-handled" name="Compliance decided"><incoming>flow-E3-E3-handled</incoming></endEvent>
+    <startEvent id="E4-raised" name="E4 Mandatory document expired"><outgoing>flow-E4-raised-E4</outgoing></startEvent>
+    <task id="E4" name="E4 Configured action: warn, block new orders, or unpublish; supplier and buyer notified"><incoming>flow-E4-raised-E4</incoming><outgoing>flow-E4-E4-handled</outgoing></task>
+    <endEvent id="E4-handled" name="Action applied"><incoming>flow-E4-E4-handled</incoming></endEvent>
+    <startEvent id="E6-raised" name="E6 Approval or qualification refused"><outgoing>flow-E6-raised-E6</outgoing></startEvent>
+    <task id="E6" name="E6 Request closed with reasons; requester and supplier told"><incoming>flow-E6-raised-E6</incoming><outgoing>flow-E6-E6-handled</outgoing></task>
+    <endEvent id="E6-handled" name="Request closed"><incoming>flow-E6-E6-handled</incoming></endEvent>
+    <sequenceFlow id="flow-E1-raised-E1" sourceRef="E1-raised" targetRef="E1"/>
+    <sequenceFlow id="flow-E1-E1-handled" sourceRef="E1" targetRef="E1-handled"/>
+    <sequenceFlow id="flow-E5-raised-E5" sourceRef="E5-raised" targetRef="E5"/>
+    <sequenceFlow id="flow-E5-E5-handled" sourceRef="E5" targetRef="E5-handled"/>
+    <sequenceFlow id="flow-E2-raised-E2" sourceRef="E2-raised" targetRef="E2"/>
+    <sequenceFlow id="flow-E2-E2-handled" sourceRef="E2" targetRef="E2-handled"/>
+    <sequenceFlow id="flow-E3-raised-E3" sourceRef="E3-raised" targetRef="E3"/>
+    <sequenceFlow id="flow-E3-E3-handled" sourceRef="E3" targetRef="E3-handled"/>
+    <sequenceFlow id="flow-E4-raised-E4" sourceRef="E4-raised" targetRef="E4"/>
+    <sequenceFlow id="flow-E4-E4-handled" sourceRef="E4" targetRef="E4-handled"/>
+    <sequenceFlow id="flow-E6-raised-E6" sourceRef="E6-raised" targetRef="E6"/>
+    <sequenceFlow id="flow-E6-E6-handled" sourceRef="E6" targetRef="E6-handled"/>
+  </process>
+  <bpmndi:BPMNDiagram id="diagram-exceptions" name="Supplier management: exceptions">
+    <bpmndi:BPMNPlane id="plane-exceptions" bpmnElement="collaboration-exceptions">
+      <bpmndi:BPMNShape id="pool-exceptions-shape" bpmnElement="pool-exceptions" isHorizontal="true"><dc:Bounds x="0" y="0" width="670" height="880"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-buyer-shape" bpmnElement="lane-buyer" isHorizontal="true"><dc:Bounds x="30" y="0" width="640" height="280"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-supplier-shape" bpmnElement="lane-supplier" isHorizontal="true"><dc:Bounds x="30" y="280" width="640" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-compliance-shape" bpmnElement="lane-compliance" isHorizontal="true"><dc:Bounds x="30" y="440" width="640" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-system-shape" bpmnElement="lane-system" isHorizontal="true"><dc:Bounds x="30" y="600" width="640" height="280"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E1-raised-shape" bpmnElement="E1-raised"><dc:Bounds x="152" y="62" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E1-shape" bpmnElement="E1"><dc:Bounds x="290" y="35" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E1-handled-shape" bpmnElement="E1-handled"><dc:Bounds x="532" y="62" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E5-raised-shape" bpmnElement="E5-raised"><dc:Bounds x="152" y="182" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E5-shape" bpmnElement="E5"><dc:Bounds x="290" y="155" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E5-handled-shape" bpmnElement="E5-handled"><dc:Bounds x="532" y="182" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E2-raised-shape" bpmnElement="E2-raised"><dc:Bounds x="152" y="342" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E2-shape" bpmnElement="E2"><dc:Bounds x="290" y="315" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E2-handled-shape" bpmnElement="E2-handled"><dc:Bounds x="532" y="342" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E3-raised-shape" bpmnElement="E3-raised"><dc:Bounds x="152" y="502" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E3-shape" bpmnElement="E3"><dc:Bounds x="290" y="475" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E3-handled-shape" bpmnElement="E3-handled"><dc:Bounds x="532" y="502" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E4-raised-shape" bpmnElement="E4-raised"><dc:Bounds x="152" y="662" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E4-shape" bpmnElement="E4"><dc:Bounds x="290" y="635" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E4-handled-shape" bpmnElement="E4-handled"><dc:Bounds x="532" y="662" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E6-raised-shape" bpmnElement="E6-raised"><dc:Bounds x="152" y="782" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E6-shape" bpmnElement="E6"><dc:Bounds x="290" y="755" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E6-handled-shape" bpmnElement="E6-handled"><dc:Bounds x="532" y="782" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow-E1-raised-E1-edge" bpmnElement="flow-E1-raised-E1"><di:waypoint x="188" y="80"/><di:waypoint x="290" y="80"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E1-E1-handled-edge" bpmnElement="flow-E1-E1-handled"><di:waypoint x="430" y="80"/><di:waypoint x="532" y="80"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E5-raised-E5-edge" bpmnElement="flow-E5-raised-E5"><di:waypoint x="188" y="200"/><di:waypoint x="290" y="200"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E5-E5-handled-edge" bpmnElement="flow-E5-E5-handled"><di:waypoint x="430" y="200"/><di:waypoint x="532" y="200"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E2-raised-E2-edge" bpmnElement="flow-E2-raised-E2"><di:waypoint x="188" y="360"/><di:waypoint x="290" y="360"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E2-E2-handled-edge" bpmnElement="flow-E2-E2-handled"><di:waypoint x="430" y="360"/><di:waypoint x="532" y="360"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E3-raised-E3-edge" bpmnElement="flow-E3-raised-E3"><di:waypoint x="188" y="520"/><di:waypoint x="290" y="520"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E3-E3-handled-edge" bpmnElement="flow-E3-E3-handled"><di:waypoint x="430" y="520"/><di:waypoint x="532" y="520"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E4-raised-E4-edge" bpmnElement="flow-E4-raised-E4"><di:waypoint x="188" y="680"/><di:waypoint x="290" y="680"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E4-E4-handled-edge" bpmnElement="flow-E4-E4-handled"><di:waypoint x="430" y="680"/><di:waypoint x="532" y="680"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E6-raised-E6-edge" bpmnElement="flow-E6-raised-E6"><di:waypoint x="188" y="800"/><di:waypoint x="290" y="800"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-E6-E6-handled-edge" bpmnElement="flow-E6-E6-handled"><di:waypoint x="430" y="800"/><di:waypoint x="532" y="800"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

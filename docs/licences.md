@@ -7,6 +7,7 @@ Everything that is not code and not written here by us, with its source and lice
 | Source Sans 3 (variable) | `@fontsource-variable/source-sans-3` (Adobe Fonts, via Fontsource) | SIL Open Font License 1.1 | the reading family (D1) |
 | Fraunces (variable) | `@fontsource-variable/fraunces` (Undercase Type, via Fontsource) | SIL Open Font License 1.1 | the display family (D1) |
 | Tabler Icons | `@tabler/icons-react` | MIT | icons |
+| BPMN 2.0 XML schemas: `BPMN20.xsd`, `Semantic.xsd`, `BPMNDI.xsd`, `DI.xsd`, `DC.xsd` (version 20100501), unchanged, in `tools/Iron.ProcessMaps/schema/` | Object Management Group, https://www.omg.org/spec/BPMN/20100501/, fetched 2026-10-21 | The OMG specification licence of BPMN 2.0 (formal/2011-01-03): a royalty-free licence to use, copy and distribute the specification and to build software on it. The files carry no notice of their own; the owner confirms the reading | checking the process reference packs' BPMN maps (ADR-0045) |
 
 Drawings and patterns under `shell/src/design/` are original work of this repository.
 

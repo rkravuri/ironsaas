@@ -7,14 +7,14 @@
 | Document title | Contracts: the contract repository, pricing and consumption, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `CON-`, in blocks of twenty per area (ADR-0041); the table is `contracts-requirements.csv` |
-| Version | 1.2 (the review of L2, 2026-10-20) |
-| Date | 2026-10-20 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. |
+| Version | 1.3 (SUP-gaps, 2026-10-21: quality agreements) |
+| Date | 2026-10-21 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Suppliers and items are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): CON-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): CON-007 holds quality agreements linked to the regulated qualifications of supplier, site and material (gap G3), and Contracts calls Supplier management to check them; no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): CON-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -52,9 +52,11 @@ erDiagram
   CONTRACT }o--|| SUPPLIER : with
   CONTRACT ||--o{ CONTRACT_ITEM : prices
   ORDER_LINE }o--o| CONTRACT_ITEM : "consumes"
+  CONTRACT ||--o{ AGREEMENT_COVERAGE : "covers (quality agreement)"
+  AGREEMENT_COVERAGE }o--|| QUALIFICATION : "supplier, site and material"
 ```
 
-`SUPPLIER` is the Business master; `ORDER_LINE` the Orders product's. They are drawn for context.
+`SUPPLIER` is the Business master; `ORDER_LINE` the Orders product's; `QUALIFICATION`, an entry of the approved supplier list, Supplier management's. They are drawn for context. A quality agreement is a contract of its own type (CON-007).
 
 ## 5. Processes
 
@@ -169,6 +171,24 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 *Depends on:* CON-001, BF-003
 
 **Notes:** Was FF-186, the contracts; the catalogues are CAT-007.
+
+#### CON-007 Quality agreements
+*Priority:* **Should** · *Tag:* `[New]` · *Area:* Contracts
+
+**Requirement:** With Supplier management's regulated qualification (its licensed feature `supplier_management.gxp_qualification`), a contract of the type quality agreement shall name the supplier, the manufacturing sites and the quality-relevant materials it covers, each a combination on Supplier management's approved supplier list, whether pending or approved (SUP-183); it runs the contract approval with the quality unit among its approvers, and its publishing, expiry and termination are published as events, from which Supplier management shows each combination's agreement in force.
+
+**Why:** EU GMP chapter 7 asks for a written agreement for outsourced activities, and a regulated buyer's inspector asks for the quality agreement behind each approved supplier and site. The agreement is a contract; its link to the qualification lets the quality unit see both in one place.
+
+**Acceptance criteria:**
+
+- AC1 Given a quality agreement covering supplier S, its site in Pune and material 4711, When it is published, Then its event names the agreement and the combination, and the combination shows the agreement in force.
+- AC2 Given a published quality agreement whose end date passes, When the expiry job runs, Then its expiry is published as an event naming the combinations it covered.
+- AC3 Given a quality agreement naming a combination that is not on the approved supplier list, When saved, Then it is refused naming the combination. (error case)
+- AC4 Given a quality agreement whose approval chain has no approver from the quality unit, When it is submitted, Then it is refused naming the missing approver. (error case)
+
+*Depends on:* CON-001, CON-003, SUP-183, TF-046
+
+**Notes:** New 2026-10-21 (SUP-gaps, gap G3 of the supplier management pack). Contracts calls Supplier management, the earlier product, to check the combinations (ADR-0042); Supplier management hears of the agreement through these events (`CON-007 (event)` in SUP-183). Decided 2026-10-21 at the review: an agreement may cover a combination still pending, since agreements are often signed before approval; the quality unit approves every quality agreement.
 
 ### 6.2 Consumption and renewal (CON-021 to CON-040)
 
@@ -288,6 +308,7 @@ Records approved, acknowledged or signed carry an electronic signature (TF-063) 
 | Contract approval and publishing (CON-003) | Each approval decision, new and change | Yes: changes to published contracts |
 | Renewal (CON-022) | A new version, approved as a change | No |
 | Signed copies (CON-004) | An attachment; signing the contract itself is later scope, with authoring and negotiation | No |
+| Quality agreements (CON-007) | Each approval decision, the quality unit's among them, with re-authentication where the tenant asks | Yes: which combinations each agreement covered, and when |
 
 Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion.
 
@@ -321,16 +342,17 @@ These are what the archived FF-164 to FF-166 asked of this product; the mechanis
 
 ### 12.1 Its place in the process order
 
-Second (ADR-0042): it calls no product. Orders records each release and its cancellation through this product's Contracts (ORD-008), and Catalogue reads its contract items (CAT-022).
+Second (ADR-0042): it calls Supplier management only, to check a quality agreement's combinations (CON-007). Orders records each release and its cancellation through this product's Contracts (ORD-008), and Catalogue reads its contract items (CAT-022).
 
 ### 12.2 What it uses
 
 - Kernel, cited by its requirements: TF-090 (approvals), TF-120 (jobs), TF-160 (files), TF-205 (imports). Through its sections: TF-035, TF-063 and TF-219, TF-166, TF-241, TF-243.
 - Business: BF-003 (organisation of records), BF-041 (items), BF-101 (suppliers).
+- Earlier products: Supplier management (CON-007 on SUP-183, the approved supplier list), with its licensed feature (TF-046).
 
 ### 12.3 Events
 
-- Publishes: contract published, unpublished, renewed and expired; a threshold reached.
+- Publishes: contract published, unpublished, renewed and expired; a threshold reached; quality agreement published, expired and terminated, with the combinations it covers (CON-007), which Supplier management hears (SUP-183).
 - Subscribes: from Orders, order issued and cancelled, for the coverage report's spend off contract (CON-041).
 
 ### 12.4 Extension points it implements
@@ -355,6 +377,8 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 |---|---|---|
 | P2 | Suppliers and orders | CON-006 |
 | P5 | Catalogue, contracts, change orders | CON-001, CON-002, CON-003, CON-004, CON-005, CON-021, CON-022, CON-041 |
+
+CON-007 is new with SUP-gaps (2026-10-21) and was never in the archived plan; the technical PRD's section 7.2 places it with Contracts (PR6).
 
 ## 16. Decisions and open points
 

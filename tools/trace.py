@@ -560,15 +560,25 @@ class Requirement:
     criteria: list[str]
 
 
-def requirements(root: Path) -> dict[str, Requirement]:
-    """Every requirement of every document prd_check knows, with its criteria."""
+def requirement_documents(root: Path) -> list[prd_check.Document]:
     saved = prd_check.PRD
     prd_check.PRD = root / "docs" / "prd"
     try:
         documents, _ = prd_check.documents()
     finally:
         prd_check.PRD = saved
-    return {r.id: Requirement(r.id, r.title, d.path.relative_to(root).as_posix(), [text for _, text in r.criteria]) for d in documents for r in d.requirements}
+    return documents
+
+
+def requirements(root: Path) -> dict[str, Requirement]:
+    """Every live requirement of every document prd_check knows, with its criteria. A retired one is not counted and
+    no test proves it: a test names what replaced it (ADR-0041)."""
+    return {r.id: Requirement(r.id, r.title, d.path.relative_to(root).as_posix(), [text for _, text in r.criteria]) for d in requirement_documents(root) for r in d.requirements if not r.retired}
+
+
+def retired_requirements(root: Path) -> dict[str, list[str]]:
+    """Each retired requirement with its successors."""
+    return {r.id: r.replaced_by for d in requirement_documents(root) for r in d.requirements if r.retired}
 
 
 def decisions(root: Path) -> dict[str, str]:
@@ -695,6 +705,7 @@ class Trace:
     problems: list[str] = field(default_factory=list)
     proven: dict[str, list[Test]] = field(default_factory=lambda: defaultdict(list))  # "TF-001 AC1" or "ADR-0029"
     gaps: dict[str, list[str]] = field(default_factory=dict)  # slice -> criteria without a test or an exception
+    retired: dict[str, list[str]] = field(default_factory=dict)  # a retired requirement -> what replaced it
     excepted: dict[str, ListedException] = field(default_factory=dict)  # criterion -> its exception
 
 
@@ -711,6 +722,8 @@ def check_identifier(identifier: str, trace: Trace) -> str | None:
         return None if identifier in trace.decisions else f"{identifier} is not an ADR in docs/adr"
     requirement_id = f"{match.group(1)}-{match.group(2)}"
     requirement = trace.requirements.get(requirement_id)
+    if requirement is None and requirement_id in trace.retired:
+        return f"{requirement_id} is retired; name what replaced it ({', '.join(trace.retired[requirement_id])})"
     if requirement is None:
         return f"{requirement_id} is in no requirements document"
     if match.group(3) and int(match.group(3)) > len(requirement.criteria):
@@ -721,6 +734,7 @@ def check_identifier(identifier: str, trace: Trace) -> str | None:
 def build(root: Path = ROOT, results: Path | None = None, exceptions_path: Path | None = None) -> Trace:
     tests = all_tests(root)
     trace = Trace(tests, requirements(root), decisions(root), slices(root), exceptions(exceptions_path or root / "docs" / "trace" / "exceptions.md"), {})
+    trace.retired = retired_requirements(root)
     join_problems, trace.ran = join_results(tests, results or root / "artifacts" / "test-results", root)
     trace.problems += join_problems
 
