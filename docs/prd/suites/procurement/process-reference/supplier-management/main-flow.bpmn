@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The supplier management pack's map: docs/prd/suites/procurement/process-reference/supplier-management.md, section 3.1. Drawn from the pack's Mermaid map; step identifiers as task names. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             id="supplier-management-main-flow" name="Supplier management: a new supplier, from request to first order"
+             targetNamespace="https://ironsaas.example/process-reference/supplier-management">
+  <collaboration id="collaboration-main-flow">
+    <participant id="pool-main-flow" name="Supplier management: a new supplier, from request to first order" processRef="process-main-flow"/>
+  </collaboration>
+  <process id="process-main-flow" name="Supplier management: a new supplier, from request to first order" isExecutable="false">
+    <laneSet id="lanes-main-flow">
+      <lane id="lane-requester" name="Requester">
+        <flowNodeRef>start</flowNodeRef>
+        <flowNodeRef>SM-01</flowNodeRef>
+      </lane>
+      <lane id="lane-buyer" name="Buyer or supplier manager">
+        <flowNodeRef>SM-02</flowNodeRef>
+        <flowNodeRef>SM-03</flowNodeRef>
+      </lane>
+      <lane id="lane-supplier" name="Supplier, in the portal">
+        <flowNodeRef>SM-04</flowNodeRef>
+      </lane>
+      <lane id="lane-system" name="System">
+        <flowNodeRef>SM-05</flowNodeRef>
+        <flowNodeRef>SM-06</flowNodeRef>
+        <flowNodeRef>SM-09</flowNodeRef>
+        <flowNodeRef>SM-11</flowNodeRef>
+        <flowNodeRef>end</flowNodeRef>
+      </lane>
+      <lane id="lane-qualification" name="Qualification, by category or material">
+        <flowNodeRef>SM-07</flowNodeRef>
+      </lane>
+      <lane id="lane-approvers" name="Approvers">
+        <flowNodeRef>SM-08</flowNodeRef>
+        <flowNodeRef>SM-10</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="start" name="A unit needs a new supplier"><outgoing>flow-start-SM-01</outgoing></startEvent>
+    <task id="SM-01" name="SM-01 Request a new supplier with reason, category, unit"><incoming>flow-start-SM-01</incoming><outgoing>flow-SM-01-SM-02</outgoing></task>
+    <exclusiveGateway id="SM-02" name="SM-02 Duplicate or existing supplier?"><incoming>flow-SM-01-SM-02</incoming><outgoing>flow-SM-02-SM-03</outgoing><outgoing>flow-SM-02-SM-10</outgoing></exclusiveGateway>
+    <task id="SM-03" name="SM-03 Invite the supplier"><incoming>flow-SM-02-SM-03</incoming><outgoing>flow-SM-03-SM-04</outgoing></task>
+    <task id="SM-04" name="SM-04 Register or connect; complete the customer's sections"><incoming>flow-SM-03-SM-04</incoming><outgoing>flow-SM-04-SM-05</outgoing></task>
+    <task id="SM-05" name="SM-05 Checks: duplicates, identifiers, sanctions"><incoming>flow-SM-04-SM-05</incoming><outgoing>flow-SM-05-SM-06</outgoing></task>
+    <task id="SM-06" name="SM-06 Verify the bank account"><incoming>flow-SM-05-SM-06</incoming><outgoing>flow-SM-06-SM-07</outgoing></task>
+    <task id="SM-07" name="SM-07 Qualify: questionnaires, documents, audit when required"><incoming>flow-SM-06-SM-07</incoming><outgoing>flow-SM-07-SM-08</outgoing></task>
+    <task id="SM-08" name="SM-08 Approve the supplier"><incoming>flow-SM-07-SM-08</incoming><outgoing>flow-SM-08-SM-09</outgoing></task>
+    <task id="SM-09" name="SM-09 Publish when criteria are met"><incoming>flow-SM-08-SM-09</incoming><outgoing>flow-SM-09-SM-10</outgoing></task>
+    <task id="SM-10" name="SM-10 Enable for a unit, with its terms"><incoming>flow-SM-02-SM-10</incoming><incoming>flow-SM-09-SM-10</incoming><outgoing>flow-SM-10-SM-11</outgoing></task>
+    <task id="SM-11" name="SM-11 Measure performance"><incoming>flow-SM-10-SM-11</incoming><outgoing>flow-SM-11-end</outgoing></task>
+    <endEvent id="end" name="Supplier in use"><incoming>flow-SM-11-end</incoming></endEvent>
+    <sequenceFlow id="flow-start-SM-01" sourceRef="start" targetRef="SM-01"/>
+    <sequenceFlow id="flow-SM-01-SM-02" sourceRef="SM-01" targetRef="SM-02"/>
+    <sequenceFlow id="flow-SM-02-SM-03" name="no" sourceRef="SM-02" targetRef="SM-03"/>
+    <sequenceFlow id="flow-SM-02-SM-10" name="yes" sourceRef="SM-02" targetRef="SM-10"/>
+    <sequenceFlow id="flow-SM-03-SM-04" sourceRef="SM-03" targetRef="SM-04"/>
+    <sequenceFlow id="flow-SM-04-SM-05" sourceRef="SM-04" targetRef="SM-05"/>
+    <sequenceFlow id="flow-SM-05-SM-06" sourceRef="SM-05" targetRef="SM-06"/>
+    <sequenceFlow id="flow-SM-06-SM-07" sourceRef="SM-06" targetRef="SM-07"/>
+    <sequenceFlow id="flow-SM-07-SM-08" sourceRef="SM-07" targetRef="SM-08"/>
+    <sequenceFlow id="flow-SM-08-SM-09" sourceRef="SM-08" targetRef="SM-09"/>
+    <sequenceFlow id="flow-SM-09-SM-10" sourceRef="SM-09" targetRef="SM-10"/>
+    <sequenceFlow id="flow-SM-10-SM-11" sourceRef="SM-10" targetRef="SM-11"/>
+    <sequenceFlow id="flow-SM-11-end" sourceRef="SM-11" targetRef="end"/>
+  </process>
+  <bpmndi:BPMNDiagram id="diagram-main-flow" name="Supplier management: a new supplier, from request to first order">
+    <bpmndi:BPMNPlane id="plane-main-flow" bpmnElement="collaboration-main-flow">
+      <bpmndi:BPMNShape id="pool-main-flow-shape" bpmnElement="pool-main-flow" isHorizontal="true"><dc:Bounds x="0" y="0" width="2570" height="960"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-requester-shape" bpmnElement="lane-requester" isHorizontal="true"><dc:Bounds x="30" y="0" width="2540" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-buyer-shape" bpmnElement="lane-buyer" isHorizontal="true"><dc:Bounds x="30" y="160" width="2540" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-supplier-shape" bpmnElement="lane-supplier" isHorizontal="true"><dc:Bounds x="30" y="320" width="2540" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-system-shape" bpmnElement="lane-system" isHorizontal="true"><dc:Bounds x="30" y="480" width="2540" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-qualification-shape" bpmnElement="lane-qualification" isHorizontal="true"><dc:Bounds x="30" y="640" width="2540" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-approvers-shape" bpmnElement="lane-approvers" isHorizontal="true"><dc:Bounds x="30" y="800" width="2540" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="start-shape" bpmnElement="start"><dc:Bounds x="152" y="62" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-01-shape" bpmnElement="SM-01"><dc:Bounds x="290" y="35" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-02-shape" bpmnElement="SM-02" isMarkerVisible="true"><dc:Bounds x="525" y="215" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="500" y="171" width="100" height="40"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-03-shape" bpmnElement="SM-03"><dc:Bounds x="670" y="195" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-04-shape" bpmnElement="SM-04"><dc:Bounds x="860" y="355" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-05-shape" bpmnElement="SM-05"><dc:Bounds x="1050" y="515" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-06-shape" bpmnElement="SM-06"><dc:Bounds x="1240" y="515" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-07-shape" bpmnElement="SM-07"><dc:Bounds x="1430" y="675" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-08-shape" bpmnElement="SM-08"><dc:Bounds x="1620" y="835" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-09-shape" bpmnElement="SM-09"><dc:Bounds x="1810" y="515" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-10-shape" bpmnElement="SM-10"><dc:Bounds x="2000" y="835" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SM-11-shape" bpmnElement="SM-11"><dc:Bounds x="2190" y="515" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-shape" bpmnElement="end"><dc:Bounds x="2432" y="542" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow-start-SM-01-edge" bpmnElement="flow-start-SM-01"><di:waypoint x="188" y="80"/><di:waypoint x="290" y="80"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-01-SM-02-edge" bpmnElement="flow-SM-01-SM-02"><di:waypoint x="430" y="80"/><di:waypoint x="500" y="80"/><di:waypoint x="500" y="240"/><di:waypoint x="525" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-02-SM-03-edge" bpmnElement="flow-SM-02-SM-03"><di:waypoint x="575" y="240"/><di:waypoint x="670" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-02-SM-10-edge" bpmnElement="flow-SM-02-SM-10"><di:waypoint x="550" y="265"/><di:waypoint x="550" y="947"/><di:waypoint x="2070" y="947"/><di:waypoint x="2070" y="925"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-03-SM-04-edge" bpmnElement="flow-SM-03-SM-04"><di:waypoint x="810" y="240"/><di:waypoint x="835" y="240"/><di:waypoint x="835" y="400"/><di:waypoint x="860" y="400"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-04-SM-05-edge" bpmnElement="flow-SM-04-SM-05"><di:waypoint x="1000" y="400"/><di:waypoint x="1025" y="400"/><di:waypoint x="1025" y="560"/><di:waypoint x="1050" y="560"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-05-SM-06-edge" bpmnElement="flow-SM-05-SM-06"><di:waypoint x="1190" y="560"/><di:waypoint x="1240" y="560"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-06-SM-07-edge" bpmnElement="flow-SM-06-SM-07"><di:waypoint x="1380" y="560"/><di:waypoint x="1405" y="560"/><di:waypoint x="1405" y="720"/><di:waypoint x="1430" y="720"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-07-SM-08-edge" bpmnElement="flow-SM-07-SM-08"><di:waypoint x="1570" y="720"/><di:waypoint x="1595" y="720"/><di:waypoint x="1595" y="880"/><di:waypoint x="1620" y="880"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-08-SM-09-edge" bpmnElement="flow-SM-08-SM-09"><di:waypoint x="1760" y="880"/><di:waypoint x="1785" y="880"/><di:waypoint x="1785" y="560"/><di:waypoint x="1810" y="560"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-09-SM-10-edge" bpmnElement="flow-SM-09-SM-10"><di:waypoint x="1950" y="560"/><di:waypoint x="1975" y="560"/><di:waypoint x="1975" y="880"/><di:waypoint x="2000" y="880"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-10-SM-11-edge" bpmnElement="flow-SM-10-SM-11"><di:waypoint x="2140" y="880"/><di:waypoint x="2165" y="880"/><di:waypoint x="2165" y="560"/><di:waypoint x="2190" y="560"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SM-11-end-edge" bpmnElement="flow-SM-11-end"><di:waypoint x="2330" y="560"/><di:waypoint x="2432" y="560"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

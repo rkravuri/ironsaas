@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The process maps' check (ADR-0045): every BPMN file of the process reference packs in docs/prd valid against OMG's
+    BPMN 2.0 schema, which .NET's XmlSchemaSet reads with nothing to install, and the references the schema cannot see.
+    `make prd-check` runs it after the requirements check.
+  -->
+  <PropertyGroup>
+    <IronLayer>Tool</IronLayer>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Iron.ProcessMaps</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- OMG's schema files, unchanged (docs/licences.md); copied beside the tool and beside the tests that reference it. -->
+  <ItemGroup>
+    <None Include="schema/*.xsd" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

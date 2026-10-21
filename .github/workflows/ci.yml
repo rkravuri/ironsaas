@@ -155,8 +155,15 @@ jobs:
           docker compose --file infra/compose/compose.yaml --env-file infra/compose/.env \
             --profile telemetry --profile ci --profile control config --quiet
 
+      # The packs' BPMN maps are checked against OMG's schema by a .NET tool (ADR-0045).
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
       # The requirement documents (ADR-0041): identifiers, the map from the archived PRD, the criteria, the product
-      # PRDs' sections and every CSV against its markdown. Python 3 and its standard library, as the runner has them.
+      # PRDs' sections and every CSV against its markdown, with Python 3 and its standard library as the runner has
+      # them; then the process reference packs' BPMN maps against the BPMN 2.0 schema (ADR-0045).
       - name: Check the requirement documents
         run: make prd-check
 

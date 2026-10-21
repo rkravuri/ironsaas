@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The supplier management pack's map: docs/prd/suites/procurement/process-reference/supplier-management.md, section 3.5. Drawn from the pack's Mermaid map; step identifiers as task names. -->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             id="supplier-management-information-collection" name="Supplier management: periodic supplier information collection (SIM)"
+             targetNamespace="https://ironsaas.example/process-reference/supplier-management">
+  <collaboration id="collaboration-information-collection">
+    <participant id="pool-information-collection" name="Supplier management: periodic supplier information collection (SIM)" processRef="process-information-collection"/>
+  </collaboration>
+  <process id="process-information-collection" name="Supplier management: periodic supplier information collection (SIM)" isExecutable="false">
+    <laneSet id="lanes-information-collection">
+      <lane id="lane-buyer" name="Buyer or compliance">
+        <flowNodeRef>start</flowNodeRef>
+        <flowNodeRef>SI-01</flowNodeRef>
+        <flowNodeRef>SI-02</flowNodeRef>
+      </lane>
+      <lane id="lane-system" name="System">
+        <flowNodeRef>SI-03</flowNodeRef>
+        <flowNodeRef>SI-05</flowNodeRef>
+        <flowNodeRef>SI-08</flowNodeRef>
+        <flowNodeRef>SI-09</flowNodeRef>
+        <flowNodeRef>end</flowNodeRef>
+      </lane>
+      <lane id="lane-supplier" name="Supplier, in the portal or by a one-time link">
+        <flowNodeRef>SI-04</flowNodeRef>
+      </lane>
+      <lane id="lane-reviewers" name="Reviewers per section">
+        <flowNodeRef>SI-06</flowNodeRef>
+        <flowNodeRef>SI-06-decision</flowNodeRef>
+        <flowNodeRef>SI-07</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="start" name="Information is due"><outgoing>flow-start-SI-01</outgoing></startEvent>
+    <task id="SI-01" name="SI-01 Choose a form template and the target suppliers"><incoming>flow-start-SI-01</incoming><outgoing>flow-SI-01-SI-02</outgoing></task>
+    <task id="SI-02" name="SI-02 Schedule: once, recurring, or before an expiry"><incoming>flow-SI-01-SI-02</incoming><outgoing>flow-SI-02-SI-03</outgoing></task>
+    <task id="SI-03" name="SI-03 Send the request; pre-fill mapped answers"><incoming>flow-SI-02-SI-03</incoming><outgoing>flow-SI-03-SI-04</outgoing></task>
+    <task id="SI-04" name="SI-04 Fill in, attach evidence, confirm or change pre-filled values"><incoming>flow-SI-03-SI-04</incoming><incoming>flow-SI-06-decision-SI-04</incoming><outgoing>flow-SI-04-SI-05</outgoing></task>
+    <task id="SI-05" name="SI-05 Validate and score"><incoming>flow-SI-04-SI-05</incoming><outgoing>flow-SI-05-SI-06</outgoing></task>
+    <task id="SI-06" name="SI-06 Review: approve, reject, or return questions to the supplier"><incoming>flow-SI-05-SI-06</incoming><outgoing>flow-SI-06-SI-06-decision</outgoing></task>
+    <exclusiveGateway id="SI-06-decision" name="Section approved or returned?"><incoming>flow-SI-06-SI-06-decision</incoming><outgoing>flow-SI-06-decision-SI-04</outgoing><outgoing>flow-SI-06-decision-SI-07</outgoing></exclusiveGateway>
+    <task id="SI-07" name="SI-07 Outcomes: qualification, risk flags, scores"><incoming>flow-SI-06-decision-SI-07</incoming><outgoing>flow-SI-07-SI-08</outgoing></task>
+    <task id="SI-08" name="SI-08 Apply mapped answers through change management; documents and expiry"><incoming>flow-SI-07-SI-08</incoming><outgoing>flow-SI-08-SI-09</outgoing></task>
+    <task id="SI-09" name="SI-09 Plan the next collection; apply non-response rules"><incoming>flow-SI-08-SI-09</incoming><outgoing>flow-SI-09-end</outgoing></task>
+    <endEvent id="end" name="Information current"><incoming>flow-SI-09-end</incoming></endEvent>
+    <sequenceFlow id="flow-start-SI-01" sourceRef="start" targetRef="SI-01"/>
+    <sequenceFlow id="flow-SI-01-SI-02" sourceRef="SI-01" targetRef="SI-02"/>
+    <sequenceFlow id="flow-SI-02-SI-03" sourceRef="SI-02" targetRef="SI-03"/>
+    <sequenceFlow id="flow-SI-03-SI-04" sourceRef="SI-03" targetRef="SI-04"/>
+    <sequenceFlow id="flow-SI-04-SI-05" sourceRef="SI-04" targetRef="SI-05"/>
+    <sequenceFlow id="flow-SI-05-SI-06" sourceRef="SI-05" targetRef="SI-06"/>
+    <sequenceFlow id="flow-SI-06-SI-06-decision" sourceRef="SI-06" targetRef="SI-06-decision"/>
+    <sequenceFlow id="flow-SI-06-decision-SI-04" name="returned" sourceRef="SI-06-decision" targetRef="SI-04"/>
+    <sequenceFlow id="flow-SI-06-decision-SI-07" name="approved" sourceRef="SI-06-decision" targetRef="SI-07"/>
+    <sequenceFlow id="flow-SI-07-SI-08" sourceRef="SI-07" targetRef="SI-08"/>
+    <sequenceFlow id="flow-SI-08-SI-09" sourceRef="SI-08" targetRef="SI-09"/>
+    <sequenceFlow id="flow-SI-09-end" sourceRef="SI-09" targetRef="end"/>
+    <textAnnotation id="reminders"><text>Reminders, and escalation to the buyer owner, until SI-04 is submitted (from SI-03)</text></textAnnotation>
+    <association id="reminders-to-SI-04" sourceRef="reminders" targetRef="SI-04"/>
+  </process>
+  <bpmndi:BPMNDiagram id="diagram-information-collection" name="Supplier management: periodic supplier information collection (SIM)">
+    <bpmndi:BPMNPlane id="plane-information-collection" bpmnElement="collaboration-information-collection">
+      <bpmndi:BPMNShape id="pool-information-collection-shape" bpmnElement="pool-information-collection" isHorizontal="true"><dc:Bounds x="0" y="0" width="2380" height="640"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-buyer-shape" bpmnElement="lane-buyer" isHorizontal="true"><dc:Bounds x="30" y="0" width="2350" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-system-shape" bpmnElement="lane-system" isHorizontal="true"><dc:Bounds x="30" y="160" width="2350" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-supplier-shape" bpmnElement="lane-supplier" isHorizontal="true"><dc:Bounds x="30" y="320" width="2350" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="lane-reviewers-shape" bpmnElement="lane-reviewers" isHorizontal="true"><dc:Bounds x="30" y="480" width="2350" height="160"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="start-shape" bpmnElement="start"><dc:Bounds x="152" y="62" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-01-shape" bpmnElement="SI-01"><dc:Bounds x="290" y="35" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-02-shape" bpmnElement="SI-02"><dc:Bounds x="480" y="35" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-03-shape" bpmnElement="SI-03"><dc:Bounds x="670" y="195" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-04-shape" bpmnElement="SI-04"><dc:Bounds x="860" y="355" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-05-shape" bpmnElement="SI-05"><dc:Bounds x="1050" y="195" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-06-shape" bpmnElement="SI-06"><dc:Bounds x="1240" y="515" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-06-decision-shape" bpmnElement="SI-06-decision" isMarkerVisible="true"><dc:Bounds x="1475" y="535" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="1450" y="491" width="100" height="40"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-07-shape" bpmnElement="SI-07"><dc:Bounds x="1620" y="515" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-08-shape" bpmnElement="SI-08"><dc:Bounds x="1810" y="195" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SI-09-shape" bpmnElement="SI-09"><dc:Bounds x="2000" y="195" width="140" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-shape" bpmnElement="end"><dc:Bounds x="2242" y="222" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow-start-SI-01-edge" bpmnElement="flow-start-SI-01"><di:waypoint x="188" y="80"/><di:waypoint x="290" y="80"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-01-SI-02-edge" bpmnElement="flow-SI-01-SI-02"><di:waypoint x="430" y="80"/><di:waypoint x="480" y="80"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-02-SI-03-edge" bpmnElement="flow-SI-02-SI-03"><di:waypoint x="620" y="80"/><di:waypoint x="645" y="80"/><di:waypoint x="645" y="240"/><di:waypoint x="670" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-03-SI-04-edge" bpmnElement="flow-SI-03-SI-04"><di:waypoint x="810" y="240"/><di:waypoint x="835" y="240"/><di:waypoint x="835" y="400"/><di:waypoint x="860" y="400"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-04-SI-05-edge" bpmnElement="flow-SI-04-SI-05"><di:waypoint x="1000" y="400"/><di:waypoint x="1025" y="400"/><di:waypoint x="1025" y="240"/><di:waypoint x="1050" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-05-SI-06-edge" bpmnElement="flow-SI-05-SI-06"><di:waypoint x="1190" y="240"/><di:waypoint x="1215" y="240"/><di:waypoint x="1215" y="560"/><di:waypoint x="1240" y="560"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-06-SI-06-decision-edge" bpmnElement="flow-SI-06-SI-06-decision"><di:waypoint x="1380" y="560"/><di:waypoint x="1475" y="560"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-06-decision-SI-04-edge" bpmnElement="flow-SI-06-decision-SI-04"><di:waypoint x="1500" y="585"/><di:waypoint x="1500" y="607"/><di:waypoint x="930" y="607"/><di:waypoint x="930" y="445"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-06-decision-SI-07-edge" bpmnElement="flow-SI-06-decision-SI-07"><di:waypoint x="1525" y="560"/><di:waypoint x="1620" y="560"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-07-SI-08-edge" bpmnElement="flow-SI-07-SI-08"><di:waypoint x="1760" y="560"/><di:waypoint x="1785" y="560"/><di:waypoint x="1785" y="240"/><di:waypoint x="1810" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-08-SI-09-edge" bpmnElement="flow-SI-08-SI-09"><di:waypoint x="1950" y="240"/><di:waypoint x="2000" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow-SI-09-end-edge" bpmnElement="flow-SI-09-end"><di:waypoint x="2140" y="240"/><di:waypoint x="2242" y="240"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="reminders-shape" bpmnElement="reminders"><dc:Bounds x="475" y="360" width="150" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="reminders-to-SI-04-edge" bpmnElement="reminders-to-SI-04"><di:waypoint x="625" y="395"/><di:waypoint x="860" y="430"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
