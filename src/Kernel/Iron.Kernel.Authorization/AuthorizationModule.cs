@@ -64,6 +64,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<ISeeder, AuthorizationSeeder>();
         services.AddScoped<RoleService>();
         services.AddScoped<AssignmentService>();
+        services.AddScoped<ITenantAdministrators, TenantAdministrators>();
         services.AddScoped<DelegationService>();
         services.AddScoped<IDelegations, DelegationQueries>();
         services.AddScoped<ReviewService>();

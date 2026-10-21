@@ -68,6 +68,8 @@ public class LoginAndSessionTests(IdentityFixture fixture)
 
         Assert.True(result.IsSuccess);
         var outcome = result.Value;
+        Assert.NotNull(outcome.Session);
+        Assert.NotNull(outcome.Token);
         Assert.Equal(user.Id, outcome.Principal.Id);
         Assert.Equal(time.GetUtcNow() + TimeSpan.FromHours(12), outcome.Session.ExpiresAt);
         Assert.Equal(SecureTokens.Hash(outcome.Token), outcome.Session.TokenHash);

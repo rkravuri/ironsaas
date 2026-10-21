@@ -235,8 +235,10 @@ public sealed class AssignmentService(
         if (role.Code == SystemRoles.TenantAdministrator && scope.Kind == RoleScopeKind.Tenant)
         {
             await context.Database.ExecuteSqlAsync($"select pg_advisory_xact_lock({AdministratorsLockKey})", cancellationToken).ConfigureAwait(false);
-            var others = await context.RoleAssignments.CountAsync(a => a.RoleId == role.Id && a.ScopeKind == Scopes.Tenant && a.Id != assignment.Id, cancellationToken).ConfigureAwait(false);
-            if (others == 0)
+            // Only an active administrator counts: a deactivated one keeps the role but cannot sign in to use it (T2).
+            var others = await context.RoleAssignments.Where(a => a.RoleId == role.Id && a.ScopeKind == Scopes.Tenant && a.Id != assignment.Id && a.PrincipalId != assignment.PrincipalId).Select(a => a.PrincipalId).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
+            var found = others.Count == 0 ? new Dictionary<Guid, PrincipalSummary>() : await principals.FindAsync(others, cancellationToken).ConfigureAwait(false);
+            if (!found.Values.Any(p => p.Status == PrincipalStatuses.Active))
             {
                 return Error.Conflict(AuthorizationErrors.AssignmentLastAdministrator, "This is the last tenant administrator for the whole tenant. Make someone else tenant administrator first, then remove this assignment.");
             }

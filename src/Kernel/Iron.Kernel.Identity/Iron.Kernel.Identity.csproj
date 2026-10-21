@@ -18,6 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The common-password list the policy refuses (TF-012, ADR-0046): the NCSC's 100,000, through SecLists (MIT, docs/licences.md). -->
+    <EmbeddedResource Include="Services/common-passwords.txt" LogicalName="Iron.Kernel.Identity.Services.common-passwords.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />

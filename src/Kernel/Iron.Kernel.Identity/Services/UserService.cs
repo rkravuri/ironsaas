@@ -10,20 +10,147 @@ namespace Iron.Kernel.Identity.Services;
 /// <summary>A user just created: the principal and the invitation token for the link, which is never stored.</summary>
 public sealed record NewUser(Principal Principal, string InvitationToken, DateTimeOffset InvitationExpiresAt);
 
+/// <summary>A person reactivated, and the invitation opened for them when they never set a password.</summary>
+public sealed record ReactivatedUser(Principal Principal, string? InvitationToken);
+
 /// <summary>
 /// Users created by an administrator (A2): a login id, a display name and a home unit, in Invited status with an open
 /// invitation. The endpoint checks <c>identity.users.manage</c> at the home unit first; email delivery is S4, so the
-/// caller passes the link on. The principal, its invitation and the audit events are one transaction.
+/// caller passes the link on. The principal, its invitation and the audit events are one transaction. The same
+/// administrator unlocks a person's login, issues their recovery link, deactivates and reactivates them (TF-010, TF-012,
+/// TF-017, ADR-0046); each is a security event of the person's.
 /// </summary>
 public sealed class UserService(
     IdentityDbContext context,
     InvitationService invitations,
+    PasswordService passwords,
+    LoginThrottles throttles,
+    SessionService sessions,
+    SecurityEventLog securityEvents,
     IOrganisationUnits units,
+    IRoleAssignments roleAssignments,
+    ITenantAdministrators administrators,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ICurrentPrincipal actor)
 {
     public const string RecordType = "principal";
+
+    /// <summary>
+    /// A recovery link for a person, issued by an administrator who may manage them (the endpoint checked
+    /// <c>identity.users.manage</c> at their home unit). The link lets its holder sign in as the person, so the
+    /// administrator must hold every permission the person holds, tenant-wide and anywhere, as for granting a role
+    /// (ADR-0031 rule 1); otherwise a unit's administrator could take over a tenant administrator homed in that unit.
+    /// </summary>
+    public async Task<Result<RecoveryLink>> IssueRecoveryAsync(Principal principal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.Type != PrincipalType.User || principal.Status != PrincipalStatus.Active || principal.PasswordHash is null)
+        {
+            return Error.Conflict(IdentityErrors.RecoveryNotAllowed, $"{principal.DisplayName} cannot sign in with a password now ({principal.Status.ToString().ToLowerInvariant()}), so a recovery link would not help. Reactivate them, or send a new invitation.");
+        }
+
+        var missing = await MissingPermissionsAsync(principal.Id, cancellationToken).ConfigureAwait(false);
+        if (missing.Count > 0)
+        {
+            return Error.Forbidden(IdentityErrors.RecoveryEscalation, $"A recovery link lets its holder sign in as {principal.DisplayName}, so you can issue one only for someone whose permissions you hold yourself. You do not hold: {string.Join(", ", missing)}.");
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        var token = await passwords.OpenRecoveryAsync(principal, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, null, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return new RecoveryLink(token, principal.RecoveryExpiresAt!.Value);
+    }
+
+    /// <summary>Lifts the lock on a person's login identifier (TF-012 AC2).</summary>
+    public async Task<Result<Principal>> UnlockAsync(Principal principal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        if (!await throttles.ClearAsync(principal.LoginId, cancellationToken).ConfigureAwait(false))
+        {
+            return Error.Conflict(IdentityErrors.UserStatusConflict, $"The login of {principal.DisplayName} is not locked.");
+        }
+
+        await securityEvents.RecordAsync(principal, SecurityEventKinds.LoginUnlocked, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, null, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return principal;
+    }
+
+    /// <summary>
+    /// Deactivates a person (TF-010 AC3): they cannot sign in, every session ends now, their tokens are refused from the
+    /// next request, and an open invitation or recovery link stops working. Nobody deactivates themselves, and the last
+    /// active tenant administrator stays, under the same lock as the role's removal (A2).
+    /// </summary>
+    public async Task<Result<Principal>> DeactivateAsync(Principal principal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.Id == actor.Id)
+        {
+            return Error.Conflict(IdentityErrors.UserSelf, "You cannot deactivate yourself. Ask another administrator.");
+        }
+
+        if (principal.IsDeactivated)
+        {
+            return Error.Conflict(IdentityErrors.UserStatusConflict, $"{principal.DisplayName} is deactivated already.");
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        var holders = await administrators.LockAndListAsync(cancellationToken).ConfigureAwait(false);
+        if (holders.Contains(principal.Id))
+        {
+            var others = holders.Where(id => id != principal.Id).ToList();
+            var activeOthers = await context.Principals.CountAsync(p => others.Contains(p.Id) && p.Status == PrincipalStatus.Active, cancellationToken).ConfigureAwait(false);
+            if (activeOthers == 0)
+            {
+                return Error.Conflict(IdentityErrors.UserLastAdministrator, $"{principal.DisplayName} is the last active tenant administrator. Make someone else tenant administrator first, then deactivate them.");
+            }
+        }
+
+        principal.Deactivate();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var ended = await sessions.EndAllAsync(principal.Id, SessionEndReasons.Revoked, cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["sessions_ended"] = ended.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+        await securityEvents.RecordAsync(principal, SecurityEventKinds.UserDeactivated, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, details, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return principal;
+    }
+
+    /// <summary>
+    /// Reactivates a deactivated person: Active with the password they had, or Invited with a new invitation when they
+    /// never set one, whose link the answer carries.
+    /// </summary>
+    public async Task<Result<ReactivatedUser>> ReactivateAsync(Principal principal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (!principal.IsDeactivated)
+        {
+            return Error.Conflict(IdentityErrors.UserStatusConflict, $"{principal.DisplayName} is not deactivated.");
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        principal.Reactivate();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var invitation = principal.Status == PrincipalStatus.Invited ? await invitations.InviteAsync(principal, cancellationToken).ConfigureAwait(false) : null;
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["status"] = principal.Status.ToString().ToLowerInvariant() };
+        await securityEvents.RecordAsync(principal, SecurityEventKinds.UserReactivated, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, details, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return new ReactivatedUser(principal, invitation);
+    }
+
+    /// <summary>The permissions the person holds, tenant-wide or anywhere, that the actor does not hold as widely.</summary>
+    private async Task<IReadOnlyList<string>> MissingPermissionsAsync(Guid principalId, CancellationToken cancellationToken)
+    {
+        var theirsEverywhere = await roleAssignments.PermissionsOfAsync(principalId, cancellationToken).ConfigureAwait(false);
+        var theirsAnywhere = await roleAssignments.PermissionsOfAsync(principalId, AccessScope.Anywhere, cancellationToken).ConfigureAwait(false);
+        var mineEverywhere = await roleAssignments.PermissionsOfAsync(actor.Id, cancellationToken).ConfigureAwait(false);
+        var mineAnywhere = await roleAssignments.PermissionsOfAsync(actor.Id, AccessScope.Anywhere, cancellationToken).ConfigureAwait(false);
+        return [.. theirsEverywhere.Except(mineEverywhere, StringComparer.Ordinal).Union(theirsAnywhere.Except(mineAnywhere, StringComparer.Ordinal), StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>The actor's display name, as the person's security activity names them.</summary>
+    private async Task<string?> ActorNameAsync(CancellationToken cancellationToken) =>
+        await context.Principals.AsNoTracking().Where(p => p.Id == actor.Id).Select(p => p.DisplayName).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task<Result<NewUser>> CreateAsync(string loginId, string displayName, Guid homeUnitId, CancellationToken cancellationToken)
     {

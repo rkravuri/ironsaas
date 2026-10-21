@@ -4,13 +4,22 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace Iron.Kernel.Identity.Data;
 
-/// <summary>The <c>identity</c> schema: principals and sessions (TF-010, TF-020).</summary>
+/// <summary>
+/// The <c>identity</c> schema: principals and sessions (TF-010, TF-020), password history, the failed sign-ins of each
+/// login identifier, and each person's security events (TF-012, TF-017, TF-019).
+/// </summary>
 [Schema("kernel_identity")]
 public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options) : ModuleDbContext(options)
 {
     public DbSet<Principal> Principals => Set<Principal>();
 
     public DbSet<Session> Sessions => Set<Session>();
+
+    public DbSet<PasswordHistoryEntry> PasswordHistory => Set<PasswordHistoryEntry>();
+
+    public DbSet<LoginThrottle> LoginThrottles => Set<LoginThrottle>();
+
+    public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
 
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
@@ -28,6 +37,33 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             principal.Property(p => p.InvitationTokenHash).HasMaxLength(64);
             principal.HasIndex(p => p.InvitationTokenHash).IsUnique();
             principal.HasIndex(p => p.HomeUnitId);
+            principal.Property(p => p.RecoveryTokenHash).HasMaxLength(64);
+            principal.HasIndex(p => p.RecoveryTokenHash).IsUnique();
+        });
+
+        modelBuilder.Entity<PasswordHistoryEntry>(entry =>
+        {
+            entry.ToTable("password_history");
+            entry.HasOne<Principal>().WithMany().HasForeignKey(e => e.PrincipalId).OnDelete(DeleteBehavior.Cascade);
+            entry.Property(e => e.PasswordHash).HasMaxLength(200);
+            entry.HasIndex(e => new { e.PrincipalId, e.SetAt });
+        });
+
+        modelBuilder.Entity<LoginThrottle>(throttle =>
+        {
+            throttle.Property(t => t.LoginId).HasMaxLength(Principal.LoginIdMaxLength);
+            throttle.HasIndex(t => t.LoginId).IsUnique();
+            throttle.HasIndex(t => t.LockedUntil);
+        });
+
+        modelBuilder.Entity<SecurityEvent>(securityEvent =>
+        {
+            securityEvent.HasOne<Principal>().WithMany().HasForeignKey(e => e.PrincipalId).OnDelete(DeleteBehavior.Restrict);
+            securityEvent.Property(e => e.Kind).HasMaxLength(SecurityEvent.KindMaxLength);
+            securityEvent.Property(e => e.Actor).HasMaxLength(SecurityEvent.ActorMaxLength);
+            securityEvent.Property(e => e.ActorName).HasMaxLength(SecurityEvent.ActorNameMaxLength);
+            securityEvent.Property(e => e.Reason).HasMaxLength(SecurityEvent.ReasonMaxLength);
+            securityEvent.HasIndex(e => new { e.PrincipalId, e.OccurredAt });
         });
 
         modelBuilder.Entity<Session>(session =>

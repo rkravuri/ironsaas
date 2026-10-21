@@ -33,7 +33,7 @@ public class IdentitySettingsTests(IdentityFixture fixture)
         var login = scope.ServiceProvider.GetRequiredService<LoginService>();
         var writer = scope.ServiceProvider.GetRequiredService<SettingsWriter>();
 
-        var before = (await login.LoginAsync(loginId, Password, ct)).Value.Session;
+        var before = (await login.LoginAsync(loginId, Password, ct)).Value.Session!;
         Assert.Equal(time.GetUtcNow() + TimeSpan.FromMinutes(60), before.IdleExpiresAt(TimeSpan.FromMinutes(60)));
 
         try
@@ -41,7 +41,7 @@ public class IdentitySettingsTests(IdentityFixture fixture)
             Assert.True((await writer.SetAsync(IdentitySettings.SessionIdleMinutes.Key, SettingPlace.Tenant, JsonSerializer.SerializeToElement(30), ct)).IsSuccess);
             Assert.True((await writer.SetAsync(IdentitySettings.SessionAbsoluteHours.Key, SettingPlace.Tenant, JsonSerializer.SerializeToElement(8), ct)).IsSuccess);
 
-            var after = (await login.LoginAsync(loginId, Password, ct)).Value.Session;
+            var after = (await login.LoginAsync(loginId, Password, ct)).Value.Session!;
             Assert.Equal(30, after.IdleMinutes);
             Assert.Equal(time.GetUtcNow() + TimeSpan.FromHours(8), after.ExpiresAt);
             var described = scope.ServiceProvider.GetRequiredService<SessionService>().Describe((await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Principals.FindAsync([after.PrincipalId], ct))!, after);

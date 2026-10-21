@@ -40,7 +40,10 @@ public sealed record UserResponse(
     }
 }
 
-/// <summary>One user as the user record page shows it: the list's fields and the home unit by name.</summary>
+/// <summary>
+/// One user as the user record page shows it: the list's fields, the home unit by name, and until when their login is
+/// locked (TF-012), null when it is not, so an administrator sees why they cannot sign in and may unlock it.
+/// </summary>
 public sealed record UserRecordResponse(
     Guid Id,
     string LoginId,
@@ -52,7 +55,14 @@ public sealed record UserRecordResponse(
     DateTimeOffset? LastLoginAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    int Version);
+    int Version,
+    DateTimeOffset? LockedUntil = null);
+
+/// <summary>A recovery link for the administrator to pass on, shown once (TF-017): its path and when it stops working.</summary>
+public sealed record RecoveryLinkResponse(string RecoveryLink, DateTimeOffset ExpiresAt);
+
+/// <summary>A user reactivated, and the new invitation's link when they never set a password.</summary>
+public sealed record ReactivateUserResponse(UserResponse User, string? InvitationLink, DateTimeOffset? InvitationExpiresAt);
 
 public sealed record CreateUserRequest(string LoginId, string DisplayName, Guid HomeUnitId);
 
@@ -72,7 +82,8 @@ public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserReq
 /// <summary>
 /// Users by scope (A2, ADR-0031): the list and the record keep the principals whose home unit the reader holds
 /// <c>identity.users.read</c> at, and a user outside answers 404 so neither reveals who exists. Creating a user needs
-/// <c>identity.users.manage</c> at the new user's home unit.
+/// <c>identity.users.manage</c> at the new user's home unit; so do unlocking, a recovery link, deactivating and
+/// reactivating, at the person's home unit (T2, ADR-0046).
 /// </summary>
 internal static class UsersEndpoints
 {
@@ -96,6 +107,10 @@ internal static class UsersEndpoints
         users.MapGet("/", ListAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().Produces<ListResponse<UserResponse>>(StatusCodes.Status200OK).WithName("ListUsers").WithSummary("List the users and service accounts you may see.");
         users.MapGet("/{id:guid}", GetAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("GetUser").WithSummary("One user or service account you may see.");
         users.MapPost("/", CreateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Validate<CreateUserRequest>().Produces<CreateUserResponse>(StatusCodes.Status201Created).WithName("CreateUser").WithSummary("Create a user in a unit and answer the invitation link.");
+        users.MapPost("/{id:guid}/unlock", UnlockAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("UnlockUser").WithSummary("Lift the lock on a person's login after too many failed sign-ins.");
+        users.MapPost("/{id:guid}/recovery-link", RecoveryLinkAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<RecoveryLinkResponse>(StatusCodes.Status200OK).WithName("IssueRecoveryLink").WithSummary("Issue a recovery link for a person, shown once: one use, 15 minutes; it replaces any earlier link.");
+        users.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("DeactivateUser").WithSummary("Deactivate a person: they cannot sign in, their sessions end and their tokens are refused.");
+        users.MapPost("/{id:guid}/reactivate", ReactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<ReactivateUserResponse>(StatusCodes.Status200OK).WithName("ReactivateUser").WithSummary("Reactivate a person; one who never set a password gets a new invitation.");
     }
 
     /// <summary>The principals whose home unit the reader holds <c>identity.users.read</c> at; one predicate in the query.</summary>
@@ -137,8 +152,13 @@ internal static class UsersEndpoints
             return ApiResults.Problem(Error.NotFound(IdentityErrors.UserNotFound, "There is no user with this id that you may see."), http);
         }
 
+        return TypedResults.Ok(await RecordAsync(principal, units, http.RequestServices.GetRequiredService<LoginThrottles>(), cancellationToken));
+    }
+
+    private static async Task<UserRecordResponse> RecordAsync(Principal principal, IOrganisationUnits units, LoginThrottles throttles, CancellationToken cancellationToken)
+    {
         var home = principal.HomeUnitId is { } unitId ? await units.FindAsync(unitId, cancellationToken) : null;
-        return TypedResults.Ok(new UserRecordResponse(
+        return new UserRecordResponse(
             principal.Id,
             principal.LoginId,
             principal.DisplayName,
@@ -149,7 +169,92 @@ internal static class UsersEndpoints
             principal.LastLoginAt,
             principal.CreatedAt,
             principal.UpdatedAt,
-            principal.Version));
+            principal.Version,
+            await throttles.LockedUntilAsync(principal.LoginId, cancellationToken));
+    }
+
+    /// <summary>
+    /// The person the request names, when the actor may see them (404 otherwise, as for the record) and holds
+    /// <c>identity.users.manage</c> at their home unit (403 otherwise, naming the permission). Tracked, for the change.
+    /// </summary>
+    private static async Task<Result<Principal>> ManageableAsync(Guid id, HttpContext http, string doing, CancellationToken cancellationToken)
+    {
+        var services = http.RequestServices;
+        var context = services.GetRequiredService<IdentityDbContext>();
+        var actor = services.GetRequiredService<ICurrentPrincipal>();
+        var visible = await VisibleAsync(context, services.GetRequiredService<IRecordAccess>(), actor, cancellationToken);
+        if (!await visible.AnyAsync(p => p.Id == id, cancellationToken))
+        {
+            return Error.NotFound(IdentityErrors.UserNotFound, "There is no user with this id that you may see.");
+        }
+
+        var principal = await context.Principals.SingleAsync(p => p.Id == id, cancellationToken);
+        var scope = principal.HomeUnitId is { } unit ? AccessScope.Unit(unit) : AccessScope.Tenant;
+        var check = new AccessRequest(actor.Id, IdentityPermissions.UsersManage, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/") { Scope = scope };
+        var decision = await services.GetRequiredService<IPermissionEvaluator>().EvaluateAsync(check, cancellationToken);
+        return decision.Allowed ? principal : Error.Forbidden(PermissionErrors.PermissionDenied, $"You cannot {doing} people in {principal.DisplayName}'s unit.");
+    }
+
+    private static IResult Refused(Error error, HttpContext http)
+    {
+        var problem = ProblemFactory.Create(error, http);
+        if (error.Code == PermissionErrors.PermissionDenied)
+        {
+            problem.Extensions["permission"] = IdentityPermissions.UsersManage.Name;
+        }
+
+        return TypedResults.Problem(problem);
+    }
+
+    private static async Task<IResult> UnlockAsync(Guid id, HttpContext http, UserService users, IOrganisationUnits units, LoginThrottles throttles, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "unlock", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await users.UnlockAsync(target.Value, cancellationToken);
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, units, throttles, cancellationToken));
+    }
+
+    private static async Task<IResult> RecoveryLinkAsync(Guid id, HttpContext http, UserService users, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "issue recovery links for", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await users.IssueRecoveryAsync(target.Value, cancellationToken);
+        return ApiResults.From(result, http, link => TypedResults.Ok(new RecoveryLinkResponse($"/recovery/{link.Token}", link.ExpiresAt)));
+    }
+
+    private static async Task<IResult> DeactivateAsync(Guid id, HttpContext http, UserService users, IOrganisationUnits units, LoginThrottles throttles, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "deactivate", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await users.DeactivateAsync(target.Value, cancellationToken);
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, units, throttles, cancellationToken));
+    }
+
+    private static async Task<IResult> ReactivateAsync(Guid id, HttpContext http, UserService users, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "reactivate", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await users.ReactivateAsync(target.Value, cancellationToken);
+        return ApiResults.From(result, http, done => TypedResults.Ok(new ReactivateUserResponse(
+            UserResponse.From(done.Principal),
+            done.InvitationToken is { } token ? $"/invitations/{token}" : null,
+            done.InvitationToken is null ? null : done.Principal.InvitationExpiresAt)));
     }
 
     private static async Task<IResult> CreateAsync(CreateUserRequest request, HttpContext http, IPermissionEvaluator evaluator, ICurrentPrincipal actor, UserService users, CancellationToken cancellationToken)

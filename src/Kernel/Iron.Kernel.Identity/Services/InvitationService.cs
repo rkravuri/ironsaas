@@ -11,12 +11,12 @@ namespace Iron.Kernel.Identity.Services;
 /// <summary>
 /// Invitations (TF-018): a signed-in administrator or the seeder opens one; the invitee sets a password and becomes
 /// Active. The link is valid for the days the invitee's home unit says (<c>identity.invitation.valid_days</c>, walking up
-/// to the tenant, ADR-0036).
+/// to the tenant, ADR-0036). The password passes the tenant's policy like every other (TF-012, ADR-0046).
 /// </summary>
 public sealed class InvitationService(
     IdentityDbContext context,
-    IPasswordHasher hasher,
-    IdentityOptions options,
+    PasswordPolicy policy,
+    PasswordService passwords,
     ISettings settings,
     IUnitOfWork unitOfWork,
     TimeProvider time,
@@ -57,36 +57,20 @@ public sealed class InvitationService(
             return Error.Validation(IdentityErrors.InvitationExpired, "This invitation has expired. Ask for a new one.");
         }
 
-        var policy = CheckPassword(password, principal.LoginId);
-        if (policy.IsFailure)
+        var checkedPassword = await policy.CheckAsync(principal, password, cancellationToken).ConfigureAwait(false);
+        if (checkedPassword.IsFailure)
         {
-            return policy.Error;
+            return checkedPassword.Error;
         }
 
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
-        principal.AcceptInvitation(hasher.Hash(password), displayName);
+        await passwords.SetCheckedAsync(principal, password, cancellationToken).ConfigureAwait(false);
+        principal.AcceptInvitation(principal.PasswordHash!, displayName, principal.PasswordChangedAt);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.InvitationAccepted, AuditOutcome.Success, principal.Id, principal.LoginId, RecordType: "principal", RecordId: principal.Id), cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         logger.LogInformation("Principal {PrincipalId} accepted its invitation.", principal.Id);
         return principal;
-    }
-
-    /// <summary>The S1 password rules (TF-012: length 12; the common-password list and history arrive in S3).</summary>
-    public Result CheckPassword(string password, string loginId)
-    {
-        ArgumentNullException.ThrowIfNull(password);
-        if (password.Length < options.Password.MinimumLength || password.Length > options.Password.MaximumLength)
-        {
-            return Error.Validation(IdentityErrors.PasswordTooShort, $"The password needs at least {options.Password.MinimumLength} characters.", new FieldError("password", "too_short", $"At least {options.Password.MinimumLength} characters."));
-        }
-
-        if (string.Equals(password.Trim(), loginId, StringComparison.OrdinalIgnoreCase))
-        {
-            return Error.Validation(IdentityErrors.PasswordIsLoginId, "The password must differ from the login identifier.", new FieldError("password", "is_login_id", "Choose a different password."));
-        }
-
-        return Result.Success();
     }
 }

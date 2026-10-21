@@ -286,12 +286,23 @@ public static class Setting
     public static Setting<int> WholeNumber(string key, string description, int defaultValue, int minimum, int maximum, SettingScopes scopes, bool visibleToShell = false) =>
         new(key, SettingType.Number, description, scopes, visibleToShell, defaultValue, SettingRule.Range(minimum, maximum, wholeNumber: true), null, true, value => value.GetInt32(), value => JsonSerializer.SerializeToElement(value));
 
+    /// <summary>
+    /// A whole number that keeps a rule of its own, for values a range cannot say, such as "off, or from 30 to 365". The
+    /// rule must refuse anything that is not a whole number.
+    /// </summary>
+    public static Setting<int> WholeNumber(string key, string description, int defaultValue, SettingRule rule, SettingScopes scopes, bool visibleToShell = false)
+    {
+        ArgumentNullException.ThrowIfNull(rule);
+        return new(key, SettingType.Number, description, scopes, visibleToShell, defaultValue, rule, null, true, value => value.GetInt32(), value => JsonSerializer.SerializeToElement(value));
+    }
+
     /// <summary>A number between two bounds, both included.</summary>
     public static Setting<decimal> Number(string key, string description, decimal defaultValue, decimal minimum, decimal maximum, SettingScopes scopes, bool visibleToShell = false) =>
         new(key, SettingType.Number, description, scopes, visibleToShell, defaultValue, SettingRule.Range(minimum, maximum, wholeNumber: false), null, false, value => value.GetDecimal(), value => JsonSerializer.SerializeToElement(value));
 
-    public static Setting<bool> Boolean(string key, string description, bool defaultValue, SettingScopes scopes, bool visibleToShell = false) =>
-        new(key, SettingType.Boolean, description, scopes, visibleToShell, defaultValue, null, null, false, value => value.GetBoolean(), value => JsonSerializer.SerializeToElement(value));
+    /// <summary>On or off; a <paramref name="rule"/> may hold it to one of them, as a control that must stay on.</summary>
+    public static Setting<bool> Boolean(string key, string description, bool defaultValue, SettingScopes scopes, bool visibleToShell = false, SettingRule? rule = null) =>
+        new(key, SettingType.Boolean, description, scopes, visibleToShell, defaultValue, rule, null, false, value => value.GetBoolean(), value => JsonSerializer.SerializeToElement(value));
 
     /// <summary>One of a list of words, offered in the list's order.</summary>
     public static Setting<string> Choice(string key, string description, string defaultValue, IReadOnlyList<string> choices, SettingScopes scopes, bool visibleToShell = false) =>
