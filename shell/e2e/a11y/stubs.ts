@@ -399,9 +399,32 @@ export const securityEvents = [
   },
 ];
 
-/** The policy and the person's security activity, for the pages that set a password and My profile's Security tab. */
+/**
+ * The policy, the person's second factors and security activity, for the pages that set a password and My profile's
+ * Security tab; and whether a passkey alone signs in, which the login page asks (off, as a tenant's default).
+ */
 export async function stubPasswords(target: Page): Promise<void> {
   await target.route("**/auth/password-policy", (route) => route.fulfill({ json: passwordPolicy }));
+  await target.route("**/auth/sign-in-options", (route) => route.fulfill({ json: { passkey_sign_in: false } }));
+  await target.route("**/api/v1/me/factors", (route) =>
+    route.fulfill({
+      json: {
+        factors: [
+          {
+            id: "f1",
+            kind: "authenticator_app",
+            name: "My phone",
+            created_at: "2026-10-01T09:00:00Z",
+            last_used_at: "2026-10-21T08:30:00Z",
+          },
+        ],
+        recovery_codes_left: 10,
+        required: false,
+        allowed: ["authenticator_app", "passkey"],
+        enrol_by: null,
+      },
+    }),
+  );
   await target.route("**/api/v1/me/security-events?**", (route) =>
     route.fulfill({ json: envelope(route.request().url(), securityEvents) }),
   );

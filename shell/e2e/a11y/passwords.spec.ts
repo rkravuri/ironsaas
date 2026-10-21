@@ -25,6 +25,7 @@ async function anonymous(page: Page): Promise<void> {
     }),
   );
   await page.route("**/auth/password-policy", (route) => route.fulfill({ json: passwordPolicy }));
+  await page.route("**/auth/sign-in-options", (route) => route.fulfill({ json: { passkey_sign_in: false } }));
 }
 
 const refuse = (code: string, field: string, message: string) => ({
