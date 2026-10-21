@@ -137,7 +137,8 @@ public sealed class PasswordService(
 
     /// <summary>
     /// The person changes their own password: the current one first, then the policy. A wrong current password counts
-    /// against the login like a failed sign-in, and a locked login cannot change it. Ending the other sessions keeps
+    /// against the login like a failed sign-in, and a locked login cannot change it: 403, not 401, because the session
+    /// stays open (a lockout never ends sessions) and a 401 would sign the shell out. Ending the other sessions keeps
     /// <paramref name="keepSessionId"/>, the one asking. Any open recovery link is closed, since the person has just
     /// chosen a password.
     /// </summary>
@@ -153,7 +154,7 @@ public sealed class PasswordService(
 
         if (await throttles.LockedUntilAsync(principal.LoginId, cancellationToken).ConfigureAwait(false) is not null)
         {
-            return Error.Unauthorized(IdentityErrors.LoginLocked, LoginService.LockedMessage);
+            return Error.Forbidden(IdentityErrors.LoginLocked, LoginService.LockedMessage);
         }
 
         if (!hasher.Verify(currentPassword, principal.PasswordHash))
@@ -165,7 +166,7 @@ public sealed class PasswordService(
                 var lockDetails = new Dictionary<string, string>(StringComparer.Ordinal) { ["locked_until"] = locked.Value.ToString("O", System.Globalization.CultureInfo.InvariantCulture), ["by"] = "password_change" };
                 await securityEvents.RecordAsync(principal, SecurityEventKinds.LoginLocked, SecurityEventActors.System, null, null, lockDetails, cancellationToken).ConfigureAwait(false);
                 await lockTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-                return Error.Unauthorized(IdentityErrors.LoginLocked, LoginService.LockedMessage);
+                return Error.Forbidden(IdentityErrors.LoginLocked, LoginService.LockedMessage);
             }
 
             return Error.Validation(IdentityErrors.PasswordCurrentWrong, "The current password is not correct.", new FieldError("current_password", "wrong", "Type your current password."));

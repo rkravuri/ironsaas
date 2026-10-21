@@ -1,6 +1,7 @@
 import type { RouteObject } from "react-router";
 import { InvitationPage } from "@/auth/InvitationPage";
 import { LoginPage } from "@/auth/LoginPage";
+import { RecoveryPage } from "@/auth/RecoveryPage";
 import { HomePage } from "@/home/HomePage";
 import { declaredRoutes, type ModuleManifest } from "@/modules/registry";
 import { RouteErrorPage } from "./ErrorBoundary";
@@ -40,6 +41,7 @@ export function shellRoutes(
       errorElement: <RouteErrorPage />,
     },
     { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
+    { path: "/recovery/:token", element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
     ...extra,
     {
       path: "/",

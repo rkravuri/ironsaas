@@ -5,8 +5,8 @@ import { Alert, Anchor, Button, Container, Paper, PasswordInput, Stack, Text, Te
 import { useForm } from "@mantine/form";
 import { ApiError } from "@/api/client";
 import { acceptInvitation } from "@/api/identity";
-
-const minimumLength = 12;
+import { PasswordRules } from "./password";
+import { failedRule, usePasswordPolicy, type PasswordRule } from "./password-policy";
 
 interface InvitationFormValues {
   displayName: string;
@@ -14,19 +14,27 @@ interface InvitationFormValues {
   confirm: string;
 }
 
-/** The page behind the link the fleet prints: /invitations/{token}. Sets the first administrator's password (TF-030). */
+type InvitationState =
+  | { kind: "form"; failed?: PasswordRule | undefined }
+  | { kind: "done" }
+  | { kind: "error"; message: string; correlationId: string | undefined };
+
+/**
+ * The page behind an invitation link: /invitations/{token}. The invitee sets a password under the tenant's policy, shown
+ * in words before they type (TF-012, TF-018); a password the API refuses keeps the form and names the rule it failed.
+ */
 export function InvitationPage() {
   const { t } = useTranslation();
   const { token = "" } = useParams();
-  const [state, setState] = useState<
-    { kind: "form" } | { kind: "done" } | { kind: "error"; message: string; correlationId: string | undefined }
-  >({ kind: "form" });
+  const policy = usePasswordPolicy();
+  const [state, setState] = useState<InvitationState>({ kind: "form" });
   const [submitting, setSubmitting] = useState(false);
   const form = useForm<InvitationFormValues>({
     initialValues: { displayName: "", password: "", confirm: "" },
     validate: {
-      password: (value) => (value.length < minimumLength ? t("invitation.tooShort", { min: minimumLength }) : null),
-      confirm: (value, values) => (value !== values.password ? t("invitation.mismatch") : null),
+      password: (value) =>
+        value.length < policy.minimum_length ? t("password.tooShort", { min: policy.minimum_length }) : null,
+      confirm: (value, values) => (value !== values.password ? t("password.mismatch") : null),
     },
   });
 
@@ -36,11 +44,18 @@ export function InvitationPage() {
       await acceptInvitation(token, values.password, values.displayName.trim() || undefined);
       setState({ kind: "done" });
     } catch (error) {
-      if (error instanceof ApiError) {
+      const rule = failedRule(error);
+      if (rule !== undefined && error instanceof ApiError) {
+        form.setFieldError(
+          "password",
+          error.errors?.find((problem) => problem.field === "password")?.message ?? error.message,
+        );
+        setState({ kind: "form", failed: rule });
+      } else if (error instanceof ApiError) {
         setState({
           kind: "error",
           message:
-            error.status === 404 || error.status === 400 || error.status === 409
+            error.status === 404 || error.status === 409 || error.errorCode === "identity.invitation.expired"
               ? t("invitation.invalid")
               : error.message,
           correlationId: error.correlationId,
@@ -74,6 +89,11 @@ export function InvitationPage() {
                 label={t("invitation.displayName")}
                 autoComplete="name"
                 {...form.getInputProps("displayName")}
+              />
+              <PasswordRules
+                policy={policy}
+                withHistory={false}
+                failed={state.kind === "form" ? state.failed : undefined}
               />
               <PasswordInput
                 label={t("invitation.password")}

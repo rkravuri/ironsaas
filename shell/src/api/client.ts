@@ -18,6 +18,8 @@ export const ProblemSchema = z.object({
   error_code: z.string().optional(),
   correlation_id: z.string().optional(),
   errors: z.array(FieldProblemSchema).optional(),
+  /** The code of a recovery link, when a sign-in found the password past its maximum age (TF-012, ADR-0046). */
+  recovery_token: z.string().optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
@@ -56,6 +58,7 @@ export class ApiError extends Error {
   readonly correlationId: string | undefined;
   readonly detail: string | undefined;
   readonly errors: readonly FieldProblem[] | undefined;
+  readonly recoveryToken: string | undefined;
 
   constructor(status: number, problem: Problem, correlationId: string | undefined) {
     super(problem.detail ?? problem.title ?? `The request failed with status ${status}.`);
@@ -65,6 +68,7 @@ export class ApiError extends Error {
     this.correlationId = problem.correlation_id ?? correlationId;
     this.detail = problem.detail;
     this.errors = problem.errors;
+    this.recoveryToken = problem.recovery_token;
   }
 
   get isUnauthenticated(): boolean {

@@ -17,6 +17,7 @@ import {
 import { useForm } from "@mantine/form";
 import { ApiError } from "@/api/client";
 import { login } from "@/api/identity";
+import type { RecoveryState } from "./RecoveryPage";
 import { Welcome } from "@/design/illustrations";
 import { TenantMark } from "@/design/patterns";
 import type { LoginState } from "@/shell/Guards";
@@ -34,7 +35,10 @@ interface LoginPageProps {
 
 /**
  * One fixed message for every failure, the API's own (TF-011 AC2): the page never says whether the account exists, which
- * of the two was wrong, or whether the account is active; the correlation id goes with it when the API gave one.
+ * of the two was wrong, or whether the account is active; the correlation id goes with it when the API gave one. A login
+ * locked after too many failures has its own message, which is the same for every identifier, known or not (TF-012,
+ * ADR-0046). A right password past its maximum age goes on to the recovery page with the code the API gave. Until email
+ * exists (S4), "Forgot your password?" says to ask the administrator for a recovery link.
  */
 export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
   const { t } = useTranslation();
@@ -64,8 +68,16 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
       await session.signedIn();
       void navigate(returnTo, { replace: true });
     } catch (error) {
+      if (error instanceof ApiError && error.errorCode === "identity.password.expired" && error.recoveryToken) {
+        const state: RecoveryState = { expired: true };
+        void navigate(`/recovery/${encodeURIComponent(error.recoveryToken)}`, { state });
+        return;
+      }
       setProblem({
-        message: t("login.failed"),
+        message:
+          error instanceof ApiError && error.errorCode === "identity.login.locked"
+            ? t("login.locked")
+            : t("login.failed"),
         correlationId: error instanceof ApiError ? error.correlationId : undefined,
       });
     } finally {
@@ -129,6 +141,14 @@ export function LoginPage({ autoFocus = true }: LoginPageProps = {}) {
               <Button type="submit" loading={submitting} fullWidth>
                 {t("login.submit")}
               </Button>
+              <Text size="sm" data-forgot>
+                <Text span inherit fw={600}>
+                  {t("login.forgot.title")}
+                </Text>{" "}
+                <Text span inherit c="dimmed">
+                  {t("login.forgot.text")}
+                </Text>
+              </Text>
             </Stack>
           </form>
         </Paper>

@@ -35,6 +35,11 @@
       "signed-out": "You have signed out.",
       "signed-out-elsewhere": "You signed out in another tab.",
       "expired": "Your session has ended. Sign in again to carry on."
+    },
+    "locked": "Too many failed sign-ins for this login. Try again later, or ask your administrator to unlock it.",
+    "forgot": {
+      "title": "Forgot your password?",
+      "text": "Ask your administrator for a recovery link. It works once, for 15 minutes."
     }
   },
   "invitation": {
@@ -44,10 +49,39 @@
     "password": "Password",
     "confirm": "Repeat the password",
     "submit": "Activate the account",
-    "mismatch": "The passwords differ.",
-    "tooShort": "Use at least {{min}} characters.",
     "done": "Your account is active. Sign in with your login identifier and the password you chose.",
     "invalid": "This invitation is not valid any more. Ask your administrator for a new one."
+  },
+  "recovery": {
+    "title": "Choose a new password",
+    "intro": "Choose a new password for your account on {{hostname}}. When you save it, every session of your account ends, on every device.",
+    "expired": "Your password has expired. Choose a new one to sign in.",
+    "password": "New password",
+    "confirm": "Repeat the new password",
+    "submit": "Save the new password",
+    "done": "Your new password is saved and every session of your account has ended. Sign in with the new password.",
+    "invalid": "This recovery link does not work any more: it was used, a newer one replaced it, or its 15 minutes passed. Ask your administrator for a new one.",
+    "notAllowed": "This account cannot sign in, so its password cannot be set. Ask your administrator."
+  },
+  "password": {
+    "rules": {
+      "title": "Your password needs",
+      "length": "At least {{min}} characters.",
+      "common": "Not one of the most common passwords, which are guessed first.",
+      "notLogin": "Not your login identifier.",
+      "history_one": "Not your last password.",
+      "history_other": "Not one of your last {{count}} passwords.",
+      "tooLong": "At most {{max}} characters.",
+      "failed": "Your password did not meet this rule.",
+      "advice": "Any characters count, and there are no rules about kinds of characters: a few unrelated words make a long password that is easy to remember."
+    },
+    "tooShort": "Use at least {{min}} characters.",
+    "mismatch": "The passwords differ.",
+    "expiry": {
+      "text_one": "Your password expires in {{count}} day, on {{when}}.",
+      "text_other": "Your password expires in {{count}} days, on {{when}}.",
+      "link": "Change it in My profile."
+    }
   },
   "errors": {
     "title": "Something went wrong",
@@ -111,7 +145,7 @@
       "invited": "Invited",
       "locked": "Locked",
       "inactive": "Inactive",
-      "disabled": "Disabled"
+      "disabled": "Deactivated"
     },
     "homeUnit": "Home unit",
     "types": {
@@ -147,6 +181,50 @@
       "copied": "Copied",
       "byHand": "Email delivery comes later: send this link to them yourself. It works once, expires on {{when}}, and is shown only now.",
       "openRecord": "Open their record"
+    },
+    "lockedUntil": "Login locked until",
+    "login": "Login",
+    "loginLocked": "Locked",
+    "actions": {
+      "unlock": {
+        "open": "Unlock",
+        "title": "Unlock the login of {{name}}?",
+        "message": "Their login was locked after too many failed sign-ins. Unlocking lets them sign in again now. It is recorded in their security activity and the audit trail.",
+        "confirm": "Unlock"
+      },
+      "recovery": {
+        "open": "Issue a recovery link",
+        "title": "Issue a recovery link for {{name}}?",
+        "message": "The link lets whoever holds it set a new password for {{name}}, once, within 15 minutes, and then ends all their sessions. Any earlier link stops working. Give it only to {{name}}.",
+        "confirm": "Issue the link"
+      },
+      "deactivate": {
+        "open": "Deactivate",
+        "title": "Deactivate {{name}}?",
+        "message": "{{name}} cannot sign in any more: every session ends now, their access tokens are refused, and an open invitation or recovery link stops working. Their records and history stay. You can reactivate them later.",
+        "confirm": "Deactivate"
+      },
+      "reactivate": {
+        "open": "Reactivate",
+        "title": "Reactivate {{name}}?",
+        "message": "{{name}} can sign in again with the password they had. If they never set one, you get a new invitation link for them.",
+        "confirm": "Reactivate"
+      },
+      "link": {
+        "done": "Done",
+        "recovery": {
+          "title": "A recovery link for {{name}}",
+          "text": "{{name}} opens this link to choose a new password.",
+          "label": "Recovery link",
+          "byHand": "Email delivery comes later: give this link to them yourself. It works once, expires at {{when}}, and is shown only now."
+        },
+        "invitation": {
+          "title": "{{name}} is reactivated",
+          "text": "{{name}} never set a password, so they get a new invitation. They choose a password when they open this link.",
+          "label": "Invitation link",
+          "byHand": "Email delivery comes later: send this link to them yourself. It works once, expires on {{when}}, and is shown only now."
+        }
+      }
     }
   },
   "profile": {
@@ -160,7 +238,8 @@
       "access": "Access",
       "preferences": "Preferences",
       "session": "Session",
-      "delegations": "Delegations"
+      "delegations": "Delegations",
+      "security": "Security"
     },
     "preferences": {
       "intro": "How the shell looks for you. Your choices are kept with your account, so they follow you to every browser you sign in on.",
@@ -187,6 +266,30 @@
       "unknown": "Not known",
       "limits": "Your organisation ends a session after {{idle}} minutes without activity, and after {{hours}} hours at most.",
       "explain": "Every request you make keeps the session alive, up to its latest end. Two minutes before it ends you are asked whether to stay signed in. Signing out here signs you out in every tab of this browser."
+    },
+    "security": {
+      "changeTitle": "Change your password",
+      "expires": "Your organisation asks for a new password every {{days}} days. This one expires on {{when}}.",
+      "current": "Current password",
+      "currentRequired": "Type your current password.",
+      "new": "New password",
+      "confirm": "Repeat the new password",
+      "endOthers": "End my other sessions",
+      "endOthersHint": "Signs you out everywhere else, on every device. This session stays open.",
+      "changeSubmit": "Change the password",
+      "changed": "Your password is changed.",
+      "changedEnded": "Your password is changed, and your other sessions have ended.",
+      "activityTitle": "Security activity",
+      "activityIntro": "What happened to your account's sign-in, newest first. If you see something you did not expect, change your password and tell your administrator.",
+      "activityFailed": "Your security activity could not be loaded.",
+      "activityNone": "Nothing yet",
+      "activityNoneText": "Password changes, recovery links and lockouts of your account will be listed here.",
+      "activityCaption": "Your security activity",
+      "columns": {
+        "when": "When",
+        "what": "What happened",
+        "by": "By"
+      }
     }
   },
   "grid": {
@@ -1511,5 +1614,24 @@
       "wholeTenant": "across the whole organisation",
       "reason": "Why the rule exists: {{reason}}"
     }
+  },
+  "securityEvents": {
+    "kinds": {
+      "password_changed": "Password changed",
+      "recovery_link_issued": "Recovery link issued",
+      "recovery_link_used": "Recovery link used, and every session ended",
+      "password_set_by_recovery": "Password set with a recovery link",
+      "login_locked": "Login locked after too many failed sign-ins",
+      "login_unlocked": "Login unlocked",
+      "user_deactivated": "Account deactivated",
+      "user_reactivated": "Account reactivated"
+    },
+    "actors": {
+      "self": "You",
+      "administrator": "{{name}}, an administrator",
+      "operator": "{{name}}, the platform operator",
+      "system": "Automatically"
+    },
+    "reason": "Reason: {{reason}}"
   }
 }
