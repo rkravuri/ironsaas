@@ -4,7 +4,7 @@ IronSaaS Foundation and its suites hold the records of regulated businesses, so 
 
 ## Reporting a vulnerability
 
-Report it privately, by email to **REAL_ADDRESS_HERE**, never in a public issue, pull request or discussion.
+Report it privately, by email to **security@ironsaas.com**, never in a public issue, pull request or discussion.
 
 Say what you found, where (file, endpoint or page), how to reproduce it, and what an attacker could do with it. Do not include real personal data or a tenant's records; describe them instead.
 

@@ -125,9 +125,8 @@ Decided in the task, each small enough for a line here, beside ADR-0045:
 
 ## Open questions
 
-1. `SECURITY.md` names `REAL_ADDRESS_HERE`, as the owner asked at T1's review; the owner replaces it with the security address.
-2. India's MSME readings (BF-204, RCV-029, INV-011, INV-087) stay `[Decision]`, to be confirmed by a practitioner in India, as the pack's research log asks.
-3. OMG's BPMN schema files carry no licence notice of their own; `docs/licences.md` reads them under the BPMN 2.0 specification's licence, which the owner confirms (ADR-0045).
+1. India's MSME readings (BF-204, RCV-029, INV-011, INV-087) stay `[Decision]`, to be confirmed by a practitioner in India, as the pack's research log asks.
+2. OMG's BPMN schema files carry no licence notice of their own; `docs/licences.md` reads them under the BPMN 2.0 specification's licence, which the owner confirms (ADR-0045).
 
 ## Later items
 
