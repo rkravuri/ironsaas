@@ -157,7 +157,10 @@ await report.StepAsync("login", ["TF-011 AC1"], async () =>
 
 await report.StepAsync("cookie-call", ["ADR-0010", "ADR-0014"], async () =>
 {
-    var users = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/api/v1/users?page_size=50&sort=login_id", host: host, cookie: cookie, cancellationToken: ct)).Expect(HttpStatusCode.OK, "users with the cookie");
+    // The two accounts by filter, not the first page: every run leaves people on a tenant, and a page of fifty sorted by
+    // login stopped reaching smoke-client on the laptop's echo (S3 T1).
+    var filter = Uri.EscapeDataString($"login_id:in:smoke-client,{options.AdministratorLoginId}");
+    var users = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, $"/api/v1/users?page_size=50&sort=login_id&filter={filter}", host: host, cookie: cookie, cancellationToken: ct)).Expect(HttpStatusCode.OK, "users with the cookie");
     var logins = users.Body!.Value.GetProperty("data").EnumerateArray().Select(u => u.GetProperty("login_id").GetString()).ToList();
     if (!logins.Contains("smoke-client") || !logins.Contains(options.AdministratorLoginId))
     {
