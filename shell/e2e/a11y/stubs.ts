@@ -116,6 +116,8 @@ export async function stubSignedIn(target: Page): Promise<void> {
   );
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: me }));
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
+  // A page whose session ends shows the login page, which asks whether a passkey alone signs in (off by default).
+  await target.route("**/auth/sign-in-options", (route) => route.fulfill({ json: { passkey_sign_in: false } }));
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
   // One user by id, as the record page asks; the list's route above answers the rest.
   await target.route("**/api/v1/users/*", (route) => {

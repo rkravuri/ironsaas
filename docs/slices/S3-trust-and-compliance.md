@@ -17,7 +17,7 @@ To be written in the design session.
 | ID | Requirement | Priority | Built before S3 | Notes for the design session |
 |---|---|---|---|---|
 | TF-012 | Password policy, history and lockout | Must | Argon2id, the fixed failure message and the count of failed attempts (S1) | T2 (ADR-0046): the policy as tenant settings, history and lockout. AC2's email of the lockout is S4's, with notifications: the lockout is recorded and shown in My profile until then |
-| TF-013 | Multi-factor authentication | Must | | |
+| TF-013 | Multi-factor authentication | Must | | T3 (ADR-0047): authenticator apps and passkeys, recovery codes, the policy as tenant settings, the cooling period and the lock, the administrator's and the operator's reset. The fallback by email or SMS is S4's, an exception when S3 closes |
 | TF-014 | Single sign-on with OpenID Connect | Must | the in-house client credentials grant (ADR-0015); OpenIddict deferred to the authorization code flow | |
 | TF-015 | Single sign-on with SAML 2.0 | Should | | also in S7's description |
 | TF-016 | Automatic user provisioning (SCIM 2.0) | Should | | also in S7's description |
@@ -52,6 +52,7 @@ To be written in the design session.
 | TF-079 | Security monitoring and incident response | Must | denial and login events in the audit; the entitlement, flag and settings alerts (S2) | |
 | TF-218 | Validation support for regulated tenants | Must | | |
 | TF-219 | Signature manifestation and audit trail review | Must | | with TF-063 |
+| TF-248 | Step-up re-authentication | Must | | T3 (ADR-0047), new: a recent authentication for the high-risk actions, one mechanism in the kernel, the API and the shell; T5's break-glass, T7's signatures and T8's second approvals reuse it |
 
 Continuing into S3 from earlier slices: TF-021 (the concurrent session limit), TF-020 (refresh rotation, key rotation, OpenIddict) and TF-070 (CSP reports), each in its slice plan's coverage table.
 
@@ -63,7 +64,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 |---|---|---|---|
 | T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | done (main, df1e35e) |
 | T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | done (main, 902cd3d) |
-| T3 | MFA and step-up re-authentication | TF-013 | outline |
+| T3 | MFA and step-up re-authentication | TF-013, TF-248 | in review (slice/s3-t3) |
 | T4 | Single sign-on with OpenID Connect | TF-014 | outline |
 | T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-022, TF-025, TF-026, TF-028, TF-029 | outline |
 | T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |

@@ -147,3 +147,5 @@ A grant (through the API or `IRoleAssignments`) that would complete a blocking r
 
 The report: the unit's worker host calls `AddConflictReport()`, which computes it in full two minutes after it starts and then daily, replacing the rows; `POST .../runs` does the same at once. A grant, a removal and a delegation's start or end compute that person's rows at once, and a role's change its holders' rows. Each row names the person, the rule and its mode, the two grants (an assignment or a delegation, with role, scope and unit) and the unit both reach. An access review item lists the rules its assignment takes part in (`conflicts`).
 
+
+Step-up (TF-248, ADR-0047): granting a role that holds a high-risk or critical permission is itself a high-risk action. `AssignmentService` asks the kernel's `IRecentAuthentication` last, after the scope, the escalation rule and segregation of duties, so a grant refused anyway never asks for a password; an older authentication answers 403 `auth.reauthentication_required`. `IRoleAssignments.RoleCodesAnywhereAsync` answers the roles a principal holds at any scope, which Identity's MFA policy reads.

@@ -186,6 +186,17 @@ Anonymous endpoints are the short list of TF-030: health, login, recovery, invit
 
 `ICurrentPrincipal` is the signed-in principal of the request (from the `iron.session` cookie), nobody when there is no valid session, and the system principal in jobs and commands. `ActingForId` is the person a shell session acts for by delegation (ADR-0037), and null otherwise. Endpoints declare one of three things: `.RequirePermission(x)`, `.RequireSignedIn()` (any signed-in principal: me, logout) or `.AllowAnonymous()` (health, login, invitation acceptance). The filter answers 401 `auth.not_authenticated` for nobody, 401 `auth.session_expired` for a cookie whose session ran out, and 403 `authz.permission_denied` for the wrong somebody.
 
+**A high-risk action asks for a recent authentication** (TF-248, ADR-0047). Declare it after the permission, so a caller without the permission hears that first:
+
+```csharp
+users.MapPost("/{id:guid}/deactivate", DeactivateAsync)
+    .RequirePermission(IdentityPermissions.UsersManage)
+    .ScopedByRow()
+    .RequireRecentAuthentication(); // five minutes unless a number says otherwise
+```
+
+Where the data decides whether the action is high-risk, the service asks the kernel's `IRecentAuthentication` itself, last, after every other check: `if (recent.Require() is { IsFailure: true } stale) return stale.Error;`, as granting a role with a high-risk or critical permission does. A setting whose change is high-risk is declared with `.RequiringRecentAuthentication()`, and `SettingsWriter` asks for it. The refusal is 403 `auth.reauthentication_required`; the shell's `request()` opens its one re-authentication dialog and sends the request again once the person confirmed it is them, so a page needs nothing of its own. A session's authentication is its sign-in or its latest confirmation, a token's its issue; jobs, seeds and commands are never asked.
+
 On the laptop: `make migrate`, then `make seed` creates the system roles and the first administrator `admin@dev.localhost` in Invited status; the invitation link is on the seed's console, not in its log (ADR-0046). Accept it by opening the link in the shell, or with `POST /auth/invitations/accept` and the token from the link's fragment and a password of at least 12 characters, then `POST /auth/login`; the response sets the cookie and `GET /api/v1/me` shows the permissions and the session expiry.
 
 ## An API client (ADR-0015)
@@ -553,6 +564,7 @@ The home page, the search and the help panel read the manifests, so a module app
 3. **Help keys.** A route's `shortcuts` list its keys in the help panel on that page: `gridShortcuts`, `treeShortcuts` and `tabShortcuts` from `shell/src/components/shortcuts.ts`, or keys of its own with their words in the catalogue.
 4. **Recently opened** names a page by its route's title; a record page names itself with `useRecentName(record.name)` once the record has loaded.
 5. **The session warning** needs nothing from a page: every answer through `request()` counts as activity and moves the idle end in every tab. A page that holds unsaved work should still save as it goes; the warning gives two minutes.
+6. **A high-risk action** needs nothing from a page either (ADR-0047): when the API refuses it for an old sign-in, `request()` waits while the shared re-authentication dialog asks the person to confirm it is them, then sends it again. If they cancel, the call rejects with the `ApiError` (`needsReauthentication`), which the page shows as any refusal.
 
 ## Proving a change (ADR-0022)
 

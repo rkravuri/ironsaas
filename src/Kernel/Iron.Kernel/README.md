@@ -6,14 +6,14 @@ Every type is in one namespace, `Iron.Kernel`, so that no second segment under `
 
 | Folder | What is in it |
 |---|---|
-| `Results/` | `Result` and `Result<T>` for expected failures, `Error` with an `ErrorKind` and a stable code, `FieldError` for validation problems, `ErrorCodes` with the code rule |
+| `Results/` | `Result` and `Result<T>` for expected failures, `Error` with an `ErrorKind`, a stable code and optional `Extensions` (facts a client acts on, such as `retry_after_seconds`, which the problem carries), `FieldError` for validation problems, `ErrorCodes` with the code rule |
 | `Tenancy/` | `TenantId`, the slug that identifies a tenant everywhere, and `TenantContext`, the one tenant a running unit serves |
 | `Identifiers/` | `Ids.New()`: time-ordered UUID version 7 identifiers |
 | `Correlation/` | `CorrelationId`: the trace id of the current request, returned to clients and shown on error pages |
 | `Paging/` | `PageRequest`, `Page<T>`, the `ListQuery` model (sort terms, filter terms, fields), `ListFields<T>` (the fields a list exposes, with their operators) and `ListValues` (text to typed values) |
 | `Text/` | `Naming`: the snake_case and kebab-case rules |
 | `Finance/` | `Money` and `Currency` |
-| `Principals/` | `ICurrentPrincipal`, who acts in the current request or job, `SystemPrincipal` for jobs and seeds, and `AnonymousPrincipal` |
+| `Principals/` | `ICurrentPrincipal`, who acts in the current request or job, `SystemPrincipal` for jobs and seeds, and `AnonymousPrincipal`; `IRecentAuthentication`, the one question a high-risk action asks (TF-248, ADR-0047), with the default where nobody signs in |
 | `Permissions/` | `Permission` (`module.resource.action`, description, `Risk`) |
 
 A new type goes into the folder of its area and the namespace `Iron.Kernel`. Code inside `Iron.Kernel.*` sees the vocabulary without a `using`; hosts, tests outside the kernel and tools write `using Iron.Kernel;`.
