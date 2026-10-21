@@ -8,8 +8,9 @@ the second and third each hold a colleague, and a person homed at the second rea
 offers them a choice of unit (A8). They hold no role in the first branch, whose access review the delegation test runs
 (A7). Every person is new and signs in with a password made here. It prints shell exports for make e2e.
 
-teardown deactivates the run's units, the deepest first (E2E_RUN_UNIT_ID). People stay, in an inactive unit: no API
-disables a person yet.
+teardown deactivates the people homed in the run's units, those of earlier runs that are still active too (runs before
+S3 T2 could not deactivate anyone), then the run's units, the deepest first (E2E_RUN_UNIT_ID). make e2e runs it whatever
+the tests' result, so a run leaves no active people behind.
 
 The three roles the tests grant are the tenant's, not a run's: they are created once and kept as they are.
 
@@ -177,14 +178,31 @@ def setup():
         print(f"export {name}={shlex.quote(value)}")
 
 
+def deactivate_people(admin, units):
+    """Every active or invited person homed at one of these units, deactivated: they cannot sign in, their sessions end."""
+    ids = [unit["id"] for unit in units]
+    left = 0
+    for start in range(0, len(ids), 50):
+        chosen = urllib.parse.quote("home_unit_id:in:" + ",".join(ids[start:start + 50]))
+        people = api("GET", f"/api/v1/users?page_size=200&fields=id,status&filter={chosen}", admin)["data"]
+        for person in people:
+            if person["status"] != "disabled":
+                api("POST", f"/api/v1/users/{person['id']}/deactivate", admin, expect=(200,))
+                left += 1
+    return left
+
+
 def teardown():
     run_unit_id = os.environ.get("E2E_RUN_UNIT_ID", "")
-    if not run_unit_id:
-        log("No run unit to deactivate.")
-        return
     admin = administrator()
     units = api("GET", "/api/v1/organisation-units", admin)["data"]
     by_id = {unit["id"]: unit for unit in units}
+    # The people of every run's units, this one's and earlier ones', by the codes setup gives them.
+    runs = [unit for unit in units if unit["code"].startswith("e2e-")]
+    log(f"Deactivated {deactivate_people(admin, runs)} person(s) homed in the browser tests' units.")
+    if not run_unit_id:
+        log("No run unit to deactivate.")
+        return
     if run_unit_id not in by_id:
         log(f"The run unit {run_unit_id} is not in the tree.")
         return

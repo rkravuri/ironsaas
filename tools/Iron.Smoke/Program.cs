@@ -6,7 +6,8 @@ using Iron.Smoke;
 
 // The smoke test: the stack as an operator and a user meet it. Each step names the requirement criteria or the decisions it
 // proves (ADR-0044), in its report line and in the report make trace reads. Every step is a real call through the ingress
-// or the control plane; nothing is mocked. Exit code 0 when every step passes. Eleven steps since S1, three since S2.
+// or the control plane; nothing is mocked. Exit code 0 when every step passes. Eleven steps since S1, three since S2, one
+// since S3 T2: the operator's recovery of the administrator, which also sets the password a run did not know.
 var options = SmokeOptions.FromEnvironment();
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -137,12 +138,6 @@ await report.StepAsync("token-call", ["TF-023 AC1"], async () =>
 string? administratorPassword = null;
 await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
 {
-    administratorPassword = options.AdministratorPassword;
-    if (administratorPassword is not null)
-    {
-        return "administrator password from SMOKE_ADMIN_PASSWORD";
-    }
-
     var smoke = await store.ReadAsync(smokeSecretPath, ct);
     administratorPassword = smoke?.GetValueOrDefault("administrator_password");
     if (administratorPassword is not null)
@@ -150,8 +145,15 @@ await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
         return "administrator password known from an earlier run";
     }
 
+    // No password known: a new tenant's administrator accepts the invitation; one who is active already (a store that
+    // healed, an invitation accepted by hand) gets a new password from the operator's recovery in the next step.
     var fleet = await store.ReadAsync(fleetSecretPath, ct) ?? throw new SmokeException($"no secret at {fleetSecretPath}");
-    var link = fleet.GetValueOrDefault("invitation_link") ?? throw new SmokeException("the fleet secret has no invitation_link: run an update of the unit (make update-unit), which re-issues it while the administrator is still invited");
+    var link = fleet.GetValueOrDefault("invitation_link");
+    if (link is null)
+    {
+        return "no password and no invitation known: the recovery step sets one";
+    }
+
     var token = link[(link.LastIndexOf('/') + 1)..];
     var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
 
@@ -165,7 +167,50 @@ await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
         return $"invitation accepted for {options.AdministratorLoginId}; password kept at {smokeSecretPath}";
     }
 
-    return $"accept answered {(int)accepted.Status} ({accepted.Text("error_code") ?? "no code"}); the login step decides";
+    return $"accept answered {(int)accepted.Status} ({accepted.Text("error_code") ?? "no code"}): the recovery step sets the password";
+});
+
+// The operator's recovery (S3 T2, ADR-0046), on every run: the control plane asks the fleet for a link with a reason, the
+// unit issues it and audits the operator and the reason, the link sets a new password once and ends every session, a second
+// use is refused, the old password no longer signs in, and both planes' audit trails show the request. The new password
+// is kept at the smoke's path, so a run that did not know the password ends knowing it.
+var recoveryReason = $"The smoke proves the operator's recovery ({TimeProvider.System.GetUtcNow():yyyy-MM-dd HH:mm} UTC)";
+await report.StepAsync("recovery", ["TF-017 AC1", "TF-017 AC2", "ADR-0046"], async () =>
+{
+    var before = administratorPassword;
+    var requested = (await api.SendAsync(HttpMethod.Post, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/administrator-recovery", bearer: operatorToken, json: new { reason = recoveryReason }, cancellationToken: ct)).Expect(HttpStatusCode.Accepted, "ask for the administrator's recovery link");
+    var jobId = requested.Text("job_id");
+    var output = await JobOutputAsync(jobId);
+    var token = output[(output.LastIndexOf('/') + 1)..];
+    var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
+    (await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth/recovery/{Uri.EscapeDataString(token)}", host: host, json: new { password }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "set the password with the link");
+    await store.WriteAsync(smokeSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator_password"] = password }, ct);
+    administratorPassword = password;
+
+    var again = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, $"/auth/recovery/{Uri.EscapeDataString(token)}", host: host, json: new { password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) }, cancellationToken: ct)).Expect(HttpStatusCode.NotFound, "the link used twice");
+    var old = before is null || before == password
+        ? "no earlier password to try"
+        : $"the earlier password answers {(int)(await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/login", host: host, json: new { login_id = options.AdministratorLoginId, password = before }, cancellationToken: ct)).Expect(HttpStatusCode.Unauthorized, "the earlier password").Status}";
+
+    // The tenant's own audit trail names the operator and the reason; the control plane's has the request.
+    var session = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/login", host: host, json: new { login_id = options.AdministratorLoginId, password }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "sign in with the new password").SetCookie;
+    var issued = Uri.EscapeDataString("event_type:eq:identity.recovery_link_issued");
+    var unitTrail = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, $"/api/v1/audit-events?filter={issued}&page_size=5", host: host, cookie: session, cancellationToken: ct)).Expect(HttpStatusCode.OK, "the tenant's audit trail");
+    var unitEvent = unitTrail.Body!.Value.GetProperty("data").EnumerateArray().FirstOrDefault(e => e.GetProperty("reason").GetString() == recoveryReason);
+    if (unitEvent.ValueKind != JsonValueKind.Object || !(unitEvent.GetProperty("details").ToString().Contains("operator", StringComparison.Ordinal)))
+    {
+        throw new SmokeException("the tenant's audit trail has no recovery_link_issued with the run's reason and the operator");
+    }
+
+    await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/logout", host: host, cookie: session, cancellationToken: ct);
+    var requestedFilter = Uri.EscapeDataString("event_type:eq:tenancy.administrator_recovery_requested");
+    var controlTrail = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/audit-events?filter={requestedFilter}&page_size=5", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "the control plane's audit trail");
+    if (!controlTrail.Body!.Value.GetProperty("data").EnumerateArray().Any(e => e.GetProperty("reason").GetString() == recoveryReason))
+    {
+        throw new SmokeException("the control plane's audit trail has no administrator_recovery_requested with the run's reason");
+    }
+
+    return $"job {jobId} issued a link for {options.AdministratorLoginId}; it set the password once, a second use answers 404 {again.Text("error_code")}; {old}; both audit trails show the reason";
 });
 
 string? cookie = null;
@@ -256,8 +301,8 @@ await report.StepAsync("trace", ["ADR-0010"], async () =>
     throw new SmokeException($"trace {cookieCorrelation} not found in Tempo within 60 s (last answer {(answer is null ? "none" : (int)answer.Status)}); is the telemetry profile up?");
 });
 
-// S2's three steps (S2-close): a scoped role, a plan change and a kill switch, each restoring what it changed. The run's
-// short id names what they make, apart from earlier runs.
+// S2's three steps (S2-close): a scoped role, a plan change and a kill switch, each restoring what it changed, and the
+// person the scoped role makes deactivated (T2). The run's short id names what they make, apart from earlier runs.
 var run = Convert.ToHexString(RandomNumberGenerator.GetBytes(3)).ToLowerInvariant();
 var access = new AccessSteps(api, options, operatorToken ?? string.Empty, administratorPassword ?? string.Empty, run);
 await report.StepAsync("scoped-role", ["TF-033 AC1", "TF-035 AC1", "ADR-0031"], () => access.ScopedRoleAsync(ct));
@@ -266,6 +311,32 @@ await report.StepAsync("kill-switch", ["ADR-0035"], () => access.KillSwitchAsync
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
+
+// The recovery job's output once it completes: the link, whose last segment is the code.
+async Task<string> JobOutputAsync(string? jobId)
+{
+    var deadline = TimeProvider.System.GetUtcNow().AddSeconds(120);
+    while (TimeProvider.System.GetUtcNow() < deadline)
+    {
+        var job = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/provisioning", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "read the recovery job");
+        if (job.Text("job_id") == jobId)
+        {
+            switch (job.Text("status"))
+            {
+                case "completed":
+                    return job.Text("output") is { } output && output.Contains("/recovery/", StringComparison.Ordinal)
+                        ? output
+                        : throw new SmokeException($"the recovery job completed without a link: {job.Text("output")}");
+                case "failed":
+                    throw new SmokeException($"the recovery job failed: {job.Text("error")}");
+            }
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(false);
+    }
+
+    throw new SmokeException($"the recovery job {jobId} did not finish within 120 s; is the fleet worker up?");
+}
 
 static int CountSpans(JsonElement root)
 {
