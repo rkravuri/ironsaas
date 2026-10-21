@@ -6,7 +6,9 @@ setup (the default) creates, under the root, the run's unit "E2E run <run>" and 
 run's id: the first holds the child-unit administrator (who reads the users of the branch and below) and a colleague;
 the second and third each hold a colleague, and a person homed at the second reads the users of both, so the header
 offers them a choice of unit (A8). They hold no role in the first branch, whose access review the delegation test runs
-(A7). Every person is new and signs in with a password made here. It prints shell exports for make e2e.
+(A7). In the run's unit itself, outside the branches, a person whose password the recovery test sets with a link and
+whom it then deactivates (S3 T2). Every person is new and signs in with a password made here. It prints shell exports
+for make e2e.
 
 teardown deactivates the people homed in the run's units, those of earlier runs that are still active too (runs before
 S3 T2 could not deactivate anyone), then the run's units, the deepest first (E2E_RUN_UNIT_ID). make e2e runs it whatever
@@ -144,6 +146,7 @@ def setup():
 
     child_id, child_login, child_password = create_person(admin, run, "child-admin", "Child administrator", child)
     two_id, two_login, two_password = create_person(admin, run, "two-units", "Two-unit reader", second)
+    recover_id, recover_login, _ = create_person(admin, run, "recovering", "Recovering person", run_unit)
     colleague_id, _ = create_user(admin, f"colleague-{run}@{TENANT}.localhost", "A colleague", child["id"])
     for unit, prefix in ((second, "second-colleague"), (third, "third-colleague")):
         create_user(admin, f"{prefix}-{run}@{TENANT}.localhost", f"A colleague in {unit['name']}", unit["id"])
@@ -173,6 +176,8 @@ def setup():
         "E2E_TWO_UNITS_PASSWORD": two_password,
         "E2E_SECOND_UNIT": second["name"],
         "E2E_THIRD_UNIT": third["name"],
+        "E2E_RECOVER_ID": recover_id,
+        "E2E_RECOVER_LOGIN_ID": recover_login,
     }
     for name, value in exports.items():
         print(f"export {name}={shlex.quote(value)}")
