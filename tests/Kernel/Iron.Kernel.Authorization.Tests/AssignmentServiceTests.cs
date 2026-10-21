@@ -174,6 +174,27 @@ public class AssignmentServiceTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0031", "ADR-0046")]
+    public async Task ADeactivatedAdministratorDoesNotCountAsTheOneWhoStays()
+    {
+        var tenant = await fixture.CreateTenantDatabaseAsync($"guard_{Ids.New():N}");
+        var active = fixture.Principals.Add();
+        var deactivated = fixture.Principals.Add(status: PrincipalStatuses.Disabled);
+        await using (var setup = fixture.Scope(SystemPrincipal.SystemId, connectionString: tenant))
+        {
+            await RoleServiceTests.AssignAsync(setup.Scope, active, SystemRoles.TenantAdministrator);
+            await RoleServiceTests.AssignAsync(setup.Scope, deactivated, SystemRoles.TenantAdministrator);
+        }
+
+        await using var asActive = fixture.Scope(active, connectionString: tenant);
+        var own = await asActive.Get<AuthorizationDbContext>().RoleAssignments.Where(a => a.PrincipalId == active).Select(a => a.Id).SingleAsync(TestContext.Current.CancellationToken);
+
+        var removed = await asActive.Get<AssignmentService>().RemoveAsync(own, TestContext.Current.CancellationToken);
+
+        Assert.Equal((ErrorKind.Conflict, AuthorizationErrors.AssignmentLastAdministrator), (removed.Error.Kind, removed.Error.Code));
+    }
+
+    [Fact]
     [Proves("ADR-0031")]
     public async Task AReaderSeesTheAssignmentsAtTheUnitsTheyReadAndNoOthers()
     {
