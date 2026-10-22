@@ -25,7 +25,11 @@ test.describe("signing in as someone", () => {
     const administrator = await call<{ id: string; display_name: string }>(page, "GET", "/api/v1/me");
 
     await open(page, `/users/${person.id}`);
-    await page.locator("[data-panel=record-header]").getByRole("button", { name: "Sign in as" }).click();
+    await page
+      .locator("[data-panel=record-header]")
+      .getByRole("button", { name: /^More actions for / })
+      .click();
+    await page.getByRole("menuitem", { name: "Sign in as" }).click();
     const dialog = page.getByRole("dialog", { name: /^Sign in as .*\?$/ });
     await dialog.getByRole("button", { name: "Sign in as them" }).click();
     await expect(dialog.getByText("Say why: the reason is kept in the audit trail.")).toBeVisible();

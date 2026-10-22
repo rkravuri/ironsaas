@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, CopyButton, Group, Select, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import { Alert, Button, CopyButton, Group, Menu, Select, Stack, Text, Textarea, TextInput } from "@mantine/core";
 import {
   IconAlertTriangle,
   IconCheck,
+  IconChevronDown,
   IconCopy,
   IconKey,
   IconLockOpen,
@@ -42,6 +43,10 @@ type Action =
 /** The actions that take a reason, or a choice, in a dialog of their own. */
 const ownDialogs: readonly Action[] = ["resetFactors", "impersonate", "revoke"];
 
+/** The actions an administrator takes most often, in that order: what the person needs to get back in. */
+const frequent: readonly Action[] = ["unlock", "reactivate", "recovery"];
+const frequentShown = 2;
+
 /** A link shown once: a recovery link, or the invitation a reactivated person who never started gets. */
 interface ShownLink {
   kind: "recovery" | "invitation";
@@ -56,7 +61,9 @@ interface ShownLink {
  * of the tenant's two emergency accounts. Each shows only where /me/access allows `identity.users.manage` at the person's home unit, and only when it
  * applies to the person as they are; "Reset factors" also only when the record says the reader holds every permission
  * the person holds (the escalation rule). The API checks every one again and says why when it refuses, such as for the
- * last tenant administrator. The high-risk ones ask for a recent sign-in through the shared dialog (TF-248).
+ * last tenant administrator. The high-risk ones ask for a recent sign-in through the shared dialog (TF-248). At most two
+ * everyday actions stay in sight (unlock, reactivate, a recovery link); the rest are under More, with deactivation and
+ * revoking everything last, apart and in the danger colour, each still behind its confirmation (T5's review).
  */
 export function UserActions({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
@@ -206,22 +213,61 @@ export function UserActions({ user }: { user: UserRecord }) {
     }
   };
 
+  // At most two of the everyday actions stay in sight; the rest wait under More, the dangerous ones last and apart.
+  const safe = actions.filter((entry) => entry.danger !== true);
+  const dangerous = actions.filter((entry) => entry.danger === true);
+  const everyday = safe.filter((entry) => frequent.includes(entry.action)).slice(0, frequentShown);
+  const inSight = everyday.length > 0 ? everyday : safe.slice(0, 1);
+  const moreSafe = safe.filter((entry) => !inSight.includes(entry));
+
   const name = user.display_name;
   return (
     <Stack gap="xs" align="flex-end" data-user-actions>
-      <Group gap="xs" justify="flex-end">
-        {actions.map(({ action, label, icon, danger }) => (
+      <Group gap="xs" justify="flex-end" wrap="nowrap">
+        {inSight.map(({ action, label, icon }) => (
           <Button
             key={action}
             variant="default"
             leftSection={icon}
-            {...(danger ? { color: "danger" } : {})}
             onClick={() => setAsking(action)}
             data-action={action}
           >
             {label}
           </Button>
         ))}
+        {moreSafe.length + dangerous.length > 0 && (
+          <Menu position="bottom-end" withinPortal withInitialFocusPlaceholder={false}>
+            <Menu.Target>
+              <Button
+                variant="default"
+                rightSection={<IconChevronDown size={16} aria-hidden="true" />}
+                aria-label={t("users.actions.moreLabel", { name })}
+                data-action="more"
+              >
+                {t("users.actions.more")}
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown miw={240}>
+              {moreSafe.map(({ action, label, icon }) => (
+                <Menu.Item key={action} leftSection={icon} onClick={() => setAsking(action)} data-action={action}>
+                  {label}
+                </Menu.Item>
+              ))}
+              {moreSafe.length > 0 && dangerous.length > 0 && <Menu.Divider role="separator" />}
+              {dangerous.map(({ action, label, icon }) => (
+                <Menu.Item
+                  key={action}
+                  c="var(--iron-accent-danger)"
+                  leftSection={icon}
+                  onClick={() => setAsking(action)}
+                  data-action={action}
+                >
+                  {label}
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
+        )}
       </Group>
       {problem && (
         <Alert color="danger" role="alert" maw={480}>

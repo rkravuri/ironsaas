@@ -207,6 +207,8 @@
     "login": "Login",
     "loginLocked": "Locked",
     "actions": {
+      "more": "More",
+      "moreLabel": "More actions for {{name}}",
       "unlock": {
         "open": "Unlock",
         "title": "Unlock the login of {{name}}?",
@@ -2069,7 +2071,7 @@
     },
     "console": {
       "title": "Sessions",
-      "description": "Who is signed in now, how the last days went, and every live session, any of which you can end with a reason.",
+      "description": "Every live session, any of which you can end with a reason; how many people are signed in and how the last days went; and, after an incident, everything revoked at once.",
       "liveTitle": "Live sessions",
       "liveDescription": "Select a session to end it. The person sees in their security activity that you ended it, and why.",
       "endSelected": "End selected session",
@@ -2081,7 +2083,7 @@
       "gridLabel": "Every live session"
     },
     "summary": {
-      "title": "Signed in",
+      "tab": "The last {{days}} days",
       "description": "The people signed in now, and each of the last {{days}} days in UTC.",
       "now": "People signed in now",
       "startedToday": "Sessions started today",

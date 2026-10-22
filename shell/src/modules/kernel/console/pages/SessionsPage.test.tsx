@@ -42,8 +42,10 @@ describe("the console's sessions page", () => {
   it("shows the people signed in now and a summary of each day, newest first [TF-022 AC5, ADR-0049]", async () => {
     stubFetch(handlers());
     renderWithProviders(<SessionsPage />, { route: "/console/sessions" });
+    const user = userEvent.setup();
 
     expect(await screen.findByRole("heading", { level: 2, name: "Sessions" })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "The last 14 days" }));
     expect(await screen.findByText("People signed in now")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
     const table = screen.getByRole("table", { name: /The last 14 days/ });
@@ -60,10 +62,11 @@ describe("the console's sessions page", () => {
     ]);
   });
 
-  it("lists everyone's live sessions with nothing chosen to end yet, and says so when there are none [TF-022 AC3]", async () => {
+  it("lists everyone's live sessions first, with nothing chosen to end yet, and says so when there are none [TF-022 AC3, ADR-0049]", async () => {
     const { calls } = stubFetch(handlers());
     renderWithProviders(<SessionsPage />, { route: "/console/sessions" });
 
+    expect(await screen.findByRole("tab", { name: "Live sessions" })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByRole("button", { name: "End selected session" })).toBeDisabled();
     await waitFor(() =>
       expect(
@@ -71,6 +74,8 @@ describe("the console's sessions page", () => {
       ).toBe(true),
     );
     expect(await screen.findByText(/Nothing here yet|No rows|nothing to show/i)).toBeInTheDocument();
+    // The summary waits for its own tab.
+    expect(calls.some((call) => call.key === "GET /api/v1/sessions/summary?days=14")).toBe(false);
   });
 
   it("revokes everything only with a reason and the tenant's identifier typed, and says why the API refused [TF-029 AC1, ADR-0049]", async () => {
@@ -93,6 +98,7 @@ describe("the console's sessions page", () => {
     renderWithProviders(<SessionsPage />, { route: "/console/sessions" });
     const user = userEvent.setup();
 
+    await user.click(await screen.findByRole("tab", { name: "Revoke everything" }));
     await user.click(await screen.findByRole("button", { name: "Revoke every session and token" }));
     const dialog = await screen.findByRole("dialog", { name: "Revoke every session and token?" });
     expect(dialog).toHaveTextContent("yours too");

@@ -222,7 +222,11 @@ for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
     await page.goto(`/users/${record.id}`);
 
-    await page.locator("[data-panel=record-header]").getByRole("button", { name: "Reset factors" }).click();
+    await page
+      .locator("[data-panel=record-header]")
+      .getByRole("button", { name: /^More actions for / })
+      .click();
+    await page.getByRole("menuitem", { name: "Reset factors" }).click();
     const dialog = page.getByRole("dialog", { name: `Reset the second factors of ${record.display_name}?` });
     await expect(dialog.getByRole("textbox", { name: "Reason" })).toBeFocused();
     await page.screenshot({ path: `test-results/a11y/user-reset-factors-${scheme}.png` });

@@ -25,7 +25,7 @@ describe("the one-time sign-in link of the operator's path", () => {
     expect(JSON.parse(sent[0]?.init?.body as string)).toEqual({ code: "a-one-time-code" });
   });
 
-  it("says a used or expired link does not work, and where to go [ADR-0049]", async () => {
+  it("says a used or expired link does not work, and where to go, in the sign-in page's frame [ADR-0024, ADR-0049]", async () => {
     stubFetch({
       "GET /api/v1/me": () => problem(401, { error_code: "auth.not_authenticated" }),
       "POST /auth/sign-in-link": () => problem(404, { error_code: "identity.sign_in_link.invalid" }, "corr-link"),
@@ -37,6 +37,8 @@ describe("the one-time sign-in link of the operator's path", () => {
       "This sign-in link does not work: it was used, it expired, or it was never issued.",
     );
     expect(alert).toHaveTextContent("corr-link");
+    expect(screen.getByRole("heading", { level: 2, name: "Signing in" })).toBeInTheDocument();
+    expect(screen.getByText("Tenant localhost")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
     expect(leaveFor).not.toHaveBeenCalled();
   });

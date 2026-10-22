@@ -64,6 +64,8 @@ export interface DataGridColumn<T> {
   filter?: DataGridFilter;
   width?: number;
   flex?: number;
+  /** The narrowest a flexible column gets: past it the grid scrolls sideways rather than cutting its values short. */
+  minWidth?: number;
   hidden?: boolean;
   format?: (row: T) => string;
 }
@@ -172,6 +174,9 @@ export function DataGridImpl<T>({
         }
         if (column.flex !== undefined) {
           def.flex = column.flex;
+        }
+        if (column.minWidth !== undefined) {
+          def.minWidth = column.minWidth;
         }
         if (column.format) {
           const format = column.format;

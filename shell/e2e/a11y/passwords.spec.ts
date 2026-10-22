@@ -129,7 +129,8 @@ for (const scheme of schemes) {
     await page.keyboard.press("Escape");
     await expect(unlock).toBeHidden();
 
-    await header.getByRole("button", { name: "Deactivate" }).click();
+    await header.getByRole("button", { name: /^More actions for / }).click();
+    await page.getByRole("menuitem", { name: "Deactivate" }).click();
     const deactivate = page.getByRole("dialog", { name: `Deactivate ${record.display_name}?` });
     await expect(deactivate).toContainText("every session ends now");
     await page.screenshot({ path: `test-results/a11y/user-deactivate-${scheme}.png` });

@@ -46,6 +46,18 @@ const header = async () =>
     "[data-panel=record-header]",
   ) as HTMLElement;
 
+/** Opens the record's More menu, which Mantine renders in a portal jsdom calls hidden, and answers its items' names. */
+const openMore = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await within(await header()).findByRole("button", { name: "More actions for Ada Lovelace" }));
+  return (await screen.findAllByRole("menuitem", { hidden: true })).map((item) => item.textContent);
+};
+
+/** Chooses one action under More. */
+const chooseMore = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  await openMore(user);
+  await user.click(screen.getByRole("menuitem", { name, hidden: true }));
+};
+
 describe("signing in as someone, revoking, and the emergency mark on the user record", () => {
   it("signs in as the person only with a reason, then starts the whole shell again as them [TF-025 AC1, ADR-0049]", async () => {
     const { calls } = stubFetch({
@@ -58,7 +70,7 @@ describe("signing in as someone, revoking, and the emergency mark on the user re
     page();
     const user = userEvent.setup();
 
-    await user.click(await within(await header()).findByRole("button", { name: "Sign in as" }));
+    await chooseMore(user, "Sign in as");
     const dialog = await screen.findByRole("dialog", { name: "Sign in as Ada Lovelace?" });
     expect(dialog).toHaveTextContent("Every action names you both");
     await user.click(within(dialog).getByRole("button", { name: "Sign in as them" }));
@@ -80,9 +92,15 @@ describe("signing in as someone, revoking, and the emergency mark on the user re
       "GET /api/v1/me/access?unit=sales": () => json({ scope: "unit:sales", permissions: all }),
     });
     page();
+    const user = userEvent.setup();
 
     const actions = await header();
-    await waitFor(() => expect(within(actions).getByRole("button", { name: "Revoke everything" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(actions).getByRole("button", { name: "Issue a recovery link" })).toBeInTheDocument(),
+    );
+    const more = await openMore(user);
+    expect(more).toContain("Revoke everything");
+    expect(more).not.toContain("Sign in as");
     expect(within(actions).queryByRole("button", { name: "Sign in as" })).toBeNull();
   });
 
@@ -96,7 +114,7 @@ describe("signing in as someone, revoking, and the emergency mark on the user re
     page();
     const user = userEvent.setup();
 
-    await user.click(await within(await header()).findByRole("button", { name: "Revoke everything" }));
+    await chooseMore(user, "Revoke everything");
     const dialog = await screen.findByRole("dialog", { name: "Revoke everything of Ada Lovelace?" });
     await fill(user, within(dialog).getByLabelText(/^Reason/), "Phishing report");
     await user.click(within(dialog).getByRole("button", { name: "Revoke everything" }));
@@ -120,7 +138,7 @@ describe("signing in as someone, revoking, and the emergency mark on the user re
     page();
     const user = userEvent.setup();
 
-    await user.click(await within(await header()).findByRole("button", { name: "Make emergency account" }));
+    await chooseMore(user, "Make emergency account");
     const dialog = await screen.findByRole("dialog", { name: "Make Ada Lovelace's account an emergency account?" });
     expect(dialog).toHaveTextContent("A tenant has two at most.");
     await user.click(within(dialog).getByRole("button", { name: "Make emergency account" }));
@@ -143,7 +161,7 @@ describe("signing in as someone, revoking, and the emergency mark on the user re
     page();
     const user = userEvent.setup();
 
-    await user.click(await within(await header()).findByRole("button", { name: "Make emergency account" }));
+    await chooseMore(user, "Make emergency account");
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Make emergency account" }));
 
     const alert = await screen.findByRole("alert");

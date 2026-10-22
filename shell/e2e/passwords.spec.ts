@@ -58,7 +58,8 @@ test.describe("passwords and a person's life cycle", () => {
     await theirs.screenshot({ path: "test-results/e2e/recovery-security-activity.png", fullPage: true });
 
     // Deactivated by the administrator: the person's next request finds the session ended.
-    await header.getByRole("button", { name: "Deactivate" }).click();
+    await header.getByRole("button", { name: /^More actions for / }).click();
+    await page.getByRole("menuitem", { name: "Deactivate" }).click();
     await page
       .getByRole("dialog", { name: /^Deactivate/ })
       .getByRole("button", { name: "Deactivate" })

@@ -149,7 +149,7 @@ async function stubSessions(page: Page, extra: Record<string, unknown> = {}): Pr
 }
 
 for (const scheme of schemes) {
-  test(`the sessions console in the ${scheme} scheme: the summary, the live sessions, ending one with a reason and revoking everything, with no WCAG 2.1 AA violation [TF-022 AC5, TF-029 AC1, TF-172 AC1, ADR-0024, ADR-0049]`, async ({
+  test(`the sessions console in the ${scheme} scheme: the live sessions first at readable widths, ending one with a reason, then the summary and revoking everything on their own tabs, with no WCAG 2.1 AA violation [TF-022 AC5, TF-029 AC1, TF-172 AC1, ADR-0024, ADR-0049]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -157,9 +157,16 @@ for (const scheme of schemes) {
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
 
     await page.goto("/console/sessions");
-    await expect(page.getByText("People signed in now")).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Live sessions" })).toHaveAttribute("aria-selected", "true");
     const grid = page.getByRole("region", { name: "Every live session" });
     await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("Chrome on Windows");
+    // The person, the device and the place read in full at 1280 pixels: no cell of theirs is cut short.
+    for (const column of ["display_name", "browser", "country"]) {
+      const cells = grid.locator(`.ag-row .ag-cell[col-id="${column}"]`);
+      for (const cell of await cells.all()) {
+        expect(await cell.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+      }
+    }
     await page.screenshot({ path: `test-results/a11y/sessions-console-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
@@ -171,6 +178,12 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
     await page.keyboard.press("Escape");
 
+    await page.getByRole("tab", { name: "The last 14 days" }).click();
+    await expect(page.getByText("People signed in now", { exact: true })).toBeVisible();
+    await page.screenshot({ path: `test-results/a11y/sessions-summary-${scheme}.png`, fullPage: true });
+    await expectNoViolation(page);
+
+    await page.getByRole("tab", { name: "Revoke everything" }).click();
     await page.getByRole("button", { name: "Revoke every session and token" }).click();
     const revoke = page.getByRole("dialog", { name: "Revoke every session and token?" });
     await expect(revoke).toContainText("yours too");
@@ -209,14 +222,25 @@ for (const scheme of schemes) {
     await page.screenshot({ path: `test-results/a11y/user-access-actions-${scheme}.png` });
     await expectNoViolation(page);
 
-    await page.getByRole("button", { name: "Sign in as" }).click();
+    // The rarer actions wait under More, the dangerous ones last and apart.
+    const more = page.locator("[data-panel=record-header]").getByRole("button", { name: /^More actions for / });
+    // Keyboard only: the menu opens on Enter, and the arrow keys walk its items.
+    await more.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menuitem", { name: "Sign in as" })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("menuitem", { name: "Reset factors" })).toBeFocused();
+    await page.screenshot({ path: `test-results/a11y/user-more-${scheme}.png` });
+    await expectNoViolation(page);
+    await page.getByRole("menuitem", { name: "Sign in as" }).click();
     const impersonate = page.getByRole("dialog", { name: `Sign in as ${record.display_name}?` });
     await expect(impersonate.getByLabel(/^Reason/)).toBeFocused();
     await page.screenshot({ path: `test-results/a11y/user-impersonate-${scheme}.png` });
     await expectNoViolation(page);
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: "Revoke everything" }).click();
+    await more.click();
+    await page.getByRole("menuitem", { name: "Revoke everything" }).click();
     await expect(page.getByRole("dialog", { name: `Revoke everything of ${record.display_name}?` })).toBeVisible();
     await page.screenshot({ path: `test-results/a11y/user-revoke-${scheme}.png` });
     await expectNoViolation(page);
