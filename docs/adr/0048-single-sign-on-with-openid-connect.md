@@ -26,7 +26,7 @@ SAML (TF-015) and SCIM (TF-016) stay in S7.
 | Dex v2.46.0 (Apache-2.0) | 8.4 MiB | 11.2 MiB | fixed per static user: email, `email_verified` always true, name; no groups, no `amr` |
 
 - Dex is far lighter, but a test cannot make it send an unverified email, groups or `amr`, which the tests must prove. The mock does, and it verifies PKCE: a wrong verifier is refused.
-- In the stack it is service `idp` of Compose profile `sso`, capped at 300 MB (the budget), behind the ingress at `http://idp.localhost`. Any first path segment is an issuer of its own, so each tenant and each run names its own.
+- In the stack it is service `idp` of Compose profile `sso`, capped at 300 MB (the budget), behind the ingress at `http://idp.localhost`. Measured there on 2026-10-22 after a smoke run and two browser test runs signed in through it: 150 MiB, no restart. Any first path segment is an issuer of its own, so each tenant and each run names its own.
 - `make smoke` and `make e2e` start it (`make test-provider`), and the integration stage before the smoke; `make up` does not.
 - **One address for everyone.** Traefik carries `idp.localhost` as a network alias, so a unit's API reaches the provider at the address the browser and the smoke use, and the provider, which derives its issuer from the request's host, gives one issuer to all three. .NET resolves the name through the operating system (checked in a container); curl does not, and resolves `*.localhost` itself.
 - The .NET tests run it as the run's fourth shared service (`tests/test-services.sh`), or a container of their own when a project runs alone (`TestOidcProvider`).

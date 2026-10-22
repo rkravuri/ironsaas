@@ -29,12 +29,15 @@ test("an administrator connects the test provider and tests it, and a new employ
   await expect(page.getByText(/^Passed: Signing keys\./)).toBeVisible();
   await page.getByLabel("Client ID").fill("iron-e2e");
   await page.getByLabel("Client secret").fill(randomBytes(18).toString("base64url"));
-  const domains = page.getByLabel("Allowed email domains");
+  const domains = page.getByRole("combobox", { name: "Allowed email domains" });
   await domains.fill(domain);
   await domains.press("Enter");
-  await page.getByRole("switch", { name: "Create an account at the first sign-in" }).check();
+  const create = page.getByRole("switch", { name: "Create an account at the first sign-in" });
+  await create.focus();
+  await page.keyboard.press("Space");
+  await expect(create).toBeChecked();
   if (runUnit) {
-    await page.getByLabel("Home unit of new people").fill(runUnit);
+    await page.getByRole("combobox", { name: "Home unit of new people" }).fill(runUnit);
     await page.getByRole("option", { name: new RegExp(`${runUnit}$`) }).click();
   }
   await page.getByRole("button", { name: "Connect the provider" }).click();
