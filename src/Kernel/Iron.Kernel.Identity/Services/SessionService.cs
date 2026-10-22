@@ -19,13 +19,14 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     /// runs once the session has its id and before the row is written; login uses it to make the new session's principal
     /// the request's principal, so the rows it writes carry the user as created_by.
     /// </summary>
-    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null, string? secondFactor = null)
+    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null, string? secondFactor = null, Guid? providerId = null)
     {
         ArgumentNullException.ThrowIfNull(principal);
         var token = SecureTokens.New();
         var (idle, absolute) = await LimitsAsync(cancellationToken).ConfigureAwait(false);
         var session = new Session(principal.Id, SecureTokens.Hash(token), time.GetUtcNow(), absolute, idle);
         session.ProvedWith(secondFactor);
+        session.SignedInThrough(providerId);
         beforeSave?.Invoke(session);
         context.Sessions.Add(session);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -206,7 +207,8 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var mustEnrol = await MustEnrolAsync(found.Principal, now, cancellationToken).ConfigureAwait(false);
+        // A provider's multi-factor sign-in that the tenant trusts stands for the person's own factor (ADR-0048).
+        var mustEnrol = found.Session.SecondFactor != Session.ProviderMultiFactor && await MustEnrolAsync(found.Principal, now, cancellationToken).ConfigureAwait(false);
         return SessionResolution.Alive(Describe(found.Principal, found.Session), actingEnded) with { MustEnrol = mustEnrol };
     }
 

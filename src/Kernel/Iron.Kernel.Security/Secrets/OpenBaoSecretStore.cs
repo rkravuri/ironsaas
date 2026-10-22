@@ -106,11 +106,13 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
         }
     }
 
-    public async Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken)
+    public async Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
         ArgumentNullException.ThrowIfNull(paths);
-        var rules = string.Join("\n", paths.Select(path => $"path \"{_mount}/data/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}\npath \"{_mount}/metadata/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}"));
+        var read = paths.Select(path => $"path \"{_mount}/data/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}\npath \"{_mount}/metadata/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}");
+        var managed = (managedPaths ?? []).Select(path => $"path \"{_mount}/data/{path.Trim('/')}\" {{ capabilities = [\"create\", \"read\", \"update\", \"delete\"] }}\npath \"{_mount}/metadata/{path.Trim('/')}\" {{ capabilities = [\"read\", \"delete\"] }}");
+        var rules = string.Join("\n", read.Concat(managed));
         using var response = await _http.PutAsJsonAsync(new Uri($"v1/sys/policies/acl/{policyName}", UriKind.Relative), new PolicyEnvelope(rules), cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "write the policy for", policyName, cancellationToken).ConfigureAwait(false);
     }

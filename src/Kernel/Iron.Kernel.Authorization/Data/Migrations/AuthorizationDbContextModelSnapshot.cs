@@ -872,6 +872,11 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("scope_record_type");
 
+                    b.Property<string>("Source")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("source");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -893,6 +898,9 @@ namespace Iron.Kernel.Authorization.Data.Migrations
 
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_role_assignments_role_id");
+
+                    b.HasIndex("Source")
+                        .HasDatabaseName("ix_role_assignments_source");
 
                     b.HasIndex("PrincipalId", "RoleId", "ScopeKind", "ScopeId", "ScopeRecordType")
                         .IsUnique()

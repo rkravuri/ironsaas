@@ -7,7 +7,8 @@ namespace Iron.Kernel.Identity.Data;
 /// <summary>
 /// The <c>identity</c> schema: principals and sessions (TF-010, TF-020), password history, the failed sign-ins of each
 /// login identifier, and each person's security events (TF-012, TF-017, TF-019); second factors, recovery codes and the
-/// state of authentications under way (TF-013, TF-248, ADR-0047).
+/// state of authentications under way (TF-013, TF-248, ADR-0047); single sign-on providers and the people linked to them
+/// (TF-014, ADR-0048).
 /// </summary>
 [Schema("kernel_identity")]
 public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options) : ModuleDbContext(options)
@@ -27,6 +28,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
 
     public DbSet<AuthenticationChallenge> AuthenticationChallenges => Set<AuthenticationChallenge>();
+
+    public DbSet<SsoProvider> SsoProviders => Set<SsoProvider>();
+
+    public DbSet<SsoLink> SsoLinks => Set<SsoLink>();
 
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
@@ -57,6 +62,35 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             challenge.HasIndex(c => c.TokenHash).IsUnique();
             challenge.HasIndex(c => c.SessionId);
             challenge.HasIndex(c => c.ExpiresAt);
+            challenge.HasOne<SsoProvider>().WithMany().HasForeignKey(c => c.ProviderId).OnDelete(DeleteBehavior.Cascade);
+            challenge.Property(c => c.Exchange).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<SsoProvider>(provider =>
+        {
+            provider.Property(p => p.Name).HasMaxLength(SsoProvider.NameMaxLength);
+            provider.HasIndex(p => p.Name).IsUnique();
+            provider.Property(p => p.Preset).HasMaxLength(SsoProvider.PresetMaxLength);
+            provider.Property(p => p.DiscoveryUrl).HasMaxLength(SsoProvider.DiscoveryUrlMaxLength);
+            provider.Property(p => p.ClientId).HasMaxLength(SsoProvider.ClientIdMaxLength);
+            provider.Property(p => p.EmailClaim).HasMaxLength(SsoProvider.ClaimMaxLength);
+            provider.Property(p => p.NameClaim).HasMaxLength(SsoProvider.ClaimMaxLength);
+            provider.Property(p => p.GroupsClaim).HasMaxLength(SsoProvider.ClaimMaxLength);
+            provider.Property(p => p.DefaultRoleCode).HasMaxLength(100);
+            provider.Property(p => p.RoleMappingsJson).HasColumnName("role_mappings").HasColumnType("jsonb");
+            provider.Ignore(p => p.RoleMappings);
+            provider.Ignore(p => p.AssignmentSource);
+        });
+
+        modelBuilder.Entity<SsoLink>(link =>
+        {
+            link.HasOne<Principal>().WithMany().HasForeignKey(l => l.PrincipalId).OnDelete(DeleteBehavior.Cascade);
+            link.HasOne<SsoProvider>().WithMany().HasForeignKey(l => l.ProviderId).OnDelete(DeleteBehavior.Cascade);
+            link.Property(l => l.Subject).HasMaxLength(SsoLink.SubjectMaxLength);
+            link.Property(l => l.Email).HasMaxLength(254);
+            link.HasIndex(l => new { l.ProviderId, l.Subject }).IsUnique();
+            link.HasIndex(l => new { l.ProviderId, l.PrincipalId }).IsUnique();
+            link.HasIndex(l => l.PrincipalId);
         });
 
         modelBuilder.Entity<Principal>(principal =>
@@ -110,6 +144,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             session.HasIndex(s => s.PrincipalId);
             session.Property(s => s.EndReason).HasMaxLength(20);
             session.Property(s => s.SecondFactor).HasMaxLength(20);
+            session.HasOne<SsoProvider>().WithMany().HasForeignKey(s => s.ProviderId).OnDelete(DeleteBehavior.SetNull);
             session.HasIndex(s => new { s.EndedAt, s.LastActivityAt });
         });
     }

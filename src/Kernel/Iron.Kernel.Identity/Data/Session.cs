@@ -82,13 +82,25 @@ public sealed class Session : AuditedEntity
     /// </summary>
     public DateTimeOffset? AuthenticatedAt { get; private set; }
 
-    /// <summary>The second factor the session's sign-in used (<see cref="FactorKinds"/>, or <c>recovery_code</c>); null for a password alone.</summary>
+    /// <summary>
+    /// What a session's second factor was when a single sign-on provider's assertion of multi-factor authentication stood
+    /// for it, the tenant trusting that provider's (ADR-0048).
+    /// </summary>
+    public const string ProviderMultiFactor = "provider_mfa";
+
+    /// <summary>The second factor the session's sign-in used (<see cref="FactorKinds"/>, <c>recovery_code</c>, or <see cref="ProviderMultiFactor"/>); null for a password alone.</summary>
     public string? SecondFactor { get; private set; }
+
+    /// <summary>The single sign-on provider the session's sign-in came through (ADR-0048); null for a password or a passkey.</summary>
+    public Guid? ProviderId { get; private set; }
 
     public bool HasEnded => EndedAt is not null;
 
     /// <summary>The second factor the sign-in used, recorded when the session starts.</summary>
     public void ProvedWith(string? secondFactor) => SecondFactor = secondFactor;
+
+    /// <summary>The sign-in came through a provider, recorded when the session starts.</summary>
+    public void SignedInThrough(Guid? providerId) => ProviderId = providerId;
 
     /// <summary>The person proved who they are again (TF-248).</summary>
     public void Reauthenticated(DateTimeOffset now) => AuthenticatedAt = now;

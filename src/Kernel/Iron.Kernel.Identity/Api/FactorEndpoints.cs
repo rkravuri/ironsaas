@@ -52,8 +52,11 @@ public sealed record RenameFactorRequest(string Name);
 
 public sealed record RecoveryCodesResponse(IReadOnlyList<string> Codes);
 
-/// <summary>What confirming it is them asks of the person: the password, and the second factor when they have one.</summary>
-public sealed record ReauthenticationOptionsResponse(bool SecondFactor, IReadOnlyList<string> Methods, JsonElement? PasskeyOptions);
+/// <summary>
+/// What confirming it is them asks of the person: the password, and the second factor when they have one. A person with no
+/// password confirms by signing in again through their provider (ADR-0048): <c>password</c> is false and <c>provider</c> names it.
+/// </summary>
+public sealed record ReauthenticationOptionsResponse(bool SecondFactor, IReadOnlyList<string> Methods, JsonElement? PasskeyOptions, bool Password = true, SsoProviderButton? Provider = null);
 
 public sealed record ReauthenticateRequest(string Password, string? Code, string? RecoveryCode, JsonElement? Passkey)
 {
@@ -62,8 +65,8 @@ public sealed record ReauthenticateRequest(string Password, string? Code, string
 
 public sealed record ReauthenticatedResponse(DateTimeOffset AuthenticatedAt);
 
-/// <summary>Whether the login page offers a sign-in with a passkey alone (ADR-0047).</summary>
-public sealed record SignInOptionsResponse(bool PasskeySignIn);
+/// <summary>Whether the login page offers a sign-in with a passkey alone (ADR-0047), and the providers it offers a button for (ADR-0048).</summary>
+public sealed record SignInOptionsResponse(bool PasskeySignIn, IReadOnlyList<SsoProviderButton> Providers);
 
 public sealed record PasskeySignInRequest(JsonElement Credential);
 
@@ -134,7 +137,7 @@ internal static class FactorEndpoints
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
         auth.MapPost("/second-factor", SecondFactorAsync).Validate<SecondFactorRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("SecondFactor").WithSummary("The second step of a sign-in: a code from your app, a recovery code, or your passkey.");
         auth.MapPost("/second-factor/passkey-options", SecondFactorPasskeyOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("SecondFactorPasskeyOptions").WithSummary("The options for your passkey at the second step of a sign-in.");
-        auth.MapGet("/sign-in-options", SignInOptionsAsync).AllowAnonymous().Produces<SignInOptionsResponse>(StatusCodes.Status200OK).WithName("SignInOptions").WithSummary("Whether this tenant lets people sign in with a passkey alone.");
+        auth.MapGet("/sign-in-options", SignInOptionsAsync).AllowAnonymous().Produces<SignInOptionsResponse>(StatusCodes.Status200OK).WithName("SignInOptions").WithSummary("Whether this tenant lets people sign in with a passkey alone, and its company logins.");
         auth.MapPost("/passkey/options", PasskeySignInOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("PasskeySignInOptions").WithSummary("The options for a sign-in with a passkey alone, where the tenant allows it.");
         auth.MapPost("/passkey", PasskeySignInAsync).Validate<PasskeySignInRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("PasskeySignIn").WithSummary("Sign in with a passkey alone, where the tenant allows it.");
         auth.MapPost("/enrolment/authenticator-app", EnrolmentAppAsync).AllowAnonymous().Produces<AuthenticatorAppSetupResponse>(StatusCodes.Status200OK).WithName("EnrolmentAuthenticatorApp").WithSummary("At sign-in, when you must have a second factor: start an authenticator app.");
@@ -162,8 +165,8 @@ internal static class FactorEndpoints
     private static async Task<IResult> SecondFactorPasskeyOptionsAsync(HttpContext http, LoginService login, CancellationToken cancellationToken) =>
         ApiResults.From(await login.SecondFactorPasskeyOptionsAsync(http, cancellationToken), http, json => TypedResults.Ok(Options(json)));
 
-    private static async Task<IResult> SignInOptionsAsync(MfaPolicy policy, CancellationToken cancellationToken) =>
-        TypedResults.Ok(new SignInOptionsResponse((await policy.RulesAsync(cancellationToken)).PasskeySignIn));
+    private static async Task<IResult> SignInOptionsAsync(MfaPolicy policy, SsoSignInService sso, CancellationToken cancellationToken) =>
+        TypedResults.Ok(new SignInOptionsResponse((await policy.RulesAsync(cancellationToken)).PasskeySignIn, [.. (await sso.ProvidersAsync(cancellationToken)).Select(SsoProviderButton.From)]));
 
     private static async Task<IResult> PasskeySignInOptionsAsync(HttpContext http, LoginService login, CancellationToken cancellationToken)
     {
@@ -326,7 +329,7 @@ internal static class FactorEndpoints
     private static async Task<IResult> ReauthenticationAsync(HttpContext http, RequestPrincipal principal, ReauthenticationService reauthentication, CancellationToken cancellationToken)
     {
         var result = await reauthentication.ChallengeAsync(principal.Current!, cancellationToken);
-        return ApiResults.From(result, http, r => TypedResults.Ok(new ReauthenticationOptionsResponse(r.SecondFactor, r.Methods, r.PasskeyOptions is { } json ? Parse(json) : null)));
+        return ApiResults.From(result, http, r => TypedResults.Ok(new ReauthenticationOptionsResponse(r.SecondFactor, r.Methods, r.PasskeyOptions is { } json ? Parse(json) : null, r.Password, r.Provider is { } provider ? SsoProviderButton.From(provider) : null)));
     }
 
     private static async Task<IResult> ReauthenticateAsync(ReauthenticateRequest request, HttpContext http, RequestPrincipal principal, ReauthenticationService reauthentication, CancellationToken cancellationToken)
@@ -350,7 +353,7 @@ internal static class FactorEndpoints
         if (outcome.Step is { } step)
         {
             AuthenticationChallenges.SetCookie(http, step.ChallengeToken, step.Kind);
-            return TypedResults.Ok(new LoginResponse(null, null, new SignInStepResponse(step.Kind, step.Methods, step.ExpiresAt)));
+            return TypedResults.Ok(new LoginResponse(null, null, new SignInStepResponse(step.Kind, step.Methods, step.ExpiresAt), ReturnTo: outcome.ReturnTo));
         }
 
         if (http.Request.Cookies.ContainsKey(AuthenticationChallenges.CookieName))
@@ -373,7 +376,8 @@ internal static class FactorEndpoints
             new SessionResponse(session.Id, session.CreatedAt, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle)),
             null,
             outcome.EnrolNewFactor,
-            outcome.RecoveryCodes));
+            outcome.RecoveryCodes,
+            outcome.ReturnTo));
     }
 
     /// <summary>Second factors are a person's in a shell session: a token's client has its credentials, and no factor.</summary>

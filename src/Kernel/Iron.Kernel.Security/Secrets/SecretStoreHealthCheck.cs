@@ -68,7 +68,7 @@ public sealed class UnconfiguredSecretStore : ISecretStore, ISecretStoreAdmin
 
     public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(false);
 
-    public Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
+    public Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null) => throw new InvalidOperationException(Message);
 
     public Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
 

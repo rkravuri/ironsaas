@@ -58,7 +58,16 @@ public sealed record UserRecordResponse(
     int Version,
     DateTimeOffset? LockedUntil = null,
     int Factors = 0,
-    bool TakeoverAllowed = false);
+    bool TakeoverAllowed = false,
+    bool SsoOnly = false,
+    bool SsoOnlyByProvider = false,
+    IReadOnlyList<SsoLinkResponse>? SsoLinks = null);
+
+/// <summary>A person's link to a single sign-on provider, as the user record shows it (ADR-0048).</summary>
+public sealed record SsoLinkResponse(Guid ProviderId, string ProviderName, string Email, DateTimeOffset LinkedAt, DateTimeOffset LastSignInAt);
+
+/// <summary>Sign in only through a provider, or with a password as well (TF-014 AC2).</summary>
+public sealed record SetSsoOnlyRequest(bool SsoOnly);
 
 /// <summary>Why an administrator resets a person's factors: required, and kept in the person's security activity.</summary>
 public sealed record ResetFactorsRequest(string Reason);
@@ -124,6 +133,7 @@ internal static class UsersEndpoints
         users.MapPost("/{id:guid}/recovery-link", RecoveryLinkAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<RecoveryLinkResponse>(StatusCodes.Status200OK).WithName("IssueRecoveryLink").WithSummary("Issue a recovery link for a person, shown once: one use, 15 minutes; it replaces any earlier link.");
         users.MapPost("/{id:guid}/factors/reset", ResetFactorsAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Validate<ResetFactorsRequest>().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("ResetFactors").WithSummary("Remove a person's second factors and recovery codes, with a reason, for someone whose permissions you hold; their sessions end.");
         users.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("DeactivateUser").WithSummary("Deactivate a person: they cannot sign in, their sessions end and their tokens are refused.");
+        users.MapPut("/{id:guid}/sso-only", SetSsoOnlyAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("SetSsoOnly").WithSummary("Mark a person to sign in only through a single sign-on provider, or let them use a password again.");
         users.MapPost("/{id:guid}/reactivate", ReactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<ReactivateUserResponse>(StatusCodes.Status200OK).WithName("ReactivateUser").WithSummary("Reactivate a person; one who never set a password gets a new invitation.");
     }
 
@@ -177,6 +187,9 @@ internal static class UsersEndpoints
         // offers "Reset factors" and the recovery link only where the escalation rule lets the reader use them (ADR-0047).
         var factors = await services.GetRequiredService<IdentityDbContext>().Factors.CountAsync(f => f.PrincipalId == principal.Id, cancellationToken);
         var takeover = principal.Type == PrincipalType.User && await services.GetRequiredService<UserService>().MayTakeOverAsync(principal.Id, cancellationToken);
+        var people = services.GetRequiredService<SsoPeople>();
+        var ssoOnly = await people.SsoOnlyAsync(principal, cancellationToken);
+        var links = await people.LinksAsync(principal.Id, cancellationToken);
         return new UserRecordResponse(
             principal.Id,
             principal.LoginId,
@@ -191,7 +204,10 @@ internal static class UsersEndpoints
             principal.Version,
             await services.GetRequiredService<LoginThrottles>().LockedUntilAsync(principal.LoginId, cancellationToken),
             factors,
-            takeover);
+            takeover,
+            principal.SsoOnly,
+            ssoOnly.SsoOnly && !ssoOnly.Marked,
+            [.. links.Select(l => new SsoLinkResponse(l.ProviderId, l.ProviderName, l.Email, l.LinkedAt, l.LastSignInAt))]);
     }
 
     /// <summary>
@@ -272,6 +288,18 @@ internal static class UsersEndpoints
         }
 
         var result = await users.ResetFactorsAsync(target.Value, request.Reason, cancellationToken);
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
+    }
+
+    private static async Task<IResult> SetSsoOnlyAsync(Guid id, SetSsoOnlyRequest request, HttpContext http, UserService users, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "change how", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await users.SetSsoOnlyAsync(target.Value, request.SsoOnly, cancellationToken);
         return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
     }
 

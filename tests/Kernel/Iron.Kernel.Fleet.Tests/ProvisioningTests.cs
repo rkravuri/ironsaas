@@ -22,7 +22,7 @@ namespace Iron.Kernel.Fleet.Tests;
 public class ProvisioningTests(FleetFixture fixture)
 {
     [Fact]
-    [Proves("TF-002 AC1", "ADR-0018")]
+    [Proves("TF-002 AC1", "ADR-0018", "ADR-0048")]
     public async Task AJobRunsEveryStepActivatesTheTenantAndHandsTheInvitationOver()
     {
         var time = FleetFixture.Clock();
@@ -100,6 +100,16 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.NotNull(await unitStore.ReadAsync($"tenants/{acme}/unit", TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{bravo}/unit", TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.ReadAsync($"tenants/{acme}/database", TestContext.Current.CancellationToken));
+
+        // It manages its own single sign-on providers' client secrets, and writes nothing else (ADR-0048).
+        var probe = new Dictionary<string, string>(StringComparer.Ordinal) { ["client_secret"] = "probe" };
+        var ssoPath = $"tenants/{acme}/sso/{Guid.NewGuid():N}";
+        await unitStore.WriteAsync(ssoPath, probe, TestContext.Current.CancellationToken);
+        Assert.Equal("probe", (await unitStore.ReadAsync(ssoPath, TestContext.Current.CancellationToken))!["client_secret"]);
+        await unitStore.DeleteAsync(ssoPath, TestContext.Current.CancellationToken);
+        Assert.Null(await unitStore.ReadAsync(ssoPath, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.WriteAsync($"tenants/{bravo}/sso/{Guid.NewGuid():N}", probe, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<SecretStoreException>(() => unitStore.WriteAsync($"tenants/{acme}/unit", probe, TestContext.Current.CancellationToken));
 
         // The signed container URL is the unit's whole view of storage: the Files module's own class works through it.
         var sasUrl = acmeUnit["Storage:ContainerSasUrl"];

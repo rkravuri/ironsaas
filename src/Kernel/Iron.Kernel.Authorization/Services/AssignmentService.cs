@@ -12,7 +12,10 @@ namespace Iron.Kernel.Authorization.Services;
 /// <summary>One unit on the way from the root to an assignment's unit, for people to see where it applies.</summary>
 public sealed record UnitStep(Guid Id, string Name);
 
-/// <summary>An assignment as a reader sees it: who, which role, where, and the unit's path from the root.</summary>
+/// <summary>
+/// An assignment as a reader sees it: who, which role, where, the unit's path from the root, and its source when no person
+/// granted it (a single sign-on provider's mapping, ADR-0048).
+/// </summary>
 public sealed record AssignmentView(
     Guid Id,
     Guid PrincipalId,
@@ -25,7 +28,8 @@ public sealed record AssignmentView(
     string? RecordType,
     Guid? RecordId,
     IReadOnlyList<UnitStep> UnitPath,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? Source = null);
 
 /// <summary>
 /// Role assignments made by people through the API (TF-033, ADR-0031): listed where the reader holds
@@ -113,7 +117,8 @@ public sealed class AssignmentService(
                 scope.RecordType,
                 scope.RecordId,
                 path,
-                row.CreatedAt);
+                row.CreatedAt,
+                row.Source);
         }).ToList();
     }
 

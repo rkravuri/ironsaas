@@ -41,7 +41,7 @@ public sealed class RoleAssignment : AuditedEntity, IOwnAccessRule
     {
     }
 
-    public RoleAssignment(Guid roleId, Guid principalId, RoleScope scope)
+    public RoleAssignment(Guid roleId, Guid principalId, RoleScope scope, string? source = null)
     {
         if (roleId == Guid.Empty)
         {
@@ -59,9 +59,20 @@ public sealed class RoleAssignment : AuditedEntity, IOwnAccessRule
         ScopeKind = Scopes.NameOf(scope.Kind);
         ScopeId = scope.UnitId ?? scope.RecordId;
         ScopeRecordType = scope.RecordType;
+        Source = string.IsNullOrWhiteSpace(source) ? null : source.Trim();
     }
 
+    /// <summary>The longest source name: <c>sso:</c> and a provider's id.</summary>
+    public const int SourceMaxLength = 80;
+
     public Guid RoleId { get; private set; }
+
+    /// <summary>
+    /// Where the assignment came from when no person granted it: a single sign-on provider's group mapping
+    /// (<c>sso:&lt;provider id&gt;</c>, ADR-0048), which every sign-in through it brings in step. Null for a grant by a person,
+    /// the seed or another module.
+    /// </summary>
+    public string? Source { get; private set; }
 
     public Guid PrincipalId { get; private set; }
 
