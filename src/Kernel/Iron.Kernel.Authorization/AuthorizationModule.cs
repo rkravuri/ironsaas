@@ -52,6 +52,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<AccessGrants>();
         services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
         services.AddScoped<IRoleAssignments, RoleAssignments>();
+        services.AddScoped<IProvidedAssignments, ProvidedAssignments>();
         services.AddScoped<IRecordAccess, RecordAccessService>();
         services.AddScoped<IUnitReach, UnitReach>();
         services.AddScoped<IWorkingUnits, WorkingUnits>();

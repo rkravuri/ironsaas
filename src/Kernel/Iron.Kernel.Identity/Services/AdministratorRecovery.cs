@@ -44,6 +44,7 @@ public sealed class AdministratorRecoveryCommand(
     FactorService factors,
     SessionService sessions,
     ITenantAdministrators administrators,
+    SsoPeople ssoPeople,
     IUnitOfWork unitOfWork,
     IOperatorHandover handover,
     ILogger<AdministratorRecoveryCommand> logger) : IUnitCommand
@@ -90,6 +91,11 @@ public sealed class AdministratorRecoveryCommand(
         if (principal.Type != PrincipalType.User || principal.Status != PrincipalStatus.Active || principal.PasswordHash is null)
         {
             return Error.Conflict(IdentityErrors.RecoveryNotAllowed, $"'{loginId}' is {principal.Status.ToString().ToLowerInvariant()}: a recovery link sets the password of an active person. An invited administrator needs the seed's new invitation (make update-unit).");
+        }
+
+        if ((await ssoPeople.SsoOnlyAsync(principal, cancellationToken).ConfigureAwait(false)).SsoOnly)
+        {
+            return Error.Conflict(IdentityErrors.RecoverySsoOnly, $"'{loginId}' signs in only through single sign-on, where a recovery link does not apply (ADR-0048). Recover another of the tenant's administrators, one who signs in with a password.");
         }
 
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);

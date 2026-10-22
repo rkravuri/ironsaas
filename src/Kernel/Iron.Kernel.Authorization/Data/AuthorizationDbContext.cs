@@ -85,7 +85,9 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
             assignment.HasOne<Role>().WithMany().HasForeignKey(a => a.RoleId).OnDelete(DeleteBehavior.Cascade);
             assignment.Property(a => a.ScopeKind).HasMaxLength(20);
             assignment.Property(a => a.ScopeRecordType).HasMaxLength(RoleScope.RecordTypeMaxLength);
+            assignment.Property(a => a.Source).HasMaxLength(RoleAssignment.SourceMaxLength);
             assignment.HasIndex(a => a.PrincipalId);
+            assignment.HasIndex(a => a.Source);
             assignment.HasIndex(a => new { a.PrincipalId, a.RoleId, a.ScopeKind, a.ScopeId, a.ScopeRecordType }).IsUnique().AreNullsDistinct(false);
         });
 

@@ -9,6 +9,7 @@ import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { useRecentName } from "@/home/recent";
 import { AccessTab } from "./AccessTab";
+import { SignInTab } from "./SignInTab";
 import { UserActions } from "./UserActions";
 import { userStatus } from "./user-status";
 
@@ -16,7 +17,8 @@ const when = (value: string | null): string => (value ? new Date(value).toLocale
 
 /**
  * One user on the record template (A2): the details and the Access tab, with the actions an administrator of the
- * person's unit may take (T2): unlock, a recovery link, deactivate and reactivate. A user outside the reader's scope
+ * person's unit may take (T2): unlock, a recovery link, deactivate and reactivate; and how a person signs in: their
+ * company logins and the SSO-only mark (T4, ADR-0048). A user outside the reader's scope
  * answers 404 from the API, and the page says "not found" the same way as for an id that does not exist (ADR-0031).
  */
 export function UserRecordPage() {
@@ -97,6 +99,9 @@ function UserRecordView({ user }: { user: UserRecord }) {
       tabs={[
         { value: "details", label: t("users.record.details"), panel: details },
         { value: "access", label: t("users.record.access"), panel: <AccessTab user={user} /> },
+        ...(user.type === "user"
+          ? [{ value: "sign-in", label: t("users.record.signIn"), panel: <SignInTab user={user} /> }]
+          : []),
       ]}
     />
   );

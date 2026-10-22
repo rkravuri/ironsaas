@@ -48,6 +48,10 @@ echo "== control plane API and fleet worker"
 # broken network namespace that Compose would otherwise reuse.
 compose --profile control up --detach --wait --force-recreate control-api fleet
 
+echo "== the single sign-on test provider (ADR-0048), for the smoke's and the browser tests' sign-ins through it"
+compose --profile sso up --detach --wait idp
+sh "$here/scripts/wait-ready.sh" idp
+
 echo "== smoke against tenant $tenant"
 cd "$root"
 SMOKE_CONTROL_URL=http://localhost:5200 SMOKE_OPERATOR_SECRET="$operator_secret" SMOKE_READER_SECRET="$reader_secret" \

@@ -65,12 +65,12 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 | T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | done (main, df1e35e) |
 | T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | done (main, 902cd3d) |
 | T3 | MFA and step-up re-authentication | TF-013, TF-248 | done (main, e1752cc) |
-| T4 | Single sign-on with OpenID Connect | TF-014 | outline |
+| T4 | Single sign-on with OpenID Connect | TF-014 | in review (slice/s3-t4) |
 | T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-022, TF-025, TF-026, TF-028, TF-029 | outline |
 | T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |
 | T7 | Field-level change history, electronic signatures, signature manifestation, audit-trail review | TF-062, TF-063, TF-219 | outline |
 | T8 | Evidence exports, second approval for sensitive changes, validation pack per release | TF-067, TF-068, TF-218 | outline |
-| T9 | Hardening: input validation and output encoding review, rate limits and anti-automation, encryption in transit, key management and rotation | TF-070 to TF-075 | outline |
+| T9 | Hardening: input validation and output encoding review, rate limits and anti-automation (the "Use your company login" answer included, T4's review), encryption in transit, key management and rotation | TF-070 to TF-075 | outline |
 | T10 | Secure development lifecycle, vulnerability management, security monitoring and incident response | TF-076, TF-077, TF-079 | outline |
 | S3-close | Smoke steps, documentation, closing notes | | not started |
 
@@ -84,7 +84,7 @@ STATUS's later items that belong to S3, each in the task it fits (T1 decided the
 - **T2**: a password reset an operator can use when a tenant's administrator password is lost, which also lets the smoke and the browser tests set a password again; an API that disables a person, so that each browser test run and each smoke run stop leaving an inactive unit with its people behind; the last-administrator guard counting a disabled or locked administrator, since T2 brings the locked state.
 - **T5**: "Sign out everywhere" in the sessions console; a response header with the session's idle end, so the shell's estimate is exact when a tenant shortens the limits.
 - **T8**, before it starts: the release's "Traceability matrix" job showed no conclusion in run 39620828352; check that it runs and keeps its artifact (T3's review).
-- **T9**: rate limits that bound a client calling a refused endpoint, each refusal now writing `entitlements.access_denied` to the audit trail; the shell's web server answering 404, not its page, for `/api/` and `/health/` paths (T3's review); the factor key's rotation (ADR-0047).
+- **T9**: rate limits that bound a client calling a refused endpoint, each refusal now writing `entitlements.access_denied` to the audit trail; the shell's web server answering 404, not its page, for `/api/` and `/health/` paths (T3's review); the factor key's rotation (ADR-0047); rate limits that cover the sign-in's "Use your company login" answer, which tells an identifier that signs in only through a provider (T4's review, ADR-0048).
 - **T10**: Dependabot's cooldown and the two packages it is told to leave, under the dependency policy with its fix times; the chiseled images' Kerberos probe message, with the images' SBOM; a system role's new permissions from the seed shown in the conflicts report and raised as a privilege grant, which TF-079's alerts cover; the counter of lost spans (TF-130 AC4), which the S1 plan listed as built and was not (T1's review, 2026-10-21).
 
 The other later items belong to the business and suite slices, S4 (notifications and the escalation messages), S5 (workflow) or the slice of their own requirement, and stay in STATUS.

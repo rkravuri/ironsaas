@@ -28,6 +28,7 @@ public sealed class UserService(
     SessionService sessions,
     SecurityEventLog securityEvents,
     FactorService factors,
+    SsoPeople ssoPeople,
     IOrganisationUnits units,
     IRoleAssignments roleAssignments,
     ITenantAdministrators administrators,
@@ -49,6 +50,11 @@ public sealed class UserService(
         if (principal.Type != PrincipalType.User || principal.Status != PrincipalStatus.Active || principal.PasswordHash is null)
         {
             return Error.Conflict(IdentityErrors.RecoveryNotAllowed, $"{principal.DisplayName} cannot sign in with a password now ({principal.Status.ToString().ToLowerInvariant()}), so a recovery link would not help. Reactivate them, or send a new invitation.");
+        }
+
+        if ((await ssoPeople.SsoOnlyAsync(principal, cancellationToken).ConfigureAwait(false)).SsoOnly)
+        {
+            return Error.Conflict(IdentityErrors.RecoverySsoOnly, $"{principal.DisplayName} signs in only with their company login, so a recovery link would not help. Their provider recovers their account.");
         }
 
         var missing = await MissingPermissionsAsync(principal.Id, cancellationToken).ConfigureAwait(false);
@@ -99,6 +105,39 @@ public sealed class UserService(
         var ended = await sessions.EndAllAsync(principal.Id, SessionEndReasons.Revoked, cancellationToken).ConfigureAwait(false);
         var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["sessions_ended"] = ended.ToString(System.Globalization.CultureInfo.InvariantCulture) };
         await factors.ResetAsync(principal, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), reason.Trim(), details, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return principal;
+    }
+
+    /// <summary>
+    /// Marks a person to sign in only through a single sign-on provider, or lets them use a password again (TF-014 AC2,
+    /// ADR-0048). Only where a provider can sign them in, a link of theirs or a provider of their email's domain, or they
+    /// would be locked out. Their sessions stay; the mark holds at their next password sign-in.
+    /// </summary>
+    public async Task<Result<Principal>> SetSsoOnlyAsync(Principal principal, bool ssoOnly, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.Type != PrincipalType.User)
+        {
+            return Error.Conflict(IdentityErrors.UserStatusConflict, $"{principal.DisplayName} is a service account, which signs in with its client credentials.");
+        }
+
+        if (principal.SsoOnly == ssoOnly)
+        {
+            return principal;
+        }
+
+        if (ssoOnly
+            && (await ssoPeople.LinkedProvidersAsync(principal.Id, cancellationToken).ConfigureAwait(false)).Count == 0
+            && await ssoPeople.ForEmailAsync(principal.Email ?? principal.LoginId, cancellationToken).ConfigureAwait(false) is null)
+        {
+            return Error.Conflict(IdentityErrors.UserSsoUnreachable, $"No single sign-on provider can sign {principal.DisplayName} in: they are linked to none, and no provider signs in people of their email's domain. Connect one first.");
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        principal.MarkSsoOnly(ssoOnly);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await securityEvents.RecordAsync(principal, ssoOnly ? SecurityEventKinds.SsoOnlySet : SecurityEventKinds.SsoOnlyCleared, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, null, cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return principal;
     }

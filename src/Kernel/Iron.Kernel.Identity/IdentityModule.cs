@@ -8,6 +8,7 @@ using Iron.Kernel.Identity.Api;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
+using Iron.Kernel.Security.Secrets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -19,7 +20,8 @@ namespace Iron.Kernel.Identity;
 /// <summary>
 /// Principals, passwords, sessions, invitations and access tokens (TF-010, TF-011, TF-018, TF-020, TF-021, TF-023, TF-029);
 /// the password policy, lockout, recovery links and security events (TF-012, TF-017, TF-019, ADR-0046); second factors,
-/// the MFA policy and step-up re-authentication (TF-013, TF-248, ADR-0047).
+/// the MFA policy and step-up re-authentication (TF-013, TF-248, ADR-0047); single sign-on with OpenID Connect (TF-014,
+/// ADR-0048).
 /// Replaces the default system principal with the request principal, so hosts list it after Audit and Authorization
 /// and call <c>UseIronIdentity</c> after UseIronTenant. The session limits and an invitation's validity are settings
 /// (ADR-0036), so a host that lists Identity lists the Settings module too.
@@ -102,6 +104,31 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IValidator<ReauthenticateRequest>, ReauthenticateRequestValidator>();
         services.AddScoped<IValidator<PasskeySignInRequest>, PasskeySignInRequestValidator>();
         services.AddScoped<IValidator<ResetFactorsRequest>, ResetFactorsRequestValidator>();
+
+        // Single sign-on (TF-014, ADR-0048). A provider answers within ten seconds or the sign-in says it cannot be reached.
+        services.AddHttpClient(OidcDiscovery.HttpClientName, http => http.Timeout = TimeSpan.FromSeconds(10));
+        services.AddSingleton<OidcDiscovery>();
+        services.AddSingleton<IdTokenValidator>();
+        services.AddScoped<SsoPeople>();
+        services.AddScoped<SsoProviderService>();
+        services.AddScoped<SsoSignInService>();
+        var store = new SecretStoreOptions();
+        configuration.GetSection(SecretStoreOptions.SectionName).Bind(store);
+        if (store.IsConfigured)
+        {
+            services.AddScoped<ISsoClientSecrets>(provider => new StoreSsoClientSecrets(provider.GetRequiredService<ISecretStore>(), provider.GetRequiredService<SecretStoreOptions>()));
+        }
+        else
+        {
+            services.TryAddSingleton<ISsoClientSecrets, ProcessSsoClientSecrets>();
+        }
+
+        services.AddScoped<IValidator<SsoDiscoverRequest>, SsoDiscoverRequestValidator>();
+        services.AddScoped<IValidator<SsoStartRequest>, SsoStartRequestValidator>();
+        services.AddScoped<IValidator<SsoCallbackRequest>, SsoCallbackRequestValidator>();
+        services.AddScoped<IValidator<SsoProviderRequest>, SsoProviderRequestValidator>();
+        services.AddScoped<IValidator<SsoTestRequest>, SsoTestRequestValidator>();
+        services.AddScoped<IValidator<SsoReauthenticationRequest>, SsoReauthenticationRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

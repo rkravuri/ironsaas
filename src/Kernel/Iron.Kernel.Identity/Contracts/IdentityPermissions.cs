@@ -7,7 +7,13 @@ public static class IdentityPermissions
 
     public static readonly Permission UsersManage = new("identity.users.manage", "Invite, change, deactivate and reactivate users, unlock their login and issue their recovery links", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage];
+    /// <summary>
+    /// Connecting, changing and removing single sign-on providers (TF-014, ADR-0048): a provider decides who may sign in as
+    /// whom and with which roles, so it is critical, and every change asks for a recent authentication (TF-248).
+    /// </summary>
+    public static readonly Permission SsoManage = new("identity.sso.manage", "Connect, change, test and remove single sign-on providers", Risk.Critical);
+
+    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage, SsoManage];
 }
 
 /// <summary>Error codes of the Identity module.</summary>
@@ -122,6 +128,55 @@ public static class IdentityErrors
 
     /// <summary>A bearer token cannot re-authenticate: its client asks for a new token with its credentials (TF-248).</summary>
     public const string ReauthenticationToken = "identity.reauthentication.token";
+
+    // Single sign-on (TF-014, ADR-0048).
+    /// <summary>A password sign-in of a person who signs in only through a provider (TF-014 AC2): "Use your company login".</summary>
+    public const string UseCompanyLogin = "identity.login.use_company_login";
+
+    /// <summary>No provider with this id.</summary>
+    public const string SsoProviderNotFound = "identity.sso.provider_not_found";
+
+    /// <summary>Another provider has this name; the sign-in page could not tell them apart.</summary>
+    public const string SsoNameTaken = "identity.sso.name_taken";
+
+    /// <summary>A provider's settings that cannot work: a discovery address that is not HTTPS, a domain that is not one, and the like.</summary>
+    public const string SsoInvalid = "identity.sso.invalid";
+
+    /// <summary>A default role or a group mapping names a role its author may not grant at its scope (ADR-0031 rule 1, ADR-0048).</summary>
+    public const string SsoEscalation = "identity.sso.escalation";
+
+    /// <summary>The provider could not be reached, or its discovery document or keys could not be read.</summary>
+    public const string SsoUnavailable = "identity.sso.unavailable";
+
+    /// <summary>The provider's answer did not prove the sign-in: state, code, ID token or nonce. Nothing is said about which.</summary>
+    public const string SsoFailed = "identity.sso.failed";
+
+    /// <summary>The provider did not mark the person's email verified, so it matches and creates nobody (ADR-0048).</summary>
+    public const string SsoEmailUnverified = "identity.sso.email_unverified";
+
+    /// <summary>The provider's email is outside the provider's allowed domains (TF-014 AC3).</summary>
+    public const string SsoDomainNotAllowed = "identity.sso.domain_not_allowed";
+
+    /// <summary>The person is deactivated: single sign-on never re-creates or reactivates them (ADR-0048).</summary>
+    public const string SsoDeactivated = "identity.sso.deactivated";
+
+    /// <summary>The provider signed in someone with no account here, and it creates nobody.</summary>
+    public const string SsoNoAccount = "identity.sso.no_account";
+
+    /// <summary>
+    /// A re-authentication through a provider whose ID token does not show a sign-in within the step-up window: the
+    /// provider did not ask for a new one, so nothing is confirmed and the action stays refused (TF-248 AC6, ADR-0048).
+    /// </summary>
+    public const string SsoReauthenticationStale = "identity.sso.reauthentication_stale";
+
+    /// <summary>The provider publishes no end-session endpoint, so there is nothing to sign out of there.</summary>
+    public const string SsoNoEndSession = "identity.sso.no_end_session";
+
+    /// <summary>A recovery link for a person who signs in only through a provider: it would not help (TF-014 AC2).</summary>
+    public const string RecoverySsoOnly = "identity.recovery.sso_only";
+
+    /// <summary>Marking a person single sign-on only when no provider could sign them in: they would be locked out.</summary>
+    public const string UserSsoUnreachable = "identity.user.sso_unreachable";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -186,6 +241,15 @@ public static class IdentityAuditEvents
 
     /// <summary>A person renamed one of their factors.</summary>
     public const string FactorRenamed = "identity.factor_renamed";
+
+    /// <summary>An administrator connected a single sign-on provider (ADR-0048); the details never hold its client secret.</summary>
+    public const string SsoProviderCreated = "identity.sso_provider_created";
+
+    /// <summary>An administrator changed a provider: the fields that changed, and whether the client secret was replaced.</summary>
+    public const string SsoProviderChanged = "identity.sso_provider_changed";
+
+    /// <summary>An administrator removed a provider, its links and the roles its mapping gave.</summary>
+    public const string SsoProviderDeleted = "identity.sso_provider_deleted";
 }
 
 /// <summary>
@@ -219,10 +283,20 @@ public static class SecurityEventKinds
     /// <summary>The person made a new set of recovery codes; the old ones stopped working.</summary>
     public const string RecoveryCodesRegenerated = "recovery_codes_regenerated";
 
+    /// <summary>The person was linked to a single sign-on provider at their first sign-in through it (ADR-0048).</summary>
+    public const string SsoLinked = "sso_linked";
+
+    /// <summary>An administrator marked the person to sign in only through a provider (TF-014 AC2).</summary>
+    public const string SsoOnlySet = "sso_only_set";
+
+    /// <summary>An administrator let the person sign in with a password again.</summary>
+    public const string SsoOnlyCleared = "sso_only_cleared";
+
     public static IReadOnlyList<string> All =>
     [
         PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated,
         FactorEnrolled, FactorRemoved, FactorsReset, RecoveryCodeUsed, RecoveryCodesRegenerated,
+        SsoLinked, SsoOnlySet, SsoOnlyCleared,
     ];
 
     /// <summary>The audit event a security event is written as.</summary>

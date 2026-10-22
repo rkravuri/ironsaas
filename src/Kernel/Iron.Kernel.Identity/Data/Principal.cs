@@ -96,7 +96,17 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     /// </summary>
     public DateTimeOffset? MfaRequiredSince { get; private set; }
 
+    /// <summary>
+    /// Marked by an administrator to sign in only through a single sign-on provider (TF-014 AC2, ADR-0048): a password
+    /// sign-in is refused with "Use your company login", and a recovery link does not apply. Everyone linked to a provider
+    /// that is single sign-on only is held the same way without the mark.
+    /// </summary>
+    public bool SsoOnly { get; private set; }
+
     public bool CanLogIn => Status == PrincipalStatus.Active && PasswordHash is not null;
+
+    /// <summary>A single sign-on provider may sign the principal in: a person who is active, or invited and never signed in (ADR-0048).</summary>
+    public bool CanSignInThroughProvider => Type == PrincipalType.User && Status is PrincipalStatus.Active or PrincipalStatus.Invited;
 
     /// <summary>Every this many wrong codes in a row start a cooling period (TF-013 AC2).</summary>
     public const int CoolingEvery = 3;
@@ -237,6 +247,26 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     /// the caller opens a new invitation, since the old one closed at deactivation.
     /// </summary>
     public void Reactivate() => Status = PasswordHash is null ? PrincipalStatus.Invited : PrincipalStatus.Active;
+
+    /// <summary>Signs in only through a provider, or may use a password again (ADR-0048).</summary>
+    public void MarkSsoOnly(bool ssoOnly) => SsoOnly = ssoOnly;
+
+    /// <summary>
+    /// A provider signed the person in (ADR-0048): one it created is active from the start, and an invited person whose
+    /// verified email the provider asserted is active too, their invitation closed, since the provider proved the address
+    /// the invitation went to. An active person stays as they are.
+    /// </summary>
+    public void ActivatedByProvider()
+    {
+        if (Status != PrincipalStatus.Invited)
+        {
+            return;
+        }
+
+        Status = PrincipalStatus.Active;
+        InvitationTokenHash = null;
+        InvitationExpiresAt = null;
+    }
 
     public void SetHomeUnit(Guid unitId)
     {

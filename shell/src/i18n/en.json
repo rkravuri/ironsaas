@@ -41,7 +41,18 @@
       "title": "Forgot your password?",
       "text": "Ask your administrator for a recovery link. It works once, for 15 minutes."
     },
-    "passkey": "Sign in with a passkey"
+    "passkey": "Sign in with a passkey",
+    "useCompanyLogin": "Use your company login.",
+    "passwordOrCompany": "Type your password. No company login is set up for that email here.",
+    "sso": {
+      "continueWith": "Continue with {{name}}",
+      "emailHint": "With a company login, type your work email and select Sign in without a password.",
+      "completing": "Signing you in with your company login.",
+      "ended": "This sign-in took too long, or ended. Start again.",
+      "signOutThereText": "You signed in with {{name}}. Sign out there too, so this browser is not left signed in to it.",
+      "signOutThere": "Sign out of {{name}}",
+      "nothingThere": "There is nothing to sign out of at {{name}}."
+    }
   },
   "invitation": {
     "title": "Set your password",
@@ -118,7 +129,8 @@
       "delegations": "Delegations",
       "accessReviews": "Access reviews",
       "explain": "Explain access",
-      "conflicts": "Conflict rules"
+      "conflicts": "Conflict rules",
+      "sso": "Single sign-on"
     }
   },
   "users": {
@@ -161,7 +173,8 @@
       "failed": "The user could not be loaded.",
       "noHomeUnit": "None",
       "details": "Details",
-      "access": "Access"
+      "access": "Access",
+      "signIn": "Sign-in"
     },
     "invite": {
       "open": "Invite a person",
@@ -235,6 +248,20 @@
         "reasonRequired": "Say why: it is kept with the reset.",
         "confirm": "Reset the factors"
       }
+    },
+    "signIn": {
+      "how": "How they sign in",
+      "ssoOnlyMarked": "Only with their company login: their password is refused and recovery links do not apply.",
+      "ssoOnlyByProvider": "Only with their company login, which signs in everyone it links that way.",
+      "passwordAllowed": "With a password, or with a company login they are linked to.",
+      "requireCompanyLogin": "Require their company login",
+      "allowPassword": "Allow a password again",
+      "links": "Company logins",
+      "noLinks": "Not linked to a company login",
+      "provider": "Provider",
+      "email": "Email there",
+      "linked": "Linked",
+      "lastSignIn": "Last sign-in there"
     }
   },
   "profile": {
@@ -1752,7 +1779,15 @@
       "recovery": "Recovery code",
       "passkey": "Confirm with your passkey",
       "submit": "Confirm",
-      "invalid": "That did not confirm it is you. Check your password and your code, and try again."
+      "invalid": "That did not confirm it is you. Check your password and your code, and try again.",
+      "sso": {
+        "intro": "You sign in with {{name}}. To confirm it is you, sign in with it again: it asks for a new sign-in, and you come back to this page to do this again.",
+        "noProvider": "You sign in without a password here. Sign out and sign in again, then do this again.",
+        "again": "Sign in again with {{name}}",
+        "introFactor": "You sign in with {{name}}. To confirm it is you, give your second factor here, then sign in with {{name}} again: it asks for a new sign-in, and you come back to this page to do this again.",
+        "passkeyAgain": "Use your passkey, then sign in with {{name}}",
+        "confirmed": "You confirmed it is you. Do the action again now: it goes through for the next few minutes."
+      }
     },
     "profile": {
       "title": "Second factors",
@@ -1800,6 +1835,132 @@
       "title": "Set up a second factor",
       "intro": "Your organisation now requires a second factor of you. Set one up to go on: you stay signed in, and return to where you were.",
       "signOut": "Sign out instead"
+    }
+  },
+  "sso": {
+    "title": "Single sign-on",
+    "description": "The company logins people of this organisation sign in with: who each one signs in, and what it gives them.",
+    "list": {
+      "name": "Name",
+      "domains": "Email domains",
+      "newPeople": "New people",
+      "created": "Created at first sign-in",
+      "notCreated": "Not created",
+      "passwords": "Passwords",
+      "companyOnly": "Company login only",
+      "passwordsToo": "Passwords allowed",
+      "mfa": "Second factor",
+      "mfaTrusted": "Provider's trusted",
+      "mfaOwn": "Asked here too",
+      "new": "Connect a provider"
+    },
+    "editor": {
+      "notFoundTitle": "No such provider",
+      "notFoundText": "This company login does not exist, or it was removed.",
+      "backToList": "Back to single sign-on",
+      "failed": "The provider could not be loaded.",
+      "newTitle": "Connect a company login",
+      "description": "People of the email domains you name sign in through this provider, with the roles you give them here.",
+      "connection": "Connection",
+      "connectionText": "Where the provider is, and the client this organisation is at the provider. Test the connection before you save.",
+      "who": "Who signs in",
+      "whoText": "Only an email the provider has verified, of one of these domains, signs anyone in.",
+      "newPeople": "New people",
+      "newPeopleText": "Someone of an allowed domain with no account here can be given one at their first sign-in.",
+      "groups": "Roles from groups",
+      "groupsText": "A group the provider names gives a role while the person is in it; each sign-in adds and removes them. You can map only roles you may grant yourself.",
+      "remove": "Remove the provider",
+      "removeText": "Its people keep their accounts, but stop signing in through it and lose the roles its groups gave them."
+    },
+    "presets": {
+      "entra_id": "Microsoft Entra ID",
+      "google_workspace": "Google Workspace",
+      "okta": "Okta",
+      "other": "Another OpenID Connect provider"
+    },
+    "form": {
+      "preset": "Provider",
+      "entraTenant": "Directory (tenant) ID",
+      "entraTenantHint": "From the Microsoft Entra admin center, Overview. It fills the discovery address.",
+      "oktaDomain": "Okta domain",
+      "oktaDomainHint": "For example example.okta.com. It fills the discovery address.",
+      "name": "Name",
+      "nameHint": "The sign-in page shows Continue with this name.",
+      "nameRequired": "Name the provider.",
+      "nameTooLong": "Use 100 characters at most.",
+      "discoveryUrl": "Discovery address",
+      "discoveryUrlHint": "The provider's address ending in /.well-known/openid-configuration.",
+      "discoveryShape": "Type the full https:// address ending in /.well-known/openid-configuration.",
+      "clientId": "Client ID",
+      "clientIdRequired": "Paste the client ID the provider gave you.",
+      "clientSecret": "Client secret",
+      "clientSecretHint": "Kept in the secret store, never shown again.",
+      "clientSecretKeep": "Leave empty to keep the current secret. It is in the secret store and never shown again.",
+      "clientSecretRequired": "Paste the client secret the provider gave you.",
+      "redirectUri": "Redirect URI to give the provider",
+      "redirectUriHint": "Register this address with the provider, or it will not send people back here.",
+      "copyRedirect": "Copy the redirect URI",
+      "copied": "Copied",
+      "domains": "Allowed email domains",
+      "domainsHint": "For example example.com. Press Enter after each domain.",
+      "domainsRequired": "Name at least one email domain.",
+      "emailClaim": "Email claim",
+      "nameClaim": "Name claim",
+      "groupsClaim": "Groups claim",
+      "claimRequired": "Type the claim's name.",
+      "ssoOnly": "Only this company login for the people it links",
+      "ssoOnlyHint": "Their password is refused with Use your company login, and recovery links do not apply.",
+      "trustMfa": "Trust the provider's second factor",
+      "trustMfaHint": "When the provider says it asked for more than a password, this product does not ask for its own second factor. Off: the organisation's MFA policy applies as after a password.",
+      "justInTime": "Create an account at the first sign-in",
+      "justInTimeHint": "For someone of an allowed domain who has no account here yet.",
+      "defaultRole": "Role of new people",
+      "defaultRoleHint": "Given at their home unit and the units below it. Only a role you may grant yourself.",
+      "noRole": "No role",
+      "defaultHomeUnit": "Home unit of new people",
+      "rootUnit": "The top of the organisation",
+      "wholeTenant": "The whole organisation",
+      "groupRequired": "Type the group's name as the provider sends it.",
+      "roleRequired": "Choose a role.",
+      "create": "Connect the provider",
+      "save": "Save changes",
+      "saved": "Saved."
+    },
+    "test": {
+      "run": "Test connection",
+      "passed": "The connection works. The first sign-in proves the client ID and secret.",
+      "failed": "The connection does not work yet. Fix what failed, then test again.",
+      "status": {
+        "passed": "Passed",
+        "warning": "Warning",
+        "failed": "Failed"
+      },
+      "checks": {
+        "discovery": "Discovery document",
+        "endpoints": "Endpoints",
+        "keys": "Signing keys",
+        "code_flow": "Authorization code flow",
+        "pkce": "PKCE",
+        "signing": "Token signatures",
+        "end_session": "Sign-out at the provider",
+        "client": "Client"
+      }
+    },
+    "mappings": {
+      "none": "No group gives a role.",
+      "row": "Mapping {{number}}",
+      "group": "Group",
+      "role": "Role",
+      "where": "Where",
+      "includeChildren": "And the units below it",
+      "remove": "Remove mapping {{number}}",
+      "add": "Add a mapping"
+    },
+    "remove": {
+      "open": "Remove the provider",
+      "title": "Remove {{name}}?",
+      "message": "People stop signing in through {{name}}, and lose the roles its groups gave them. Their accounts stay.",
+      "confirm": "Remove"
     }
   }
 }

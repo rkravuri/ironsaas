@@ -9,6 +9,7 @@ import {
   stopActing as stopActingCall,
   workFor as workForCall,
   type Me,
+  type SsoProviderButton,
   type WorkFor,
 } from "@/api/identity";
 import type { KillSwitch } from "@/api/flags";
@@ -35,6 +36,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [watch] = useState(() => new SessionWatch());
   const channel = useRef<SessionChannel | undefined>(undefined);
   const [ended, setEnded] = useState<SessionEnd | undefined>();
+  const [signedOutOf, setSignedOutOf] = useState<SsoProviderButton | undefined>();
   const [actingEnded, setActingEnded] = useState<string | undefined>();
   const query = useQuery({
     queryKey: meQueryKey,
@@ -184,6 +186,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signedIn = useCallback(async () => {
     setEnded(undefined);
+    setSignedOutOf(undefined);
     await refresh();
     channel.current?.post({ kind: "signed-in" });
   }, [refresh]);
@@ -193,12 +196,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const signOut = useCallback(async () => {
+    const provider = queryClient.getQueryData<Me | null>(meQueryKey)?.signed_in_with;
     try {
       await logoutCall();
     } finally {
+      setSignedOutOf(provider ? { id: provider.provider_id, name: provider.name } : undefined);
       end("signed-out", true);
     }
-  }, [end]);
+  }, [end, queryClient]);
 
   const expire = useCallback(
     (reason: EndReason) => {
@@ -232,6 +237,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       settings,
       settingsKnown,
       ended,
+      signedOutOf,
       actingEnded,
       refresh,
       signedIn,
@@ -253,6 +259,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     settings,
     settingsKnown,
     ended,
+    signedOutOf,
     actingEnded,
     refresh,
     signedIn,

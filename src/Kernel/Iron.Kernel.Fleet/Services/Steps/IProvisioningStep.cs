@@ -45,6 +45,9 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
     /// <summary>Where the secrets of the tenant's secret-reference settings live (ADR-0036): the unit reads everything below it.</summary>
     public string SettingsSecretPaths => $"tenants/{Slug}/settings/*";
 
+    /// <summary>The client secrets of the tenant's single sign-on providers, one path each, which the unit itself writes (ADR-0048).</summary>
+    public string SsoSecretPaths => $"tenants/{Slug}/sso/*";
+
     public string UnitPolicy => $"tenant-{Slug}";
 
     /// <summary>The policy of the short-lived tokens that may write the tenant's handover places, and nothing else.</summary>

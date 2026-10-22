@@ -33,8 +33,12 @@ public interface ISecretStore
 /// </summary>
 public interface ISecretStoreAdmin
 {
-    /// <summary>Creates or replaces a policy that allows reading the given paths (relative to the mount) and nothing else.</summary>
-    Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken);
+    /// <summary>
+    /// Creates or replaces a policy that allows reading the given paths (relative to the mount), and reading, writing and
+    /// deleting the <paramref name="managedPaths"/>, and nothing else. A unit manages its single sign-on providers' client
+    /// secrets that way (ADR-0048); everything else it only reads.
+    /// </summary>
+    Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null);
 
     /// <summary>
     /// Creates or replaces a policy that allows writing new values at the paths matching a pattern (relative to the mount,

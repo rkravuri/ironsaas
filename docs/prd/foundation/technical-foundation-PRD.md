@@ -548,8 +548,16 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a configured provider and an allowed domain, When a new employee logs in through SSO, Then a user is created with the default role and a session starts.
 - AC2 Given an SSO-only user, When they try password login, Then it is refused with "Use your company login". (error case)
 - AC3 Given the provider returns an email outside allowed domains, When processed, Then login is refused and the attempt is audited.
+- AC4 Given a group claim mapped to a role at a scope, When a person signs in through the provider, Then they hold the role while the provider names them in the group, added and removed at each sign-in; a mapping can name only a role its author may grant at its scope (ADR-0031).
+- AC5 Given a provider whose ID token says multi-factor authentication was used, When the tenant trusts that provider's assertion, Then no second factor of this product is asked; otherwise the tenant's MFA policy applies as after a password (TF-013).
+- AC6 Given a provider's discovery address, When an administrator tests the connection, Then the discovery document and the signing keys are read and each check is reported in words as passed, a warning or failed.
+- AC7 Given an existing person whose email the provider has verified, When they first sign in through it, Then they are linked to it, the link is in their security activity and the audit trail, and later sign-ins find them by the provider's subject.
+- AC8 Given an email the provider has not marked verified, When processed, Then it matches and creates nobody, and the sign-in is refused and audited. (error case)
+- AC9 Given a deactivated person, When they sign in through a provider, Then the sign-in is refused and audited, and they are neither re-created nor reactivated. (error case)
 
 *Depends on:* TF-010
+
+**Notes:** AC4 to AC9 added on 2026-10-22 (S3 T4, ADR-0048): the tests prove the requirement's text beyond its first three criteria.
 
 #### TF-015 Single sign-on with SAML 2.0  
 *Priority:* **Should** · *Tag:* `[Extended]` · *Area:* Identity and authentication
@@ -642,9 +650,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC4 Given a wrong password or a wrong second factor in the confirmation, When it is sent, Then the action stays refused, the failure counts towards the lockout and the cooling period as at sign-in, and the session stays open. (error case)
 - AC5 Given an action the API refuses for an old authentication, When the shell receives the refusal, Then the shared dialog opens and, once the person has confirmed, the action is sent again without the person repeating it.
 
+- AC6 Given a person who signs in through a company login and has no password, When they confirm it is them, Then their provider is asked for a fresh sign-in (`prompt=login` and `max_age=0`), after their second factor here when they have one, and the confirmation counts only when the ID token's `auth_time` falls within the step-up window; otherwise it fails with a message that the company login did not ask for a new sign-in, the action stays refused, and either way the person returns to the page they were on, with the action ready to redo (ADR-0048).
+
 *Depends on:* TF-011, TF-013, TF-020
 
-**Notes:** New 2026-10-22 (S3 T3, ADR-0047). The API declares it on an endpoint (`RequireRecentAuthentication(minutes)`) or asks for it in a service where the rule depends on the data, a role's permissions or a setting's key; both ask one kernel interface. A token's client gets a fresh token with its credentials.
+**Notes:** New 2026-10-22 (S3 T3, ADR-0047); AC6 added at S3 T4's review, the same day. The API declares it on an endpoint (`RequireRecentAuthentication(minutes)`) or asks for it in a service where the rule depends on the data, a role's permissions or a setting's key; both ask one kernel interface. A token's client gets a fresh token with its credentials.
 
 ### 4.3 Sessions, tokens and service accounts (TF-020 to TF-029, 10 requirements)
 

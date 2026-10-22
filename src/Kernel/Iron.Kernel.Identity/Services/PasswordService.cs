@@ -23,6 +23,7 @@ public sealed class PasswordService(
     LoginThrottles throttles,
     SessionService sessions,
     SecurityEventLog securityEvents,
+    SsoPeople ssoPeople,
     IUnitOfWork unitOfWork,
     TimeProvider time,
     ILogger<PasswordService> logger)
@@ -110,6 +111,12 @@ public sealed class PasswordService(
         if (principal.Type != PrincipalType.User || principal.Status != PrincipalStatus.Active)
         {
             return Error.Forbidden(IdentityErrors.RecoveryNotAllowed, "This account cannot sign in, so its password cannot be set. Ask your administrator.");
+        }
+
+        // A link issued before the person was marked, or before their provider became the only way in (ADR-0048).
+        if ((await ssoPeople.SsoOnlyAsync(principal, cancellationToken).ConfigureAwait(false)).SsoOnly)
+        {
+            return Error.Forbidden(IdentityErrors.RecoverySsoOnly, $"{LoginService.UseCompanyLoginMessage} A password does not sign this account in, so a recovery link does not apply.");
         }
 
         var checkedPassword = await policy.CheckAsync(principal, password, cancellationToken).ConfigureAwait(false);

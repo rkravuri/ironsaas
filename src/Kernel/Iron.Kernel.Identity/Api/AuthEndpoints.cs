@@ -42,9 +42,13 @@ public sealed record SessionResponse(Guid Id, DateTimeOffset? StartedAt, DateTim
 /// <summary>
 /// A sign-in's answer (TF-011, TF-013, ADR-0047): the person and the session once everything is proved; otherwise the
 /// step that comes next, with neither. A sign-in by recovery code says to enrol a new factor at once; the first enrolment
-/// at sign-in carries the recovery codes, shown once.
+/// at sign-in carries the recovery codes, shown once. A sign-in through a provider says where the person was going; a
+/// re-authentication through one says it confirmed the session's person, with no new session (TF-248 AC6).
 /// </summary>
-public sealed record LoginResponse(PrincipalResponse? Principal, SessionResponse? Session, SignInStepResponse? Step = null, bool EnrolNewFactor = false, IReadOnlyList<string>? RecoveryCodes = null);
+public sealed record LoginResponse(PrincipalResponse? Principal, SessionResponse? Session, SignInStepResponse? Step = null, bool EnrolNewFactor = false, IReadOnlyList<string>? RecoveryCodes = null, string? ReturnTo = null, bool Reauthenticated = false);
+
+/// <summary>The provider the session's sign-in came through (ADR-0048), so sign-out may offer to sign out there too.</summary>
+public sealed record SignedInWithResponse(Guid ProviderId, string Name);
 
 /// <summary>What the shell needs after login: who, what they may do, and when the session ends (TF-021: the expiry warning).</summary>
 /// <summary>The home unit as <c>/me</c> shows it: enough to name it; the tree has the rest.</summary>
@@ -71,7 +75,8 @@ public sealed record MeResponse(
     WorkingUnitsResponse WorkingUnits,
     DateTimeOffset? PasswordExpiresAt = null,
     DateTimeOffset? MfaEnrolBy = null,
-    bool MfaEnrolmentRequired = false);
+    bool MfaEnrolmentRequired = false,
+    SignedInWithResponse? SignedInWith = null);
 
 /// <summary>A unit the person may work for, with its depth and its path of names, for the header's menu on the tree.</summary>
 public sealed record WorkingUnitChoiceResponse(Guid Id, string Name, string Code, int Depth, IReadOnlyList<UnitPathStep> Path);
@@ -159,6 +164,7 @@ internal static class AuthEndpoints
         UsersEndpoints.Map(endpoints);
         PasswordEndpoints.Map(endpoints);
         FactorEndpoints.Map(endpoints);
+        SsoEndpoints.Map(endpoints);
     }
 
     private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken) =>
@@ -245,6 +251,17 @@ internal static class AuthEndpoints
             enrolBy = grace > 0 ? since.AddDays(grace) : null;
         }
 
+        // The provider of a session's sign-in, for the sign-out's offer to sign out there too (ADR-0048).
+        SignedInWithResponse? signedInWith = null;
+        if (current.Kind == AuthenticationKind.Session)
+        {
+            var identity = services.GetRequiredService<IdentityDbContext>();
+            signedInWith = await identity.Sessions.AsNoTracking()
+                .Where(s => s.Id == current.SessionId && s.ProviderId != null)
+                .Join(identity.SsoProviders.AsNoTracking(), s => s.ProviderId, p => p.Id, (s, p) => new SignedInWithResponse(p.Id, p.Name))
+                .SingleOrDefaultAsync(cancellationToken);
+        }
+
         return new MeResponse(
             current.Id,
             current.LoginId,
@@ -261,7 +278,8 @@ internal static class AuthEndpoints
             choices,
             changedAt?.AddDays(rules.MaximumAgeDays),
             enrolBy,
-            RequiredStep.Get(http)?.Code == IdentityErrors.MfaEnrolmentRequired);
+            RequiredStep.Get(http)?.Code == IdentityErrors.MfaEnrolmentRequired,
+            signedInWith);
     }
 
     private static async Task<IResult> WorkForAsync(WorkForRequest request, HttpContext http, RequestPrincipal principal, SessionService sessions, CancellationToken cancellationToken)

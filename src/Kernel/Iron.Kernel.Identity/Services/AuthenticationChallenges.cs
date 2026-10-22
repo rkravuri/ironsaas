@@ -25,6 +25,19 @@ public sealed class AuthenticationChallenges(IdentityDbContext context, TimeProv
         return (challenge, token);
     }
 
+    /// <summary>
+    /// A browser's challenge that belongs to a session as well (a re-authentication through a provider, ADR-0048); an earlier
+    /// one of the same purpose for the session is replaced.
+    /// </summary>
+    public async Task<(AuthenticationChallenge Challenge, string Token)> StartForBrowserInSessionAsync(string purpose, Guid principalId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        await context.AuthenticationChallenges.Where(c => c.SessionId == sessionId && c.Purpose == purpose).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        var (challenge, token) = await StartForBrowserAsync(purpose, principalId, cancellationToken).ConfigureAwait(false);
+        challenge.InSession(sessionId);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return (challenge, token);
+    }
+
     /// <summary>The browser's challenge for one of <paramref name="purposes"/>, while it lives; tracked, for the next step.</summary>
     public async Task<AuthenticationChallenge?> FindForBrowserAsync(HttpContext http, IReadOnlyList<string> purposes, CancellationToken cancellationToken)
     {

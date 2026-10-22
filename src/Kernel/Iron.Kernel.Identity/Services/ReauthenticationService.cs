@@ -8,8 +8,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Identity.Services;
 
-/// <summary>What confirming it is them asks of a person: the password always, and the second factor when they have one.</summary>
-public sealed record ReauthenticationChallenge(bool SecondFactor, IReadOnlyList<string> Methods, string? PasskeyOptions);
+/// <summary>
+/// What confirming it is them asks of a person: their password and, when they have one, their second factor. A person
+/// with no password, who signs in through a provider, confirms by signing in through it again (ADR-0048):
+/// <see cref="Password"/> is false and <see cref="Provider"/> names it.
+/// </summary>
+public sealed record ReauthenticationChallenge(bool SecondFactor, IReadOnlyList<string> Methods, string? PasskeyOptions)
+{
+    public bool Password { get; init; } = true;
+
+    public SsoProvider? Provider { get; init; }
+}
 
 /// <summary>
 /// Step-up re-authentication (TF-248, ADR-0047): a signed-in person confirms it is them before a high-risk action, with
@@ -25,6 +34,7 @@ public sealed class ReauthenticationService(
     FactorService factors,
     AuthenticationChallenges challenges,
     SessionService sessions,
+    SsoPeople ssoPeople,
     SecurityEventLog securityEvents,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
@@ -48,7 +58,12 @@ public sealed class ReauthenticationService(
             options = await factors.PasskeyAssertionAsync(challenge, current.Id, cancellationToken).ConfigureAwait(false);
         }
 
-        return new ReauthenticationChallenge(methods.Count > 0, methods, options);
+        var hasPassword = await context.Principals.AsNoTracking().AnyAsync(p => p.Id == current.Id && p.PasswordHash != null, cancellationToken).ConfigureAwait(false);
+        return new ReauthenticationChallenge(methods.Count > 0, methods, options)
+        {
+            Password = hasPassword,
+            Provider = hasPassword ? null : (await ssoPeople.LinkedProvidersAsync(current.Id, cancellationToken).ConfigureAwait(false)).FirstOrDefault(),
+        };
     }
 
     /// <summary>Checks the password, then the second factor; when both prove the person, high-risk actions may go on for a few minutes.</summary>

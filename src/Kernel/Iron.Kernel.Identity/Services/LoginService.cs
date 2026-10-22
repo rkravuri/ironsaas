@@ -33,6 +33,12 @@ public sealed record LoginOutcome(Principal Principal, Session? Session, string?
 
     /// <summary>The recovery codes of a first enrolment at sign-in, shown once.</summary>
     public IReadOnlyList<string>? RecoveryCodes { get; init; }
+
+    /// <summary>Where a sign-in through a provider returns the person, a path of the shell's (ADR-0048).</summary>
+    public string? ReturnTo { get; init; }
+
+    /// <summary>A re-authentication through a provider confirmed the session's person at this time; no new session (TF-248).</summary>
+    public DateTimeOffset? ReauthenticatedAt { get; init; }
 }
 
 /// <summary>
@@ -56,6 +62,7 @@ public sealed class LoginService(
     MfaPolicy mfa,
     Passkeys passkeys,
     AuthenticationChallenges challenges,
+    SsoPeople ssoPeople,
     IUnitOfWork unitOfWork,
     TimeProvider time,
     IAuditWriter audit,
@@ -69,6 +76,9 @@ public sealed class LoginService(
     public const string ExpiredMessage = "Your password has expired. Choose a new one to sign in.";
 
     public const string SignInExpiredMessage = "This sign-in took too long, or ended. Sign in again.";
+
+    /// <summary>TF-014 AC2's words for a person who signs in only through a provider.</summary>
+    public const string UseCompanyLoginMessage = "Use your company login.";
 
     private const int MaxAttempts = 3;
 
@@ -99,6 +109,17 @@ public sealed class LoginService(
         {
             hasher.VerifyOrDecoy(password, principal.PasswordHash);
             return await FailAsync(principal, normalised, "not_a_user", cancellationToken).ConfigureAwait(false);
+        }
+
+        // A person who signs in only through a provider is told so before any password is looked at (TF-014 AC2,
+        // ADR-0048). Whoever types the identifier learns it is such an account, which no password opens; every account a
+        // password does open keeps TF-011's one answer. Nothing is counted: there is nothing here to guess.
+        var ssoOnly = await ssoPeople.SsoOnlyAsync(principal, cancellationToken).ConfigureAwait(false);
+        if (ssoOnly.SsoOnly)
+        {
+            hasher.VerifyOrDecoy(password, null);
+            await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginFailed, AuditOutcome.Denied, principal.Id, normalised, Reason: "sso_only"), cancellationToken).ConfigureAwait(false);
+            return UseCompanyLogin(ssoOnly.Provider);
         }
 
         if (!principal.CanLogIn)
@@ -160,7 +181,7 @@ public sealed class LoginService(
         }
 
         await challenges.EndAsync(challenge, cancellationToken).ConfigureAwait(false);
-        var outcome = await FinishAsync(principal, verified.Value, cancellationToken).ConfigureAwait(false);
+        var outcome = await FinishAsync(principal, verified.Value, cancellationToken, challenge.ProviderId).ConfigureAwait(false);
         return outcome.IsSuccess && verified.Value == FactorService.RecoveryCodeMethod ? outcome.Value with { EnrolNewFactor = true } : outcome;
     }
 
@@ -186,7 +207,7 @@ public sealed class LoginService(
     {
         ArgumentNullException.ThrowIfNull(enrolled);
         await challenges.EndAsync(challenge, cancellationToken).ConfigureAwait(false);
-        var outcome = await FinishAsync(principal, enrolled.Factor.Kind, cancellationToken).ConfigureAwait(false);
+        var outcome = await FinishAsync(principal, enrolled.Factor.Kind, cancellationToken, challenge.ProviderId).ConfigureAwait(false);
         return outcome.IsSuccess ? outcome.Value with { RecoveryCodes = enrolled.RecoveryCodes } : outcome;
     }
 
@@ -262,7 +283,9 @@ public sealed class LoginService(
         }
 
         var principal = await context.Principals.SingleOrDefaultAsync(p => p.Id == principalId, cancellationToken).ConfigureAwait(false);
-        if (principal is null || !principal.CanLogIn)
+
+        // After a provider's sign-in the person may have no password: being active is what counts then (ADR-0048).
+        if (principal is null || !(challenge.ProviderId is null ? principal.CanLogIn : principal.Status == PrincipalStatus.Active))
         {
             await challenges.EndAsync(challenge, cancellationToken).ConfigureAwait(false);
             return Error.Unauthorized(IdentityErrors.SignInExpired, SignInExpiredMessage);
@@ -277,16 +300,76 @@ public sealed class LoginService(
         return (challenge, principal);
     }
 
-    private async Task<Result<LoginOutcome>> StepAsync(Principal principal, string purpose, IReadOnlyList<string> methods, CancellationToken cancellationToken)
+    /// <summary>
+    /// A single sign-on provider signed the person in (TF-014, ADR-0048). When the provider says it used more than one
+    /// factor and the tenant trusts it for that provider, that stands for this product's second factor. Otherwise the
+    /// tenant's MFA policy applies as after a password: a person with a factor gives it, a person who must have one and has
+    /// none enrols, and the second step or the enrolment carries the provider into the session. No password is involved,
+    /// so its age is not asked.
+    /// </summary>
+    public async Task<Result<LoginOutcome>> ProviderSignedInAsync(Principal principal, Guid providerId, bool providerMultiFactor, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (providerMultiFactor)
+        {
+            return await StartSessionAsync(principal, Session.ProviderMultiFactor, cancellationToken, providerId).ConfigureAwait(false);
+        }
+
+        if (await factors.HasAnyAsync(principal.Id, cancellationToken).ConfigureAwait(false))
+        {
+            return await StepAsync(principal, ChallengePurposes.SecondFactor, await factors.MethodsAsync(principal.Id, cancellationToken).ConfigureAwait(false), cancellationToken, providerId).ConfigureAwait(false);
+        }
+
+        var rules = await mfa.RulesAsync(cancellationToken).ConfigureAwait(false);
+        if (await mfa.IsRequiredAsync(principal, rules, cancellationToken).ConfigureAwait(false))
+        {
+            var now = time.GetUtcNow();
+            var since = principal.MfaRequiredSince ?? principal.MfaRequiredFrom(now);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            if (rules.GraceDays == 0 || now >= since.AddDays(rules.GraceDays))
+            {
+                return await StepAsync(principal, ChallengePurposes.Enrolment, rules.Allowed, cancellationToken, providerId).ConfigureAwait(false);
+            }
+        }
+        else if (principal.MfaRequiredSince is not null)
+        {
+            principal.MfaSatisfied();
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return await StartSessionAsync(principal, null, cancellationToken, providerId).ConfigureAwait(false);
+    }
+
+    /// <summary>The refusal of a password sign-in for a person who signs in only through a provider, naming it for the sign-in page's button.</summary>
+    public static Error UseCompanyLogin(SsoProvider? provider) =>
+        new(ErrorKind.Unauthorized, IdentityErrors.UseCompanyLogin, UseCompanyLoginMessage)
+        {
+            Extensions = provider is null
+                ? new Dictionary<string, object>(StringComparer.Ordinal)
+                : new Dictionary<string, object>(StringComparer.Ordinal) { ["provider_id"] = provider.Id, ["provider_name"] = provider.Name },
+        };
+
+    private async Task<Result<LoginOutcome>> StepAsync(Principal principal, string purpose, IReadOnlyList<string> methods, CancellationToken cancellationToken, Guid? providerId = null)
     {
         var (challenge, token) = await challenges.StartForBrowserAsync(purpose, principal.Id, cancellationToken).ConfigureAwait(false);
+        if (providerId is { } provider)
+        {
+            challenge.ThroughProvider(provider);
+            await challenges.SaveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         logger.LogInformation("The password of principal {PrincipalId} was right; the sign-in goes on to {Step}.", principal.Id, purpose);
         return new LoginOutcome(principal, null, null) { Step = new SignInStep(purpose, token, methods, challenge.ExpiresAt) };
     }
 
     /// <summary>Everything the person had to prove is proved: a password past its age gets a recovery link (TF-012), any other a session.</summary>
-    private async Task<Result<LoginOutcome>> FinishAsync(Principal principal, string? secondFactor, CancellationToken cancellationToken)
+    private async Task<Result<LoginOutcome>> FinishAsync(Principal principal, string? secondFactor, CancellationToken cancellationToken, Guid? providerId = null)
     {
+        if (providerId is not null)
+        {
+            return await StartSessionAsync(principal, secondFactor, cancellationToken, providerId).ConfigureAwait(false);
+        }
+
         var rules = await policy.RulesAsync(cancellationToken).ConfigureAwait(false);
         if (principal.PasswordExpired(time.GetUtcNow(), rules.MaximumAgeDays))
         {
@@ -296,7 +379,7 @@ public sealed class LoginService(
         return await StartSessionAsync(principal, secondFactor, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Result<LoginOutcome>> StartSessionAsync(Principal principal, string? secondFactor, CancellationToken cancellationToken)
+    private async Task<Result<LoginOutcome>> StartSessionAsync(Principal principal, string? secondFactor, CancellationToken cancellationToken, Guid? providerId = null)
     {
         // Another attempt on the same account may save its stamp between our read and our write (the version column
         // is the concurrency token). That must never turn a correct login into an error: take the newer row and go again.
@@ -318,9 +401,21 @@ public sealed class LoginService(
                             RequestPrincipal.Set(http, sessions.Describe(principal, created));
                         }
                     },
-                    secondFactor).ConfigureAwait(false);
-                var details = secondFactor is null ? null : new Dictionary<string, string>(StringComparer.Ordinal) { ["second_factor"] = secondFactor };
-                await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginSucceeded, AuditOutcome.Success, principal.Id, principal.LoginId, details, RecordType: "session", RecordId: session.Id), cancellationToken).ConfigureAwait(false);
+                    secondFactor,
+                    providerId).ConfigureAwait(false);
+                var details = new Dictionary<string, string>(StringComparer.Ordinal);
+                if (secondFactor is not null)
+                {
+                    details["second_factor"] = secondFactor;
+                }
+
+                if (providerId is { } provider)
+                {
+                    details["method"] = "sso";
+                    details["provider_id"] = provider.ToString();
+                }
+
+                await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginSucceeded, AuditOutcome.Success, principal.Id, principal.LoginId, details.Count == 0 ? null : details, RecordType: "session", RecordId: session.Id), cancellationToken).ConfigureAwait(false);
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
                 logger.LogInformation("Login succeeded for principal {PrincipalId}.", principal.Id);

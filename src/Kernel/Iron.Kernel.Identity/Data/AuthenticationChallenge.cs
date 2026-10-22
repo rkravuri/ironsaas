@@ -19,6 +19,15 @@ public static class ChallengePurposes
 
     /// <summary>A signed-in person confirms it is them before a high-risk action (TF-248).</summary>
     public const string Reauthentication = "reauthentication";
+
+    /// <summary>A sign-in through a single sign-on provider, between the provider's page and its answer (ADR-0048).</summary>
+    public const string SsoSignIn = "sso_sign_in";
+
+    /// <summary>
+    /// A signed-in person confirms it is them through their provider (TF-248, ADR-0048): a fresh sign-in there, which
+    /// belongs to the session it started from.
+    /// </summary>
+    public const string SsoReauthentication = "sso_reauthentication";
 }
 
 /// <summary>
@@ -73,6 +82,18 @@ public sealed class AuthenticationChallenge : AuditedEntity
     /// <summary>An authenticator app's secret waiting for its first code, encrypted.</summary>
     public byte[]? PendingSecret { get; private set; }
 
+    /// <summary>
+    /// The single sign-on provider of the sign-in (ADR-0048): while the provider's page is open, and through the second
+    /// step or the enrolment that may follow it, so the session records where the sign-in came from.
+    /// </summary>
+    public Guid? ProviderId { get; private set; }
+
+    /// <summary>
+    /// What the provider's answer is checked against, as JSON: the <c>state</c>, the <c>nonce</c>, the PKCE verifier, the
+    /// redirect URI and where the person goes afterwards. Lives as long as the challenge, five minutes, and is used once.
+    /// </summary>
+    public string? Exchange { get; private set; }
+
     public static AuthenticationChallenge ForBrowser(string purpose, Guid? principalId, string tokenHash, DateTimeOffset now)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
@@ -87,4 +108,14 @@ public sealed class AuthenticationChallenge : AuditedEntity
     public void Expect(string webAuthnOptions) => WebAuthnOptions = webAuthnOptions;
 
     public void Hold(byte[] pendingSecret) => PendingSecret = pendingSecret;
+
+    /// <summary>A browser's challenge that belongs to a session too: a re-authentication through a provider.</summary>
+    public void InSession(Guid sessionId) => SessionId = sessionId;
+
+    /// <summary>The sign-in goes through, or came through, a provider.</summary>
+    public void ThroughProvider(Guid providerId, string? exchange = null)
+    {
+        ProviderId = providerId;
+        Exchange = exchange;
+    }
 }

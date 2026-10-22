@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { KillSwitch } from "@/api/flags";
-import type { Me, WorkFor } from "@/api/identity";
+import type { Me, SsoProviderButton, WorkFor } from "@/api/identity";
 import type { Entitlements } from "./entitlements";
 import type { EffectiveSettings } from "./settings";
 import type { SessionEnd } from "./session-channel";
@@ -25,6 +25,11 @@ export interface Session {
   settingsKnown: boolean;
   /** Why the last session ended, for the sentence on the login page; undefined when nothing ended it here. */
   ended: SessionEnd | undefined;
+  /**
+   * The company login the session this tab signed out of came through (ADR-0048): the login page offers to sign out
+   * there too. Undefined after a password, a passkey, or any other end.
+   */
+  signedOutOf: SsoProviderButton | undefined;
   /**
    * The delegator's name when the delegation this session acted with has ended and the API said so (ADR-0037); an empty
    * string when this tab did not know the name; undefined when nothing ended.
