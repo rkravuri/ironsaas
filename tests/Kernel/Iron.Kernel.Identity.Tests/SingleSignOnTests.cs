@@ -460,9 +460,101 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
         Assert.Equal(provider.Id, options.GetProperty("provider").GetProperty("id").GetGuid());
     }
 
-    private static Dictionary<string, object?> Claims(string email, bool verified = true, string? name = null, IReadOnlyList<string>? groups = null, IReadOnlyList<string>? amr = null)
+    [Fact]
+    [Proves("TF-248 AC6", "ADR-0048")]
+    public async Task AStepUpThroughTheProviderAsksForAFreshSignInAndCountsWhenItsAuthTimeFallsWithinTheWindow()
+    {
+        await using var host = await StartAsync();
+        var admin = await host.AdministratorSessionAsync();
+        var provider = await host.ProviderAsync(admin);
+        using var signedIn = await host.SignInThroughAsync(provider.Id, "no-password", Claims($"nopassword@{Domain}"));
+        var session = Cookie(signedIn, SessionCookie)!;
+        host.Time.Advance(TimeSpan.FromMinutes(6));
+
+        using var refused = await host.SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app", session);
+        var (signIn, url) = await host.StartReauthenticationAsync(session, new { return_to = "/me?tab=security" });
+        var query = QueryHelpers.ParseQuery(url.Query);
+        using var confirmed = await host.ConfirmThroughAsync(session, signIn, url, "no-password", Claims($"nopassword@{Domain}", authTime: host.Time.GetUtcNow()));
+        var answer = (await JsonAsync(confirmed)).RootElement;
+        using var again = await host.SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app", session);
+        var audited = await host.AuditAsync(IdentityAuditEvents.Reauthenticated, $"nopassword@{Domain}");
+
+        Assert.Equal("auth.reauthentication_required", await ProblemAsync(refused, HttpStatusCode.Forbidden));
+        Assert.Equal(("login", "0"), (query["prompt"].ToString(), query["max_age"].ToString()));
+        Assert.Equal(HttpStatusCode.OK, confirmed.StatusCode);
+        Assert.True(answer.GetProperty("reauthenticated").GetBoolean());
+        Assert.Equal("/me?tab=security", answer.GetProperty("return_to").GetString());
+        Assert.Null(Cookie(confirmed, SessionCookie)); // the same session, now recent: no new one
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        Assert.Equal("sso", JsonDocument.Parse(audited!.Details!).RootElement.GetProperty("method").GetString());
+    }
+
+    [Fact]
+    [Proves("TF-248 AC6", "ADR-0048")]
+    public async Task AStepUpThroughAProviderThatIgnoresTheFreshSignInFailsSaysSoAndTheActionStaysRefused()
+    {
+        await using var host = await StartAsync();
+        var admin = await host.AdministratorSessionAsync();
+        var provider = await host.ProviderAsync(admin);
+        using var signedIn = await host.SignInThroughAsync(provider.Id, "keeps-session", Claims($"keeps@{Domain}"));
+        var session = Cookie(signedIn, SessionCookie)!;
+        host.Time.Advance(TimeSpan.FromMinutes(6));
+
+        // The provider answers from its own session of an hour ago, or says nothing of when, or for another account.
+        var (staleCookie, staleUrl) = await host.StartReauthenticationAsync(session, new { return_to = "/me" });
+        using var stale = await host.ConfirmThroughAsync(session, staleCookie, staleUrl, "keeps-session", Claims($"keeps@{Domain}", authTime: host.Time.GetUtcNow().AddHours(-1)));
+        var staleProblem = (await JsonAsync(stale)).RootElement;
+        var (silentCookie, silentUrl) = await host.StartReauthenticationAsync(session, new { return_to = "/me" });
+        using var silent = await host.ConfirmThroughAsync(session, silentCookie, silentUrl, "keeps-session", Claims($"keeps@{Domain}"));
+        var (otherCookie, otherUrl) = await host.StartReauthenticationAsync(session, new { return_to = "/me" });
+        using var other = await host.ConfirmThroughAsync(session, otherCookie, otherUrl, "someone-else", Claims($"someone@{Domain}", authTime: host.Time.GetUtcNow()));
+        using var me = await host.SendAsync(HttpMethod.Get, "/api/v1/me", session);
+        using var action = await host.SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app", session);
+        var reasons = await host.AuditReasonsAsync(IdentityAuditEvents.LoginFailed);
+
+        Assert.Equal(IdentityErrors.SsoReauthenticationStale, await ProblemAsync(stale, HttpStatusCode.Forbidden));
+        Assert.Contains("did not ask you to sign in again", staleProblem.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        Assert.Equal("/me", staleProblem.GetProperty("return_to").GetString());
+        Assert.Equal(IdentityErrors.SsoReauthenticationStale, await ProblemAsync(silent, HttpStatusCode.Forbidden));
+        Assert.Equal(IdentityErrors.SsoFailed, await ProblemAsync(other, HttpStatusCode.Forbidden)); // a 403: the session stays
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+        Assert.Equal("auth.reauthentication_required", await ProblemAsync(action, HttpStatusCode.Forbidden));
+        Assert.Contains("reauthentication_auth_time_stale", reasons);
+        Assert.Contains("reauthentication_no_auth_time", reasons);
+        Assert.Contains("reauthentication_other_person", reasons);
+    }
+
+    [Fact]
+    [Proves("TF-248 AC2", "TF-248 AC6", "ADR-0048")]
+    public async Task APersonWithASecondFactorHereGivesItBeforeConfirmingThroughTheProvider()
+    {
+        await using var host = await StartAsync();
+        var admin = await host.AdministratorSessionAsync();
+        var provider = await host.ProviderAsync(admin);
+        using var signedIn = await host.SignInThroughAsync(provider.Id, "with-factor", Claims($"withfactor@{Domain}"));
+        var session = Cookie(signedIn, SessionCookie)!;
+        var secret = await host.AddAppAsync(session);
+        host.Time.Advance(TimeSpan.FromMinutes(6));
+
+        using var withoutCode = await host.SendAsync(HttpMethod.Post, "/api/v1/me/reauthentication/sso", session, new { return_to = "/me" });
+        host.Time.Advance(TimeSpan.FromSeconds(30));
+        var (signIn, url) = await host.StartReauthenticationAsync(session, new { return_to = "/me", code = host.Code(secret) });
+        using var confirmed = await host.ConfirmThroughAsync(session, signIn, url, "with-factor", Claims($"withfactor@{Domain}", authTime: host.Time.GetUtcNow()));
+        var audited = await host.AuditAsync(IdentityAuditEvents.Reauthenticated, $"withfactor@{Domain}");
+
+        Assert.Equal(IdentityErrors.SecondFactorInvalid, await ProblemAsync(withoutCode, HttpStatusCode.Forbidden));
+        Assert.Equal(HttpStatusCode.OK, confirmed.StatusCode);
+        Assert.Equal(FactorKinds.AuthenticatorApp, JsonDocument.Parse(audited!.Details!).RootElement.GetProperty("second_factor").GetString());
+    }
+
+    private static Dictionary<string, object?> Claims(string email, bool verified = true, string? name = null, IReadOnlyList<string>? groups = null, IReadOnlyList<string>? amr = null, DateTimeOffset? authTime = null)
     {
         var claims = new Dictionary<string, object?>(StringComparer.Ordinal) { ["email"] = email, ["email_verified"] = verified, ["name"] = name ?? email };
+        if (authTime is { } at)
+        {
+            claims["auth_time"] = at.ToUnixTimeSeconds();
+        }
+
         if (groups is not null)
         {
             claims["groups"] = groups;
@@ -582,6 +674,35 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
             var back = await TestOidcProvider.SignInAsync(tamper?.Invoke(url) ?? url, subject, claims, TestContext.Current.CancellationToken);
             var query = QueryHelpers.ParseQuery(back.Query);
             return await SendAsync(HttpMethod.Post, "/auth/sso/callback", cookie, new { code = query["code"].ToString(), state = query["state"].ToString() });
+        }
+
+        /// <summary>A re-authentication through the provider started from a session: the sign-in cookie and the authorization address.</summary>
+        public async Task<(string Cookie, Uri Url)> StartReauthenticationAsync(string session, object body)
+        {
+            using var start = await SendAsync(HttpMethod.Post, "/api/v1/me/reauthentication/sso", session, body);
+            var text = await start.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.True(start.StatusCode == HttpStatusCode.OK, text);
+            return (Cookie(start, SignInCookie)!, new Uri(JsonDocument.Parse(text).RootElement.GetProperty("authorization_url").GetString()!));
+        }
+
+        /// <summary>The provider's page with this sign-in's claims, and its answer posted back from the session's browser, both cookies with it.</summary>
+        public async Task<HttpResponseMessage> ConfirmThroughAsync(string session, string signIn, Uri url, string subject, Dictionary<string, object?> claims)
+        {
+            var back = await TestOidcProvider.SignInAsync(url, subject, claims, TestContext.Current.CancellationToken);
+            var query = QueryHelpers.ParseQuery(back.Query);
+            return await SendAsync(HttpMethod.Post, "/auth/sso/callback", $"{signIn}; {session}", new { code = query["code"].ToString(), state = query["state"].ToString() });
+        }
+
+        /// <summary>Adds an authenticator app from My profile, in a session that is recent; answers its secret.</summary>
+        public async Task<byte[]> AddAppAsync(string session)
+        {
+            using var setup = await SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app", session);
+            Assert.Equal(HttpStatusCode.OK, setup.StatusCode);
+            var secret = Totp.FromBase32((await JsonAsync(setup)).RootElement.GetProperty("secret").GetString()!);
+            using var confirmed = await SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app/confirm", session, new { code = Code(secret), name = "Phone" });
+            Assert.Equal(HttpStatusCode.OK, confirmed.StatusCode);
+            time.Advance(TimeSpan.FromSeconds(30));
+            return secret;
         }
 
         /// <summary>The body of a provider on the test provider, under an issuer of the test's own unless one is given.</summary>

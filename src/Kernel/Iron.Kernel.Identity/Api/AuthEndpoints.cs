@@ -42,9 +42,10 @@ public sealed record SessionResponse(Guid Id, DateTimeOffset? StartedAt, DateTim
 /// <summary>
 /// A sign-in's answer (TF-011, TF-013, ADR-0047): the person and the session once everything is proved; otherwise the
 /// step that comes next, with neither. A sign-in by recovery code says to enrol a new factor at once; the first enrolment
-/// at sign-in carries the recovery codes, shown once. A sign-in through a provider says where the person was going.
+/// at sign-in carries the recovery codes, shown once. A sign-in through a provider says where the person was going; a
+/// re-authentication through one says it confirmed the session's person, with no new session (TF-248 AC6).
 /// </summary>
-public sealed record LoginResponse(PrincipalResponse? Principal, SessionResponse? Session, SignInStepResponse? Step = null, bool EnrolNewFactor = false, IReadOnlyList<string>? RecoveryCodes = null, string? ReturnTo = null);
+public sealed record LoginResponse(PrincipalResponse? Principal, SessionResponse? Session, SignInStepResponse? Step = null, bool EnrolNewFactor = false, IReadOnlyList<string>? RecoveryCodes = null, string? ReturnTo = null, bool Reauthenticated = false);
 
 /// <summary>The provider the session's sign-in came through (ADR-0048), so sign-out may offer to sign out there too.</summary>
 public sealed record SignedInWithResponse(Guid ProviderId, string Name);

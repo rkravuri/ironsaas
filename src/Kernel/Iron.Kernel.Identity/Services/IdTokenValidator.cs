@@ -4,9 +4,14 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Iron.Kernel.Identity.Services;
 
-/// <summary>Who the provider says signed in, read from a checked ID token with the provider's claim names (ADR-0048).</summary>
+/// <summary>
+/// Who the provider says signed in, read from a checked ID token with the provider's claim names, and when they last
+/// authenticated there (<c>auth_time</c>), which a re-authentication must find recent (ADR-0048).
+/// </summary>
 public sealed record IdTokenIdentity(string Subject, string? Email, bool EmailVerified, string? Name, IReadOnlyList<string> Groups, IReadOnlyList<string> Methods)
 {
+    public DateTimeOffset? AuthTime { get; init; }
+
     /// <summary>
     /// The provider says the sign-in used more than one factor: its <c>amr</c> names <c>mfa</c>, as RFC 8176 defines it and
     /// as Microsoft Entra ID and Okta write it. Nothing else is taken for it.
@@ -160,7 +165,12 @@ public sealed class IdTokenValidator(TimeProvider time)
                 Flag(payload, "email_verified"),
                 Text(payload, expected.NameClaim)?.Trim(),
                 Texts(payload, expected.GroupsClaim),
-                Texts(payload, "amr")),
+                Texts(payload, "amr"))
+            {
+                AuthTime = payload.TryGetProperty("auth_time", out var authTime) && authTime.ValueKind == JsonValueKind.Number && authTime.TryGetInt64(out var seconds)
+                    ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+                    : null,
+            },
             null);
     }
 

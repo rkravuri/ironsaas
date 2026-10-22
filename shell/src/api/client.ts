@@ -25,6 +25,8 @@ export const ProblemSchema = z.object({
   /** The company login a person who signs in only through it is sent to (TF-014 AC2, ADR-0048). */
   provider_id: z.string().optional(),
   provider_name: z.string().optional(),
+  /** Where a refused re-authentication through a company login returns the person, to do the action again (TF-248 AC6). */
+  return_to: z.string().optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
@@ -67,6 +69,8 @@ export class ApiError extends Error {
   readonly retryAfterSeconds: number | undefined;
   /** The company login to use instead, when a password sign-in was refused with "Use your company login" (ADR-0048). */
   readonly provider: { id: string; name: string } | undefined;
+  /** The page a refused re-authentication through a company login goes back to (TF-248 AC6, ADR-0048). */
+  readonly returnTo: string | undefined;
 
   constructor(status: number, problem: Problem, correlationId: string | undefined) {
     super(problem.detail ?? problem.title ?? `The request failed with status ${status}.`);
@@ -82,6 +86,7 @@ export class ApiError extends Error {
       problem.provider_id !== undefined && problem.provider_name !== undefined
         ? { id: problem.provider_id, name: problem.provider_name }
         : undefined;
+    this.returnTo = problem.return_to;
   }
 
   /** A high-risk action refused for an old sign-in (TF-248): the person confirms it is them, and it is sent again. */

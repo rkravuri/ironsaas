@@ -65,6 +65,15 @@ public sealed record ReauthenticateRequest(string Password, string? Code, string
 
 public sealed record ReauthenticatedResponse(DateTimeOffset AuthenticatedAt);
 
+/// <summary>
+/// Confirming it is you through your company login (TF-248 AC6, ADR-0048): where to come back to, and your second factor
+/// when you have one here, given before you leave.
+/// </summary>
+public sealed record SsoReauthenticationRequest(string? ReturnTo, string? Code, string? RecoveryCode, JsonElement? Passkey)
+{
+    public SecondFactorProof Proof => new(Code, RecoveryCode, Passkey);
+}
+
 /// <summary>Whether the login page offers a sign-in with a passkey alone (ADR-0047), and the providers it offers a button for (ADR-0048).</summary>
 public sealed record SignInOptionsResponse(bool PasskeySignIn, IReadOnlyList<SsoProviderButton> Providers);
 
@@ -116,6 +125,16 @@ public sealed class ReauthenticateRequestValidator : AbstractValidator<Reauthent
     }
 }
 
+public sealed class SsoReauthenticationRequestValidator : AbstractValidator<SsoReauthenticationRequest>
+{
+    public SsoReauthenticationRequestValidator()
+    {
+        RuleFor(r => r.ReturnTo).MaximumLength(500);
+        RuleFor(r => r.Code).MaximumLength(20);
+        RuleFor(r => r.RecoveryCode).MaximumLength(40);
+    }
+}
+
 public sealed class PasskeySignInRequestValidator : AbstractValidator<PasskeySignInRequest>
 {
     public PasskeySignInRequestValidator()
@@ -156,6 +175,7 @@ internal static class FactorEndpoints
         me.MapDelete("/factors/{id:guid}", RemoveAsync).RequireSignedIn().RequireRecentAuthentication().Produces(StatusCodes.Status204NoContent).WithName("RemoveFactor").WithSummary("Remove one of your factors; the last one stays while your organisation requires one.");
         me.MapPost("/recovery-codes", RegenerateAsync).RequireSignedIn().RequireRecentAuthentication().Produces<RecoveryCodesResponse>(StatusCodes.Status200OK).WithName("RegenerateRecoveryCodes").WithSummary("Ten new recovery codes, shown once; the old ones stop working.");
         me.MapPost("/reauthentication", ReauthenticationAsync).RequireSignedIn().AllowDuringRequiredStep().Produces<ReauthenticationOptionsResponse>(StatusCodes.Status200OK).WithName("ReauthenticationOptions").WithSummary("What confirming it is you asks: your password, and your second factor when you have one.");
+        me.MapPost("/reauthentication/sso", ReauthenticateThroughProviderAsync).Validate<SsoReauthenticationRequest>().RequireSignedIn().AllowDuringRequiredStep().Produces<SsoStartResponse>(StatusCodes.Status200OK).WithName("ReauthenticateThroughProvider").WithSummary("Confirm it is you through your company login, with a fresh sign-in there; your second factor first when you have one here.");
         me.MapPost("/reauthenticate", ReauthenticateAsync).Validate<ReauthenticateRequest>().RequireSignedIn().AllowDuringRequiredStep().Produces<ReauthenticatedResponse>(StatusCodes.Status200OK).WithName("Reauthenticate").WithSummary("Confirm it is you, for a high-risk action: your password, and your second factor when you have one.");
     }
 
@@ -338,6 +358,18 @@ internal static class FactorEndpoints
         return ApiResults.From(result, http, at => TypedResults.Ok(new ReauthenticatedResponse(at)));
     }
 
+    private static async Task<IResult> ReauthenticateThroughProviderAsync(SsoReauthenticationRequest request, HttpContext http, RequestPrincipal principal, SsoSignInService sso, CancellationToken cancellationToken)
+    {
+        var result = await sso.StartReauthenticationAsync(principal.Current!, SsoEndpoints.RedirectUri(http), request.ReturnTo, request.Proof, cancellationToken);
+        if (result.IsFailure)
+        {
+            return ApiResults.Problem(result.Error, http);
+        }
+
+        AuthenticationChallenges.SetCookie(http, result.Value.ChallengeToken, ChallengePurposes.SsoReauthentication);
+        return TypedResults.Ok(new SsoStartResponse(result.Value.AuthorizationUrl.AbsoluteUri, result.Value.ExpiresAt));
+    }
+
     /// <summary>
     /// The answer of a sign-in step: the next step with its cookie, or the session with its cookie, the sign-in cookie
     /// cleared. A password past its age is the problem with the recovery link's code, as at the password step.
@@ -359,6 +391,12 @@ internal static class FactorEndpoints
         if (http.Request.Cookies.ContainsKey(AuthenticationChallenges.CookieName))
         {
             AuthenticationChallenges.ClearCookie(http);
+        }
+
+        if (outcome.ReauthenticatedAt is not null)
+        {
+            // The session's person confirmed it is them through their provider: the session stays as it was, more recent.
+            return TypedResults.Ok(new LoginResponse(null, null, ReturnTo: outcome.ReturnTo, Reauthenticated: true));
         }
 
         if (outcome.RecoveryToken is { } recovery)

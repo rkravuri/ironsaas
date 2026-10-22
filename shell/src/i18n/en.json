@@ -1781,9 +1781,12 @@
       "submit": "Confirm",
       "invalid": "That did not confirm it is you. Check your password and your code, and try again.",
       "sso": {
-        "intro": "You sign in with {{name}}. To confirm it is you, sign in with it again: you come back to this page, and can then do this again.",
+        "intro": "You sign in with {{name}}. To confirm it is you, sign in with it again: it asks for a new sign-in, and you come back to this page to do this again.",
         "noProvider": "You sign in without a password here. Sign out and sign in again, then do this again.",
-        "again": "Sign in again with {{name}}"
+        "again": "Sign in again with {{name}}",
+        "introFactor": "You sign in with {{name}}. To confirm it is you, give your second factor here, then sign in with {{name}} again: it asks for a new sign-in, and you come back to this page to do this again.",
+        "passkeyAgain": "Use your passkey, then sign in with {{name}}",
+        "confirmed": "You confirmed it is you. Do the action again now: it goes through for the next few minutes."
       }
     },
     "profile": {

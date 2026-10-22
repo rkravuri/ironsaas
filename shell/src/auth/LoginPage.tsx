@@ -42,6 +42,7 @@ import { TenantMark } from "@/design/patterns";
 import { LoadingState } from "@/components/panels";
 import type { LoginState } from "@/shell/Guards";
 import { leaveFor } from "./leave";
+import type { ReauthenticationState } from "./ReauthenticationNotice";
 import { FactorEnrolment, ProblemAlert, RecoveryCodesPanel } from "./mfa";
 import { enrolNewFactorPath, mfaProblem, signInEnded, type ShownProblem } from "./mfa-problems";
 import { SecondFactorStep } from "./SecondFactorStep";
@@ -133,6 +134,12 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
 
   /** A session or the next step: the recovery codes of a first enrolment are shown first, once. */
   const proceed = async (answer: SignInAnswer) => {
+    if (answer.reauthenticated) {
+      // The session's person confirmed it is them through their company login: back to their page, the action ready.
+      const back: ReauthenticationState = { reauthentication: { confirmed: true } };
+      void navigate(answer.return_to ?? "/", { replace: true, state: back });
+      return;
+    }
     if (answer.step) {
       setStage({ kind: answer.step.kind, step: answer.step });
       return;
@@ -266,6 +273,18 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
         const shown = signInEnded(error)
           ? { message: t("login.sso.ended"), correlationId: undefined }
           : mfaProblem(error, t);
+        // A refused re-authentication goes back to the page the person was on, which says why; the session stays.
+        if (
+          error instanceof ApiError &&
+          (error.returnTo !== undefined || (error.status === 403 && error.errorCode === "identity.sign_in.expired"))
+        ) {
+          // The API's own words: they name the company login and say the action was not done.
+          const back: ReauthenticationState = {
+            reauthentication: { problem: { message: error.message, correlationId: error.correlationId } },
+          };
+          void navigate(error.returnTo ?? "/", { replace: true, state: back });
+          return;
+        }
         // The sign-in page is this page under another address: React keeps it, so it changes its own stage.
         setProblem(shown);
         setStage({ kind: "password" });

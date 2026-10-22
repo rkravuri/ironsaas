@@ -24,7 +24,8 @@ internal sealed record SsoExchange(
     [property: JsonPropertyName("nonce")] string Nonce,
     [property: JsonPropertyName("verifier")] string Verifier,
     [property: JsonPropertyName("redirect_uri")] string RedirectUri,
-    [property: JsonPropertyName("return_to")] string? ReturnTo);
+    [property: JsonPropertyName("return_to")] string? ReturnTo,
+    [property: JsonPropertyName("second_factor")] string? SecondFactor = null);
 
 /// <summary>
 /// Signing in through a tenant's OpenID Connect provider (TF-014, ADR-0048): the authorization code flow with PKCE (S256),
@@ -42,6 +43,11 @@ public sealed class SsoSignInService(
     ISsoClientSecrets secrets,
     AuthenticationChallenges challenges,
     LoginService login,
+    FactorService factors,
+    LoginThrottles throttles,
+    SessionService sessions,
+    SsoPeople people,
+    RequestPrincipal requestPrincipal,
     IRoleAssignments roleAssignments,
     IProvidedAssignments provided,
     IOrganisationUnits units,
@@ -58,6 +64,14 @@ public sealed class SsoSignInService(
 
     /// <summary>OpenID Connect's scopes for the subject, the email and its verification, and the name.</summary>
     public const string Scopes = "openid email profile";
+
+    /// <summary>
+    /// How recent a re-authentication through a provider must be: the step-up window of a high-risk action, five minutes
+    /// unless the action says otherwise (TF-248), which the ID token's <c>auth_time</c> must fall within.
+    /// </summary>
+    public static readonly TimeSpan StepUpWindow = TimeSpan.FromMinutes(5);
+
+    public const string StaleMessageEnd = "did not ask you to sign in again, so it did not confirm it is you, and the action was not done. Try again; if this repeats, ask your administrator to check the company login.";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -87,12 +101,79 @@ public sealed class SsoSignInService(
         var (challenge, token) = await challenges.StartForBrowserAsync(ChallengePurposes.SsoSignIn, null, cancellationToken).ConfigureAwait(false);
         challenge.ThroughProvider(provider.Id, JsonSerializer.Serialize(exchange, Json));
         await challenges.SaveAsync(cancellationToken).ConfigureAwait(false);
+        return new SsoStart(AuthorizationUrl(metadata.Value, provider, exchange, loginHint, fresh: false), token, challenge.ExpiresAt);
+    }
 
+    /// <summary>
+    /// A signed-in person who signs in through a provider confirms it is them before a high-risk action (TF-248, ADR-0048):
+    /// a fresh sign-in there, asked for with <c>prompt=login</c> and <c>max_age=0</c>, stands for the password; their own
+    /// second factor, when they have one, is given here before they leave, as it would be with a password, and counts
+    /// against them when wrong. The challenge belongs to the session, and its answer comes back to <see cref="CompleteAsync"/>.
+    /// </summary>
+    public async Task<Result<SsoStart>> StartReauthenticationAsync(SignedInPrincipal current, string redirectUri, string? returnTo, SecondFactorProof proof, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(proof);
+        if (current.Kind == AuthenticationKind.Token)
+        {
+            return Error.Forbidden(IdentityErrors.ReauthenticationToken, "A token cannot confirm it again. Ask for a new token with the client's credentials; a new token counts as a recent sign-in.");
+        }
+
+        var principal = await context.Principals.SingleAsync(p => p.Id == current.Id, cancellationToken).ConfigureAwait(false);
+        var sessionProvider = await context.Sessions.AsNoTracking().Where(s => s.Id == current.SessionId).Select(s => s.ProviderId).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        var linked = await people.LinkedProvidersAsync(principal.Id, cancellationToken).ConfigureAwait(false);
+        var provider = linked.FirstOrDefault(p => p.Id == sessionProvider) ?? linked.FirstOrDefault();
+        if (provider is null)
+        {
+            return Error.Conflict(IdentityErrors.SsoProviderNotFound, "You are linked to no company login to confirm it is you with. Confirm with your password.");
+        }
+
+        string? secondFactor = null;
+        if (await factors.HasAnyAsync(principal.Id, cancellationToken).ConfigureAwait(false))
+        {
+            if (await throttles.LockedUntilAsync(principal.LoginId, cancellationToken).ConfigureAwait(false) is not null)
+            {
+                return Error.Forbidden(IdentityErrors.LoginLocked, LoginService.LockedMessage);
+            }
+
+            var pending = await challenges.FindForSessionAsync(current.SessionId, ChallengePurposes.Reauthentication, cancellationToken).ConfigureAwait(false);
+            Result<string> verified = proof.IsEmpty
+                ? Error.Unauthorized(IdentityErrors.SecondFactorInvalid, FactorService.InvalidMessage)
+                : await factors.VerifyAsync(principal, proof, pending, cancellationToken).ConfigureAwait(false);
+            if (verified.IsFailure)
+            {
+                // The same codes and facts as at sign-in, as a 403: the session stays.
+                return new Error(ErrorKind.Forbidden, verified.Error.Code, verified.Error.Message) { Extensions = verified.Error.Extensions };
+            }
+
+            secondFactor = verified.Value;
+            if (pending is not null)
+            {
+                await challenges.EndAsync(pending, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        var metadata = await discovery.MetadataAsync(provider.DiscoveryUrl, cancellationToken).ConfigureAwait(false);
+        if (metadata.IsFailure)
+        {
+            return Error.Unavailable(IdentityErrors.SsoUnavailable, $"{provider.Name} cannot be reached now. Try again in a moment.");
+        }
+
+        var exchange = new SsoExchange(SecureTokens.New(), SecureTokens.New(), SecureTokens.New(), redirectUri, SafeReturn(returnTo), secondFactor);
+        var (challenge, token) = await challenges.StartForBrowserInSessionAsync(ChallengePurposes.SsoReauthentication, principal.Id, current.SessionId, cancellationToken).ConfigureAwait(false);
+        challenge.ThroughProvider(provider.Id, JsonSerializer.Serialize(exchange, Json));
+        await challenges.SaveAsync(cancellationToken).ConfigureAwait(false);
+        return new SsoStart(AuthorizationUrl(metadata.Value, provider, exchange, principal.Email, fresh: true), token, challenge.ExpiresAt);
+    }
+
+    /// <summary>The provider's authorization address; a fresh sign-in, for a re-authentication, adds <c>prompt=login</c> and <c>max_age=0</c>.</summary>
+    private static Uri AuthorizationUrl(OidcMetadata metadata, SsoProvider provider, SsoExchange exchange, string? loginHint, bool fresh)
+    {
         var query = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["response_type"] = "code",
             ["client_id"] = provider.ClientId,
-            ["redirect_uri"] = redirectUri,
+            ["redirect_uri"] = exchange.RedirectUri,
             ["scope"] = Scopes,
             ["state"] = exchange.State,
             ["nonce"] = exchange.Nonce,
@@ -104,10 +185,15 @@ public sealed class SsoSignInService(
             query["login_hint"] = loginHint.Trim();
         }
 
-        var endpoint = metadata.Value.AuthorizationEndpoint.AbsoluteUri;
+        if (fresh)
+        {
+            query["prompt"] = "login";
+            query["max_age"] = "0";
+        }
+
+        var endpoint = metadata.AuthorizationEndpoint.AbsoluteUri;
         var separator = endpoint.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        var url = new Uri(endpoint + separator + string.Join('&', query.Select(pair => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}")));
-        return new SsoStart(url, token, challenge.ExpiresAt);
+        return new Uri(endpoint + separator + string.Join('&', query.Select(pair => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}")));
     }
 
     /// <summary>
@@ -119,14 +205,45 @@ public sealed class SsoSignInService(
     public async Task<Result<LoginOutcome>> CompleteAsync(HttpContext http, string? code, string? state, string? error, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(http);
-        var challenge = await challenges.FindForBrowserAsync(http, [ChallengePurposes.SsoSignIn], cancellationToken).ConfigureAwait(false);
+        var challenge = await challenges.FindForBrowserAsync(http, [ChallengePurposes.SsoSignIn, ChallengePurposes.SsoReauthentication], cancellationToken).ConfigureAwait(false);
         if (challenge?.ProviderId is not { } providerId || challenge.Exchange is null)
         {
-            return Error.Unauthorized(IdentityErrors.SignInExpired, "This sign-in took too long, or ended. Start again.");
+            // A signed-in person hears it as a 403, which keeps their session: a 401 would sign the shell out.
+            return requestPrincipal.Current is { Kind: AuthenticationKind.Session }
+                ? Error.Forbidden(IdentityErrors.SignInExpired, "This confirmation took too long, or ended. Start again from the action.")
+                : Error.Unauthorized(IdentityErrors.SignInExpired, "This sign-in took too long, or ended. Start again.");
         }
 
         var exchange = JsonSerializer.Deserialize<SsoExchange>(challenge.Exchange, Json)!;
         await challenges.EndAsync(challenge, cancellationToken).ConfigureAwait(false);
+        if (challenge.Purpose != ChallengePurposes.SsoReauthentication)
+        {
+            return await CompleteSignInAsync(providerId, exchange, code, state, error, null, cancellationToken).ConfigureAwait(false);
+        }
+
+        // A re-authentication: every refusal keeps the session (403, never 401) and says where the person goes back to.
+        var confirmed = await CompleteSignInAsync(providerId, exchange, code, state, error, (challenge.PrincipalId!.Value, challenge.SessionId!.Value), cancellationToken).ConfigureAwait(false);
+        if (confirmed.IsSuccess)
+        {
+            return confirmed;
+        }
+
+        var refusal = confirmed.Error;
+        var extensions = new Dictionary<string, object>(refusal.Extensions, StringComparer.Ordinal) { ["reauthentication"] = true };
+        if (exchange.ReturnTo is { } back)
+        {
+            extensions["return_to"] = back;
+        }
+
+        return new Error(refusal.Kind == ErrorKind.Unauthorized ? ErrorKind.Forbidden : refusal.Kind, refusal.Code, refusal.Message, refusal.Fields) { Extensions = extensions };
+    }
+
+    /// <summary>
+    /// The provider's answer checked, from the state to the ID token; then a sign-in's people rules, or, for a
+    /// re-authentication (<paramref name="reauthenticating"/>, the person and the session it started from), its own.
+    /// </summary>
+    private async Task<Result<LoginOutcome>> CompleteSignInAsync(Guid providerId, SsoExchange exchange, string? code, string? state, string? error, (Guid PrincipalId, Guid SessionId)? reauthenticating, CancellationToken cancellationToken)
+    {
         var provider = await context.SsoProviders.AsNoTracking().SingleOrDefaultAsync(p => p.Id == providerId, cancellationToken).ConfigureAwait(false);
         if (provider is null)
         {
@@ -172,6 +289,11 @@ public sealed class SsoSignInService(
             return await RefuseAsync(provider, null, null, $"id_token:{checkedToken.Failure}", IdentityErrors.SsoFailed, FailedMessage, cancellationToken).ConfigureAwait(false);
         }
 
+        if (reauthenticating is { } reauthentication)
+        {
+            return await ReauthenticatedAsync(provider, identity, exchange, reauthentication.PrincipalId, reauthentication.SessionId, cancellationToken).ConfigureAwait(false);
+        }
+
         var admitted = await AdmitAsync(provider, identity, cancellationToken).ConfigureAwait(false);
         if (admitted.IsFailure)
         {
@@ -191,6 +313,47 @@ public sealed class SsoSignInService(
 
         var outcome = await login.ProviderSignedInAsync(principal, provider.Id, identity.MultiFactor && provider.TrustProviderMfa, cancellationToken).ConfigureAwait(false);
         return outcome.IsSuccess ? outcome.Value with { ReturnTo = exchange.ReturnTo } : outcome;
+    }
+
+    /// <summary>
+    /// A re-authentication through the provider counts only when it is the session's own person, signed in to the same
+    /// provider account, and the provider shows a sign-in within the step-up window (<c>auth_time</c>), as the fresh sign-in
+    /// asked for would: a provider that answered from its own session without asking says nothing about who is at the
+    /// keyboard now (TF-248 AC6, ADR-0048). Then the session's authentication time moves to now, and the action may be
+    /// taken again.
+    /// </summary>
+    private async Task<Result<LoginOutcome>> ReauthenticatedAsync(SsoProvider provider, IdTokenIdentity identity, SsoExchange exchange, Guid principalId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        var principal = await context.Principals.SingleAsync(p => p.Id == principalId, cancellationToken).ConfigureAwait(false);
+        var current = requestPrincipal.Current;
+        if (current is not { Kind: AuthenticationKind.Session } || current.SessionId != sessionId || current.Id != principalId)
+        {
+            return await RefuseAsync(provider, principal, identity.Email, "reauthentication_other_session", IdentityErrors.SsoFailed, "This confirmation belongs to another sign-in. Start again from the action.", cancellationToken).ConfigureAwait(false);
+        }
+
+        var link = await context.SsoLinks.AsNoTracking().SingleOrDefaultAsync(l => l.ProviderId == provider.Id && l.Subject == identity.Subject, cancellationToken).ConfigureAwait(false);
+        if (link?.PrincipalId != principalId)
+        {
+            return await RefuseAsync(provider, principal, identity.Email, "reauthentication_other_person", IdentityErrors.SsoFailed, $"You signed in to {provider.Name} as someone else. Sign in there as yourself, and try again.", cancellationToken).ConfigureAwait(false);
+        }
+
+        var now = time.GetUtcNow();
+        if (identity.AuthTime is not { } at || at < now - StepUpWindow || at > now + IdTokenValidator.ClockTolerance)
+        {
+            return await RefuseAsync(provider, principal, identity.Email, identity.AuthTime is null ? "reauthentication_no_auth_time" : "reauthentication_auth_time_stale", IdentityErrors.SsoReauthenticationStale, $"{provider.Name} {StaleMessageEnd}", cancellationToken).ConfigureAwait(false);
+        }
+
+        var stamped = await sessions.ReauthenticatedAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["method"] = "sso",
+            ["provider_id"] = provider.Id.ToString(),
+            ["auth_time"] = at.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            ["second_factor"] = exchange.SecondFactor ?? "none",
+        };
+        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.Reauthenticated, AuditOutcome.Success, principal.Id, principal.LoginId, details, "session", sessionId), cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("Principal {PrincipalId} re-authenticated in session {SessionId} through single sign-on provider {ProviderId}.", principal.Id, sessionId, provider.Id);
+        return new LoginOutcome(principal, null, null) { ReauthenticatedAt = stamped, ReturnTo = exchange.ReturnTo };
     }
 
     /// <summary>

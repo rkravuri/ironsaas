@@ -22,6 +22,12 @@ public static class ChallengePurposes
 
     /// <summary>A sign-in through a single sign-on provider, between the provider's page and its answer (ADR-0048).</summary>
     public const string SsoSignIn = "sso_sign_in";
+
+    /// <summary>
+    /// A signed-in person confirms it is them through their provider (TF-248, ADR-0048): a fresh sign-in there, which
+    /// belongs to the session it started from.
+    /// </summary>
+    public const string SsoReauthentication = "sso_reauthentication";
 }
 
 /// <summary>
@@ -102,6 +108,9 @@ public sealed class AuthenticationChallenge : AuditedEntity
     public void Expect(string webAuthnOptions) => WebAuthnOptions = webAuthnOptions;
 
     public void Hold(byte[] pendingSecret) => PendingSecret = pendingSecret;
+
+    /// <summary>A browser's challenge that belongs to a session too: a re-authentication through a provider.</summary>
+    public void InSession(Guid sessionId) => SessionId = sessionId;
 
     /// <summary>The sign-in goes through, or came through, a provider.</summary>
     public void ThroughProvider(Guid providerId, string? exchange = null)

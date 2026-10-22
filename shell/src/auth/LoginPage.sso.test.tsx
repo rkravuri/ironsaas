@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { LoginPage } from "./LoginPage";
+import { ReauthenticationNotice } from "./ReauthenticationNotice";
 import { leaveFor } from "./leave";
 import { fill, json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
 
@@ -24,6 +25,15 @@ function page(route: string) {
       <Route path="/sso/callback" element={<LoginPage callback />} />
       <Route path="/" element={<p>home</p>} />
       <Route path="/users" element={<p>users page</p>} />
+      <Route
+        path="/me"
+        element={
+          <>
+            <ReauthenticationNotice />
+            <p>my profile</p>
+          </>
+        }
+      />
     </Routes>,
     { route },
   );
@@ -168,5 +178,41 @@ describe("the login page with company logins", () => {
     page("/sso/callback?code=c&state=s");
 
     expect(await screen.findByLabelText(/code from your authenticator app/i)).toBeInTheDocument();
+  });
+
+  it("comes back to the page with the action ready to do again, once the company login confirmed it is the person [TF-248 AC6, ADR-0048]", async () => {
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      "POST /auth/sso/callback": () => json({ reauthenticated: true, return_to: "/me" }),
+    });
+    page("/sso/callback?code=c&state=s");
+
+    expect(await screen.findByText("my profile")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("You confirmed it is you. Do the action again now");
+    expect(calls.filter((c) => c.key === "POST /auth/sso/callback")).toHaveLength(1);
+  });
+
+  it("comes back to the page saying the company login did not ask for a new sign-in, the action not done [TF-248 AC6, ADR-0048]", async () => {
+    stubFetch({
+      "GET /api/v1/me": () => json(me()),
+      "POST /auth/sso/callback": () =>
+        problem(
+          403,
+          {
+            title: "Forbidden",
+            detail:
+              "Contoso Entra ID did not ask you to sign in again, so it did not confirm it is you, and the action was not done. Try again; if this repeats, ask your administrator to check the company login.",
+            error_code: "identity.sso.reauthentication_stale",
+            return_to: "/me",
+          },
+          "corr-stale",
+        ),
+    });
+    page("/sso/callback?code=c&state=s");
+
+    expect(await screen.findByText("my profile")).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(/did not ask you to sign in again/);
+    expect(alert).toHaveTextContent("corr-stale");
   });
 });

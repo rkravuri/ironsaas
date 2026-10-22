@@ -163,6 +163,12 @@ public static class IdentityErrors
     /// <summary>The provider signed in someone with no account here, and it creates nobody.</summary>
     public const string SsoNoAccount = "identity.sso.no_account";
 
+    /// <summary>
+    /// A re-authentication through a provider whose ID token does not show a sign-in within the step-up window: the
+    /// provider did not ask for a new one, so nothing is confirmed and the action stays refused (TF-248 AC6, ADR-0048).
+    /// </summary>
+    public const string SsoReauthenticationStale = "identity.sso.reauthentication_stale";
+
     /// <summary>The provider publishes no end-session endpoint, so there is nothing to sign out of there.</summary>
     public const string SsoNoEndSession = "identity.sso.no_end_session";
 

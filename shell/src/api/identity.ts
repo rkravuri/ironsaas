@@ -329,6 +329,8 @@ export const SignInAnswerSchema = z.object({
   recovery_codes: z.array(z.string()).nullable().optional(),
   /** Where a sign-in through a company login was going (ADR-0048). */
   return_to: z.string().nullable().optional(),
+  /** A re-authentication through a company login confirmed the session's person: no new session (TF-248 AC6). */
+  reauthenticated: z.boolean().optional(),
 });
 export type SignInAnswer = z.infer<typeof SignInAnswerSchema>;
 
@@ -459,6 +461,17 @@ export const resetFactors = (id: string, reason: string) =>
 /** Marks a person to sign in only through a company login, or lets them use a password again. */
 export const setSsoOnly = (id: string, ssoOnly: boolean) =>
   request(userAction(id, "sso-only"), { method: "PUT", body: { sso_only: ssoOnly }, schema: UserRecordSchema });
+
+/**
+ * Confirming it is you through your company login (TF-248 AC6): a fresh sign-in there, with the page to come back to,
+ * and your second factor here, when you have one, given first.
+ */
+export const reauthenticateThroughProvider = (returnTo: string, proof: SecondFactorProof | undefined) =>
+  request("/api/v1/me/reauthentication/sso", {
+    method: "POST",
+    body: { return_to: returnTo, ...(proof ?? {}) },
+    schema: z.object({ authorization_url: z.string(), expires_at: z.string() }),
+  });
 
 /** The company login of an email's domain: the same answer for every email of a domain. */
 export const discoverProvider = (email: string) =>

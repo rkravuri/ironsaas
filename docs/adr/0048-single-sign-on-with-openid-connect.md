@@ -1,8 +1,8 @@
 # ADR-0048: Single sign-on with OpenID Connect: providers, the code flow, who it signs in, and a test provider
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-22
-**Decided by:** Architect, for the design session's review
+**Decided by:** Product owner and architect, at the design session's review of S3 T4 (2026-10-22)
 
 ## Context
 
@@ -108,7 +108,11 @@ In order:
 ### Signing out, and confirming it is you
 
 - Signing out ends this product's session. **When the session came through a provider that publishes an end-session endpoint**, the sign-in page then offers to sign out there too (`GET /auth/sso/{id}/sign-out`, with the client and the way back to `/login`).
-- **A person with no password confirms a high-risk action by signing in again through their provider** (TF-248): the dialog sends them there and back to the page they were on, with a new session recent enough. They then take the action again: a whole-page sign-in cannot resend the refused request.
+- **A person with no password confirms a high-risk action with a true re-authentication at their provider** (TF-248 AC6, decided at the review):
+  - The dialog asks for their second factor here first, when they have one, as it would with a password; a wrong one counts as at sign-in. `POST /api/v1/me/reauthentication/sso` then starts a sign-in at the provider that asks for a fresh one: `prompt=login` and `max_age=0`. Its challenge belongs to the session.
+  - The answer comes back through `/sso/callback`, checked as a sign-in's is, and counts only when it is the session's own person, signed in to the same provider account, and the ID token's `auth_time` falls within the step-up window (five minutes, the default of `RequireRecentAuthentication`). Then the session's authentication time moves to now, with no new session, and the confirmation is audited.
+  - A provider that answers from its own session without asking, an `auth_time` older than the window, or none at all fails with `identity.sso.reauthentication_stale` and a message that the company login did not ask for a new sign-in. Nothing is confirmed and the action stays refused.
+  - Every refusal of a re-authentication is a 403, which keeps the session, and carries the page to return to. Either way the person comes back to the page they were on, which says how it went; confirmed, the action is ready to take again. The refused request is not resent, since the provider's page took the browser away.
 
 ## Options considered
 
@@ -118,17 +122,17 @@ In order:
 - **"Use your company login" for an unknown identifier of a provider's domain**: not chosen. It would tell apart the accounts of that domain that do open with a password, a break-glass account among them, which are the ones worth guessing at.
 - **Taking `hwk`, `otp` or other `amr` values for multi-factor authentication**: not chosen. One factor of another kind is not two. `mfa` is what the providers in view write.
 - **The client secret encrypted in the database**: not chosen. TF-073 puts every client secret in the store, and the store already holds the unit's other secrets.
-- **Re-authentication at the provider** (`prompt=login`, `max_age=0`) resuming the refused request: not chosen now. The provider's page takes the browser away, and a person returning signs in again anyway. A later item.
+- **Any new sign-in at the provider counting as a re-authentication**, as proposed for the review (a new session, `auth_time` unread): not chosen at the review. A provider may answer from a session of its own without asking anyone, which says nothing about who is at the keyboard now.
+- **Resending the refused request** after the provider's page: not chosen. The page is gone by then; the person comes back to it and takes the action again, with the session confirmed.
 - **Back-channel logout**: a later item, as the task says.
 
 ## Consequences
 
 - A tenant connects its providers and tests them without an operator. A new employee signs in on their first day, in the right unit, with the role the provider gives, and a provider that leaves people in or out of its groups changes their roles at their next sign-in.
 - A provider can give no more than its author could grant, and its secret is nowhere but the store.
-- The sign-in page and the API keep TF-011 for every account a password opens. An account that signs in only through a provider is told so, which reveals an account no password opens.
+- The sign-in page and the API keep TF-011 for every account a password opens. An account that signs in only through a provider is told so, which reveals an account no password opens. T9's rate limits cover that answer too, so it cannot be asked of identifier after identifier at speed (decided at the review).
 - The stack has a test provider, and the smoke and the browser tests sign in through it on every run.
 - To revisit:
-  - re-authentication at the provider without leaving the page;
   - back-channel logout, and ending a person's sessions when their provider says so;
   - a provider per unit (TF-014's outline mentioned it; T4 builds one per tenant, as the sharpened task asks);
   - SAML (TF-015) and SCIM (TF-016) in S7, which will add providers of other kinds beside these.

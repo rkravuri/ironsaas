@@ -36,6 +36,9 @@ public sealed record LoginOutcome(Principal Principal, Session? Session, string?
 
     /// <summary>Where a sign-in through a provider returns the person, a path of the shell's (ADR-0048).</summary>
     public string? ReturnTo { get; init; }
+
+    /// <summary>A re-authentication through a provider confirmed the session's person at this time; no new session (TF-248).</summary>
+    public DateTimeOffset? ReauthenticatedAt { get; init; }
 }
 
 /// <summary>

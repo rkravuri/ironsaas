@@ -128,6 +128,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IValidator<SsoCallbackRequest>, SsoCallbackRequestValidator>();
         services.AddScoped<IValidator<SsoProviderRequest>, SsoProviderRequestValidator>();
         services.AddScoped<IValidator<SsoTestRequest>, SsoTestRequestValidator>();
+        services.AddScoped<IValidator<SsoReauthenticationRequest>, SsoReauthenticationRequestValidator>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
