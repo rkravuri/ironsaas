@@ -64,7 +64,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 |---|---|---|---|
 | T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | done (main, df1e35e) |
 | T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | done (main, 902cd3d) |
-| T3 | MFA and step-up re-authentication | TF-013, TF-248 | in review (slice/s3-t3) |
+| T3 | MFA and step-up re-authentication | TF-013, TF-248 | done (main, e1752cc) |
 | T4 | Single sign-on with OpenID Connect | TF-014 | outline |
 | T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-022, TF-025, TF-026, TF-028, TF-029 | outline |
 | T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |
