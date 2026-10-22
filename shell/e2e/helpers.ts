@@ -135,6 +135,21 @@ async function addAdministratorPasskey(page: Page, authenticator: VirtualAuthent
     authenticatorId: authenticator.authenticatorId,
   });
   administratorPasskey = credentials[0];
+  // The administrator keeps their factors from run to run (the smoke resets them only when its key fails), so the passkeys
+  // earlier runs added, whose private keys left with those runs, go: the newest is this run's.
+  const listed = await call<{ factors: { id: string; kind: string; name: string; created_at: string }[] }>(
+    page,
+    "GET",
+    "/api/v1/me/factors",
+  );
+  const ours = listed.body.factors.filter((factor) => factor.kind === "passkey" && factor.name === "Browser tests");
+  const newest = ours.reduce<string | undefined>(
+    (latest, factor) => (latest === undefined || factor.created_at > latest ? factor.created_at : latest),
+    undefined,
+  );
+  for (const earlier of ours.filter((factor) => factor.created_at !== newest)) {
+    await call(page, "DELETE", `/api/v1/me/factors/${earlier.id}`);
+  }
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "IronSaaS", exact: true })).toBeVisible();
 }

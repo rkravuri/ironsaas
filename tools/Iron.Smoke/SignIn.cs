@@ -116,9 +116,17 @@ public sealed class SignIn(Api api, SmokeOptions options)
     }
 
     /// <summary>The second step with the authenticator's code; the session cookie.</summary>
-    public async Task<string> SecondFactorAsync(string loginId, string signInCookie, Authenticator authenticator, CancellationToken cancellationToken)
+    public async Task<string> SecondFactorAsync(string loginId, string signInCookie, Authenticator authenticator, CancellationToken cancellationToken) =>
+        await TrySecondFactorAsync(loginId, signInCookie, authenticator, cancellationToken).ConfigureAwait(false)
+            ?? throw new SmokeException($"the second factor of {loginId} was refused three times");
+
+    /// <summary>
+    /// The second step with the authenticator's code: the session cookie, or null when three codes in a row were refused as
+    /// wrong, which says the key is not the one the unit holds. Any other refusal fails the step.
+    /// </summary>
+    public async Task<string?> TrySecondFactorAsync(string loginId, string signInCookie, Authenticator authenticator, CancellationToken cancellationToken)
     {
-        for (var attempt = 1; ; attempt++)
+        for (var attempt = 1; attempt <= 3; attempt++)
         {
             var code = await authenticator.NextCodeAsync(cancellationToken).ConfigureAwait(false);
             var proved = await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/second-factor", host: options.Hostname, cookie: signInCookie, json: new { code }, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -127,11 +135,13 @@ public sealed class SignIn(Api api, SmokeOptions options)
                 return proved.SetCookie ?? throw new SmokeException($"the second step of {loginId} answered 200 without a session cookie");
             }
 
-            if (attempt >= 3 || proved.Text("error_code") != "identity.second_factor.invalid")
+            if (proved.Text("error_code") != "identity.second_factor.invalid")
             {
                 proved.Expect(HttpStatusCode.OK, $"the second factor of {loginId}");
             }
         }
+
+        return null;
     }
 
     /// <summary>Enrols an authenticator app at sign-in, as a person who must have a factor does; the session and the app.</summary>
