@@ -68,7 +68,22 @@ public static class TenancyPermissions
     /// </summary>
     public static readonly Permission AdministratorsRecover = new("tenancy.administrators.recover", "Issue a recovery link for a tenant's administrator, with a reason", Risk.Critical);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover];
+    /// <summary>
+    /// Signing in as a person of a tenant that allows it, for support (TF-025, ADR-0049): critical, with a reason and a
+    /// fresh token, through a one-time link the fleet hands over.
+    /// </summary>
+    public static readonly Permission ImpersonationStart = new("tenancy.impersonation.start", "Sign in as a person of a tenant that allows it, with a reason, through a one-time link", Risk.Critical);
+
+    /// <summary>Asking for emergency access to a tenant, and ending it (TF-026): it needs a second operator to approve.</summary>
+    public static readonly Permission BreakGlassRequest = new("tenancy.break_glass.request", "Ask for emergency access to a tenant with a reason and a ticket, and end it", Risk.High);
+
+    /// <summary>Approving another operator's emergency access (TF-026): critical, with a fresh token, never one's own.</summary>
+    public static readonly Permission BreakGlassApprove = new("tenancy.break_glass.approve", "Approve another operator's emergency access to a tenant", Risk.Critical);
+
+    /// <summary>The platform's terms of service and privacy notice, which every person accepts (TF-028).</summary>
+    public static readonly Permission DocumentsManage = new("tenancy.documents.manage", "Publish new versions of the platform's terms of service and privacy notice", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage];
 }
 
 public static class TenancyErrors
@@ -94,6 +109,24 @@ public static class TenancyErrors
     public const string RecoveryReasonRequired = "tenancy.recovery.reason_required";
     public const string KillSwitchFalseRule = "tenancy.kill_switch.false_rule";
     public const string KillSwitchUnknown = "tenancy.kill_switch.unknown";
+
+    /// <summary>The operator's impersonation needs a reason (TF-025 AC1).</summary>
+    public const string ImpersonationReasonRequired = "tenancy.impersonation.reason_required";
+
+    public const string BreakGlassNotFound = "tenancy.break_glass.not_found";
+
+    /// <summary>The operator who asked for break-glass tried to approve it (TF-026 AC4).</summary>
+    public const string BreakGlassSameOperator = "tenancy.break_glass.same_operator";
+
+    /// <summary>The request is not waiting for approval: approved, expired after 30 minutes (TF-026 AC2), or ended.</summary>
+    public const string BreakGlassNotRequested = "tenancy.break_glass.not_requested";
+
+    public const string BreakGlassNotActive = "tenancy.break_glass.not_active";
+
+    public const string BreakGlassDuration = "tenancy.break_glass.duration";
+
+    /// <summary>Not one of the platform's documents.</summary>
+    public const string DocumentKeyUnknown = "tenancy.document.key_unknown";
 }
 
 public static class TenancyAuditEvents
@@ -110,6 +143,27 @@ public static class TenancyAuditEvents
 
     /// <summary>The operator asked for a tenant administrator's recovery link, with a reason (ADR-0046); the unit audits its side.</summary>
     public const string AdministratorRecoveryRequested = "tenancy.administrator_recovery_requested";
+
+    /// <summary>The operator asked to sign in as a person of a tenant, with a reason (TF-025); the unit audits its side.</summary>
+    public const string ImpersonationRequested = "tenancy.impersonation_requested";
+
+    public const string BreakGlassRequested = "tenancy.break_glass_requested";
+
+    public const string BreakGlassApproved = "tenancy.break_glass_approved";
+
+    /// <summary>Not approved within 30 minutes (TF-026 AC2).</summary>
+    public const string BreakGlassExpired = "tenancy.break_glass_expired";
+
+    /// <summary>At its time limit, or ended early by an operator: the account is being closed.</summary>
+    public const string BreakGlassEnding = "tenancy.break_glass_ending";
+
+    /// <summary>Closed, with the review of every action (TF-026 AC3).</summary>
+    public const string BreakGlassEnded = "tenancy.break_glass_ended";
+
+    public const string BreakGlassFailed = "tenancy.break_glass_failed";
+
+    /// <summary>The operator published a version of the platform's terms of service or privacy notice (TF-028).</summary>
+    public const string PlatformDocumentPublished = "tenancy.platform_document_published";
 }
 
 /// <summary>

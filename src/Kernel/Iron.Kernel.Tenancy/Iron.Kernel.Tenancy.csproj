@@ -17,6 +17,7 @@
     <ProjectReference Include="../Iron.Kernel.Entitlements/Contracts/Iron.Kernel.Entitlements.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Flags/Contracts/Iron.Kernel.Flags.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

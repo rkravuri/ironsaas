@@ -75,10 +75,8 @@ public sealed class BreakGlassAccounts(
     /// <summary>The source of the account's role, so nothing a person granted is ever touched by break-glass.</summary>
     public const string AssignmentSource = "break_glass";
 
-    public const string Domain = "break-glass.invalid";
-
-    /// <summary>The account's login identifier for an access: under a domain nobody can own, so it never is anyone's email.</summary>
-    public static string LoginIdOf(Guid accessId) => $"break-glass-{accessId.ToString("N")[..12]}@{Domain}";
+    /// <summary>The account's login identifier for an access, by the rule both planes know.</summary>
+    public static string LoginIdOf(Guid accessId) => BreakGlassAccountNames.LoginIdOf(accessId);
 
     public async Task<Result<(Principal Account, string Token, DateTimeOffset ExpiresAt)>> OpenAsync(BreakGlassOptions request, CancellationToken cancellationToken)
     {

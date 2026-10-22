@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -94,6 +94,8 @@ DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=
 DEV_SMOKE_SECRET = dev-smoke-client-secret-not-for-real-tenants
 DEV_OPERATOR_SECRET = dev-operator-secret-not-for-real-deployments
 DEV_SMOKE_READER_SECRET = dev-smoke-reader-secret-change-me
+# A second operator, so break-glass has someone to approve it who is not the one who asked (TF-026, ADR-0049).
+DEV_SECOND_OPERATOR_SECRET = dev-second-operator-secret-not-for-real-deployments
 CONTROL_URL ?= http://localhost:5200
 CONTROL_TENANT = Tenant__Id=control Tenant__Hostnames__0=localhost Tenant__Hostnames__1=control.localhost
 CONTROL_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=control
@@ -148,11 +150,12 @@ migrate-control: env ## Migrate the control plane database (created on first run
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(CONTROL_TENANT) $(CONTROL_SECRETS) dotnet run --project src/Hosts/Iron.Host.ControlPlane -- migrate
 
-seed-control: env ## Seed the control plane: system roles and the operator service account
+seed-control: env ## Seed the control plane: system roles, the operator service account and a second operator for break-glass
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	$(CONTROL_TENANT) $(CONTROL_SECRETS) \
 	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
 	Seed__ServiceAccounts__1__ClientId=smoke-reader Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) Seed__ServiceAccounts__1__Role=service-default Seed__ServiceAccounts__1__DisplayName="Smoke reader (denial case)" \
+	Seed__ServiceAccounts__2__ClientId=operator-two Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) Seed__ServiceAccounts__2__Role=tenant-administrator Seed__ServiceAccounts__2__DisplayName="Second local operator" \
 	dotnet run --project src/Hosts/Iron.Host.ControlPlane -- seed
 
 run-control: env ## Run the control plane API on the laptop (http://localhost:5200)
@@ -172,6 +175,34 @@ update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit 
 recover-admin: ## Ask the fleet for a one-time, 15-minute recovery link for a tenant's administrator, with a reason both audit trails keep (ADR-0046), and RESET_FACTORS=1 to reset their second factors too (ADR-0047): make recover-admin TENANT=acme REASON="..." [ADMIN=admin@acme.localhost] [RESET_FACTORS=1]
 	@test -n "$(TENANT)" && test -n "$(REASON)" || (echo 'usage: make recover-admin TENANT=acme REASON="why, for the audit trails" [ADMIN=admin@acme.localhost] [RESET_FACTORS=1]' && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=administrator-recovery REASON="$(REASON)" RESET_FACTORS=$(or $(RESET_FACTORS),0) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) "$(ADMIN)"
+
+impersonate: ## Ask the fleet for a one-time link to sign in as a person of a tenant that allows it, with a reason both audit trails keep (TF-025, ADR-0049): make impersonate TENANT=acme LOGIN=pat@acme.localhost REASON="..." [MINUTES=30]
+	@test -n "$(TENANT)" && test -n "$(LOGIN)" && test -n "$(REASON)" || (echo 'usage: make impersonate TENANT=acme LOGIN=pat@acme.localhost REASON="why, for the audit trails" [MINUTES=30]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=impersonation REASON="$(REASON)" MINUTES=$(MINUTES) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) "$(LOGIN)"
+
+break-glass-request: ## Ask for emergency access to a tenant as the operator, with a ticket and a reason; a second operator approves within 30 minutes (TF-026, ADR-0049): make break-glass-request TENANT=acme TICKET=INC-1 REASON="..." [MINUTES=60]
+	@test -n "$(TENANT)" && test -n "$(TICKET)" && test -n "$(REASON)" || (echo 'usage: make break-glass-request TENANT=acme TICKET=INC-1 REASON="why, for the audit trails" [MINUTES=60]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) TICKET="$(TICKET)" REASON="$(REASON)" MINUTES=$(MINUTES) $(COMPOSE_DIR)/scripts/break-glass.sh request $(TENANT)
+
+break-glass-approve: ## Approve a break-glass request as the second operator (operator-two), with a fresh token: make break-glass-approve ID=<id>
+	@test -n "$(ID)" || (echo 'usage: make break-glass-approve ID=<the request id>' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_CLIENT_ID=operator-two OPERATOR_SECRET=$(DEV_SECOND_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/break-glass.sh approve $(ID)
+
+break-glass-link: ## The approved access's one-time sign-in link, once, to the operator who asked: make break-glass-link ID=<id>
+	@test -n "$(ID)" || (echo 'usage: make break-glass-link ID=<the request id>' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/break-glass.sh link $(ID)
+
+break-glass-end: ## End an access before its time; the account closes and its review follows: make break-glass-end ID=<id>
+	@test -n "$(ID)" || (echo 'usage: make break-glass-end ID=<the request id>' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/break-glass.sh end $(ID)
+
+break-glass-show: ## Where a break-glass access stands, and its review once it ended: make break-glass-show ID=<id>
+	@test -n "$(ID)" || (echo 'usage: make break-glass-show ID=<the request id>' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/break-glass.sh show $(ID)
+
+platform-document: ## Publish a new version of the platform's terms of service or privacy notice; every person accepts it at their next request (TF-028, ADR-0049): make platform-document KEY=terms_of_service TITLE="Terms of service" FILE=path/to/text.md
+	@test -n "$(KEY)" && test -n "$(TITLE)" && test -n "$(FILE)" || (echo 'usage: make platform-document KEY=terms_of_service|privacy_notice TITLE="..." FILE=path/to/text.md' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) python3 $(COMPOSE_DIR)/scripts/platform-document.py "$(KEY)" "$(TITLE)" "$(FILE)"
 
 apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
 	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)
@@ -281,6 +312,7 @@ up-control: env ## Run the control plane API and the fleet worker as containers 
 	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps \
 	  -e Seed__ServiceAccounts__0__ClientId=operator -e Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) -e Seed__ServiceAccounts__0__Role=tenant-administrator -e "Seed__ServiceAccounts__0__DisplayName=Local operator" \
 	  -e Seed__ServiceAccounts__1__ClientId=smoke-reader -e Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) -e Seed__ServiceAccounts__1__Role=service-default -e "Seed__ServiceAccounts__1__DisplayName=Smoke reader (denial case)" \
+	  -e Seed__ServiceAccounts__2__ClientId=operator-two -e Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) -e Seed__ServiceAccounts__2__Role=tenant-administrator -e "Seed__ServiceAccounts__2__DisplayName=Second local operator" \
 	  control-api seed
 	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control up --detach --wait --force-recreate control-api fleet
 

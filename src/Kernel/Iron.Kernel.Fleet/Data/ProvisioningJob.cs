@@ -31,6 +31,7 @@ public sealed class ProvisioningJob : AuditedEntity
         RequestedBy = Cut(request?.RequestedBy, RequestedByMaxLength);
         ResetFactors = request?.ResetFactors ?? false;
         RequestedById = requestedById;
+        Environment = request?.Environment is { Count: > 0 } environment ? System.Text.Json.JsonSerializer.Serialize(environment) : null;
     }
 
     public string TenantSlug { get; private set; }
@@ -71,7 +72,12 @@ public sealed class ProvisioningJob : AuditedEntity
     /// <summary>When the job's handover was given to the one who asked; it is not given again.</summary>
     public DateTimeOffset? HandedOverAt { get; private set; }
 
-    public JobRequest? Request => Subject is null && Reason is null && RequestedBy is null ? null : new JobRequest(Subject, Reason, RequestedBy, ResetFactors);
+    /// <summary>The configuration of an operator's command beyond its subject and reason, as JSON (ADR-0049); never a secret.</summary>
+    public string? Environment { get; private set; }
+
+    public JobRequest? Request => Subject is null && Reason is null && RequestedBy is null
+        ? null
+        : new JobRequest(Subject, Reason, RequestedBy, ResetFactors) { Environment = Environment is null ? null : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(Environment) };
 
     public bool IsOpen => Status is ProvisioningStatus.Requested or ProvisioningStatus.Running;
 

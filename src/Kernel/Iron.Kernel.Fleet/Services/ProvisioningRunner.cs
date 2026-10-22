@@ -49,7 +49,7 @@ public sealed class ProvisioningRunner(
         await audit.WriteAsync(new AuditEvent(JobStartedEvent, AuditOutcome.Success, principal.Id, tenant.Slug, null, "provisioning_job", job.Id), cancellationToken).ConfigureAwait(false);
         logger.LogInformation("Provisioning job {JobId} for tenant {Slug} started.", job.Id, tenant.Slug);
 
-        if (job.Kind == JobKind.Recover && tenant.Status != TenantStatus.Active)
+        if (job.Kind.IsOperatorCommand() && tenant.Status != TenantStatus.Active)
         {
             job.Fail(time.GetUtcNow(), $"Tenant '{tenant.Slug}' is {tenant.Status.ToString().ToLowerInvariant()}; only an active tenant's administrator can be recovered.");
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -94,7 +94,7 @@ public sealed class ProvisioningRunner(
         }
 
         // A recovery job changes a person in the unit, not the tenant: its status stays as it is.
-        if (job.Kind != JobKind.Recover)
+        if (!job.Kind.IsOperatorCommand())
         {
             var finalStatus = job.Kind == JobKind.Deprovision ? TenantStatus.Decommissioned : TenantStatus.Active;
             var moved = await tenants.SetStatusAsync(tenant.Slug, finalStatus, cancellationToken).ConfigureAwait(false);

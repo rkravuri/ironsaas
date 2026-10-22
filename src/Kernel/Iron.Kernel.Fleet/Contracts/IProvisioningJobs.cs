@@ -22,6 +22,24 @@ public enum JobKind
     /// <c>recover-admin</c> command issues it, and the job's output is the link. The tenant's status does not change.
     /// </summary>
     Recover,
+
+    /// <summary>The operator's link to sign in as a person of the tenant, which allows it (TF-025, ADR-0049): the unit's <c>impersonate</c>.</summary>
+    Impersonate,
+
+    /// <summary>A break-glass account approved by a second operator (TF-026, ADR-0049): the unit's <c>break-glass-open</c>.</summary>
+    BreakGlassOpen,
+
+    /// <summary>A break-glass account's end and review (TF-026 AC3): the unit's <c>break-glass-close</c>.</summary>
+    BreakGlassClose,
+}
+
+public static class JobKinds
+{
+    /// <summary>
+    /// The operator's commands in an active tenant's unit (ADR-0046, ADR-0049): they change nothing of the tenant's status,
+    /// and each runs one image command that hands its result over through the store.
+    /// </summary>
+    public static bool IsOperatorCommand(this JobKind kind) => kind is JobKind.Recover or JobKind.Impersonate or JobKind.BreakGlassOpen or JobKind.BreakGlassClose;
 }
 
 /// <summary>
@@ -32,7 +50,17 @@ public enum JobKind
 /// What a job is asked to do beyond its kind: whom it is about, why, and who asked; a recovery job may also reset the
 /// administrator's second factors (ADR-0047).
 /// </summary>
-public sealed record JobRequest(string? Subject, string? Reason, string? RequestedBy, bool ResetFactors = false);
+public sealed record JobRequest(string? Subject, string? Reason, string? RequestedBy, bool ResetFactors = false)
+{
+    /// <summary>
+    /// The configuration the unit's command takes beyond the job's subject and reason, as environment variables
+    /// (<c>BreakGlass__Ticket</c>, ...): never a secret, since the job keeps it (ADR-0049).
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Environment { get; init; }
+
+    /// <summary>To whom the job's handover goes, when not the one who asks for the job: break-glass's link goes to the operator who requested it, not the one who approved it.</summary>
+    public Guid? HandOverTo { get; init; }
+}
 
 public sealed record ProvisioningStepInfo(string Name, int Order, string Status, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, int? DurationMs, string? Output, string? Error);
 
@@ -53,7 +81,11 @@ public sealed record ProvisioningJobInfo(
     DateTimeOffset? HandedOverAt = null);
 
 /// <summary>What a job's command handed over to the operator (ADR-0046): an invitation or a recovery link, whose, and until when.</summary>
-public sealed record JobHandover(string Kind, string Subject, string LinkPath, DateTimeOffset ExpiresAt);
+public sealed record JobHandover(string Kind, string Subject, string LinkPath, DateTimeOffset ExpiresAt)
+{
+    /// <summary>What the item carries beyond a link: a break-glass review (ADR-0049).</summary>
+    public string? Payload { get; init; }
+}
 
 /// <summary>Where a job's handover stands for the one who asks.</summary>
 public enum HandoverState
@@ -83,6 +115,12 @@ public sealed record JobHandoverAnswer(HandoverState State, JobHandover? Item = 
 public interface IJobHandovers
 {
     Task<JobHandoverAnswer> TakeAsync(Guid jobId, Guid askerId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The control plane collects what a completed job handed over for itself, not for a person: a break-glass review
+    /// (ADR-0049). Given once, then deleted; null when there is nothing (yet).
+    /// </summary>
+    Task<JobHandover?> CollectAsync(Guid jobId, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -104,6 +142,9 @@ public interface IProvisioningJobs
     Task<Result<ProvisioningJobInfo>> RequestAsync(string tenantSlug, JobKind kind, JobRequest? request, CancellationToken cancellationToken);
 
     Task<ProvisioningJobInfo?> LatestAsync(string tenantSlug, CancellationToken cancellationToken);
+
+    /// <summary>One job by its id, with its steps; null when there is none.</summary>
+    Task<ProvisioningJobInfo?> FindAsync(Guid jobId, CancellationToken cancellationToken);
 }
 
 public static class FleetPermissions
