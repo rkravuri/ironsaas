@@ -26,4 +26,14 @@ public interface ICurrentPrincipal
     /// and the units below it. Always false for a token or a job, whose lists are never narrowed anyway.
     /// </summary>
     bool AllUnits => false;
+
+    /// <summary>
+    /// Who is signed in as this principal, when someone is (TF-025, ADR-0049): a colleague with the impersonation
+    /// permission, by their id, or the platform's operator, by an id of the control plane's that names nobody here. The
+    /// actor stays <see cref="Id"/>, the person impersonated; the audit names both. Null otherwise, and for a token or a job.
+    /// </summary>
+    Guid? ImpersonatorId => null;
+
+    /// <summary>The impersonator's name as the session keeps it, so an operator, who is nobody here, is still named.</summary>
+    string? ImpersonatorName => null;
 }

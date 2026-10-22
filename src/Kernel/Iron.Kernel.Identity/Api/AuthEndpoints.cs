@@ -165,6 +165,7 @@ internal static class AuthEndpoints
         PasswordEndpoints.Map(endpoints);
         FactorEndpoints.Map(endpoints);
         SsoEndpoints.Map(endpoints);
+        SessionEndpoints.Map(endpoints);
     }
 
     private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken) =>

@@ -33,6 +33,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<SsoLink> SsoLinks => Set<SsoLink>();
 
+    public DbSet<TenantRevocation> TenantRevocations => Set<TenantRevocation>();
+
+    private const int DeviceNamesMaxLength = Services.DeviceNames.MaxLength;
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Factor>(factor =>
@@ -146,6 +150,22 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             session.Property(s => s.SecondFactor).HasMaxLength(20);
             session.HasOne<SsoProvider>().WithMany().HasForeignKey(s => s.ProviderId).OnDelete(DeleteBehavior.SetNull);
             session.HasIndex(s => new { s.EndedAt, s.LastActivityAt });
+            session.Property(s => s.Method).HasMaxLength(SessionMethods.MaxLength).HasDefaultValue(SessionMethods.Password);
+            session.Property(s => s.Browser).HasMaxLength(DeviceNamesMaxLength);
+            session.Property(s => s.Platform).HasMaxLength(DeviceNamesMaxLength);
+            session.Property(s => s.City).HasMaxLength(100);
+            session.Property(s => s.Country).HasMaxLength(100);
+            session.Property(s => s.ImpersonatorName).HasMaxLength(Session.ImpersonatorNameMaxLength);
+            session.Property(s => s.ImpersonationReason).HasMaxLength(Session.ImpersonationReasonMaxLength);
+            session.HasIndex(s => s.ImpersonatorId);
+            session.HasIndex(s => s.CreatedAt);
+            session.HasIndex(s => s.EndedAt);
+        });
+
+        modelBuilder.Entity<TenantRevocation>(revocation =>
+        {
+            revocation.Property(r => r.Reason).HasMaxLength(TenantRevocation.ReasonMaxLength);
+            revocation.HasIndex(r => r.RevokedAt);
         });
     }
 }

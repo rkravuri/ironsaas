@@ -3,6 +3,7 @@ using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Settings.Contracts;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -12,14 +13,28 @@ namespace Iron.Kernel.Identity.Services;
 /// Sessions (TF-020, TF-021, TF-029): start, resolve on every request, touch, end. A new session takes the tenant's
 /// limits (<see cref="IdentitySettings"/>, ADR-0036), or the configured ones while the tenant has set none.
 /// </summary>
-public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, IDelegations delegations, IWorkingUnits workingUnits, MfaPolicy mfa, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
+public sealed class SessionService(
+    IdentityDbContext context,
+    IdentityOptions options,
+    ISettings settings,
+    IDelegations delegations,
+    IWorkingUnits workingUnits,
+    MfaPolicy mfa,
+    TimeProvider time,
+    IAuditWriter audit,
+    IHttpContextAccessor accessor,
+    IIpLocations locations,
+    RevocationTimes revocations,
+    ILogger<SessionService> logger)
 {
     /// <summary>
     /// Creates the session row and returns the token for the cookie. The token is never stored. <paramref name="beforeSave"/>
     /// runs once the session has its id and before the row is written; login uses it to make the new session's principal
-    /// the request's principal, so the rows it writes carry the user as created_by.
+    /// the request's principal, so the rows it writes carry the user as created_by. The row records how the sign-in
+    /// happened, the browser and platform, and the city and country of the request's address (TF-022, ADR-0049). A person's
+    /// sign-in past the tenant's limit of sessions at once ends their oldest (TF-021 AC2).
     /// </summary>
-    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null, string? secondFactor = null, Guid? providerId = null)
+    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null, string? secondFactor = null, Guid? providerId = null, string? method = null)
     {
         ArgumentNullException.ThrowIfNull(principal);
         var token = SecureTokens.New();
@@ -27,10 +42,66 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
         var session = new Session(principal.Id, SecureTokens.Hash(token), time.GetUtcNow(), absolute, idle);
         session.ProvedWith(secondFactor);
         session.SignedInThrough(providerId);
+        var http = accessor.HttpContext;
+        var device = DeviceNames.From(http?.Request.Headers.UserAgent.ToString());
+        var place = http is null ? null : locations.Find(ClientAddress.Of(http));
+        session.Describe(method ?? (providerId is null ? SessionMethods.Password : SessionMethods.Sso), device.Browser, device.Platform, place?.City, place?.Country);
         beforeSave?.Invoke(session);
         context.Sessions.Add(session);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (session.Method != SessionMethods.Impersonation)
+        {
+            await EnforceLimitAsync(principal, session, cancellationToken).ConfigureAwait(false);
+        }
+
         return (session, token);
+    }
+
+    /// <summary>
+    /// The tenant's limit of sessions at once (TF-021 AC2): when the person now has more live sessions than it allows, the
+    /// oldest end, each audited, and each hears why at its next request. Someone signed in as the person is not the person,
+    /// so those sessions neither count nor end. A service account signs in with tokens and has no sessions.
+    /// </summary>
+    private async Task EnforceLimitAsync(Principal principal, Session started, CancellationToken cancellationToken)
+    {
+        if (principal.Type != PrincipalType.User)
+        {
+            return;
+        }
+
+        var resolved = await settings.ResolveAsync(IdentitySettings.SessionConcurrentLimit, SettingContext.Tenant, cancellationToken).ConfigureAwait(false);
+        var limit = IdentitySettings.SessionConcurrentLimit.Read(resolved.Value);
+        if (limit <= 0)
+        {
+            return;
+        }
+
+        var now = time.GetUtcNow();
+        var others = await context.Sessions
+            .Where(s => s.PrincipalId == principal.Id && s.EndedAt == null && s.Id != started.Id && s.Method != SessionMethods.Impersonation)
+            .OrderBy(s => s.CreatedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var live = others.Where(s => s.ExpiryReason(now, options.Session.Idle) is null).ToList();
+        var excess = live.Count + 1 - limit;
+        if (excess <= 0)
+        {
+            return;
+        }
+
+        foreach (var oldest in live.Take(excess))
+        {
+            oldest.End(now, SessionEndReasons.Limit);
+        }
+
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var oldest in live.Take(excess))
+        {
+            var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["limit"] = limit.ToString(System.Globalization.CultureInfo.InvariantCulture), ["newer_session"] = started.Id.ToString("D") };
+            await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.SessionEnded, AuditOutcome.Success, principal.Id, principal.LoginId, details, "session", oldest.Id, SessionEndReasons.Limit), cancellationToken).ConfigureAwait(false);
+        }
+
+        logger.LogInformation("A sign-in of principal {PrincipalId} went past the limit of {Limit} sessions; {Ended} older session(s) ended.", principal.Id, limit, excess);
     }
 
     /// <summary>
@@ -178,6 +249,15 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
             reason = SessionEndReasons.Revoked;
         }
 
+        // Started before the principal's or the tenant's "valid after": revoked (TF-029, ADR-0049). A revocation ends the
+        // sessions it knows at once; this catches any it did not, within the minute the tenant's time is kept.
+        if (reason is null
+            && (found.Session.CreatedAt < found.Principal.ValidAfter
+                || found.Session.CreatedAt < await revocations.TenantValidAfterAsync(context, cancellationToken).ConfigureAwait(false)))
+        {
+            reason = SessionEndReasons.Revoked;
+        }
+
         if (reason is not null)
         {
             if (!found.Session.HasEnded)
@@ -271,6 +351,34 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return sessions.Count;
+    }
+
+    /// <summary>
+    /// Ends the live sessions nobody came back to after their idle or absolute limit, as their next request would have:
+    /// housekeeping before the sessions console counts who is signed in (TF-022). Each is audited as such an end is.
+    /// </summary>
+    public async Task<int> EndExpiredAsync(CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        var shortestIdle = now - TimeSpan.FromMinutes(15); // the shortest idle limit a tenant may set
+        var candidates = await context.Sessions
+            .Where(s => s.EndedAt == null && (s.ExpiresAt <= now || s.LastActivityAt <= shortestIdle))
+            .Join(context.Principals, s => s.PrincipalId, p => p.Id, (s, p) => new { Session = s, p.LoginId })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var ended = 0;
+        foreach (var candidate in candidates)
+        {
+            if (candidate.Session.ExpiryReason(now, options.Session.Idle) is { } reason)
+            {
+                candidate.Session.End(now, reason);
+                await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.SessionExpired, AuditOutcome.Success, candidate.Session.PrincipalId, candidate.LoginId, Reason: reason, RecordType: "session", RecordId: candidate.Session.Id), cancellationToken).ConfigureAwait(false);
+                ended++;
+            }
+        }
+
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return ended;
     }
 
     /// <summary>Ends every live session of a principal (TF-010 AC3, TF-029).</summary>

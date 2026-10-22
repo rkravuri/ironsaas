@@ -103,6 +103,15 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     /// </summary>
     public bool SsoOnly { get; private set; }
 
+    /// <summary>
+    /// The principal's "valid after" (TF-029 AC2, ADR-0049): an administrator revoked everything of theirs then, so no
+    /// session started and no token issued before it is accepted. Checked on every request, with the principal's row.
+    /// </summary>
+    public DateTimeOffset? ValidAfter { get; private set; }
+
+    /// <summary>Everything of the principal issued until now stops working: sessions and tokens (TF-029).</summary>
+    public void RevokeAll(DateTimeOffset now) => ValidAfter = now;
+
     public bool CanLogIn => Status == PrincipalStatus.Active && PasswordHash is not null;
 
     /// <summary>A single sign-on provider may sign the principal in: a person who is active, or invited and never signed in (ADR-0048).</summary>

@@ -22,6 +22,18 @@ public static class PermissionErrors
 {
     public const string NotAuthenticated = "auth.not_authenticated";
     public const string SessionExpired = "auth.session_expired";
+
+    /// <summary>A newer sign-in of the person went past the tenant's limit of sessions at once, and ended this one (TF-021 AC2).</summary>
+    public const string SessionLimit = "auth.session_limit";
+
+    /// <summary>An administrator ended this session (TF-022 AC1).</summary>
+    public const string SessionEnded = "auth.session_ended";
+
+    /// <summary>The session was revoked: the person deactivated, everything of theirs or of the tenant revoked (TF-029).</summary>
+    public const string SessionRevoked = "auth.session_revoked";
+
+    /// <summary>A token issued before its principal's or the tenant's revocation (TF-029 AC2).</summary>
+    public const string TokenRevoked = "auth.token_revoked";
     public const string TokenInvalid = "auth.token_invalid";
     public const string TokenExpired = "auth.token_expired";
     public const string PermissionDenied = "authz.permission_denied";
@@ -54,11 +66,15 @@ public static class AuthenticationFailure
         var message = code switch
         {
             PermissionErrors.SessionExpired => "Your session has ended. Sign in again.",
+            PermissionErrors.SessionLimit => "You signed in somewhere else, and your organisation allows only so many sessions at once, so this one ended. Sign in again to continue here.",
+            PermissionErrors.SessionEnded => "An administrator ended your session. Sign in again, or ask your administrator why.",
+            PermissionErrors.SessionRevoked => "Your organisation ended your session. Sign in again, or ask your administrator why.",
+            PermissionErrors.TokenRevoked => "The access token was revoked. Request a new one.",
             PermissionErrors.TokenExpired => "The access token has expired. Request a new one.",
             PermissionErrors.TokenInvalid => "The access token is not valid.",
             _ => "Sign in to continue.",
         };
-        context.Response.Headers.WWWAuthenticate = code is PermissionErrors.TokenExpired or PermissionErrors.TokenInvalid
+        context.Response.Headers.WWWAuthenticate = code is PermissionErrors.TokenExpired or PermissionErrors.TokenInvalid or PermissionErrors.TokenRevoked
             ? "Bearer error=\"invalid_token\""
             : "Bearer";
         return ApiResults.Problem(Error.Unauthorized(code, message), context);

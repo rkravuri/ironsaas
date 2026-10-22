@@ -74,6 +74,12 @@ public sealed class IdentityModule : IModule
         services.AddScoped<SecurityEventLog>();
         services.AddScoped<PasswordService>();
         services.AddScoped<SessionService>();
+        services.AddScoped<SessionConsole>();
+        services.AddSingleton<RevocationTimes>();
+        services.TryAddSingleton<IIpLocations>(provider => new MmdbIpLocations(options.Locations.DatabasePath, provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<MmdbIpLocations>>()));
+        services.AddScoped<IValidator<EndSessionRequest>, EndSessionRequestValidator>();
+        services.AddScoped<IValidator<RevokeRequest>, RevokeRequestValidator>();
+        services.AddScoped<IValidator<RevokeTenantRequest>, RevokeTenantRequestValidator>();
         services.AddScoped<LoginService>();
         services.AddScoped<InvitationService>();
         services.AddScoped<IPrincipals, PrincipalDirectory>();

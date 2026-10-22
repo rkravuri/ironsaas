@@ -15,6 +15,13 @@ public static class IdentitySettings
     public static readonly Setting<int> SessionAbsoluteHours = Setting.WholeNumber(
         "identity.session.absolute_hours", "How long a session may last at most, active or not, in hours. A new session takes the value; open sessions keep theirs.", 12, 1, 24, SettingScopes.Tenant, visibleToShell: true);
 
+    /// <summary>
+    /// How many sessions a person may have at once (TF-021 AC2, ADR-0049); 0 is no limit. A sign-in past it ends the
+    /// person's oldest session, which hears why at its next request. Someone signed in as the person does not count.
+    /// </summary>
+    public static readonly Setting<int> SessionConcurrentLimit = Setting.WholeNumber(
+        "identity.session.concurrent_limit", "How many sessions a person may have at once; a new sign-in past it ends their oldest session. 0 is no limit.", 0, 0, 10, SettingScopes.Tenant);
+
     public static readonly Setting<int> InvitationValidDays = Setting.WholeNumber(
         "identity.invitation.valid_days", "How long an invitation link stays valid, in days. An invitation takes the value of the unit it is sent into.", 3, 1, 30, SettingScopes.Tenant | SettingScopes.Unit);
 
@@ -73,7 +80,7 @@ public static class IdentitySettings
 
     public static IReadOnlyList<SettingDefinition> All =>
     [
-        SessionIdleMinutes, SessionAbsoluteHours, InvitationValidDays,
+        SessionIdleMinutes, SessionAbsoluteHours, SessionConcurrentLimit, InvitationValidDays,
         PasswordMinimumLength, PasswordCommonCheck, PasswordHistoryDepth, PasswordMaximumAgeDays,
         LockoutThreshold, LockoutWindowMinutes, LockoutDurationMinutes,
         MfaRequiredFor, MfaRoles, MfaAllowedFactors, MfaGraceDays, MfaPasskeySignIn,

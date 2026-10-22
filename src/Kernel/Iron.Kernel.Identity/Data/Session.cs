@@ -9,6 +9,36 @@ public static class SessionEndReasons
     public const string Idle = "idle";
     public const string Absolute = "absolute";
     public const string Revoked = "revoked";
+
+    /// <summary>An administrator ended it, with a reason (TF-022 AC1).</summary>
+    public const string EndedByAdministrator = "ended";
+
+    /// <summary>The person ended it from another of their sessions, in My profile (TF-022).</summary>
+    public const string EndedByPerson = "ended_by_person";
+
+    /// <summary>A newer sign-in of the person went past the tenant's limit of sessions at once (TF-021 AC2).</summary>
+    public const string Limit = "limit";
+
+    /// <summary>The impersonation reached its time, or its impersonator ended it (TF-025 AC3).</summary>
+    public const string ImpersonationEnded = "impersonation_ended";
+
+    /// <summary>The person declined a document they must accept (TF-028 AC4).</summary>
+    public const string TermsDeclined = "terms_declined";
+}
+
+/// <summary>How a session's sign-in happened (TF-022), as the sessions lists show it.</summary>
+public static class SessionMethods
+{
+    public const int MaxLength = 20;
+    public const string Password = "password";
+    public const string Passkey = "passkey";
+    public const string Sso = "sso";
+
+    /// <summary>Someone else signed in as the person (TF-025, ADR-0049).</summary>
+    public const string Impersonation = "impersonation";
+
+    /// <summary>An operator's emergency access, through a one-time link (TF-026, ADR-0049).</summary>
+    public const string BreakGlass = "break_glass";
 }
 
 /// <summary>
@@ -39,6 +69,7 @@ public sealed class Session : AuditedEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
         PrincipalId = principalId;
         TokenHash = tokenHash;
+        Method = SessionMethods.Password;
         LastActivityAt = now;
         AuthenticatedAt = now;
         ExpiresAt = now + absoluteLifetime;
@@ -96,6 +127,72 @@ public sealed class Session : AuditedEntity
 
     public bool HasEnded => EndedAt is not null;
 
+    /// <summary>How the sign-in happened (<see cref="SessionMethods"/>).</summary>
+    public string Method { get; private set; } = SessionMethods.Password;
+
+    /// <summary>The browser, from the user agent, as a person recognises it (TF-022); null when it could not be told.</summary>
+    public string? Browser { get; private set; }
+
+    /// <summary>The platform the browser runs on; null when it could not be told.</summary>
+    public string? Platform { get; private set; }
+
+    /// <summary>
+    /// The approximate place of the sign-in, from the bundled location database (TF-022, ADR-0049): a city and a country,
+    /// nothing finer. The full address is in the sign-in's audit event, kept as long as the audit trail is.
+    /// </summary>
+    public string? City { get; private set; }
+
+    public string? Country { get; private set; }
+
+    /// <summary>The administrator who ended the session, when one did (TF-022 AC1).</summary>
+    public Guid? EndedById { get; private set; }
+
+    public const int ImpersonatorNameMaxLength = 254;
+    public const int ImpersonationReasonMaxLength = 500;
+
+    /// <summary>
+    /// Who is signed in as the person in this session (TF-025, ADR-0049): a colleague's principal id, or the control
+    /// plane's id of the operator, who is nobody here. Null for the person's own session.
+    /// </summary>
+    public Guid? ImpersonatorId { get; private set; }
+
+    /// <summary>The impersonator by name, as the band, the audit trail and the person's security activity name them.</summary>
+    public string? ImpersonatorName { get; private set; }
+
+    /// <summary>Why, in the impersonator's words: required (TF-025 AC1).</summary>
+    public string? ImpersonationReason { get; private set; }
+
+    /// <summary>When the impersonation ends by itself; the next request after it ends it (TF-025 AC3).</summary>
+    public DateTimeOffset? ImpersonationEndsAt { get; private set; }
+
+    /// <summary>The impersonator's own session, which they return to at the end; null for the operator, who has none here.</summary>
+    public Guid? ReturnSessionId { get; private set; }
+
+    public bool IsImpersonation => ImpersonatorName is not null;
+
+    /// <summary>Someone signs in as the person: who, why, until when, and the session to return to.</summary>
+    public void Impersonated(Guid impersonatorId, string impersonatorName, string reason, DateTimeOffset endsAt, Guid? returnSessionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(impersonatorName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ImpersonatorId = impersonatorId;
+        ImpersonatorName = impersonatorName.Length > ImpersonatorNameMaxLength ? impersonatorName[..ImpersonatorNameMaxLength] : impersonatorName;
+        ImpersonationReason = reason.Length > ImpersonationReasonMaxLength ? reason[..ImpersonationReasonMaxLength] : reason;
+        ImpersonationEndsAt = endsAt;
+        ReturnSessionId = returnSessionId;
+        Method = SessionMethods.Impersonation;
+    }
+
+    /// <summary>The sign-in's method, device and place, recorded when the session starts.</summary>
+    public void Describe(string method, string? browser, string? platform, string? city, string? country)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(method);
+        Method = method;
+        Browser = browser;
+        Platform = platform;
+        City = city;
+        Country = country;
+    }
     /// <summary>The second factor the sign-in used, recorded when the session starts.</summary>
     public void ProvedWith(string? secondFactor) => SecondFactor = secondFactor;
 
@@ -126,6 +223,11 @@ public sealed class Session : AuditedEntity
             return EndReason ?? SessionEndReasons.Revoked;
         }
 
+        if (ImpersonationEndsAt is { } impersonationEnds && now >= impersonationEnds)
+        {
+            return SessionEndReasons.ImpersonationEnded;
+        }
+
         if (now >= ExpiresAt)
         {
             return SessionEndReasons.Absolute;
@@ -147,7 +249,7 @@ public sealed class Session : AuditedEntity
         AllUnits = allUnits;
     }
 
-    public void End(DateTimeOffset now, string reason)
+    public void End(DateTimeOffset now, string reason, Guid? endedById = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         if (HasEnded)
@@ -157,5 +259,16 @@ public sealed class Session : AuditedEntity
 
         EndedAt = now;
         EndReason = reason;
+        EndedById = endedById;
+    }
+
+    /// <summary>
+    /// When the session stopped being of use: its end, or, for one nobody ended, its idle or absolute limit if that came
+    /// first. The daily summary counts people signed in by it (TF-022).
+    /// </summary>
+    public DateTimeOffset UsableUntil(TimeSpan fallback)
+    {
+        var limit = IdleExpiresAt(fallback);
+        return EndedAt is { } ended && ended < limit ? ended : limit;
     }
 }

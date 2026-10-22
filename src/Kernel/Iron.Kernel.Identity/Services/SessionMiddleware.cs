@@ -1,5 +1,6 @@
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Identity.Contracts;
+using Iron.Kernel.Identity.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +18,12 @@ public sealed class SessionMiddleware(RequestDelegate next, IdentityOptions opti
     /// <summary>On the first answer after a delegation ended while its delegate acted with it: the shell says so (ADR-0037).</summary>
     public const string ActingEndedHeader = "Iron-Acting-Ended";
 
+    /// <summary>
+    /// On every answer of a live session: when it ends without further activity, as the server counts it, so the shell's
+    /// warning is exact when a tenant shortens its limits (ADR-0033, folded into S3 T5).
+    /// </summary>
+    public const string IdleEndsHeader = "Iron-Session-Idle-Ends";
+
     public async Task InvokeAsync(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -29,6 +36,7 @@ public sealed class SessionMiddleware(RequestDelegate next, IdentityOptions opti
             if (resolution.IsAlive)
             {
                 RequestPrincipal.Set(context, resolution.Principal!);
+                context.Response.Headers[IdleEndsHeader] = resolution.Principal!.IdleExpiresAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
                 if (resolution.MustEnrol)
                 {
                     // Every endpoint but the enrolment's own answers this until the person enrols; the session goes on.
@@ -45,13 +53,22 @@ public sealed class SessionMiddleware(RequestDelegate next, IdentityOptions opti
                 SessionCookie.Clear(context, options);
                 if (resolution.IsExpired)
                 {
-                    AuthenticationFailure.Set(context, PermissionErrors.SessionExpired);
+                    AuthenticationFailure.Set(context, CodeOf(resolution.ExpiryReason));
                 }
             }
         }
 
         await next(context).ConfigureAwait(false);
     }
+
+    /// <summary>Why the session ended, as the 401 says it: the shell's login page tells the person (TF-021 AC2, TF-022).</summary>
+    public static string CodeOf(string? reason) => reason switch
+    {
+        SessionEndReasons.Limit => PermissionErrors.SessionLimit,
+        SessionEndReasons.EndedByAdministrator => PermissionErrors.SessionEnded,
+        SessionEndReasons.Revoked => PermissionErrors.SessionRevoked,
+        _ => PermissionErrors.SessionExpired,
+    };
 }
 
 /// <summary>The cookie: only the random token, Secure, HttpOnly, SameSite=Strict, for the whole site, and gone when the browser closes.</summary>

@@ -430,6 +430,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
+                    b.Property<DateTimeOffset?>("ValidAfter")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_after");
+
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("integer")
@@ -587,6 +591,21 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("authenticated_at");
 
+                    b.Property<string>("Browser")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("browser");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -604,6 +623,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ended_at");
 
+                    b.Property<Guid?>("EndedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ended_by_id");
+
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
@@ -612,9 +635,40 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("idle_minutes");
 
+                    b.Property<DateTimeOffset?>("ImpersonationEndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("impersonation_ends_at");
+
+                    b.Property<string>("ImpersonationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("impersonation_reason");
+
+                    b.Property<Guid?>("ImpersonatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("impersonator_id");
+
+                    b.Property<string>("ImpersonatorName")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("impersonator_name");
+
                     b.Property<DateTimeOffset>("LastActivityAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_activity_at");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("password")
+                        .HasColumnName("method");
+
+                    b.Property<string>("Platform")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("platform");
 
                     b.Property<Guid>("PrincipalId")
                         .HasColumnType("uuid")
@@ -623,6 +677,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.Property<Guid?>("ProviderId")
                         .HasColumnType("uuid")
                         .HasColumnName("provider_id");
+
+                    b.Property<Guid?>("ReturnSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("return_session_id");
 
                     b.Property<string>("SecondFactor")
                         .HasMaxLength(20)
@@ -654,6 +712,15 @@ namespace Iron.Kernel.Identity.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_sessions");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_sessions_created_at");
+
+                    b.HasIndex("EndedAt")
+                        .HasDatabaseName("ix_sessions_ended_at");
+
+                    b.HasIndex("ImpersonatorId")
+                        .HasDatabaseName("ix_sessions_impersonator_id");
 
                     b.HasIndex("PrincipalId")
                         .HasDatabaseName("ix_sessions_principal_id");
@@ -847,6 +914,42 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasDatabaseName("ix_sso_providers_name");
 
                     b.ToTable("sso_providers", "kernel_identity");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.TenantRevocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_revocations");
+
+                    b.HasIndex("RevokedAt")
+                        .HasDatabaseName("ix_tenant_revocations_revoked_at");
+
+                    b.ToTable("tenant_revocations", "kernel_identity", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
                 });
 
             modelBuilder.Entity("Iron.Kernel.Identity.Data.AuthenticationChallenge", b =>

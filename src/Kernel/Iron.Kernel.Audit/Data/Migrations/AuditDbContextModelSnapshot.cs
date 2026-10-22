@@ -84,6 +84,14 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("record_type");
 
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("normal")
+                        .HasColumnName("severity");
+
                     b.Property<string>("Source")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -109,6 +117,9 @@ namespace Iron.Kernel.Audit.Data.Migrations
 
                     b.HasIndex("EventType")
                         .HasDatabaseName("ix_events_event_type");
+
+                    b.HasIndex("ImpersonatorId")
+                        .HasDatabaseName("ix_events_impersonator_id");
 
                     b.HasIndex("OnBehalfOfId")
                         .HasDatabaseName("ix_events_on_behalf_of_id");

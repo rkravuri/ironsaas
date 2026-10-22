@@ -32,6 +32,8 @@
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <!-- WebAuthn for passkeys (MIT, Fido2NetLib): registration and assertion, attestation formats, the COSE keys (S3 T3, ADR-0047). 4.2.0 of 2026-10-02, the newest at least two weeks old. -->
     <PackageVersion Include="Fido2" Version="4.2.0" />
+    <!-- Reads the bundled IP-to-city database in MMDB form for a session's approximate location (Apache-2.0, S3 T5, ADR-0049). 5.2.0 of 2026-09-10, the newest at least two weeks old. -->
+    <PackageVersion Include="MaxMind.Db" Version="5.2.0" />
     <!-- Azure Blob Storage SDK (MIT); Azurite on the laptop (ADR-0006). -->
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
     <!-- OpenAPI document generation (MIT), same version train as the runtime. -->

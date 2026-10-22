@@ -346,6 +346,22 @@
           "whole_number": true
         },
         {
+          "key": "identity.session.concurrent_limit",
+          "module": "identity",
+          "type": "number",
+          "description": "How many sessions a person may have at once; a new sign-in past it ends their oldest session. 0 is no limit.",
+          "default": 0,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 0 to 10.",
+          "choices": null,
+          "minimum": 0,
+          "maximum": 10,
+          "whole_number": true
+        },
+        {
           "key": "identity.session.idle_minutes",
           "module": "identity",
           "type": "number",

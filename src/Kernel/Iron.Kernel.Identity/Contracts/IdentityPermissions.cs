@@ -13,7 +13,14 @@ public static class IdentityPermissions
     /// </summary>
     public static readonly Permission SsoManage = new("identity.sso.manage", "Connect, change, test and remove single sign-on providers", Risk.Critical);
 
-    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage, SsoManage];
+    /// <summary>
+    /// The sessions console (TF-022, TF-029, ADR-0049): see everyone's sessions and who is signed in now, end any session
+    /// with a reason, and revoke every session and token of the tenant after an incident, each behind a recent
+    /// authentication (TF-248).
+    /// </summary>
+    public static readonly Permission SessionsManage = new("identity.sessions.manage", "See and end anyone's sessions, and revoke every session and token of the tenant", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage, SsoManage, SessionsManage];
 }
 
 /// <summary>Error codes of the Identity module.</summary>
@@ -177,6 +184,20 @@ public static class IdentityErrors
 
     /// <summary>Marking a person single sign-on only when no provider could sign them in: they would be locked out.</summary>
     public const string UserSsoUnreachable = "identity.user.sso_unreachable";
+
+    // Sessions and revocation (TF-021, TF-022, TF-029, ADR-0049).
+
+    /// <summary>No session with this id, or none of the asker's.</summary>
+    public const string SessionNotFound = "identity.session.not_found";
+
+    /// <summary>The session has ended already.</summary>
+    public const string SessionEnded = "identity.session.ended";
+
+    /// <summary>The session asked to end is the one the request comes from: signing out ends it.</summary>
+    public const string SessionCurrent = "identity.session.current";
+
+    /// <summary>The typed confirmation of a tenant-wide revocation is not the tenant's identifier.</summary>
+    public const string RevocationConfirmation = "identity.revocation.confirmation";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -250,6 +271,15 @@ public static class IdentityAuditEvents
 
     /// <summary>An administrator removed a provider, its links and the roles its mapping gave.</summary>
     public const string SsoProviderDeleted = "identity.sso_provider_deleted";
+
+    /// <summary>
+    /// A session was ended before its time (TF-022 AC1): by an administrator with a reason, by its person from another
+    /// session, or by a newer sign-in past the tenant's limit (TF-021 AC2). The reason and who ended it are in the event.
+    /// </summary>
+    public const string SessionEnded = "identity.session_ended";
+
+    /// <summary>An administrator revoked every session and token of the tenant, with a reason (TF-029 AC1).</summary>
+    public const string TenantRevoked = "identity.tenant_revoked";
 }
 
 /// <summary>
@@ -292,11 +322,18 @@ public static class SecurityEventKinds
     /// <summary>An administrator let the person sign in with a password again.</summary>
     public const string SsoOnlyCleared = "sso_only_cleared";
 
+    /// <summary>An administrator ended one of the person's sessions, with a reason (TF-022 AC1).</summary>
+    public const string SessionEnded = "session_ended";
+
+    /// <summary>An administrator revoked every session and token of the principal, with a reason (TF-029).</summary>
+    public const string AccessRevoked = "access_revoked";
+
     public static IReadOnlyList<string> All =>
     [
         PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated,
         FactorEnrolled, FactorRemoved, FactorsReset, RecoveryCodeUsed, RecoveryCodesRegenerated,
         SsoLinked, SsoOnlySet, SsoOnlyCleared,
+        SessionEnded, AccessRevoked,
     ];
 
     /// <summary>The audit event a security event is written as.</summary>

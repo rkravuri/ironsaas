@@ -134,6 +134,7 @@ internal static class UsersEndpoints
         users.MapPost("/{id:guid}/factors/reset", ResetFactorsAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Validate<ResetFactorsRequest>().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("ResetFactors").WithSummary("Remove a person's second factors and recovery codes, with a reason, for someone whose permissions you hold; their sessions end.");
         users.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("DeactivateUser").WithSummary("Deactivate a person: they cannot sign in, their sessions end and their tokens are refused.");
         users.MapPut("/{id:guid}/sso-only", SetSsoOnlyAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("SetSsoOnly").WithSummary("Mark a person to sign in only through a single sign-on provider, or let them use a password again.");
+        users.MapPost("/{id:guid}/revoke", RevokeAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Validate<RevokeRequest>().Produces<SessionsEndedResponse>(StatusCodes.Status200OK).WithName("RevokePrincipal").WithSummary("Revoke everything of a person or a service account, with a reason: every session ends now and no token issued until now is accepted.");
         users.MapPost("/{id:guid}/reactivate", ReactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<ReactivateUserResponse>(StatusCodes.Status200OK).WithName("ReactivateUser").WithSummary("Reactivate a person; one who never set a password gets a new invitation.");
     }
 
@@ -301,6 +302,18 @@ internal static class UsersEndpoints
 
         var result = await users.SetSsoOnlyAsync(target.Value, request.SsoOnly, cancellationToken);
         return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
+    }
+
+    private static async Task<IResult> RevokeAsync(Guid id, RevokeRequest request, HttpContext http, SessionConsole console, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "revoke the access of", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await console.RevokePrincipalAsync(target.Value, request.Reason, cancellationToken);
+        return ApiResults.From(result, http, ended => TypedResults.Ok(new SessionsEndedResponse(ended)));
     }
 
     private static async Task<IResult> ReactivateAsync(Guid id, HttpContext http, UserService users, CancellationToken cancellationToken)
