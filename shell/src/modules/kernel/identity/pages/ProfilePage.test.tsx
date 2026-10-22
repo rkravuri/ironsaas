@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 describe("My profile", () => {
-  it("sits on the record template: name, login identifier, home unit and status, with details, access and session [ADR-0027, ADR-0033]", async () => {
+  it("sits on the record template: name, login identifier, home unit and status, with details, access and sessions [ADR-0027, ADR-0033]", async () => {
     stubFetch({
       "GET /api/v1/me": () =>
         json({
@@ -65,8 +65,8 @@ describe("My profile", () => {
       "Auditor, at Acme / Finance only",
     ]);
 
-    await user.click(screen.getByRole("tab", { name: "Session" }));
-    const panel = await screen.findByRole("tabpanel", { name: "Session" });
+    await user.click(screen.getByRole("tab", { name: "Sessions" }));
+    const panel = await screen.findByRole("tabpanel", { name: "Sessions" });
     for (const label of ["Started", "Ends without activity at", "Ends at the latest at"]) {
       expect(within(panel).getByText(label)).toBeInTheDocument();
     }
@@ -101,8 +101,8 @@ describe("My profile", () => {
     await user.click(within(preferences).getByRole("radio", { name: "Compact" }));
     await waitFor(() => expect(document.documentElement.dataset.density).toBe("compact"));
 
-    await user.click(screen.getByRole("tab", { name: "Session" }));
-    const session = await screen.findByRole("tabpanel", { name: "Session" });
+    await user.click(screen.getByRole("tab", { name: "Sessions" }));
+    const session = await screen.findByRole("tabpanel", { name: "Sessions" });
     await waitFor(() =>
       expect(session).toHaveTextContent("ends a session after 30 minutes without activity, and after 12 hours at most"),
     );

@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, CopyButton, Group, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import { Alert, Button, CopyButton, Group, Select, Stack, Text, Textarea, TextInput } from "@mantine/core";
 import {
+  IconAlertTriangle,
   IconCheck,
   IconCopy,
   IconKey,
   IconLockOpen,
+  IconShieldOff,
   IconShieldX,
   IconUserCheck,
+  IconUserCircle,
   IconUserOff,
 } from "@tabler/icons-react";
 import { z } from "zod";
@@ -18,17 +21,26 @@ import {
   issueRecoveryLink,
   reactivateUser,
   resetFactors,
+  revokePrincipal,
+  setEmergency,
+  startImpersonation,
   unlockUser,
   type UserRecord,
 } from "@/api/identity";
+import { leaveFor } from "@/auth/leave";
 import { useAccessAt } from "@/auth/access";
 import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
-import { ConfirmDialog, FormDialog } from "@/components/panels";
+import { ConfirmDialog, FormDialog, ReasonDialog } from "@/components/panels";
 
 const manage = "identity.users.manage";
+const impersonate = "identity.impersonation.start";
 
-type Action = "unlock" | "recovery" | "resetFactors" | "deactivate" | "reactivate";
+type Action =
+  "unlock" | "recovery" | "resetFactors" | "deactivate" | "reactivate" | "impersonate" | "revoke" | "emergency";
+
+/** The actions that take a reason, or a choice, in a dialog of their own. */
+const ownDialogs: readonly Action[] = ["resetFactors", "impersonate", "revoke"];
 
 /** A link shown once: a recovery link, or the invitation a reactivated person who never started gets. */
 interface ShownLink {
@@ -38,9 +50,10 @@ interface ShownLink {
 }
 
 /**
- * What an administrator may do to a person (S3 T2, T3, ADR-0046, ADR-0047): unlock a locked login, issue a recovery link
- * (shown once, with a copy button, as an invitation is), reset their second factors with a reason, deactivate and
- * reactivate. Each shows only where /me/access allows `identity.users.manage` at the person's home unit, and only when it
+ * What an administrator may do to a person (S3 T2, T3, T5, ADR-0046, ADR-0047, ADR-0049): unlock a locked login, issue a
+ * recovery link (shown once, with a copy button, as an invitation is), reset their second factors with a reason,
+ * deactivate and reactivate, sign in as them with identity.impersonation.start, revoke everything of theirs, and mark one
+ * of the tenant's two emergency accounts. Each shows only where /me/access allows `identity.users.manage` at the person's home unit, and only when it
  * applies to the person as they are; "Reset factors" also only when the record says the reader holds every permission
  * the person holds (the escalation rule). The API checks every one again and says why when it refuses, such as for the
  * last tenant administrator. The high-risk ones ask for a recent sign-in through the shared dialog (TF-248).
@@ -50,30 +63,53 @@ export function UserActions({ user }: { user: UserRecord }) {
   const [now] = useState(() => Date.now());
   const session = useSession();
   const queryClient = useQueryClient();
-  const access = useAccessAt(user.home_unit ? { unit: user.home_unit.id } : undefined, [manage]);
+  const access = useAccessAt(user.home_unit ? { unit: user.home_unit.id } : undefined, [manage, impersonate]);
   const [asking, setAsking] = useState<Action | undefined>();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<{ message: string; correlationId: string | undefined } | undefined>();
   const [shown, setShown] = useState<ShownLink | undefined>();
+  const [revoked, setRevoked] = useState<number | undefined>();
 
-  if (access.pending || !access.can(manage)) {
+  if (access.pending || !(access.can(manage) || access.can(impersonate))) {
     return null;
   }
+
+  // Never while signed in as someone else: those are the person's own administrators' acts, not an impersonator's (ADR-0049).
+  const impersonating = session.me?.impersonation != null;
+  const managing = access.can(manage);
 
   const locked = user.locked_until != null && Date.parse(user.locked_until) > now;
   const isPerson = user.type === "user";
   const self = session.me?.id === user.id;
+  const breakGlass = user.break_glass_until != null;
   const actions: { action: Action; label: string; icon: ReactNode; danger?: boolean }[] = [
-    ...(locked
+    ...(!impersonating &&
+    access.can(impersonate) &&
+    isPerson &&
+    !self &&
+    !breakGlass &&
+    user.status === "active" &&
+    user.takeover_allowed === true
       ? [
           {
-            action: "unlock" as const,
-            label: t("users.actions.unlock.open"),
-            icon: <IconLockOpen size={16} aria-hidden="true" />,
+            action: "impersonate" as const,
+            label: t("users.actions.impersonate.open"),
+            icon: <IconUserCircle size={16} aria-hidden="true" />,
           },
         ]
       : []),
-    ...(isPerson && user.status === "active"
+    ...(!managing
+      ? []
+      : locked
+        ? [
+            {
+              action: "unlock" as const,
+              label: t("users.actions.unlock.open"),
+              icon: <IconLockOpen size={16} aria-hidden="true" />,
+            },
+          ]
+        : []),
+    ...(managing && !impersonating && isPerson && user.status === "active"
       ? [
           {
             action: "recovery" as const,
@@ -82,7 +118,7 @@ export function UserActions({ user }: { user: UserRecord }) {
           },
         ]
       : []),
-    ...(isPerson && !self && (user.factors ?? 0) > 0 && user.takeover_allowed === true
+    ...(managing && !impersonating && isPerson && !self && (user.factors ?? 0) > 0 && user.takeover_allowed === true
       ? [
           {
             action: "resetFactors" as const,
@@ -91,7 +127,7 @@ export function UserActions({ user }: { user: UserRecord }) {
           },
         ]
       : []),
-    ...(user.status !== "disabled" && !self
+    ...(managing && !impersonating && user.status !== "disabled" && !self
       ? [
           {
             action: "deactivate" as const,
@@ -101,12 +137,36 @@ export function UserActions({ user }: { user: UserRecord }) {
           },
         ]
       : []),
-    ...(user.status === "disabled"
+    ...(managing && user.status === "disabled"
       ? [
           {
             action: "reactivate" as const,
             label: t("users.actions.reactivate.open"),
             icon: <IconUserCheck size={16} aria-hidden="true" />,
+          },
+        ]
+      : []),
+    ...(managing &&
+    !impersonating &&
+    isPerson &&
+    !breakGlass &&
+    user.status === "active" &&
+    (user.emergency === true || user.takeover_allowed === true)
+      ? [
+          {
+            action: "emergency" as const,
+            label: user.emergency ? t("users.actions.emergency.clearOpen") : t("users.actions.emergency.open"),
+            icon: <IconAlertTriangle size={16} aria-hidden="true" />,
+          },
+        ]
+      : []),
+    ...(managing && !impersonating && !self && user.status !== "disabled"
+      ? [
+          {
+            action: "revoke" as const,
+            label: t("users.actions.revoke.open"),
+            icon: <IconShieldOff size={16} aria-hidden="true" />,
+            danger: true,
           },
         ]
       : []),
@@ -126,6 +186,8 @@ export function UserActions({ user }: { user: UserRecord }) {
         setShown({ kind: "recovery", path: link.recovery_link, expiresAt: link.expires_at });
       } else if (action === "deactivate") {
         await deactivateUser(user.id);
+      } else if (action === "emergency") {
+        await setEmergency(user.id, user.emergency !== true);
       } else {
         const back = await reactivateUser(user.id);
         if (back.invitation_link && back.invitation_expires_at) {
@@ -182,12 +244,57 @@ export function UserActions({ user }: { user: UserRecord }) {
           }}
         />
       )}
-      {asking !== undefined && asking !== "resetFactors" && (
+      {asking === "impersonate" && <ImpersonateDialog user={user} onClose={() => setAsking(undefined)} />}
+      {asking === "revoke" && (
+        <ReasonDialog
+          opened
+          title={t("users.actions.revoke.title", { name })}
+          message={t(isPerson ? "users.actions.revoke.message" : "users.actions.revoke.messageClient", { name })}
+          reasonLabel={t("reason.label")}
+          reasonHint={t("users.actions.revoke.reasonHint", { name })}
+          confirmLabel={t("users.actions.revoke.confirm")}
+          onSubmit={async (reason) => {
+            const result = await revokePrincipal(user.id, reason);
+            setAsking(undefined);
+            setProblem(undefined);
+            setRevoked(result.sessions_ended);
+            void queryClient.invalidateQueries({ queryKey: ["identity", "users"] });
+          }}
+          onClose={() => setAsking(undefined)}
+        />
+      )}
+      {revoked !== undefined && (
+        <Alert
+          color="success"
+          role="status"
+          maw={480}
+          withCloseButton
+          closeButtonLabel={t("dialog.close")}
+          onClose={() => setRevoked(undefined)}
+        >
+          {t("users.actions.revoke.done", { name, count: revoked })}
+        </Alert>
+      )}
+      {asking !== undefined && !ownDialogs.includes(asking) && (
         <ConfirmDialog
           opened
-          title={t(`users.actions.${asking}.title`, { name })}
-          message={t(`users.actions.${asking}.message`, { name })}
-          confirmLabel={t(`users.actions.${asking}.confirm`)}
+          title={t(
+            asking === "emergency" && user.emergency
+              ? "users.actions.emergency.clearTitle"
+              : `users.actions.${asking}.title`,
+            { name },
+          )}
+          message={t(
+            asking === "emergency" && user.emergency
+              ? "users.actions.emergency.clearMessage"
+              : `users.actions.${asking}.message`,
+            { name },
+          )}
+          confirmLabel={t(
+            asking === "emergency" && user.emergency
+              ? "users.actions.emergency.clearConfirm"
+              : `users.actions.${asking}.confirm`,
+          )}
           danger={asking === "deactivate"}
           busy={busy}
           onConfirm={() => void run(asking)}
@@ -201,6 +308,47 @@ export function UserActions({ user }: { user: UserRecord }) {
 
 interface ResetValues extends Record<string, unknown> {
   reason: string;
+}
+
+/**
+ * Signing in as a person (TF-025, ADR-0049): why, which the person and the auditors read, and for how long, up to the
+ * tenant's maximum. The whole shell then starts again as the person, under a band that says so; the API refuses a person
+ * whose permissions the impersonator does not hold, and never lets them confirm who they are, sign or change credentials.
+ */
+function ImpersonateDialog({ user, onClose }: { user: UserRecord; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [minutes, setMinutes] = useState<string | null>(null);
+  const name = user.display_name;
+  return (
+    <ReasonDialog
+      opened
+      title={t("users.actions.impersonate.title", { name })}
+      message={t("users.actions.impersonate.message", { name })}
+      reasonLabel={t("reason.label")}
+      reasonHint={t("users.actions.impersonate.reasonHint", { name })}
+      confirmLabel={t("users.actions.impersonate.confirm")}
+      extra={
+        <Select
+          label={t("users.actions.impersonate.minutes")}
+          description={t("users.actions.impersonate.minutesHint")}
+          placeholder={t("users.actions.impersonate.longest")}
+          data={["15", "30", "60", "120"].map((value) => ({
+            value,
+            label: t("users.actions.impersonate.minutesValue", { count: Number(value) }),
+          }))}
+          value={minutes}
+          onChange={setMinutes}
+          clearable
+        />
+      }
+      onSubmit={async (reason) => {
+        await startImpersonation(user.id, reason, minutes ? Number(minutes) : undefined);
+        // The whole shell starts again as the person, so nothing of the impersonator's pages stays in memory.
+        leaveFor("/");
+      }}
+      onClose={onClose}
+    />
+  );
 }
 
 /**

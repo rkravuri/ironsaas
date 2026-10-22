@@ -3,10 +3,12 @@ import { EnrolmentPage } from "@/auth/EnrolmentPage";
 import { InvitationPage } from "@/auth/InvitationPage";
 import { LoginPage } from "@/auth/LoginPage";
 import { RecoveryPage } from "@/auth/RecoveryPage";
+import { SignInLinkPage } from "@/auth/SignInLinkPage";
+import { TermsPage } from "@/auth/TermsPage";
 import { HomePage } from "@/home/HomePage";
 import { declaredRoutes, type ModuleManifest } from "@/modules/registry";
 import { RouteErrorPage } from "./ErrorBoundary";
-import { RedirectIfSignedIn, RequireEnrolled, RequirePermission, RequireSession } from "./Guards";
+import { RedirectIfSignedIn, RequireEnrolled, RequirePermission, RequireSession, RequireTerms } from "./Guards";
 import { Layout } from "./Layout";
 
 /**
@@ -48,6 +50,18 @@ export function shellRoutes(
     { path: "/invitations", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
     { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
     { path: "/recovery", element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
+    // The operator's one-time link, an impersonation or a break-glass account's (ADR-0049): its code in the fragment too.
+    { path: "/sign-in-link", element: <SignInLinkPage />, errorElement: <RouteErrorPage /> },
+    // Signed in, outside the frame: a new version of a document the person must accept, before any page (TF-028, ADR-0049).
+    {
+      path: "/terms",
+      element: (
+        <RequireSession>
+          <TermsPage />
+        </RequireSession>
+      ),
+      errorElement: <RouteErrorPage />,
+    },
     // Signed in, outside the frame: the second factor the tenant's policy now requires, before any page (ADR-0047).
     {
       path: "/enrol",
@@ -63,9 +77,11 @@ export function shellRoutes(
       path: "/",
       element: (
         <RequireSession>
-          <RequireEnrolled>
-            <Layout />
-          </RequireEnrolled>
+          <RequireTerms>
+            <RequireEnrolled>
+              <Layout />
+            </RequireEnrolled>
+          </RequireTerms>
         </RequireSession>
       ),
       errorElement: <RouteErrorPage />,

@@ -93,6 +93,10 @@ function UserRecordView({ user }: { user: UserRecord }) {
           { label: t("users.type"), value: t(`users.types.${user.type}`, { defaultValue: user.type }) },
           ...(user.home_unit ? [{ label: t("users.homeUnit"), value: user.home_unit.name }] : []),
           ...(locked ? [{ label: t("users.login"), value: t("users.loginLocked") }] : []),
+          ...(user.emergency ? [{ label: t("users.kind"), value: t("users.emergencyAccount") }] : []),
+          ...(user.break_glass_until
+            ? [{ label: t("users.kind"), value: t("users.breakGlassUntil", { when: when(user.break_glass_until) }) }]
+            : []),
         ],
         actions: <UserActions user={user} />,
       }}

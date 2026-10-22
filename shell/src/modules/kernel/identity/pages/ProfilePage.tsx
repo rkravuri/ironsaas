@@ -1,16 +1,12 @@
-import { useSyncExternalStore } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, SegmentedControl, Stack, Table, Text, useMantineColorScheme } from "@mantine/core";
-import { IconLogout } from "@tabler/icons-react";
+import { Alert, SegmentedControl, Stack, Table, Text, useMantineColorScheme } from "@mantine/core";
 import { ApiError } from "@/api/client";
 import { fetchMyAssignments, type Assignment } from "@/api/authorization";
 import type { Me } from "@/api/identity";
 import { useSession } from "@/auth/session-context";
-import { useSetting } from "@/auth/settings";
-import { useSessionWatch } from "@/auth/session-watch";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { densities, setDensity, useDensity, type Density } from "@/design/density";
@@ -18,16 +14,16 @@ import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 import { unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
 import { PersonalDelegations } from "@/modules/kernel/console/pages/PersonalDelegations";
 import { SecurityTab } from "./SecurityTab";
+import { SessionsTab } from "./SessionsTab";
 import { userStatus } from "./user-status";
 
-const when = (value: string | number) => new Date(value).toLocaleString();
 const isScheme = (value: string): value is SchemeChoice => (schemeChoices as readonly string[]).includes(value);
 const isDensity = (value: string): value is Density => (densities as readonly string[]).includes(value);
 
 /**
  * My profile (D4) on the record template: the person's name, login identifier, home unit and status, then their
  * details, their own access in words, their preferences (A6), their password and security activity (T2), and their
- * session. A signed-in principal is active by construction: the API ends
+ * sessions: this one and the others, which they end from here (T5, TF-022). A signed-in principal is active by construction: the API ends
  * the sessions of anyone who is not (SessionService), so the status needs no request of its own.
  */
 export function ProfilePage() {
@@ -57,7 +53,7 @@ export function ProfilePage() {
         { value: "delegations", label: t("profile.tabs.delegations"), panel: <PersonalDelegations /> },
         { value: "preferences", label: t("profile.tabs.preferences"), panel: <MyPreferences /> },
         { value: "security", label: t("profile.tabs.security"), panel: <SecurityTab /> },
-        { value: "session", label: t("profile.tabs.session"), panel: <MySession me={me} /> },
+        { value: "sessions", label: t("profile.tabs.sessions"), panel: <SessionsTab me={me} /> },
       ]}
     />
   );
@@ -193,44 +189,6 @@ function MyPreferences() {
           {t("profile.preferences.densityExplain")}
         </Text>
       </Stack>
-    </Stack>
-  );
-}
-
-/**
- * The session (TF-021): when it started, when it ends without activity (as this tab knows it, moved by every answer)
- * and its absolute limit. The API has no "sign out everywhere" yet (TF-022), so the one action is Sign out, which ends
- * the session in every tab of this browser. The tenant's limits for new sessions are its settings (ADR-0036).
- */
-function MySession({ me }: { me: Me }) {
-  const { t } = useTranslation();
-  const session = useSession();
-  const idleMinutes = useSetting("identity.session.idle_minutes");
-  const absoluteHours = useSetting("identity.session.absolute_hours");
-  const watch = useSessionWatch();
-  const times = useSyncExternalStore(watch.subscribe, watch.getTimes);
-  return (
-    <Stack gap="md" align="flex-start">
-      <Facts
-        rows={[
-          [
-            t("profile.session.started"),
-            me.session.started_at ? when(me.session.started_at) : t("profile.session.unknown"),
-          ],
-          [t("profile.session.idle"), when(times?.idleEndsAt ?? me.session.idle_expires_at)],
-          [t("profile.session.absolute"), when(me.session.expires_at)],
-        ]}
-      />
-      <Text size="sm" c="dimmed" maw={640}>
-        {t("profile.session.limits", { idle: idleMinutes, hours: absoluteHours })} {t("profile.session.explain")}
-      </Text>
-      <Button
-        variant="default"
-        leftSection={<IconLogout size={16} aria-hidden="true" />}
-        onClick={() => void session.signOut()}
-      >
-        {t("app.signOut")}
-      </Button>
     </Stack>
   );
 }

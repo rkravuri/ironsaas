@@ -79,6 +79,13 @@ export const MeSchema = z.object({
   mfa_enrolment_required: z.boolean().optional(),
   /** The company login the session's sign-in came through (ADR-0048), so signing out may offer to sign out there too. */
   signed_in_with: z.object({ provider_id: z.string(), name: z.string() }).nullable().optional(),
+  /** Someone is signed in as this person (TF-025, ADR-0049): who, until when, why, and whether they are the operator. */
+  impersonation: z
+    .object({ impersonator_name: z.string(), until: z.string(), reason: z.string(), operator: z.boolean() })
+    .nullable()
+    .optional(),
+  /** A document the person must accept has a new version: everything but the terms page waits (TF-028 AC1). */
+  terms_acceptance_required: z.boolean().optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 
@@ -117,6 +124,10 @@ export const UserRecordSchema = UserSchema.omit({ home_unit_id: true }).extend({
   sso_only: z.boolean().optional(),
   /** Signs in only through a company login because a provider they are linked to says so for everyone it links. */
   sso_only_by_provider: z.boolean().optional(),
+  /** One of the tenant's emergency accounts, for when the company login is down (ADR-0049). */
+  emergency: z.boolean().optional(),
+  /** A break-glass account's time limit; null for everyone else (ADR-0049). */
+  break_glass_until: z.string().nullable().optional(),
   /** The company logins the person is linked to (ADR-0048). */
   sso_links: z
     .array(
@@ -592,3 +603,168 @@ export const testSsoProvider = (discoveryUrl: string) =>
     body: { discovery_url: discoveryUrl },
     schema: z.object({ passed: z.boolean(), items: z.array(SsoTestItemSchema) }),
   });
+
+// Sessions, revocation, impersonation, emergency accounts and terms (S3 T5, TF-021, TF-022, TF-025, TF-028, TF-029, ADR-0049).
+
+/** A session as the lists show it: whose, the browser and platform, the city and country, since when, how it signed in. */
+export const SessionRecordSchema = z.object({
+  id: z.string(),
+  principal_id: z.string(),
+  login_id: z.string(),
+  display_name: z.string(),
+  browser: z.string().nullable(),
+  platform: z.string().nullable(),
+  city: z.string().nullable(),
+  country: z.string().nullable(),
+  method: z.string(),
+  started_at: z.string(),
+  last_activity_at: z.string(),
+  impersonator_name: z.string().nullable(),
+  current: z.boolean(),
+});
+export type SessionRecord = z.infer<typeof SessionRecordSchema>;
+export const SessionListSchema = listSchema(SessionRecordSchema);
+
+export const sessionsQueryKey = ["identity", "sessions"] as const;
+
+export const fetchMySessions = (signal?: AbortSignal) =>
+  request("/api/v1/me/sessions?sort=-last_activity_at&page_size=50", {
+    schema: SessionListSchema,
+    ...(signal ? { signal } : {}),
+  });
+
+export const endMySession = (id: string) =>
+  request(`/api/v1/me/sessions/${encodeURIComponent(id)}/end`, { method: "POST" });
+
+/** "Sign out everywhere else": answers how many sessions ended. */
+export const endMyOtherSessions = () =>
+  request("/api/v1/me/sessions/end-others", {
+    method: "POST",
+    schema: z.object({ sessions_ended: z.number() }),
+  });
+
+export const fetchSessions = (query: string, signal?: AbortSignal) =>
+  request(`/api/v1/sessions${query ? `?${query}` : ""}`, { schema: SessionListSchema, ...(signal ? { signal } : {}) });
+
+export const SessionSummarySchema = z.object({
+  signed_in_now: z.number(),
+  days: z.array(
+    z.object({ date: z.string(), started: z.number(), peak_people: z.number(), ended_by_administrator: z.number() }),
+  ),
+});
+export type SessionSummary = z.infer<typeof SessionSummarySchema>;
+
+export const fetchSessionSummary = (days: number, signal?: AbortSignal) =>
+  request(`/api/v1/sessions/summary?days=${days}`, { schema: SessionSummarySchema, ...(signal ? { signal } : {}) });
+
+/** An administrator ends someone's session, with the reason the person and the audit trail keep (TF-022 AC1). */
+export const endSession = (id: string, reason: string) =>
+  request(`/api/v1/sessions/${encodeURIComponent(id)}/end`, { method: "POST", body: { reason } });
+
+/** Every session and token of the tenant stops, the asker's included, with the tenant's identifier typed (TF-029 AC1). */
+export const revokeTenant = (reason: string, confirmation: string) =>
+  request("/api/v1/sessions/revoke-tenant", {
+    method: "POST",
+    body: { reason, confirmation },
+    schema: z.object({ sessions_ended: z.number() }),
+  });
+
+/** Every session and token of a person or a service account stops (TF-029). */
+export const revokePrincipal = (id: string, reason: string) =>
+  request(userAction(id, "revoke"), {
+    method: "POST",
+    body: { reason },
+    schema: z.object({ sessions_ended: z.number() }),
+  });
+
+/** Signing in as a person, with a reason, for at most the tenant's maximum (TF-025). */
+export const startImpersonation = (id: string, reason: string, minutes: number | undefined) =>
+  request(userAction(id, "impersonation"), {
+    method: "POST",
+    body: { reason, ...(minutes !== undefined ? { minutes } : {}) },
+    schema: z.object({ principal_id: z.string(), display_name: z.string(), until: z.string() }),
+  });
+
+export const endImpersonation = () => request("/api/v1/me/impersonation/end", { method: "POST" });
+
+/** A one-time link from the operator's path (ADR-0049): the code from the link's fragment, in the body. */
+export const signInWithLink = (code: string) =>
+  request("/auth/sign-in-link", { method: "POST", body: { code }, schema: SignInAnswerSchema });
+
+export const setEmergency = (id: string, emergency: boolean) =>
+  request(userAction(id, "emergency"), { method: "PUT", body: { emergency }, schema: UserRecordSchema });
+
+export const SecurityAlertsSchema = z.object({
+  emergency_sign_ins: z.array(
+    z.object({
+      id: z.string(),
+      principal_id: z.string(),
+      display_name: z.string(),
+      login_id: z.string(),
+      at: z.string(),
+    }),
+  ),
+});
+export type SecurityAlerts = z.infer<typeof SecurityAlertsSchema>;
+
+export const fetchSecurityAlerts = (signal?: AbortSignal) =>
+  request("/api/v1/security-alerts", { schema: SecurityAlertsSchema, ...(signal ? { signal } : {}) });
+
+export const DocumentSchema = z.object({
+  source: z.string(),
+  key: z.string(),
+  version: z.number(),
+  title: z.string(),
+  body: z.string(),
+  published_at: z.string(),
+});
+export type Document = z.infer<typeof DocumentSchema>;
+
+export const myTermsQueryKey = ["identity", "me", "terms"] as const;
+
+export const fetchMyTerms = (signal?: AbortSignal) =>
+  request("/api/v1/me/terms", {
+    schema: z.object({ pending: z.array(DocumentSchema) }),
+    ...(signal ? { signal } : {}),
+  });
+
+export const acceptTerms = (documents: Pick<Document, "source" | "key" | "version">[]) =>
+  request("/api/v1/me/terms/accept", { method: "POST", body: { documents } });
+
+export const declineTerms = () => request("/api/v1/me/terms/decline", { method: "POST" });
+
+export const DocumentSummarySchema = DocumentSchema.extend({ accepted: z.number() });
+export type DocumentSummary = z.infer<typeof DocumentSummarySchema>;
+
+export const documentsQueryKey = ["identity", "documents"] as const;
+
+export const fetchDocuments = (signal?: AbortSignal) =>
+  request("/api/v1/documents", {
+    schema: z.object({ documents: z.array(DocumentSummarySchema) }),
+    ...(signal ? { signal } : {}),
+  });
+
+export const publishDocument = (key: string, title: string, body: string) =>
+  request("/api/v1/documents", { method: "POST", body: { key, title, body }, schema: DocumentSchema });
+
+export const AcceptanceSchema = z.object({
+  id: z.string(),
+  principal_id: z.string(),
+  login_id: z.string(),
+  display_name: z.string(),
+  source: z.string(),
+  document_key: z.string(),
+  version: z.number(),
+  accepted_at: z.string(),
+});
+export type Acceptance = z.infer<typeof AcceptanceSchema>;
+
+export const fetchAcceptances = (query: string, signal?: AbortSignal) =>
+  request(`/api/v1/documents/acceptances${query ? `?${query}` : ""}`, {
+    schema: listSchema(AcceptanceSchema),
+    ...(signal ? { signal } : {}),
+  });
+
+/** Where the browser downloads the acceptances as CSV, with the same filters. */
+export const acceptancesExportUrl = (query: string) =>
+  `/api/v1/documents/acceptances/export${query ? `?${query}` : ""}`;

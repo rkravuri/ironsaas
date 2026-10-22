@@ -35,6 +35,8 @@ export interface Session {
    * string when this tab did not know the name; undefined when nothing ended.
    */
   actingEnded: string | undefined;
+  /** True after an impersonation this tab was in has ended and it runs as the impersonator again (TF-025 AC3). */
+  impersonationEnded: boolean;
   /** Re-reads /me. */
   refresh: () => Promise<void>;
   /** After a login: re-reads /me and tells the other tabs, so one still on the login page follows. */
@@ -45,6 +47,8 @@ export interface Session {
   signOut: () => Promise<void>;
   /** The session's clock ran out: forget it in every tab at once, then end it on the server. */
   expire: (reason: EndReason) => void;
+  /** The server ended the session at the person's own request, such as declining the terms: forget it in every tab, saying why. */
+  closed: (reason: SessionEnd) => void;
   /** Forgets the session here, after a 401 from any call. */
   forget: () => void;
   /** Acts for someone whose delegation to this person is active: their rights for the delegated duties (ADR-0037). */
@@ -55,6 +59,10 @@ export interface Session {
   workFor: (choice: WorkFor) => Promise<void>;
   /** The person read the notice that the acting ended. */
   dismissActingEnded: () => void;
+  /** Ends the impersonation now: a colleague is themselves again, the operator is signed out (ADR-0049). */
+  endImpersonation: () => Promise<void>;
+  /** The impersonator read the notice that the impersonation ended. */
+  dismissImpersonationEnded: () => void;
 }
 
 export const SessionContext = createContext<Session | undefined>(undefined);

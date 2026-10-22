@@ -1,6 +1,8 @@
 import {
   IconAdjustments,
   IconClipboardCheck,
+  IconDevices,
+  IconFileCertificate,
   IconHelpCircle,
   IconKey,
   IconLogin2,
@@ -14,11 +16,13 @@ import { gridShortcuts, tabShortcuts, treeShortcuts } from "@/components/shortcu
 import type { ModuleManifest } from "@/modules/registry";
 import { ConflictsPage } from "./pages/ConflictsPage";
 import { DelegationsPage } from "./pages/DelegationsPage";
+import { DocumentsPage } from "./pages/DocumentsPage";
 import { ExplainPage } from "./pages/ExplainPage";
 import { ReviewRecordPage } from "./pages/ReviewRecordPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
 import { RoleEditorPage } from "./pages/RoleEditorPage";
 import { RolesPage } from "./pages/RolesPage";
+import { SessionsPage } from "./pages/SessionsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SsoProviderPage } from "./pages/SsoProviderPage";
 import { SsoProvidersPage } from "./pages/SsoProvidersPage";
@@ -31,7 +35,8 @@ import { UnitsPage } from "./pages/UnitsPage";
  * tenant and its units, A7 others' delegations (for their administrators; a person's own are in My profile) and access
  * reviews (for their reviewers, ADR-0037), A9 the explanation of a person's access and the conflict rules with their
  * report (ADR-0039). Flag rules are the operator's, in the control plane (ADR-0035). S3 T4 brought the company logins
- * (TF-014, ADR-0048), for the holders of the critical identity.sso.manage.
+ * (TF-014, ADR-0048), for the holders of the critical identity.sso.manage. S3 T5 brought the sessions, with the summary and
+ * the tenant-wide revocation (TF-022, TF-029), and the documents people accept (TF-028, ADR-0049).
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -117,6 +122,20 @@ export const consoleManifest: ModuleManifest = {
       shortcuts: gridShortcuts,
     },
     {
+      path: "/console/sessions",
+      permission: "identity.sessions.manage",
+      element: <SessionsPage />,
+      titleKey: "modules.console.sessions",
+      shortcuts: gridShortcuts,
+    },
+    {
+      path: "/console/documents",
+      permission: "identity.documents.manage",
+      element: <DocumentsPage />,
+      titleKey: "modules.console.documents",
+      shortcuts: gridShortcuts,
+    },
+    {
       path: "/console/sso/new",
       permission: "identity.sso.manage",
       element: <SsoProviderPage />,
@@ -183,6 +202,18 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/sso",
       permission: "identity.sso.manage",
       icon: <IconLogin2 size={16} />,
+    },
+    {
+      labelKey: "modules.console.sessions",
+      path: "/console/sessions",
+      permission: "identity.sessions.manage",
+      icon: <IconDevices size={16} />,
+    },
+    {
+      labelKey: "modules.console.documents",
+      path: "/console/documents",
+      permission: "identity.documents.manage",
+      icon: <IconFileCertificate size={16} />,
     },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },
