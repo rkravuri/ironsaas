@@ -39,11 +39,10 @@ test.describe("terms acceptance", () => {
       await dialog.getByLabel(/^Text/).fill("The browser test asks you to accept this, once.");
       await dialog.getByRole("button", { name: "Publish" }).click();
 
-      // The administrator is a person of the tenant too: their next page is the terms.
-      await page.goto("/users");
+      // The administrator is a person of the tenant too: the page's next call is refused, and the terms come first.
       await expect(page.getByRole("heading", { name: "Read and accept" })).toBeVisible();
       await page.getByRole("button", { name: "Accept" }).click();
-      await expect(page.getByRole("heading", { name: "Users" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Documents" })).toBeVisible();
 
       // The person, in a browser of their own: the terms before any page; declining signs them out.
       const context = await browser.newContext({ baseURL: testInfo.project.use.baseURL, ignoreHTTPSErrors: true });
@@ -73,7 +72,7 @@ test.describe("terms acceptance", () => {
       await open(page, "/console/documents");
       await page.getByRole("combobox", { name: "Document" }).click();
       await page.getByRole("option", { name: title }).click();
-      const grid = page.getByRole("region", { name: "Who accepted" });
+      const grid = page.getByRole("region", { name: "Acceptances" });
       await expect(grid).toContainText(person.loginId);
       await page.screenshot({ path: "test-results/e2e/terms-acceptances.png", fullPage: true });
     } finally {

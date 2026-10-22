@@ -158,7 +158,7 @@ for (const scheme of schemes) {
 
     await page.goto("/console/sessions");
     await expect(page.getByText("People signed in now")).toBeVisible();
-    const grid = page.getByRole("region", { name: "Live sessions" });
+    const grid = page.getByRole("region", { name: "Every live session" });
     await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("Chrome on Windows");
     await page.screenshot({ path: `test-results/a11y/sessions-console-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
@@ -270,7 +270,7 @@ for (const scheme of schemes) {
     await expect(page.getByRole("table", { name: /The current version of each document/ })).toContainText(
       "Code of conduct",
     );
-    const grid = page.getByRole("region", { name: "Who accepted" });
+    const grid = page.getByRole("region", { name: "Acceptances" });
     await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("Person 1");
     await page.screenshot({ path: `test-results/a11y/documents-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);

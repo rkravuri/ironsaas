@@ -241,7 +241,7 @@ export function DocumentsPage() {
                     columns={columns}
                     fetchPage={fetchPage}
                     defaultSort={acceptedSort}
-                    label={t("documents.accepted.title")}
+                    label={t("documents.accepted.gridLabel")}
                     refreshKey={refreshKey}
                   />
                 </Box>

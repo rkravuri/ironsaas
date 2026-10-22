@@ -184,7 +184,7 @@ export function SessionsPage() {
                     columns={columns}
                     fetchPage={fetchPage}
                     defaultSort={liveSort}
-                    label={t("sessions.console.liveTitle")}
+                    label={t("sessions.console.gridLabel")}
                     refreshKey={refreshKey}
                     onSelectionChange={setSelected}
                   />

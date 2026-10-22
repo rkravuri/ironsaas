@@ -2073,7 +2073,8 @@
       "endMessage": "{{name}}'s session in {{device}}, {{place}}, ends now. Their next request is refused and they must sign in again.",
       "reasonHint": "{{name}} and the auditors read it.",
       "endConfirm": "End session",
-      "ended": "{{name}}'s session in {{device}} ended."
+      "ended": "{{name}}'s session in {{device}} ended.",
+      "gridLabel": "Every live session"
     },
     "summary": {
       "title": "Signed in",
@@ -2174,7 +2175,8 @@
       "description": "Every acceptance, with the person, the document, the version and the time.",
       "filter": "Document",
       "all": "All documents",
-      "export": "Export as CSV"
+      "export": "Export as CSV",
+      "gridLabel": "Acceptances"
     },
     "publish": {
       "newTitle": "Publish a new document",
