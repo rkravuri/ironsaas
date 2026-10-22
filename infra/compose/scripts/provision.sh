@@ -106,10 +106,16 @@ if job["status"] == "failed":
 print(f"Job {job['job_id']} completed. {job.get('output') or ''}")
 handover = job.get("handover") or {}
 if handover.get("state") == "given":
-    what = {"invitation": "invitation", "impersonation": "link to sign in as"}.get(handover.get("kind"), "recovery link")
-    print(f"The {what} of {handover.get('subject')}, shown once and valid until {handover.get('expires_at')}:")
-    print(f"  {handover.get('link')}")
-    print("Give it to them now; it is not shown again, and nothing keeps it.")
+    if handover.get("kind") == "impersonation":
+        # The operator opens this link themselves: it signs them in as the person, so it goes to nobody else.
+        print(f"Your link to sign in as {handover.get('subject')}, shown once and valid until {handover.get('expires_at')}:")
+        print(f"  {handover.get('link')}")
+        print("Open it now in a private window; it is not shown again, and nothing keeps it.")
+    else:
+        what = "invitation" if handover.get("kind") == "invitation" else "recovery link"
+        print(f"The {what} of {handover.get('subject')}, shown once and valid until {handover.get('expires_at')}:")
+        print(f"  {handover.get('link')}")
+        print("Give it to them now; it is not shown again, and nothing keeps it.")
 elif handover.get("state") == "expired":
     print("The job's link expired before it was taken; ask again.")
 PY
