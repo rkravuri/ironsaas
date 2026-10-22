@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Registers a tenant in the control plane and asks the fleet to provision it (ACTION=deprovision takes the unit down, ACTION=update re-applies it,
-# ACTION=administrator-recovery asks for a recovery link for the tenant's administrator with REASON, ADR-0046),
+# ACTION=administrator-recovery asks for a recovery link for the tenant's administrator with REASON, ADR-0046, and
+# RESET_FACTORS=1 also resets their second factors, ADR-0047),
 # as an operator (client credentials), then follows the job until it ends and prints every step with its duration.
 # A link the job handed over (the first administrator's invitation, a recovery link) is printed once: the control plane
 # gives it once, to the operator who asked, and deletes it; it is never in the job's output (ADR-0046).
@@ -15,11 +16,12 @@ secret="${OPERATOR_SECRET:?OPERATOR_SECRET is required}"
 action="${ACTION:-provision}"
 timeout="${PROVISION_TIMEOUT_SECONDS:-900}"
 reason="${REASON:-}"
+reset_factors="${RESET_FACTORS:-0}"
 
-python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" <<'PY'
+python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" <<'PY'
 import base64, json, sys, time, urllib.error, urllib.request
 
-control, client_id, secret, tenant, administrator, action, timeout, reason = sys.argv[1:]
+control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors = sys.argv[1:]
 timeout = int(timeout)
 
 def call(method, path, body=None, token=None, form=None):
@@ -62,7 +64,7 @@ if action == "provision":
 
 if action == "administrator-recovery":
     # The reason goes to both audit trails; an empty administrator means the tenant's first one.
-    body = {"reason": reason, "login_id": administrator if administrator not in ("", "-") else None}
+    body = {"reason": reason, "login_id": administrator if administrator not in ("", "-") else None, "reset_factors": reset_factors == "1"}
     status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", body=body, token=access)
 else:
     status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", token=access)

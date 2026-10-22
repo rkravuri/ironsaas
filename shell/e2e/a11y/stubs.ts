@@ -116,6 +116,8 @@ export async function stubSignedIn(target: Page): Promise<void> {
   );
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: me }));
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
+  // A page whose session ends shows the login page, which asks whether a passkey alone signs in (off by default).
+  await target.route("**/auth/sign-in-options", (route) => route.fulfill({ json: { passkey_sign_in: false } }));
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
   // One user by id, as the record page asks; the list's route above answers the rest.
   await target.route("**/api/v1/users/*", (route) => {
@@ -312,7 +314,7 @@ export const roles = [
   roleRow(5, "user-reader", "User reader", "Lists the people of a unit.", false, "user", ["identity.users.read"]),
 ];
 
-const envelope = <T>(url: string, rows: T[]) => ({
+export const envelope = <T>(url: string, rows: T[]) => ({
   data: rows,
   meta: {
     page_number: 1,
@@ -399,9 +401,32 @@ export const securityEvents = [
   },
 ];
 
-/** The policy and the person's security activity, for the pages that set a password and My profile's Security tab. */
+/**
+ * The policy, the person's second factors and security activity, for the pages that set a password and My profile's
+ * Security tab; and whether a passkey alone signs in, which the login page asks (off, as a tenant's default).
+ */
 export async function stubPasswords(target: Page): Promise<void> {
   await target.route("**/auth/password-policy", (route) => route.fulfill({ json: passwordPolicy }));
+  await target.route("**/auth/sign-in-options", (route) => route.fulfill({ json: { passkey_sign_in: false } }));
+  await target.route("**/api/v1/me/factors", (route) =>
+    route.fulfill({
+      json: {
+        factors: [
+          {
+            id: "f1",
+            kind: "authenticator_app",
+            name: "My phone",
+            created_at: "2026-10-01T09:00:00Z",
+            last_used_at: "2026-10-21T08:30:00Z",
+          },
+        ],
+        recovery_codes_left: 10,
+        required: false,
+        allowed: ["authenticator_app", "passkey"],
+        enrol_by: null,
+      },
+    }),
+  );
   await target.route("**/api/v1/me/security-events?**", (route) =>
     route.fulfill({ json: envelope(route.request().url(), securityEvents) }),
   );

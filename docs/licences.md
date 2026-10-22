@@ -23,3 +23,8 @@ NuGet packages carry their licence in a comment in `Directory.Packages.props` (A
 | `OpenFeature` (NuGet, recorded here too) | 2.14.1 (2026-08-10) | Apache-2.0 | evaluating flags in the API (A5) |
 | `@mantine/spotlight` | 9.7.3 | MIT | the search palette, built from its parts as a combobox (D4, S2-close) |
 | `prettier` | 3.9.9 (2026-09-23) | MIT | formatting the shell's code, a dev dependency (S2-close, ADR-0040) |
+| `qrcode-generator` | 2.0.4 (2025-08-07) | MIT (Kazuhiko Arase) | drawing an authenticator app's QR code at enrolment, as one SVG path (S3 T3, ADR-0047); no dependencies |
+| `Fido2` and `Fido2.Models` (NuGet, recorded here too) | 4.2.0 (2026-10-02) | MIT (Fido2NetLib) | WebAuthn registration and assertion for passkeys on the server (S3 T3, ADR-0047) |
+| `NSec.Cryptography` (NuGet, Fido2's dependency) | 25.4.0 | MIT | Ed25519 keys of passkeys that use them, for Fido2 |
+| `libsodium` (NuGet, NSec's dependency) | 1.0.20.1 | ISC | the native library under NSec |
+| `System.Formats.Cbor` (NuGet, Fido2's dependency) | 9.0.0 | MIT (.NET Foundation) | reading WebAuthn's CBOR for Fido2; the Identity tests' software authenticator writes it |

@@ -178,6 +178,94 @@
           "whole_number": true
         },
         {
+          "key": "identity.mfa.allowed_factors",
+          "module": "identity",
+          "type": "choice",
+          "description": "Which second factors people may enrol: an authenticator app, passkeys, or both. A factor enrolled before a change keeps working.",
+          "default": "both",
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "One of: both, authenticator_app, passkeys.",
+          "choices": [
+            "both",
+            "authenticator_app",
+            "passkeys"
+          ],
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "identity.mfa.grace_days",
+          "module": "identity",
+          "type": "number",
+          "description": "How many days a person who must have a second factor may still sign in without one, counted from the first sign-in that found it required; 0 sends them to enrolment at once.",
+          "default": 0,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 0 to 14.",
+          "choices": null,
+          "minimum": 0,
+          "maximum": 14,
+          "whole_number": true
+        },
+        {
+          "key": "identity.mfa.passkey_sign_in",
+          "module": "identity",
+          "type": "boolean",
+          "description": "Let people sign in with a passkey alone, without their password: the passkey proves both what they have and, by its own check, who they are.",
+          "default": false,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "On or off.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "identity.mfa.required_for",
+          "module": "identity",
+          "type": "choice",
+          "description": "Who must sign in with a second factor: nobody, the people who hold the roles of identity.mfa.roles, or everyone.",
+          "default": "roles",
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "One of: nobody, roles, everyone.",
+          "choices": [
+            "nobody",
+            "roles",
+            "everyone"
+          ],
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "identity.mfa.roles",
+          "module": "identity",
+          "type": "json",
+          "description": "The codes of the roles whose holders must have a second factor when it is required for roles. Empty: every role that holds a high-risk or critical permission.",
+          "default": [],
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A list of role codes, for example [\"tenant-administrator\"]; an empty list means the roles that hold a high-risk or critical permission.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
           "key": "identity.password.common_check",
           "module": "identity",
           "type": "boolean",

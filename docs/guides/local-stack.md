@@ -26,7 +26,7 @@ Everything Foundation needs runs on the developer laptop in containers (PRD sect
 | `make secret-control`, `make migrate-control`, `make seed-control`, `make run-control`, `make run-fleet` | The control plane from source |
 | `make up-control`, `make down-control` | The control plane as containers from the images |
 | `make provision TENANT=x [ADMIN=a@b]`, `make update-unit TENANT=x`, `make deprovision TENANT=x` | Tenant units through the control plane |
-| `make recover-admin TENANT=x REASON="..." [ADMIN=a@b]` | A one-time, 15-minute recovery link for a tenant's administrator, with the reason both audit trails keep (section 5, ADR-0046) |
+| `make recover-admin TENANT=x REASON="..." [ADMIN=a@b] [RESET_FACTORS=1]` | A one-time, 15-minute recovery link for a tenant's administrator, with the reason both audit trails keep, and with `RESET_FACTORS=1` the reset of their second factors too (section 5, ADR-0046, ADR-0047) |
 | `make apply-plan TENANT=x PLAN=y [DRY_RUN=1] [STARTS=yyyy-mm-dd] [ENDS=yyyy-mm-dd]` | Show what a plan changes for a tenant, then apply it (section 5) |
 | `make catalogue` | Write what the units can license to the file the control plane carries (ADR-0034) |
 | `make flag KEY=k VALUE=v [TENANT=x] [REASON=...]` | Set a flag's rule for a tenant, or for the platform without `TENANT`, and print it (section 5, ADR-0035) |
@@ -56,7 +56,7 @@ TLS: the `websecure` entry point has TLS on. Without `make certs` Traefik uses i
 
 ## 4. Secrets
 
-Every unit, the control plane included, gets its configuration at start from one secret in OpenBao: `secret/<path>/unit` with keys that are configuration keys (`ConnectionStrings:Database`, `Storage:ContainerSasUrl`, `Tokens:SigningKeyPem`, ...). Its environment holds only `Secrets__Address`, `Secrets__Token`, `Secrets__Path` and the tenant binding (ADR-0016). An explicit environment variable wins over the secret.
+Every unit, the control plane included, gets its configuration at start from one secret in OpenBao: `secret/<path>/unit` with keys that are configuration keys (`ConnectionStrings:Database`, `Storage:ContainerSasUrl`, `Tokens:SigningKeyPem`, `Identity:FactorKey`, ...). The signing key and the factor key are made once and kept by every update: the factor key seals the second factors' secrets, so a new one would leave every authenticator app unreadable (ADR-0047). `make secret-dev` and `make secret-control` keep theirs in `infra/compose/.dev-factor-key` and `.control-factor-key` (git-ignored), beside the signing keys. Its environment holds only `Secrets__Address`, `Secrets__Token`, `Secrets__Path` and the tenant binding (ADR-0016). An explicit environment variable wins over the secret.
 
 The fleet writes `tenants/<slug>/database` (the role passwords), `tenants/<slug>/storage` (the signed container URL), `tenants/<slug>/unit` (the unit's configuration) and `tenants/<slug>/fleet` (the unit token, the smoke client's secret) per tenant (ADR-0018). A job's link waits at `tenants/<slug>/handover/<job id>` until the report gives it to the operator who asked, or until it expires (ADR-0046). `make secret-dev` writes the dev tenant's by hand; `make secret-control` writes the control plane's, with `localhost` hosts for the hosts from source and `postgres`/`blob` hosts when `make up-control` writes it for the containers.
 
@@ -79,6 +79,14 @@ make recover-admin TENANT=acme REASON="The administrator lost their password (ti
 ```
 
 `ADMIN=someone@acme.localhost` names another tenant administrator than the first. The call is `POST /api/v1/tenants/{slug}/administrator-recovery` with `reason` (and `login_id`) on the control plane, which needs `tenancy.administrators.recover` (the control plane's administrators hold it after `make seed-control`). The fleet runs the unit's `recover-admin` command, which issues the link only for an active tenant administrator of the whole tenant. At the end the command prints the link, `https://acme.localhost/recovery#<code>`, once: the control plane gives it only to the operator who asked, deletes it, and keeps it in no job output or log, so give it to the administrator at once, and ask again if it is lost. It works once, for 15 minutes; a newer link replaces it, and using it ends all their sessions. The control plane's audit trail records the request, and the tenant's own trail and the administrator's Security activity record the link with your name and the reason. An administrator who is still Invited needs the invitation again instead: `make update-unit TENANT=acme`, whose seed re-issues it.
+
+**Resetting a tenant administrator's second factors** (ADR-0047). An administrator who lost the device that holds their authenticator app or passkey, and has no recovery code left, cannot sign in even with their password. Another tenant administrator who holds every permission they hold resets their factors on their user record ("Reset factors", with a reason, after confirming it is them). When there is none, the operator does it with the recovery:
+
+```
+make recover-admin TENANT=acme REASON="Lost phone and password (ticket 4712)" RESET_FACTORS=1
+```
+
+The request carries `reset_factors: true`; the unit's `recover-admin` issues the link, removes every second factor and recovery code of the administrator, and ends their sessions, in one transaction. The job's output says the factors were reset. Both audit trails record it with your name and the reason, and the administrator's Security activity shows "Second factors reset". The administrator sets a new password with the link, signs in with it, and, since the policy requires a factor of a tenant administrator, sets one up at once before any page, receiving new recovery codes. The smoke sets the administrator's password with the operator's recovery on every run and keeps it, with their authenticator app's key (`administrator_totp_secret`), in `secret/tenants/<slug>/smoke`, which `make e2e` reads. It resets the factors this way only when it keeps no key or the unit refuses the one it keeps, and then enrols a new app and keeps its key.
 
 **Settings.** The tenant's settings are the tenant's: its administrators change them on the console's Settings page (`/console/settings`), for the whole organisation or for a unit, and each person sets their colour scheme and density in My profile (ADR-0036). They live in the unit's database, so nothing in the control plane or the store changes them. `GET /api/v1/settings?scope=tenant` and `/api/v1/settings/{key}/history?scope=tenant` on the unit show the values and every change with its author.
 
@@ -113,7 +121,8 @@ For work on a module without a provisioned tenant: `make migrate`, `make seed` (
 
 ## 9. Known limits of the laptop stack
 
-- A unit healed after a lost store has new credentials; its administrator's password is gone from the store until the smoke's next run or `make recover-admin` (section 5).
+- A unit healed after a lost store has new credentials; its administrator's password is gone from the store until the smoke's next run or `make recover-admin` (section 5). Its factor key is new too: authenticator apps enrolled before the loss no longer verify, and their people need a reset of their factors (section 5), while passkeys keep working (ADR-0047).
+- The browser tests' tenant names the roles it requires a second factor of (the tenant administrator and `e2e-mfa`), set by `e2e-data.py`; the default policy, every role holding a high-risk or critical permission, is proven by the .NET tests (ADR-0047).
 - PostgreSQL is the 19 release candidate until the GA image; an RC to GA change can require `make reset`.
 - Azurite implements most of the Azure Blob API, not all of it. Reading container properties is refused under a container signature, so the units check their container by listing one page instead.
 - Tenant units share the platform network; isolation between tenants is the database roles, the container signatures and the unit tokens (proven by the Fleet tests), not the network. Network policies arrive on Kubernetes.

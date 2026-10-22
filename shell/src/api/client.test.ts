@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { ApiError, listSchema, onResponse, onUnauthenticated, request, type ResponseInfo } from "./client";
+import {
+  ApiError,
+  listSchema,
+  onEnrolmentRequired,
+  onReauthenticationRequired,
+  onResponse,
+  onUnauthenticated,
+  request,
+  type ResponseInfo,
+} from "./client";
 import { json, problem, stubFetch } from "@/test/render";
 
 afterEach(() => {
@@ -109,5 +118,58 @@ describe("the API client", () => {
     expect(seen[0]?.serverDate).toBe(Date.parse("2026-10-19T08:00:00Z"));
     expect(seen[1]?.serverDate).toBeUndefined();
     expect(seen[0]?.receivedAt).toBeGreaterThan(0);
+  });
+
+  it("sends a request refused for an old sign-in again once the person confirmed it is them [TF-248 AC5]", async () => {
+    let sent = 0;
+    stubFetch({
+      "POST /api/v1/users/u1/deactivate": () =>
+        ++sent === 1 ? problem(403, { error_code: "auth.reauthentication_required" }) : json({ ok: true }),
+    });
+    const confirm = vi.fn(() => Promise.resolve(true));
+    const stop = onReauthenticationRequired(confirm);
+
+    try {
+      await expect(request("/api/v1/users/u1/deactivate", { method: "POST" })).resolves.toEqual({ ok: true });
+    } finally {
+      stop();
+    }
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(sent).toBe(2);
+  });
+
+  it("lets the refusal through, sending nothing again, when the person cancels or no dialog is there [TF-248 AC5]", async () => {
+    let sent = 0;
+    stubFetch({
+      "POST /api/v1/users/u1/deactivate": () => {
+        sent++;
+        return problem(403, { error_code: "auth.reauthentication_required" });
+      },
+    });
+    const stop = onReauthenticationRequired(() => Promise.resolve(false));
+
+    const cancelled = await request("/api/v1/users/u1/deactivate", { method: "POST" }).catch((error: unknown) => error);
+    stop();
+    const unanswered = await request("/api/v1/users/u1/deactivate", { method: "POST" }).catch(
+      (error: unknown) => error,
+    );
+
+    expect(cancelled).toBeInstanceOf(ApiError);
+    expect((cancelled as ApiError).needsReauthentication).toBe(true);
+    expect(unanswered).toBeInstanceOf(ApiError);
+    expect(sent).toBe(2);
+  });
+
+  it("tells the frame when a call is refused because the tenant now requires a second factor of the person [TF-013 AC1, ADR-0047]", async () => {
+    stubFetch({ "GET /api/v1/users": () => problem(403, { error_code: "identity.mfa.enrolment_required" }) });
+    const heard = vi.fn();
+    const stop = onEnrolmentRequired(heard);
+
+    const refused = await request("/api/v1/users").catch((error: unknown) => error);
+    stop();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect((refused as ApiError).status).toBe(403); // the session stays: a 403, not a 401
   });
 });

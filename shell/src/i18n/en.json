@@ -40,7 +40,8 @@
     "forgot": {
       "title": "Forgot your password?",
       "text": "Ask your administrator for a recovery link. It works once, for 15 minutes."
-    }
+    },
+    "passkey": "Sign in with a passkey"
   },
   "invitation": {
     "title": "Set your password",
@@ -224,6 +225,15 @@
           "label": "Invitation link",
           "byHand": "Email delivery comes later: send this link to them yourself. It works once, expires on {{when}}, and is shown only now."
         }
+      },
+      "resetFactors": {
+        "open": "Reset factors",
+        "title": "Reset the second factors of {{name}}?",
+        "message": "This removes every second factor and recovery code of {{name}} and ends all their sessions. Their password alone then signs them in, and they set up a new second factor at once when your organisation requires one. Do it only when you are sure it is {{name}} who asks.",
+        "reason": "Reason",
+        "reasonHint": "Kept in {{name}}'s security activity and in the audit trail.",
+        "reasonRequired": "Say why: it is kept with the reset.",
+        "confirm": "Reset the factors"
       }
     }
   },
@@ -1116,7 +1126,12 @@
       "identity_session_absolute_hours": "A session ends at the latest after",
       "identity_invitation_valid_days": "An invitation link stays valid for",
       "shell_colour_scheme": "Colour scheme",
-      "shell_density": "Density"
+      "shell_density": "Density",
+      "identity_mfa_required_for": "A second factor is required of",
+      "identity_mfa_roles": "The roles whose holders need a second factor",
+      "identity_mfa_allowed_factors": "People may set up",
+      "identity_mfa_grace_days": "Days a person may still sign in without a second factor",
+      "identity_mfa_passkey_sign_in": "Sign in with a passkey alone"
     },
     "amounts": {
       "identity_session_idle_minutes_one": "{{count}} minute",
@@ -1135,6 +1150,16 @@
       "shell_density": {
         "comfortable": "Comfortable",
         "compact": "Compact"
+      },
+      "identity_mfa_required_for": {
+        "nobody": "Nobody",
+        "roles": "The holders of the roles below",
+        "everyone": "Everyone"
+      },
+      "identity_mfa_allowed_factors": {
+        "both": "Authenticator apps and passkeys",
+        "authenticator_app": "Authenticator apps only",
+        "passkeys": "Passkeys only"
       }
     },
     "boolean": {
@@ -1167,7 +1192,10 @@
       "save": "Save",
       "number": "Enter a number.",
       "required": "Enter a value.",
-      "jsonInvalid": "This is not a JSON document. Check the brackets and the quotes."
+      "jsonInvalid": "This is not a JSON document. Check the brackets and the quotes.",
+      "roles": "Roles",
+      "rolesHint": "The people who hold one of these roles, anywhere, must have a second factor. With none chosen, every role that holds a high-risk or critical permission.",
+      "rolesNone": "No role has that name."
     },
     "history": {
       "open": "History",
@@ -1624,7 +1652,12 @@
       "login_locked": "Login locked after too many failed sign-ins",
       "login_unlocked": "Login unlocked",
       "user_deactivated": "Account deactivated",
-      "user_reactivated": "Account reactivated"
+      "user_reactivated": "Account reactivated",
+      "factor_enrolled": "Second factor added",
+      "factor_removed": "Second factor removed",
+      "factors_reset": "Second factors reset, and every session ended",
+      "recovery_code_used": "Recovery code used",
+      "recovery_codes_regenerated": "New recovery codes made"
     },
     "actors": {
       "self": "You",
@@ -1633,5 +1666,140 @@
       "system": "Automatically"
     },
     "reason": "Reason: {{reason}}"
+  },
+  "mfa": {
+    "kinds": {
+      "authenticator_app": "Authenticator app",
+      "passkey": "Passkey",
+      "recovery_code": "Recovery code"
+    },
+    "second": {
+      "title": "Confirm it is you",
+      "intro": "Your password is right. Now use your second factor.",
+      "passkey": "Use your passkey",
+      "or": "or",
+      "code": "Code from your authenticator app",
+      "codeHint": "Six digits. Your app shows a new code every 30 seconds.",
+      "recovery": "Recovery code",
+      "recoveryHint": "One of the ten codes you saved when you set up your second factor. Each works once.",
+      "submit": "Continue",
+      "useRecovery": "Use a recovery code instead",
+      "useCode": "Use the code from your app instead",
+      "restart": "Start again",
+      "another": "Sign in as someone else"
+    },
+    "enrol": {
+      "title": "Set up a second factor",
+      "intro": "Your organisation asks you to sign in with a second factor as well as your password. Set one up now to continue.",
+      "choose": "Choose how you will confirm it is you",
+      "authenticator_appText": "An app on your phone shows a new six-digit code every 30 seconds.",
+      "passkeyText": "Your device confirms it is you with your face, your fingerprint or its PIN.",
+      "back": "Choose another way"
+    },
+    "app": {
+      "starting": "Making a key for your app.",
+      "scan": "Scan this code with your authenticator app, or type the key below into it. Then type the code the app shows.",
+      "qrLabel": "QR code for your authenticator app",
+      "secret": "Key to type into the app",
+      "copy": "Copy the key",
+      "copied": "Copied",
+      "name": "Name",
+      "nameHint": "So you can tell your factors apart, for example My phone.",
+      "defaultName": "Authenticator app",
+      "code": "Code the app shows now",
+      "confirm": "Save the authenticator app"
+    },
+    "passkey": {
+      "intro": "Your browser asks your device to make a passkey for this organisation. Your device keeps its secret part; it never leaves the device.",
+      "name": "Name",
+      "nameHint": "So you can tell your passkeys apart, for example Work laptop.",
+      "defaultName": "Passkey",
+      "create": "Create a passkey",
+      "unsupported": "This browser cannot create passkeys. Use an authenticator app, or another browser."
+    },
+    "codes": {
+      "title": "Save your recovery codes",
+      "intro": "If you lose your device, one of these codes signs you in once. Keep them somewhere safe, away from your device: this is the only time they are shown.",
+      "listLabel": "Your recovery codes",
+      "copy": "Copy the codes",
+      "copied": "Copied",
+      "download": "Download",
+      "print": "Print",
+      "saved": "I have saved my recovery codes",
+      "continue": "Continue",
+      "done": "Done",
+      "fileName": "recovery-codes.txt",
+      "fileHeading": "Recovery codes for {{account}}. Each works once."
+    },
+    "errors": {
+      "invalid": "That did not prove it is you. Check the code, or try another way.",
+      "cooling_one": "Too many wrong codes in a row. Wait {{count}} second, then try again.",
+      "cooling_other": "Too many wrong codes in a row. Wait {{count}} seconds, then try again.",
+      "expired": "This sign-in took too long, or ended. Start again with your password.",
+      "factorInvalid": "The code does not match. Check that the time on your phone is right, and type the code it shows now.",
+      "passkeyCancelled": "The passkey was not used. Try again when you are ready, or use another way.",
+      "passkeyOff": "Your organisation does not let you sign in with a passkey alone. Sign in with your password.",
+      "notAllowed": "Your organisation does not allow this kind of second factor. Choose another.",
+      "appExists": "You have an authenticator app already. Remove it first to set up another.",
+      "last": "This is your last second factor, and your organisation requires one. Add another first, then remove this one.",
+      "noPasskey": "You have no passkey. Use the code from your app, or a recovery code."
+    },
+    "reauth": {
+      "title": "Confirm it is you",
+      "intro": "This action needs you to have signed in within the last few minutes. Confirm it is you, and it goes on.",
+      "password": "Password",
+      "code": "Code from your authenticator app",
+      "recovery": "Recovery code",
+      "passkey": "Confirm with your passkey",
+      "submit": "Confirm",
+      "invalid": "That did not confirm it is you. Check your password and your code, and try again."
+    },
+    "profile": {
+      "title": "Second factors",
+      "intro": "A second factor confirms it is you when you sign in, after your password, and before the actions that matter most.",
+      "required": "Your organisation requires a second factor of you.",
+      "enrolPrompt": "You signed in with a recovery code. Add a new second factor now, so you are not left without one.",
+      "added": "Your second factor is saved.",
+      "none": "No second factor yet",
+      "noneText": "Add an authenticator app or a passkey, so a stolen password is not enough to sign in as you.",
+      "caption": "Your second factors",
+      "columns": {
+        "name": "Name",
+        "kind": "Kind",
+        "added": "Added",
+        "used": "Last used",
+        "actions": "Actions"
+      },
+      "never": "Not yet",
+      "add": "Add a second factor",
+      "addTitle": "Add a second factor",
+      "rename": "Rename",
+      "renameNamed": "Rename {{name}}",
+      "renameTitle": "Rename {{name}}",
+      "renameSubmit": "Save the name",
+      "nameRequired": "Type a name.",
+      "remove": "Remove",
+      "removeNamed": "Remove {{name}}",
+      "removeTitle": "Remove {{name}}?",
+      "removeMessage": "You will no longer be able to confirm it is you with {{name}}.",
+      "removeConfirm": "Remove",
+      "codesTitle": "Recovery codes",
+      "codesLeft_one": "You have {{count}} recovery code left.",
+      "codesLeft_other": "You have {{count}} recovery codes left.",
+      "codesNone": "Recovery codes come with your first second factor.",
+      "regenerate": "Make new recovery codes",
+      "regenerateTitle": "Make new recovery codes?",
+      "regenerateMessage": "Your current recovery codes stop working, and ten new ones are shown once.",
+      "regenerateConfirm": "Make new codes"
+    },
+    "banner": {
+      "text": "Your organisation requires a second factor. Add one by {{when}}.",
+      "link": "Add one in My profile."
+    },
+    "required": {
+      "title": "Set up a second factor",
+      "intro": "Your organisation now requires a second factor of you. Set one up to go on: you stay signed in, and return to where you were.",
+      "signOut": "Sign out instead"
+    }
   }
 }

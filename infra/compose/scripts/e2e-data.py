@@ -7,8 +7,12 @@ run's id: the first holds the child-unit administrator (who reads the users of t
 the second and third each hold a colleague, and a person homed at the second reads the users of both, so the header
 offers them a choice of unit (A8). They hold no role in the first branch, whose access review the delegation test runs
 (A7). In the run's unit itself, outside the branches, a person whose password the recovery test sets with a link and
-whom it then deactivates (S3 T2). Every person is new and signs in with a password made here. It prints shell exports
-for make e2e.
+whom it then deactivates (S3 T2), and a person with the run's MFA role, whom the passkey test sends to enrolment (S3 T3).
+Every person is new and signs in with a password made here. It prints shell exports for make e2e.
+
+The tenant's MFA policy names the roles whose holders need a second factor (ADR-0047): the tenant administrator and the
+MFA role, so the other people of a run sign in with their password, as the tests of access expect, and the
+administrator signs in with the authenticator app the smoke enrolled, whose key make e2e reads from the store.
 
 teardown deactivates the people homed in the run's units, those of earlier runs that are still active too (runs before
 S3 T2 could not deactivate anyone), then the run's units, the deepest first (E2E_RUN_UNIT_ID). make e2e runs it whatever
@@ -16,12 +20,17 @@ the tests' result, so a run leaves no active people behind.
 
 The three roles the tests grant are the tenant's, not a run's: they are created once and kept as they are.
 
-Reads E2E_TENANT and E2E_ADMIN_PASSWORD (and E2E_INGRESS) from the environment.
+Reads E2E_TENANT, E2E_ADMIN_PASSWORD and E2E_ADMIN_TOTP_SECRET (and E2E_INGRESS) from the environment.
 """
 
+import base64
+import hashlib
+import hmac
 import http.client
 import json
 import os
+import re
+import struct
 import secrets
 import shlex
 import string
@@ -36,6 +45,8 @@ INGRESS = urllib.parse.urlsplit(os.environ.get("E2E_INGRESS", "http://localhost"
 ROLE_CODE = "e2e-unit-user-reader"
 REVIEWER_ROLE_CODE = "e2e-unit-reviewer"
 REVOCABLE_ROLE_CODE = "e2e-revocable"
+MFA_ROLE_CODE = "e2e-mfa"
+MFA_ROLES = ["tenant-administrator", MFA_ROLE_CODE]
 
 
 def log(message):
@@ -66,16 +77,68 @@ def api(method, path, cookie, body=None, expect=(200,)):
     return data
 
 
-def login(login_id, password):
-    status, _, cookie = send(INGRESS, "POST", "/auth/login", {"login_id": login_id, "password": password}, {"Host": HOST})
-    return cookie.split(";", 1)[0] if status == 200 and cookie else None
+def cookie_named(header, name):
+    """One cookie's name=value from a Set-Cookie header, which may hold several (a cleared sign-in cookie and the session)."""
+    found = re.search(rf"(?:^|[,\s]){re.escape(name)}=([^;,\s]+)", header or "")
+    return f"{name}={found.group(1)}" if found else None
+
+
+def totp(secret, step):
+    """RFC 6238's code for a step: HMAC-SHA1 of the step, six digits (ADR-0047)."""
+    key = base64.b32decode(secret.upper() + "=" * (-len(secret) % 8))
+    digest = hmac.new(key, struct.pack(">Q", step), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    value = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+    return f"{value % 1_000_000:06d}"
+
+
+def second_factor(sign_in, secret):
+    """The second step with the app's code. A step another process used (the smoke, the browser tests) is refused as
+    any wrong code is: the next step then, at most three tries, under the three that start a cooling period."""
+    tried = set()
+    for _ in range(3):
+        now = int(time.time()) // 30
+        step = next((s for s in (now, now + 1) if s not in tried), None)
+        if step is None:
+            time.sleep(30 - time.time() % 30 + 1)
+            now = int(time.time()) // 30
+            step = now + 1
+        tried.add(step)
+        status, data, header = send(INGRESS, "POST", "/auth/second-factor", {"code": totp(secret, step)}, {"Host": HOST, "Cookie": sign_in})
+        if status == 200:
+            return cookie_named(header, "iron.session")
+        if (data or {}).get("error_code") != "identity.second_factor.invalid":
+            raise SystemExit(f"the second factor was refused: {status} {data}")
+    raise SystemExit("the second factor was refused three times")
+
+
+def login(login_id, password, secret=None):
+    status, data, header = send(INGRESS, "POST", "/auth/login", {"login_id": login_id, "password": password}, {"Host": HOST})
+    if status != 200 or not header:
+        return None
+    step = (data or {}).get("step")
+    if not step:
+        return cookie_named(header, "iron.session")
+    if step["kind"] != "second_factor" or not secret:
+        raise SystemExit(f"{login_id} must give a second factor ({step['kind']}) and no key for it is known: run make smoke TENANT={TENANT} first.")
+    return second_factor(cookie_named(header, "iron.sign_in"), secret)
 
 
 def administrator():
-    admin = login(ADMIN, os.environ["E2E_ADMIN_PASSWORD"])
+    admin = login(ADMIN, os.environ["E2E_ADMIN_PASSWORD"], os.environ.get("E2E_ADMIN_TOTP_SECRET") or None)
     if admin is None:
         raise SystemExit(f"{ADMIN} cannot sign in on {HOST}: run make smoke TENANT={TENANT} first.")
     return admin
+
+
+def require_mfa_of_roles(cookie):
+    """The MFA policy of the browser tests' tenant: the roles of MFA_ROLES, set only when it differs (each change is kept)."""
+    settings = {s["key"]: s["value"] for s in api("GET", "/api/v1/settings?scope=tenant", cookie)["data"]}
+    if settings.get("identity.mfa.required_for") != "roles":
+        api("PUT", "/api/v1/settings/identity.mfa.required_for", cookie, {"scope": "tenant", "value": "roles"})
+    if sorted(settings.get("identity.mfa.roles") or []) != sorted(MFA_ROLES):
+        api("PUT", "/api/v1/settings/identity.mfa.roles", cookie, {"scope": "tenant", "value": MFA_ROLES})
+        log(f"The tenant requires a second factor of the roles {', '.join(MFA_ROLES)}.")
 
 
 def password():
@@ -145,10 +208,14 @@ def setup():
     role = ensure_role(admin, ROLE_CODE, "Unit user reader", "Reads the users of a unit and the units below it.", ["identity.users.read"])
     reviewer = ensure_role(admin, REVIEWER_ROLE_CODE, "Unit access reviewer", "Confirms or revokes the roles held in a unit and the units below it.", ["authz.reviews.decide"])
     revocable = ensure_role(admin, REVOCABLE_ROLE_CODE, "Revocable in review", "Granted and revoked by the browser test of access reviews.", ["authz.units.read"])
+    mfa = ensure_role(admin, MFA_ROLE_CODE, "Needs a second factor", "Its holders must sign in with a second factor; the passkey test's person holds it.", ["authz.units.read"])
+    require_mfa_of_roles(admin)
 
     child_id, child_login, child_password = create_person(admin, run, "child-admin", "Child administrator", child)
     two_id, two_login, two_password = create_person(admin, run, "two-units", "Two-unit reader", second)
     recover_id, recover_login, _ = create_person(admin, run, "recovering", "Recovering person", run_unit)
+    mfa_id, mfa_login, mfa_password = create_person(admin, run, "passkey", "Passkey person", run_unit)
+    grant(admin, mfa_id, mfa["id"], "unit", run_unit["id"])
     colleague_id, _ = create_user(admin, f"colleague-{run}@{TENANT}.localhost", "A colleague", child["id"])
     for unit, prefix in ((second, "second-colleague"), (third, "third-colleague")):
         create_user(admin, f"{prefix}-{run}@{TENANT}.localhost", f"A colleague in {unit['name']}", unit["id"])
@@ -180,6 +247,8 @@ def setup():
         "E2E_THIRD_UNIT": third["name"],
         "E2E_RECOVER_ID": recover_id,
         "E2E_RECOVER_LOGIN_ID": recover_login,
+        "E2E_MFA_LOGIN_ID": mfa_login,
+        "E2E_MFA_PASSWORD": mfa_password,
     }
     for name, value in exports.items():
         print(f"export {name}={shlex.quote(value)}")

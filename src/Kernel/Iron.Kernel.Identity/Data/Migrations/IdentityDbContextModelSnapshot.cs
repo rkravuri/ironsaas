@@ -23,6 +23,174 @@ namespace Iron.Kernel.Identity.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.AuthenticationChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<byte[]>("PendingSecret")
+                        .HasColumnType("bytea")
+                        .HasColumnName("pending_secret");
+
+                    b.Property<Guid?>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("purpose");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("TokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<string>("WebAuthnOptions")
+                        .HasColumnType("text")
+                        .HasColumnName("web_authn_options");
+
+                    b.HasKey("Id")
+                        .HasName("pk_authentication_challenges");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_authentication_challenges_expires_at");
+
+                    b.HasIndex("PrincipalId")
+                        .HasDatabaseName("ix_authentication_challenges_principal_id");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_authentication_challenges_session_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_authentication_challenges_token_hash");
+
+                    b.ToTable("authentication_challenges", "kernel_identity");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.Factor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AaGuid")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aa_guid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<byte[]>("CredentialId")
+                        .HasColumnType("bytea")
+                        .HasColumnName("credential_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<long?>("LastUsedStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_used_step");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<byte[]>("PublicKey")
+                        .HasColumnType("bytea")
+                        .HasColumnName("public_key");
+
+                    b.Property<byte[]>("SecretCiphertext")
+                        .HasColumnType("bytea")
+                        .HasColumnName("secret_ciphertext");
+
+                    b.Property<long>("SignCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sign_count");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<byte[]>("UserHandle")
+                        .HasColumnType("bytea")
+                        .HasColumnName("user_handle");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_factors");
+
+                    b.HasIndex("CredentialId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_factors_credential_id");
+
+                    b.HasIndex("PrincipalId")
+                        .HasDatabaseName("ix_factors_principal_id");
+
+                    b.HasIndex("UserHandle")
+                        .HasDatabaseName("ix_factors_user_handle");
+
+                    b.ToTable("factors", "kernel_identity");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Identity.Data.LoginThrottle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -192,6 +360,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("character varying(254)")
                         .HasColumnName("login_id");
 
+                    b.Property<DateTimeOffset?>("MfaRequiredSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("mfa_required_since");
+
                     b.Property<DateTimeOffset?>("PasswordChangedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("password_changed_at");
@@ -208,6 +380,14 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("recovery_token_hash");
+
+                    b.Property<DateTimeOffset?>("SecondFactorCoolingUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("second_factor_cooling_until");
+
+                    b.Property<int>("SecondFactorFailures")
+                        .HasColumnType("integer")
+                        .HasColumnName("second_factor_failures");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -261,6 +441,60 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasDatabaseName("ix_principals_status");
 
                     b.ToTable("principals", "kernel_identity");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.RecoveryCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recovery_codes");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_recovery_codes_code_hash");
+
+                    b.HasIndex("PrincipalId")
+                        .HasDatabaseName("ix_recovery_codes_principal_id");
+
+                    b.ToTable("recovery_codes", "kernel_identity");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Identity.Data.SecurityEvent", b =>
@@ -333,6 +567,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("all_units");
 
+                    b.Property<DateTimeOffset?>("AuthenticatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("authenticated_at");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -365,6 +603,11 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.Property<Guid>("PrincipalId")
                         .HasColumnType("uuid")
                         .HasColumnName("principal_id");
+
+                    b.Property<string>("SecondFactor")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("second_factor");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -405,6 +648,31 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.ToTable("sessions", "kernel_identity");
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.AuthenticationChallenge", b =>
+                {
+                    b.HasOne("Iron.Kernel.Identity.Data.Principal", null)
+                        .WithMany()
+                        .HasForeignKey("PrincipalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_authentication_challenges_principals_principal_id");
+
+                    b.HasOne("Iron.Kernel.Identity.Data.Session", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_authentication_challenges_sessions_session_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.Factor", b =>
+                {
+                    b.HasOne("Iron.Kernel.Identity.Data.Principal", null)
+                        .WithMany()
+                        .HasForeignKey("PrincipalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_factors_principals_principal_id");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Identity.Data.PasswordHistoryEntry", b =>
                 {
                     b.HasOne("Iron.Kernel.Identity.Data.Principal", null)
@@ -413,6 +681,16 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_password_history_principals_principal_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.RecoveryCode", b =>
+                {
+                    b.HasOne("Iron.Kernel.Identity.Data.Principal", null)
+                        .WithMany()
+                        .HasForeignKey("PrincipalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_recovery_codes_principals_principal_id");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Identity.Data.SecurityEvent", b =>

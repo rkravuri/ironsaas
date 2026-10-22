@@ -43,7 +43,8 @@ public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenan
 }
 
 /// <summary>The operator's request for a tenant administrator's recovery link: why, and whom when not the first administrator.</summary>
-public sealed record AdministratorRecoveryRequest(string Reason, string? LoginId);
+/// <summary>The operator's recovery: why, whom (the first administrator unless named), and whether their second factors go too (ADR-0047).</summary>
+public sealed record AdministratorRecoveryRequest(string Reason, string? LoginId, bool? ResetFactors = null);
 
 public sealed class AdministratorRecoveryRequestValidator : AbstractValidator<AdministratorRecoveryRequest>
 {
@@ -109,7 +110,7 @@ internal static class TenantsEndpoints
         tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
         tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
         tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
-        tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason; the job's output is the link, valid 15 minutes and once.");
+        tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason, and to reset their second factors when asked; the link is handed over once, valid 15 minutes and once.");
         tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ProvisioningResponse>(StatusCodes.Status200OK).WithName("GetProvisioning").WithSummary("The latest job of the tenant; once it completed, the invitation or recovery link it handed over, given once to the operator who asked and then deleted.");
     }
 
@@ -170,7 +171,7 @@ internal static class TenantsEndpoints
         var directory = http.RequestServices.GetService<IPrincipals>();
         var found = directory is null ? null : await directory.FindAsync([actor.Id], cancellationToken);
         var operatorName = found is not null && found.TryGetValue(actor.Id, out var summary) ? summary.DisplayName : actor.Id.ToString("D");
-        var result = await registry.RequestAdministratorRecoveryAsync(slug, request.LoginId, request.Reason, operatorName, cancellationToken);
+        var result = await registry.RequestAdministratorRecoveryAsync(slug, request.LoginId, request.Reason, operatorName, cancellationToken, request.ResetFactors ?? false);
         return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
     }
 

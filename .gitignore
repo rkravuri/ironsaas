@@ -37,9 +37,12 @@ infra/compose/traefik/dynamic/tls.yaml
 Thumbs.db
 infra/compose/.dev-signing-key.pem
 infra/compose/.control-signing-key.pem
+infra/compose/.dev-factor-key
+infra/compose/.control-factor-key
 
 # Windows mark-of-the-web streams, created when files are unzipped through Windows
 *:Zone.Identifier
 
 # The smoke tool writes its report on every run; CI uploads it as an artifact (release.yml). Not source.
 smoke-report.json
+__pycache__/

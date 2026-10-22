@@ -40,6 +40,7 @@ public sealed class Session : AuditedEntity
         PrincipalId = principalId;
         TokenHash = tokenHash;
         LastActivityAt = now;
+        AuthenticatedAt = now;
         ExpiresAt = now + absoluteLifetime;
         IdleMinutes = (int)Math.Ceiling(idleLimit.TotalMinutes);
     }
@@ -75,7 +76,22 @@ public sealed class Session : AuditedEntity
 
     public string? EndReason { get; private set; }
 
+    /// <summary>
+    /// When the person last proved who they are in this session: at sign-in, then at each re-authentication (TF-248,
+    /// ADR-0047). A high-risk action needs it recent. Null for a session from before T3, which counts from its start.
+    /// </summary>
+    public DateTimeOffset? AuthenticatedAt { get; private set; }
+
+    /// <summary>The second factor the session's sign-in used (<see cref="FactorKinds"/>, or <c>recovery_code</c>); null for a password alone.</summary>
+    public string? SecondFactor { get; private set; }
+
     public bool HasEnded => EndedAt is not null;
+
+    /// <summary>The second factor the sign-in used, recorded when the session starts.</summary>
+    public void ProvedWith(string? secondFactor) => SecondFactor = secondFactor;
+
+    /// <summary>The person proved who they are again (TF-248).</summary>
+    public void Reauthenticated(DateTimeOffset now) => AuthenticatedAt = now;
 
     /// <summary>The session's own idle limit, or <paramref name="fallback"/> for a session that has none.</summary>
     public TimeSpan Idle(TimeSpan fallback) => IdleMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : fallback;

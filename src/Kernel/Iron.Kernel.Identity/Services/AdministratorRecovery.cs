@@ -22,6 +22,9 @@ public sealed class AdministratorRecoveryOptions
 
     /// <summary>Why, in the operator's words: required.</summary>
     public string? Reason { get; set; }
+
+    /// <summary>Also remove the administrator's second factors, for one who lost their device too (TF-013 AC3, ADR-0047).</summary>
+    public bool ResetFactors { get; set; }
 }
 
 /// <summary>
@@ -30,12 +33,16 @@ public sealed class AdministratorRecoveryOptions
 /// who holds the tenant administrator role for the whole tenant, records it as their security event and in the tenant's
 /// audit trail with the operator and the reason, and hands the link over through the one-time place the fleet gave it
 /// (ADR-0046): the control plane gives it once to the operator who asked. The link is never in a log line or the
-/// command's output. Exit code 0 when the link was handed over; 1 when the request is refused, with the reason logged.
+/// command's output. When asked (<c>Recovery:ResetFactors</c>), it also removes the administrator's second factors and
+/// ends their sessions, recorded the same way (ADR-0047). Exit code 0 when the link was handed over; 1 when the request
+/// is refused, with the reason logged.
 /// </summary>
 public sealed class AdministratorRecoveryCommand(
     AdministratorRecoveryOptions options,
     IdentityDbContext context,
     PasswordService passwords,
+    FactorService factors,
+    SessionService sessions,
     ITenantAdministrators administrators,
     IUnitOfWork unitOfWork,
     IOperatorHandover handover,
@@ -88,6 +95,15 @@ public sealed class AdministratorRecoveryCommand(
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["operator"] = operatorName, ["source"] = "control_plane" };
         var token = await passwords.OpenRecoveryAsync(principal, SecurityEventActors.Operator, operatorName, reason, details, cancellationToken).ConfigureAwait(false);
+        if (options.ResetFactors)
+        {
+            // The link sets the password; with the factors gone the administrator signs in with it and enrols again at once.
+            var ended = await sessions.EndAllAsync(principal.Id, SessionEndReasons.Revoked, cancellationToken).ConfigureAwait(false);
+            var resetDetails = new Dictionary<string, string>(details, StringComparer.Ordinal) { ["sessions_ended"] = ended.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+            var removed = await factors.ResetAsync(principal, SecurityEventActors.Operator, operatorName, reason, resetDetails, cancellationToken).ConfigureAwait(false);
+            logger.LogInformation("The operator's recovery of {LoginId} also reset {Removed} second factor(s).", loginId, removed);
+        }
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return new RecoveryLink(token, principal.RecoveryExpiresAt!.Value);
     }

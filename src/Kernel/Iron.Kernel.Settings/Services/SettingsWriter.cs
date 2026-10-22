@@ -36,9 +36,14 @@ public sealed class SettingsWriter(
     IAuditWriter audit,
     SettingsRefresher refresher,
     IOrganisationUnits? units = null,
-    SecretStoreOptions? store = null)
+    SecretStoreOptions? store = null,
+    IRecentAuthentication? recent = null)
 {
     private static readonly JsonSerializerOptions Compact = new();
+
+    /// <summary>A setting whose change is a high-risk action, such as the MFA policy, needs a recent authentication (TF-248).</summary>
+    private Error? RecentEnough(SettingDefinition setting) =>
+        setting.NeedsRecentAuthentication && recent?.Require() is { IsFailure: true } refused ? refused.Error : null;
 
     /// <summary>The setting, if this place may hold a value of it: the checks a save and a reset share.</summary>
     public async Task<Result<DeclaredSetting>> CheckAsync(string key, SettingPlace place, CancellationToken cancellationToken)
@@ -74,6 +79,11 @@ public sealed class SettingsWriter(
         if (setting.Problem(value) is { } problem)
         {
             return Error.Validation(SettingsErrors.ValueInvalid, $"The value for '{key}' is refused. {problem}", new FieldError("value", "invalid", problem));
+        }
+
+        if (RecentEnough(setting) is { } stale)
+        {
+            return stale;
         }
 
         if (setting.IsSecret && store?.Path is { Length: > 0 } unitPath && !value.GetString()!.StartsWith($"{unitPath.Trim('/')}/settings/", StringComparison.Ordinal))
@@ -116,6 +126,11 @@ public sealed class SettingsWriter(
         if (checkedSetting.IsFailure)
         {
             return checkedSetting.Error;
+        }
+
+        if (RecentEnough(checkedSetting.Value.Definition) is { } stale)
+        {
+            return stale;
         }
 
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);

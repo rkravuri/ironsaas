@@ -7,7 +7,7 @@ namespace Iron.Kernel.Fleet.Services.Steps;
 
 /// <summary>
 /// Step 4: the unit's secret (<c>tenants/&lt;slug&gt;/unit</c>): the app connection string, the app role, the signed container
-/// URL and a signing key, generated once. Then a policy that reads that path and the tenant's entitlements
+/// URL, a signing key and the key that encrypts the second factors' secrets (ADR-0047), each key generated once. Then a policy that reads that path and the tenant's entitlements
 /// (<c>tenants/&lt;slug&gt;/entitlements</c>, ADR-0034) and its flag rules (<c>tenants/&lt;slug&gt;/flags</c> and the shared
 /// <c>platform/flags</c>, ADR-0035) and nothing else, and one unit token with it, kept at
 /// <c>tenants/&lt;slug&gt;/fleet</c> for the unit's environment (TF-073, TF-210).
@@ -19,6 +19,9 @@ namespace Iron.Kernel.Fleet.Services.Steps;
 public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, ITenantEntitlements entitlements, ITenantFlags flags) : IProvisioningStep
 {
     public const string UnitTokenKey = "unit_token";
+
+    /// <summary>The configuration key of the second factors' key (TF-073, ADR-0047): 32 random bytes in base64.</summary>
+    public const string FactorKeyKey = "Identity:FactorKey";
 
     public string Name => StepNames.Secrets;
 
@@ -39,6 +42,9 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, I
             ["Database:AppRole"] = context.AppRole,
             ["Storage:ContainerSasUrl"] = storage[StorageStep.ContainerSasUrlKey],
             ["Tokens:SigningKeyPem"] = current?.GetValueOrDefault("Tokens:SigningKeyPem") ?? NewSigningKey(),
+
+            // Kept as it is once made: a new key would leave every authenticator app's secret unreadable.
+            [FactorKeyKey] = current?.GetValueOrDefault(FactorKeyKey) ?? Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
         };
         await secrets.WriteAsync(context.UnitSecretPath, unit, cancellationToken).ConfigureAwait(false);
 
@@ -50,7 +56,7 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, I
         if (fleet?.GetValueOrDefault(UnitTokenKey) is null)
         {
             var token = await admin.CreateTokenAsync([context.UnitPolicy], $"unit-{context.Slug}", TimeSpan.FromDays(context.Options.Secrets.UnitTokenValidDays), cancellationToken).ConfigureAwait(false);
-            // The smoke client's secret and the invitation link, if the fleet secret still has them, stay beside the new token.
+            // The smoke client's secret, if the fleet secret still has it, stays beside the new token.
             var updated = fleet is null ? new Dictionary<string, string>(StringComparer.Ordinal) : new Dictionary<string, string>(fleet, StringComparer.Ordinal);
             updated[UnitTokenKey] = token;
             await secrets.WriteAsync(context.FleetSecretPath, updated, cancellationToken).ConfigureAwait(false);

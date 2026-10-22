@@ -12,19 +12,20 @@ namespace Iron.Kernel.Identity.Services;
 /// Sessions (TF-020, TF-021, TF-029): start, resolve on every request, touch, end. A new session takes the tenant's
 /// limits (<see cref="IdentitySettings"/>, ADR-0036), or the configured ones while the tenant has set none.
 /// </summary>
-public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, IDelegations delegations, IWorkingUnits workingUnits, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
+public sealed class SessionService(IdentityDbContext context, IdentityOptions options, ISettings settings, IDelegations delegations, IWorkingUnits workingUnits, MfaPolicy mfa, TimeProvider time, IAuditWriter audit, ILogger<SessionService> logger)
 {
     /// <summary>
     /// Creates the session row and returns the token for the cookie. The token is never stored. <paramref name="beforeSave"/>
     /// runs once the session has its id and before the row is written; login uses it to make the new session's principal
     /// the request's principal, so the rows it writes carry the user as created_by.
     /// </summary>
-    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null)
+    public async Task<(Session Session, string Token)> StartAsync(Principal principal, CancellationToken cancellationToken, Action<Session>? beforeSave = null, string? secondFactor = null)
     {
         ArgumentNullException.ThrowIfNull(principal);
         var token = SecureTokens.New();
         var (idle, absolute) = await LimitsAsync(cancellationToken).ConfigureAwait(false);
         var session = new Session(principal.Id, SecureTokens.Hash(token), time.GetUtcNow(), absolute, idle);
+        session.ProvedWith(secondFactor);
         beforeSave?.Invoke(session);
         context.Sessions.Add(session);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -48,7 +49,21 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
     {
         ArgumentNullException.ThrowIfNull(principal);
         ArgumentNullException.ThrowIfNull(session);
-        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt, session.ActingForId, session.WorkingUnitId, session.AllUnits);
+        return new SignedInPrincipal(principal.Id, principal.LoginId, principal.DisplayName, principal.Type, session.Id, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle), AuthenticationKind.Session, principal.HomeUnitId, session.CreatedAt, session.ActingForId, session.WorkingUnitId, session.AllUnits)
+        {
+            // A session from before T3 has no authentication time of its own: its start is the last time anyone proved it.
+            AuthenticatedAt = session.AuthenticatedAt ?? session.CreatedAt,
+        };
+    }
+
+    /// <summary>The person proved who they are again in this session (TF-248): high-risk actions may go on for a few minutes.</summary>
+    public async Task<DateTimeOffset> ReauthenticatedAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        var session = await context.Sessions.SingleAsync(s => s.Id == sessionId, cancellationToken).ConfigureAwait(false);
+        session.Reauthenticated(now);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return now;
     }
 
     /// <summary>
@@ -191,7 +206,41 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        return SessionResolution.Alive(Describe(found.Principal, found.Session), actingEnded);
+        var mustEnrol = await MustEnrolAsync(found.Principal, now, cancellationToken).ConfigureAwait(false);
+        return SessionResolution.Alive(Describe(found.Principal, found.Session), actingEnded) with { MustEnrol = mustEnrol };
+    }
+
+    /// <summary>
+    /// Whether the tenant's policy requires a second factor of the person now, who has none, with no grace left (ADR-0047).
+    /// Asked on every request of a session, so a change of the policy, or of the person's roles, takes effect at the next
+    /// request rather than at the next sign-in; nobody is signed out. The first request that finds the factor required
+    /// starts the grace a tenant may give, as the first sign-in would. One indexed query for a person with a factor.
+    /// </summary>
+    private async Task<bool> MustEnrolAsync(Principal principal, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (principal.Type != PrincipalType.User)
+        {
+            return false;
+        }
+
+        var rules = await mfa.RulesAsync(cancellationToken).ConfigureAwait(false);
+        if (rules.RequiredFor == MfaRequirement.Nobody
+            || await context.Factors.AnyAsync(f => f.PrincipalId == principal.Id, cancellationToken).ConfigureAwait(false)
+            || !await mfa.IsRequiredAsync(principal, rules, cancellationToken).ConfigureAwait(false))
+        {
+            return false;
+        }
+
+        var since = principal.MfaRequiredSince;
+        if (since is null)
+        {
+            // A column of bookkeeping, set once, outside the row's version: two requests at once must not fail each other.
+            since = now;
+            await context.Principals.Where(p => p.Id == principal.Id && p.MfaRequiredSince == null)
+                .ExecuteUpdateAsync(set => set.SetProperty(p => p.MfaRequiredSince, now), cancellationToken).ConfigureAwait(false);
+        }
+
+        return rules.GraceDays == 0 || now >= since.Value.AddDays(rules.GraceDays);
     }
 
     /// <summary>Ends the session now (TF-029 AC3: nothing is served on it afterwards).</summary>
@@ -239,6 +288,9 @@ public sealed class SessionService(IdentityDbContext context, IdentityOptions op
 
 public sealed record SessionResolution(SignedInPrincipal? Principal, string? ExpiryReason, Guid? ActingEndedFor = null)
 {
+    /// <summary>The person must enrol a second factor before anything else (ADR-0047); the session stays.</summary>
+    public bool MustEnrol { get; init; }
+
     public static readonly SessionResolution Unknown = new(null, null);
 
     public bool IsAlive => Principal is not null;

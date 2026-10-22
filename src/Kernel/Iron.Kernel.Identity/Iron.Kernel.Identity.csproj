@@ -25,6 +25,7 @@
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Konscious.Security.Cryptography.Argon2" />
+    <PackageReference Include="Fido2" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <!-- Design-time only: lets "dotnet ef migrations add" run with this project as the start-up project. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">

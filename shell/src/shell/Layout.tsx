@@ -15,6 +15,8 @@ import { useActingChoice } from "./acting";
 import { ActingBand, ActingForControl } from "./ActingFor";
 import { HelpButton } from "./HelpPanel";
 import { KillSwitchBanner } from "./KillSwitchBanner";
+import { ReauthenticationDialog } from "@/auth/Reauthentication";
+import { MfaEnrolBanner } from "./MfaEnrolBanner";
 import { PasswordExpiryBanner } from "./PasswordExpiryBanner";
 import { ProfileMenu } from "./ProfileMenu";
 import { Search, SearchButton } from "./Search";
@@ -103,7 +105,9 @@ export function Layout() {
         <ActingBand choice={acting} />
         <KillSwitchBanner />
         <PasswordExpiryBanner />
+        <MfaEnrolBanner />
         <Outlet />
+        <ReauthenticationDialog />
       </AppShell.Main>
       <Search />
       <SessionWarning />

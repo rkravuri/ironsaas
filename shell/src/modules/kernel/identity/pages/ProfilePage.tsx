@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, SegmentedControl, Stack, Table, Text, useMantineColorScheme } from "@mantine/core";
 import { IconLogout } from "@tabler/icons-react";
@@ -32,11 +33,15 @@ const isDensity = (value: string): value is Density => (densities as readonly st
 export function ProfilePage() {
   const { t } = useTranslation();
   const { me } = useSession();
+  // ?tab=security opens the Security tab: the grace banner and a sign-in by recovery code link to it (ADR-0047).
+  const [params] = useSearchParams();
+  const tab = params.get("tab");
   if (!me) {
     return null;
   }
   return (
     <RecordPage
+      {...(tab ? { defaultTab: tab } : {})}
       header={{
         title: me.display_name,
         code: me.login_id,

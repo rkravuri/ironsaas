@@ -88,6 +88,27 @@ public sealed class LoginThrottles(IdentityDbContext context, ISettings settings
         }
     }
 
+    /// <summary>
+    /// Locks the identifier for the tenant's lockout duration, as reaching the threshold does: ten wrong second-factor
+    /// codes in a row (TF-013 AC2, ADR-0047). Answers when the lock lifts.
+    /// </summary>
+    public async Task<DateTimeOffset> LockAsync(string loginId, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(loginId);
+        var rules = await RulesAsync(cancellationToken).ConfigureAwait(false);
+        var now = time.GetUtcNow();
+        var throttle = await context.LoginThrottles.SingleOrDefaultAsync(t => t.LoginId == loginId, cancellationToken).ConfigureAwait(false);
+        if (throttle is null)
+        {
+            throttle = new LoginThrottle(loginId);
+            context.LoginThrottles.Add(throttle);
+        }
+
+        throttle.Lock(now, rules.Duration);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return throttle.LockedUntil!.Value;
+    }
+
     /// <summary>Forgets the identifier's failures and lifts its lock; answers whether it was locked.</summary>
     public async Task<bool> ClearAsync(string loginId, CancellationToken cancellationToken)
     {

@@ -73,6 +73,10 @@ export const MeSchema = z.object({
   working_units: z.object({ units: z.array(WorkingUnitChoiceSchema), all_units_available: z.boolean() }).optional(),
   /** When the password reaches the tenant's maximum age (TF-012); null while the age is off. */
   password_expires_at: z.string().nullable().optional(),
+  /** The end of the grace a tenant may give before a second factor is required of the person (ADR-0047); null otherwise. */
+  mfa_enrol_by: z.string().nullable().optional(),
+  /** The tenant's policy now requires a second factor the person has not got: everything but enrolment waits for it. */
+  mfa_enrolment_required: z.boolean().optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 
@@ -103,6 +107,10 @@ export type UserList = z.infer<typeof UserListSchema>;
 export const UserRecordSchema = UserSchema.omit({ home_unit_id: true }).extend({
   home_unit: HomeUnitSchema.nullable(),
   locked_until: z.string().nullable().optional(),
+  /** How many second factors the person has (ADR-0047). */
+  factors: z.number().optional(),
+  /** Whether the reader holds every permission the person holds: the rule for a recovery link and a factor reset (ADR-0046). */
+  takeover_allowed: z.boolean().optional(),
 });
 export type UserRecord = z.infer<typeof UserRecordSchema>;
 
@@ -171,9 +179,6 @@ export function accessQuery(target: AccessTarget): string {
 
 export const fetchAccess = (target: AccessTarget, signal?: AbortSignal) =>
   request(`/api/v1/me/access?${accessQuery(target)}`, { schema: AccessSchema, ...(signal ? { signal } : {}) });
-
-export const login = (loginId: string, password: string) =>
-  request("/auth/login", { method: "POST", body: { login_id: loginId, password } });
 
 export const logout = () => request("/auth/logout", { method: "POST" });
 
@@ -278,3 +283,143 @@ export const deactivateUser = (id: string) =>
 
 export const reactivateUser = (id: string) =>
   request(userAction(id, "reactivate"), { method: "POST", schema: ReactivatedUserSchema });
+
+// Second factors and step-up (S3 T3, TF-013, TF-248, ADR-0047).
+
+/** What a sign-in goes on to after a right password: the second factor, or enrolment; the ways open, and until when. */
+export const SignInStepSchema = z.object({
+  kind: z.enum(["second_factor", "enrolment"]),
+  methods: z.array(z.string()),
+  expires_at: z.string(),
+});
+export type SignInStep = z.infer<typeof SignInStepSchema>;
+
+/**
+ * A sign-in's answer: the person and the session once everything is proved, or the step that comes next with neither.
+ * `enrol_new_factor` follows a sign-in by recovery code; `recovery_codes` follow the first enrolment, shown once.
+ */
+export const SignInAnswerSchema = z.object({
+  // The shell reads the person and the session from /me after a sign-in; the answer only has to say there is one.
+  principal: z.unknown().optional(),
+  session: z.unknown().optional(),
+  step: SignInStepSchema.nullable().optional(),
+  enrol_new_factor: z.boolean().optional(),
+  recovery_codes: z.array(z.string()).nullable().optional(),
+});
+export type SignInAnswer = z.infer<typeof SignInAnswerSchema>;
+
+/** A second factor as the API takes it: one of a code, a recovery code, or a passkey's answer. */
+export type SecondFactorProof = { code: string } | { recovery_code: string } | { passkey: unknown };
+
+/** The options of a WebAuthn ceremony, as the browser's API takes them once their bytes are decoded. */
+export const WebAuthnOptionsSchema = z.object({ options: z.record(z.string(), z.unknown()) });
+
+export const AuthenticatorAppSetupSchema = z.object({ secret: z.string(), uri: z.string(), expires_at: z.string() });
+export type AuthenticatorAppSetup = z.infer<typeof AuthenticatorAppSetupSchema>;
+
+export const FactorSchema = z.object({
+  id: z.string(),
+  kind: z.string(),
+  name: z.string(),
+  created_at: z.string(),
+  last_used_at: z.string().nullable(),
+});
+export type Factor = z.infer<typeof FactorSchema>;
+
+/** My profile's factors, the recovery codes left, and what the organisation's policy asks of the person. */
+export const FactorsSchema = z.object({
+  factors: z.array(FactorSchema),
+  recovery_codes_left: z.number(),
+  required: z.boolean(),
+  allowed: z.array(z.string()),
+  enrol_by: z.string().nullable(),
+});
+export type Factors = z.infer<typeof FactorsSchema>;
+
+export const EnrolledSchema = z.object({ factor: FactorSchema, recovery_codes: z.array(z.string()).nullable() });
+export type Enrolled = z.infer<typeof EnrolledSchema>;
+
+export const ReauthenticationSchema = z.object({
+  second_factor: z.boolean(),
+  methods: z.array(z.string()),
+  passkey_options: z.record(z.string(), z.unknown()).nullable().optional(),
+});
+export type Reauthentication = z.infer<typeof ReauthenticationSchema>;
+
+export const signIn = (loginId: string, password: string) =>
+  request("/auth/login", { method: "POST", body: { login_id: loginId, password }, schema: SignInAnswerSchema });
+
+export const fetchSignInOptions = (signal?: AbortSignal) =>
+  request("/auth/sign-in-options", {
+    schema: z.object({ passkey_sign_in: z.boolean() }),
+    ...(signal ? { signal } : {}),
+  });
+
+export const proveSecondFactor = (proof: SecondFactorProof) =>
+  request("/auth/second-factor", { method: "POST", body: proof, schema: SignInAnswerSchema });
+
+export const secondFactorPasskeyOptions = () =>
+  request("/auth/second-factor/passkey-options", { method: "POST", schema: WebAuthnOptionsSchema });
+
+export const passkeySignInOptions = () =>
+  request("/auth/passkey/options", { method: "POST", schema: WebAuthnOptionsSchema });
+
+export const passkeySignIn = (credential: unknown) =>
+  request("/auth/passkey", { method: "POST", body: { credential }, schema: SignInAnswerSchema });
+
+/** Enrolment at sign-in, before any page: the calls carry the sign-in's cookie, never a token in the body. */
+export const enrolmentApp = () =>
+  request("/auth/enrolment/authenticator-app", { method: "POST", schema: AuthenticatorAppSetupSchema });
+
+export const confirmEnrolmentApp = (code: string, name: string | undefined) =>
+  request("/auth/enrolment/authenticator-app/confirm", {
+    method: "POST",
+    body: { code, name },
+    schema: SignInAnswerSchema,
+  });
+
+export const enrolmentPasskeyOptions = () =>
+  request("/auth/enrolment/passkey/options", { method: "POST", schema: WebAuthnOptionsSchema });
+
+export const enrolmentPasskey = (name: string | undefined, credential: unknown) =>
+  request("/auth/enrolment/passkey", { method: "POST", body: { name, credential }, schema: SignInAnswerSchema });
+
+export const factorsQueryKey = ["identity", "me", "factors"] as const;
+
+export const fetchFactors = (signal?: AbortSignal) =>
+  request("/api/v1/me/factors", { schema: FactorsSchema, ...(signal ? { signal } : {}) });
+
+export const addApp = () =>
+  request("/api/v1/me/factors/authenticator-app", { method: "POST", schema: AuthenticatorAppSetupSchema });
+
+export const confirmApp = (code: string, name: string | undefined) =>
+  request("/api/v1/me/factors/authenticator-app/confirm", {
+    method: "POST",
+    body: { code, name },
+    schema: EnrolledSchema,
+  });
+
+export const addPasskeyOptions = () =>
+  request("/api/v1/me/factors/passkey/options", { method: "POST", schema: WebAuthnOptionsSchema });
+
+export const addPasskey = (name: string | undefined, credential: unknown) =>
+  request("/api/v1/me/factors/passkey", { method: "POST", body: { name, credential }, schema: EnrolledSchema });
+
+export const renameFactor = (id: string, name: string) =>
+  request(`/api/v1/me/factors/${encodeURIComponent(id)}`, { method: "PATCH", body: { name }, schema: FactorSchema });
+
+export const removeFactor = (id: string) =>
+  request(`/api/v1/me/factors/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export const regenerateRecoveryCodes = () =>
+  request("/api/v1/me/recovery-codes", { method: "POST", schema: z.object({ codes: z.array(z.string()) }) });
+
+export const reauthenticationOptions = () =>
+  request("/api/v1/me/reauthentication", { method: "POST", schema: ReauthenticationSchema });
+
+export const reauthenticate = (password: string, proof: SecondFactorProof | undefined) =>
+  request("/api/v1/me/reauthenticate", { method: "POST", body: { password, ...(proof ?? {}) } });
+
+/** An administrator removes a person's factors, with the reason their security activity keeps (TF-013 AC3). */
+export const resetFactors = (id: string, reason: string) =>
+  request(userAction(id, "factors/reset"), { method: "POST", body: { reason }, schema: UserRecordSchema });

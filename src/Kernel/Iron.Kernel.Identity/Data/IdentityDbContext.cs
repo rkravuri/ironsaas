@@ -6,7 +6,8 @@ namespace Iron.Kernel.Identity.Data;
 
 /// <summary>
 /// The <c>identity</c> schema: principals and sessions (TF-010, TF-020), password history, the failed sign-ins of each
-/// login identifier, and each person's security events (TF-012, TF-017, TF-019).
+/// login identifier, and each person's security events (TF-012, TF-017, TF-019); second factors, recovery codes and the
+/// state of authentications under way (TF-013, TF-248, ADR-0047).
 /// </summary>
 [Schema("kernel_identity")]
 public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options) : ModuleDbContext(options)
@@ -21,8 +22,43 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
 
+    public DbSet<Factor> Factors => Set<Factor>();
+
+    public DbSet<RecoveryCode> RecoveryCodes => Set<RecoveryCode>();
+
+    public DbSet<AuthenticationChallenge> AuthenticationChallenges => Set<AuthenticationChallenge>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Factor>(factor =>
+        {
+            factor.HasOne<Principal>().WithMany().HasForeignKey(f => f.PrincipalId).OnDelete(DeleteBehavior.Cascade);
+            factor.Property(f => f.Kind).HasMaxLength(Factor.KindMaxLength);
+            factor.Property(f => f.Name).HasMaxLength(Factor.NameMaxLength);
+            factor.HasIndex(f => f.PrincipalId);
+            factor.HasIndex(f => f.CredentialId).IsUnique();
+            factor.HasIndex(f => f.UserHandle);
+        });
+
+        modelBuilder.Entity<RecoveryCode>(code =>
+        {
+            code.HasOne<Principal>().WithMany().HasForeignKey(c => c.PrincipalId).OnDelete(DeleteBehavior.Cascade);
+            code.Property(c => c.CodeHash).HasMaxLength(64);
+            code.HasIndex(c => c.CodeHash).IsUnique();
+            code.HasIndex(c => c.PrincipalId);
+        });
+
+        modelBuilder.Entity<AuthenticationChallenge>(challenge =>
+        {
+            challenge.HasOne<Principal>().WithMany().HasForeignKey(c => c.PrincipalId).OnDelete(DeleteBehavior.Cascade);
+            challenge.HasOne<Session>().WithMany().HasForeignKey(c => c.SessionId).OnDelete(DeleteBehavior.Cascade);
+            challenge.Property(c => c.Purpose).HasMaxLength(AuthenticationChallenge.PurposeMaxLength);
+            challenge.Property(c => c.TokenHash).HasMaxLength(64);
+            challenge.HasIndex(c => c.TokenHash).IsUnique();
+            challenge.HasIndex(c => c.SessionId);
+            challenge.HasIndex(c => c.ExpiresAt);
+        });
+
         modelBuilder.Entity<Principal>(principal =>
         {
             principal.Property(p => p.LoginId).HasMaxLength(Principal.LoginIdMaxLength);
@@ -73,6 +109,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             session.HasIndex(s => s.TokenHash).IsUnique();
             session.HasIndex(s => s.PrincipalId);
             session.Property(s => s.EndReason).HasMaxLength(20);
+            session.Property(s => s.SecondFactor).HasMaxLength(20);
             session.HasIndex(s => new { s.EndedAt, s.LastActivityAt });
         });
     }

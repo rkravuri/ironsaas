@@ -118,6 +118,17 @@ public sealed class RoleAssignments(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task<IReadOnlyList<string>> RoleCodesAnywhereAsync(Guid principalId, CancellationToken cancellationToken)
+    {
+        return await context.RoleAssignments.AsNoTracking()
+            .Where(a => a.PrincipalId == principalId)
+            .Join(context.Roles.AsNoTracking(), a => a.RoleId, r => r.Id, (a, r) => r.Code)
+            .Distinct()
+            .OrderBy(code => code)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
 }
 
 /// <summary>What one permission reaches in a list (ADR-0030): the scope rule the record policies apply first (ADR-0032).</summary>

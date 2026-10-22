@@ -28,7 +28,11 @@ public enum JobKind
 /// What a job was asked for beyond its kind: whom it is about, why, and who asked. A recovery job carries all three; the
 /// tenant's audit trail names the operator and the reason (ADR-0046).
 /// </summary>
-public sealed record JobRequest(string? Subject, string? Reason, string? RequestedBy);
+/// <summary>
+/// What a job is asked to do beyond its kind: whom it is about, why, and who asked; a recovery job may also reset the
+/// administrator's second factors (ADR-0047).
+/// </summary>
+public sealed record JobRequest(string? Subject, string? Reason, string? RequestedBy, bool ResetFactors = false);
 
 public sealed record ProvisioningStepInfo(string Name, int Order, string Status, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, int? DurationMs, string? Output, string? Error);
 

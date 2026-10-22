@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
 import { SettingsPage } from "./SettingsPage";
@@ -266,5 +266,68 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
     expect(idle.queryByRole("button", { name: /^Change/ })).not.toBeInTheDocument();
     expect(idle.queryByRole("button", { name: /^Reset/ })).not.toBeInTheDocument();
     expect(idle.getByRole("button", { name: /^History/ })).toBeInTheDocument();
+  });
+
+  it("chooses the MFA policy's roles from the tenant's roles and saves their codes [TF-013 AC1, ADR-0047]", async () => {
+    const user = userEvent.setup();
+    const roles = view("identity.mfa.roles", "identity", {
+      type: "json",
+      requirement: "A list of role codes.",
+      minimum: null,
+      maximum: null,
+      whole_number: false,
+      default: [],
+      value: ["buyer"],
+    });
+    const role = (code: string, name: string) => ({
+      id: `01a15100-0000-7000-8000-0000000${code.length}00e1`,
+      code,
+      name,
+      description: "",
+      is_system: false,
+      principal_type: "user",
+      permissions: [],
+      created_at: "2026-10-19T09:00:00Z",
+      updated_at: "2026-10-19T09:00:00Z",
+      version: 1,
+    });
+    const { calls } = open(administrator, {
+      "GET /api/v1/settings?scope=tenant": () => json({ ...tenantList, data: [roles] }),
+      "GET /api/v1/roles?page_size=200&sort=name": () =>
+        json({
+          data: [role("buyer", "Buyer"), role("tenant-administrator", "Tenant administrator")],
+          meta: {
+            page_number: 1,
+            page_size: 200,
+            total_count: 2,
+            total_pages: 1,
+            has_previous: false,
+            has_next: false,
+            page_size_capped: false,
+            max_page_size: 200,
+          },
+          links: { self: "", first: "", previous: null, next: null, last: "" },
+        }),
+      "PUT /api/v1/settings/identity.mfa.roles": () => json(roles),
+    });
+    const setting = await row("The roles whose holders need a second factor");
+
+    await user.click(setting.getByRole("button", { name: "Change: The roles whose holders need a second factor" }));
+    const dialog = await screen.findByRole("dialog", { name: "Change: The roles whose holders need a second factor" });
+    const picker = within(dialog).getByLabelText(/^Roles/);
+    await user.click(picker);
+    // The dropdown is in a transition jsdom never finishes, so its options count as hidden; the click still chooses one.
+    fireEvent.click(await screen.findByRole("option", { name: "Tenant administrator", hidden: true }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(calls.some((call) => call.key === "PUT /api/v1/settings/identity.mfa.roles")).toBe(true),
+    );
+    const sent = calls.find((call) => call.key === "PUT /api/v1/settings/identity.mfa.roles");
+    expect(JSON.parse(sent?.init?.body as string)).toEqual({
+      scope: "tenant",
+      unit_id: null,
+      value: ["buyer", "tenant-administrator"],
+    });
   });
 });

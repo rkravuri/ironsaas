@@ -29,6 +29,8 @@ async function prepare(page: Page, scheme: (typeof schemes)[number]): Promise<vo
       body: JSON.stringify({ status: 401, error_code: "identity.unauthenticated" }),
     }),
   );
+  // The login page asks whether a passkey alone signs in: off, a tenant's default (ADR-0047).
+  await page.route("**/auth/sign-in-options", (route) => route.fulfill({ json: { passkey_sign_in: false } }));
   // Reduced motion makes every transition a cut, so axe measures settled states; the scheme emulation keeps
   // Mantine's "auto" in step with the gallery's own switch.
   await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });

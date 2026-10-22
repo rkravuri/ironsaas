@@ -31,6 +31,33 @@ public sealed record SignedInPrincipal(
 {
     /// <summary>The unit the person works for: the one chosen, else the home unit; the home unit in the consolidated view.</summary>
     public Guid? WorkingUnitId => Kind == AuthenticationKind.Session ? (AllUnits ? HomeUnitId : ChosenWorkingUnitId ?? HomeUnitId) : null;
+
+    /// <summary>
+    /// When the principal last proved who they are (TF-248): a session's sign-in or latest re-authentication, a token's
+    /// issue. Null when nothing says, which no high-risk action accepts.
+    /// </summary>
+    public DateTimeOffset? AuthenticatedAt { get; init; }
+}
+
+/// <summary>
+/// Step-up for a request (TF-248, ADR-0047): the signed-in principal's last authentication must be within the age the
+/// action asks. Outside a request (a job, a command) nobody signs in, and the action goes on.
+/// </summary>
+public sealed class RequestRecentAuthentication(IHttpContextAccessor accessor, TimeProvider time) : IRecentAuthentication
+{
+    public Result Require(TimeSpan maxAge)
+    {
+        var http = accessor.HttpContext;
+        if (http is null)
+        {
+            return Result.Success();
+        }
+
+        var current = http.Items.TryGetValue(RequestPrincipal.ItemKey, out var value) ? value as SignedInPrincipal : null;
+        return current?.AuthenticatedAt is { } at && time.GetUtcNow() - at <= maxAge
+            ? Result.Success()
+            : RecentAuthentication.Required(maxAge);
+    }
 }
 
 /// <summary>

@@ -1,12 +1,15 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
 using Iron.Kernel.Settings;
+using Iron.Kernel.Settings.Services;
 using Iron.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -45,7 +48,11 @@ public sealed class IdentityFixture : IAsyncLifetime
         ["Seed:ServiceAccounts:0:ClientId"] = SmokeClientId,
         ["Seed:ServiceAccounts:0:Secret"] = SmokeClientSecret,
         ["Tokens:SigningKeyPem"] = SigningKeyPem,
+        ["Identity:FactorKey"] = FactorKey,
     };
+
+    /// <summary>One factor key for the whole run, as the unit's secret holds one (ADR-0047).</summary>
+    public static string FactorKey { get; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
     /// <summary>One key for the whole run, so tokens issued by one service provider validate in another.</summary>
     public static string SigningKeyPem { get; } = CreateSigningKeyPem();
@@ -64,6 +71,20 @@ public sealed class IdentityFixture : IAsyncLifetime
         await using var provider = BuildServices(new FakeTimeProvider());
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        await RequireMfaForAsync(provider, MfaRequirement.Nobody);
+    }
+
+    /// <summary>
+    /// Sets the tenant's MFA requirement (ADR-0047). The shared database requires a second factor of nobody, so the tests of
+    /// passwords, sessions and users sign in with a password as before; the tests of second factors use databases of their
+    /// own (<see cref="CreateTenantDatabaseAsync"/> with <c>mfa: true</c>), where the tenant's default applies.
+    /// </summary>
+    public static async Task RequireMfaForAsync(IServiceProvider provider, string requiredFor)
+    {
+        await using var scope = provider.CreateAsyncScope();
+        var writer = scope.ServiceProvider.GetRequiredService<SettingsWriter>();
+        var set = await writer.SetAsync(IdentitySettings.MfaRequiredFor.Key, SettingPlace.Tenant, JsonSerializer.SerializeToElement(requiredFor), TestContext.Current.CancellationToken);
+        Assert.True(set.IsSuccess, set.IsFailure ? set.Error.ToString() : null);
     }
 
     public async ValueTask DisposeAsync()
@@ -74,13 +95,22 @@ public sealed class IdentityFixture : IAsyncLifetime
         }
     }
 
-    /// <summary>Another tenant's database in the same container, migrated and seeded: a person there is no one here.</summary>
-    public async Task<string> CreateTenantDatabaseAsync(string name)
+    /// <summary>
+    /// Another tenant's database in the same container, migrated and seeded: a person there is no one here. With
+    /// <paramref name="mfa"/> the tenant keeps the default MFA policy (ADR-0047); without it, like the shared one, it
+    /// requires a second factor of nobody.
+    /// </summary>
+    public async Task<string> CreateTenantDatabaseAsync(string name, bool mfa = false)
     {
         var connectionString = await Postgres.CreateDatabaseAsync(name, TestContext.Current.CancellationToken);
         await using var provider = BuildServices(new FakeTimeProvider(), connectionString: connectionString);
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        if (!mfa)
+        {
+            await RequireMfaForAsync(provider, MfaRequirement.Nobody);
+        }
+
         return connectionString;
     }
 

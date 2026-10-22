@@ -84,6 +84,10 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("requested_by_id");
 
+                    b.Property<bool>("ResetFactors")
+                        .HasColumnType("boolean")
+                        .HasColumnName("reset_factors");
+
                     b.Property<DateTimeOffset?>("StartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");

@@ -29,6 +29,7 @@ public sealed class ProvisioningJob : AuditedEntity
         Subject = Cut(request?.Subject, SubjectMaxLength);
         Reason = Cut(request?.Reason, ReasonMaxLength);
         RequestedBy = Cut(request?.RequestedBy, RequestedByMaxLength);
+        ResetFactors = request?.ResetFactors ?? false;
         RequestedById = requestedById;
     }
 
@@ -61,13 +62,16 @@ public sealed class ProvisioningJob : AuditedEntity
     /// <summary>Who asked, as the control plane names them.</summary>
     public string? RequestedBy { get; private set; }
 
+    /// <summary>A recovery job that also removes the administrator's second factors (TF-013 AC3, ADR-0047).</summary>
+    public bool ResetFactors { get; private set; }
+
     /// <summary>The principal who asked: the only one the job's handover is given to (ADR-0046). Null for a job from before.</summary>
     public Guid? RequestedById { get; private set; }
 
     /// <summary>When the job's handover was given to the one who asked; it is not given again.</summary>
     public DateTimeOffset? HandedOverAt { get; private set; }
 
-    public JobRequest? Request => Subject is null && Reason is null && RequestedBy is null ? null : new JobRequest(Subject, Reason, RequestedBy);
+    public JobRequest? Request => Subject is null && Reason is null && RequestedBy is null ? null : new JobRequest(Subject, Reason, RequestedBy, ResetFactors);
 
     public bool IsOpen => Status is ProvisioningStatus.Requested or ProvisioningStatus.Running;
 

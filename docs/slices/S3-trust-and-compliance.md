@@ -17,7 +17,7 @@ To be written in the design session.
 | ID | Requirement | Priority | Built before S3 | Notes for the design session |
 |---|---|---|---|---|
 | TF-012 | Password policy, history and lockout | Must | Argon2id, the fixed failure message and the count of failed attempts (S1) | T2 (ADR-0046): the policy as tenant settings, history and lockout. AC2's email of the lockout is S4's, with notifications: the lockout is recorded and shown in My profile until then |
-| TF-013 | Multi-factor authentication | Must | | |
+| TF-013 | Multi-factor authentication | Must | | T3 (ADR-0047): authenticator apps and passkeys, recovery codes, the policy as tenant settings, the cooling period and the lock, the administrator's and the operator's reset. The fallback by email or SMS is S4's, an exception when S3 closes |
 | TF-014 | Single sign-on with OpenID Connect | Must | the in-house client credentials grant (ADR-0015); OpenIddict deferred to the authorization code flow | |
 | TF-015 | Single sign-on with SAML 2.0 | Should | | also in S7's description |
 | TF-016 | Automatic user provisioning (SCIM 2.0) | Should | | also in S7's description |
@@ -52,6 +52,7 @@ To be written in the design session.
 | TF-079 | Security monitoring and incident response | Must | denial and login events in the audit; the entitlement, flag and settings alerts (S2) | |
 | TF-218 | Validation support for regulated tenants | Must | | |
 | TF-219 | Signature manifestation and audit trail review | Must | | with TF-063 |
+| TF-248 | Step-up re-authentication | Must | | T3 (ADR-0047), new: a recent authentication for the high-risk actions, one mechanism in the kernel, the API and the shell; T5's break-glass, T7's signatures and T8's second approvals reuse it |
 
 Continuing into S3 from earlier slices: TF-021 (the concurrent session limit), TF-020 (refresh rotation, key rotation, OpenIddict) and TF-070 (CSP reports), each in its slice plan's coverage table.
 
@@ -63,7 +64,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 |---|---|---|---|
 | T1 | Traceability: every test names what it proves, a generated matrix with results, a reliable check sequence | TF-218 (part) | done (main, df1e35e) |
 | T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | done (main, 902cd3d) |
-| T3 | MFA and step-up re-authentication | TF-013 | outline |
+| T3 | MFA and step-up re-authentication | TF-013, TF-248 | in review (slice/s3-t3) |
 | T4 | Single sign-on with OpenID Connect | TF-014 | outline |
 | T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-022, TF-025, TF-026, TF-028, TF-029 | outline |
 | T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |
@@ -82,7 +83,8 @@ STATUS's later items that belong to S3, each in the task it fits (T1 decided the
 - **T1**: the shell's page tests that timed out beside the stack straight after `make test` (measured and settled, ADR-0044); the tests tagged with every PRD's identifiers (TF-218).
 - **T2**: a password reset an operator can use when a tenant's administrator password is lost, which also lets the smoke and the browser tests set a password again; an API that disables a person, so that each browser test run and each smoke run stop leaving an inactive unit with its people behind; the last-administrator guard counting a disabled or locked administrator, since T2 brings the locked state.
 - **T5**: "Sign out everywhere" in the sessions console; a response header with the session's idle end, so the shell's estimate is exact when a tenant shortens the limits.
-- **T9**: rate limits that bound a client calling a refused endpoint, each refusal now writing `entitlements.access_denied` to the audit trail.
+- **T8**, before it starts: the release's "Traceability matrix" job showed no conclusion in run 39620828352; check that it runs and keeps its artifact (T3's review).
+- **T9**: rate limits that bound a client calling a refused endpoint, each refusal now writing `entitlements.access_denied` to the audit trail; the shell's web server answering 404, not its page, for `/api/` and `/health/` paths (T3's review); the factor key's rotation (ADR-0047).
 - **T10**: Dependabot's cooldown and the two packages it is told to leave, under the dependency policy with its fix times; the chiseled images' Kerberos probe message, with the images' SBOM; a system role's new permissions from the seed shown in the conflicts report and raised as a privilege grant, which TF-079's alerts cover; the counter of lost spans (TF-130 AC4), which the S1 plan listed as built and was not (T1's review, 2026-10-21).
 
 The other later items belong to the business and suite slices, S4 (notifications and the escalation messages), S5 (workflow) or the slice of their own requirement, and stay in STATUS.

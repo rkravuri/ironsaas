@@ -39,7 +39,12 @@ public sealed record PrincipalResponse(Guid Id, string LoginId, string DisplayNa
 /// </summary>
 public sealed record SessionResponse(Guid Id, DateTimeOffset? StartedAt, DateTimeOffset ExpiresAt, DateTimeOffset IdleExpiresAt);
 
-public sealed record LoginResponse(PrincipalResponse Principal, SessionResponse Session);
+/// <summary>
+/// A sign-in's answer (TF-011, TF-013, ADR-0047): the person and the session once everything is proved; otherwise the
+/// step that comes next, with neither. A sign-in by recovery code says to enrol a new factor at once; the first enrolment
+/// at sign-in carries the recovery codes, shown once.
+/// </summary>
+public sealed record LoginResponse(PrincipalResponse? Principal, SessionResponse? Session, SignInStepResponse? Step = null, bool EnrolNewFactor = false, IReadOnlyList<string>? RecoveryCodes = null);
 
 /// <summary>What the shell needs after login: who, what they may do, and when the session ends (TF-021: the expiry warning).</summary>
 /// <summary>The home unit as <c>/me</c> shows it: enough to name it; the tree has the rest.</summary>
@@ -64,7 +69,9 @@ public sealed record MeResponse(
     HomeUnitResponse? WorkingUnit,
     bool AllUnits,
     WorkingUnitsResponse WorkingUnits,
-    DateTimeOffset? PasswordExpiresAt = null);
+    DateTimeOffset? PasswordExpiresAt = null,
+    DateTimeOffset? MfaEnrolBy = null,
+    bool MfaEnrolmentRequired = false);
 
 /// <summary>A unit the person may work for, with its depth and its path of names, for the header's menu on the tree.</summary>
 public sealed record WorkingUnitChoiceResponse(Guid Id, string Name, string Code, int Depth, IReadOnlyList<UnitPathStep> Path);
@@ -139,10 +146,10 @@ internal static class AuthEndpoints
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
 
         auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("Login").WithSummary("Sign in with login identifier and password.");
-        auth.MapPost("/logout", LogoutAsync).RequireSignedIn().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
+        auth.MapPost("/logout", LogoutAsync).RequireSignedIn().AllowDuringRequiredStep().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
         auth.MapPost("/invitations/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account; the token comes from the link's fragment.");
 
-        endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
+        endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().AllowDuringRequiredStep().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
         endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
         endpoints.MapPost("/api/v1/me/working-unit", WorkForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("WorkFor").WithSummary("Choose the unit you work for, among your home unit and the units of your roles, or all of them where your roles reach several; answers /me.");
         endpoints.MapDelete("/api/v1/me/acting-for", StopActingAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("StopActing").WithSummary("Act as yourself again; answers /me.");
@@ -151,29 +158,11 @@ internal static class AuthEndpoints
         TokenEndpoints.Map(endpoints);
         UsersEndpoints.Map(endpoints);
         PasswordEndpoints.Map(endpoints);
+        FactorEndpoints.Map(endpoints);
     }
 
-    private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken)
-    {
-        var result = await login.LoginAsync(request.LoginId, request.Password, cancellationToken);
-        if (result.IsFailure)
-        {
-            return ApiResults.Problem(result.Error, http);
-        }
-
-        var outcome = result.Value;
-        if (outcome.RecoveryToken is { } recovery)
-        {
-            // The password was right but is too old (TF-012): no session, and the code of a recovery link to set a new one.
-            var problem = ProblemFactory.Create(Error.Unauthorized(IdentityErrors.PasswordExpired, LoginService.ExpiredMessage), http);
-            problem.Extensions["recovery_token"] = recovery;
-            return TypedResults.Problem(problem);
-        }
-
-        SessionCookie.Set(http, options, outcome.Token!);
-        var session = outcome.Session!;
-        return TypedResults.Ok(new LoginResponse(PrincipalResponse.From(outcome.Principal), Session(session.Id, session.CreatedAt, session.ExpiresAt, session.IdleExpiresAt(options.Session.Idle))));
-    }
+    private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken) =>
+        FactorEndpoints.SignIn(await login.LoginAsync(request.LoginId, request.Password, cancellationToken), http, options);
 
     private static async Task<IResult> LogoutAsync(HttpContext http, RequestPrincipal principal, SessionService sessions, IdentityOptions options, IAuditWriter audit, CancellationToken cancellationToken)
     {
@@ -246,6 +235,16 @@ internal static class AuthEndpoints
         var choices = new WorkingUnitsResponse([.. options.Units.Select(u => new WorkingUnitChoiceResponse(u.Id, u.Name, u.Code, u.Depth, u.Path))], options.AllUnitsAvailable);
         var rules = await services.GetRequiredService<PasswordPolicy>().RulesAsync(cancellationToken);
         var changedAt = rules.MaximumAgeDays == 0 ? null : await services.GetRequiredService<IdentityDbContext>().Principals.AsNoTracking().Where(p => p.Id == current.Id && p.PasswordHash != null).Select(p => p.PasswordChangedAt).SingleOrDefaultAsync(cancellationToken);
+
+        // A person in the grace a tenant may give before a second factor is required (ADR-0047): the shell says by when.
+        var mfaSince = await services.GetRequiredService<IdentityDbContext>().Principals.AsNoTracking().Where(p => p.Id == current.Id).Select(p => p.MfaRequiredSince).SingleOrDefaultAsync(cancellationToken);
+        DateTimeOffset? enrolBy = null;
+        if (mfaSince is { } since)
+        {
+            var grace = (await services.GetRequiredService<MfaPolicy>().RulesAsync(cancellationToken)).GraceDays;
+            enrolBy = grace > 0 ? since.AddDays(grace) : null;
+        }
+
         return new MeResponse(
             current.Id,
             current.LoginId,
@@ -260,7 +259,9 @@ internal static class AuthEndpoints
             current.Kind == AuthenticationKind.Session ? workingUnit : null,
             allUnits,
             choices,
-            changedAt?.AddDays(rules.MaximumAgeDays));
+            changedAt?.AddDays(rules.MaximumAgeDays),
+            enrolBy,
+            RequiredStep.Get(http)?.Code == IdentityErrors.MfaEnrolmentRequired);
     }
 
     private static async Task<IResult> WorkForAsync(WorkForRequest request, HttpContext http, RequestPrincipal principal, SessionService sessions, CancellationToken cancellationToken)

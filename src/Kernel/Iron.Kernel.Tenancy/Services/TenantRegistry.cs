@@ -174,9 +174,10 @@ public sealed class TenantRegistry(
     /// is the tenant's first unless another is named, and the job carries the operator's name. The control plane audits
     /// the request here, naming the operator, the administrator and the reason; the unit audits the link it issues with
     /// the same operator and reason, so both planes' trails tell the same story. Only an active tenant.
-    /// <paramref name="operatorName"/> is how the operator is named in both trails.
+    /// <paramref name="operatorName"/> is how the operator is named in both trails. With <paramref name="resetFactors"/>
+    /// the unit also removes the administrator's second factors (ADR-0047), and both trails say so.
     /// </summary>
-    public async Task<Result<ProvisioningJobInfo>> RequestAdministratorRecoveryAsync(string slug, string? loginId, string? reason, string operatorName, CancellationToken cancellationToken)
+    public async Task<Result<ProvisioningJobInfo>> RequestAdministratorRecoveryAsync(string slug, string? loginId, string? reason, string operatorName, CancellationToken cancellationToken, bool resetFactors = false)
     {
         var why = reason?.Trim();
         if (string.IsNullOrEmpty(why))
@@ -196,8 +197,8 @@ public sealed class TenantRegistry(
         }
 
         var administrator = string.IsNullOrWhiteSpace(loginId) ? tenant.AdministratorLoginId : loginId.Trim().ToLowerInvariant();
-        var request = new JobRequest(administrator, why.Length > RecoveryReasonMaxLength ? why[..RecoveryReasonMaxLength] : why, operatorName);
-        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator"] = administrator, ["operator"] = operatorName };
+        var request = new JobRequest(administrator, why.Length > RecoveryReasonMaxLength ? why[..RecoveryReasonMaxLength] : why, operatorName, resetFactors);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator"] = administrator, ["operator"] = operatorName, ["reset_factors"] = resetFactors ? "true" : "false" };
         return await RequestJobAsync(tenant, JobKind.Recover, TenancyAuditEvents.AdministratorRecoveryRequested, cancellationToken, request, details).ConfigureAwait(false);
     }
 

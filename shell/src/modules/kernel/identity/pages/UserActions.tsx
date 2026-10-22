@@ -1,17 +1,34 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, CopyButton, Group, Stack, Text, TextInput } from "@mantine/core";
-import { IconCheck, IconCopy, IconKey, IconLockOpen, IconUserCheck, IconUserOff } from "@tabler/icons-react";
+import { Alert, Button, CopyButton, Group, Stack, Text, Textarea, TextInput } from "@mantine/core";
+import {
+  IconCheck,
+  IconCopy,
+  IconKey,
+  IconLockOpen,
+  IconShieldX,
+  IconUserCheck,
+  IconUserOff,
+} from "@tabler/icons-react";
+import { z } from "zod";
 import { ApiError } from "@/api/client";
-import { deactivateUser, issueRecoveryLink, reactivateUser, unlockUser, type UserRecord } from "@/api/identity";
+import {
+  deactivateUser,
+  issueRecoveryLink,
+  reactivateUser,
+  resetFactors,
+  unlockUser,
+  type UserRecord,
+} from "@/api/identity";
 import { useAccessAt } from "@/auth/access";
 import { useSession } from "@/auth/session-context";
+import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, FormDialog } from "@/components/panels";
 
 const manage = "identity.users.manage";
 
-type Action = "unlock" | "recovery" | "deactivate" | "reactivate";
+type Action = "unlock" | "recovery" | "resetFactors" | "deactivate" | "reactivate";
 
 /** A link shown once: a recovery link, or the invitation a reactivated person who never started gets. */
 interface ShownLink {
@@ -21,10 +38,12 @@ interface ShownLink {
 }
 
 /**
- * What an administrator may do to a person (S3 T2, ADR-0046): unlock a locked login, issue a recovery link (shown once,
- * with a copy button, as an invitation is), deactivate and reactivate. Each shows only where /me/access allows
- * `identity.users.manage` at the person's home unit, and only when it applies to the person as they are; the API checks
- * every one again and says why when it refuses, such as for the last tenant administrator.
+ * What an administrator may do to a person (S3 T2, T3, ADR-0046, ADR-0047): unlock a locked login, issue a recovery link
+ * (shown once, with a copy button, as an invitation is), reset their second factors with a reason, deactivate and
+ * reactivate. Each shows only where /me/access allows `identity.users.manage` at the person's home unit, and only when it
+ * applies to the person as they are; "Reset factors" also only when the record says the reader holds every permission
+ * the person holds (the escalation rule). The API checks every one again and says why when it refuses, such as for the
+ * last tenant administrator. The high-risk ones ask for a recent sign-in through the shared dialog (TF-248).
  */
 export function UserActions({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
@@ -60,6 +79,15 @@ export function UserActions({ user }: { user: UserRecord }) {
             action: "recovery" as const,
             label: t("users.actions.recovery.open"),
             icon: <IconKey size={16} aria-hidden="true" />,
+          },
+        ]
+      : []),
+    ...(isPerson && !self && (user.factors ?? 0) > 0 && user.takeover_allowed === true
+      ? [
+          {
+            action: "resetFactors" as const,
+            label: t("users.actions.resetFactors.open"),
+            icon: <IconShieldX size={16} aria-hidden="true" />,
           },
         ]
       : []),
@@ -143,7 +171,18 @@ export function UserActions({ user }: { user: UserRecord }) {
           )}
         </Alert>
       )}
-      {asking !== undefined && (
+      {asking === "resetFactors" && (
+        <ResetFactorsDialog
+          user={user}
+          onClose={() => setAsking(undefined)}
+          onReset={() => {
+            setAsking(undefined);
+            setProblem(undefined);
+            void queryClient.invalidateQueries({ queryKey: ["identity", "users"] });
+          }}
+        />
+      )}
+      {asking !== undefined && asking !== "resetFactors" && (
         <ConfirmDialog
           opened
           title={t(`users.actions.${asking}.title`, { name })}
@@ -157,6 +196,58 @@ export function UserActions({ user }: { user: UserRecord }) {
       )}
       {shown && <LinkDialog link={shown} name={name} onClose={() => setShown(undefined)} />}
     </Stack>
+  );
+}
+
+interface ResetValues extends Record<string, unknown> {
+  reason: string;
+}
+
+/**
+ * Resetting a person's second factors (TF-013 AC3, ADR-0047): what it does, and the reason, which their security activity
+ * and the audit trail keep. Their sessions end, and they enrol again at their next sign-in.
+ */
+function ResetFactorsDialog({
+  user,
+  onClose,
+  onReset,
+}: {
+  user: UserRecord;
+  onClose: () => void;
+  onReset: () => void;
+}) {
+  const { t } = useTranslation();
+  const name = user.display_name;
+  const schema = useMemo(
+    () => z.object({ reason: z.string().trim().min(1, t("users.actions.resetFactors.reasonRequired")).max(500) }),
+    [t],
+  );
+  const form = useZodForm<ResetValues>({ schema, initialValues: { reason: "" } });
+  const submit = async (values: ResetValues) => {
+    await resetFactors(user.id, values.reason.trim());
+    onReset();
+  };
+  return (
+    <FormDialog opened title={t("users.actions.resetFactors.title", { name })} onClose={onClose}>
+      <Form
+        form={form}
+        onSubmit={submit}
+        submitLabel={t("users.actions.resetFactors.confirm")}
+        secondary={{ label: t("dialog.cancel"), onClick: onClose }}
+      >
+        <Text size="sm">{t("users.actions.resetFactors.message", { name })}</Text>
+        <Textarea
+          label={t("users.actions.resetFactors.reason")}
+          description={t("users.actions.resetFactors.reasonHint", { name })}
+          required
+          autosize
+          minRows={2}
+          maxLength={500}
+          data-autofocus
+          {...form.getInputProps("reason")}
+        />
+      </Form>
+    </FormDialog>
   );
 }
 

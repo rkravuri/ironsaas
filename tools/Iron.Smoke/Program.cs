@@ -7,7 +7,10 @@ using Iron.Smoke;
 // The smoke test: the stack as an operator and a user meet it. Each step names the requirement criteria or the decisions it
 // proves (ADR-0044), in its report line and in the report make trace reads. Every step is a real call through the ingress
 // or the control plane; nothing is mocked. Exit code 0 when every step passes. Eleven steps since S1, three since S2, one
-// since S3 T2: the operator's recovery of the administrator, which also sets the password a run did not know.
+// since S3 T2: the operator's recovery of the administrator, which also sets the password a run did not know; two since
+// S3 T3: the administrator's second step with the key the smoke keeps (an enrolment after the operator's reset when it has
+// none, or the unit refuses it), and a person of the run who enrols an app, signs in with its codes and with a recovery
+// code (ADR-0047).
 var options = SmokeOptions.FromEnvironment();
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -20,6 +23,7 @@ var ct = cancellation.Token;
 Console.WriteLine($"Smoke against {options.ControlUrl} and {options.IngressUrl} as {options.Hostname}");
 var report = new SmokeReport(options.Tenant, options.ReportPath);
 using var api = new Api();
+var signIn = new SignIn(api, options);
 using var store = new OpenBaoSecretStore(new SecretStoreOptions { Address = options.StoreAddress.ToString(), Token = options.StoreToken, Path = "smoke" });
 var host = options.Hostname;
 var fleetSecretPath = $"tenants/{options.Tenant}/fleet";
@@ -141,10 +145,26 @@ await report.StepAsync("token-call", ["TF-023 AC1"], async () =>
 });
 
 string? administratorPassword = null;
+Authenticator? administratorApp = null;
+
+// The administrator's password and authenticator app's key, kept together at the smoke's path for the next run and the
+// browser tests (make e2e reads both).
+async Task KeepAsync()
+{
+    var kept = new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator_password"] = administratorPassword! };
+    if (administratorApp is not null)
+    {
+        kept["administrator_totp_secret"] = administratorApp.Secret;
+    }
+
+    await store.WriteAsync(smokeSecretPath, kept, ct);
+}
+
 await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
 {
     var smoke = await store.ReadAsync(smokeSecretPath, ct);
     administratorPassword = smoke?.GetValueOrDefault("administrator_password");
+    administratorApp = smoke?.GetValueOrDefault("administrator_totp_secret") is { } key ? new Authenticator(key) : null;
     if (administratorPassword is not null)
     {
         return "administrator password known from an earlier run";
@@ -171,8 +191,8 @@ await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
 
     // The password is kept before the accept: if the answer is lost on the way (a resent request meets a spent
     // invitation), the login step still has what the accept used.
-    await store.WriteAsync(smokeSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator_password"] = password }, ct);
     administratorPassword = password;
+    await KeepAsync();
     var accepted = await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/invitations/accept", host: host, json: new { token, password, display_name = "Smoke Administrator" }, cancellationToken: ct);
     if (accepted.Status == HttpStatusCode.OK)
     {
@@ -185,16 +205,46 @@ await report.StepAsync("administrator", ["TF-018 AC1"], async () =>
 // The operator's recovery (S3 T2, ADR-0046), on every run: the control plane asks the fleet for a link with a reason, the
 // unit issues it, audits the operator and the reason, and hands the link over through the store; the report gives it once
 // to this operator and never again, and the job's output holds no link. The link sets a new password once and ends every
-// session, a second use is refused, the old password no longer signs in, and both planes' audit trails show the request.
-// The new password is kept at the smoke's path, so a run that did not know the password ends knowing it.
+// session, a second use is refused, the old password no longer signs in, and the control plane's audit trail shows the
+// request. The new password is kept at the smoke's path, so a run that did not know the password ends knowing it. The
+// administrator's second factors are reset with it only when the smoke keeps no key of their authenticator app; a key
+// the unit refuses is found in the next step, which asks for the reset then (ADR-0047, at T3's review).
 var recoveryReason = $"The smoke proves the operator's recovery ({TimeProvider.System.GetUtcNow():yyyy-MM-dd HH:mm} UTC)";
-await report.StepAsync("recovery", ["TF-017 AC1", "TF-017 AC2", "ADR-0046"], async () =>
+
+// One operator's recovery: the job, its link handed over once, the password set with it and kept; with the reset, the
+// administrator's factors go too, and with them the key the smoke kept.
+async Task<(string? JobId, Answer Completed, string Token)> RecoverAsync(bool resetFactors)
 {
-    var before = administratorPassword;
-    var requested = (await api.SendAsync(HttpMethod.Post, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/administrator-recovery", bearer: operatorToken, json: new { reason = recoveryReason }, cancellationToken: ct)).Expect(HttpStatusCode.Accepted, "ask for the administrator's recovery link");
+    var requested = (await api.SendAsync(HttpMethod.Post, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}/administrator-recovery", bearer: operatorToken, json: new { reason = recoveryReason, reset_factors = resetFactors }, cancellationToken: ct))
+        .Expect(HttpStatusCode.Accepted, resetFactors ? "ask for the administrator's recovery link and the reset of their factors" : "ask for the administrator's recovery link");
     var jobId = requested.Text("job_id");
     var completed = await CompletedJobAsync(jobId, TimeSpan.FromSeconds(120));
     var link = GivenLink(completed) ?? throw new SmokeException($"the recovery job completed without handing its link over: {completed.Body}");
+    var token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..];
+    var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
+    (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/recovery", host: host, json: new { token, password }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "set the password with the link");
+    administratorPassword = password;
+    if (resetFactors)
+    {
+        administratorApp = null;
+    }
+
+    await KeepAsync();
+    var reset = (completed.Text("output") ?? string.Empty).Contains("second factors were reset", StringComparison.Ordinal);
+    if (reset != resetFactors)
+    {
+        throw new SmokeException($"the recovery job's output does not say what was asked about the factors: {completed.Text("output")}");
+    }
+
+    return (jobId, completed, token);
+}
+
+var factorsReset = false;
+await report.StepAsync("recovery", ["TF-017 AC1", "TF-017 AC2", "ADR-0046", "ADR-0047"], async () =>
+{
+    var before = administratorPassword;
+    factorsReset = administratorApp is null;
+    var (jobId, completed, token) = await RecoverAsync(factorsReset);
     if ((completed.Text("output") ?? string.Empty).Contains("/recovery", StringComparison.Ordinal))
     {
         throw new SmokeException("the recovery job's output holds a link");
@@ -206,28 +256,12 @@ await report.StepAsync("recovery", ["TF-017 AC1", "TF-017 AC2", "ADR-0046"], asy
         throw new SmokeException("the report gave the recovery link a second time");
     }
 
-    var token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..];
-    var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
-    (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/recovery", host: host, json: new { token, password }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "set the password with the link");
-    await store.WriteAsync(smokeSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { ["administrator_password"] = password }, ct);
-    administratorPassword = password;
-
     var again = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/recovery", host: host, json: new { token, password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24)) }, cancellationToken: ct)).Expect(HttpStatusCode.NotFound, "the link used twice");
-    var old = before is null || before == password
+    var old = before is null || before == administratorPassword
         ? "no earlier password to try"
         : $"the earlier password answers {(int)(await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/login", host: host, json: new { login_id = options.AdministratorLoginId, password = before }, cancellationToken: ct)).Expect(HttpStatusCode.Unauthorized, "the earlier password").Status}";
 
-    // The tenant's own audit trail names the operator and the reason; the control plane's has the request.
-    var session = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/login", host: host, json: new { login_id = options.AdministratorLoginId, password }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "sign in with the new password").SetCookie;
-    var issued = Uri.EscapeDataString("event_type:eq:identity.recovery_link_issued");
-    var unitTrail = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, $"/api/v1/audit-events?filter={issued}&page_size=5", host: host, cookie: session, cancellationToken: ct)).Expect(HttpStatusCode.OK, "the tenant's audit trail");
-    var unitEvent = unitTrail.Body!.Value.GetProperty("data").EnumerateArray().FirstOrDefault(e => e.GetProperty("reason").GetString() == recoveryReason);
-    if (unitEvent.ValueKind != JsonValueKind.Object || !(unitEvent.GetProperty("details").ToString().Contains("operator", StringComparison.Ordinal)))
-    {
-        throw new SmokeException("the tenant's audit trail has no recovery_link_issued with the run's reason and the operator");
-    }
-
-    await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/logout", host: host, cookie: session, cancellationToken: ct);
+    // The control plane's audit trail has the request; the tenant's, read with a session in the next step, has the link.
     var requestedFilter = Uri.EscapeDataString("event_type:eq:tenancy.administrator_recovery_requested");
     var controlTrail = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/audit-events?filter={requestedFilter}&page_size=5", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "the control plane's audit trail");
     if (!controlTrail.Body!.Value.GetProperty("data").EnumerateArray().Any(e => e.GetProperty("reason").GetString() == recoveryReason))
@@ -235,16 +269,105 @@ await report.StepAsync("recovery", ["TF-017 AC1", "TF-017 AC2", "ADR-0046"], asy
         throw new SmokeException("the control plane's audit trail has no administrator_recovery_requested with the run's reason");
     }
 
-    return $"job {jobId} handed a link for {options.AdministratorLoginId} over once, none in its output; it set the password once, a second use answers 404 {again.Text("error_code")}; {old}; both audit trails show the reason";
+    var factors = factorsReset ? "and reset their factors, since the smoke kept no key of their authenticator app" : "and kept their factors, since the smoke keeps their authenticator app's key";
+    return $"job {jobId} handed a link for {options.AdministratorLoginId} over once, none in its output, {factors}; it set the password once, a second use answers 404 {again.Text("error_code")}; {old}; the control plane's audit trail shows the reason";
+});
+
+// The administrator holds the tenant administrator's critical permissions, so the tenant's policy requires a second factor
+// of them. The kept key answers the second step; a key the unit refuses (a store that healed, a reset by hand) brings the
+// operator's reset, and then the password step sends the administrator to enrolment before any page (TF-013 AC1), where
+// the smoke enrols a new authenticator app with ten recovery codes and keeps its key. With the session, the tenant's audit
+// trail shows the operator's link, and the reset when there was one, with the run's reason.
+await report.StepAsync("administrator-factor", ["ADR-0046", "ADR-0047"], async () =>
+{
+    async Task<(string Session, string How)> EnrolAsync(Answer answer)
+    {
+        var signInCookie = answer.SetCookie ?? throw new SmokeException("the enrolment step came without its cookie");
+        (await api.SendAsync(HttpMethod.Get, options.IngressUrl, "/api/v1/me", host: host, cookie: signInCookie, cancellationToken: ct)).Expect(HttpStatusCode.Unauthorized, "a page before enrolment");
+        var (started, app, codes) = await signIn.EnrolAtSignInAsync(signInCookie, ct);
+        if (codes != 10)
+        {
+            throw new SmokeException($"the first factor came with {codes} recovery codes, not ten");
+        }
+
+        administratorApp = app;
+        await KeepAsync();
+        return (started, "the password step sent the administrator to enrolment, no page before it; an authenticator app enrolled with ten recovery codes, its key kept");
+    }
+
+    var answer = (await signIn.PasswordAsync(options.AdministratorLoginId, administratorPassword!, ct)).Expect(HttpStatusCode.OK, "sign in with the new password");
+    string session;
+    string how;
+    switch (SignIn.StepOf(answer))
+    {
+        case "second_factor":
+            var proved = administratorApp is null ? null : await signIn.TrySecondFactorAsync(options.AdministratorLoginId, answer.SetCookie!, administratorApp, ct);
+            if (proved is not null)
+            {
+                (session, how) = (proved, "the kept key of the administrator's authenticator app answered the second step");
+                break;
+            }
+
+            // The kept key is missing or refused: the operator's reset, then enrolment.
+            await RecoverAsync(resetFactors: true);
+            factorsReset = true;
+            answer = (await signIn.PasswordAsync(options.AdministratorLoginId, administratorPassword!, ct)).Expect(HttpStatusCode.OK, "sign in after the reset");
+            if (SignIn.StepOf(answer) != "enrolment")
+            {
+                throw new SmokeException($"after the operator's reset, the password step asked for {SignIn.StepOf(answer) ?? "nothing"}");
+            }
+
+            (session, how) = await EnrolAsync(answer);
+            how = $"the kept key was refused, so the operator reset the factors; {how}";
+            break;
+        case "enrolment":
+            (session, how) = await EnrolAsync(answer);
+            break;
+        case null:
+            session = answer.SetCookie ?? throw new SmokeException("the sign-in answered 200 without a session cookie");
+            how = "the tenant's policy requires no factor of the administrator";
+            break;
+        default:
+            throw new SmokeException($"the password step asked for {SignIn.StepOf(answer)}");
+    }
+
+    var expected = factorsReset
+        ? new[] { ("identity.recovery_link_issued", "the operator's link"), ("identity.factors_reset", "the operator's reset") }
+        : [("identity.recovery_link_issued", "the operator's link")];
+    foreach (var (eventType, what) in expected)
+    {
+        var filter = Uri.EscapeDataString($"event_type:eq:{eventType}");
+        var trail = (await api.SendAsync(HttpMethod.Get, options.IngressUrl, $"/api/v1/audit-events?filter={filter}&page_size=5", host: host, cookie: session, cancellationToken: ct)).Expect(HttpStatusCode.OK, "the tenant's audit trail");
+        var found = trail.Body!.Value.GetProperty("data").EnumerateArray().FirstOrDefault(e => e.GetProperty("reason").GetString() == recoveryReason);
+        if (found.ValueKind != JsonValueKind.Object || !found.GetProperty("details").ToString().Contains("operator", StringComparison.Ordinal))
+        {
+            throw new SmokeException($"the tenant's audit trail has no {eventType} with the run's reason and the operator ({what})");
+        }
+    }
+
+    await signIn.SignOutAsync(session, ct);
+    return $"{how}; the tenant's audit trail shows {(factorsReset ? "the operator's link and reset" : "the operator's link")} with the run's reason";
 });
 
 string? cookie = null;
 string? cookieCorrelation = null;
-await report.StepAsync("login", ["TF-011 AC1"], async () =>
+await report.StepAsync("login", ["TF-011 AC1", "ADR-0047"], async () =>
 {
-    var answer = (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/login", host: host, json: new { login_id = options.AdministratorLoginId, password = administratorPassword }, cancellationToken: ct)).Expect(HttpStatusCode.OK, "login");
-    cookie = answer.SetCookie ?? throw new SmokeException("login answered 200 without a session cookie");
-    return $"session cookie {cookie[..cookie.IndexOf('=', StringComparison.Ordinal)]} for {options.AdministratorLoginId}";
+    var answer = (await signIn.PasswordAsync(options.AdministratorLoginId, administratorPassword!, ct)).Expect(HttpStatusCode.OK, "login");
+    if (SignIn.StepOf(answer) is null)
+    {
+        cookie = answer.SetCookie ?? throw new SmokeException("login answered 200 without a session cookie");
+        return $"session cookie {cookie[..cookie.IndexOf('=', StringComparison.Ordinal)]} for {options.AdministratorLoginId}, with the password alone: no factor required";
+    }
+
+    // The password alone opened no session: the second step, with the app's code.
+    if (answer.SetCookie?.StartsWith("iron.session=", StringComparison.Ordinal) == true || administratorApp is null)
+    {
+        throw new SmokeException($"the password step asked for {SignIn.StepOf(answer)} and the smoke has no factor for it");
+    }
+
+    cookie = await signIn.SecondFactorAsync(options.AdministratorLoginId, answer.SetCookie!, administratorApp, ct);
+    return $"session cookie {cookie[..cookie.IndexOf('=', StringComparison.Ordinal)]} for {options.AdministratorLoginId} after the password and the second step";
 });
 
 await report.StepAsync("cookie-call", ["ADR-0010", "ADR-0014"], async () =>
@@ -329,10 +452,15 @@ await report.StepAsync("trace", ["ADR-0010"], async () =>
 // S2's three steps (S2-close): a scoped role, a plan change and a kill switch, each restoring what it changed, and the
 // person the scoped role makes deactivated (T2). The run's short id names what they make, apart from earlier runs.
 var run = Convert.ToHexString(RandomNumberGenerator.GetBytes(3)).ToLowerInvariant();
-var access = new AccessSteps(api, options, operatorToken ?? string.Empty, administratorPassword ?? string.Empty, run);
+Task<string> AdministratorAsync(CancellationToken cancellation) => signIn.AsAsync(options.AdministratorLoginId, administratorPassword ?? string.Empty, administratorApp, cancellation);
+var access = new AccessSteps(api, options, operatorToken ?? string.Empty, AdministratorAsync, run);
 await report.StepAsync("scoped-role", ["TF-033 AC1", "TF-035 AC1", "ADR-0031"], () => access.ScopedRoleAsync(ct));
 await report.StepAsync("plan-change", ["TF-046 AC1", "ADR-0034"], () => access.PlanChangeAsync(ct));
 await report.StepAsync("kill-switch", ["ADR-0035"], () => access.KillSwitchAsync(ct));
+
+// S3 T3's step: a person of the run with an authenticator app and recovery codes, deactivated at the end (ADR-0047).
+var factors = new FactorSteps(api, options, signIn, AdministratorAsync, run);
+await report.StepAsync("second-factor", ["TF-013 AC3", "ADR-0047"], () => factors.AuthenticatorAppAsync(ct));
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;

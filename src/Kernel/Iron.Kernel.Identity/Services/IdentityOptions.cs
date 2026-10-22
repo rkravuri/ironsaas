@@ -14,6 +14,12 @@ public sealed class IdentityOptions
 
     public Argon2Options Argon2 { get; set; } = new();
 
+    /// <summary>
+    /// The key that encrypts the second factors' secrets at rest (TF-073, ADR-0047): 32 random bytes in base64, from the
+    /// unit's secret (<c>Identity:FactorKey</c>), which the fleet writes when it creates the unit. Never in a file or a log.
+    /// </summary>
+    public string? FactorKey { get; set; }
+
     public sealed class SessionOptions
     {
         /// <summary>The cookie that holds the session token.</summary>

@@ -75,6 +75,53 @@ public static class IdentityErrors
 
     /// <summary>A unit the person may not work for, or "All my units" for a person who may not choose it.</summary>
     public const string WorkingUnitNotYours = "identity.working_unit.not_yours";
+
+    // Second factors (TF-013, ADR-0047).
+
+    /// <summary>The sign-in under way is unknown, used or past its time (five minutes, an enrolment fifteen): sign in again from the password.</summary>
+    public const string SignInExpired = "identity.sign_in.expired";
+
+    /// <summary>A second factor that did not prove the person: a wrong or used code, a recovery code that does not work, a passkey that did not verify.</summary>
+    public const string SecondFactorInvalid = "identity.second_factor.invalid";
+
+    /// <summary>Three wrong codes in a row: no code is checked until the cooling period ends (TF-013 AC2).</summary>
+    public const string SecondFactorCooling = "identity.second_factor.cooling";
+
+    /// <summary>
+    /// The tenant's policy now requires a second factor of the signed-in person, who has none: every request but the
+    /// enrolment's own answers it, 403, until they enrol in their session, which goes on (ADR-0047).
+    /// </summary>
+    public const string MfaEnrolmentRequired = "identity.mfa.enrolment_required";
+
+    /// <summary>The tenant does not allow signing in with a passkey alone.</summary>
+    public const string PasskeySignInOff = "identity.passkey_sign_in.off";
+
+    /// <summary>The tenant's policy does not allow this kind of factor to be enrolled.</summary>
+    public const string FactorNotAllowed = "identity.factor.not_allowed";
+
+    /// <summary>An enrolment that did not prove itself: the first code does not match, or the passkey did not register.</summary>
+    public const string FactorInvalid = "identity.factor.invalid";
+
+    /// <summary>A person has one authenticator app at a time; remove it to enrol another.</summary>
+    public const string FactorAppExists = "identity.factor.app_exists";
+
+    /// <summary>No factor of the person's with this id.</summary>
+    public const string FactorNotFound = "identity.factor.not_found";
+
+    /// <summary>The person must have a second factor, and this is their last one.</summary>
+    public const string FactorLast = "identity.factor.last";
+
+    /// <summary>The person has no factor, so there are no recovery codes to make.</summary>
+    public const string FactorNone = "identity.factor.none";
+
+    /// <summary>An administrator asked to reset the factors of someone holding permissions they do not hold (ADR-0046's rule).</summary>
+    public const string FactorResetEscalation = "identity.factor_reset.escalation";
+
+    /// <summary>The password or the second factor given to confirm it is the person did not prove them (TF-248).</summary>
+    public const string ReauthenticationInvalid = "identity.reauthentication.invalid";
+
+    /// <summary>A bearer token cannot re-authenticate: its client asks for a new token with its credentials (TF-248).</summary>
+    public const string ReauthenticationToken = "identity.reauthentication.token";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -133,11 +180,18 @@ public static class IdentityAuditEvents
 
     /// <summary>An administrator reactivated a person.</summary>
     public const string UserReactivated = "identity.user_reactivated";
+
+    /// <summary>A person confirmed it is them in their session, for a high-risk action (TF-248).</summary>
+    public const string Reauthenticated = "identity.reauthenticated";
+
+    /// <summary>A person renamed one of their factors.</summary>
+    public const string FactorRenamed = "identity.factor_renamed";
 }
 
 /// <summary>
 /// The kinds of a person's security events (TF-019, ADR-0046), shown in My profile under "Security activity". Each is also
-/// written as the audit event of the same name with the <c>identity.</c> prefix. MFA and impersonation add theirs later.
+/// written as the audit event of the same name with the <c>identity.</c> prefix. Second factors add theirs (ADR-0047);
+/// impersonation adds its own later.
 /// </summary>
 public static class SecurityEventKinds
 {
@@ -150,7 +204,26 @@ public static class SecurityEventKinds
     public const string UserDeactivated = "user_deactivated";
     public const string UserReactivated = "user_reactivated";
 
-    public static IReadOnlyList<string> All => [PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated];
+    /// <summary>A second factor was enrolled: an authenticator app or a passkey (TF-013).</summary>
+    public const string FactorEnrolled = "factor_enrolled";
+
+    /// <summary>The person removed one of their factors.</summary>
+    public const string FactorRemoved = "factor_removed";
+
+    /// <summary>Every factor and recovery code of the person was removed: by an administrator or the operator, with a reason (TF-013 AC3).</summary>
+    public const string FactorsReset = "factors_reset";
+
+    /// <summary>A recovery code signed the person in, or confirmed it was them; it never works again (TF-013 AC3).</summary>
+    public const string RecoveryCodeUsed = "recovery_code_used";
+
+    /// <summary>The person made a new set of recovery codes; the old ones stopped working.</summary>
+    public const string RecoveryCodesRegenerated = "recovery_codes_regenerated";
+
+    public static IReadOnlyList<string> All =>
+    [
+        PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated,
+        FactorEnrolled, FactorRemoved, FactorsReset, RecoveryCodeUsed, RecoveryCodesRegenerated,
+    ];
 
     /// <summary>The audit event a security event is written as.</summary>
     public static string AuditEventOf(string kind) => $"identity.{kind}";

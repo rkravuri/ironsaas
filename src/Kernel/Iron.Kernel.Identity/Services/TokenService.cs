@@ -6,8 +6,11 @@ namespace Iron.Kernel.Identity.Services;
 
 public sealed record IssuedToken(string AccessToken, Guid TokenId, DateTimeOffset ExpiresAt, string Scope);
 
-/// <summary>What a valid bearer token says, after every check passed.</summary>
-public sealed record TokenClaims(Guid PrincipalId, Guid TokenId, string ClientId, DateTimeOffset ExpiresAt, string Scope);
+/// <summary>
+/// What a valid bearer token says, after every check passed. <see cref="IssuedAt"/> is when its client last proved who it
+/// is, with its credentials: a high-risk action needs it recent (TF-248).
+/// </summary>
+public sealed record TokenClaims(Guid PrincipalId, Guid TokenId, string ClientId, DateTimeOffset ExpiresAt, string Scope, DateTimeOffset? IssuedAt = null);
 
 public sealed record TokenValidation(TokenClaims? Claims, string? Failure)
 {
@@ -121,7 +124,8 @@ public sealed class TokenService(SigningKeys keys, TokenOptions options, TenantC
 
         jwt.TryGetPayloadValue<string>(ClientIdClaim, out var clientId);
         jwt.TryGetPayloadValue<string>(ScopeClaim, out var scope);
-        return TokenValidation.Valid(new TokenClaims(principalId, tokenId, clientId ?? string.Empty, validTo, scope ?? string.Empty));
+        var issuedAt = jwt.IssuedAt == DateTime.MinValue ? (DateTimeOffset?)null : Utc(jwt.IssuedAt);
+        return TokenValidation.Valid(new TokenClaims(principalId, tokenId, clientId ?? string.Empty, validTo, scope ?? string.Empty, issuedAt));
     }
 
     private static DateTimeOffset Utc(DateTime value) => new(DateTime.SpecifyKind(value, DateTimeKind.Utc), TimeSpan.Zero);
