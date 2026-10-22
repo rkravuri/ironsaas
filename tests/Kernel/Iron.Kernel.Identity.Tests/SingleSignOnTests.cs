@@ -67,7 +67,7 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
     private const string Domain = "example.test";
 
     [Fact]
-    [Proves("TF-014 AC1", "TF-014 AC7", "ADR-0048")]
+    [Proves("TF-014 AC1", "ADR-0048")]
     public async Task ANewEmployeeOfAnAllowedDomainIsCreatedWithTheDefaultRoleAndHomeUnitAndASessionStarts()
     {
         await using var host = await StartAsync();
@@ -231,7 +231,7 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
     }
 
     [Fact]
-    [Proves("TF-014 AC7", "TF-010 AC3", "ADR-0048")]
+    [Proves("TF-014 AC9", "TF-010 AC3", "ADR-0048")]
     public async Task ADeactivatedPersonIsRefusedAndNeverReCreatedOrReactivatedBySingleSignOn()
     {
         await using var host = await StartAsync();

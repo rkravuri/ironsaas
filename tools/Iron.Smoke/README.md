@@ -6,4 +6,6 @@ Environment (laptop defaults in brackets): `SMOKE_CONTROL_URL` [http://localhost
 
 The cookie is carried by hand (not a cookie container), so the Secure flag does not stop the test on plain http; TLS errors are ignored for the laptop's self-signed certificate.
 
+The `single-sign-on` step (ADR-0048) needs the test provider (`make test-provider`, which `make smoke` runs first; the integration stage starts it too). It tests the connection of the tenant's "Smoke test provider" (issuer `smoke-<tenant>` at `http://idp.localhost`), connects it once and sets a new client secret on every run, then signs a new person of the run in through it as a browser would: the unit's authorization address, the provider's login page with the run's claims (reached through the ingress with `Host: idp.localhost`), and the provider's way back posted to `/auth/sso/callback`. The person, created at that first sign-in, is deactivated at the end whatever the result.
+
 The `health` step waits, at most 90 seconds, for the API's own readiness answer through the ingress, a 200 with its JSON status: just after provisioning, the ingress may not route to the tenant's API yet, and the tenant's shell answers every path with its page and 200 (M4, after the release run 39541982335 failed on it).

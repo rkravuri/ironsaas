@@ -462,6 +462,11 @@ await report.StepAsync("kill-switch", ["ADR-0035"], () => access.KillSwitchAsync
 var factors = new FactorSteps(api, options, signIn, AdministratorAsync, run);
 await report.StepAsync("second-factor", ["TF-013 AC3", "ADR-0047"], () => factors.AuthenticatorAppAsync(ct));
 
+// S3 T4's step: the test provider, connected and tested, signs a new person of the run in, created at their first
+// sign-in through it, and deactivated at the end (ADR-0048).
+var sso = new SsoSteps(api, options, signIn, AdministratorAsync, run);
+await report.StepAsync("single-sign-on", ["TF-014 AC1", "TF-014 AC6", "ADR-0048"], () => sso.SignInThroughAsync(ct));
+
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
 

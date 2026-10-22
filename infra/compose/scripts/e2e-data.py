@@ -276,6 +276,12 @@ def teardown():
     # The people of every run's units, this one's and earlier ones', by the codes setup gives them.
     runs = [unit for unit in units if unit["code"].startswith("e2e-")]
     log(f"Deactivated {deactivate_people(admin, runs)} person(s) homed in the browser tests' units.")
+    # The company logins the single sign-on test connects and removes itself, left by a run that failed before (ADR-0048).
+    providers = api("GET", "/api/v1/sso/providers?page_size=200", admin)["data"]
+    left = [provider for provider in providers if provider["name"].startswith("E2E provider ")]
+    for provider in left:
+        api("DELETE", f"/api/v1/sso/providers/{provider['id']}", admin, expect=(204,))
+    log(f"Removed {len(left)} single sign-on provider(s) the browser tests left.")
     if not run_unit_id:
         log("No run unit to deactivate.")
         return

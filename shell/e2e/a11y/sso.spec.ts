@@ -19,7 +19,8 @@ const contoso = {
   id: "01a16400-0000-7000-8000-000000000001",
   name: "Contoso Entra ID",
   preset: "entra_id",
-  discovery_url: "https://login.microsoftonline.com/0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0/v2.0/.well-known/openid-configuration",
+  discovery_url:
+    "https://login.microsoftonline.com/0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0/v2.0/.well-known/openid-configuration",
   client_id: "6a7b8c9d-iron-acme",
   allowed_domains: ["contoso.example", "contoso-labs.example"],
   email_claim: "email",
@@ -66,11 +67,16 @@ const report = {
     { check: "code_flow", status: "passed", message: "The provider offers the authorization code flow." },
     { check: "pkce", status: "passed", message: "The provider takes PKCE with S256." },
     { check: "signing", status: "passed", message: "ID tokens are signed with RS256, PS256, ES256." },
-    { check: "end_session", status: "warning", message: "The provider publishes no end-session endpoint: people sign out here only." },
+    {
+      check: "end_session",
+      status: "warning",
+      message: "The provider publishes no end-session endpoint: people sign out here only.",
+    },
     {
       check: "client",
       status: "passed",
-      message: "The client identifier and secret are proved by the first sign-in; the provider must list https://<your address>/sso/callback as a redirect URI.",
+      message:
+        "The client identifier and secret are proved by the first sign-in; the provider must list https://<your address>/sso/callback as a redirect URI.",
     },
   ],
 };
@@ -113,7 +119,9 @@ for (const scheme of schemes) {
 
     // A new provider: the preset fills the discovery address, and the test speaks each check in words.
     await page.goto("/console/sso/new");
-    await page.getByRole("textbox", { name: "Discovery address" }).fill("http://idp.localhost/acme/.well-known/openid-configuration");
+    await page
+      .getByRole("textbox", { name: "Discovery address" })
+      .fill("http://idp.localhost/acme/.well-known/openid-configuration");
     await page.getByRole("button", { name: "Test connection" }).click();
     await expect(page.getByText("The connection works.")).toBeVisible();
     await expect(page.getByText(/^Warning: Sign-out at the provider\./)).toBeVisible();

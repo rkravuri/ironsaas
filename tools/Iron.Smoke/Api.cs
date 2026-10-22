@@ -6,8 +6,11 @@ using System.Text.Json;
 
 namespace Iron.Smoke;
 
-/// <summary>What one call returned: the status, the body as JSON when it is, and the correlation id from the header or the problem.</summary>
-public sealed record Answer(HttpStatusCode Status, JsonElement? Body, string? CorrelationId, string? SetCookie)
+/// <summary>
+/// What one call returned: the status, the body as JSON when it is, the correlation id from the header or the problem,
+/// the cookie set, and where a redirect points (a company login's answer, ADR-0048).
+/// </summary>
+public sealed record Answer(HttpStatusCode Status, JsonElement? Body, string? CorrelationId, string? SetCookie, Uri? Location = null)
 {
     public bool Ok => (int)Status is >= 200 and < 300;
 
@@ -110,6 +113,6 @@ public sealed class Api : IDisposable
             setCookie = cookies.Select(c => c.Split(';')[0]).FirstOrDefault(c => c.IndexOf('=', StringComparison.Ordinal) is var at && at > 0 && at < c.Length - 1);
         }
 
-        return new Answer(response.StatusCode, body, correlation, setCookie);
+        return new Answer(response.StatusCode, body, correlation, setCookie, response.Headers.Location);
     }
 }
