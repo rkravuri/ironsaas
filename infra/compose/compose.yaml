@@ -40,7 +40,11 @@ services:
       - ./traefik/traefik.yaml:/etc/traefik/traefik.yaml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
       - ./certs:/certs:ro
-    networks: [foundation]
+    networks:
+      foundation:
+        # The test identity provider's name reaches the ingress from the units too, so a unit's API, the browser and the
+        # smoke all meet the provider at one address and one issuer (ADR-0048).
+        aliases: [idp.localhost]
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
@@ -202,6 +206,35 @@ services:
         condition: service_healthy
       openbao:
         condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+
+  # ---------------------------------------------------------------- test identity provider (profile: sso)
+  # An OpenID Connect provider for single sign-on's tests (S3 T4, ADR-0048): its login page takes the claims of each
+  # sign-in (email, email_verified, name, groups, amr), so a test sets what it proves. Started by make smoke, make e2e and
+  # the integration stage, never by make up. Reached at http://idp.localhost through the ingress; the issuer is
+  # http://idp.localhost/<issuer id>, any first path segment being an issuer of its own.
+  idp:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.4 # MIT
+    profiles: [sso]
+    environment:
+      JSON_CONFIG: '{"interactiveLogin": true}'
+      LOG_LEVEL: WARN
+    networks: [foundation]
+    deploy:
+      resources:
+        limits:
+          memory: 300M # the budget of ADR-0048; measured at about 170 MB after twenty sign-ins
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.idp.rule=Host(`idp.localhost`)"
+      - "traefik.http.routers.idp.entrypoints=web,websecure"
+      - "traefik.http.services.idp.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/isalive"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
     restart: unless-stopped
     logging: *default-logging
 
