@@ -54,7 +54,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0044](0044-naming-what-a-test-proves-and-the-traceability-matrix.md) | Naming what a test proves, the traceability matrix, and a check sequence that holds under load | Accepted |
 | [0045](0045-process-maps-as-bpmn-files-checked-against-the-schema.md) | Process maps as BPMN files, checked against the BPMN 2.0 schema | Accepted |
 | [0046](0046-passwords-lockout-and-recovery.md) | Passwords: the policy, lockout without revealing accounts, and three ways to recover | Accepted |
-| [0047](0047-second-factors-and-step-up.md) | Second factors, the MFA policy, recovery of a lost device, and step-up re-authentication | Proposed |
+| [0047](0047-second-factors-and-step-up.md) | Second factors, the MFA policy, recovery of a lost device, and step-up re-authentication | Accepted |
 
 ## Reading order
 

@@ -1,8 +1,8 @@
 # ADR-0047: Second factors, the MFA policy, recovery of a lost device, and step-up re-authentication
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-22
-**Decided by:** Architect, for the design session's review
+**Decided by:** Product owner and architect, at the design session's review of S3 T3 (2026-10-22)
 
 ## Context
 
@@ -54,7 +54,7 @@ Email and SMS arrive with S4's notifications, so TF-013's one-time codes by emai
 
 ### Signing in
 
-- **The password step creates no session for a person who has a factor, or who must have one.** It opens a challenge of five minutes instead.
+- **The password step creates no session for a person who has a factor, or who must have one.** It opens a challenge instead: five minutes for the second step, fifteen for an enrolment, since installing an app or finding a security key takes longer than typing a code. A passkey sign-in and a re-authentication keep five; adding a factor in a session takes fifteen, as an enrolment at sign-in does.
 - The browser holds the challenge by a random token in an HttpOnly, Secure, SameSite=Strict cookie for `/auth` (`iron.sign_in`). Only the token's SHA-256 is stored. Codes and passkey answers travel in request bodies, never in a path.
 - **The second step** takes the passkey's answer, the app's code, or a recovery code. It answers the session, or a refusal that never says which part was wrong.
 - **A password past its maximum age** (ADR-0046) is looked at after the second step. Otherwise a right password alone would yield a recovery link.
@@ -82,11 +82,14 @@ The policy is five tenant settings (ADR-0036). Changing any of them is itself a 
 
 - A role is held at any scope: the tenant, a unit or a record.
 - The allowed factors govern what may be enrolled. A factor enrolled before a change keeps working until its owner removes it.
-- **A person who must have a factor and has none** is sent to enrolment by the password step, through the same five-minute challenge: no session, so no page opens before it.
+- **A person who must have a factor and has none** is sent to enrolment by the password step, through a challenge of fifteen minutes: no session, so no page opens before it.
   - The first factor's recovery codes are shown once.
   - The shell holds its redirect until the person ticks that they saved them, since a read of `/me` on window focus would otherwise take them away.
 - **The grace** a tenant may give counts from the first sign-in that found the factor required. Until it ends, the password signs the person in, and `/me` tells the shell the date for its banner.
-- **Open sessions** are not ended by a change of policy. They end within their twelve hours, and the next sign-in follows the policy.
+- **A change of policy takes effect at the next request**, not the next sign-in (decided at the review). Every request of a session asks whether the policy now requires a factor of the person, who has none and no grace left; a change of their roles counts the same way.
+  - When it does, the request carries a required step (`RequiredStep` in `Iron.Kernel.Api`). The permission and signed-in filters answer 403 `identity.mfa.enrolment_required` for every endpoint but the step's own, declared `AllowDuringRequiredStep()`: `/me`, `/me/context`, sign out, the factors' endpoints and re-authentication.
+  - Nobody is signed out. The shell's frame takes the person to `/enrol` on that answer, or on `/me`'s `mfa_enrolment_required`; they enrol in their session (adding a factor asks for a recent sign-in, as in My profile), see their recovery codes once, and return to the page they were on.
+  - The first request that finds the factor required starts the tenant's grace, as the first sign-in would. A person with a factor costs one indexed query per request.
 - **Service accounts keep their client credentials.** MFA does not apply to tokens.
 
 ### A lost device (TF-013 AC3)
@@ -137,12 +140,12 @@ The policy is five tenant settings (ADR-0036). Changing any of them is itself a 
 ### The test tenants
 
 - **The smoke**, on every run:
-  - the operator's recovery resets the administrator's factors too;
-  - the password step sends the administrator to enrolment;
-  - the smoke enrols an authenticator app with a computed code and keeps its key in the store beside the password;
+  - the operator's recovery sets the administrator's password, as since T2;
+  - the administrator's second step uses the authenticator app's key the smoke keeps in the store beside the password;
+  - only when it keeps no key, or the unit refuses it, the operator's recovery also resets the factors, the password step sends the administrator to enrolment, and the smoke enrols a new app with a computed code and keeps its key (decided at the review);
   - a person of the run enrols an app, signs in with its codes and once with a recovery code, and is deactivated.
 - **The browser tests' data script** names the roles the tenant requires a factor of: the tenant administrator and `e2e-mfa`. The other people of a run then sign in with a password, as the tests of access expect.
-- **The browser tests** sign the administrator in with a code once per worker, then add a passkey in Chromium's virtual authenticator and use it, since a code works once per 30-second step. A test sends the `e2e-mfa` person to enrolment, creates a passkey, and signs in with it.
+- **The browser tests** sign the administrator in with a code once per worker, then add a passkey in Chromium's virtual authenticator and use it, since a code works once per 30-second step; they remove the passkeys earlier runs added. A test sends the `e2e-mfa` person to enrolment, creates a passkey, and signs in with it.
 
 ## Options considered
 
@@ -150,19 +153,23 @@ The policy is five tenant settings (ADR-0036). Changing any of them is itself a 
 - **A restricted session for forced enrolment**, with every endpoint but enrolment refusing it: not chosen. A session made by the password alone is what the requirement forbids, and every new endpoint would have to remember the restriction. The five-minute challenge already exists for the second step.
 - **The challenge's token in the request body**, from the login's answer: not chosen. An HttpOnly cookie for `/auth` keeps it out of the page's script and of every path.
 - **Recovery codes hashed with Argon2id**, as passwords are: not chosen. Eighty random bits cannot be guessed, a salted fast hash is enough, and it lets a typed code be found by its hash.
-- **Attestation and the FIDO metadata service** for passkeys: not chosen. The metadata service is an external host the CSP keeps out. Rules about which authenticator models a tenant accepts can come with a regulated customer who asks.
+- **Attestation and the FIDO metadata service** for passkeys: not chosen. The metadata service is an external host the CSP keeps out. A tenant that must accept only certain authenticator models gets a setting that lists them, from a list bundled with the Identity module and never fetched (a later item, decided at the review).
 - **Step-up as a 401**: not chosen. The shell signs out on 401, and the session is still good.
 - **Step-up only as an endpoint filter**: not chosen. A role grant is high-risk only when the role holds a high-risk or critical permission, and the settings endpoint serves every setting. So the services ask the same interface where the data decides.
 - **One-time codes by email or SMS as a fallback** (TF-013's requirement): not built. Notifications are S4's. It is an exception with its home in S4, listed when S3 closes.
-- **Ending open sessions when the policy changes**: not chosen. A policy change would sign out every administrator at once. Sessions end within twelve hours, and the next sign-in follows the policy.
+- **Ending open sessions when the policy changes**: not chosen. A policy change would sign out every administrator at once.
+- **Waiting for the next sign-in** to apply a policy change: not chosen at the review. A session lasts up to twelve hours, and a policy a tenant turns on should hold at once; the required step holds it at the next request without signing anyone out.
+- **A five-minute enrolment**: not chosen at the review. It sent people back to their password while their app was still installing.
+- **Resetting the administrator's factors on every smoke run**: not chosen at the review. The smoke proves the second step with the key it keeps, and the reset and enrolment when the key is missing or refused.
 
 ## Consequences
 
 - A stolen password is no longer enough to sign in as anyone who holds a high-risk or critical permission, and an open session is no longer enough for the actions that change who can do what.
 - A tenant whose administrator lost both their password and their device is recovered by the operator, with the same trail as ADR-0046's recovery.
 - **The factor key is a unit secret, kept across updates.** A store that loses the unit's secret loses the key with it. The unit's authenticator apps then cannot be checked and their people need a reset, while passkeys keep working. Rotation, with the version byte, is TF-075's (S3, later).
-- The smoke resets and enrols the administrator's factors on every run. The browser tests' tenant names its own MFA roles, so the policy there is not the default. The .NET tests prove the default.
+- The smoke uses the administrator's kept key, and resets and enrols only when it has none or the unit refuses it. The browser tests' tenant names its own MFA roles, so the policy there is not the default. The .NET tests prove the default.
+- Every request of a session asks the MFA policy: the settings are in memory, and a person with a factor costs one indexed query.
 - To revisit:
   - TF-019's emails for a new factor and a reset (S4), and the one-time codes by email or SMS (S4);
   - whether a tenant may require passkeys only for administrators;
-  - a security key's attestation where a regulated customer asks.
+  - a tenant setting that accepts only listed authenticator models, from a bundled list, never fetched.
