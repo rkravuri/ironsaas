@@ -1094,6 +1094,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");
 
+                    b.Property<bool>("Retired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("retired");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)

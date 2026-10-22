@@ -747,6 +747,10 @@ export const fetchDocuments = (signal?: AbortSignal) =>
 export const publishDocument = (key: string, title: string, body: string) =>
   request("/api/v1/documents", { method: "POST", body: { key, title, body }, schema: DocumentSchema });
 
+/** Nobody is asked to accept the document any more; its acceptances stay (ADR-0049). */
+export const retireDocument = (key: string) =>
+  request(`/api/v1/documents/${encodeURIComponent(key)}/retire`, { method: "POST" });
+
 export const AcceptanceSchema = z.object({
   id: z.string(),
   principal_id: z.string(),

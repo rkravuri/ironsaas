@@ -252,6 +252,9 @@ public static class IdentityErrors
     /// <summary>A document's key that is not lowercase letters, digits and hyphens.</summary>
     public const string DocumentKeyInvalid = "identity.document.key_invalid";
 
+    /// <summary>No tenant document with this key is asked of anyone.</summary>
+    public const string DocumentNotFound = "identity.document.not_found";
+
     /// <summary>The tenant has its two emergency accounts already (ADR-0049).</summary>
     public const string EmergencyLimit = "identity.emergency.limit";
 
@@ -363,6 +366,9 @@ public static class IdentityAuditEvents
 
     /// <summary>An administrator published a version of a tenant document.</summary>
     public const string DocumentPublished = "identity.document_published";
+
+    /// <summary>An administrator retired a tenant document: nobody is asked to accept it any more.</summary>
+    public const string DocumentRetired = "identity.document_retired";
 }
 
 /// <summary>

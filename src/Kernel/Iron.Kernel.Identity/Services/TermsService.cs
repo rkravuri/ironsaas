@@ -98,7 +98,7 @@ public sealed class TenantDocumentVersions(TimeProvider time)
         }
 
         var all = await context.TenantDocuments.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<TenantDocument> current = [.. all.GroupBy(d => d.Key).Select(g => g.MaxBy(d => d.Number)!).OrderBy(d => d.Key, StringComparer.Ordinal)];
+        IReadOnlyList<TenantDocument> current = [.. all.GroupBy(d => d.Key).Select(g => g.MaxBy(d => d.Number)!).Where(d => !d.Retired).OrderBy(d => d.Key, StringComparer.Ordinal)];
         lock (_gate)
         {
             _cached = (current, now);
@@ -225,6 +225,28 @@ public sealed class TermsService(
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         tenantVersions.Changed();
         return document;
+    }
+
+    /// <summary>
+    /// An administrator retires a tenant document (ADR-0049): its current version is asked of nobody any more, here at once
+    /// and in every other process within a minute; the acceptances stay. Publishing a version later asks it again.
+    /// </summary>
+    public async Task<Result> RetireAsync(string key, CancellationToken cancellationToken)
+    {
+        var latest = await context.TenantDocuments.Where(d => d.Key == key).OrderByDescending(d => d.Number).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (latest is null || latest.Retired)
+        {
+            return Error.NotFound(IdentityErrors.DocumentNotFound, $"There is no document '{key}' that people are asked to accept.");
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        latest.Retire();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["key"] = latest.Key, ["version"] = latest.Number.ToString(CultureInfo.InvariantCulture) };
+        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.DocumentRetired, AuditOutcome.Success, actor.Id, latest.Key, details, "document", latest.Id), cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        tenantVersions.Changed();
+        return Result.Success();
     }
 
     private static Dictionary<string, string> Details(RequiredDocument document) => new(StringComparer.Ordinal)

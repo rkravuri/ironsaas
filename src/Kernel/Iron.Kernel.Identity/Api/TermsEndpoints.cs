@@ -113,6 +113,8 @@ internal static class TermsEndpoints
         var documents = endpoints.MapApiGroup("documents");
         documents.MapGet("/", DocumentsAsync).RequirePermission(IdentityPermissions.DocumentsManage).Produces<DocumentsResponse>(StatusCodes.Status200OK).WithName("ListDocuments").WithSummary("The documents people must accept: the platform's and the tenant's current versions, and how many people accepted each.");
         documents.MapPost("/", PublishAsync).RequirePermission(IdentityPermissions.DocumentsManage).Validate<PublishDocumentRequest>().Produces<DocumentResponse>(StatusCodes.Status201Created).WithName("PublishDocument").WithSummary("Publish a tenant document's next version, or the first of a new one; everyone accepts it at their next request.");
+        // An administrator held by the document's own new version may still retire it, a mistaken one above all.
+        documents.MapPost("/{key}/retire", RetireAsync).RequirePermission(IdentityPermissions.DocumentsManage).AllowDuringRequiredStep(IdentityErrors.TermsAcceptanceRequired).Produces(StatusCodes.Status204NoContent).WithName("RetireDocument").WithSummary("Retire a tenant document: nobody is asked to accept it any more, and the acceptances stay.");
         documents.MapGet("/acceptances", AcceptancesAsync).RequirePermission(IdentityPermissions.DocumentsManage).Produces<ListResponse<AcceptanceRow>>(StatusCodes.Status200OK).WithName("ListAcceptances").WithSummary("Who accepted which version of which document, and when.");
         documents.MapGet("/acceptances/export", ExportAsync).RequirePermission(IdentityPermissions.DocumentsManage).Produces<string>(StatusCodes.Status200OK, "text/csv").WithName("ExportAcceptances").WithSummary("The acceptances as CSV, with the list's filters and sort.");
     }
@@ -165,6 +167,12 @@ internal static class TermsEndpoints
     {
         var result = await terms.PublishAsync(request.Key, request.Title, request.Body, cancellationToken);
         return ApiResults.From(result, http, d => TypedResults.Created($"{ApiRouting.Prefix}/documents/{d.Key}", new DocumentResponse(DocumentSources.Tenant, d.Key, d.Number, d.Title, d.Body, d.PublishedAt)));
+    }
+
+    private static async Task<IResult> RetireAsync(string key, HttpContext http, TermsService terms, CancellationToken cancellationToken)
+    {
+        var result = await terms.RetireAsync(key, cancellationToken);
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.NoContent();
     }
 
     private static IQueryable<AcceptanceRow> Rows(IdentityDbContext context) =>

@@ -196,6 +196,32 @@ public class EmergencyAndTermsTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-028 AC1", "ADR-0049")]
+    public async Task ARetiredDocumentIsAskedOfNobodyAndANewVersionAsksItAgain()
+    {
+        await using var host = await StartAsync(new FakePlatformDocuments());
+        var (_, admin) = await host.AdministratorAsync();
+        var person = await host.PersonAsync();
+        var session = await host.SessionOfAsync(person);
+        using var published = await host.SendAsync(HttpMethod.Post, "/api/v1/documents", admin, new { key = "e2e-terms", title = "A test document", body = "Text." });
+        using var held = await host.SendAsync(HttpMethod.Get, "/api/v1/directory?search=an", session);
+        using var retired = await host.SendAsync(HttpMethod.Post, "/api/v1/documents/e2e-terms/retire", admin);
+        using var free = await host.SendAsync(HttpMethod.Get, "/api/v1/directory?search=an", session);
+        using var twice = await host.SendAsync(HttpMethod.Post, "/api/v1/documents/e2e-terms/retire", admin);
+        using var again = await host.SendAsync(HttpMethod.Post, "/api/v1/documents", admin, new { key = "e2e-terms", title = "A test document", body = "Text, again." });
+        await AcceptAllAsync(host, admin);
+        using var heldAgain = await host.SendAsync(HttpMethod.Get, "/api/v1/directory?search=an", session);
+
+        Assert.Equal(HttpStatusCode.Created, published.StatusCode);
+        Assert.Equal(IdentityErrors.TermsAcceptanceRequired, await UnitHost.ProblemAsync(held, HttpStatusCode.Forbidden));
+        Assert.Equal(HttpStatusCode.NoContent, retired.StatusCode); // the administrator was held by it too, and could still retire it
+        Assert.Equal(HttpStatusCode.OK, free.StatusCode);
+        Assert.Equal(IdentityErrors.DocumentNotFound, await UnitHost.ProblemAsync(twice, HttpStatusCode.NotFound));
+        Assert.Equal(2, (await UnitHost.JsonAsync(again, HttpStatusCode.Created)).GetProperty("version").GetInt32());
+        Assert.Equal(IdentityErrors.TermsAcceptanceRequired, await UnitHost.ProblemAsync(heldAgain, HttpStatusCode.Forbidden));
+    }
+
+    [Fact]
     [Proves("TF-028 AC3")]
     public async Task AServiceAccountNeverAcceptsAnything()
     {

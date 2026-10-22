@@ -2189,6 +2189,11 @@
       "bodyHint": "The whole text people read before they accept.",
       "bodyRequired": "Write the text people accept.",
       "confirm": "Publish"
-    }
+    },
+    "retire": "Retire",
+    "retireNamed": "Retire {{title}}",
+    "retireTitle": "Retire {{title}}?",
+    "retireMessage": "Nobody is asked to accept it any more. The acceptances stay, and publishing a version later asks everyone again.",
+    "retired": "{{title}} is retired: nobody is asked to accept it any more."
   }
 }

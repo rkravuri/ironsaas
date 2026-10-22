@@ -467,6 +467,12 @@ await report.StepAsync("second-factor", ["TF-013 AC3", "ADR-0047"], () => factor
 var sso = new SsoSteps(api, options, signIn, AdministratorAsync, run);
 await report.StepAsync("single-sign-on", ["TF-014 AC1", "TF-014 AC6", "ADR-0048"], () => sso.SignInThroughAsync(ct));
 
+// S3 T5's steps: an administrator ends a session of a person of the run with a reason, and revokes everything of another;
+// both people are deactivated at the end (ADR-0049).
+var sessions = new SessionSteps(api, options, signIn, AdministratorAsync, run);
+await report.StepAsync("end-session", ["TF-022 AC1", "ADR-0049"], () => sessions.EndSessionAsync(ct));
+await report.StepAsync("revoke-person", ["TF-029 AC4", "ADR-0049"], () => sessions.RevokePersonAsync(ct));
+
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
 

@@ -11,11 +11,13 @@ import {
   fetchAcceptances,
   fetchDocuments,
   publishDocument,
+  retireDocument,
   type Acceptance,
+  type DocumentSummary,
 } from "@/api/identity";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { Form, useZodForm } from "@/components/form";
-import { FormDialog, LoadingState } from "@/components/panels";
+import { ConfirmDialog, FormDialog, LoadingState } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
 
 const acceptedSort = [{ field: "accepted_at", direction: "desc" as const }];
@@ -40,6 +42,27 @@ export function DocumentsPage() {
   const [document, setDocument] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [done, setDone] = useState<string | undefined>();
+  const [retiring, setRetiring] = useState<DocumentSummary | undefined>();
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<ApiError | undefined>();
+
+  const retire = async () => {
+    if (!retiring) {
+      return;
+    }
+    setBusy(true);
+    setFailure(undefined);
+    try {
+      await retireDocument(retiring.key);
+      setDone(t("documents.retired", { title: retiring.title }));
+      await queryClient.invalidateQueries({ queryKey: documentsQueryKey });
+    } catch (error) {
+      setFailure(error instanceof ApiError ? error : undefined);
+    } finally {
+      setBusy(false);
+      setRetiring(undefined);
+    }
+  };
   const documents = useQuery({ queryKey: documentsQueryKey, queryFn: ({ signal }) => fetchDocuments(signal) });
   const filter = document ? `filter=${encodeURIComponent(`document_key:eq:${document}`)}` : "";
   const fetchPage = useCallback(
@@ -86,6 +109,16 @@ export function DocumentsPage() {
                     {t("documents.publishNew")}
                   </Button>
                 </Group>
+                {failure && (
+                  <Alert color="danger" role="alert">
+                    {failure.message}
+                    {failure.correlationId !== undefined && (
+                      <Text size="xs" c="dimmed" mt={4}>
+                        {t("errors.correlation", { id: failure.correlationId })}
+                      </Text>
+                    )}
+                  </Alert>
+                )}
                 {done && (
                   <Alert
                     color="success"
@@ -141,14 +174,25 @@ export function DocumentsPage() {
                           <Table.Td ta="right">{row.accepted}</Table.Td>
                           <Table.Td>
                             {row.source === "tenant" ? (
-                              <Button
-                                variant="subtle"
-                                size="compact-sm"
-                                onClick={() => setPublishing({ key: row.key, title: row.title })}
-                                aria-label={t("documents.publishNextNamed", { title: row.title })}
-                              >
-                                {t("documents.publishNext")}
-                              </Button>
+                              <Group gap="xs" wrap="nowrap">
+                                <Button
+                                  variant="subtle"
+                                  size="compact-sm"
+                                  onClick={() => setPublishing({ key: row.key, title: row.title })}
+                                  aria-label={t("documents.publishNextNamed", { title: row.title })}
+                                >
+                                  {t("documents.publishNext")}
+                                </Button>
+                                <Button
+                                  variant="subtle"
+                                  color="danger"
+                                  size="compact-sm"
+                                  onClick={() => setRetiring(row)}
+                                  aria-label={t("documents.retireNamed", { title: row.title })}
+                                >
+                                  {t("documents.retire")}
+                                </Button>
+                              </Group>
                             ) : (
                               <Text size="xs" c="dimmed">
                                 {t("documents.byOperator")}
@@ -205,6 +249,16 @@ export function DocumentsPage() {
             ),
           },
         ]}
+      />
+      <ConfirmDialog
+        opened={retiring !== undefined}
+        title={t("documents.retireTitle", { title: retiring?.title ?? "" })}
+        message={t("documents.retireMessage")}
+        confirmLabel={t("documents.retire")}
+        danger
+        busy={busy}
+        onConfirm={() => void retire()}
+        onCancel={() => setRetiring(undefined)}
       />
       {publishing && (
         <PublishDialog

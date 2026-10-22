@@ -49,6 +49,11 @@ public sealed partial class TenantDocument : AuditedEntity, ITenantWide
 
     public DateTimeOffset PublishedAt { get; private set; }
 
+    /// <summary>The document is no longer asked of anyone; a newer version published later asks it again (ADR-0049).</summary>
+    public bool Retired { get; private set; }
+
+    public void Retire() => Retired = true;
+
     public static bool IsKey(string? key) => key is { Length: > 0 and <= KeyMaxLength } && KeyPattern().IsMatch(key);
 
     [GeneratedRegex("^[a-z][a-z0-9-]*$", RegexOptions.CultureInvariant)]

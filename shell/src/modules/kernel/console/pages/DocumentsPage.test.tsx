@@ -115,4 +115,32 @@ describe("the console's documents page", () => {
       body: "Be kinder.",
     });
   });
+  it("retires a tenant document behind a confirmation, so nobody is asked to accept it any more [TF-028 AC1, ADR-0049]", async () => {
+    let retired = false;
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me(["identity.documents.manage"])),
+      "GET /api/v1/documents": () =>
+        json(
+          retired ? { documents: documents.documents.filter((document) => document.source === "platform") } : documents,
+        ),
+      "GET /api/v1/documents/acceptances?page_number=1&page_size=50&sort=-accepted_at": () => json(emptyList),
+      "POST /api/v1/documents/code-of-conduct/retire": () => {
+        retired = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    renderWithProviders(<DocumentsPage />, { route: "/console/documents" });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Retire Code of conduct" }));
+    const dialog = await screen.findByRole("dialog", { name: "Retire Code of conduct?" });
+    expect(dialog).toHaveTextContent("The acceptances stay");
+    await user.click(within(dialog).getByRole("button", { name: "Retire" }));
+
+    expect(
+      await screen.findByText("Code of conduct is retired: nobody is asked to accept it any more."),
+    ).toBeInTheDocument();
+    expect(calls.some((call) => call.key === "POST /api/v1/documents/code-of-conduct/retire")).toBe(true);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Retire Code of conduct" })).toBeNull());
+  });
 });
