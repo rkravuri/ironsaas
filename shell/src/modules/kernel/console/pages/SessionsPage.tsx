@@ -16,6 +16,7 @@ import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { LoadingState, ReasonDialog } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
+import { PlaceSource } from "@/modules/kernel/identity/pages/PlaceSource";
 import { deviceOf, placeOf } from "@/modules/kernel/identity/pages/session-words";
 
 const summaryDays = 14;
@@ -189,6 +190,7 @@ export function SessionsPage() {
                     onSelectionChange={setSelected}
                   />
                 </Box>
+                <PlaceSource />
               </Stack>
             ),
           },

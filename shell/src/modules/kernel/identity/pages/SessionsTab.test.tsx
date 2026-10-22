@@ -73,6 +73,8 @@ describe("My profile's Sessions tab", () => {
     expect(rows[1]).toHaveTextContent("Safari on iOS");
     expect(rows[1]).toHaveTextContent("Sweden");
     expect(rows[1]).toHaveTextContent("Company login");
+    // The places come from DB-IP, credited with a link where they show, as its licence asks.
+    expect(screen.getByRole("link", { name: "IP Geolocation by DB-IP" })).toHaveAttribute("href", "https://db-ip.com");
 
     await user.click(within(rows[1]!).getByRole("button", { name: "End the session in Safari on iOS, Sweden" }));
     const dialog = await screen.findByRole("dialog", { name: "End this session?" });

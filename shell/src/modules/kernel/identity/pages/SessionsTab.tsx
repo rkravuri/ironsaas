@@ -16,6 +16,7 @@ import { useSession } from "@/auth/session-context";
 import { useSetting } from "@/auth/settings";
 import { useSessionWatch } from "@/auth/session-watch";
 import { ConfirmDialog, EmptyState, LoadingState } from "@/components/panels";
+import { PlaceSource } from "./PlaceSource";
 import { deviceOf, placeOf } from "./session-words";
 
 const when = (value: string | number, language: string) =>
@@ -199,6 +200,7 @@ export function SessionsTab({ me }: { me: Me }) {
             </Table.Tbody>
           </Table>
         )}
+        {rows.length > 0 && <PlaceSource />}
       </Stack>
       <ConfirmDialog
         opened={ending !== undefined}

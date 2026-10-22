@@ -2024,6 +2024,10 @@
       "both": "{{city}}, {{country}}",
       "unknown": "Unknown place"
     },
+    "placeSource": {
+      "text": "Places are estimated from the network address and can be wrong.",
+      "link": "IP Geolocation by DB-IP"
+    },
     "methods": {
       "password": "Password",
       "passkey": "Passkey",
