@@ -1,8 +1,8 @@
 # ADR-0049: Sessions, revocation, impersonation, break-glass, emergency accounts and terms
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-23
-**Decided by:** Architect, for the design session's review
+**Decided by:** Product owner and architect, at the design session's review of S3 T5 (2026-10-23)
 
 ## Context
 
@@ -17,7 +17,7 @@ S3 T5 builds six requirements about who is signed in and on whose behalf: the se
 - **The location database is DB-IP's "IP to City Lite"** in its MMDB form (CC BY 4.0, `docs/licences.md`), read with MaxMind.Db (Apache-2.0). The API image carries it at `/app/locations/dbip-city-lite.mmdb`: its build downloads one pinned month and checks the file's SHA-256, so the build is repeatable and nothing is fetched at runtime. DB-IP keeps a few months online; when the pinned one goes, the build says so and the pin moves to a newer month (the runbook). A missing file means no locations; sessions work the same. Its licence asks for a link back wherever its data shows: "IP Geolocation by DB-IP", linked to https://db-ip.com, stands under every list of session places, in My profile and in the console.
 - **Only the city and the country are kept with the session.** The full address goes into the sign-in's audit event and lives as long as the audit trail does; nothing else stores it.
 - **A person lists and ends their own sessions** in My profile: any but the one they use, which signing out ends, or all the others at once ("Sign out everywhere else"). A session in which someone else is signed in as the person is not theirs to end.
-- **An administrator with `identity.sessions.manage`** (high risk) lists everyone's live sessions, sees how many people are signed in now and a summary of recent UTC days (sessions started, the peak of people signed in at once, sessions an administrator ended), and ends any session with a reason, behind step-up. The person's security activity and the audit trail name who and why. A person's overlapping sessions count once in the peak, and a session counts until it ended or until its idle or absolute limit if nobody ended it sooner. Before listing, the console ends the sessions nobody came back to after their limits, as their next request would have.
+- **An administrator with `identity.sessions.manage`** (high risk) lists everyone's live sessions first, at the page's full width with the person, the device and the place readable at 1280 pixels (decided at the review), sees how many people are signed in now and a summary of recent UTC days (sessions started, the peak of people signed in at once, sessions an administrator ended), and ends any session with a reason, behind step-up. The person's security activity and the audit trail name who and why. A person's overlapping sessions count once in the peak, and a session counts until it ended or until its idle or absolute limit if nobody ended it sooner. Before listing, the console ends the sessions nobody came back to after their limits, as their next request would have.
 - **The 401 says why a session ended**: `auth.session_limit`, `auth.session_ended` (an administrator), `auth.session_revoked`, `auth.impersonation_ended` (an operator's), `auth.token_revoked` for a token, and `auth.session_expired` for the rest. The login page says it in words. A session ended because its person declined the terms ends as they asked, and the login page says that too.
 - **Every answer of a live session says when it ends without activity** (`Iron-Session-Idle-Ends`), so the shell's warning is exact when a tenant shortens its limits (folded into T5 from ADR-0033).
 
@@ -51,7 +51,7 @@ S3 T5 builds six requirements about who is signed in and on whose behalf: the se
 
 - **An operator requests access to a tenant** in the control plane with a reason, a ticket reference and a duration (60 minutes by default, 240 at most). **A second operator, not the first, approves with a fresh token** (step-up for a client, ADR-0047). A request not approved within 30 minutes expires (TF-026 AC2); the fleet host checks every minute, and an approval of an expired request is refused.
 - **On approval the fleet runs the unit's `break-glass-open` command**: it creates a time-limited account with the predefined role `break-glass` and hands a one-time sign-in link over through the store to the operator who asked. The tenant's audit trail names both operators, the ticket and the reason, at high severity. The account is a person's account in the users list, marked as break-glass, with no password; its sessions need no enrolment, since the two operators and the control plane proved who it is.
-- **The role `break-glass` is defined in code**: every permission of the tenant but the critical ones. Break-glass repairs a tenant; it does not change who signs in through which provider, or sign in as someone else.
+- **The role `break-glass` is defined in code**: every permission of the tenant but the critical ones. Break-glass repairs a tenant; it does not change who signs in through which provider, or sign in as someone else. **The critical permissions stay with the tenant's own administrators and its emergency accounts** (decided at the review): what break-glass cannot do, such as connecting a company login, granting a critical permission or signing in as a person, waits for someone the tenant itself trusts, who signs in with a password and a second factor even when the provider is down.
 - **At the time limit, or when an operator ends it early**, the fleet runs `break-glass-close`: the account is deactivated, its sessions end, and the review record is made from the audit trail, every action of the account in order (TF-026 AC3). The unit also refuses the account after its time by itself, should the fleet be late. Until S5's task engine the review is a record in the control plane, with the full list, and an event in the tenant's audit trail.
 - **The control plane seeds a second operator** (`operator-two`, its secret from the laptop's environment as the first's) for the laptop and the tests. `make break-glass-request`, `make break-glass-approve`, `make break-glass-link`, `make break-glass-end` and `make break-glass-show` drive it, and `make impersonate` the operator's impersonation (the runbook).
 
@@ -65,7 +65,12 @@ S3 T5 builds six requirements about who is signed in and on whose behalf: the se
 - **Documents have versions.** The platform's terms of service and privacy notice are the operator's, published in the control plane (`tenancy.documents.manage`, `make platform-document` on the laptop) to the store (`platform/documents`), which every unit's policy may read and each unit keeps for at most 60 seconds. A tenant's own documents are its administrators', in its console, with `identity.documents.manage`.
 - **A tenant document can be retired**: nobody is asked to accept it any more, and its acceptances stay. Retiring is open during the terms step, so an administrator who published a document by mistake, and is held by it too, can take it back without accepting it.
 - **A new version must be accepted before anything else** (TF-028 AC1), as T3's enrolment is (ADR-0047): a required step, `identity.terms.acceptance_required`, which only the terms' own endpoints, `/me`, the context and logout pass. An endpoint names the steps it belongs to (`AllowDuringRequiredStep(step)`), so the terms step does not open the enrolment's endpoints, nor enrolment the terms'. Terms come before enrolment when both are pending. Each acceptance stores the document, the version, the time and the person (TF-028 AC2); administrators list them and export a CSV.
-- **Declining ends the session** (TF-028 AC4); the next sign-in asks again. **A service account never accepts** (TF-028 AC3): it signs in with tokens, which a required step never stops. Neither does an impersonator or a break-glass account accept for anyone.
+- **Declining ends the session** (TF-028 AC4); the next sign-in asks again.
+- **No automated run accepts a document** (decided at the review): the smoke never does, and the pipeline never publishes one. On the laptop, `make accept-documents TENANT=x` accepts the current versions as the stored test administrator, run deliberately after `make platform-document`, so the smoke can sign in again. **A service account never accepts** (TF-028 AC3): it signs in with tokens, which a required step never stops. Neither does an impersonator or a break-glass account accept for anyone.
+
+### The user record's actions
+
+- **At most two everyday actions stay in sight** (decided at the review): unlocking a locked login, reactivating, and issuing a recovery link, in that order. The rest wait under More: signing in as the person, resetting factors and the emergency mark, then, last, apart and in the danger colour, deactivating and revoking everything, each still behind its confirmation.
 
 ## Options considered
 
@@ -76,6 +81,7 @@ S3 T5 builds six requirements about who is signed in and on whose behalf: the se
 - **Impersonation by switching the impersonator's own session**: not chosen; the impersonator's session would have to be rebuilt at the end. A second cookie leaves it as it was.
 - **The break-glass account with a password set by the operator**: not chosen; a one-time link, handed over through the store, never leaves anything to remember or leak.
 - **Break-glass with the tenant administrator role**: not chosen; it would let an operator change single sign-on and impersonate people, two acts with their own controlled paths.
+- **The smoke accepting the documents itself**: not chosen at the review; an automated run that accepts terms would hide whether a person is asked, and accept on someone's behalf.
 - **Terms checked at sign-in only**: not chosen; a version published during a session would wait for the next sign-in. The required step applies at the next request, as the MFA policy does.
 
 ## Consequences

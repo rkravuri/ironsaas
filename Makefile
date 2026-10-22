@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -203,6 +203,14 @@ break-glass-show: ## Where a break-glass access stands, and its review once it e
 platform-document: ## Publish a new version of the platform's terms of service or privacy notice; every person accepts it at their next request (TF-028, ADR-0049): make platform-document KEY=terms_of_service TITLE="Terms of service" FILE=path/to/text.md
 	@test -n "$(KEY)" && test -n "$(TITLE)" && test -n "$(FILE)" || (echo 'usage: make platform-document KEY=terms_of_service|privacy_notice TITLE="..." FILE=path/to/text.md' && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) python3 $(COMPOSE_DIR)/scripts/platform-document.py "$(KEY)" "$(TITLE)" "$(FILE)"
+
+accept-documents: ## Accept the current document versions as a tenant's stored test administrator, deliberately, after make platform-document; the smoke and the browser tests never accept one (ADR-0049): make accept-documents TENANT=echo
+	@test -n "$(TENANT)" || (echo 'usage: make accept-documents TENANT=echo' && exit 1)
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
+	secret=$$(python3 -c 'import json,sys,urllib.request; r=urllib.request.Request("http://localhost:8200/v1/secret/data/tenants/" + sys.argv[2] + "/smoke", headers={"X-Vault-Token": sys.argv[1]}); d=json.load(urllib.request.urlopen(r))["data"]["data"]; print(d["administrator_password"] + "\n" + d.get("administrator_totp_secret", ""))' "$$OPENBAO_ROOT_TOKEN" "$(TENANT)" 2>/dev/null) \
+	  || { echo "No administrator password at secret/tenants/$(TENANT)/smoke: run make smoke TENANT=$(TENANT) first."; exit 1; }; \
+	ACCEPT_TENANT=$(TENANT) ACCEPT_ADMIN_PASSWORD="$$(printf '%s\n' "$$secret" | sed -n 1p)" ACCEPT_ADMIN_TOTP_SECRET="$$(printf '%s\n' "$$secret" | sed -n 2p)" \
+	  python3 $(COMPOSE_DIR)/scripts/accept-documents.py
 
 apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
 	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)
