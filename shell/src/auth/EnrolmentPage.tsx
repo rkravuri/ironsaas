@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Container, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import {
@@ -29,7 +29,6 @@ import { useSession } from "./session-context";
  */
 export function EnrolmentPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const location = useLocation();
   const session = useSession();
   const hostname = window.location.hostname;
@@ -38,6 +37,7 @@ export function EnrolmentPage() {
   const [checked, setChecked] = useState(false);
   const [codes, setCodes] = useState<readonly string[] | undefined>();
   const [enrolled, setEnrolled] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const factors = useQuery({ queryKey: factorsQueryKey, queryFn: ({ signal }) => fetchFactors(signal) });
 
   // /me as it is now: the frame may have come here on a call's refusal, before its own /me knew.
@@ -47,9 +47,11 @@ export function EnrolmentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The way back waits for the session to show the new /me: navigating as soon as the call returns let the frame's guard
+  // read the old one and send the person here again, a flash of this page after they had left it.
   const finish = async () => {
     await session.refresh();
-    void navigate(back, { replace: true });
+    setLeaving(true);
   };
 
   const onEnrolled = (result: Enrolled) => {
@@ -61,7 +63,7 @@ export function EnrolmentPage() {
     void finish();
   };
 
-  if (checked && !enrolled && session.me && !session.me.mfa_enrolment_required) {
+  if (((checked && !enrolled) || leaving) && session.me && !session.me.mfa_enrolment_required) {
     return <Navigate to={back} replace />;
   }
 
