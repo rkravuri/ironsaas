@@ -103,6 +103,38 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     /// </summary>
     public bool SsoOnly { get; private set; }
 
+    /// <summary>
+    /// The principal's "valid after" (TF-029 AC2, ADR-0049): an administrator revoked everything of theirs then, so no
+    /// session started and no token issued before it is accepted. Checked on every request, with the principal's row.
+    /// </summary>
+    public DateTimeOffset? ValidAfter { get; private set; }
+
+    /// <summary>Everything of the principal issued until now stops working: sessions and tokens (TF-029).</summary>
+    public void RevokeAll(DateTimeOffset now) => ValidAfter = now;
+
+    /// <summary>
+    /// A break-glass account's time limit (TF-026, ADR-0049): it signs in only by its one-time link and only until then;
+    /// the unit refuses it afterwards by itself, whatever the fleet does. Null for everyone else.
+    /// </summary>
+    public DateTimeOffset? BreakGlassUntil { get; private set; }
+
+    /// <summary>
+    /// One of the tenant's emergency accounts (ADR-0049): a local account for when the tenant's identity provider is down,
+    /// exempt from single sign-on only, always with a second factor, and every sign-in with it raises an alert.
+    /// </summary>
+    public bool Emergency { get; private set; }
+
+    public void MarkEmergency(bool emergency) => Emergency = emergency;
+
+    /// <summary>A break-glass account: active at once, with no password, until its time limit.</summary>
+    public void OpenForBreakGlass(DateTimeOffset until)
+    {
+        BreakGlassUntil = until;
+        Status = PrincipalStatus.Active;
+        InvitationTokenHash = null;
+        InvitationExpiresAt = null;
+    }
+
     public bool CanLogIn => Status == PrincipalStatus.Active && PasswordHash is not null;
 
     /// <summary>A single sign-on provider may sign the principal in: a person who is active, or invited and never signed in (ADR-0048).</summary>

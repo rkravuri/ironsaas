@@ -54,6 +54,15 @@ public sealed class TenancyModule : IModule
         services.AddScoped<IValidator<SavePlanRequest>, SavePlanRequestValidator>();
         services.AddScoped<IValidator<ApplyPlanRequest>, ApplyPlanRequestValidator>();
 
+        // The operator's support and emergency access, and the platform's documents (TF-025, TF-026, TF-028, ADR-0049).
+        services.AddScoped<OperatorNames>();
+        services.AddScoped<OperatorImpersonation>();
+        services.AddScoped<BreakGlassService>();
+        services.AddScoped<PlatformDocumentService>();
+        services.AddScoped<IValidator<OperatorImpersonationRequest>, OperatorImpersonationRequestValidator>();
+        services.AddScoped<IValidator<BreakGlassRequest>, BreakGlassRequestValidator>();
+        services.AddScoped<IValidator<PlatformDocumentRequest>, PlatformDocumentRequestValidator>();
+
         var reconcile = new ReconcileOptions();
         configuration.GetSection(ReconcileOptions.SectionName).Bind(reconcile);
         services.AddSingleton(reconcile);
@@ -65,6 +74,7 @@ public sealed class TenancyModule : IModule
         TenantsEndpoints.Map(endpoints);
         EntitlementEndpoints.Map(endpoints);
         FlagEndpoints.Map(endpoints);
+        OperatorAccessEndpoints.Map(endpoints);
     }
 }
 
@@ -90,6 +100,17 @@ public static class TenancyWorkerExtensions
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<FlagReconciler>();
         services.AddHostedService(provider => new FlagReportLogger(provider.GetRequiredService<IServiceScopeFactory>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ILogger<FlagReportLogger>>(), TimeSpan.FromDays(7)));
+        return services;
+    }
+
+    /// <summary>
+    /// The fleet worker's minute for break-glass (TF-026, ADR-0049): unapproved requests expire after 30 minutes, accesses
+    /// close at their time limit, and the reviews of the closed ones come back. Only the fleet host calls it.
+    /// </summary>
+    public static IServiceCollection AddIronBreakGlassWorker(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddHostedService<BreakGlassWorker>();
         return services;
     }
 

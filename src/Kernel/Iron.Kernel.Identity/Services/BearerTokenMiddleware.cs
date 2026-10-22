@@ -9,7 +9,8 @@ namespace Iron.Kernel.Identity.Services;
 
 /// <summary>
 /// Turns a bearer token into the request's principal (TF-020, TF-023). The token is checked on every request, and so is
-/// the principal behind it: a disabled service account is refused at once (TF-029 AC2). A bad token sets
+/// the principal behind it: a disabled service account is refused at once, and so is a token issued before its
+/// principal's or the tenant's "valid after" (TF-029 AC2, ADR-0049). A bad token sets
 /// <c>auth.token_invalid</c>, a stale one <c>auth.token_expired</c>; the permission filter turns either into the 401.
 /// Runs after the session middleware; a request carries a cookie or a token, and the token wins when both are present.
 /// </summary>
@@ -41,6 +42,13 @@ public sealed class BearerTokenMiddleware(RequestDelegate next, ILogger<BearerTo
                 {
                     logger.LogWarning("A bearer token was refused: its principal {PrincipalId} is missing or not active.", claims.PrincipalId);
                     AuthenticationFailure.Set(context, PermissionErrors.TokenInvalid);
+                }
+                else if (RevocationTimes.IssuedBefore(claims.IssuedAt, principal.ValidAfter)
+                    || RevocationTimes.IssuedBefore(claims.IssuedAt, await context.RequestServices.GetRequiredService<RevocationTimes>().TenantValidAfterAsync(context.RequestServices.GetRequiredService<IdentityDbContext>(), context.RequestAborted).ConfigureAwait(false)))
+                {
+                    // Issued before its principal's or the tenant's revocation (TF-029 AC2, ADR-0049): refused within its 15 minutes.
+                    logger.LogWarning("A bearer token was refused: it was issued before a revocation of principal {PrincipalId} or of the tenant.", claims.PrincipalId);
+                    AuthenticationFailure.Set(context, PermissionErrors.TokenRevoked);
                 }
                 else
                 {

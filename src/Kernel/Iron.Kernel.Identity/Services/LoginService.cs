@@ -146,7 +146,8 @@ public sealed class LoginService(
             var now = time.GetUtcNow();
             var since = principal.MfaRequiredSince ?? principal.MfaRequiredFrom(now);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            if (rules.GraceDays == 0 || now >= since.AddDays(rules.GraceDays))
+            var grace = MfaPolicy.GraceDaysFor(principal, rules);
+            if (grace == 0 || now >= since.AddDays(grace))
             {
                 return await StepAsync(principal, ChallengePurposes.Enrolment, rules.Allowed, cancellationToken).ConfigureAwait(false);
             }
@@ -270,7 +271,7 @@ public sealed class LoginService(
         }
 
         await challenges.EndAsync(challenge, cancellationToken).ConfigureAwait(false);
-        return await StartSessionAsync(principal, FactorKinds.Passkey, cancellationToken).ConfigureAwait(false);
+        return await StartSessionAsync(principal, FactorKinds.Passkey, cancellationToken, method: SessionMethods.Passkey).ConfigureAwait(false);
     }
 
     /// <summary>The browser's challenge for <paramref name="purpose"/> and its person, who may still sign in; otherwise the sign-in has ended.</summary>
@@ -326,7 +327,8 @@ public sealed class LoginService(
             var now = time.GetUtcNow();
             var since = principal.MfaRequiredSince ?? principal.MfaRequiredFrom(now);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            if (rules.GraceDays == 0 || now >= since.AddDays(rules.GraceDays))
+            var grace = MfaPolicy.GraceDaysFor(principal, rules);
+            if (grace == 0 || now >= since.AddDays(grace))
             {
                 return await StepAsync(principal, ChallengePurposes.Enrolment, rules.Allowed, cancellationToken, providerId).ConfigureAwait(false);
             }
@@ -379,7 +381,7 @@ public sealed class LoginService(
         return await StartSessionAsync(principal, secondFactor, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<Result<LoginOutcome>> StartSessionAsync(Principal principal, string? secondFactor, CancellationToken cancellationToken, Guid? providerId = null)
+    private async Task<Result<LoginOutcome>> StartSessionAsync(Principal principal, string? secondFactor, CancellationToken cancellationToken, Guid? providerId = null, string? method = null)
     {
         // Another attempt on the same account may save its stamp between our read and our write (the version column
         // is the concurrency token). That must never turn a correct login into an error: take the newer row and go again.
@@ -402,8 +404,16 @@ public sealed class LoginService(
                         }
                     },
                     secondFactor,
-                    providerId).ConfigureAwait(false);
-                var details = new Dictionary<string, string>(StringComparer.Ordinal);
+                    providerId,
+                    method).ConfigureAwait(false);
+
+                // The full address stays in the audit trail, as long as it is kept; the session row has only the city and country (ADR-0049).
+                var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["method"] = session.Method };
+                if (accessor.HttpContext is { } request && ClientAddress.Of(request) is { } address)
+                {
+                    details["address"] = address.ToString();
+                }
+
                 if (secondFactor is not null)
                 {
                     details["second_factor"] = secondFactor;
@@ -415,7 +425,13 @@ public sealed class LoginService(
                     details["provider_id"] = provider.ToString();
                 }
 
-                await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginSucceeded, AuditOutcome.Success, principal.Id, principal.LoginId, details.Count == 0 ? null : details, RecordType: "session", RecordId: session.Id), cancellationToken).ConfigureAwait(false);
+                await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginSucceeded, AuditOutcome.Success, principal.Id, principal.LoginId, details, RecordType: "session", RecordId: session.Id), cancellationToken).ConfigureAwait(false);
+                if (principal.Emergency)
+                {
+                    // Every sign-in with an emergency account is an alert: the person's activity, the audit at high severity, the administrators' banner (ADR-0049).
+                    await securityEvents.RecordAsync(principal, SecurityEventKinds.EmergencySignIn, SecurityEventActors.Self, null, null, details, cancellationToken, actorId: principal.Id, severity: AuditSeverity.High).ConfigureAwait(false);
+                    logger.LogWarning("Emergency account {PrincipalId} signed in.", principal.Id);
+                }
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
                 logger.LogInformation("Login succeeded for principal {PrincipalId}.", principal.Id);

@@ -37,6 +37,21 @@ public sealed record SignedInPrincipal(
     /// issue. Null when nothing says, which no high-risk action accepts.
     /// </summary>
     public DateTimeOffset? AuthenticatedAt { get; init; }
+
+    /// <summary>How the session signed in (<see cref="SessionMethods"/>); a token's is its own kind.</summary>
+    public string? Method { get; init; }
+
+    /// <summary>Who is signed in as the principal, when someone is (TF-025, ADR-0049): a colleague's id, or the operator's control-plane id.</summary>
+    public Guid? ImpersonatorId { get; init; }
+
+    public string? ImpersonatorName { get; init; }
+
+    public string? ImpersonationReason { get; init; }
+
+    public DateTimeOffset? ImpersonationEndsAt { get; init; }
+
+    /// <summary>The impersonator is the platform's operator, with no session of their own here to return to.</summary>
+    public bool ImpersonatorIsOperator { get; init; }
 }
 
 /// <summary>
@@ -54,6 +69,14 @@ public sealed class RequestRecentAuthentication(IHttpContextAccessor accessor, T
         }
 
         var current = http.Items.TryGetValue(RequestPrincipal.ItemKey, out var value) ? value as SignedInPrincipal : null;
+
+        // Someone signed in as another person never proves an identity that is not theirs (ADR-0049): no step-up, so
+        // nothing behind it, no signature and no second approval either.
+        if (current?.ImpersonatorId is not null)
+        {
+            return ImpersonationRules.Forbidden();
+        }
+
         return current?.AuthenticatedAt is { } at && time.GetUtcNow() - at <= maxAge
             ? Result.Success()
             : RecentAuthentication.Required(maxAge);
@@ -79,6 +102,11 @@ public sealed class RequestPrincipal(IHttpContextAccessor accessor) : ICurrentPr
 
     /// <summary>The consolidated view of a shell session.</summary>
     public bool AllUnits => Current is { Kind: AuthenticationKind.Session, AllUnits: true };
+
+    /// <summary>Who is signed in as the principal in this session (ADR-0049); never for a token.</summary>
+    public Guid? ImpersonatorId => Current is { Kind: AuthenticationKind.Session } signedIn ? signedIn.ImpersonatorId : null;
+
+    public string? ImpersonatorName => Current is { Kind: AuthenticationKind.Session } signedIn ? signedIn.ImpersonatorName : null;
 
     public SignedInPrincipal? Current
     {

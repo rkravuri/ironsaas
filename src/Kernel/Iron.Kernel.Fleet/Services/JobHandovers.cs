@@ -64,4 +64,34 @@ public sealed class JobHandovers(FleetDbContext context, ISecretStore secrets, T
         logger.LogInformation("The handover of job {JobId} ({Kind} for {Subject}) was given to the principal who asked; its place is deleted.", job.Id, item.Kind, item.Subject);
         return new JobHandoverAnswer(HandoverState.Given, item);
     }
+
+    public async Task<JobHandover?> CollectAsync(Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await context.ProvisioningJobs.SingleOrDefaultAsync(j => j.Id == jobId, cancellationToken).ConfigureAwait(false);
+        if (job is null || job.Status != ProvisioningStatus.Completed || job.HandedOverAt is not null)
+        {
+            return null;
+        }
+
+        var path = HandoverPlaces.PathOf(job.TenantSlug, job.Id);
+        var values = await secrets.ReadAsync(path, cancellationToken).ConfigureAwait(false);
+        if (values is null)
+        {
+            return null;
+        }
+
+        var item = new JobHandover(
+            values.GetValueOrDefault(HandoverKeys.Kind) ?? string.Empty,
+            values.GetValueOrDefault(HandoverKeys.Subject) ?? string.Empty,
+            values.GetValueOrDefault(HandoverKeys.LinkPath) ?? string.Empty,
+            DateTimeOffset.Parse(values.GetValueOrDefault(HandoverKeys.ExpiresAt) ?? "0001-01-01T00:00:00Z", CultureInfo.InvariantCulture))
+        {
+            Payload = values.GetValueOrDefault(HandoverKeys.Payload),
+        };
+        await secrets.DeleteAsync(path, cancellationToken).ConfigureAwait(false);
+        job.HandedOver(time.GetUtcNow());
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogInformation("The handover of job {JobId} ({Kind} for {Subject}) was collected by the control plane; its place is deleted.", job.Id, item.Kind, item.Subject);
+        return item;
+    }
 }

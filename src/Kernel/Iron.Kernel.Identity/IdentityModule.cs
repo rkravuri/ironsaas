@@ -53,6 +53,27 @@ public sealed class IdentityModule : IModule
         configuration.GetSection(AdministratorRecoveryOptions.SectionName).Bind(recovery);
         services.AddSingleton(recovery);
         services.AddScoped<IUnitCommand, AdministratorRecoveryCommand>();
+
+        // The operator's support and emergency access (TF-025, TF-026, ADR-0049).
+        var impersonation = new OperatorImpersonationOptions();
+        configuration.GetSection(OperatorImpersonationOptions.SectionName).Bind(impersonation);
+        services.AddSingleton(impersonation);
+        var breakGlass = new BreakGlassOptions();
+        configuration.GetSection(BreakGlassOptions.SectionName).Bind(breakGlass);
+        services.AddSingleton(breakGlass);
+        services.AddScoped<ImpersonationService>();
+        services.AddScoped<BreakGlassAccounts>();
+        services.AddScoped<IUnitCommand, OperatorImpersonationCommand>();
+        services.AddScoped<IUnitCommand, BreakGlassOpenCommand>();
+        services.AddScoped<IUnitCommand, BreakGlassCloseCommand>();
+        services.AddScoped<IValidator<StartImpersonationRequest>, StartImpersonationRequestValidator>();
+        services.AddScoped<IValidator<SignInLinkRequest>, SignInLinkRequestValidator>();
+
+        // Terms acceptance (TF-028, ADR-0049): the platform's documents from the store, the tenant's from its database.
+        services.AddScoped<TermsService>();
+        services.AddSingleton<TenantDocumentVersions>();
+        services.AddScoped<IValidator<AcceptTermsRequest>, AcceptTermsRequestValidator>();
+        services.AddScoped<IValidator<PublishDocumentRequest>, PublishDocumentRequestValidator>();
         // The handover place is the secret store's to give (ADR-0046); without it, nothing is handed over.
         services.TryAddSingleton<Iron.Kernel.Handover.IOperatorHandover, Iron.Kernel.Handover.NoOperatorHandover>();
 
@@ -74,6 +95,12 @@ public sealed class IdentityModule : IModule
         services.AddScoped<SecurityEventLog>();
         services.AddScoped<PasswordService>();
         services.AddScoped<SessionService>();
+        services.AddScoped<SessionConsole>();
+        services.AddSingleton<RevocationTimes>();
+        services.TryAddSingleton<IIpLocations>(provider => new MmdbIpLocations(options.Locations.DatabasePath, provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<MmdbIpLocations>>()));
+        services.AddScoped<IValidator<EndSessionRequest>, EndSessionRequestValidator>();
+        services.AddScoped<IValidator<RevokeRequest>, RevokeRequestValidator>();
+        services.AddScoped<IValidator<RevokeTenantRequest>, RevokeTenantRequestValidator>();
         services.AddScoped<LoginService>();
         services.AddScoped<InvitationService>();
         services.AddScoped<IPrincipals, PrincipalDirectory>();
@@ -117,10 +144,12 @@ public sealed class IdentityModule : IModule
         if (store.IsConfigured)
         {
             services.AddScoped<ISsoClientSecrets>(provider => new StoreSsoClientSecrets(provider.GetRequiredService<ISecretStore>(), provider.GetRequiredService<SecretStoreOptions>()));
+            services.TryAddSingleton<IPlatformDocuments>(provider => new StorePlatformDocuments(provider.GetRequiredService<ISecretStore>(), provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<StorePlatformDocuments>>()));
         }
         else
         {
             services.TryAddSingleton<ISsoClientSecrets, ProcessSsoClientSecrets>();
+            services.TryAddSingleton<IPlatformDocuments, NoPlatformDocuments>();
         }
 
         services.AddScoped<IValidator<SsoDiscoverRequest>, SsoDiscoverRequestValidator>();

@@ -24,6 +24,7 @@ public sealed class AuditModule : IModule
         services.AddHttpContextAccessor();
         services.AddIronDbContext<AuditDbContext>();
         services.AddScoped<IAuditWriter, AuditWriter>();
+        services.AddScoped<IAuditTrail, AuditTrail>();
 
         // The data library's record events (ADR-0038): it declares where they go, the audit trail is where.
         services.AddScoped<IRecordAudit, RecordAuditWriter>();

@@ -42,6 +42,9 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
     /// <summary>The global and region flag rules every unit reads (ADR-0035): one write for the platform.</summary>
     public const string PlatformFlagsPath = "platform/flags";
 
+    /// <summary>The platform's documents every person accepts, which every unit reads (ADR-0049).</summary>
+    public const string PlatformDocumentsPath = "platform/documents";
+
     /// <summary>Where the secrets of the tenant's secret-reference settings live (ADR-0036): the unit reads everything below it.</summary>
     public string SettingsSecretPaths => $"tenants/{Slug}/settings/*";
 
@@ -86,4 +89,7 @@ public static class StepNames
     public const string Verify = "verify";
     public const string Remove = "remove";
     public const string Recover = "recover";
+    public const string Impersonate = "impersonate";
+    public const string BreakGlassOpen = "break-glass-open";
+    public const string BreakGlassClose = "break-glass-close";
 }

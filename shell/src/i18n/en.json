@@ -34,7 +34,12 @@
       "absolute": "Your session reached its time limit. Sign in again to carry on.",
       "signed-out": "You have signed out.",
       "signed-out-elsewhere": "You signed out in another tab.",
-      "expired": "Your session has ended. Sign in again to carry on."
+      "expired": "Your session has ended. Sign in again to carry on.",
+      "limit": "You signed in somewhere else, and your organisation allows only so many sessions at once, so this one ended. Sign in again to carry on here.",
+      "ended": "An administrator ended your session. Sign in again, or ask your administrator why.",
+      "revoked": "Your organisation ended your session. Sign in again, or ask your administrator why.",
+      "impersonation-ended": "The time given to sign in as this person has ended. Ask for a new link if you still need it.",
+      "terms-declined": "You declined a document you must accept, so you are signed out. Sign in again to read it and accept it."
     },
     "locked": "Too many failed sign-ins for this login. Try again later, or ask your administrator to unlock it.",
     "forgot": {
@@ -130,7 +135,9 @@
       "accessReviews": "Access reviews",
       "explain": "Explain access",
       "conflicts": "Conflict rules",
-      "sso": "Single sign-on"
+      "sso": "Single sign-on",
+      "sessions": "Sessions",
+      "documents": "Documents"
     }
   },
   "users": {
@@ -200,6 +207,8 @@
     "login": "Login",
     "loginLocked": "Locked",
     "actions": {
+      "more": "More",
+      "moreLabel": "More actions for {{name}}",
       "unlock": {
         "open": "Unlock",
         "title": "Unlock the login of {{name}}?",
@@ -247,6 +256,36 @@
         "reasonHint": "Kept in {{name}}'s security activity and in the audit trail.",
         "reasonRequired": "Say why: it is kept with the reset.",
         "confirm": "Reset the factors"
+      },
+      "impersonate": {
+        "open": "Sign in as",
+        "title": "Sign in as {{name}}?",
+        "message": "You see and do what {{name}} may, under a band that says so. Every action names you both, and {{name}} sees it in their security activity. You cannot confirm who you are, sign, approve, or change their sign-in.",
+        "reasonHint": "{{name}} and the auditors read it.",
+        "minutes": "For how long",
+        "minutesHint": "Your organisation sets the longest; the next request after it signs you back in as yourself.",
+        "longest": "The longest allowed",
+        "minutesValue": "{{count}} minutes",
+        "confirm": "Sign in as them"
+      },
+      "revoke": {
+        "open": "Revoke everything",
+        "title": "Revoke everything of {{name}}?",
+        "message": "Every session of {{name}} ends now, and no access token issued until now is accepted. They can sign in again unless you deactivate them too.",
+        "messageClient": "Every access token {{name}} holds stops working now. It asks for a new one with its credentials, unless you deactivate it too.",
+        "reasonHint": "{{name}} and the auditors read it.",
+        "confirm": "Revoke everything",
+        "done": "Everything of {{name}} is revoked: {{count}} sessions ended, and earlier tokens are refused."
+      },
+      "emergency": {
+        "open": "Make emergency account",
+        "title": "Make {{name}}'s account an emergency account?",
+        "message": "It signs in with a password and a second factor even when everyone else must use the company login, for when that login is down. Every sign-in with it alerts the administrators. A tenant has two at most.",
+        "confirm": "Make emergency account",
+        "clearOpen": "Remove emergency mark",
+        "clearTitle": "Remove the emergency mark from {{name}}?",
+        "clearMessage": "The account follows the same sign-in rules as everyone again.",
+        "clearConfirm": "Remove the mark"
       }
     },
     "signIn": {
@@ -262,7 +301,10 @@
       "email": "Email there",
       "linked": "Linked",
       "lastSignIn": "Last sign-in there"
-    }
+    },
+    "kind": "Account",
+    "emergencyAccount": "Emergency account: signs in with a password and a second factor when the company login is down",
+    "breakGlassUntil": "Break-glass access until {{when}}"
   },
   "profile": {
     "loginId": "Login identifier",
@@ -276,7 +318,8 @@
       "preferences": "Preferences",
       "session": "Session",
       "delegations": "Delegations",
-      "security": "Security"
+      "security": "Security",
+      "sessions": "Sessions"
     },
     "preferences": {
       "intro": "How the shell looks for you. Your choices are kept with your account, so they follow you to every browser you sign in on.",
@@ -1684,7 +1727,14 @@
       "factor_removed": "Second factor removed",
       "factors_reset": "Second factors reset, and every session ended",
       "recovery_code_used": "Recovery code used",
-      "recovery_codes_regenerated": "New recovery codes made"
+      "recovery_codes_regenerated": "New recovery codes made",
+      "session_ended": "Session ended by an administrator",
+      "access_revoked": "Every session and access token revoked",
+      "impersonation_started": "Someone signed in as you",
+      "impersonation_ended": "Signing in as you ended",
+      "emergency_set": "Marked as an emergency account",
+      "emergency_cleared": "No longer an emergency account",
+      "emergency_sign_in": "Signed in with an emergency account"
     },
     "actors": {
       "self": "You",
@@ -1962,5 +2012,196 @@
       "message": "People stop signing in through {{name}}, and lose the roles its groups gave them. Their accounts stay.",
       "confirm": "Remove"
     }
+  },
+  "reason": {
+    "label": "Reason",
+    "required": "Say why: the reason is kept in the audit trail."
+  },
+  "sessions": {
+    "device": {
+      "both": "{{browser}} on {{platform}}",
+      "unknown": "Unknown device"
+    },
+    "place": {
+      "both": "{{city}}, {{country}}",
+      "unknown": "Unknown place"
+    },
+    "placeSource": {
+      "text": "Places are estimated from the network address and can be wrong.",
+      "link": "IP Geolocation by DB-IP"
+    },
+    "methods": {
+      "password": "Password",
+      "passkey": "Passkey",
+      "sso": "Company login",
+      "impersonation": "Signed in as the person",
+      "impersonationBy": "{{name}}, signed in as the person",
+      "break_glass": "Break-glass link"
+    },
+    "columns": {
+      "person": "Person",
+      "login": "Login",
+      "device": "Device",
+      "place": "Place",
+      "started": "Started",
+      "lastActivity": "Last activity",
+      "method": "How they signed in",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No sessions",
+      "text": "Nobody is signed in with these filters."
+    },
+    "mine": {
+      "thisTitle": "This session",
+      "title": "Your sessions",
+      "intro": "Every browser and device where you are signed in now, with an approximate place from its internet address. End any you do not recognise, and change your password if one surprises you.",
+      "caption": "Your live sessions, the most recently used first.",
+      "current": "This one",
+      "end": "End",
+      "endNamed": "End the session in {{device}}, {{place}}",
+      "endTitle": "End this session?",
+      "endMessage": "The session in {{device}}, {{place}}, ends now. Whoever uses it must sign in again.",
+      "endOthers": "Sign out everywhere else",
+      "endOthersTitle": "Sign out everywhere else?",
+      "endOthersMessage": "Your {{count}} other sessions end now. This one goes on.",
+      "ended": "The session in {{device}} ended.",
+      "endedOthers": "{{count}} other sessions ended. This one goes on.",
+      "failed": "Your sessions could not be read."
+    },
+    "console": {
+      "title": "Sessions",
+      "description": "Every live session, any of which you can end with a reason; how many people are signed in and how the last days went; and, after an incident, everything revoked at once.",
+      "liveTitle": "Live sessions",
+      "liveDescription": "Select a session to end it. The person sees in their security activity that you ended it, and why.",
+      "endSelected": "End selected session",
+      "endTitle": "End {{name}}'s session?",
+      "endMessage": "{{name}}'s session in {{device}}, {{place}}, ends now. Their next request is refused and they must sign in again.",
+      "reasonHint": "{{name}} and the auditors read it.",
+      "endConfirm": "End session",
+      "ended": "{{name}}'s session in {{device}} ended.",
+      "gridLabel": "Every live session"
+    },
+    "summary": {
+      "tab": "The last {{days}} days",
+      "description": "The people signed in now, and each of the last {{days}} days in UTC.",
+      "now": "People signed in now",
+      "startedToday": "Sessions started today",
+      "peakToday": "Most people at once today",
+      "caption": "The last {{days}} days, newest first.",
+      "columns": {
+        "day": "Day",
+        "started": "Sessions started",
+        "peak": "Most people at once",
+        "ended": "Ended by an administrator"
+      }
+    },
+    "revokeTenant": {
+      "title": "Revoke everything",
+      "description": "After an incident: every session and access token of the organisation stops within a minute.",
+      "when": "Everyone, you included, must sign in again, and every service account must ask for a new token. Use it when sign-in credentials may have leaked.",
+      "open": "Revoke every session and token",
+      "dialogTitle": "Revoke every session and token?",
+      "message": "Every session ends now, yours too, and no access token issued until now is accepted any more. This cannot be undone.",
+      "reasonHint": "The auditors read it.",
+      "typeLabel": "Type {{tenant}} to confirm",
+      "typeHint": "Your organisation's identifier, as in its web address.",
+      "confirm": "Revoke everything"
+    }
+  },
+  "impersonation": {
+    "band": {
+      "title": "You are signed in as {{name}}",
+      "by": "You, {{impersonator}}, are signed in as this person until {{until}}.",
+      "byOperator": "You, {{impersonator}}, the platform's operator, are signed in as this person until {{until}}.",
+      "reason": "Reason: {{reason}}",
+      "never": "Every action names you both. You cannot confirm who you are, sign, approve, or change their sign-in, factors, password or sessions.",
+      "end": "End"
+    },
+    "ended": "You are yourself again: the time to sign in as that person has ended."
+  },
+  "emergency": {
+    "banner": {
+      "title": "An emergency account signed in",
+      "signedIn": "{{name}} ({{login}}) signed in at {{at}}.",
+      "open": "Open the account",
+      "explain": "Emergency accounts are for when the company login is down. If you did not expect this sign-in, revoke the account's access now.",
+      "dismiss": "Dismiss in this browser"
+    }
+  },
+  "terms": {
+    "title": "Read and accept",
+    "intro": "Before you carry on, read the new version of what you must accept. Accepting records the version, the time and you.",
+    "sources": {
+      "platform": "The platform's",
+      "tenant": "Your organisation's"
+    },
+    "version": "Version {{version}}, published {{date}}",
+    "text": "The text of {{title}}",
+    "acceptOne": "Accept",
+    "acceptAll": "Accept all {{count}}",
+    "decline": "Decline and sign out",
+    "declineTitle": "Decline and sign out?",
+    "declineMessage": "You cannot use the service without accepting. You will be signed out, and asked again when you sign in.",
+    "declineConfirm": "Decline and sign out",
+    "failed": "What you must accept could not be read."
+  },
+  "signInLink": {
+    "title": "Signing in",
+    "signingIn": "Signing you in with your link.",
+    "invalid": "This sign-in link does not work: it was used, it expired, or it was never issued. Ask for a new one."
+  },
+  "documents": {
+    "title": "Documents",
+    "description": "The documents everyone accepts before they carry on: the platform's terms and privacy notice, and your organisation's own.",
+    "current": {
+      "title": "Current versions",
+      "description": "Publishing a new version asks everyone to accept it at their next request.",
+      "none": "There is nothing to accept yet.",
+      "caption": "The current version of each document, and how many people accepted it."
+    },
+    "columns": {
+      "document": "Document",
+      "source": "From",
+      "version": "Version",
+      "published": "Published",
+      "accepted": "Accepted by",
+      "actions": "Actions",
+      "person": "Person",
+      "login": "Login",
+      "acceptedAt": "Accepted at"
+    },
+    "publishNew": "Publish a new document",
+    "publishNext": "Publish next version",
+    "publishNextNamed": "Publish the next version of {{title}}",
+    "byOperator": "Published by the platform's operator",
+    "published": "{{title}} version {{version}} is published. Everyone accepts it at their next request.",
+    "accepted": {
+      "title": "Who accepted",
+      "description": "Every acceptance, with the person, the document, the version and the time.",
+      "filter": "Document",
+      "all": "All documents",
+      "export": "Export as CSV",
+      "gridLabel": "Acceptances"
+    },
+    "publish": {
+      "newTitle": "Publish a new document",
+      "nextTitle": "Publish the next version of {{title}}",
+      "message": "Everyone accepts this version at their next request, before anything else. A published version cannot be changed; publish another instead.",
+      "key": "Key",
+      "keyHint": "Lowercase letters, digits and hyphens, such as code-of-conduct. It names the document across its versions.",
+      "keyRule": "Use lowercase letters, digits and hyphens, starting with a letter.",
+      "titleLabel": "Title",
+      "titleRequired": "Give the document a title.",
+      "body": "Text",
+      "bodyHint": "The whole text people read before they accept.",
+      "bodyRequired": "Write the text people accept.",
+      "confirm": "Publish"
+    },
+    "retire": "Retire",
+    "retireNamed": "Retire {{title}}",
+    "retireTitle": "Retire {{title}}?",
+    "retireMessage": "Nobody is asked to accept it any more. The acceptances stay, and publishing a version later asks everyone again.",
+    "retired": "{{title}} is retired: nobody is asked to accept it any more."
   }
 }

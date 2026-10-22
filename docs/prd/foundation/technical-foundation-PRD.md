@@ -700,8 +700,12 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given an administrator ends a session, When the user makes a request, Then it is refused and the audit shows who ended it and why.
 - AC2 Given a user without the permission, When opening all sessions, Then it is refused. (error case)
 - AC3 Given no active sessions, When listed, Then an empty state is shown.
+- AC4 Given a person signed in on several devices, When they open their sessions, Then each shows the browser and platform, the city and country, when it started and was last used, and how it signed in; they can end any but the one they use, or all the others at once.
+- AC5 Given an administrator with the permission, When they open the sessions console, Then it shows how many people are signed in now and, for each recent day, the sessions started, the most people signed in at once, and the sessions an administrator ended.
 
 *Depends on:* TF-020
+
+**Notes:** AC4 and AC5 added on 2026-10-22 (S3 T5, ADR-0049): the tests prove the requirement's text beyond its first three criteria.
 
 #### TF-023 Service accounts and client credentials  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Sessions, tokens and service accounts
@@ -745,8 +749,13 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given an impersonation start without reason, When submitted, Then it is refused. (error case)
 - AC2 Given a change made during impersonation, When audited, Then actor and impersonator are both recorded.
 - AC3 Given 2 hours pass, When the next request arrives, Then the impersonation ends and the impersonator returns to their own session.
+- AC4 Given a person who holds a permission the impersonator does not, When the impersonator starts an impersonation of them, Then it is refused, as a recovery link would be (ADR-0046). (error case)
+- AC5 Given an impersonation, When the impersonator confirms it is them, signs, approves as the second person, or changes the person's factors, password or sessions, Then it is refused. (error case)
+- AC6 Given an impersonation, When the person impersonated opens their security activity, Then it shows who signed in as them, when, and why.
 
 *Depends on:* TF-020, TF-060
+
+**Notes:** AC4 to AC6 added on 2026-10-22 (S3 T5, ADR-0049): the tests prove the requirement's text beyond its first three criteria. The email to the person impersonated waits for S4's notifications.
 
 #### TF-026 Break-glass access  
 *Priority:* **Should** · *Tag:* `[Core]` · *Area:* Sessions, tokens and service accounts
@@ -760,8 +769,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given one operator requests break-glass, When the second approves with a ticket reference, Then access is granted for the time limit.
 - AC2 Given no second approval within 30 minutes, When checked, Then the request expires. (error case)
 - AC3 Given access ends, When processed, Then a review task with the full action list is created.
+- AC4 Given the operator who requested break-glass, When they approve their own request, Then it is refused: the second operator is someone else. (error case)
 
 *Depends on:* TF-025, TF-181
+
+**Notes:** AC4 added on 2026-10-22 (S3 T5, ADR-0049). Until S5's task engine the review is a record in the control plane and an event in the tenant's audit trail.
 
 #### TF-027 Device and login risk signals  
 *Priority:* **Could** · *Tag:* `[Extended]` · *Area:* Sessions, tokens and service accounts
@@ -806,8 +818,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a tenant-wide revocation, When executed, Then every session and refresh token is invalid within one minute.
 - AC2 Given a revoked access token still within its 15 minutes, When used on a sensitive operation, Then it is refused because the session check runs on every request. (error case)
 - AC3 Given logout, When the back button is used, Then no protected page is served. (edge)
+- AC4 Given an administrator revokes everything of a person or a service account with a reason, When their sessions or tokens are used, Then they are refused, and the audit trail and the person's security activity say who did it and why.
 
 *Depends on:* TF-020
+
+**Notes:** AC4 added on 2026-10-22 (S3 T5, ADR-0049): the tests prove the requirement's text beyond its first three criteria.
 
 ### 4.4 Authorization (TF-030 to TF-039, 10 requirements)
 

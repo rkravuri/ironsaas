@@ -14,6 +14,14 @@ public sealed class IdentityOptions
 
     public Argon2Options Argon2 { get; set; } = new();
 
+    public LocationOptions Locations { get; set; } = new();
+
+    /// <summary>The bundled location database (ADR-0049): where the API image carries it; without a file, sessions have no location.</summary>
+    public sealed class LocationOptions
+    {
+        public string? DatabasePath { get; set; } = "/app/locations/dbip-city-lite.mmdb";
+    }
+
     /// <summary>
     /// The key that encrypts the second factors' secrets at rest (TF-073, ADR-0047): 32 random bytes in base64, from the
     /// unit's secret (<c>Identity:FactorKey</c>), which the fleet writes when it creates the unit. Never in a file or a log.
@@ -24,6 +32,9 @@ public sealed class IdentityOptions
     {
         /// <summary>The cookie that holds the session token.</summary>
         public string CookieName { get; set; } = "iron.session";
+
+        /// <summary>The cookie of an impersonation, over the impersonator's own session, which it leaves as it was (ADR-0049).</summary>
+        public string ImpersonationCookieName { get; set; } = "iron.impersonation";
 
         /// <summary>The system default of <c>identity.session.idle_minutes</c>: what a session takes while the tenant has set nothing.</summary>
         public int IdleMinutes { get; set; } = 60;

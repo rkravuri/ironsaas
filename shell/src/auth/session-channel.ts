@@ -1,7 +1,36 @@
 import type { SessionTimes } from "./session-clock";
 
-/** Why a session ended, as the login page explains it. */
-export type SessionEnd = "idle" | "absolute" | "signed-out" | "signed-out-elsewhere" | "expired";
+/**
+ * Why a session ended, as the login page explains it: the shell's own clock, a sign-out, or the API's 401, which says
+ * whether a newer sign-in went past the tenant's limit, an administrator ended it, or it was revoked (TF-021, TF-022).
+ */
+export type SessionEnd =
+  | "idle"
+  | "absolute"
+  | "signed-out"
+  | "signed-out-elsewhere"
+  | "expired"
+  | "limit"
+  | "ended"
+  | "revoked"
+  | "impersonation-ended"
+  | "terms-declined";
+
+/** The 401's code, in the words the login page uses. */
+export function sessionEndOf(errorCode: string | undefined): SessionEnd {
+  switch (errorCode) {
+    case "auth.session_limit":
+      return "limit";
+    case "auth.session_ended":
+      return "ended";
+    case "auth.session_revoked":
+      return "revoked";
+    case "auth.impersonation_ended":
+      return "impersonation-ended";
+    default:
+      return "expired";
+  }
+}
 
 /** What the tabs of one browser tell each other about the session they share (ADR-0033). */
 export type SessionMessage =

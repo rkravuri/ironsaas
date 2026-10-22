@@ -42,6 +42,10 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("current_step");
 
+                    b.Property<string>("Environment")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("environment");
+
                     b.Property<string>("Error")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")

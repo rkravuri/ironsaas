@@ -24,14 +24,14 @@ To be written in the design session.
 | TF-017 | Password recovery and change | Must | | T2 (ADR-0046): a one-time, 15-minute link issued by an administrator or by the operator through the control plane, and the change with the current one. The link to the verified email, which the person asks for themself, is S4's |
 | TF-018 | User invitations | Must | invitation and acceptance (S1); the validity as a unit setting (A6) | the invitation by email is S4's notifications |
 | TF-019 | Account security events to the user | Should | | T2 records the events and shows them in My profile, each also audited. AC1 (the email of a new device's login within a minute), AC2 (the email's link to the active sessions with end-session actions, which T5's sessions console brings) and AC3 (a failed send still audited) are about the email: S4's, as exceptions when S3 closes |
-| TF-022 | Session management console | Must | server-side sessions (S1); Sign out in My profile ends the session in every tab of the browser (D4) | "Sign out everywhere" waits for it |
+| TF-022 | Session management console | Must | server-side sessions (S1); Sign out in My profile ends the session in every tab of the browser (D4) | T5 (ADR-0049): a person's sessions in My profile, the console with its summary, ending with a reason |
 | TF-023 | Service accounts and client credentials | Must | the client credentials grant with 15-minute tokens (S1) | |
 | TF-024 | API keys for simple integrations | Should | the `ApiKey` principal type (S1) | also in S7's description |
-| TF-025 | Impersonation with attribution | Must | acting for a delegator with both names in the audit (A7, ADR-0037) | a different thing from delegation; reuse the audit's `on_behalf_of_id` |
-| TF-026 | Break-glass access | Should | | |
+| TF-025 | Impersonation with attribution | Must | acting for a delegator with both names in the audit (A7, ADR-0037) | T5 (ADR-0049): `impersonator_id` and the name on every event, a second cookie, never step-up; the operator's through the fleet. The email to the person is S4's |
+| TF-026 | Break-glass access | Should | | T5 (ADR-0049): two operators, a ticket, 30 minutes to approve, a `break-glass` account, the review; a task in S5's engine later |
 | TF-027 | Device and login risk signals | Could | | |
-| TF-028 | Consent and terms acceptance | Should | | |
-| TF-029 | Logout and revocation | Must | logout ends the session and the old cookie is refused (S1, the smoke proves it) | token revocation and refresh rotation |
+| TF-028 | Consent and terms acceptance | Should | | T5 (ADR-0049): the platform's and the tenant's documents, a required step per version, declining signs out |
+| TF-029 | Logout and revocation | Must | logout ends the session and the old cookie is refused (S1, the smoke proves it) | T5 (ADR-0049): "valid after" times for a principal and the tenant, within a minute; refresh rotation waits for refresh tokens |
 | TF-061 | Audit integrity chain | Must | the append-only trail, the app role cannot change or delete it (S1, ADR-0013) | |
 | TF-062 | Change history (field level) | Must | the history panel in the design system (D3); settings and role changes keep before and after in their events | |
 | TF-063 | Electronic signatures | Must | | |
@@ -66,7 +66,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 | T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | done (main, 902cd3d) |
 | T3 | MFA and step-up re-authentication | TF-013, TF-248 | done (main, e1752cc) |
 | T4 | Single sign-on with OpenID Connect | TF-014 | done (main, becf9a8) |
-| T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-022, TF-025, TF-026, TF-028, TF-029 | outline |
+| T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-021 AC2, TF-022, TF-025, TF-026, TF-028, TF-029 | in review (slice/s3-t5, ADR-0049) |
 | T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |
 | T7 | Field-level change history, electronic signatures, signature manifestation, audit-trail review | TF-062, TF-063, TF-219 | outline |
 | T8 | Evidence exports, second approval for sensitive changes, validation pack per release | TF-067, TF-068, TF-218 | outline |

@@ -113,6 +113,38 @@
       ],
       "settings": [
         {
+          "key": "identity.impersonation.max_minutes",
+          "module": "identity",
+          "type": "number",
+          "description": "How long someone may sign in as another person at most, in minutes; the next request after it ends the impersonation.",
+          "default": 120,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 15 to 120.",
+          "choices": null,
+          "minimum": 15,
+          "maximum": 120,
+          "whole_number": true
+        },
+        {
+          "key": "identity.impersonation.operator_allowed",
+          "module": "identity",
+          "type": "boolean",
+          "description": "Let the platform's operator sign in as this tenant's people for support, with a reason, through a one-time link.",
+          "default": true,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "On or off.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
           "key": "identity.invitation.valid_days",
           "module": "identity",
           "type": "number",
@@ -343,6 +375,22 @@
           "choices": null,
           "minimum": 1,
           "maximum": 24,
+          "whole_number": true
+        },
+        {
+          "key": "identity.session.concurrent_limit",
+          "module": "identity",
+          "type": "number",
+          "description": "How many sessions a person may have at once; a new sign-in past it ends their oldest session. 0 is no limit.",
+          "default": 0,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 0 to 10.",
+          "choices": null,
+          "minimum": 0,
+          "maximum": 10,
           "whole_number": true
         },
         {

@@ -127,6 +127,11 @@ public sealed class UserService(
             return principal;
         }
 
+        if (ssoOnly && principal.Emergency)
+        {
+            return Error.Conflict(IdentityErrors.UserEmergency, $"{principal.DisplayName}'s account is an emergency account, for when the company login is down, so it cannot be single sign-on only. Remove the emergency mark first.");
+        }
+
         if (ssoOnly
             && (await ssoPeople.LinkedProvidersAsync(principal.Id, cancellationToken).ConfigureAwait(false)).Count == 0
             && await ssoPeople.ForEmailAsync(principal.Email ?? principal.LoginId, cancellationToken).ConfigureAwait(false) is null)
@@ -138,6 +143,59 @@ public sealed class UserService(
         principal.MarkSsoOnly(ssoOnly);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await securityEvents.RecordAsync(principal, ssoOnly ? SecurityEventKinds.SsoOnlySet : SecurityEventKinds.SsoOnlyCleared, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, null, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return principal;
+    }
+
+    /// <summary>The most emergency accounts a tenant may have (ADR-0049).</summary>
+    public const int EmergencyLimit = 2;
+
+    /// <summary>
+    /// Marks a person's account as one of the tenant's emergency accounts, or removes the mark (ADR-0049): at most two, each
+    /// an active local account with a password and a second factor, and not single sign-on only. Only for someone whose
+    /// permissions the administrator holds, since the mark lets the account sign in when everyone else cannot.
+    /// </summary>
+    public async Task<Result<Principal>> SetEmergencyAsync(Principal principal, bool emergency, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        if (principal.Emergency == emergency)
+        {
+            return principal;
+        }
+
+        if (emergency)
+        {
+            if (principal.Type != PrincipalType.User || principal.Status != PrincipalStatus.Active || principal.PasswordHash is null || principal.BreakGlassUntil is not null)
+            {
+                return Error.Conflict(IdentityErrors.EmergencyNotLocal, $"{principal.DisplayName} cannot be an emergency account: it must be an active person who signs in with a password of their own here.");
+            }
+
+            if (principal.SsoOnly)
+            {
+                return Error.Conflict(IdentityErrors.UserEmergency, $"{principal.DisplayName} signs in only with their company login. Let them use a password again first.");
+            }
+
+            if (!await factors.HasAnyAsync(principal.Id, cancellationToken).ConfigureAwait(false))
+            {
+                return Error.Conflict(IdentityErrors.EmergencyNeedsFactor, $"An emergency account must have a second factor. {principal.DisplayName} has none: they enrol one in My profile first.");
+            }
+
+            if (await context.Principals.CountAsync(p => p.Emergency, cancellationToken).ConfigureAwait(false) >= EmergencyLimit)
+            {
+                return Error.Conflict(IdentityErrors.EmergencyLimit, $"This tenant has its {EmergencyLimit} emergency accounts already. Remove the mark from one first.");
+            }
+        }
+
+        var missing = await MissingPermissionsAsync(principal.Id, cancellationToken).ConfigureAwait(false);
+        if (missing.Count > 0)
+        {
+            return Error.Forbidden(IdentityErrors.RecoveryEscalation, $"You can change the emergency mark only for someone whose permissions you hold yourself. You do not hold: {string.Join(", ", missing)}.");
+        }
+
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+        principal.MarkEmergency(emergency);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await securityEvents.RecordAsync(principal, emergency ? SecurityEventKinds.EmergencySet : SecurityEventKinds.EmergencyCleared, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, null, cancellationToken, severity: AuditSeverity.High).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return principal;
     }
@@ -222,8 +280,11 @@ public sealed class UserService(
         return new ReactivatedUser(principal, invitation);
     }
 
-    /// <summary>The permissions the person holds, tenant-wide or anywhere, that the actor does not hold as widely.</summary>
-    private async Task<IReadOnlyList<string>> MissingPermissionsAsync(Guid principalId, CancellationToken cancellationToken)
+    /// <summary>
+    /// The permissions the person holds, tenant-wide or anywhere, that the actor does not hold as widely: the rule for a
+    /// recovery link, a factor reset (ADR-0046) and an impersonation (ADR-0049).
+    /// </summary>
+    public async Task<IReadOnlyList<string>> MissingPermissionsAsync(Guid principalId, CancellationToken cancellationToken)
     {
         var theirsEverywhere = await roleAssignments.PermissionsOfAsync(principalId, cancellationToken).ConfigureAwait(false);
         var theirsAnywhere = await roleAssignments.PermissionsOfAsync(principalId, AccessScope.Anywhere, cancellationToken).ConfigureAwait(false);

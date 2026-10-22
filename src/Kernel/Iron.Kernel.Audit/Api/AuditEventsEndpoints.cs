@@ -5,6 +5,7 @@ using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Data;
+using Iron.Kernel.Audit.Services;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Lists;
 using Microsoft.AspNetCore.Builder;
@@ -31,15 +32,24 @@ public sealed record AuditEventResponse(
     Guid CreatedBy,
     Guid? OnBehalfOfId = null,
     string? ActorName = null,
-    string? OnBehalfOfName = null)
+    string? OnBehalfOfName = null,
+    Guid? ImpersonatorId = null,
+    string? ImpersonatorName = null,
+    string Severity = AuditSeverity.Normal)
 {
     public static AuditEventResponse From(AuditEventRecord record, IReadOnlyDictionary<Guid, string> names)
     {
         ArgumentNullException.ThrowIfNull(names);
-        return From(record) with
+        var response = From(record);
+        return response with
         {
             ActorName = names.GetValueOrDefault(record.ActorId),
             OnBehalfOfName = record.OnBehalfOfId is { } onBehalfOf ? names.GetValueOrDefault(onBehalfOf) : null,
+
+            // The operator is nobody in a unit: the name the session kept, in the details, stands for them (ADR-0049).
+            ImpersonatorName = record.ImpersonatorId is { } impersonator
+                ? names.GetValueOrDefault(impersonator) ?? response.Details?.GetValueOrDefault(AuditWriter.ImpersonatorKey)
+                : null,
         };
     }
 
@@ -61,7 +71,9 @@ public sealed record AuditEventResponse(
             details,
             record.CreatedAt,
             record.CreatedBy,
-            record.OnBehalfOfId);
+            record.OnBehalfOfId,
+            ImpersonatorId: record.ImpersonatorId,
+            Severity: record.Severity);
     }
 }
 
@@ -74,6 +86,8 @@ internal static class AuditEventsEndpoints
         .Add("outcome", e => e.Outcome, FieldUse.Select | FieldUse.Filter)
         .Add("actor_id", e => e.ActorId, FieldUse.Select | FieldUse.Filter)
         .Add("on_behalf_of_id", e => e.OnBehalfOfId, FieldUse.Select | FieldUse.Filter)
+        .Add("impersonator_id", e => e.ImpersonatorId, FieldUse.Select | FieldUse.Filter)
+        .Add("severity", e => e.Severity, FieldUse.Select | FieldUse.Filter)
         .Add("source", e => e.Source, FieldUse.Select | FieldUse.Filter)
         .Add("target", e => e.Target, FieldUse.Select)
         .Add("record_type", e => e.RecordType, FieldUse.Select | FieldUse.Filter)
@@ -102,12 +116,15 @@ internal static class AuditEventsEndpoints
         var query = parsed.Value;
         var page = await context.Events.AsNoTracking().ApplyListQuery(query, Fields).ToPageAsync(query.Page, cancellationToken);
 
-        // Both people by name, the actor and the one acted for (TF-037 AC3), so a reader does not look the ids up. A host
-        // without Identity, such as the audit tests' own, answers the ids alone.
+        // Every person by name, the actor, the one acted for (TF-037 AC3) and the impersonator (TF-025 AC2), so a reader
+        // does not look the ids up. A host without Identity, such as the audit tests' own, answers the ids alone.
         IReadOnlyDictionary<Guid, string> names = new Dictionary<Guid, string>();
         if (http.RequestServices.GetService<IPrincipals>() is { } principals)
         {
-            var ids = page.Items.Select(e => e.ActorId).Concat(page.Items.Where(e => e.OnBehalfOfId is not null).Select(e => e.OnBehalfOfId!.Value)).Distinct().ToList();
+            var ids = page.Items.Select(e => e.ActorId)
+                .Concat(page.Items.Where(e => e.OnBehalfOfId is not null).Select(e => e.OnBehalfOfId!.Value))
+                .Concat(page.Items.Where(e => e.ImpersonatorId is not null).Select(e => e.ImpersonatorId!.Value))
+                .Distinct().ToList();
             names = (await principals.FindAsync(ids, cancellationToken)).ToDictionary(p => p.Key, p => p.Value.DisplayName);
         }
 

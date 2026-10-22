@@ -100,7 +100,7 @@ public class RolesEndpointTests(AuthorizationFixture fixture) : IAsyncLifetime
         var data = body.RootElement.GetProperty("data");
         Assert.Equal(SystemRoles.All.Order(StringComparer.Ordinal), data.EnumerateArray().Select(r => r.GetProperty("code").GetString()));
         Assert.All(data.EnumerateArray(), role => Assert.True(role.GetProperty("is_system").GetBoolean()));
-        Assert.Equal(3, body.RootElement.GetProperty("meta").GetProperty("total_count").GetInt32());
+        Assert.Equal(SystemRoles.All.Count, body.RootElement.GetProperty("meta").GetProperty("total_count").GetInt32());
     }
 
     private async Task<HttpResponseMessage> Send(Guid? principal, string query = "")

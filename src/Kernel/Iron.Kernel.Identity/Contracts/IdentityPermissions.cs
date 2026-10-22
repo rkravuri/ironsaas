@@ -13,7 +13,24 @@ public static class IdentityPermissions
     /// </summary>
     public static readonly Permission SsoManage = new("identity.sso.manage", "Connect, change, test and remove single sign-on providers", Risk.Critical);
 
-    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage, SsoManage];
+    /// <summary>
+    /// The sessions console (TF-022, TF-029, ADR-0049): see everyone's sessions and who is signed in now, end any session
+    /// with a reason, and revoke every session and token of the tenant after an incident, each behind a recent
+    /// authentication (TF-248).
+    /// </summary>
+    public static readonly Permission SessionsManage = new("identity.sessions.manage", "See and end anyone's sessions, and revoke every session and token of the tenant", Risk.High);
+
+    /// <summary>
+    /// Signing in as another person of the tenant (TF-025, ADR-0049): critical, since the impersonator acts with the
+    /// person's permissions; always with a reason and a recent authentication, and only for someone whose permissions the
+    /// impersonator holds.
+    /// </summary>
+    public static readonly Permission ImpersonationStart = new("identity.impersonation.start", "Sign in as another person of the tenant, with a reason, for a limited time", Risk.Critical);
+
+    /// <summary>The documents people must accept (TF-028, ADR-0049): publish the tenant's versions, and read and export who accepted which.</summary>
+    public static readonly Permission DocumentsManage = new("identity.documents.manage", "Publish the documents people must accept, and see and export who accepted which version", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage, SsoManage, SessionsManage, ImpersonationStart, DocumentsManage];
 }
 
 /// <summary>Error codes of the Identity module.</summary>
@@ -177,6 +194,78 @@ public static class IdentityErrors
 
     /// <summary>Marking a person single sign-on only when no provider could sign them in: they would be locked out.</summary>
     public const string UserSsoUnreachable = "identity.user.sso_unreachable";
+
+    // Sessions and revocation (TF-021, TF-022, TF-029, ADR-0049).
+
+    /// <summary>No session with this id, or none of the asker's.</summary>
+    public const string SessionNotFound = "identity.session.not_found";
+
+    /// <summary>The session has ended already.</summary>
+    public const string SessionEnded = "identity.session.ended";
+
+    /// <summary>The session asked to end is the one the request comes from: signing out ends it.</summary>
+    public const string SessionCurrent = "identity.session.current";
+
+    /// <summary>The typed confirmation of a tenant-wide revocation is not the tenant's identifier.</summary>
+    public const string RevocationConfirmation = "identity.revocation.confirmation";
+
+    // Impersonation, operator links and break-glass accounts (TF-025, TF-026, ADR-0049).
+
+    /// <summary>A bearer token asked to sign in as someone: only a person signed in to the shell does.</summary>
+    public const string ImpersonationToken = "identity.impersonation.token";
+
+    /// <summary>No reason was given (TF-025 AC1).</summary>
+    public const string ImpersonationReasonRequired = "identity.impersonation.reason_required";
+
+    public const string ImpersonationSelf = "identity.impersonation.self";
+
+    /// <summary>The person cannot be signed in as: not active, a service account, or a break-glass account.</summary>
+    public const string ImpersonationNotAllowed = "identity.impersonation.not_allowed";
+
+    /// <summary>The person holds a permission the impersonator does not (ADR-0046's rule, TF-025 AC4).</summary>
+    public const string ImpersonationEscalation = "identity.impersonation.escalation";
+
+    /// <summary>More minutes than the tenant allows, or fewer than one.</summary>
+    public const string ImpersonationDuration = "identity.impersonation.duration";
+
+    /// <summary>The tenant does not let the platform's operator sign in as its people.</summary>
+    public const string ImpersonationOperatorRefused = "identity.impersonation.operator_refused";
+
+    /// <summary>Ending an impersonation in a session that is not one.</summary>
+    public const string ImpersonationNone = "identity.impersonation.none";
+
+    /// <summary>A one-time sign-in link that does not work: used, expired, or never issued.</summary>
+    public const string SignInLinkInvalid = "identity.sign_in_link.invalid";
+
+    /// <summary>A break-glass command without what it needs, or for an account that is not one.</summary>
+    public const string BreakGlassInvalid = "identity.break_glass.invalid";
+
+    /// <summary>The operator who approves break-glass is the one who asked (TF-026 AC4).</summary>
+    public const string BreakGlassSameOperator = "identity.break_glass.same_operator";
+
+    /// <summary>A document the person must accept has a version they have not accepted: every request but the terms' own answers it (ADR-0049).</summary>
+    public const string TermsAcceptanceRequired = "identity.terms.acceptance_required";
+
+    /// <summary>Not every pending version was accepted at its current version: a newer one came while the person read.</summary>
+    public const string TermsVersionChanged = "identity.terms.version_changed";
+
+    /// <summary>A document's key that is not lowercase letters, digits and hyphens.</summary>
+    public const string DocumentKeyInvalid = "identity.document.key_invalid";
+
+    /// <summary>No tenant document with this key is asked of anyone.</summary>
+    public const string DocumentNotFound = "identity.document.not_found";
+
+    /// <summary>The tenant has its two emergency accounts already (ADR-0049).</summary>
+    public const string EmergencyLimit = "identity.emergency.limit";
+
+    /// <summary>An emergency account must have a second factor: the person enrols one first.</summary>
+    public const string EmergencyNeedsFactor = "identity.emergency.needs_factor";
+
+    /// <summary>Only an active person with a password of their own here can be an emergency account.</summary>
+    public const string EmergencyNotLocal = "identity.emergency.not_local";
+
+    /// <summary>An emergency account cannot be marked to sign in only through a provider: it is for when the provider is down.</summary>
+    public const string UserEmergency = "identity.user.emergency";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -250,6 +339,36 @@ public static class IdentityAuditEvents
 
     /// <summary>An administrator removed a provider, its links and the roles its mapping gave.</summary>
     public const string SsoProviderDeleted = "identity.sso_provider_deleted";
+
+    /// <summary>
+    /// A session was ended before its time (TF-022 AC1): by an administrator with a reason, by its person from another
+    /// session, or by a newer sign-in past the tenant's limit (TF-021 AC2). The reason and who ended it are in the event.
+    /// </summary>
+    public const string SessionEnded = "identity.session_ended";
+
+    /// <summary>An administrator revoked every session and token of the tenant, with a reason (TF-029 AC1).</summary>
+    public const string TenantRevoked = "identity.tenant_revoked";
+
+    /// <summary>The operator was given a one-time link to sign in as a person, with a reason, through the control plane (TF-025).</summary>
+    public const string ImpersonationLinkIssued = "identity.impersonation_link_issued";
+
+    /// <summary>A break-glass account was opened: both operators, the ticket, the reason and the time limit (TF-026 AC1).</summary>
+    public const string BreakGlassOpened = "identity.break_glass_opened";
+
+    /// <summary>A break-glass account was closed, with the count of its actions; the review has the list (TF-026 AC3).</summary>
+    public const string BreakGlassClosed = "identity.break_glass_closed";
+
+    /// <summary>A person accepted a version of a document (TF-028 AC2).</summary>
+    public const string TermsAccepted = "identity.terms_accepted";
+
+    /// <summary>A person declined a version of a document, and their session ended (TF-028 AC4).</summary>
+    public const string TermsDeclined = "identity.terms_declined";
+
+    /// <summary>An administrator published a version of a tenant document.</summary>
+    public const string DocumentPublished = "identity.document_published";
+
+    /// <summary>An administrator retired a tenant document: nobody is asked to accept it any more.</summary>
+    public const string DocumentRetired = "identity.document_retired";
 }
 
 /// <summary>
@@ -292,11 +411,34 @@ public static class SecurityEventKinds
     /// <summary>An administrator let the person sign in with a password again.</summary>
     public const string SsoOnlyCleared = "sso_only_cleared";
 
+    /// <summary>An administrator ended one of the person's sessions, with a reason (TF-022 AC1).</summary>
+    public const string SessionEnded = "session_ended";
+
+    /// <summary>An administrator revoked every session and token of the principal, with a reason (TF-029).</summary>
+    public const string AccessRevoked = "access_revoked";
+
+    /// <summary>Someone signed in as the person: who, until when, why (TF-025 AC6).</summary>
+    public const string ImpersonationStarted = "impersonation_started";
+
+    /// <summary>The impersonation ended: at its time, or ended by the impersonator.</summary>
+    public const string ImpersonationEnded = "impersonation_ended";
+
+    /// <summary>An administrator marked the person's account as one of the tenant's emergency accounts (ADR-0049).</summary>
+    public const string EmergencySet = "emergency_set";
+
+    /// <summary>An administrator removed the emergency mark.</summary>
+    public const string EmergencyCleared = "emergency_cleared";
+
+    /// <summary>Someone signed in with the emergency account: always an alert, at high severity (ADR-0049).</summary>
+    public const string EmergencySignIn = "emergency_sign_in";
+
     public static IReadOnlyList<string> All =>
     [
         PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated,
         FactorEnrolled, FactorRemoved, FactorsReset, RecoveryCodeUsed, RecoveryCodesRegenerated,
         SsoLinked, SsoOnlySet, SsoOnlyCleared,
+        SessionEnded, AccessRevoked, ImpersonationStarted, ImpersonationEnded,
+        EmergencySet, EmergencyCleared, EmergencySignIn,
     ];
 
     /// <summary>The audit event a security event is written as.</summary>

@@ -50,7 +50,7 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, I
         await secrets.WriteAsync(context.UnitSecretPath, unit, cancellationToken).ConfigureAwait(false);
 
         // On every run: the token carries the policy by name, so writing it again widens what an existing token may read.
-        await admin.CreateReadPolicyAsync(context.UnitPolicy, [context.UnitSecretPath, context.EntitlementsSecretPath, context.FlagsSecretPath, ProvisioningContext.PlatformFlagsPath, context.SettingsSecretPaths], cancellationToken, [context.SsoSecretPaths]).ConfigureAwait(false);
+        await admin.CreateReadPolicyAsync(context.UnitPolicy, [context.UnitSecretPath, context.EntitlementsSecretPath, context.FlagsSecretPath, ProvisioningContext.PlatformFlagsPath, ProvisioningContext.PlatformDocumentsPath, context.SettingsSecretPaths], cancellationToken, [context.SsoSecretPaths]).ConfigureAwait(false);
 
         var fleet = await secrets.ReadAsync(context.FleetSecretPath, cancellationToken).ConfigureAwait(false);
         var tokenCreated = false;

@@ -14,6 +14,8 @@ import { navigationFor } from "@/modules/registry";
 import { useActingChoice } from "./acting";
 import { ActingBand, ActingForControl } from "./ActingFor";
 import { HelpButton } from "./HelpPanel";
+import { EmergencyBanner } from "./EmergencyBanner";
+import { ImpersonationBand } from "./Impersonation";
 import { KillSwitchBanner } from "./KillSwitchBanner";
 import { ReauthenticationDialog } from "@/auth/Reauthentication";
 import { ReauthenticationNotice } from "@/auth/ReauthenticationNotice";
@@ -30,7 +32,9 @@ import { WorkingUnitControl, WorkingUnitFailure } from "./WorkingUnit";
  * warning; for administrators, the kill-switch banner above the page (ADR-0035); and the person's colour scheme and
  * density kept with them across browsers (ADR-0036). The "Acting for" control joins the header, and its band the top of
  * the page, only while the person holds a delegation (ADR-0037). The choice of the unit the person works for joins it
- * only when there is more than one unit to choose (ADR-0038). A notifications bell joins when S4 gives it something to do.
+ * only when there is more than one unit to choose (ADR-0038). Someone signed in as another person sees a band that says
+ * whose account it is and until when, first of all (ADR-0049); the tenant's administrators see an emergency account's
+ * sign-in. A notifications bell joins when S4 gives it something to do.
  */
 export function Layout() {
   const { t } = useTranslation();
@@ -102,6 +106,8 @@ export function Layout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
+        <ImpersonationBand />
+        <EmergencyBanner />
         <WorkingUnitFailure choice={working} />
         <ActingBand choice={acting} />
         <KillSwitchBanner />

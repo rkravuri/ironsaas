@@ -8,12 +8,14 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
     public const int EventTypeMaxLength = 100;
     public const int TargetMaxLength = 500;
     public const int ReasonMaxLength = 1000;
+    public const int SeverityMaxLength = 10;
 
     private AuditEventRecord()
     {
         EventType = string.Empty;
         Outcome = string.Empty;
         Source = string.Empty;
+        Severity = "normal";
     }
 
     public AuditEventRecord(
@@ -27,7 +29,9 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
         string? reason,
         string? details,
         string? correlationId,
-        Guid? onBehalfOfId = null)
+        Guid? onBehalfOfId = null,
+        Guid? impersonatorId = null,
+        string? severity = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType);
         ArgumentException.ThrowIfNullOrWhiteSpace(outcome);
@@ -43,6 +47,8 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
         Details = details;
         CorrelationId = correlationId;
         OnBehalfOfId = onBehalfOfId;
+        ImpersonatorId = impersonatorId;
+        Severity = string.IsNullOrWhiteSpace(severity) ? "normal" : severity;
     }
 
     public string EventType { get; private set; }
@@ -52,8 +58,14 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
     /// <summary>The principal the event is about. Equal to created_by in a request; the system principal writes on behalf of others in jobs.</summary>
     public Guid ActorId { get; private set; }
 
-    /// <summary>Who was impersonating the actor, when anyone was. Reserved for support impersonation; acting for someone is <see cref="OnBehalfOfId"/>.</summary>
+    /// <summary>
+    /// Who was signed in as the actor, when anyone was (TF-025 AC2, ADR-0049): a colleague by their id, or the operator by
+    /// the control plane's id of them, whose name the details keep. Acting for someone is <see cref="OnBehalfOfId"/>.
+    /// </summary>
     public Guid? ImpersonatorId { get; private set; }
+
+    /// <summary><c>normal</c>, or <c>high</c> for an event an administrator must look at (ADR-0049).</summary>
+    public string Severity { get; private set; }
 
     /// <summary>
     /// The person the actor acted for with a delegation (TF-037 AC3, ADR-0037): the actor did it, with that person's

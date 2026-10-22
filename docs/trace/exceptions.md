@@ -12,7 +12,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | TF-003 AC2 | No job runs in a tenant's worker yet; the jobs engine is S4. The worker's heartbeat span carries the tenant (`HeartbeatTests`, ADR-0011). | 2026-10-21 |
 | TF-020 AC1 | No refresh token exists yet: S1 issues access tokens by the client credentials grant only (ADR-0015); the authorization code flow with refresh rotation comes with S3 T4. | 2026-10-21 |
 | TF-020 AC3 | The signing key is read from the store and not rotated yet; key rotation is S3 T9 (TF-075). | 2026-10-21 |
-| TF-021 AC2 | The concurrent session limit is S3 T5, with the sessions console. | 2026-10-21 |
 | TF-037 AC1 | No workflow exists yet; a workflow assigns the delegate in S5 (ADR-0037). | 2026-10-21 |
 | TF-038 AC3 | A review seven days late is escalated, recorded and audited (`ReviewTests`, ADR-0037); notifying the reviewer's manager waits for S4's notifications. | 2026-10-21 |
 | TF-051 AC1 | The email kill switch is declared and wired when S4 builds email; only the imports switch is wired today (ADR-0035). | 2026-10-21 |

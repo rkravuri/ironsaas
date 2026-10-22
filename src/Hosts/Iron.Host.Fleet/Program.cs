@@ -50,6 +50,7 @@ builder.Services.AddModules(builder.Configuration, modules);
 builder.Services.AddIronFleetWorker();
 builder.Services.AddIronEntitlementReconciler();
 builder.Services.AddIronFlagWorker();
+builder.Services.AddIronBreakGlassWorker();
 
 var app = builder.Build();
 

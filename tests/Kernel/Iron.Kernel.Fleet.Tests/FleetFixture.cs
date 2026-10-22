@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text.Json;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
@@ -142,6 +143,10 @@ public sealed class RecordingRuntime : IUnitRuntime
     /// <summary>Codes of the real shape, 32 random bytes in base64url, so the scrubbing rule would know them.</summary>
     public const string InvitationToken = "test-invitation-token-abcdefghijklmnopqrstu";
     public const string RecoveryToken = "test-recovery-token-abcdefghijklmnopqrstuvwx";
+    public const string SignInCode = "test-sign-in-code-abcdefghijklmnopqrstuvwxyz";
+
+    /// <summary>The actions a closed break-glass account's review lists, as the unit's command hands them over.</summary>
+    public static readonly IReadOnlyList<string> ReviewEvents = ["identity.login_succeeded", "identity.user_created"];
 
     public int Refused { get; private set; }
 
@@ -174,19 +179,35 @@ public sealed class RecordingRuntime : IUnitRuntime
             case "recover-admin":
                 await HandOverAsync(unit, "recovery", unit.Environment["Recovery__LoginId"], $"/recovery#{RecoveryToken}", DateTimeOffset.UtcNow.AddMinutes(15), cancellationToken);
                 return new CommandResult(0, $"Handed over a recovery link for {unit.Environment["Recovery__LoginId"]} to the operator who asked.\n");
+            case "impersonate":
+                await HandOverAsync(unit, "impersonation", unit.Environment["Impersonation__LoginId"], $"/sign-in-link#{SignInCode}", DateTimeOffset.UtcNow.AddMinutes(15), cancellationToken);
+                return new CommandResult(0, "Handed over an impersonation link to the operator who asked.\n");
+            case "break-glass-open":
+                await HandOverAsync(unit, "break_glass", "break-glass account", $"/sign-in-link#{SignInCode}", DateTimeOffset.UtcNow.AddMinutes(15), cancellationToken);
+                return new CommandResult(0, "Handed over a break-glass sign-in link to the operator who asked.\n");
+            case "break-glass-close":
+                var review = JsonSerializer.Serialize(ReviewEvents.Select(e => new Dictionary<string, string> { ["at"] = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture), ["event_type"] = e, ["outcome"] = "success" }));
+                await HandOverAsync(unit, "break_glass_review", unit.Environment["BreakGlass__Account"], string.Empty, DateTimeOffset.UtcNow.AddDays(1), cancellationToken, review);
+                return new CommandResult(0, "Handed over a break-glass review of 2 action(s).\n");
             default:
                 return new CommandResult(0, $"{name} done\n");
         }
     }
 
-    private async Task HandOverAsync(UnitDefinition unit, string kind, string subject, string linkPath, DateTimeOffset expiresAt, CancellationToken cancellationToken)
+    private async Task HandOverAsync(UnitDefinition unit, string kind, string subject, string linkPath, DateTimeOffset expiresAt, CancellationToken cancellationToken, string? payload = null)
     {
         var environment = unit.Environment;
         var path = environment["Handover__Path"];
         using var place = new OpenBaoSecretStore(new SecretStoreOptions { Address = environment["Secrets__Address"], Token = environment["Handover__Token"], Mount = environment["Secrets__Mount"] });
+        var values = new Dictionary<string, string>(StringComparer.Ordinal) { ["kind"] = kind, ["subject"] = subject, ["link_path"] = linkPath, ["expires_at"] = expiresAt.ToString("O", CultureInfo.InvariantCulture) };
+        if (payload is not null)
+        {
+            values["payload"] = payload;
+        }
+
         await place.WriteOnceAsync(
             path,
-            new Dictionary<string, string>(StringComparer.Ordinal) { ["kind"] = kind, ["subject"] = subject, ["link_path"] = linkPath, ["expires_at"] = expiresAt.ToString("O", CultureInfo.InvariantCulture) },
+            values,
             expiresAt - DateTimeOffset.UtcNow,
             cancellationToken);
 

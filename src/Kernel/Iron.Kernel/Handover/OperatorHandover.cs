@@ -8,6 +8,18 @@ public sealed record OperatorHandoverItem(string Kind, string Subject, string Li
 {
     public const string Invitation = "invitation";
     public const string Recovery = "recovery";
+
+    /// <summary>A one-time link to sign in as a person, for the operator (ADR-0049).</summary>
+    public const string Impersonation = "impersonation";
+
+    /// <summary>A one-time link to sign in as a break-glass account, for the operator who asked (ADR-0049).</summary>
+    public const string BreakGlass = "break_glass";
+
+    /// <summary>The review of a break-glass access that ended: its payload is the list of the account's actions, for the control plane.</summary>
+    public const string BreakGlassReview = "break_glass_review";
+
+    /// <summary>What the item carries beyond a link, such as a review; null for a link.</summary>
+    public string? Payload { get; init; }
 }
 
 /// <summary>

@@ -3,7 +3,8 @@ namespace Iron.Kernel.Audit.Contracts;
 /// <summary>
 /// What happened, to what, by whom, with what outcome (TF-060). <paramref name="Action"/> is the event type, named by
 /// the module that raises it like a permission: <c>authz.permission_denied</c>, <c>identity.login_failed</c>.
-/// Details are small key-value pairs, never secrets.
+/// Details are small key-value pairs, never secrets. <paramref name="Severity"/> marks the few events someone must look
+/// at, such as a sign-in with an emergency account (ADR-0049); the others are normal.
 /// </summary>
 public sealed record AuditEvent(
     string Action,
@@ -14,7 +15,36 @@ public sealed record AuditEvent(
     string? RecordType = null,
     Guid? RecordId = null,
     string? Reason = null,
-    Guid? OnBehalfOfId = null);
+    Guid? OnBehalfOfId = null,
+    string? Severity = null);
+
+/// <summary>How much an event asks for attention (ADR-0049): normal, or high for one an administrator must look at.</summary>
+public static class AuditSeverity
+{
+    public const string Normal = "normal";
+    public const string High = "high";
+}
+
+/// <summary>One action of a principal as the audit trail recorded it, for a review of what they did (TF-026 AC3).</summary>
+public sealed record AuditTrailEntry(
+    Guid Id,
+    DateTimeOffset At,
+    string EventType,
+    string Outcome,
+    string? Target,
+    string? RecordType,
+    Guid? RecordId,
+    string? Reason);
+
+/// <summary>
+/// Reads the audit trail for a module that must account for a principal's actions, such as the review that ends a
+/// break-glass access (TF-026 AC3, ADR-0049). The search endpoint remains how people read it.
+/// </summary>
+public interface IAuditTrail
+{
+    /// <summary>Every event with this principal as the actor, or as the one impersonated by them, from <paramref name="from"/>, oldest first.</summary>
+    Task<IReadOnlyList<AuditTrailEntry>> ActionsOfAsync(Guid principalId, DateTimeOffset from, CancellationToken cancellationToken);
+}
 
 public static class AuditOutcome
 {

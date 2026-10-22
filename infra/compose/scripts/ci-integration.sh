@@ -41,6 +41,7 @@ compose --profile control run --rm --no-deps control-api migrate
 compose --profile control run --rm --no-deps \
   -e Seed__ServiceAccounts__0__ClientId=operator -e "Seed__ServiceAccounts__0__Secret=$operator_secret" -e Seed__ServiceAccounts__0__Role=tenant-administrator -e "Seed__ServiceAccounts__0__DisplayName=Pipeline operator" \
   -e Seed__ServiceAccounts__1__ClientId=smoke-reader -e "Seed__ServiceAccounts__1__Secret=$reader_secret" -e Seed__ServiceAccounts__1__Role=service-default -e "Seed__ServiceAccounts__1__DisplayName=Smoke reader" \
+  -e Seed__ServiceAccounts__2__ClientId=operator-two -e "Seed__ServiceAccounts__2__Secret=$operator_secret-two" -e Seed__ServiceAccounts__2__Role=tenant-administrator -e "Seed__ServiceAccounts__2__DisplayName=Pipeline second operator" \
   control-api seed
 
 echo "== control plane API and fleet worker"

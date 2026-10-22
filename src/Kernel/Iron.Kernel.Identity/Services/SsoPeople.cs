@@ -22,7 +22,9 @@ public sealed class SsoPeople(IdentityDbContext context)
     public async Task<SsoOnlyStatus> SsoOnlyAsync(Principal principal, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(principal);
-        if (principal.Type != PrincipalType.User)
+
+        // An emergency account is for when the tenant's provider is down: it always signs in with its password (ADR-0049).
+        if (principal.Type != PrincipalType.User || principal.Emergency)
         {
             return SsoOnlyStatus.No;
         }

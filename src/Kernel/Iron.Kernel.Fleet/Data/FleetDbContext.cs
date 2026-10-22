@@ -25,6 +25,7 @@ public sealed class FleetDbContext(DbContextOptions<FleetDbContext> options) : M
             job.Property(j => j.Subject).HasMaxLength(ProvisioningJob.SubjectMaxLength);
             job.Property(j => j.Reason).HasMaxLength(ProvisioningJob.ReasonMaxLength);
             job.Property(j => j.RequestedBy).HasMaxLength(ProvisioningJob.RequestedByMaxLength);
+            job.Property(j => j.Environment).HasColumnType("jsonb");
             job.Ignore(j => j.Request);
             job.HasIndex(j => j.RequestedById);
             job.HasIndex(j => new { j.TenantSlug, j.RequestedAt });

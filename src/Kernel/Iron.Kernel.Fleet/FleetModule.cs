@@ -61,6 +61,9 @@ public sealed class FleetModule : IModule
         services.AddScoped<IProvisioningStep, VerifyStep>();
         services.AddScoped<IProvisioningStep, RemoveStep>();
         services.AddScoped<IProvisioningStep, RecoverStep>();
+        services.AddScoped<IProvisioningStep, ImpersonateStep>();
+        services.AddScoped<IProvisioningStep, BreakGlassOpenStep>();
+        services.AddScoped<IProvisioningStep, BreakGlassCloseStep>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

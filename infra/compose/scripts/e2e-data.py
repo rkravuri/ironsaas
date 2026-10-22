@@ -7,14 +7,16 @@ run's id: the first holds the child-unit administrator (who reads the users of t
 the second and third each hold a colleague, and a person homed at the second reads the users of both, so the header
 offers them a choice of unit (A8). They hold no role in the first branch, whose access review the delegation test runs
 (A7). In the run's unit itself, outside the branches, a person whose password the recovery test sets with a link and
-whom it then deactivates (S3 T2), and a person with the run's MFA role, whom the passkey test sends to enrolment (S3 T3).
+whom it then deactivates (S3 T2), a person with the run's MFA role, whom the passkey test sends to enrolment (S3 T3), a
+person the administrator signs in as, and a person who reads, declines and accepts the run's terms (S3 T5).
 Every person is new and signs in with a password made here. It prints shell exports for make e2e.
 
 The tenant's MFA policy names the roles whose holders need a second factor (ADR-0047): the tenant administrator and the
 MFA role, so the other people of a run sign in with their password, as the tests of access expect, and the
 administrator signs in with the authenticator app the smoke enrolled, whose key make e2e reads from the store.
 
-teardown deactivates the people homed in the run's units, those of earlier runs that are still active too (runs before
+teardown retires any tenant document a terms test left behind (its key starts with e2e-terms-), so nobody is asked to
+accept it, then deactivates the people homed in the run's units, those of earlier runs that are still active too (runs before
 S3 T2 could not deactivate anyone), then the run's units, the deepest first (E2E_RUN_UNIT_ID). make e2e runs it whatever
 the tests' result, so a run leaves no active people behind.
 
@@ -215,6 +217,8 @@ def setup():
     two_id, two_login, two_password = create_person(admin, run, "two-units", "Two-unit reader", second)
     recover_id, recover_login, _ = create_person(admin, run, "recovering", "Recovering person", run_unit)
     mfa_id, mfa_login, mfa_password = create_person(admin, run, "passkey", "Passkey person", run_unit)
+    impersonated_id, impersonated_login, impersonated_password = create_person(admin, run, "impersonated", f"Impersonated person {run}", run_unit)
+    _, terms_login, terms_password = create_person(admin, run, "terms", f"Terms reader {run}", run_unit)
     grant(admin, mfa_id, mfa["id"], "unit", run_unit["id"])
     colleague_id, _ = create_user(admin, f"colleague-{run}@{TENANT}.localhost", "A colleague", child["id"])
     for unit, prefix in ((second, "second-colleague"), (third, "third-colleague")):
@@ -249,6 +253,11 @@ def setup():
         "E2E_RECOVER_LOGIN_ID": recover_login,
         "E2E_MFA_LOGIN_ID": mfa_login,
         "E2E_MFA_PASSWORD": mfa_password,
+        "E2E_IMPERSONATED_ID": impersonated_id,
+        "E2E_IMPERSONATED_LOGIN_ID": impersonated_login,
+        "E2E_IMPERSONATED_PASSWORD": impersonated_password,
+        "E2E_TERMS_LOGIN_ID": terms_login,
+        "E2E_TERMS_PASSWORD": terms_password,
     }
     for name, value in exports.items():
         print(f"export {name}={shlex.quote(value)}")
@@ -268,9 +277,18 @@ def deactivate_people(admin, units):
     return left
 
 
+def retire_test_documents(admin):
+    """Retires what a terms test left behind (ADR-0049): a document nobody should be asked to accept after the run."""
+    for document in api("GET", "/api/v1/documents", admin)["documents"]:
+        if document["source"] == "tenant" and document["key"].startswith("e2e-terms-"):
+            api("POST", f"/api/v1/documents/{document['key']}/retire", admin, expect=(204,))
+            log(f"Retired the test document {document['key']}.")
+
+
 def teardown():
     run_unit_id = os.environ.get("E2E_RUN_UNIT_ID", "")
     admin = administrator()
+    retire_test_documents(admin)
     units = api("GET", "/api/v1/organisation-units", admin)["data"]
     by_id = {unit["id"]: unit for unit in units}
     # The people of every run's units, this one's and earlier ones', by the codes setup gives them.

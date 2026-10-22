@@ -24,8 +24,37 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
 
     public DbSet<FlagPublication> FlagPublications => Set<FlagPublication>();
 
+    public DbSet<BreakGlassAccess> BreakGlassAccesses => Set<BreakGlassAccess>();
+
+    public DbSet<PlatformDocument> PlatformDocuments => Set<PlatformDocument>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<BreakGlassAccess>(access =>
+        {
+            access.ToTable("break_glass_accesses");
+            access.Property(a => a.TenantSlug).HasMaxLength(63);
+            access.Property(a => a.Reason).HasMaxLength(BreakGlassAccess.ReasonMaxLength);
+            access.Property(a => a.Ticket).HasMaxLength(BreakGlassAccess.TicketMaxLength);
+            access.Property(a => a.Status).HasConversion<string>().HasMaxLength(20);
+            access.Property(a => a.RequestedByName).HasMaxLength(BreakGlassAccess.NameMaxLength);
+            access.Property(a => a.ApprovedByName).HasMaxLength(BreakGlassAccess.NameMaxLength);
+            access.Property(a => a.AccountLoginId).HasMaxLength(254);
+            access.Property(a => a.EndReason).HasMaxLength(BreakGlassAccess.ReasonMaxLength);
+            access.Property(a => a.Review).HasColumnType("jsonb");
+            access.Ignore(a => a.ApprovalDeadline);
+            access.HasIndex(a => a.Status);
+            access.HasIndex(a => new { a.TenantSlug, a.RequestedAt });
+        });
+
+        modelBuilder.Entity<PlatformDocument>(document =>
+        {
+            document.Property(d => d.Key).HasMaxLength(PlatformDocument.KeyMaxLength);
+            document.Property(d => d.Title).HasMaxLength(PlatformDocument.TitleMaxLength);
+            document.Property(d => d.Body).HasMaxLength(PlatformDocument.BodyMaxLength);
+            document.HasIndex(d => new { d.Key, d.Number }).IsUnique();
+        });
+
         modelBuilder.Entity<Tenant>(tenant =>
         {
             tenant.Property(t => t.Slug).HasMaxLength(63);

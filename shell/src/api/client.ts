@@ -165,6 +165,23 @@ export interface ResponseInfo {
   receivedAt: number;
   /** The delegator whose delegation ended while this session acted for them, on the first answer after (ADR-0037). */
   actingEnded?: string;
+  /** The first answer after an impersonation ended: the request ran as the impersonator again (TF-025 AC3). */
+  impersonationEnded?: boolean;
+}
+
+/** The header the API sets on the first answer after an impersonation ended. */
+export const impersonationEndedHeader = "Iron-Impersonation-Ended";
+
+/** The code of a refusal while a document the person must accept has a new version (TF-028 AC1, ADR-0049). */
+export const termsRequired = "identity.terms.acceptance_required";
+
+type TermsListener = () => void;
+const termsListeners = new Set<TermsListener>();
+
+/** The shell's frame subscribes to learn that the person must accept a new version first: any call answers 403 with the code. */
+export function onTermsRequired(listener: TermsListener): () => void {
+  termsListeners.add(listener);
+  return () => termsListeners.delete(listener);
 }
 
 /** The header the API sets on the first answer after a delegation the session acted with has ended. */
@@ -213,12 +230,14 @@ async function send<T>(path: string, options: RequestOptions<T>): Promise<T> {
   const correlationId = response.headers.get("X-Correlation-Id") ?? undefined;
   const date = Date.parse(response.headers.get("Date") ?? "");
   const actingEnded = response.headers.get(actingEndedHeader) ?? undefined;
+  const impersonationEnded = response.headers.get(impersonationEndedHeader) === "true";
   const info: ResponseInfo = {
     path,
     status: response.status,
     serverDate: Number.isNaN(date) ? undefined : date,
     receivedAt: Date.now(),
     ...(actingEnded ? { actingEnded } : {}),
+    ...(impersonationEnded ? { impersonationEnded } : {}),
   };
   for (const listener of responseListeners) {
     listener(info);
@@ -234,6 +253,11 @@ async function send<T>(path: string, options: RequestOptions<T>): Promise<T> {
     }
     if (error.status === 403 && error.errorCode === enrolmentRequired) {
       for (const listener of enrolmentListeners) {
+        listener();
+      }
+    }
+    if (error.status === 403 && error.errorCode === termsRequired) {
+      for (const listener of termsListeners) {
         listener();
       }
     }

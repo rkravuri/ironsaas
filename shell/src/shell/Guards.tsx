@@ -4,7 +4,7 @@ import { useSession } from "@/auth/session-context";
 import { useSignInHeld } from "@/auth/sign-in-hold";
 import { LoadingState } from "@/components/panels";
 import { ErrorView } from "./ErrorBoundary";
-import { ApiError, onEnrolmentRequired } from "@/api/client";
+import { ApiError, onEnrolmentRequired, onTermsRequired } from "@/api/client";
 import type { SessionEnd } from "@/auth/session-channel";
 
 /** The wait before the session is known: the loading state, full height. */
@@ -61,6 +61,27 @@ export function RequireEnrolled({ children }: { children: ReactNode }) {
 /** Where the enrolment page returns the person to. */
 export interface EnrolmentState {
   from?: string;
+}
+
+/**
+ * While a document the person must accept has a version they have not accepted (TF-028 AC1, ADR-0049), the frame's pages
+ * wait: `/me` says so, or any call answers 403 `identity.terms.acceptance_required`, and the person goes to the terms,
+ * signed in, then back to the page they were on. Terms come before enrolment.
+ */
+export function RequireTerms({ children }: { children: ReactNode }) {
+  const session = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const here = location.pathname + location.search;
+  useEffect(
+    () =>
+      onTermsRequired(() => void navigate("/terms", { replace: true, state: { from: here } satisfies EnrolmentState })),
+    [navigate, here],
+  );
+  if (session.me?.terms_acceptance_required) {
+    return <Navigate to="/terms" replace state={{ from: here } satisfies EnrolmentState} />;
+  }
+  return <>{children}</>;
 }
 
 /**

@@ -4,6 +4,7 @@ import { ApiError, onResponse, onUnauthenticated } from "@/api/client";
 import { fetchContext } from "@/api/entitlements";
 import {
   actFor as actForCall,
+  endImpersonation as endImpersonationCall,
   fetchMe,
   logout as logoutCall,
   stopActing as stopActingCall,
@@ -16,7 +17,7 @@ import type { KillSwitch } from "@/api/flags";
 import { contextQueryKey, contextRefreshMs, entitlementsFrom } from "./entitlements";
 import { flagProvider } from "./flags";
 import { settingsFrom } from "./settings";
-import { openSessionChannel, type SessionChannel, type SessionEnd } from "./session-channel";
+import { openSessionChannel, sessionEndOf, type SessionChannel, type SessionEnd } from "./session-channel";
 import type { EndReason } from "./session-clock";
 import { meQueryKey, SessionContext, type Session, type SessionStatus } from "./session-context";
 import { SessionWatch, SessionWatchContext } from "./session-watch";
@@ -38,6 +39,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [ended, setEnded] = useState<SessionEnd | undefined>();
   const [signedOutOf, setSignedOutOf] = useState<SsoProviderButton | undefined>();
   const [actingEnded, setActingEnded] = useState<string | undefined>();
+  const [impersonationEnded, setImpersonationEnded] = useState(false);
   const query = useQuery({
     queryKey: meQueryKey,
     queryFn: ({ signal }) => fetchMe(signal),
@@ -46,11 +48,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     refetchOnWindowFocus: true,
   });
 
-  /** Forgets the session here; tells the other tabs when this tab is where it ended. Only a live session can end. */
+  /**
+   * Forgets the session here; tells the other tabs when this tab is where it ended. Only a live session can end. Every
+   * cached answer goes with it, so the back button finds nothing of the session to show (TF-029 AC3).
+   */
   const end = useCallback(
     (reason: SessionEnd | undefined, tell: boolean) => {
       const live = queryClient.getQueryData<Me | null>(meQueryKey);
       queryClient.setQueryData(meQueryKey, null);
+      if (live) {
+        queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== meQueryKey[0] });
+      }
       queryClient.removeQueries({ queryKey: contextQueryKey });
       watch.clear();
       if (live && reason !== undefined) {
@@ -97,8 +105,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [watch, end, refresh]);
 
-  // A 401 from any call: a session that was here has ended on the server (TF-021 AC1), and the login page says so.
-  useEffect(() => onUnauthenticated(() => end("expired", true)), [end]);
+  // A 401 from any call: a session that was here has ended on the server (TF-021 AC1), and the login page says why: its
+  // time, a newer sign-in past the tenant's limit, an administrator, a revocation, or the end of an impersonation.
+  useEffect(() => onUnauthenticated((error) => end(sessionEndOf(error.errorCode), true)), [end]);
   useEffect(() => onResponse((info) => watch.response(info)), [watch]);
 
   /**
@@ -128,6 +137,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }),
     [queryClient],
   );
+
+  // The first answer after an impersonation ended ran as the impersonator again (TF-025 AC3): this tab says so, and reads
+  // /me and the rest again as them.
+  useEffect(
+    () =>
+      onResponse((info) => {
+        if (info.impersonationEnded) {
+          setImpersonationEnded(true);
+          void queryClient.invalidateQueries();
+        }
+      }),
+    [queryClient],
+  );
+
+  const endImpersonation = useCallback(async () => {
+    const operator = queryClient.getQueryData<Me | null>(meQueryKey)?.impersonation?.operator === true;
+    await endImpersonationCall();
+    if (operator) {
+      // The operator has no session of their own here: the impersonation was all there was.
+      end("impersonation-ended", true);
+      return;
+    }
+    setImpersonationEnded(true);
+    await queryClient.invalidateQueries();
+  }, [end, queryClient]);
+
+  const dismissImpersonationEnded = useCallback(() => setImpersonationEnded(false), []);
 
   const actFor = useCallback(
     async (delegatorId: string) => {
@@ -205,6 +241,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [end, queryClient]);
 
+  const closed = useCallback((reason: SessionEnd) => end(reason, true), [end]);
+
   const expire = useCallback(
     (reason: EndReason) => {
       // Forgotten first, so every tab leaves at once; the server's session ends behind it, or has already.
@@ -239,16 +277,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ended,
       signedOutOf,
       actingEnded,
+      impersonationEnded,
       refresh,
       signedIn,
       extend,
       signOut,
       expire,
+      closed,
       forget,
       actFor,
       stopActing,
       workFor,
       dismissActingEnded,
+      endImpersonation,
+      dismissImpersonationEnded,
     };
   }, [
     me,
@@ -261,16 +303,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     ended,
     signedOutOf,
     actingEnded,
+    impersonationEnded,
     refresh,
     signedIn,
     extend,
     signOut,
     expire,
+    closed,
     forget,
     actFor,
     stopActing,
     workFor,
     dismissActingEnded,
+    endImpersonation,
+    dismissImpersonationEnded,
   ]);
 
   return (

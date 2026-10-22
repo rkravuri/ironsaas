@@ -35,7 +35,7 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time, 
             return latest.ToInfo(await StepsOfAsync(latest.Id, cancellationToken).ConfigureAwait(false));
         }
 
-        var job = new ProvisioningJob(tenant, kind, time.GetUtcNow(), request, asker.Id);
+        var job = new ProvisioningJob(tenant, kind, time.GetUtcNow(), request, request?.HandOverTo ?? asker.Id);
         context.ProvisioningJobs.Add(job);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return job.ToInfo();
@@ -50,6 +50,12 @@ public sealed class ProvisioningJobs(FleetDbContext context, TimeProvider time, 
             .ThenByDescending(j => j.Id) // ids are UUID version 7: two jobs requested in the same instant keep their order
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
+        return job is null ? null : job.ToInfo(await StepsOfAsync(job.Id, cancellationToken).ConfigureAwait(false));
+    }
+
+    public async Task<ProvisioningJobInfo?> FindAsync(Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await context.ProvisioningJobs.AsNoTracking().SingleOrDefaultAsync(j => j.Id == jobId, cancellationToken).ConfigureAwait(false);
         return job is null ? null : job.ToInfo(await StepsOfAsync(job.Id, cancellationToken).ConfigureAwait(false));
     }
 

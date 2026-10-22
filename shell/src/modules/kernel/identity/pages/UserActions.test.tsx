@@ -43,20 +43,34 @@ const actionsOf = async () => {
   return header;
 };
 
+/**
+ * Opens the record's More menu and answers what it holds in order, a divider as "divider": Mantine renders the menu in a
+ * portal that jsdom calls hidden.
+ */
+const moreOf = async (user: ReturnType<typeof userEvent.setup>, header: HTMLElement) => {
+  await user.click(within(header).getByRole("button", { name: "More actions for Ada Lovelace" }));
+  const menu = await screen.findByRole("menu", { hidden: true });
+  return Array.from(menu.querySelectorAll('[role="menuitem"], [class*="Menu-divider"]')).map((entry) =>
+    entry.getAttribute("role") === "menuitem" ? entry.textContent : "divider",
+  );
+};
+
 describe("the user record's actions", () => {
-  it("offer Unlock, a recovery link and Deactivate only where /me/access allows managing people at their unit [ADR-0031, ADR-0046]", async () => {
+  it("offer Unlock and a recovery link in sight and Deactivate under More, only where /me/access allows managing people at their unit [ADR-0031, ADR-0046, ADR-0049]", async () => {
     stubFetch({
       "GET /api/v1/me": () => json(me([], manager)),
       "GET /api/v1/users/u1": () => json(person({ locked_until: inAnHour() })),
       "GET /api/v1/me/access?unit=sales": () => json({ scope: "unit:sales", permissions: manager }),
     });
     page();
+    const user = userEvent.setup();
 
     const header = await actionsOf();
     await waitFor(() => expect(within(header).getByRole("button", { name: "Unlock" })).toBeInTheDocument());
     expect(within(header).getByRole("button", { name: "Issue a recovery link" })).toBeInTheDocument();
-    expect(within(header).getByRole("button", { name: "Deactivate" })).toBeInTheDocument();
+    expect(within(header).queryByRole("button", { name: "Deactivate" })).toBeNull();
     expect(within(header).queryByRole("button", { name: "Reactivate" })).toBeNull();
+    expect(await moreOf(user, header)).toEqual(["Deactivate", "Revoke everything"]);
     expect(header).toHaveTextContent("Locked");
     expect(screen.getByText("Login locked until")).toBeInTheDocument();
   });
@@ -73,6 +87,33 @@ describe("the user record's actions", () => {
     await waitFor(() => expect(calls.some((call) => call.key === "GET /api/v1/me/access?unit=sales")).toBe(true));
     await new Promise((settled) => setTimeout(settled, 50));
     expect(within(header).queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("keep two everyday actions in sight and put the rest under More, the dangerous ones last and apart [ADR-0049]", async () => {
+    stubFetch({
+      "GET /api/v1/me": () => json(me([], manager)),
+      "GET /api/v1/users/u1": () => json(person({ locked_until: inAnHour(), factors: 1, takeover_allowed: true })),
+      "GET /api/v1/me/access?unit=sales": () =>
+        json({ scope: "unit:sales", permissions: [...manager, "identity.impersonation.start"] }),
+    });
+    page();
+    const user = userEvent.setup();
+
+    const header = await actionsOf();
+    await waitFor(() => expect(within(header).getByRole("button", { name: "Unlock" })).toBeInTheDocument());
+    expect(
+      within(header)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Unlock", "Issue a recovery link", "More"]);
+    expect(await moreOf(user, header)).toEqual([
+      "Sign in as",
+      "Reset factors",
+      "Make emergency account",
+      "divider",
+      "Deactivate",
+      "Revoke everything",
+    ]);
   });
 
   it("issue a recovery link behind a confirmation and show it once with a copy button [TF-017 AC1, ADR-0046]", async () => {
@@ -114,8 +155,10 @@ describe("the user record's actions", () => {
         ),
     });
     page();
+    const user = userEvent.setup();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Deactivate" }));
+    await user.click(await screen.findByRole("button", { name: "More actions for Ada Lovelace" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Deactivate", hidden: true }));
     const confirm = await screen.findByRole("dialog", { name: "Deactivate Ada Lovelace?" });
     expect(confirm).toHaveTextContent("every session ends now, their access tokens are refused");
     fireEvent.click(within(confirm).getByRole("button", { name: "Deactivate" }));
@@ -144,6 +187,7 @@ describe("the user record's actions", () => {
     await waitFor(() => expect(within(header).getByRole("button", { name: "Reactivate" })).toBeInTheDocument());
     expect(within(header).queryByRole("button", { name: "Deactivate" })).toBeNull();
     expect(within(header).queryByRole("button", { name: "Issue a recovery link" })).toBeNull();
+    expect(within(header).queryByRole("button", { name: "More actions for Ada Lovelace" })).toBeNull();
     fireEvent.click(within(header).getByRole("button", { name: "Reactivate" }));
     fireEvent.click(
       within(await screen.findByRole("dialog", { name: "Reactivate Ada Lovelace?" })).getByRole("button", {
@@ -173,8 +217,11 @@ describe("the user record's actions", () => {
     const user = userEvent.setup();
 
     const header = await actionsOf();
-    await waitFor(() => expect(within(header).getByRole("button", { name: "Reset factors" })).toBeInTheDocument());
-    await user.click(within(header).getByRole("button", { name: "Reset factors" }));
+    await waitFor(() =>
+      expect(within(header).getByRole("button", { name: "Issue a recovery link" })).toBeInTheDocument(),
+    );
+    expect(await moreOf(user, header)).toContain("Reset factors");
+    await user.click(screen.getByRole("menuitem", { name: "Reset factors", hidden: true }));
     const dialog = await screen.findByRole("dialog", { name: "Reset the second factors of Ada Lovelace?" });
     await user.click(within(dialog).getByRole("button", { name: "Reset the factors" }));
     expect(await within(dialog).findByText("Say why: it is kept with the reset.")).toBeInTheDocument();
@@ -190,7 +237,11 @@ describe("the user record's actions", () => {
     record = person({ factors: 2, takeover_allowed: false });
     page();
     const again = await actionsOf();
-    await waitFor(() => expect(within(again).getByRole("button", { name: "Deactivate" })).toBeInTheDocument());
-    expect(within(again).queryByRole("button", { name: "Reset factors" })).toBeNull();
+    await waitFor(() =>
+      expect(within(again).getByRole("button", { name: "Issue a recovery link" })).toBeInTheDocument(),
+    );
+    const more = await moreOf(user, again);
+    expect(more).toContain("Deactivate");
+    expect(more).not.toContain("Reset factors");
   });
 });
