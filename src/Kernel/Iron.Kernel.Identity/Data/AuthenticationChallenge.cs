@@ -23,8 +23,9 @@ public static class ChallengePurposes
 
 /// <summary>
 /// The state between two requests of an authentication (TF-013, TF-248, ADR-0047): after a correct password, before the
-/// second factor; during an enrolment; between a WebAuthn ceremony's options and the authenticator's answer. It lives at
-/// most five minutes and creates no session. A browser that is not signed in holds it by a random token in an HttpOnly
+/// second factor; during an enrolment; between a WebAuthn ceremony's options and the authenticator's answer. It creates
+/// no session. It lives five minutes, and an enrolment's fifteen, since installing an app or finding a security key takes
+/// longer than typing a code (the design session's review, ADR-0047). A browser that is not signed in holds it by a random token in an HttpOnly
 /// cookie, of which only the SHA-256 is stored; a signed-in person's belongs to their session. An authenticator app's
 /// secret waiting for its first code is encrypted like a saved one.
 /// </summary>
@@ -32,6 +33,12 @@ public sealed class AuthenticationChallenge : AuditedEntity
 {
     public const int PurposeMaxLength = 20;
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(5);
+
+    /// <summary>An enrolment's, at sign-in or in a session.</summary>
+    public static readonly TimeSpan EnrolmentLifetime = TimeSpan.FromMinutes(15);
+
+    public static TimeSpan LifetimeOf(string purpose) =>
+        purpose is ChallengePurposes.Enrolment or ChallengePurposes.AddFactor ? EnrolmentLifetime : Lifetime;
 
     private AuthenticationChallenge()
     {
@@ -44,7 +51,7 @@ public sealed class AuthenticationChallenge : AuditedEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
         Purpose = purpose;
         PrincipalId = principalId;
-        ExpiresAt = now + Lifetime;
+        ExpiresAt = now + LifetimeOf(purpose);
     }
 
     public string Purpose { get; private set; }

@@ -104,9 +104,10 @@ public sealed class SignedInFilter : IEndpointFilter
             return AuthenticationFailure.Problem(context.HttpContext);
         }
 
-        // After authentication, before the handler: a module or feature that is not entitled answers 403 (ADR-0034), a
-        // stopped path or a flag that is off answers next (ADR-0035).
-        return await EntitlementCheck.RefusalAsync(context.HttpContext, principal.Id).ConfigureAwait(false)
+        // After authentication, before the handler: a step the principal must take first (ADR-0047), then a module or
+        // feature that is not entitled answers 403 (ADR-0034), a stopped path or a flag that is off answers next (ADR-0035).
+        return RequiredStep.Refusal(context.HttpContext)
+            ?? await EntitlementCheck.RefusalAsync(context.HttpContext, principal.Id).ConfigureAwait(false)
             ?? await FlagCheck.RefusalAsync(context.HttpContext, principal.Id).ConfigureAwait(false)
             ?? await next(context).ConfigureAwait(false);
     }
@@ -133,8 +134,10 @@ public sealed class PermissionFilter(Permission permission) : IEndpointFilter
 
         // After authentication and before the permission (ADR-0034): a person whose tenant lacks the module or the feature
         // hears that, not that they lack a permission, and no permission denial is audited for it.
-        // Then the flags (ADR-0035): a kill switch stops the path for everyone, whatever they may do.
-        var refusal = await EntitlementCheck.RefusalAsync(http, principal.Id).ConfigureAwait(false)
+        // Then the flags (ADR-0035): a kill switch stops the path for everyone, whatever they may do. Before all of them, a
+        // step the principal must take first, such as enrolling a second factor the policy now requires (ADR-0047).
+        var refusal = RequiredStep.Refusal(http)
+            ?? await EntitlementCheck.RefusalAsync(http, principal.Id).ConfigureAwait(false)
             ?? await FlagCheck.RefusalAsync(http, principal.Id).ConfigureAwait(false);
         if (refusal is not null)
         {

@@ -16,7 +16,7 @@ import { passkeysSupported, signWithPasskey } from "./webauthn";
 /**
  * The second step of a sign-in (TF-013, ADR-0047): after a right password, the person's passkey, the code from their
  * app, or one of their recovery codes. The password made no session; this step does. A wrong code says only that it did
- * not prove the person; after three in a row the page says how long to wait. When the sign-in has ended (five minutes,
+ * not prove the person; after three in a row the page says how long to wait. When the sign-in has ended (its five minutes,
  * or a lock) the person starts again from the password.
  */
 export function SecondFactorStep({

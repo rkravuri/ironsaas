@@ -41,7 +41,7 @@ public sealed record LoginOutcome(Principal Principal, Session? Session, string?
 /// Failures also count against the login identifier, known or not, and lock it at the tenant's threshold: while it is
 /// locked even the correct password is refused. A right password signs in only a person who has no factor and need not
 /// have one: a person with a factor goes on to the second step, and a person the policy requires to have one goes on to
-/// enrolment, both through a challenge of five minutes that creates no session. A success writes the session row, the
+/// enrolment, both through a challenge that creates no session: five minutes for the second step, fifteen for enrolment. A success writes the session row, the
 /// login stamp and the audit event in one transaction.
 /// </summary>
 public sealed class LoginService(
@@ -68,7 +68,7 @@ public sealed class LoginService(
 
     public const string ExpiredMessage = "Your password has expired. Choose a new one to sign in.";
 
-    public const string SignInExpiredMessage = "This sign-in took more than five minutes, or ended. Sign in again.";
+    public const string SignInExpiredMessage = "This sign-in took too long, or ended. Sign in again.";
 
     private const int MaxAttempts = 3;
 

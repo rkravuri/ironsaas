@@ -1,4 +1,5 @@
 using Iron.Kernel.Api.Permissions;
+using Iron.Kernel.Identity.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,6 +9,8 @@ namespace Iron.Kernel.Identity.Services;
 /// Turns the session cookie into the request's principal (TF-020). No cookie: the request runs as nobody and a
 /// protected endpoint answers 401 <c>auth.not_authenticated</c>. A cookie of a session that ran out: the session is
 /// ended, the cookie is cleared, and the 401 says <c>auth.session_expired</c> so the shell returns to login (TF-021).
+/// A person the tenant's policy now requires a second factor of, who has none, keeps the session with a
+/// required step: the filters answer 403 <c>identity.mfa.enrolment_required</c> for all but the enrolment (ADR-0047).
 /// </summary>
 public sealed class SessionMiddleware(RequestDelegate next, IdentityOptions options)
 {
@@ -26,6 +29,12 @@ public sealed class SessionMiddleware(RequestDelegate next, IdentityOptions opti
             if (resolution.IsAlive)
             {
                 RequestPrincipal.Set(context, resolution.Principal!);
+                if (resolution.MustEnrol)
+                {
+                    // Every endpoint but the enrolment's own answers this until the person enrols; the session goes on.
+                    RequiredStep.Set(context, Error.Forbidden(IdentityErrors.MfaEnrolmentRequired, "Your organisation now requires a second factor of you. Set one up to continue; you stay signed in."));
+                }
+
                 if (resolution.ActingEndedFor is { } delegator)
                 {
                     context.Response.Headers[ActingEndedHeader] = delegator.ToString("D");

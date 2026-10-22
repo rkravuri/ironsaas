@@ -137,6 +137,81 @@ public class SecondFactorTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-013 AC1", "ADR-0047")]
+    public async Task APolicyChangeTakesEffectAtTheNextRequestAndTheSessionGoesOnAfterEnrollingInIt()
+    {
+        await using var host = await StartAsync(MfaRequirement.Nobody);
+        var person = await host.PersonAsync([IdentityPermissions.UsersManage.Name]);
+        var graced = await host.PersonAsync([IdentityPermissions.UsersManage.Name]);
+        using var login = await host.LoginAsync(person.LoginId);
+        var session = Cookie(login, SessionCookie)!;
+        using var gracedLogin = await host.LoginAsync(graced.LoginId);
+        var gracedSession = Cookie(gracedLogin, SessionCookie)!;
+        using var before = await host.SendAsync(HttpMethod.Get, "/api/v1/me/security-events", session);
+
+        // The tenant now requires a factor of the holders of high-risk roles: the next request says so, and the session stays.
+        await host.SetAsync(IdentitySettings.MfaRequiredFor.Key, JsonSerializer.SerializeToElement(MfaRequirement.Roles));
+        using var refused = await host.SendAsync(HttpMethod.Get, "/api/v1/me/security-events", session);
+        using var users = await host.SendAsync(HttpMethod.Get, "/api/v1/users", session);
+        using var me = await host.SendAsync(HttpMethod.Get, "/api/v1/me", session);
+        var meBody = (await JsonAsync(me)).RootElement;
+        using var setup = await host.SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app", session);
+        var secret = Totp.FromBase32((await JsonAsync(setup)).RootElement.GetProperty("secret").GetString()!);
+        using var enrolled = await host.SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app/confirm", session, new { code = host.Code(secret), name = "Phone" });
+        var codes = (await JsonAsync(enrolled)).RootElement.GetProperty("recovery_codes").GetArrayLength();
+        using var after = await host.SendAsync(HttpMethod.Get, "/api/v1/me/security-events", session);
+        using var meAfter = await host.SendAsync(HttpMethod.Get, "/api/v1/me", session);
+
+        // With a grace of three days, the same change lets the other person work on, and says by when; then it does not.
+        await host.SetAsync(IdentitySettings.MfaGraceDays.Key, JsonSerializer.SerializeToElement(3));
+        var graceStarts = host.Time.GetUtcNow();
+        using var withinGrace = await host.SendAsync(HttpMethod.Get, "/api/v1/me/security-events", gracedSession);
+        using var gracedMe = await host.SendAsync(HttpMethod.Get, "/api/v1/me", gracedSession);
+        var enrolBy = (await JsonAsync(gracedMe)).RootElement.GetProperty("mfa_enrol_by").GetDateTimeOffset();
+        host.Time.Advance(TimeSpan.FromDays(3) + TimeSpan.FromMinutes(1));
+        using var fresh = await host.LoginAsync(graced.LoginId);
+
+        Assert.Equal(HttpStatusCode.OK, before.StatusCode);
+        Assert.Equal(IdentityErrors.MfaEnrolmentRequired, await ProblemAsync(refused, HttpStatusCode.Forbidden));
+        Assert.Equal(IdentityErrors.MfaEnrolmentRequired, await ProblemAsync(users, HttpStatusCode.Forbidden));
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode); // the session stays: nobody is signed out
+        Assert.True(meBody.GetProperty("mfa_enrolment_required").GetBoolean());
+        Assert.Equal(HttpStatusCode.OK, setup.StatusCode);
+        Assert.Equal((HttpStatusCode.OK, 10), (enrolled.StatusCode, codes));
+        Assert.Equal(HttpStatusCode.OK, after.StatusCode); // the same session goes on after enrolling
+        Assert.False((await JsonAsync(meAfter)).RootElement.GetProperty("mfa_enrolment_required").GetBoolean());
+        Assert.Equal(HttpStatusCode.OK, withinGrace.StatusCode);
+        Assert.Equal(graceStarts.AddDays(3), enrolBy); // from the first request that found the factor required
+        Assert.Equal("enrolment", (await JsonAsync(fresh)).RootElement.GetProperty("step").GetProperty("kind").GetString());
+    }
+
+    [Fact]
+    [Proves("TF-013 AC1", "ADR-0047")]
+    public async Task AnEnrolmentAtSignInHasFifteenMinutesAndTheSecondStepFive()
+    {
+        await using var host = await StartAsync();
+        var newcomer = await host.PersonAsync([IdentityPermissions.UsersManage.Name]);
+        var enrolledPerson = await host.PersonAsync([]);
+        var (_, secret, _) = await host.EnrolAsync(enrolledPerson);
+
+        using var enrolment = await host.LoginAsync(newcomer.LoginId);
+        var cookie = enrolment.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith($"{SignInCookie}=", StringComparison.Ordinal));
+        host.Time.Advance(TimeSpan.FromMinutes(14));
+        using var stillOpen = await host.SendAsync(HttpMethod.Post, "/auth/enrolment/authenticator-app", Cookie(enrolment, SignInCookie));
+        host.Time.Advance(TimeSpan.FromMinutes(2));
+        using var tooLate = await host.SendAsync(HttpMethod.Post, "/auth/enrolment/authenticator-app", Cookie(enrolment, SignInCookie));
+
+        using var secondStep = await host.LoginAsync(enrolledPerson.LoginId);
+        host.Time.Advance(TimeSpan.FromMinutes(6));
+        using var expired = await host.SendAsync(HttpMethod.Post, "/auth/second-factor", Cookie(secondStep, SignInCookie), new { code = host.Code(secret) });
+
+        Assert.Contains("max-age=900", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.OK, stillOpen.StatusCode);
+        Assert.Equal(IdentityErrors.SignInExpired, await ProblemAsync(tooLate, HttpStatusCode.Unauthorized));
+        Assert.Equal(IdentityErrors.SignInExpired, await ProblemAsync(expired, HttpStatusCode.Unauthorized));
+    }
+
+    [Fact]
     [Proves("TF-013 AC2", "ADR-0047")]
     public async Task EveryThirdWrongCodeCoolsSixtySecondsDoublingAndTheTenthLocksTheLogin()
     {

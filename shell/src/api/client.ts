@@ -99,6 +99,21 @@ export interface RequestOptions<T> {
 /** The code of a refusal for an old sign-in (TF-248, ADR-0047). */
 export const reauthenticationRequired = "auth.reauthentication_required";
 
+/** The code of a refusal while the tenant's policy requires a second factor the person has not got (ADR-0047). */
+export const enrolmentRequired = "identity.mfa.enrolment_required";
+
+type EnrolmentListener = () => void;
+const enrolmentListeners = new Set<EnrolmentListener>();
+
+/**
+ * The shell's frame subscribes to learn that the tenant now requires a second factor of the person (ADR-0047): any call
+ * answers 403 with the code, and the frame takes the person to enrolment. The session stays.
+ */
+export function onEnrolmentRequired(listener: EnrolmentListener): () => void {
+  enrolmentListeners.add(listener);
+  return () => enrolmentListeners.delete(listener);
+}
+
 /** Asks the person to confirm it is them; true when they did, false when they cancelled. */
 export type Reauthenticate = () => Promise<boolean>;
 let reauthenticator: Reauthenticate | undefined;
@@ -201,6 +216,11 @@ async function send<T>(path: string, options: RequestOptions<T>): Promise<T> {
     if (error.isUnauthenticated) {
       for (const listener of unauthenticatedListeners) {
         listener(error);
+      }
+    }
+    if (error.status === 403 && error.errorCode === enrolmentRequired) {
+      for (const listener of enrolmentListeners) {
+        listener();
       }
     }
     throw error;

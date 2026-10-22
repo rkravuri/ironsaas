@@ -287,4 +287,33 @@ for (const scheme of schemes) {
     await page.screenshot({ path: `test-results/a11y/mfa-enrol-by-${scheme}.png` });
     await expectNoViolation(page);
   });
+
+  test(`enrolment in the session in the ${scheme} scheme, when the policy now requires a factor, with no WCAG 2.1 AA violation [TF-172 AC1, TF-013 AC1, ADR-0047]`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await stubAccess(page);
+    await stubPasswords(page);
+    await page.route("**/api/v1/me", (route) => route.fulfill({ json: { ...me, mfa_enrolment_required: true } }));
+    await page.route("**/api/v1/me/factors", (route) =>
+      route.fulfill({
+        json: {
+          factors: [],
+          recovery_codes_left: 0,
+          required: true,
+          allowed: ["authenticator_app", "passkey"],
+          enrol_by: null,
+        },
+      }),
+    );
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+    await page.goto("/users");
+
+    await expect(page).toHaveURL(/\/enrol$/);
+    await expect(page.getByRole("heading", { name: "Set up a second factor" })).toBeVisible();
+    await expect(page.getByText("Choose how you will confirm it is you")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign out instead" })).toBeVisible();
+    await page.screenshot({ path: `test-results/a11y/enrolment-required-${scheme}.png`, fullPage: true });
+    await expectNoViolation(page);
+  });
 }

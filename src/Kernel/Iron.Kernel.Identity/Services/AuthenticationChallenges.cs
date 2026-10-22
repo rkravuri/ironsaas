@@ -6,8 +6,8 @@ namespace Iron.Kernel.Identity.Services;
 
 /// <summary>
 /// The half-done authentications (ADR-0047): a browser that is not signed in holds one by a random token in the
-/// <see cref="CookieName"/> cookie; a signed-in person's belongs to their session. Each lives five minutes; an expired one
-/// is never found, and starting a new one deletes the expired ones, so they do not pile up.
+/// <see cref="CookieName"/> cookie; a signed-in person's belongs to their session. Each lives five minutes, an enrolment's
+/// fifteen; an expired one is never found, and starting a new one deletes the expired ones, so they do not pile up.
 /// </summary>
 public sealed class AuthenticationChallenges(IdentityDbContext context, TimeProvider time)
 {
@@ -73,10 +73,11 @@ public sealed class AuthenticationChallenges(IdentityDbContext context, TimeProv
     public Task<int> EndAllOfAsync(Guid principalId, CancellationToken cancellationToken) =>
         context.AuthenticationChallenges.Where(c => c.PrincipalId == principalId).ExecuteDeleteAsync(cancellationToken);
 
-    public static void SetCookie(HttpContext http, string token)
+    /// <summary>The cookie of a browser's challenge, for as long as the challenge lives.</summary>
+    public static void SetCookie(HttpContext http, string token, string purpose)
     {
         ArgumentNullException.ThrowIfNull(http);
-        http.Response.Cookies.Append(CookieName, token, Options(AuthenticationChallenge.Lifetime));
+        http.Response.Cookies.Append(CookieName, token, Options(AuthenticationChallenge.LifetimeOf(purpose)));
     }
 
     public static void ClearCookie(HttpContext http)

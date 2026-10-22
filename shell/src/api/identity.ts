@@ -75,6 +75,8 @@ export const MeSchema = z.object({
   password_expires_at: z.string().nullable().optional(),
   /** The end of the grace a tenant may give before a second factor is required of the person (ADR-0047); null otherwise. */
   mfa_enrol_by: z.string().nullable().optional(),
+  /** The tenant's policy now requires a second factor the person has not got: everything but enrolment waits for it. */
+  mfa_enrolment_required: z.boolean().optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 

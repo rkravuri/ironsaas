@@ -143,16 +143,17 @@ internal static class FactorEndpoints
         auth.MapPost("/enrolment/passkey", EnrolmentPasskeyAsync).Validate<RegisterPasskeyRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("EnrolmentPasskey").WithSummary("At sign-in: the new passkey is saved and signs you in; the answer shows your recovery codes once.");
 
         var me = endpoints.MapGroup("/api/v1/me").WithTags("me");
-        me.MapGet("/factors", FactorsAsync).RequireSignedIn().Produces<FactorsResponse>(StatusCodes.Status200OK).WithName("MyFactors").WithSummary("Your second factors, the recovery codes left, and what your organisation's policy asks of you.");
-        me.MapPost("/factors/authenticator-app", AddAppAsync).RequireSignedIn().RequireRecentAuthentication().Produces<AuthenticatorAppSetupResponse>(StatusCodes.Status200OK).WithName("AddAuthenticatorApp").WithSummary("Start an authenticator app: the secret and its QR code; the first code saves it.");
-        me.MapPost("/factors/authenticator-app/confirm", ConfirmAppAsync).Validate<ConfirmAuthenticatorAppRequest>().RequireSignedIn().Produces<EnrolledResponse>(StatusCodes.Status200OK).WithName("ConfirmAuthenticatorApp").WithSummary("The app's first code saves it; your first factor brings recovery codes, shown once.");
-        me.MapPost("/factors/passkey/options", AddPasskeyOptionsAsync).RequireSignedIn().RequireRecentAuthentication().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("AddPasskeyOptions").WithSummary("The options to create a passkey.");
-        me.MapPost("/factors/passkey", AddPasskeyAsync).Validate<RegisterPasskeyRequest>().RequireSignedIn().Produces<EnrolledResponse>(StatusCodes.Status200OK).WithName("AddPasskey").WithSummary("Save the new passkey with its name; your first factor brings recovery codes, shown once.");
+        // The enrolment's own doors answer while the policy requires a factor the person has not got (ADR-0047).
+        me.MapGet("/factors", FactorsAsync).RequireSignedIn().AllowDuringRequiredStep().Produces<FactorsResponse>(StatusCodes.Status200OK).WithName("MyFactors").WithSummary("Your second factors, the recovery codes left, and what your organisation's policy asks of you.");
+        me.MapPost("/factors/authenticator-app", AddAppAsync).RequireSignedIn().AllowDuringRequiredStep().RequireRecentAuthentication().Produces<AuthenticatorAppSetupResponse>(StatusCodes.Status200OK).WithName("AddAuthenticatorApp").WithSummary("Start an authenticator app: the secret and its QR code; the first code saves it.");
+        me.MapPost("/factors/authenticator-app/confirm", ConfirmAppAsync).Validate<ConfirmAuthenticatorAppRequest>().RequireSignedIn().AllowDuringRequiredStep().Produces<EnrolledResponse>(StatusCodes.Status200OK).WithName("ConfirmAuthenticatorApp").WithSummary("The app's first code saves it; your first factor brings recovery codes, shown once.");
+        me.MapPost("/factors/passkey/options", AddPasskeyOptionsAsync).RequireSignedIn().AllowDuringRequiredStep().RequireRecentAuthentication().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("AddPasskeyOptions").WithSummary("The options to create a passkey.");
+        me.MapPost("/factors/passkey", AddPasskeyAsync).Validate<RegisterPasskeyRequest>().RequireSignedIn().AllowDuringRequiredStep().Produces<EnrolledResponse>(StatusCodes.Status200OK).WithName("AddPasskey").WithSummary("Save the new passkey with its name; your first factor brings recovery codes, shown once.");
         me.MapPatch("/factors/{id:guid}", RenameAsync).Validate<RenameFactorRequest>().RequireSignedIn().RequireRecentAuthentication().Produces<FactorResponse>(StatusCodes.Status200OK).WithName("RenameFactor").WithSummary("Rename one of your factors.");
         me.MapDelete("/factors/{id:guid}", RemoveAsync).RequireSignedIn().RequireRecentAuthentication().Produces(StatusCodes.Status204NoContent).WithName("RemoveFactor").WithSummary("Remove one of your factors; the last one stays while your organisation requires one.");
         me.MapPost("/recovery-codes", RegenerateAsync).RequireSignedIn().RequireRecentAuthentication().Produces<RecoveryCodesResponse>(StatusCodes.Status200OK).WithName("RegenerateRecoveryCodes").WithSummary("Ten new recovery codes, shown once; the old ones stop working.");
-        me.MapPost("/reauthentication", ReauthenticationAsync).RequireSignedIn().Produces<ReauthenticationOptionsResponse>(StatusCodes.Status200OK).WithName("ReauthenticationOptions").WithSummary("What confirming it is you asks: your password, and your second factor when you have one.");
-        me.MapPost("/reauthenticate", ReauthenticateAsync).Validate<ReauthenticateRequest>().RequireSignedIn().Produces<ReauthenticatedResponse>(StatusCodes.Status200OK).WithName("Reauthenticate").WithSummary("Confirm it is you, for a high-risk action: your password, and your second factor when you have one.");
+        me.MapPost("/reauthentication", ReauthenticationAsync).RequireSignedIn().AllowDuringRequiredStep().Produces<ReauthenticationOptionsResponse>(StatusCodes.Status200OK).WithName("ReauthenticationOptions").WithSummary("What confirming it is you asks: your password, and your second factor when you have one.");
+        me.MapPost("/reauthenticate", ReauthenticateAsync).Validate<ReauthenticateRequest>().RequireSignedIn().AllowDuringRequiredStep().Produces<ReauthenticatedResponse>(StatusCodes.Status200OK).WithName("Reauthenticate").WithSummary("Confirm it is you, for a high-risk action: your password, and your second factor when you have one.");
     }
 
     private static async Task<IResult> SecondFactorAsync(SecondFactorRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken) =>
@@ -172,7 +173,7 @@ internal static class FactorEndpoints
             return ApiResults.Problem(result.Error, http);
         }
 
-        AuthenticationChallenges.SetCookie(http, result.Value.Token);
+        AuthenticationChallenges.SetCookie(http, result.Value.Token, ChallengePurposes.PasskeySignIn);
         return TypedResults.Ok(Options(result.Value.Options));
     }
 
@@ -348,7 +349,7 @@ internal static class FactorEndpoints
         var outcome = result.Value;
         if (outcome.Step is { } step)
         {
-            AuthenticationChallenges.SetCookie(http, step.ChallengeToken);
+            AuthenticationChallenges.SetCookie(http, step.ChallengeToken, step.Kind);
             return TypedResults.Ok(new LoginResponse(null, null, new SignInStepResponse(step.Kind, step.Methods, step.ExpiresAt)));
         }
 
@@ -387,7 +388,7 @@ internal static class FactorEndpoints
             : person;
     }
 
-    /// <summary>The person and the factor they are adding in this session, while its five minutes last.</summary>
+    /// <summary>The person and the factor they are adding in this session, while its fifteen minutes last.</summary>
     private static async Task<Result<(Principal Person, AuthenticationChallenge Challenge)>> AddingAsync(RequestPrincipal principal, IdentityDbContext context, AuthenticationChallenges challenges, CancellationToken cancellationToken)
     {
         var person = await PersonAsync(principal, context, cancellationToken);
@@ -398,7 +399,7 @@ internal static class FactorEndpoints
 
         var challenge = await challenges.FindForSessionAsync(principal.Current!.SessionId, ChallengePurposes.AddFactor, cancellationToken);
         return challenge is null
-            ? Error.Conflict(IdentityErrors.FactorInvalid, "Adding this factor took more than five minutes, or ended. Start again.")
+            ? Error.Conflict(IdentityErrors.FactorInvalid, "Adding this factor took too long, or ended. Start again.")
             : (person.Value, challenge);
     }
 

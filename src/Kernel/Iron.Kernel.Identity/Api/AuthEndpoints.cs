@@ -70,7 +70,8 @@ public sealed record MeResponse(
     bool AllUnits,
     WorkingUnitsResponse WorkingUnits,
     DateTimeOffset? PasswordExpiresAt = null,
-    DateTimeOffset? MfaEnrolBy = null);
+    DateTimeOffset? MfaEnrolBy = null,
+    bool MfaEnrolmentRequired = false);
 
 /// <summary>A unit the person may work for, with its depth and its path of names, for the header's menu on the tree.</summary>
 public sealed record WorkingUnitChoiceResponse(Guid Id, string Name, string Code, int Depth, IReadOnlyList<UnitPathStep> Path);
@@ -145,10 +146,10 @@ internal static class AuthEndpoints
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
 
         auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("Login").WithSummary("Sign in with login identifier and password.");
-        auth.MapPost("/logout", LogoutAsync).RequireSignedIn().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
+        auth.MapPost("/logout", LogoutAsync).RequireSignedIn().AllowDuringRequiredStep().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
         auth.MapPost("/invitations/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account; the token comes from the link's fragment.");
 
-        endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
+        endpoints.MapGet("/api/v1/me", MeAsync).RequireSignedIn().AllowDuringRequiredStep().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("Me").WithSummary("The signed-in principal, its permissions and the session expiry.");
         endpoints.MapPost("/api/v1/me/acting-for", ActForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("ActFor").WithSummary("Act for someone who delegated duties to you and whose delegation is active; answers /me.");
         endpoints.MapPost("/api/v1/me/working-unit", WorkForAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("WorkFor").WithSummary("Choose the unit you work for, among your home unit and the units of your roles, or all of them where your roles reach several; answers /me.");
         endpoints.MapDelete("/api/v1/me/acting-for", StopActingAsync).RequireSignedIn().WithTags("me").Produces<MeResponse>(StatusCodes.Status200OK).WithName("StopActing").WithSummary("Act as yourself again; answers /me.");
@@ -259,7 +260,8 @@ internal static class AuthEndpoints
             allUnits,
             choices,
             changedAt?.AddDays(rules.MaximumAgeDays),
-            enrolBy);
+            enrolBy,
+            RequiredStep.Get(http)?.Code == IdentityErrors.MfaEnrolmentRequired);
     }
 
     private static async Task<IResult> WorkForAsync(WorkForRequest request, HttpContext http, RequestPrincipal principal, SessionService sessions, CancellationToken cancellationToken)

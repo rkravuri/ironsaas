@@ -1735,7 +1735,7 @@
       "invalid": "That did not prove it is you. Check the code, or try another way.",
       "cooling_one": "Too many wrong codes in a row. Wait {{count}} second, then try again.",
       "cooling_other": "Too many wrong codes in a row. Wait {{count}} seconds, then try again.",
-      "expired": "This sign-in took more than five minutes. Start again with your password.",
+      "expired": "This sign-in took too long, or ended. Start again with your password.",
       "factorInvalid": "The code does not match. Check that the time on your phone is right, and type the code it shows now.",
       "passkeyCancelled": "The passkey was not used. Try again when you are ready, or use another way.",
       "passkeyOff": "Your organisation does not let you sign in with a passkey alone. Sign in with your password.",
@@ -1795,6 +1795,11 @@
     "banner": {
       "text": "Your organisation requires a second factor. Add one by {{when}}.",
       "link": "Add one in My profile."
+    },
+    "required": {
+      "title": "Set up a second factor",
+      "intro": "Your organisation now requires a second factor of you. Set one up to go on: you stay signed in, and return to where you were.",
+      "signOut": "Sign out instead"
     }
   }
 }

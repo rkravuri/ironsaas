@@ -78,7 +78,7 @@ public static class IdentityErrors
 
     // Second factors (TF-013, ADR-0047).
 
-    /// <summary>The sign-in under way is unknown, used or older than five minutes: sign in again from the password.</summary>
+    /// <summary>The sign-in under way is unknown, used or past its time (five minutes, an enrolment fifteen): sign in again from the password.</summary>
     public const string SignInExpired = "identity.sign_in.expired";
 
     /// <summary>A second factor that did not prove the person: a wrong or used code, a recovery code that does not work, a passkey that did not verify.</summary>
@@ -86,6 +86,12 @@ public static class IdentityErrors
 
     /// <summary>Three wrong codes in a row: no code is checked until the cooling period ends (TF-013 AC2).</summary>
     public const string SecondFactorCooling = "identity.second_factor.cooling";
+
+    /// <summary>
+    /// The tenant's policy now requires a second factor of the signed-in person, who has none: every request but the
+    /// enrolment's own answers it, 403, until they enrol in their session, which goes on (ADR-0047).
+    /// </summary>
+    public const string MfaEnrolmentRequired = "identity.mfa.enrolment_required";
 
     /// <summary>The tenant does not allow signing in with a passkey alone.</summary>
     public const string PasskeySignInOff = "identity.passkey_sign_in.off";

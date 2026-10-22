@@ -1,11 +1,12 @@
 import type { RouteObject } from "react-router";
+import { EnrolmentPage } from "@/auth/EnrolmentPage";
 import { InvitationPage } from "@/auth/InvitationPage";
 import { LoginPage } from "@/auth/LoginPage";
 import { RecoveryPage } from "@/auth/RecoveryPage";
 import { HomePage } from "@/home/HomePage";
 import { declaredRoutes, type ModuleManifest } from "@/modules/registry";
 import { RouteErrorPage } from "./ErrorBoundary";
-import { RedirectIfSignedIn, RequirePermission, RequireSession } from "./Guards";
+import { RedirectIfSignedIn, RequireEnrolled, RequirePermission, RequireSession } from "./Guards";
 import { Layout } from "./Layout";
 
 /**
@@ -44,12 +45,24 @@ export function shellRoutes(
     { path: "/invitations", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
     { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
     { path: "/recovery", element: <RecoveryPage />, errorElement: <RouteErrorPage /> },
+    // Signed in, outside the frame: the second factor the tenant's policy now requires, before any page (ADR-0047).
+    {
+      path: "/enrol",
+      element: (
+        <RequireSession>
+          <EnrolmentPage />
+        </RequireSession>
+      ),
+      errorElement: <RouteErrorPage />,
+    },
     ...extra,
     {
       path: "/",
       element: (
         <RequireSession>
-          <Layout />
+          <RequireEnrolled>
+            <Layout />
+          </RequireEnrolled>
         </RequireSession>
       ),
       errorElement: <RouteErrorPage />,

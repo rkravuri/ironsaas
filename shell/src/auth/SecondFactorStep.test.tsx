@@ -163,7 +163,7 @@ describe("signing in with a second factor", () => {
     await typePassword(user);
     await fill(user, await screen.findByLabelText(/code from your authenticator app/i), "123456");
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("This sign-in took more than five minutes.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("This sign-in took too long, or ended.");
     await user.click(screen.getByRole("button", { name: "Start again" }));
 
     await waitFor(() => expect(screen.getByLabelText(/login identifier/i)).toHaveValue("ada@acme.localhost"));

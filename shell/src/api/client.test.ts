@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   ApiError,
   listSchema,
+  onEnrolmentRequired,
   onReauthenticationRequired,
   onResponse,
   onUnauthenticated,
@@ -158,5 +159,17 @@ describe("the API client", () => {
     expect((cancelled as ApiError).needsReauthentication).toBe(true);
     expect(unanswered).toBeInstanceOf(ApiError);
     expect(sent).toBe(2);
+  });
+
+  it("tells the frame when a call is refused because the tenant now requires a second factor of the person [TF-013 AC1, ADR-0047]", async () => {
+    stubFetch({ "GET /api/v1/users": () => problem(403, { error_code: "identity.mfa.enrolment_required" }) });
+    const heard = vi.fn();
+    const stop = onEnrolmentRequired(heard);
+
+    const refused = await request("/api/v1/users").catch((error: unknown) => error);
+    stop();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect((refused as ApiError).status).toBe(403); // the session stays: a 403, not a 401
   });
 });

@@ -47,7 +47,8 @@ public static class ContextPartExtensions
     public static IEndpointRouteBuilder MapContext(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
-        endpoints.MapGet(Path, BuildAsync).RequireSignedIn().WithTags("me").Produces<SortedDictionary<string, object>>(StatusCodes.Status200OK).WithName("MyContext").WithSummary("What applies to you in this tenant now: its entitlements and the flags (settings join in A6).");
+        // The shell reads it on every page, also while a required step is pending: it says what applies, and changes nothing.
+        endpoints.MapGet(Path, BuildAsync).RequireSignedIn().AllowDuringRequiredStep().WithTags("me").Produces<SortedDictionary<string, object>>(StatusCodes.Status200OK).WithName("MyContext").WithSummary("What applies to you in this tenant now: its entitlements and the flags (settings join in A6).");
         return endpoints;
     }
 
