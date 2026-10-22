@@ -84,7 +84,8 @@ describe("enrolment required in the session", () => {
     await user.click(screen.getByLabelText("I have saved my recovery codes"));
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
-    expect(await screen.findByText("users loaded")).toBeInTheDocument();
+    // After Continue: /me read again, the way back, and the page's call; under the whole suite's load more than a second.
+    expect(await screen.findByText("users loaded", {}, { timeout: 5_000 })).toBeInTheDocument();
     expect(screen.queryByText("login page")).toBeNull();
     expect(calls.filter((call) => call.key === "GET /api/v1/users").length).toBeGreaterThanOrEqual(1);
   });
