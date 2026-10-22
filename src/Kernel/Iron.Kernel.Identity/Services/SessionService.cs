@@ -26,6 +26,7 @@ public sealed class SessionService(
     IIpLocations locations,
     RevocationTimes revocations,
     SecurityEventLog securityEvents,
+    TermsService terms,
     ILogger<SessionService> logger)
 {
     /// <summary>
@@ -316,8 +317,11 @@ public sealed class SessionService(
         // A provider's multi-factor sign-in that the tenant trusts stands for the person's own factor (ADR-0048). An
         // impersonator and a break-glass account take no step that is the person's own (ADR-0049).
         var ownSteps = !found.Session.IsImpersonation && found.Session.Method != SessionMethods.BreakGlass;
-        var mustEnrol = ownSteps && found.Session.SecondFactor != Session.ProviderMultiFactor && await MustEnrolAsync(found.Principal, now, cancellationToken).ConfigureAwait(false);
-        return SessionResolution.Alive(Describe(found.Principal, found.Session), actingEnded) with { MustEnrol = mustEnrol };
+
+        // Terms first (TF-028 AC1): a person must accept every current version before anything else, enrolment included.
+        var termsRequired = ownSteps && found.Principal.Type == PrincipalType.User && (await terms.PendingAsync(found.Principal.Id, cancellationToken).ConfigureAwait(false)).Count > 0;
+        var mustEnrol = ownSteps && !termsRequired && found.Session.SecondFactor != Session.ProviderMultiFactor && await MustEnrolAsync(found.Principal, now, cancellationToken).ConfigureAwait(false);
+        return SessionResolution.Alive(Describe(found.Principal, found.Session), actingEnded) with { MustEnrol = mustEnrol, TermsRequired = termsRequired };
     }
 
     /// <summary>
@@ -334,7 +338,7 @@ public sealed class SessionService(
         }
 
         var rules = await mfa.RulesAsync(cancellationToken).ConfigureAwait(false);
-        if (rules.RequiredFor == MfaRequirement.Nobody
+        if ((rules.RequiredFor == MfaRequirement.Nobody && !principal.Emergency)
             || await context.Factors.AnyAsync(f => f.PrincipalId == principal.Id, cancellationToken).ConfigureAwait(false)
             || !await mfa.IsRequiredAsync(principal, rules, cancellationToken).ConfigureAwait(false))
         {
@@ -350,7 +354,8 @@ public sealed class SessionService(
                 .ExecuteUpdateAsync(set => set.SetProperty(p => p.MfaRequiredSince, now), cancellationToken).ConfigureAwait(false);
         }
 
-        return rules.GraceDays == 0 || now >= since.Value.AddDays(rules.GraceDays);
+        var grace = MfaPolicy.GraceDaysFor(principal, rules);
+        return grace == 0 || now >= since.Value.AddDays(grace);
     }
 
     /// <summary>Ends the session now (TF-029 AC3: nothing is served on it afterwards).</summary>

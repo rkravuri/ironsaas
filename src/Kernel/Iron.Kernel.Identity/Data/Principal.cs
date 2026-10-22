@@ -118,6 +118,14 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     /// </summary>
     public DateTimeOffset? BreakGlassUntil { get; private set; }
 
+    /// <summary>
+    /// One of the tenant's emergency accounts (ADR-0049): a local account for when the tenant's identity provider is down,
+    /// exempt from single sign-on only, always with a second factor, and every sign-in with it raises an alert.
+    /// </summary>
+    public bool Emergency { get; private set; }
+
+    public void MarkEmergency(bool emergency) => Emergency = emergency;
+
     /// <summary>A break-glass account: active at once, with no password, until its time limit.</summary>
     public void OpenForBreakGlass(DateTimeOffset until)
     {

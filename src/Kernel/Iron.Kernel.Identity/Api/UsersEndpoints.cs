@@ -61,7 +61,18 @@ public sealed record UserRecordResponse(
     bool TakeoverAllowed = false,
     bool SsoOnly = false,
     bool SsoOnlyByProvider = false,
-    IReadOnlyList<SsoLinkResponse>? SsoLinks = null);
+    IReadOnlyList<SsoLinkResponse>? SsoLinks = null,
+    bool Emergency = false,
+    DateTimeOffset? BreakGlassUntil = null);
+
+/// <summary>One of the tenant's emergency accounts, or not (ADR-0049).</summary>
+public sealed record SetEmergencyRequest(bool Emergency);
+
+/// <summary>An emergency account's sign-in, for the administrators' banner (ADR-0049).</summary>
+public sealed record EmergencySignInResponse(Guid Id, Guid PrincipalId, string DisplayName, string LoginId, DateTimeOffset At);
+
+/// <summary>The emergency sign-ins of the last day.</summary>
+public sealed record SecurityAlertsResponse(IReadOnlyList<EmergencySignInResponse> EmergencySignIns);
 
 /// <summary>A person's link to a single sign-on provider, as the user record shows it (ADR-0048).</summary>
 public sealed record SsoLinkResponse(Guid ProviderId, string ProviderName, string Email, DateTimeOffset LinkedAt, DateTimeOffset LastSignInAt);
@@ -134,6 +145,8 @@ internal static class UsersEndpoints
         users.MapPost("/{id:guid}/factors/reset", ResetFactorsAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Validate<ResetFactorsRequest>().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("ResetFactors").WithSummary("Remove a person's second factors and recovery codes, with a reason, for someone whose permissions you hold; their sessions end.");
         users.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("DeactivateUser").WithSummary("Deactivate a person: they cannot sign in, their sessions end and their tokens are refused.");
         users.MapPut("/{id:guid}/sso-only", SetSsoOnlyAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("SetSsoOnly").WithSummary("Mark a person to sign in only through a single sign-on provider, or let them use a password again.");
+        users.MapPut("/{id:guid}/emergency", SetEmergencyAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("SetEmergency").WithSummary("Mark a person's account as one of the tenant's two emergency accounts, which sign in with a password and a second factor when the company login is down, or remove the mark.");
+        endpoints.MapGet("/api/v1/security-alerts", AlertsAsync).WithTags("users").RequirePermission(IdentityPermissions.UsersManage).Produces<SecurityAlertsResponse>(StatusCodes.Status200OK).WithName("SecurityAlerts").WithSummary("What the tenant's administrators must look at: the emergency accounts' sign-ins of the last 24 hours.");
         users.MapPost("/{id:guid}/revoke", RevokeAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Validate<RevokeRequest>().Produces<SessionsEndedResponse>(StatusCodes.Status200OK).WithName("RevokePrincipal").WithSummary("Revoke everything of a person or a service account, with a reason: every session ends now and no token issued until now is accepted.");
         users.MapPost("/{id:guid}/reactivate", ReactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<ReactivateUserResponse>(StatusCodes.Status200OK).WithName("ReactivateUser").WithSummary("Reactivate a person; one who never set a password gets a new invitation.");
     }
@@ -208,7 +221,9 @@ internal static class UsersEndpoints
             takeover,
             principal.SsoOnly,
             ssoOnly.SsoOnly && !ssoOnly.Marked,
-            [.. links.Select(l => new SsoLinkResponse(l.ProviderId, l.ProviderName, l.Email, l.LinkedAt, l.LastSignInAt))]);
+            [.. links.Select(l => new SsoLinkResponse(l.ProviderId, l.ProviderName, l.Email, l.LinkedAt, l.LastSignInAt))],
+            principal.Emergency,
+            principal.BreakGlassUntil);
     }
 
     /// <summary>
@@ -303,6 +318,31 @@ internal static class UsersEndpoints
 
         var result = await users.SetSsoOnlyAsync(target.Value, request.SsoOnly, cancellationToken);
         return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
+    }
+
+    private static async Task<IResult> SetEmergencyAsync(Guid id, SetEmergencyRequest request, HttpContext http, UserService users, CancellationToken cancellationToken)
+    {
+        var target = await ManageableAsync(id, http, "change the emergency accounts among", cancellationToken);
+        if (target.IsFailure)
+        {
+            return Refused(target.Error, http);
+        }
+
+        var result = await users.SetEmergencyAsync(target.Value, request.Emergency, cancellationToken);
+        return result.IsFailure ? ApiResults.Problem(result.Error, http) : TypedResults.Ok(await RecordAsync(result.Value, http.RequestServices, cancellationToken));
+    }
+
+    /// <summary>The emergency sign-ins of the last 24 hours (ADR-0049): the banner of every administrator who may manage people.</summary>
+    private static async Task<IResult> AlertsAsync(IdentityDbContext context, TimeProvider time, CancellationToken cancellationToken)
+    {
+        var since = time.GetUtcNow().AddHours(-24);
+        var rows = await context.SecurityEvents.AsNoTracking()
+            .Where(e => e.Kind == SecurityEventKinds.EmergencySignIn && e.OccurredAt >= since)
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(20)
+            .Join(context.Principals.AsNoTracking(), e => e.PrincipalId, p => p.Id, (e, p) => new { e.Id, PrincipalId = p.Id, p.DisplayName, p.LoginId, e.OccurredAt })
+            .ToListAsync(cancellationToken);
+        return TypedResults.Ok(new SecurityAlertsResponse([.. rows.OrderByDescending(r => r.OccurredAt).Select(r => new EmergencySignInResponse(r.Id, r.PrincipalId, r.DisplayName, r.LoginId, r.OccurredAt))]));
     }
 
     private static async Task<IResult> RevokeAsync(Guid id, RevokeRequest request, HttpContext http, SessionConsole console, CancellationToken cancellationToken)

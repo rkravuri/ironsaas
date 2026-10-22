@@ -41,6 +41,14 @@ public sealed class MfaPolicy(ISettings settings, IRoleAssignments roleAssignmen
         return new MfaRules(requiredFor, codes, allowed, grace, passkeySignIn);
     }
 
+    /// <summary>The grace a person has before enrolling: the tenant's, and none for an emergency account (ADR-0049).</summary>
+    public static int GraceDaysFor(Principal principal, MfaRules rules)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        ArgumentNullException.ThrowIfNull(rules);
+        return principal.Emergency ? 0 : rules.GraceDays;
+    }
+
     public async Task<bool> IsRequiredAsync(Principal principal, MfaRules rules, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(principal);
@@ -48,6 +56,12 @@ public sealed class MfaPolicy(ISettings settings, IRoleAssignments roleAssignmen
         if (principal.Type != PrincipalType.User)
         {
             return false;
+        }
+
+        // An emergency account always has a second factor, whatever the policy says (ADR-0049).
+        if (principal.Emergency)
+        {
+            return true;
         }
 
         switch (rules.RequiredFor)

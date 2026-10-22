@@ -37,6 +37,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<SignInLink> SignInLinks => Set<SignInLink>();
 
+    public DbSet<TenantDocument> TenantDocuments => Set<TenantDocument>();
+
+    public DbSet<DocumentAcceptance> DocumentAcceptances => Set<DocumentAcceptance>();
+
     private const int DeviceNamesMaxLength = Services.DeviceNames.MaxLength;
 
     protected override void ConfigureModule(ModelBuilder modelBuilder)
@@ -162,6 +166,23 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             session.HasIndex(s => s.ImpersonatorId);
             session.HasIndex(s => s.CreatedAt);
             session.HasIndex(s => s.EndedAt);
+        });
+
+        modelBuilder.Entity<TenantDocument>(document =>
+        {
+            document.Property(d => d.Key).HasMaxLength(TenantDocument.KeyMaxLength);
+            document.Property(d => d.Title).HasMaxLength(TenantDocument.TitleMaxLength);
+            document.Property(d => d.Body).HasMaxLength(TenantDocument.BodyMaxLength);
+            document.HasIndex(d => new { d.Key, d.Number }).IsUnique();
+        });
+
+        modelBuilder.Entity<DocumentAcceptance>(acceptance =>
+        {
+            acceptance.HasOne<Principal>().WithMany().HasForeignKey(a => a.PrincipalId).OnDelete(DeleteBehavior.Cascade);
+            acceptance.Property(a => a.Source).HasMaxLength(DocumentAcceptance.SourceMaxLength);
+            acceptance.Property(a => a.DocumentKey).HasMaxLength(TenantDocument.KeyMaxLength);
+            acceptance.HasIndex(a => new { a.PrincipalId, a.Source, a.DocumentKey, a.Version }).IsUnique();
+            acceptance.HasIndex(a => new { a.Source, a.DocumentKey, a.Version });
         });
 
         modelBuilder.Entity<SignInLink>(link =>

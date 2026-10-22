@@ -169,6 +169,7 @@ internal static class AuthEndpoints
         SsoEndpoints.Map(endpoints);
         SessionEndpoints.Map(endpoints);
         ImpersonationEndpoints.Map(endpoints);
+        TermsEndpoints.Map(endpoints);
     }
 
     private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken) =>

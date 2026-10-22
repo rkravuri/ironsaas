@@ -112,6 +112,60 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.ToTable("authentication_challenges", "kernel_identity");
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.DocumentAcceptance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DocumentKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("document_key");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("source");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_document_acceptances");
+
+                    b.HasIndex("Source", "DocumentKey", "Version")
+                        .HasDatabaseName("ix_document_acceptances_source_document_key_version");
+
+                    b.HasIndex("PrincipalId", "Source", "DocumentKey", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_document_acceptances_principal_id_source_document_key_versi");
+
+                    b.ToTable("document_acceptances", "kernel_identity", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
             modelBuilder.Entity("Iron.Kernel.Identity.Data.Factor", b =>
                 {
                     b.Property<Guid>("Id")
@@ -339,6 +393,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
+
+                    b.Property<bool>("Emergency")
+                        .HasColumnType("boolean")
+                        .HasColumnName("emergency");
 
                     b.Property<int>("FailedLoginAttempts")
                         .HasColumnType("integer")
@@ -1002,6 +1060,69 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.ToTable("sso_providers", "kernel_identity");
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.TenantDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(100000)
+                        .HasColumnType("character varying(100000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<DateTimeOffset>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_documents");
+
+                    b.HasIndex("Key", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_documents_key_number");
+
+                    b.ToTable("tenant_documents", "kernel_identity");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Identity.Data.TenantRevocation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1057,6 +1178,16 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .HasConstraintName("fk_authentication_challenges_sessions_session_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.DocumentAcceptance", b =>
+                {
+                    b.HasOne("Iron.Kernel.Identity.Data.Principal", null)
+                        .WithMany()
+                        .HasForeignKey("PrincipalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_document_acceptances_principals_principal_id");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Identity.Data.Factor", b =>

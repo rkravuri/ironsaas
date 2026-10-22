@@ -80,7 +80,8 @@ public sealed class FactorService(
         var rules = await policy.RulesAsync(cancellationToken).ConfigureAwait(false);
         var factors = await OfAsync(principal.Id, cancellationToken).ConfigureAwait(false);
         var required = await policy.IsRequiredAsync(principal, rules, cancellationToken).ConfigureAwait(false);
-        var enrolBy = required && factors.Count == 0 && principal.MfaRequiredSince is { } since && rules.GraceDays > 0 ? since.AddDays(rules.GraceDays) : (DateTimeOffset?)null;
+        var grace = MfaPolicy.GraceDaysFor(principal, rules);
+        var enrolBy = required && factors.Count == 0 && principal.MfaRequiredSince is { } since && grace > 0 ? since.AddDays(grace) : (DateTimeOffset?)null;
         return new FactorsOverview(factors, await recoveryCodes.RemainingAsync(principal.Id, cancellationToken).ConfigureAwait(false), required, rules.Allowed, enrolBy);
     }
 

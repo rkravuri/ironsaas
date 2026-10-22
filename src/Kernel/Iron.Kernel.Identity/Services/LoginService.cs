@@ -146,7 +146,8 @@ public sealed class LoginService(
             var now = time.GetUtcNow();
             var since = principal.MfaRequiredSince ?? principal.MfaRequiredFrom(now);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            if (rules.GraceDays == 0 || now >= since.AddDays(rules.GraceDays))
+            var grace = MfaPolicy.GraceDaysFor(principal, rules);
+            if (grace == 0 || now >= since.AddDays(grace))
             {
                 return await StepAsync(principal, ChallengePurposes.Enrolment, rules.Allowed, cancellationToken).ConfigureAwait(false);
             }
@@ -326,7 +327,8 @@ public sealed class LoginService(
             var now = time.GetUtcNow();
             var since = principal.MfaRequiredSince ?? principal.MfaRequiredFrom(now);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            if (rules.GraceDays == 0 || now >= since.AddDays(rules.GraceDays))
+            var grace = MfaPolicy.GraceDaysFor(principal, rules);
+            if (grace == 0 || now >= since.AddDays(grace))
             {
                 return await StepAsync(principal, ChallengePurposes.Enrolment, rules.Allowed, cancellationToken, providerId).ConfigureAwait(false);
             }
@@ -424,6 +426,12 @@ public sealed class LoginService(
                 }
 
                 await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.LoginSucceeded, AuditOutcome.Success, principal.Id, principal.LoginId, details, RecordType: "session", RecordId: session.Id), cancellationToken).ConfigureAwait(false);
+                if (principal.Emergency)
+                {
+                    // Every sign-in with an emergency account is an alert: the person's activity, the audit at high severity, the administrators' banner (ADR-0049).
+                    await securityEvents.RecordAsync(principal, SecurityEventKinds.EmergencySignIn, SecurityEventActors.Self, null, null, details, cancellationToken, actorId: principal.Id, severity: AuditSeverity.High).ConfigureAwait(false);
+                    logger.LogWarning("Emergency account {PrincipalId} signed in.", principal.Id);
+                }
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
                 logger.LogInformation("Login succeeded for principal {PrincipalId}.", principal.Id);
