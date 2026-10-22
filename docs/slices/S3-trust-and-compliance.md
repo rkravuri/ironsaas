@@ -66,7 +66,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 | T2 | Passwords: policy, history, lockout, recovery and change; account security events | TF-012, TF-017, TF-019 | done (main, 902cd3d) |
 | T3 | MFA and step-up re-authentication | TF-013, TF-248 | done (main, e1752cc) |
 | T4 | Single sign-on with OpenID Connect | TF-014 | done (main, becf9a8) |
-| T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-021 AC2, TF-022, TF-025, TF-026, TF-028, TF-029 | in review (slice/s3-t5, ADR-0049) |
+| T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-021 AC2, TF-022, TF-025, TF-026, TF-028, TF-029 | done (main, 8f19e4b) |
 | T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |
 | T7 | Field-level change history, electronic signatures, signature manifestation, audit-trail review | TF-062, TF-063, TF-219 | outline |
 | T8 | Evidence exports, second approval for sensitive changes, validation pack per release | TF-067, TF-068, TF-218 | outline |
