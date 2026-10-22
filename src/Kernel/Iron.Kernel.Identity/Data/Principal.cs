@@ -112,6 +112,21 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     /// <summary>Everything of the principal issued until now stops working: sessions and tokens (TF-029).</summary>
     public void RevokeAll(DateTimeOffset now) => ValidAfter = now;
 
+    /// <summary>
+    /// A break-glass account's time limit (TF-026, ADR-0049): it signs in only by its one-time link and only until then;
+    /// the unit refuses it afterwards by itself, whatever the fleet does. Null for everyone else.
+    /// </summary>
+    public DateTimeOffset? BreakGlassUntil { get; private set; }
+
+    /// <summary>A break-glass account: active at once, with no password, until its time limit.</summary>
+    public void OpenForBreakGlass(DateTimeOffset until)
+    {
+        BreakGlassUntil = until;
+        Status = PrincipalStatus.Active;
+        InvitationTokenHash = null;
+        InvitationExpiresAt = null;
+    }
+
     public bool CanLogIn => Status == PrincipalStatus.Active && PasswordHash is not null;
 
     /// <summary>A single sign-on provider may sign the principal in: a person who is active, or invited and never signed in (ADR-0048).</summary>

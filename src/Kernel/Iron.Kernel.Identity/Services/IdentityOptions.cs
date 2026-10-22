@@ -33,6 +33,9 @@ public sealed class IdentityOptions
         /// <summary>The cookie that holds the session token.</summary>
         public string CookieName { get; set; } = "iron.session";
 
+        /// <summary>The cookie of an impersonation, over the impersonator's own session, which it leaves as it was (ADR-0049).</summary>
+        public string ImpersonationCookieName { get; set; } = "iron.impersonation";
+
         /// <summary>The system default of <c>identity.session.idle_minutes</c>: what a session takes while the tenant has set nothing.</summary>
         public int IdleMinutes { get; set; } = 60;
 

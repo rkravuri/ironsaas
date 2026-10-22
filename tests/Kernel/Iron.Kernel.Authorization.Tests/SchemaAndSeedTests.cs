@@ -43,6 +43,22 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-026 AC1", "ADR-0049")]
+    public async Task TheBreakGlassRoleHoldsEveryPermissionButTheCriticalOnes()
+    {
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
+        Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+
+        await using var scope = provider.CreateAsyncScope();
+        var role = await scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>().Roles.AsNoTracking().SingleAsync(r => r.Code == SystemRoles.BreakGlass, TestContext.Current.CancellationToken);
+        var catalogue = scope.ServiceProvider.GetRequiredService<Iron.Kernel.Api.Permissions.PermissionCatalogue>();
+
+        Assert.True(role.IsSystem);
+        Assert.Equal(PrincipalKind.User, role.PrincipalType);
+        Assert.Equal(catalogue.All.Where(p => p.Risk != Risk.Critical).Select(p => p.Name).Order(StringComparer.Ordinal), role.Permissions);
+    }
+
+    [Fact]
     [Proves("ADR-0030")]
     public async Task SeedCreatesOneRootUnitOfTheRootKindAndRunsAgainWithoutASecond()
     {

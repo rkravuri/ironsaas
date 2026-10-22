@@ -53,6 +53,21 @@ public sealed class IdentityModule : IModule
         configuration.GetSection(AdministratorRecoveryOptions.SectionName).Bind(recovery);
         services.AddSingleton(recovery);
         services.AddScoped<IUnitCommand, AdministratorRecoveryCommand>();
+
+        // The operator's support and emergency access (TF-025, TF-026, ADR-0049).
+        var impersonation = new OperatorImpersonationOptions();
+        configuration.GetSection(OperatorImpersonationOptions.SectionName).Bind(impersonation);
+        services.AddSingleton(impersonation);
+        var breakGlass = new BreakGlassOptions();
+        configuration.GetSection(BreakGlassOptions.SectionName).Bind(breakGlass);
+        services.AddSingleton(breakGlass);
+        services.AddScoped<ImpersonationService>();
+        services.AddScoped<BreakGlassAccounts>();
+        services.AddScoped<IUnitCommand, OperatorImpersonationCommand>();
+        services.AddScoped<IUnitCommand, BreakGlassOpenCommand>();
+        services.AddScoped<IUnitCommand, BreakGlassCloseCommand>();
+        services.AddScoped<IValidator<StartImpersonationRequest>, StartImpersonationRequestValidator>();
+        services.AddScoped<IValidator<SignInLinkRequest>, SignInLinkRequestValidator>();
         // The handover place is the secret store's to give (ADR-0046); without it, nothing is handed over.
         services.TryAddSingleton<Iron.Kernel.Handover.IOperatorHandover, Iron.Kernel.Handover.NoOperatorHandover>();
 

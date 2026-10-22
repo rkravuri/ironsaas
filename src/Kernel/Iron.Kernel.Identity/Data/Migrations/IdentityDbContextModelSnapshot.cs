@@ -317,6 +317,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset?>("BreakGlassUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("break_glass_until");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -738,6 +742,88 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.ToTable("sessions", "kernel_identity");
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.SignInLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid?>("ImpersonatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("impersonator_id");
+
+                    b.Property<string>("ImpersonatorName")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("impersonator_name");
+
+                    b.Property<int?>("Minutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("minutes");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sign_in_links");
+
+                    b.HasIndex("PrincipalId")
+                        .HasDatabaseName("ix_sign_in_links_principal_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sign_in_links_token_hash");
+
+                    b.ToTable("sign_in_links", "kernel_identity");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Identity.Data.SsoLink", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1027,6 +1113,16 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_sessions_sso_providers_provider_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.SignInLink", b =>
+                {
+                    b.HasOne("Iron.Kernel.Identity.Data.Principal", null)
+                        .WithMany()
+                        .HasForeignKey("PrincipalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sign_in_links_principals_principal_id");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Identity.Data.SsoLink", b =>

@@ -35,6 +35,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<TenantRevocation> TenantRevocations => Set<TenantRevocation>();
 
+    public DbSet<SignInLink> SignInLinks => Set<SignInLink>();
+
     private const int DeviceNamesMaxLength = Services.DeviceNames.MaxLength;
 
     protected override void ConfigureModule(ModelBuilder modelBuilder)
@@ -160,6 +162,17 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             session.HasIndex(s => s.ImpersonatorId);
             session.HasIndex(s => s.CreatedAt);
             session.HasIndex(s => s.EndedAt);
+        });
+
+        modelBuilder.Entity<SignInLink>(link =>
+        {
+            link.HasOne<Principal>().WithMany().HasForeignKey(l => l.PrincipalId).OnDelete(DeleteBehavior.Cascade);
+            link.Property(l => l.Purpose).HasMaxLength(SignInLinkPurposes.MaxLength);
+            link.Property(l => l.TokenHash).HasMaxLength(64);
+            link.HasIndex(l => l.TokenHash).IsUnique();
+            link.HasIndex(l => l.PrincipalId);
+            link.Property(l => l.ImpersonatorName).HasMaxLength(Session.ImpersonatorNameMaxLength);
+            link.Property(l => l.Reason).HasMaxLength(Session.ImpersonationReasonMaxLength);
         });
 
         modelBuilder.Entity<TenantRevocation>(revocation =>

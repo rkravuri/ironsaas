@@ -31,22 +31,36 @@ public static class RequiredStep
     public static IResult? Refusal(HttpContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return Get(context) is { } step && context.GetEndpoint()?.Metadata.GetMetadata<AllowedDuringRequiredStepMetadata>() is null
+        if (Get(context) is not { } step)
+        {
+            return null;
+        }
+
+        var allowed = context.GetEndpoint()?.Metadata.GetMetadata<AllowedDuringRequiredStepMetadata>();
+        return allowed is null || (allowed.Steps.Count > 0 && !allowed.Steps.Contains(step.Code, StringComparer.Ordinal))
             ? ApiResults.Problem(step, context)
             : null;
     }
 }
 
-/// <summary>Endpoint metadata: the endpoint answers while a required step is pending, since it is part of taking it.</summary>
-public sealed class AllowedDuringRequiredStepMetadata;
+/// <summary>
+/// Endpoint metadata: the endpoint answers while a required step is pending, since it is part of taking it: during any
+/// step (who am I, sign out) or only during the steps it names (the enrolment's doors during the enrolment, the terms'
+/// during the terms, ADR-0049).
+/// </summary>
+public sealed class AllowedDuringRequiredStepMetadata(IReadOnlyList<string> steps)
+{
+    public IReadOnlyList<string> Steps { get; } = steps;
+}
 
 public static class RequiredStepEndpointExtensions
 {
-    public static TBuilder AllowDuringRequiredStep<TBuilder>(this TBuilder builder)
+    /// <summary>Answers during the steps named by their error codes, or during any step when none is named.</summary>
+    public static TBuilder AllowDuringRequiredStep<TBuilder>(this TBuilder builder, params string[] steps)
         where TBuilder : IEndpointConventionBuilder
     {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.WithMetadata(new AllowedDuringRequiredStepMetadata());
+        builder.WithMetadata(new AllowedDuringRequiredStepMetadata(steps));
         return builder;
     }
 }

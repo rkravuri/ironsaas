@@ -222,8 +222,11 @@ public sealed class UserService(
         return new ReactivatedUser(principal, invitation);
     }
 
-    /// <summary>The permissions the person holds, tenant-wide or anywhere, that the actor does not hold as widely.</summary>
-    private async Task<IReadOnlyList<string>> MissingPermissionsAsync(Guid principalId, CancellationToken cancellationToken)
+    /// <summary>
+    /// The permissions the person holds, tenant-wide or anywhere, that the actor does not hold as widely: the rule for a
+    /// recovery link, a factor reset (ADR-0046) and an impersonation (ADR-0049).
+    /// </summary>
+    public async Task<IReadOnlyList<string>> MissingPermissionsAsync(Guid principalId, CancellationToken cancellationToken)
     {
         var theirsEverywhere = await roleAssignments.PermissionsOfAsync(principalId, cancellationToken).ConfigureAwait(false);
         var theirsAnywhere = await roleAssignments.PermissionsOfAsync(principalId, AccessScope.Anywhere, cancellationToken).ConfigureAwait(false);

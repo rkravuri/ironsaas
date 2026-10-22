@@ -25,6 +25,7 @@ public sealed class SessionService(
     IHttpContextAccessor accessor,
     IIpLocations locations,
     RevocationTimes revocations,
+    SecurityEventLog securityEvents,
     ILogger<SessionService> logger)
 {
     /// <summary>
@@ -125,6 +126,12 @@ public sealed class SessionService(
         {
             // A session from before T3 has no authentication time of its own: its start is the last time anyone proved it.
             AuthenticatedAt = session.AuthenticatedAt ?? session.CreatedAt,
+            Method = session.Method,
+            ImpersonatorId = session.ImpersonatorId,
+            ImpersonatorName = session.ImpersonatorName,
+            ImpersonationReason = session.ImpersonationReason,
+            ImpersonationEndsAt = session.ImpersonationEndsAt,
+            ImpersonatorIsOperator = session.IsImpersonation && session.ReturnSessionId is null,
         };
     }
 
@@ -249,6 +256,12 @@ public sealed class SessionService(
             reason = SessionEndReasons.Revoked;
         }
 
+        // A break-glass account past its time limit is refused by the unit itself, whatever the fleet does (ADR-0049).
+        if (reason is null && found.Principal.BreakGlassUntil is { } until && now >= until)
+        {
+            reason = SessionEndReasons.Revoked;
+        }
+
         // Started before the principal's or the tenant's "valid after": revoked (TF-029, ADR-0049). A revocation ends the
         // sessions it knows at once; this catches any it did not, within the minute the tenant's time is kept.
         if (reason is null
@@ -265,6 +278,12 @@ public sealed class SessionService(
                 found.Session.End(now, reason);
                 await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.SessionExpired, AuditOutcome.Success, found.Principal.Id, found.Principal.LoginId, Reason: reason), cancellationToken).ConfigureAwait(false);
+                if (found.Session.IsImpersonation && reason == SessionEndReasons.ImpersonationEnded)
+                {
+                    // The person sees that the time given to sign in as them ran out (TF-025 AC3, AC6).
+                    var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["session_id"] = found.Session.Id.ToString("D"), ["ended_by"] = "time" };
+                    await securityEvents.RecordAsync(found.Principal, SecurityEventKinds.ImpersonationEnded, SecurityEventActors.System, found.Session.ImpersonatorName, null, details, cancellationToken, actorId: SystemPrincipal.SystemId).ConfigureAwait(false);
+                }
             }
 
             return SessionResolution.Expired(reason);
@@ -285,10 +304,19 @@ public sealed class SessionService(
         {
             found.Session.Touch(now);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            // The impersonator's own session waits under the impersonation and must still be there at its end (ADR-0049).
+            if (found.Session.ReturnSessionId is { } own)
+            {
+                await context.Sessions.Where(s => s.Id == own && s.EndedAt == null)
+                    .ExecuteUpdateAsync(set => set.SetProperty(s => s.LastActivityAt, now), cancellationToken).ConfigureAwait(false);
+            }
         }
 
-        // A provider's multi-factor sign-in that the tenant trusts stands for the person's own factor (ADR-0048).
-        var mustEnrol = found.Session.SecondFactor != Session.ProviderMultiFactor && await MustEnrolAsync(found.Principal, now, cancellationToken).ConfigureAwait(false);
+        // A provider's multi-factor sign-in that the tenant trusts stands for the person's own factor (ADR-0048). An
+        // impersonator and a break-glass account take no step that is the person's own (ADR-0049).
+        var ownSteps = !found.Session.IsImpersonation && found.Session.Method != SessionMethods.BreakGlass;
+        var mustEnrol = ownSteps && found.Session.SecondFactor != Session.ProviderMultiFactor && await MustEnrolAsync(found.Principal, now, cancellationToken).ConfigureAwait(false);
         return SessionResolution.Alive(Describe(found.Principal, found.Session), actingEnded) with { MustEnrol = mustEnrol };
     }
 
@@ -400,6 +428,9 @@ public sealed record SessionResolution(SignedInPrincipal? Principal, string? Exp
 {
     /// <summary>The person must enrol a second factor before anything else (ADR-0047); the session stays.</summary>
     public bool MustEnrol { get; init; }
+
+    /// <summary>The person must accept a document's new version before anything else (TF-028 AC1, ADR-0049); the session stays.</summary>
+    public bool TermsRequired { get; init; }
 
     public static readonly SessionResolution Unknown = new(null, null);
 

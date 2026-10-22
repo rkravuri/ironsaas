@@ -109,8 +109,8 @@ internal static class SessionEndpoints
     {
         var me = endpoints.MapGroup("/api/v1/me/sessions").WithTags("me");
         me.MapGet("/", MineAsync).RequireSignedIn().Produces<ListResponse<SessionRecordResponse>>(StatusCodes.Status200OK).WithName("MySessions").WithSummary("Your live sessions: the browser, the city and country, when each started and was last used, and which is this one.");
-        me.MapPost("/{id:guid}/end", EndMineAsync).RequireSignedIn().Produces(StatusCodes.Status204NoContent).WithName("EndMySession").WithSummary("End one of your other sessions; sign out to end this one.");
-        me.MapPost("/end-others", EndOthersAsync).RequireSignedIn().Produces<SessionsEndedResponse>(StatusCodes.Status200OK).WithName("EndMyOtherSessions").WithSummary("Sign out everywhere else: every session of yours but this one ends.");
+        me.MapPost("/{id:guid}/end", EndMineAsync).RequireSignedIn().ForbiddenDuringImpersonation().Produces(StatusCodes.Status204NoContent).WithName("EndMySession").WithSummary("End one of your other sessions; sign out to end this one.");
+        me.MapPost("/end-others", EndOthersAsync).RequireSignedIn().ForbiddenDuringImpersonation().Produces<SessionsEndedResponse>(StatusCodes.Status200OK).WithName("EndMyOtherSessions").WithSummary("Sign out everywhere else: every session of yours but this one ends.");
 
         var sessions = endpoints.MapApiGroup("sessions");
         sessions.MapGet("/", ListAsync).RequirePermission(IdentityPermissions.SessionsManage).Produces<ListResponse<SessionRecordResponse>>(StatusCodes.Status200OK).WithName("ListSessions").WithSummary("Everyone's live sessions.");

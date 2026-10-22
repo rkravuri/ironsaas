@@ -51,7 +51,13 @@ public static class SystemRoles
     public const string ReadOnly = "read-only";
     public const string ServiceDefault = "service-default";
 
-    public static IReadOnlyList<string> All => [TenantAdministrator, ReadOnly, ServiceDefault];
+    /// <summary>
+    /// An operator's emergency access (TF-026, ADR-0049): every permission of the tenant but the critical ones, so
+    /// break-glass repairs a tenant without changing who signs in through which provider or signing in as someone else.
+    /// </summary>
+    public const string BreakGlass = "break-glass";
+
+    public static IReadOnlyList<string> All => [TenantAdministrator, ReadOnly, ServiceDefault, BreakGlass];
 }
 
 public static class AuthorizationErrors

@@ -26,6 +26,9 @@ public static class HandoverKeys
     public const string Subject = "subject";
     public const string LinkPath = "link_path";
     public const string ExpiresAt = "expires_at";
+
+    /// <summary>What an item carries beyond a link: a break-glass review (ADR-0049).</summary>
+    public const string Payload = "payload";
 }
 
 /// <summary>
@@ -46,15 +49,21 @@ public sealed class StoreOperatorHandover(SecretStoreOptions store, HandoverOpti
 
         var lifetime = item.ExpiresAt - time.GetUtcNow();
         using var place = new OpenBaoSecretStore(new SecretStoreOptions { Address = store.Address, Token = handover.Token, Mount = store.Mount });
+        var values = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [HandoverKeys.Kind] = item.Kind,
+            [HandoverKeys.Subject] = item.Subject,
+            [HandoverKeys.LinkPath] = item.LinkPath,
+            [HandoverKeys.ExpiresAt] = item.ExpiresAt.ToString("O", CultureInfo.InvariantCulture),
+        };
+        if (item.Payload is not null)
+        {
+            values[HandoverKeys.Payload] = item.Payload;
+        }
+
         await place.WriteOnceAsync(
             handover.Path!,
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                [HandoverKeys.Kind] = item.Kind,
-                [HandoverKeys.Subject] = item.Subject,
-                [HandoverKeys.LinkPath] = item.LinkPath,
-                [HandoverKeys.ExpiresAt] = item.ExpiresAt.ToString("O", CultureInfo.InvariantCulture),
-            },
+            values,
             lifetime > TimeSpan.FromMinutes(1) ? lifetime : TimeSpan.FromMinutes(1),
             cancellationToken).ConfigureAwait(false);
     }

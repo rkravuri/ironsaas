@@ -28,4 +28,7 @@ public static class Links
     public static string Invitation(string token) => $"/invitations#{token}";
 
     public static string Recovery(string code) => $"/recovery#{code}";
+
+    /// <summary>A one-time sign-in link from the operator's path: an impersonation or a break-glass account (ADR-0049).</summary>
+    public static string SignIn(string code) => $"/sign-in-link#{code}";
 }

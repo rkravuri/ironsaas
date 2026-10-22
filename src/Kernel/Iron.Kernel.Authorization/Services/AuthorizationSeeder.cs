@@ -23,7 +23,8 @@ public sealed class RootUnitSeedOptions
 /// <summary>
 /// Creates the system roles and keeps them in step with the permission catalogue (TF-032): the tenant administrator
 /// holds every permission of the host and is for any principal type (the control plane's operator is a service account,
-/// ADR-0031), read-only and service-default hold every <c>*.read</c> permission. Then creates
+/// ADR-0031), read-only and service-default hold every <c>*.read</c> permission, and break-glass every permission but the
+/// critical ones (ADR-0049). Then creates
 /// the root organisation unit with the provider's root kind, once (TF-034, ADR-0030). Safe to run again; it never
 /// touches tenant roles or a root that exists.
 /// </summary>
@@ -45,6 +46,8 @@ public sealed class AuthorizationSeeder(
         await UpsertAsync(SystemRoles.TenantAdministrator, "Tenant administrator", "Every permission of this tenant.", PrincipalKind.Any, all, cancellationToken).ConfigureAwait(false);
         await UpsertAsync(SystemRoles.ReadOnly, "Read only", "Read permissions only.", PrincipalKind.User, reads, cancellationToken).ConfigureAwait(false);
         await UpsertAsync(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalKind.Service, reads, cancellationToken).ConfigureAwait(false);
+        var notCritical = catalogue.All.Where(p => p.Risk != Risk.Critical).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
+        await UpsertAsync(SystemRoles.BreakGlass, "Break-glass", "An operator's emergency access, for a limited time: every permission of this tenant but the critical ones.", PrincipalKind.User, notCritical, cancellationToken).ConfigureAwait(false);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var fallback = tenant?.Id.Value;

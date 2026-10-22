@@ -15,7 +15,8 @@ namespace Iron.Kernel.Data.Commands;
 /// <c>grant [role]</c> grants the privileges again. The fleet runs them against a new tenant database (T14); the
 /// pipeline runs <c>schema-check</c> after migrating (T18). A module adds a command of its own as an
 /// <see cref="IUnitCommand"/>, named here so the host knows it before it is built: <c>recover-admin</c>, the operator's
-/// recovery link for a tenant administrator (ADR-0046).
+/// recovery link for a tenant administrator (ADR-0046); <c>impersonate</c>, <c>break-glass-open</c> and
+/// <c>break-glass-close</c>, the operator's support and emergency access (ADR-0049).
 /// </summary>
 public static class DatabaseCommands
 {
@@ -24,11 +25,14 @@ public static class DatabaseCommands
     public const string SchemaCheck = "schema-check";
     public const string Grant = "grant";
     public const string RecoverAdministrator = "recover-admin";
+    public const string Impersonate = "impersonate";
+    public const string BreakGlassOpen = "break-glass-open";
+    public const string BreakGlassClose = "break-glass-close";
 
     public static bool IsCommand(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant or RecoverAdministrator;
+        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant or RecoverAdministrator or Impersonate or BreakGlassOpen or BreakGlassClose;
     }
 
     /// <summary>The arguments without the command, for the web host builder.</summary>

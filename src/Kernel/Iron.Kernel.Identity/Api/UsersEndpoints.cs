@@ -215,8 +215,9 @@ internal static class UsersEndpoints
     /// The person the request names, when the actor may see them (404 otherwise, as for the record) and holds
     /// <c>identity.users.manage</c> at their home unit (403 otherwise, naming the permission). Tracked, for the change.
     /// </summary>
-    private static async Task<Result<Principal>> ManageableAsync(Guid id, HttpContext http, string doing, CancellationToken cancellationToken)
+    internal static async Task<Result<Principal>> ManageableAsync(Guid id, HttpContext http, string doing, CancellationToken cancellationToken, Permission? permission = null)
     {
+        permission ??= IdentityPermissions.UsersManage;
         var services = http.RequestServices;
         var context = services.GetRequiredService<IdentityDbContext>();
         var actor = services.GetRequiredService<ICurrentPrincipal>();
@@ -228,17 +229,17 @@ internal static class UsersEndpoints
 
         var principal = await context.Principals.SingleAsync(p => p.Id == id, cancellationToken);
         var scope = principal.HomeUnitId is { } unit ? AccessScope.Unit(unit) : AccessScope.Tenant;
-        var check = new AccessRequest(actor.Id, IdentityPermissions.UsersManage, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/") { Scope = scope };
+        var check = new AccessRequest(actor.Id, permission, PermissionFilter.Operation(http), http.Request.Path.Value ?? "/") { Scope = scope };
         var decision = await services.GetRequiredService<IPermissionEvaluator>().EvaluateAsync(check, cancellationToken);
         return decision.Allowed ? principal : Error.Forbidden(PermissionErrors.PermissionDenied, $"You cannot {doing} people in {principal.DisplayName}'s unit.");
     }
 
-    private static IResult Refused(Error error, HttpContext http)
+    internal static IResult Refused(Error error, HttpContext http, Permission? permission = null)
     {
         var problem = ProblemFactory.Create(error, http);
         if (error.Code == PermissionErrors.PermissionDenied)
         {
-            problem.Extensions["permission"] = IdentityPermissions.UsersManage.Name;
+            problem.Extensions["permission"] = (permission ?? IdentityPermissions.UsersManage).Name;
         }
 
         return TypedResults.Problem(problem);

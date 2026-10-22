@@ -34,6 +34,9 @@ public static class PermissionErrors
 
     /// <summary>A token issued before its principal's or the tenant's revocation (TF-029 AC2).</summary>
     public const string TokenRevoked = "auth.token_revoked";
+
+    /// <summary>The operator's impersonation reached its time or was ended, and they have no session of their own here (TF-025 AC3).</summary>
+    public const string ImpersonationEnded = "auth.impersonation_ended";
     public const string TokenInvalid = "auth.token_invalid";
     public const string TokenExpired = "auth.token_expired";
     public const string PermissionDenied = "authz.permission_denied";
@@ -70,6 +73,7 @@ public static class AuthenticationFailure
             PermissionErrors.SessionEnded => "An administrator ended your session. Sign in again, or ask your administrator why.",
             PermissionErrors.SessionRevoked => "Your organisation ended your session. Sign in again, or ask your administrator why.",
             PermissionErrors.TokenRevoked => "The access token was revoked. Request a new one.",
+            PermissionErrors.ImpersonationEnded => "The time you were given to sign in as this person has ended. Ask for a new link if you still need it.",
             PermissionErrors.TokenExpired => "The access token has expired. Request a new one.",
             PermissionErrors.TokenInvalid => "The access token is not valid.",
             _ => "Sign in to continue.",

@@ -20,7 +20,14 @@ public static class IdentityPermissions
     /// </summary>
     public static readonly Permission SessionsManage = new("identity.sessions.manage", "See and end anyone's sessions, and revoke every session and token of the tenant", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage, SsoManage, SessionsManage];
+    /// <summary>
+    /// Signing in as another person of the tenant (TF-025, ADR-0049): critical, since the impersonator acts with the
+    /// person's permissions; always with a reason and a recent authentication, and only for someone whose permissions the
+    /// impersonator holds.
+    /// </summary>
+    public static readonly Permission ImpersonationStart = new("identity.impersonation.start", "Sign in as another person of the tenant, with a reason, for a limited time", Risk.Critical);
+
+    public static IReadOnlyList<Permission> All => [UsersRead, UsersManage, SsoManage, SessionsManage, ImpersonationStart];
 }
 
 /// <summary>Error codes of the Identity module.</summary>
@@ -198,6 +205,43 @@ public static class IdentityErrors
 
     /// <summary>The typed confirmation of a tenant-wide revocation is not the tenant's identifier.</summary>
     public const string RevocationConfirmation = "identity.revocation.confirmation";
+
+    // Impersonation, operator links and break-glass accounts (TF-025, TF-026, ADR-0049).
+
+    /// <summary>A bearer token asked to sign in as someone: only a person signed in to the shell does.</summary>
+    public const string ImpersonationToken = "identity.impersonation.token";
+
+    /// <summary>No reason was given (TF-025 AC1).</summary>
+    public const string ImpersonationReasonRequired = "identity.impersonation.reason_required";
+
+    public const string ImpersonationSelf = "identity.impersonation.self";
+
+    /// <summary>The person cannot be signed in as: not active, a service account, or a break-glass account.</summary>
+    public const string ImpersonationNotAllowed = "identity.impersonation.not_allowed";
+
+    /// <summary>The person holds a permission the impersonator does not (ADR-0046's rule, TF-025 AC4).</summary>
+    public const string ImpersonationEscalation = "identity.impersonation.escalation";
+
+    /// <summary>More minutes than the tenant allows, or fewer than one.</summary>
+    public const string ImpersonationDuration = "identity.impersonation.duration";
+
+    /// <summary>The tenant does not let the platform's operator sign in as its people.</summary>
+    public const string ImpersonationOperatorRefused = "identity.impersonation.operator_refused";
+
+    /// <summary>Ending an impersonation in a session that is not one.</summary>
+    public const string ImpersonationNone = "identity.impersonation.none";
+
+    /// <summary>A one-time sign-in link that does not work: used, expired, or never issued.</summary>
+    public const string SignInLinkInvalid = "identity.sign_in_link.invalid";
+
+    /// <summary>A break-glass command without what it needs, or for an account that is not one.</summary>
+    public const string BreakGlassInvalid = "identity.break_glass.invalid";
+
+    /// <summary>The operator who approves break-glass is the one who asked (TF-026 AC4).</summary>
+    public const string BreakGlassSameOperator = "identity.break_glass.same_operator";
+
+    /// <summary>A document the person must accept has a version they have not accepted: every request but the terms' own answers it (ADR-0049).</summary>
+    public const string TermsAcceptanceRequired = "identity.terms.acceptance_required";
 }
 
 /// <summary>Audit event types raised by Identity (TF-060).</summary>
@@ -280,6 +324,15 @@ public static class IdentityAuditEvents
 
     /// <summary>An administrator revoked every session and token of the tenant, with a reason (TF-029 AC1).</summary>
     public const string TenantRevoked = "identity.tenant_revoked";
+
+    /// <summary>The operator was given a one-time link to sign in as a person, with a reason, through the control plane (TF-025).</summary>
+    public const string ImpersonationLinkIssued = "identity.impersonation_link_issued";
+
+    /// <summary>A break-glass account was opened: both operators, the ticket, the reason and the time limit (TF-026 AC1).</summary>
+    public const string BreakGlassOpened = "identity.break_glass_opened";
+
+    /// <summary>A break-glass account was closed, with the count of its actions; the review has the list (TF-026 AC3).</summary>
+    public const string BreakGlassClosed = "identity.break_glass_closed";
 }
 
 /// <summary>
@@ -328,12 +381,18 @@ public static class SecurityEventKinds
     /// <summary>An administrator revoked every session and token of the principal, with a reason (TF-029).</summary>
     public const string AccessRevoked = "access_revoked";
 
+    /// <summary>Someone signed in as the person: who, until when, why (TF-025 AC6).</summary>
+    public const string ImpersonationStarted = "impersonation_started";
+
+    /// <summary>The impersonation ended: at its time, or ended by the impersonator.</summary>
+    public const string ImpersonationEnded = "impersonation_ended";
+
     public static IReadOnlyList<string> All =>
     [
         PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated,
         FactorEnrolled, FactorRemoved, FactorsReset, RecoveryCodeUsed, RecoveryCodesRegenerated,
         SsoLinked, SsoOnlySet, SsoOnlyCleared,
-        SessionEnded, AccessRevoked,
+        SessionEnded, AccessRevoked, ImpersonationStarted, ImpersonationEnded,
     ];
 
     /// <summary>The audit event a security event is written as.</summary>
