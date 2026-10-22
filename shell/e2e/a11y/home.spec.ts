@@ -201,7 +201,9 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
 
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("tabpanel", { name: "Session" })).toContainText("Ends at the latest at");
+    const sessions = page.getByRole("tabpanel", { name: "Sessions" });
+    await expect(sessions).toContainText("Ends at the latest at");
+    await expect(sessions.getByRole("table", { name: /Your live sessions/ })).toContainText("Chrome on Windows");
     await page.screenshot({ path: `test-results/a11y/profile-session-${scheme}.png` });
     await expectNoViolation(page);
   });

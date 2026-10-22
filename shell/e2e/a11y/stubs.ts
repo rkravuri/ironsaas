@@ -116,6 +116,8 @@ export async function stubSignedIn(target: Page): Promise<void> {
   );
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: me }));
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
+  // The frame asks an administrator who manages people for emergency sign-ins (ADR-0049); none here.
+  await target.route("**/api/v1/security-alerts", (route) => route.fulfill({ json: { emergency_sign_ins: [] } }));
   // A page whose session ends shows the login page, which asks whether a passkey alone signs in (off by default).
   await target.route("**/auth/sign-in-options", (route) => route.fulfill({ json: { passkey_sign_in: false } }));
   await target.route("**/api/v1/users**", (route) => route.fulfill({ json: page(route.request().url()) }));
@@ -194,6 +196,8 @@ export async function stubConsole(target: Page): Promise<void> {
     }),
   );
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
+  // The frame asks an administrator who manages people for emergency sign-ins (ADR-0049); none here.
+  await target.route("**/api/v1/security-alerts", (route) => route.fulfill({ json: { emergency_sign_ins: [] } }));
   await target.route("**/api/v1/me/access?**", (route) =>
     route.fulfill({ json: { scope: "unit", permissions: administrator } }),
   );
@@ -505,10 +509,34 @@ export async function stubHome(target: Page, who: Who, session = sessionFromNow(
   );
   await target.route("**/api/v1/me", (route) => route.fulfill({ json: principal }));
   await target.route("**/api/v1/me/context", (route) => route.fulfill({ json: context }));
+  // The frame asks an administrator who manages people for emergency sign-ins (ADR-0049); none here.
+  await target.route("**/api/v1/security-alerts", (route) => route.fulfill({ json: { emergency_sign_ins: [] } }));
   await target.route("**/api/v1/me/access?**", (route) =>
     route.fulfill({ json: { scope: "unit", permissions: principal.permissions_anywhere } }),
   );
   await target.route("**/api/v1/role-assignments/mine", (route) => route.fulfill({ json: { data: mine[who] } }));
+  // My profile's Sessions tab (ADR-0049): this session alone.
+  await target.route("**/api/v1/me/sessions?**", (route) =>
+    route.fulfill({
+      json: envelope(route.request().url(), [
+        {
+          id: session.id,
+          principal_id: principal.id,
+          login_id: principal.login_id,
+          display_name: principal.display_name,
+          browser: "Chrome",
+          platform: "Windows",
+          city: "London",
+          country: "United Kingdom",
+          method: "password",
+          started_at: session.started_at,
+          last_activity_at: new Date().toISOString(),
+          impersonator_name: null,
+          current: true,
+        },
+      ]),
+    }),
+  );
   await stubPasswords(target);
   // The person's own delegations (A7): one given and over, so /me holds no active one and the header has no control.
   await target.route("**/api/v1/delegations/mine", (route) =>
