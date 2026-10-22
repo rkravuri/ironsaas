@@ -3,6 +3,7 @@ import {
   IconClipboardCheck,
   IconHelpCircle,
   IconKey,
+  IconLogin2,
   IconReceipt,
   IconScale,
   IconSitemap,
@@ -19,6 +20,8 @@ import { ReviewsPage } from "./pages/ReviewsPage";
 import { RoleEditorPage } from "./pages/RoleEditorPage";
 import { RolesPage } from "./pages/RolesPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { SsoProviderPage } from "./pages/SsoProviderPage";
+import { SsoProvidersPage } from "./pages/SsoProvidersPage";
 import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { UnitsPage } from "./pages/UnitsPage";
 
@@ -27,7 +30,8 @@ import { UnitsPage } from "./pages/UnitsPage";
  * organisation tree, A2 the roles, A4 the subscription (read only: plans are the operator's), A6 the settings of the
  * tenant and its units, A7 others' delegations (for their administrators; a person's own are in My profile) and access
  * reviews (for their reviewers, ADR-0037), A9 the explanation of a person's access and the conflict rules with their
- * report (ADR-0039). Flag rules are the operator's, in the control plane (ADR-0035).
+ * report (ADR-0039). Flag rules are the operator's, in the control plane (ADR-0035). S3 T4 brought the company logins
+ * (TF-014, ADR-0048), for the holders of the critical identity.sso.manage.
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -105,6 +109,25 @@ export const consoleManifest: ModuleManifest = {
       titleKey: "modules.console.conflicts",
       shortcuts: tabShortcuts,
     },
+    {
+      path: "/console/sso",
+      permission: "identity.sso.manage",
+      element: <SsoProvidersPage />,
+      titleKey: "modules.console.sso",
+      shortcuts: gridShortcuts,
+    },
+    {
+      path: "/console/sso/new",
+      permission: "identity.sso.manage",
+      element: <SsoProviderPage />,
+      titleKey: "modules.console.sso",
+    },
+    {
+      path: "/console/sso/:id",
+      permission: "identity.sso.manage",
+      element: <SsoProviderPage />,
+      titleKey: "modules.console.sso",
+    },
   ],
   navigation: [
     {
@@ -154,6 +177,12 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/conflicts",
       permission: "authz.sod.read",
       icon: <IconScale size={16} />,
+    },
+    {
+      labelKey: "modules.console.sso",
+      path: "/console/sso",
+      permission: "identity.sso.manage",
+      icon: <IconLogin2 size={16} />,
     },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },

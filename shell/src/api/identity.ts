@@ -77,6 +77,8 @@ export const MeSchema = z.object({
   mfa_enrol_by: z.string().nullable().optional(),
   /** The tenant's policy now requires a second factor the person has not got: everything but enrolment waits for it. */
   mfa_enrolment_required: z.boolean().optional(),
+  /** The company login the session's sign-in came through (ADR-0048), so signing out may offer to sign out there too. */
+  signed_in_with: z.object({ provider_id: z.string(), name: z.string() }).nullable().optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 
@@ -111,6 +113,22 @@ export const UserRecordSchema = UserSchema.omit({ home_unit_id: true }).extend({
   factors: z.number().optional(),
   /** Whether the reader holds every permission the person holds: the rule for a recovery link and a factor reset (ADR-0046). */
   takeover_allowed: z.boolean().optional(),
+  /** Marked by an administrator to sign in only through a company login (TF-014 AC2). */
+  sso_only: z.boolean().optional(),
+  /** Signs in only through a company login because a provider they are linked to says so for everyone it links. */
+  sso_only_by_provider: z.boolean().optional(),
+  /** The company logins the person is linked to (ADR-0048). */
+  sso_links: z
+    .array(
+      z.object({
+        provider_id: z.string(),
+        provider_name: z.string(),
+        email: z.string(),
+        linked_at: z.string(),
+        last_sign_in_at: z.string(),
+      }),
+    )
+    .optional(),
 });
 export type UserRecord = z.infer<typeof UserRecordSchema>;
 
@@ -284,6 +302,10 @@ export const deactivateUser = (id: string) =>
 export const reactivateUser = (id: string) =>
   request(userAction(id, "reactivate"), { method: "POST", schema: ReactivatedUserSchema });
 
+/** A company login as the sign-in page offers it: a button with its name (ADR-0048). */
+export const SsoProviderButtonSchema = z.object({ id: z.string(), name: z.string() });
+export type SsoProviderButton = z.infer<typeof SsoProviderButtonSchema>;
+
 // Second factors and step-up (S3 T3, TF-013, TF-248, ADR-0047).
 
 /** What a sign-in goes on to after a right password: the second factor, or enrolment; the ways open, and until when. */
@@ -305,6 +327,8 @@ export const SignInAnswerSchema = z.object({
   step: SignInStepSchema.nullable().optional(),
   enrol_new_factor: z.boolean().optional(),
   recovery_codes: z.array(z.string()).nullable().optional(),
+  /** Where a sign-in through a company login was going (ADR-0048). */
+  return_to: z.string().nullable().optional(),
 });
 export type SignInAnswer = z.infer<typeof SignInAnswerSchema>;
 
@@ -343,6 +367,9 @@ export const ReauthenticationSchema = z.object({
   second_factor: z.boolean(),
   methods: z.array(z.string()),
   passkey_options: z.record(z.string(), z.unknown()).nullable().optional(),
+  /** False for a person who signs in only through a company login: they confirm by signing in through it again (ADR-0048). */
+  password: z.boolean().optional(),
+  provider: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 });
 export type Reauthentication = z.infer<typeof ReauthenticationSchema>;
 
@@ -351,7 +378,10 @@ export const signIn = (loginId: string, password: string) =>
 
 export const fetchSignInOptions = (signal?: AbortSignal) =>
   request("/auth/sign-in-options", {
-    schema: z.object({ passkey_sign_in: z.boolean() }),
+    schema: z.object({
+      passkey_sign_in: z.boolean(),
+      providers: z.array(SsoProviderButtonSchema).optional(),
+    }),
     ...(signal ? { signal } : {}),
   });
 
@@ -423,3 +453,129 @@ export const reauthenticate = (password: string, proof: SecondFactorProof | unde
 /** An administrator removes a person's factors, with the reason their security activity keeps (TF-013 AC3). */
 export const resetFactors = (id: string, reason: string) =>
   request(userAction(id, "factors/reset"), { method: "POST", body: { reason }, schema: UserRecordSchema });
+
+// Single sign-on (S3 T4, TF-014, ADR-0048).
+
+/** Marks a person to sign in only through a company login, or lets them use a password again. */
+export const setSsoOnly = (id: string, ssoOnly: boolean) =>
+  request(userAction(id, "sso-only"), { method: "PUT", body: { sso_only: ssoOnly }, schema: UserRecordSchema });
+
+/** The company login of an email's domain: the same answer for every email of a domain. */
+export const discoverProvider = (email: string) =>
+  request("/auth/sso/discover", {
+    method: "POST",
+    body: { email },
+    schema: z.object({ provider: SsoProviderButtonSchema.nullable() }),
+  });
+
+/** Starts a sign-in through a company login: where to send the browser; the sign-in cookie holds the rest. */
+export const startSso = (providerId: string, returnTo?: string, loginHint?: string) =>
+  request("/auth/sso/start", {
+    method: "POST",
+    body: { provider_id: providerId, return_to: returnTo ?? null, login_hint: loginHint ?? null },
+    schema: z.object({ authorization_url: z.string(), expires_at: z.string() }),
+  });
+
+/** What the company login sent the browser back with, as the callback page read it from the address. */
+export interface SsoCallback {
+  code: string | null;
+  state: string | null;
+  error: string | null;
+  error_description: string | null;
+}
+
+export const completeSso = (callback: SsoCallback) =>
+  request("/auth/sso/callback", { method: "POST", body: callback, schema: SignInAnswerSchema });
+
+/** Where to sign out at a company login, when it publishes an end-session endpoint. */
+export const ssoSignOutUrl = (providerId: string) =>
+  request(`/auth/sso/${encodeURIComponent(providerId)}/sign-out`, { schema: z.object({ url: z.string() }) });
+
+export const SsoRoleMappingSchema = z.object({
+  group: z.string(),
+  role_code: z.string(),
+  unit_id: z.string().nullable(),
+  include_children: z.boolean(),
+});
+export type SsoRoleMapping = z.infer<typeof SsoRoleMappingSchema>;
+
+/** A provider as the console shows it: everything but its client secret, which only the store holds. */
+export const SsoProviderSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  preset: z.string(),
+  discovery_url: z.string(),
+  client_id: z.string(),
+  allowed_domains: z.array(z.string()),
+  email_claim: z.string(),
+  name_claim: z.string(),
+  groups_claim: z.string(),
+  just_in_time: z.boolean(),
+  default_role_code: z.string().nullable(),
+  default_home_unit_id: z.string().nullable(),
+  sso_only: z.boolean(),
+  trust_provider_mfa: z.boolean(),
+  role_mappings: z.array(SsoRoleMappingSchema),
+  created_at: z.string(),
+  updated_at: z.string(),
+  version: z.number(),
+});
+export type SsoProvider = z.infer<typeof SsoProviderSchema>;
+export const SsoProviderListSchema = listSchema(SsoProviderSchema);
+
+/** A provider's settings as the console sends them; a null client secret on a change keeps the one in the store. */
+export interface SsoProviderInput {
+  name: string;
+  preset: string;
+  discovery_url: string;
+  client_id: string;
+  client_secret: string | null;
+  allowed_domains: string[];
+  email_claim: string;
+  name_claim: string;
+  groups_claim: string;
+  just_in_time: boolean;
+  default_role_code: string | null;
+  default_home_unit_id: string | null;
+  sso_only: boolean;
+  trust_provider_mfa: boolean;
+  role_mappings: SsoRoleMapping[];
+}
+
+export const ssoProvidersQueryKey = ["identity", "sso", "providers"] as const;
+
+export const fetchSsoProviders = (query: string, signal?: AbortSignal) =>
+  request(`/api/v1/sso/providers${query ? `?${query}` : ""}`, {
+    schema: SsoProviderListSchema,
+    ...(signal ? { signal } : {}),
+  });
+
+export const fetchSsoProvider = (id: string, signal?: AbortSignal) =>
+  request(`/api/v1/sso/providers/${encodeURIComponent(id)}`, {
+    schema: SsoProviderSchema,
+    ...(signal ? { signal } : {}),
+  });
+
+export const createSsoProvider = (input: SsoProviderInput) =>
+  request("/api/v1/sso/providers", { method: "POST", body: input, schema: SsoProviderSchema });
+
+export const updateSsoProvider = (id: string, input: SsoProviderInput) =>
+  request(`/api/v1/sso/providers/${encodeURIComponent(id)}`, { method: "PUT", body: input, schema: SsoProviderSchema });
+
+export const deleteSsoProvider = (id: string) =>
+  request(`/api/v1/sso/providers/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** One check of "Test connection", in words. */
+export const SsoTestItemSchema = z.object({
+  check: z.string(),
+  status: z.enum(["passed", "warning", "failed"]),
+  message: z.string(),
+});
+export type SsoTestItem = z.infer<typeof SsoTestItemSchema>;
+
+export const testSsoProvider = (discoveryUrl: string) =>
+  request("/api/v1/sso/test", {
+    method: "POST",
+    body: { discovery_url: discoveryUrl },
+    schema: z.object({ passed: z.boolean(), items: z.array(SsoTestItemSchema) }),
+  });

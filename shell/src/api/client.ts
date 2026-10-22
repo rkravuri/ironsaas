@@ -22,6 +22,9 @@ export const ProblemSchema = z.object({
   recovery_token: z.string().optional(),
   /** How long to wait before a second factor is checked again, during a cooling period (TF-013 AC2, ADR-0047). */
   retry_after_seconds: z.number().optional(),
+  /** The company login a person who signs in only through it is sent to (TF-014 AC2, ADR-0048). */
+  provider_id: z.string().optional(),
+  provider_name: z.string().optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
@@ -62,6 +65,8 @@ export class ApiError extends Error {
   readonly errors: readonly FieldProblem[] | undefined;
   readonly recoveryToken: string | undefined;
   readonly retryAfterSeconds: number | undefined;
+  /** The company login to use instead, when a password sign-in was refused with "Use your company login" (ADR-0048). */
+  readonly provider: { id: string; name: string } | undefined;
 
   constructor(status: number, problem: Problem, correlationId: string | undefined) {
     super(problem.detail ?? problem.title ?? `The request failed with status ${status}.`);
@@ -73,6 +78,10 @@ export class ApiError extends Error {
     this.errors = problem.errors;
     this.recoveryToken = problem.recovery_token;
     this.retryAfterSeconds = problem.retry_after_seconds;
+    this.provider =
+      problem.provider_id !== undefined && problem.provider_name !== undefined
+        ? { id: problem.provider_id, name: problem.provider_name }
+        : undefined;
   }
 
   /** A high-risk action refused for an old sign-in (TF-248): the person confirms it is them, and it is sent again. */

@@ -41,6 +41,9 @@ export function shellRoutes(
       ),
       errorElement: <RouteErrorPage />,
     },
+    // A company login sends the browser back here (ADR-0048). Not behind RedirectIfSignedIn: a person who signs in again
+    // through it, to confirm it is them, is still signed in, and the answer must still be read.
+    { path: "/sso/callback", element: <LoginPage callback />, errorElement: <RouteErrorPage /> },
     // The links carry their code in the fragment (ADR-0046); /invitations/:token keeps the links issued before working.
     { path: "/invitations", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
     { path: "/invitations/:token", element: <InvitationPage />, errorElement: <RouteErrorPage /> },
