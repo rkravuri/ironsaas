@@ -16,10 +16,11 @@ const newestFirst = [{ field: "created_at", direction: "desc" as const }];
 const sources = ["ui", "api", "job"] as const;
 
 /**
- * The audit trail (TF-064, ADR-0050): a search by time, record, type and source over the events in the database, newest
- * first, any of whose rows the grid's own filters narrow further; its export to CSV, with the filters in the file's first
- * lines, handed over as a download; and, on a tab of its own, a search of the archive by date range, for the events
- * older than the online period. Every time is in the person's zone, with its name.
+ * The audit trail (TF-064, ADR-0050): a search by time, who acted, who signed in as them, record, type and source over
+ * the events in the database, newest first, any of whose rows the grid's own filters narrow further; its export to CSV,
+ * the search as applied, with the filters in the file's first lines, handed over as a download; and, on a tab of its own,
+ * a search of the archive by date range, for the events older than the online period. Every time is in the person's
+ * zone, with its name.
  */
 export function AuditPage() {
   const { t } = useTranslation();
