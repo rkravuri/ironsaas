@@ -27,7 +27,7 @@ S2 is done: every task merged, the done-when of the plan's section 1 proven, the
 
 ## Slice S3
 
-S3 is under way: T1 to T7 are done, and T8 is next, once the design session sharpens it. The plan's task table, with the later items folded into their tasks, is in `docs/slices/S3-trust-and-compliance.md`; T2 to T10 are outlines in `docs/prompts/S3.md`, sharpened in the design session before each starts.
+S3 is under way: T1 to T7 are done, and T8 is built on its branch, waiting for the design session's review; T9 is next. The plan's task table, with the later items folded into their tasks, is in `docs/slices/S3-trust-and-compliance.md`; T2 to T10 are outlines in `docs/prompts/S3.md`, sharpened in the design session before each starts.
 
 | Task | State | Branch | Notes |
 |---|---|---|---|
@@ -154,6 +154,15 @@ Decided in T5, each small enough for a line here (the larger ones are ADR-0049's
 - At the review: the grid's columns take a `minWidth`, past which the grid scrolls sideways rather than cutting values short; the console hides a session's start by default (its last activity says whether it is live), and the Columns menu shows it. A person's own list keeps the start, which TF-022 AC4 asks for.
 - At the review: the More menu's divider is a separator, and the menu leaves out Mantine's focus placeholder, as the working unit's does: axe refuses a focusable element of no role inside a menu.
 
+Decided in T8, each small enough for a line here (the larger ones are ADR-0052's):
+
+- The shell asks for an evidence pack's period as whole calendar days in UTC, from the first day's start to the end of the last, and shows each end in the person's zone; the server ends a period that reaches past now at now.
+- A held change in a form is a status in the information colour with a link, not an alert; outside a form the frame's notice says it, and the five governed actions outside a form (reset a setting, delete a role, import roles, remove a company login, remove an assignment) keep their failure colour for real failures.
+- Pending changes have one navigation entry, for `changes.changes.read` (the tenant administrator's role carries it); the routes ask only for a signed-in person, since the API decides which changes each sees.
+- The browser tests' second administrator holds a tenant role of its own (`e2e-second-administrator`: roles and settings), outside the MFA policy's roles, so it signs in with a password; `e2e-data.py setup` refuses to start while a run left four-eyes on, since its grants would wait.
+- The validation pack's browser test skips, with the reason, when the unit has no pack of its version: a release's own integration stage runs before its pack exists.
+- The evidence pack page reads the pack again every two seconds until it is made or failed; the worker looks for work every five.
+
 Decided in T7, each small enough for a line here (the larger ones are ADR-0051's):
 
 - The print view is the browser's print of the record template (the frame, the tab list and the Print button left off); PDF output stays S4's, as the brief says.
@@ -205,7 +214,7 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - The factor key has one version and no rotation yet: TF-075's key management (S3 T9) adds a second key through the sealed secret's version byte. A store that loses a unit's secret loses its key, and that unit's authenticator apps need a reset (ADR-0047).
 - A tenant setting that accepts only listed authenticator models, from a list bundled with the Identity module and never fetched, with ADR-0047's decision against attestation through the FIDO metadata service.
 - The shell's web server answers its page for every path it does not know, `/api/` and `/health/` included, when no API sits behind it (the smoke's `health` step waits for the API's JSON because of it). It should answer 404 for those two prefixes (S3 T9).
-- The release's "Traceability matrix" job showed no conclusion in run 39620828352: check that it runs, and keeps its artifact, before T8, whose evidence exports build on the matrix.
+- Settled by S3 T8: the release's "Traceability matrix" job concluded and kept its artifact in each of the twelve release runs before T8, and the matrix jobs now try every download three times (ADR-0052).
 - Lockout rows of identifiers nobody has are kept for at most an hour; many identifiers tried from one address are T9's rate limits.
 - Settled by S3 T5: "Sign out everywhere else" in My profile's Sessions tab, and every live session's answer says its idle end (`Iron-Session-Idle-Ends`), so the shell's warning is exact.
 - The email to a person impersonated, the new device's email and its link to the sessions (TF-019, TF-025) wait for S4's notifications; TF-019's criteria become exceptions when S3 closes.

@@ -171,6 +171,16 @@ The daily `AuditRetentionWorker`, in the unit's worker:
 
 The operator's limits per class are configuration (`Retention:Limits:<class>:MinimumDays` and `MaximumDays`); the tenant's choices are `RetentionChoice` rows, each with its reason, audited as `audit.retention_changed`; holds as `audit.legal_hold_placed` and `audit.legal_hold_released`, the archive and pruning as `audit.trail_archived` and `audit.trail_pruned`.
 
+## Evidence (TF-067, ADR-0052)
+
+Audit answers three of Compliance's contracts for the evidence packs (the Compliance README lists the documents):
+
+- `IEvidenceSource` (`AuditEvidence`): the administrative actions of the period, every event whose type is declared administrative (`AuditEventType.AsAdministrative()`, `AuditEventNames.Administrative`), with actor, impersonator, acting for, target, record, reason and chain position, the archive named for events past the online period; the retention classes and the legal holds standing at the period's end, rebuilt from their own events; the control plane's verifications of the period (`GET /api/v1/audit-verifications`, the unit client's permission); the restores operators accepted; and the drills, which say in one sentence that backups start with the first Azure deployment.
+- `IEvidenceChain`: the head a pack names, the latest seal the control plane holds an anchor for, with the anchor's id; without a control plane, the latest seal, marked not anchored.
+- `IRecordHistory` (`RecordHistoryReader`): a record type's `record.created`, `record.changed` and `record.deleted` events after a time, newest first, which the other modules' sources undo to rebuild the state at the period's end (`RecordStates.Rewind`).
+
+A module that declares a new event type an administrator causes marks it `.AsAdministrative()` beside its constant, so the next pack lists it.
+
 ## Model change
 
 Edit the entity, then `make ef-add MODULE=Audit NAME=<WhatChanged>` and commit `Data/Migrations`. A change to the canonical form is a new version: keep every earlier version's code, so every hash made with it still verifies (`AuditCanonicalForm.Knows`).

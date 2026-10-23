@@ -84,6 +84,15 @@ Built by the release workflow (`tools/validation_pack.py`, Python's standard lib
 - **Every artifact download of the matrix jobs is tried three times** with a pause between (a composite action, `.github/actions/download-artifacts`, and a loop for `gh run download`), after CI run 39912627606 lost its connection while downloading. The release's matrix job concluded and kept its artifact in each of the twelve release runs before T8 (M4's later item, checked).
 - **Every task report has a Risk section**: the requirements the task touched, their class, and a short assessment of what could go wrong and what proves it does not, committed as `docs/risk/<task>.md` for the release's risk assessment.
 
+### 9. In the shell
+
+- **A held change is thrown, not returned.** The client turns a 202 problem with `changes.change.held` into an `ApiError` whose `isHeld` is true and which carries the change's id, so no page reads it as done and goes on. A form shows it in the information colour, with a link to the change, not as a failure; the frame shows the same notice for an action outside a form (a removal, an import) and the few such actions in governed areas leave their failure colour to real failures.
+- **Pending changes are in the console** (`/console/changes`): to approve (the default), mine, and every one with `changes.changes.read`, which is also the navigation entry's permission. The routes ask only for a signed-in person, because the API decides which changes each sees; requesters and approvers without the read permission reach them from the notice, a link or the address.
+- **A change's page shows its state before and after side by side**, one row per field, the changed fields marked in words, nothing before meaning made and nothing after removed. Approve and reject take a reason first, then the signing dialog where the change is signed (`configuration_change`, meanings `approved` and `rejected`, the reason kept as the signature's comment on the server); the requester sees only Withdraw.
+- **The four-eyes area lists are chosen by their words** in Settings, not typed as JSON.
+- **Evidence packs are in Compliance** (`/compliance/evidence-packs`, `compliance.evidence.export`): a period of whole UTC days, the pack's page reading itself again every two seconds until it is made, its hashes and the chain head with its anchor, and a download through a link the API makes for that person.
+- **The Validation page is in Compliance too** (`/compliance/validation`, `compliance.validation.read`), on the console template; the help panel shows the version for everyone signed in.
+
 ## Options considered
 
 - **The evidence state at the period's end as the state when the pack is made**: simpler, but not what the auditor asked for. Rebuilt from the field history the trail already holds.
