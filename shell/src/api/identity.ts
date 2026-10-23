@@ -733,7 +733,11 @@ export const acceptTerms = (documents: Pick<Document, "source" | "key" | "versio
 
 export const declineTerms = () => request("/api/v1/me/terms/decline", { method: "POST" });
 
-export const DocumentSummarySchema = DocumentSchema.extend({ accepted: z.number() });
+export const DocumentSummarySchema = DocumentSchema.extend({
+  accepted: z.number(),
+  /** A tenant document version's id, whose history the page shows (TF-062); null for the platform's. */
+  id: z.string().nullable().optional(),
+});
 export type DocumentSummary = z.infer<typeof DocumentSummarySchema>;
 
 export const documentsQueryKey = ["identity", "documents"] as const;

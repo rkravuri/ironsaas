@@ -93,8 +93,21 @@ const decided = [item("01a17b00-0000-7000-8000-0000000000e3", "Dan Decided", tru
 const heavy = { timeout: 10_000 };
 const heavyTest = 20_000;
 
-function show() {
+function show(signed = false) {
   const stub = stubFetch({
+    "GET /api/v1/signatures/types": () =>
+      json({
+        data: [
+          {
+            record_type: "access_review_decision",
+            name: "Access review decision",
+            meanings: ["approved", "rejected"],
+            always_signed: false,
+            policy: { required: signed, meanings: ["approved", "rejected"], reauthenticate: true },
+            default: { required: false, meanings: ["approved", "rejected"], reauthenticate: true },
+          },
+        ],
+      }),
     "GET /api/v1/me": () => json(me(reviewer)),
     [`GET /api/v1/access-reviews/${review}`]: () => json(record),
     [`GET ${items}?state=open&page_number=1&page_size=50&sort=unit_name`]: () => json(list(open)),
@@ -112,6 +125,7 @@ function show() {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.sessionStorage.clear();
 });
 
 describe("the access review page (TF-038)", () => {
@@ -171,6 +185,90 @@ describe("the access review page (TF-038)", () => {
         item_ids: others.map((row) => row.id),
         comment: null,
       });
+    },
+    heavyTest,
+  );
+  it(
+    "asks for a signature on each decision when the tenant's policy says so, and turns the page's confirmation off [TF-063 AC1, ADR-0051]",
+    async () => {
+      show(true);
+
+      expect(
+        await screen.findByText(/Your organisation asks for a signature on each decision/, {}, heavy),
+      ).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy)).toBeDisabled();
+    },
+    heavyTest,
+  );
+  it(
+    "reopens a decision's signature when the reviewer comes back from their company login, with its meaning and comment kept [TF-063 AC5, ADR-0051]",
+    async () => {
+      const item = others[0];
+      window.sessionStorage.setItem(
+        "iron.signing.pending",
+        JSON.stringify({
+          path: "/",
+          recordType: "access_review_decision",
+          meaning: "rejected",
+          comment: "Left the team.",
+          context: { item, decision: "revoke" },
+          savedAt: Date.now(),
+        }),
+      );
+      const confirmed = stubFetch({
+        "GET /api/v1/me": () => json(me(reviewer)),
+        "GET /api/v1/signatures/types": () =>
+          json({
+            data: [
+              {
+                record_type: "access_review_decision",
+                name: "Access review decision",
+                meanings: ["approved", "rejected"],
+                always_signed: false,
+                policy: { required: true, meanings: ["approved", "rejected"], reauthenticate: true },
+                default: { required: false, meanings: ["approved", "rejected"], reauthenticate: true },
+              },
+            ],
+          }),
+        [`GET /api/v1/access-reviews/${review}`]: () => json(record),
+        [`GET ${items}?state=open&page_number=1&page_size=50&sort=unit_name`]: () => json(list(open)),
+        "GET /api/v1/signatures/challenge?record_type=access_review_decision": () =>
+          json({
+            first_in_session: false,
+            login_id: false,
+            password: false,
+            second_factor: false,
+            methods: [],
+            passkey_options: null,
+            provider_id: "p1",
+            provider_name: "Acme Login",
+            provider_confirmed: true,
+            reauthenticate: true,
+            policy: { required: true, meanings: ["approved", "rejected"], reauthenticate: true },
+          }),
+        [`POST /api/v1/access-reviews/${review}/items/${item?.id ?? ""}/decision`]: () => json(item),
+      });
+      renderWithProviders(
+        <Routes>
+          <Route path="/console/access-reviews/:id" element={<ReviewRecordPage />} />
+        </Routes>,
+        { route: `/console/access-reviews/${review}` },
+      );
+      const user = userEvent.setup();
+
+      const signing = await screen.findByRole("dialog", { name: "Sign the revocation" }, heavy);
+      expect(signing).toHaveTextContent("Rejected");
+      expect(await screen.findByLabelText(/^comment/i)).toHaveValue("Left the team.");
+      await user.click(await screen.findByRole("button", { name: "Sign" }, heavy));
+
+      await waitFor(() => expect(confirmed.calls.some((call) => call.key.endsWith("/decision"))).toBe(true));
+      const sent = confirmed.calls.find((call) => call.key.endsWith("/decision"));
+      expect(JSON.parse(sent?.init?.body as string)).toEqual({
+        decision: "revoke",
+        comment: "Left the team.",
+        signature: {},
+      });
+      expect(window.sessionStorage.getItem("iron.signing.pending")).toBeNull();
     },
     heavyTest,
   );

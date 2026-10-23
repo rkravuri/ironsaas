@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Iron.Kernel.History;
 
 namespace Iron.Kernel.Audit.Contracts;
 
@@ -26,7 +27,8 @@ public sealed record ChainedEvent(
     Guid? RecordId,
     string? Reason,
     string? CorrelationId,
-    string? Details);
+    string? Details,
+    string? Changes = null);
 
 /// <summary>
 /// The canonical form of an audit event, version 1, and its hash (TF-061, ADR-0050). Documented field by field in the
@@ -43,25 +45,41 @@ public sealed record ChainedEvent(
 /// without exponent or trailing zeros.</item>
 /// <item>The hash is SHA-256 of those UTF-8 bytes, in lowercase hexadecimal. The first event's previous hash is 64 zeros.</item>
 /// </list>
+/// Version 2 (ADR-0051) is version 1 with the label <c>iron-audit-v2</c> and the field changes of a record's save
+/// (TF-062) between the details and the previous hash: null, or an array of objects with the keys <c>field</c>,
+/// <c>new</c>, <c>old</c> and <c>treatment</c>, written as the details are. Events sealed with version 1 keep it.
 /// </summary>
 public static class AuditCanonicalForm
 {
-    /// <summary>The version a hash was made with, kept with every sealed event, so a later form can sit beside this one.</summary>
-    public const short Version = 1;
+    /// <summary>The version new seals use, kept with every sealed event, so every earlier form stays verifiable.</summary>
+    public const short Version = 2;
 
     /// <summary>The first word of the array, which names the form and its version.</summary>
-    public const string Label = "iron-audit-v1";
+    public const string Label = "iron-audit-v2";
+
+    /// <summary>The forms this build can recompute.</summary>
+    public static bool Knows(short version) => version is 1 or 2;
+
+    /// <summary>The first word of a version's array.</summary>
+    public static string LabelOf(short version) => $"iron-audit-v{version.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>The previous hash of position 1.</summary>
     public static readonly string Genesis = new('0', 64);
 
-    public static string Write(ChainedEvent chained, string previousHash)
+    public static string Write(ChainedEvent chained, string previousHash) => Write(chained, previousHash, Version);
+
+    public static string Write(ChainedEvent chained, string previousHash, short version)
     {
         ArgumentNullException.ThrowIfNull(chained);
         ArgumentException.ThrowIfNullOrWhiteSpace(previousHash);
+        if (!Knows(version))
+        {
+            throw new ArgumentOutOfRangeException(nameof(version), version, "This build knows the canonical forms 1 and 2.");
+        }
+
         var builder = new StringBuilder(512);
         builder.Append('[');
-        Text(builder, Label);
+        Text(builder, LabelOf(version));
         Separate(builder);
         Identifier(builder, chained.Id);
         Separate(builder);
@@ -97,152 +115,33 @@ public static class AuditCanonicalForm
         Separate(builder);
         Details(builder, chained.Details);
         Separate(builder);
+        if (version >= 2)
+        {
+            Details(builder, chained.Changes);
+            Separate(builder);
+        }
+
         Text(builder, previousHash);
         builder.Append(']');
         return builder.ToString();
     }
 
-    public static string Hash(ChainedEvent chained, string previousHash) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Write(chained, previousHash))));
+    public static string Hash(ChainedEvent chained, string previousHash) => Hash(chained, previousHash, Version);
+
+    public static string Hash(ChainedEvent chained, string previousHash, short version) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Write(chained, previousHash, version))));
 
     /// <summary>The time as the form writes it: UTC, microseconds, a Z.</summary>
-    public static string Time(DateTimeOffset at) => at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture);
+    public static string Time(DateTimeOffset at) => CanonicalJson.Time(at);
 
+    // The rules of text, identifiers and JSON are the kernel's canonical JSON, which the snapshot form shares (ADR-0051).
     private static void Separate(StringBuilder builder) => builder.Append(',');
 
-    private static void Identifier(StringBuilder builder, Guid? id)
-    {
-        if (id is { } value)
-        {
-            Text(builder, value.ToString("D"));
-        }
-        else
-        {
-            builder.Append("null");
-        }
-    }
+    private static void Identifier(StringBuilder builder, Guid? id) => CanonicalJson.Identifier(builder, id);
 
-    private static void Text(StringBuilder builder, string? value)
-    {
-        if (value is null)
-        {
-            builder.Append("null");
-            return;
-        }
+    private static void Text(StringBuilder builder, string? value) => CanonicalJson.Text(builder, value);
 
-        builder.Append('"');
-        foreach (var character in value.Normalize(NormalizationForm.FormC))
-        {
-            switch (character)
-            {
-                case '"':
-                    builder.Append("\\\"");
-                    break;
-                case '\\':
-                    builder.Append("\\\\");
-                    break;
-                case '\b':
-                    builder.Append("\\b");
-                    break;
-                case '\f':
-                    builder.Append("\\f");
-                    break;
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-                case < ' ':
-                    builder.Append("\\u00").Append(((int)character).ToString("x2", CultureInfo.InvariantCulture));
-                    break;
-                default:
-                    builder.Append(character);
-                    break;
-            }
-        }
-
-        builder.Append('"');
-    }
-
-    private static void Details(StringBuilder builder, string? details)
-    {
-        if (string.IsNullOrWhiteSpace(details))
-        {
-            builder.Append("null");
-            return;
-        }
-
-        using var document = JsonDocument.Parse(details);
-        Value(builder, document.RootElement);
-    }
-
-    private static void Value(StringBuilder builder, JsonElement element)
-    {
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Object:
-                builder.Append('{');
-                var first = true;
-                foreach (var property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
-                {
-                    if (!first)
-                    {
-                        Separate(builder);
-                    }
-
-                    first = false;
-                    Text(builder, property.Name);
-                    builder.Append(':');
-                    Value(builder, property.Value);
-                }
-
-                builder.Append('}');
-                break;
-            case JsonValueKind.Array:
-                builder.Append('[');
-                var head = true;
-                foreach (var item in element.EnumerateArray())
-                {
-                    if (!head)
-                    {
-                        Separate(builder);
-                    }
-
-                    head = false;
-                    Value(builder, item);
-                }
-
-                builder.Append(']');
-                break;
-            case JsonValueKind.String:
-                Text(builder, element.GetString());
-                break;
-            case JsonValueKind.Number:
-                builder.Append(Number(element.GetRawText()));
-                break;
-            case JsonValueKind.True:
-                builder.Append("true");
-                break;
-            case JsonValueKind.False:
-                builder.Append("false");
-                break;
-            default:
-                builder.Append("null");
-                break;
-        }
-    }
-
-    /// <summary>A number as its decimal value: no exponent, no trailing zeros after the point, no point when whole.</summary>
-    private static string Number(string raw)
-    {
-        var value = decimal.Parse(raw, NumberStyles.Float, CultureInfo.InvariantCulture);
-        var text = value.ToString("0.############################", CultureInfo.InvariantCulture);
-        return text == "-0" ? "0" : text;
-    }
+    private static void Details(StringBuilder builder, string? details) => CanonicalJson.Json(builder, details);
 }
 
 /// <summary>Where a tenant's chain stands (TF-061): its last sealed position and that event's hash.</summary>

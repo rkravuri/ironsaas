@@ -13,7 +13,7 @@ public enum ProposalStatus
 }
 
 /// <summary>A business record with a draft status: its creator may change it until it is submitted (TF-035).</summary>
-public sealed class Proposal : BusinessRecord
+public sealed class Proposal : BusinessRecord, ITrackedChanges
 {
     private Proposal()
     {

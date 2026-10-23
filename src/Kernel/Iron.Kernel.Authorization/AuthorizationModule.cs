@@ -5,10 +5,12 @@ using Iron.Kernel.Authorization.Api;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
+using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Seeding;
+using Iron.Kernel.History;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,8 @@ public sealed class AuthorizationModule : IModule
     public string Name => "authz";
 
     public IReadOnlyList<Permission> Permissions => AuthorizationPermissions.All;
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => AuthorizationAuditEvents.Types;
 
     public IReadOnlyList<Feature> Features => AuthorizationFeatures.All;
 
@@ -69,6 +73,10 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<DelegationService>();
         services.AddScoped<IDelegations, DelegationQueries>();
         services.AddScoped<ReviewService>();
+
+        // Decisions are signed when the tenant's policy says so (ADR-0051); a host without Compliance needs no signature.
+        services.TryAddScoped<ISignatures, NoSignatures>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignableRecords, AccessReviewSignatures>());
         services.AddScoped<UnitReviewers>();
         services.AddScoped<ReviewEscalationPass>();
 

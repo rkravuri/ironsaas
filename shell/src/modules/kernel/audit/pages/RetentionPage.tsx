@@ -10,6 +10,7 @@ import { Form, useZodForm } from "@/components/form";
 import { FormDialog, LoadingState } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
 import { periodWords, retentionClassName } from "./audit-words";
+import { RecordHistoryButton } from "@/components/panels";
 
 export const manageRetention = "audit.retention.manage";
 const retentionKey = [...auditQueryKey, "retention"] as const;
@@ -79,6 +80,7 @@ export function RetentionPage() {
                         <Table.Th>{t("retention.columns.limits")}</Table.Th>
                         <Table.Th>{t("retention.columns.records")}</Table.Th>
                         {canManage && <Table.Th>{t("retention.columns.actions")}</Table.Th>}
+                        <Table.Th>{t("retention.columns.history")}</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -129,6 +131,19 @@ export function RetentionPage() {
                               </Button>
                             </Table.Td>
                           )}
+                          <Table.Td>
+                            {row.choice_id ? (
+                              <RecordHistoryButton
+                                compact
+                                record={{ recordType: "retention_choice", recordId: row.choice_id }}
+                                name={retentionClassName(row.code, t)}
+                              />
+                            ) : (
+                              <Text size="xs" c="dimmed">
+                                {t("retention.noHistory")}
+                              </Text>
+                            )}
+                          </Table.Td>
                         </Table.Tr>
                       ))}
                     </Table.Tbody>

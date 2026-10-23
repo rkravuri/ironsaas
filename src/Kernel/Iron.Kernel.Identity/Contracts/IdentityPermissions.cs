@@ -1,3 +1,5 @@
+using Iron.Kernel.History;
+
 namespace Iron.Kernel.Identity.Contracts;
 
 /// <summary>The permissions of the Identity module (TF-030).</summary>
@@ -77,6 +79,9 @@ public static class IdentityErrors
     /// <summary>A person may not deactivate themselves: another administrator does it, so the tenant always keeps one.</summary>
     public const string UserSelf = "identity.user.self";
     public const string LoginIdTaken = "identity.login_id.taken";
+
+    /// <summary>The login identifier was given to someone before (TF-219): it stays theirs, after deactivation and removal.</summary>
+    public const string LoginIdRetired = "identity.login_id.retired";
     public const string ClientInvalid = "identity.client.invalid";
 
     /// <summary>No user with this id, or none the reader may see: the same answer, so a link reveals nothing (ADR-0031).</summary>
@@ -369,6 +374,48 @@ public static class IdentityAuditEvents
 
     /// <summary>An administrator retired a tenant document: nobody is asked to accept it any more.</summary>
     public const string DocumentRetired = "identity.document_retired";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(LoginSucceeded, "Signed in"),
+        new(LoginFailed, "Sign-in failed"),
+        new(Logout, "Signed out"),
+        new(SessionExpired, "Session expired"),
+        new(InvitationCreated, "Invitation sent"),
+        new(InvitationAccepted, "Invitation accepted"),
+        new(TokenIssued, "Access token issued"),
+        new(TokenRefused, "Access token refused"),
+        new(ActingStarted, "Started acting for someone"),
+        new(ActingStopped, "Stopped acting for someone"),
+        new(ActingEnded, "Acting for someone ended with the delegation"),
+        new(WorkingUnitChosen, "Working unit chosen"),
+        new(ServiceAccountSecretChanged, "Service account secret changed"),
+        new(HomeUnitSet, "Home unit set"),
+        new(UserCreated, "Person created"),
+        new(PasswordChanged, "Password changed"),
+        new(RecoveryLinkIssued, "Recovery link issued"),
+        new(RecoveryLinkUsed, "Recovery link used"),
+        new(PasswordSetByRecovery, "Password set through a recovery link"),
+        new(LoginLocked, "Login identifier locked"),
+        new(LoginUnlocked, "Login identifier unlocked"),
+        new(UserDeactivated, "Person deactivated"),
+        new(UserReactivated, "Person reactivated"),
+        new(Reauthenticated, "Identity confirmed for a high-risk action"),
+        new(FactorRenamed, "Second factor renamed"),
+        new(SsoProviderCreated, "Company login connected"),
+        new(SsoProviderChanged, "Company login changed"),
+        new(SsoProviderDeleted, "Company login removed"),
+        new(SessionEnded, "Session ended"),
+        new(TenantRevoked, "Every session and token revoked"),
+        new(ImpersonationLinkIssued, "Sign-in-as link issued"),
+        new(BreakGlassOpened, "Break-glass account opened"),
+        new(BreakGlassClosed, "Break-glass account closed"),
+        new(TermsAccepted, "Document accepted"),
+        new(TermsDeclined, "Document declined"),
+        new(DocumentPublished, "Document published"),
+        new(DocumentRetired, "Document retired"),
+    ];
 }
 
 /// <summary>

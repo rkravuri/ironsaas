@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Iron.Kernel.Api.Lists;
+using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
@@ -40,8 +41,20 @@ public sealed record AuditEventResponse(
     /// <summary>The event's place in the chain (TF-061); null until the sealer gave it one.</summary>
     public long? ChainPosition { get; init; }
 
+    /// <summary>The words the event type reads as (ADR-0051), or its code when no module of this host declares it.</summary>
+    public string? EventName { get; init; }
+
     /// <summary>True for an event read from the archive rather than the database (TF-064 AC2).</summary>
     public bool Archived { get; init; }
+
+    /// <summary>The fields a save changed, for a record's change event (TF-062): one group of rows per save.</summary>
+    public IReadOnlyList<FieldChangeResponse>? Changes { get; init; }
+
+    /// <summary>A change event's fields from the column's JSON.</summary>
+    public static IReadOnlyList<FieldChangeResponse>? ChangesOf(string? json) =>
+        string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<List<FieldChangeResponse>>(json, ChangesJson);
+
+    private static readonly JsonSerializerOptions ChangesJson = new(JsonSerializerDefaults.Web) { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
     public static AuditEventResponse From(AuditEventRecord record, IReadOnlyDictionary<Guid, string> names)
     {
@@ -76,6 +89,7 @@ public sealed record AuditEventResponse(
         {
             ChainPosition = archived.Position,
             Archived = true,
+            Changes = ChangesOf(e.Changes),
         };
     }
 
@@ -102,9 +116,13 @@ public sealed record AuditEventResponse(
             Severity: record.Severity)
         {
             ChainPosition = record.ChainPosition,
+            Changes = ChangesOf(record.Changes),
         };
     }
 }
+
+/// <summary>One field of a save (TF-062): its name, its old and new values as kept, and how they are kept.</summary>
+public sealed record FieldChangeResponse(string Field, string? Old, string? New, string Treatment);
 
 internal static class AuditEventsEndpoints
 {
@@ -133,8 +151,12 @@ internal static class AuditEventsEndpoints
     {
         var events = endpoints.MapApiGroup("audit-events").RequirePermission(AuditPermissions.EventsRead);
         events.MapGet("/", ListAsync).Produces<ListResponse<AuditEventResponse>>(StatusCodes.Status200OK).WithName("ListAuditEvents").WithSummary("Search the audit trail of this tenant.");
+        events.MapGet("/types", Types).Produces<AuditEventTypesResponse>(StatusCodes.Status200OK).WithName("ListAuditEventTypes").WithSummary("Every audit event type this unit's modules write, with the words it reads as.");
         events.MapGet("/impersonators", ImpersonatorsAsync).Produces<SignedInAsListResponse>(StatusCodes.Status200OK).WithName("ListAuditImpersonators").WithSummary("Everyone who signed in as someone, or came in through break-glass, by name: the operators, the break-glass accounts and the tenant's people, each with the field that finds their events.");
     }
+
+    private static IResult Types(AuditEventNames names) =>
+        TypedResults.Ok(new AuditEventTypesResponse([.. names.All.Select(t => new AuditEventTypeResponse(t.Code, t.Name))]));
 
     private static async Task<IResult> ImpersonatorsAsync(AuditImpersonators impersonators, CancellationToken cancellationToken)
     {
@@ -165,9 +187,15 @@ internal static class AuditEventsEndpoints
             names = (await principals.FindAsync(ids, cancellationToken)).ToDictionary(p => p.Key, p => p.Value.DisplayName);
         }
 
-        return ApiResults.List(page.Map(record => AuditEventResponse.From(record, names)), http, query);
+        var eventNames = http.RequestServices.GetService<AuditEventNames>();
+        return ApiResults.List(page.Map(record => AuditEventResponse.From(record, names) with { EventName = eventNames?.NameOf(record.EventType) ?? record.EventType }), http, query);
     }
 }
+
+/// <summary>An audit event type and the words it reads as (ADR-0051).</summary>
+public sealed record AuditEventTypeResponse(string Code, string Name);
+
+public sealed record AuditEventTypesResponse(IReadOnlyList<AuditEventTypeResponse> Data);
 
 /// <summary>Someone the "signed in as them by" filter offers, by name, with the list field that finds their events.</summary>
 public sealed record SignedInAsResponse(Guid Id, string Name, string Kind, string Field);

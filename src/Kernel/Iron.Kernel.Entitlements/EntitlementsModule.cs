@@ -7,6 +7,7 @@ using Iron.Kernel.Entitlements.Api;
 using Iron.Kernel.Entitlements.Contracts;
 using Iron.Kernel.Entitlements.Data;
 using Iron.Kernel.Entitlements.Services;
+using Iron.Kernel.History;
 using Iron.Kernel.Security.Secrets;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,8 @@ public sealed class EntitlementsModule : IModule
     public string Name => "entitlements";
 
     public IReadOnlyList<Permission> Permissions => EntitlementsPermissions.All;
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => EntitlementsAuditEvents.Types;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Kernel.Compliance: signatures, the snapshot form, signing policies, the signer interface Identity implements. References Iron.Kernel only. -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

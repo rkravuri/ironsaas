@@ -330,4 +330,63 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
       value: ["buyer", "tenant-administrator"],
     });
   });
+  it("sets the signing policy per document type, an always-signed type fixed, and saves it as one value [TF-063 AC1, ADR-0051]", async () => {
+    const user = userEvent.setup();
+    const policies = view("compliance.signing.policies", "compliance", {
+      type: "json",
+      requirement: "An object keyed by document type.",
+      minimum: null,
+      maximum: null,
+      whole_number: false,
+      default: {},
+      value: {},
+    });
+    const policy = (required: boolean, meanings: string[]) => ({ required, meanings, reauthenticate: true });
+    const { calls } = open(administrator, {
+      "GET /api/v1/settings?scope=tenant": () => json({ ...tenantList, data: [policies] }),
+      "GET /api/v1/signatures/types": () =>
+        json({
+          data: [
+            {
+              record_type: "access_review_decision",
+              name: "Access review decision",
+              meanings: ["approved", "rejected"],
+              always_signed: false,
+              policy: policy(false, ["approved", "rejected"]),
+              default: policy(false, ["approved", "rejected"]),
+            },
+            {
+              record_type: "audit_trail_review",
+              name: "Audit-trail review",
+              meanings: ["reviewed"],
+              always_signed: true,
+              policy: policy(true, ["reviewed"]),
+              default: policy(true, ["reviewed"]),
+            },
+          ],
+        }),
+      "PUT /api/v1/settings/compliance.signing.policies": () => json(policies),
+    });
+    const setting = await row("Signing policy");
+    expect(setting.getByText("Every kind of document as its module sets it.")).toBeInTheDocument();
+
+    await user.click(setting.getByRole("button", { name: "Change: Signing policy" }));
+    const dialog = await screen.findByRole("dialog", { name: "Change: Signing policy" });
+    const decisions = within(await within(dialog).findByRole("group", { name: "Access review decision" }));
+    const reviews = within(within(dialog).getByRole("group", { name: "Audit-trail review" }));
+    expect(reviews.getByRole("switch", { name: "A signature is required" })).toBeDisabled();
+    expect(reviews.getByRole("switch", { name: "A signature is required" })).toBeChecked();
+    await user.click(decisions.getByRole("switch", { name: "A signature is required" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(calls.some((call) => call.key === "PUT /api/v1/settings/compliance.signing.policies")).toBe(true),
+    );
+    const sent = calls.find((call) => call.key === "PUT /api/v1/settings/compliance.signing.policies");
+    expect(JSON.parse(sent?.init?.body as string)).toEqual({
+      scope: "tenant",
+      unit_id: null,
+      value: { access_review_decision: { required: true, meanings: ["approved", "rejected"], reauthenticate: true } },
+    });
+  });
 });

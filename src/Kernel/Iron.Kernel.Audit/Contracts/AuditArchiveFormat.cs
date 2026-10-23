@@ -57,6 +57,17 @@ public static class AuditArchiveFormat
                     details.RootElement.WriteTo(writer);
                 }
 
+                writer.WritePropertyName("changes");
+                if (string.IsNullOrWhiteSpace(content.Changes))
+                {
+                    writer.WriteNullValue();
+                }
+                else
+                {
+                    using var changes = JsonDocument.Parse(content.Changes);
+                    changes.RootElement.WriteTo(writer);
+                }
+
                 writer.WriteString("previous_hash", sealedEvent.PreviousHash);
                 writer.WriteString("hash", sealedEvent.Hash);
                 writer.WriteNumber("hash_version", sealedEvent.HashVersion);
@@ -78,6 +89,9 @@ public static class AuditArchiveFormat
             using var document = JsonDocument.Parse(line);
             var root = document.RootElement;
             var details = root.GetProperty("details");
+
+            // A batch archived before version 2 has no changes: version 1 never hashed them.
+            var changes = root.TryGetProperty("changes", out var found) ? found : default;
             events.Add(new SealedEvent(
                 new ChainedEvent(
                     root.GetProperty("id").GetGuid(),
@@ -96,7 +110,8 @@ public static class AuditArchiveFormat
                     OptionalGuid(root.GetProperty("record_id")),
                     root.GetProperty("reason").GetString(),
                     root.GetProperty("correlation_id").GetString(),
-                    details.ValueKind == JsonValueKind.Null ? null : details.GetRawText()),
+                    details.ValueKind == JsonValueKind.Null ? null : details.GetRawText(),
+                    changes.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null ? null : changes.GetRawText()),
                 root.GetProperty("previous_hash").GetString()!,
                 root.GetProperty("hash").GetString()!,
                 root.GetProperty("hash_version").GetInt16(),

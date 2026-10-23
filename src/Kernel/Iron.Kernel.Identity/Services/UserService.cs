@@ -316,6 +316,12 @@ public sealed class UserService(
             return new Error(ErrorKind.Conflict, IdentityErrors.LoginIdTaken, $"Someone already signs in as '{normalised}'.", [new FieldError("login_id", "taken", "Another account has this login id. Choose another.")]);
         }
 
+        // A removed person's identifier stays theirs (TF-219, ADR-0051): the tombstone outlives the principal.
+        if (await context.LoginIdReservations.AnyAsync(r => r.LoginId == normalised, cancellationToken).ConfigureAwait(false))
+        {
+            return new Error(ErrorKind.Conflict, IdentityErrors.LoginIdRetired, $"'{normalised}' belonged to someone before, and a login identifier is never given to a second person.", [new FieldError("login_id", "retired", "This login id belonged to someone before. Choose another.")]);
+        }
+
         var principal = new Principal(normalised, PrincipalType.User, displayName, normalised.Contains('@', StringComparison.Ordinal) ? normalised : null);
         principal.SetHomeUnit(unit.Id);
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);

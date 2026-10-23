@@ -14,7 +14,7 @@ namespace Iron.Architecture.Tests;
 public class ModuleDbContextTests
 {
     [Fact]
-    [Proves("ADR-0008", "ADR-0029", "ADR-0043")]
+    [Proves("TF-062 AC2", "ADR-0008", "ADR-0029", "ADR-0043", "ADR-0051")]
     public void EveryModuleDbContextPassesTheModelCheck()
     {
         var projects = ProjectCatalog.Load(Repository.Root)

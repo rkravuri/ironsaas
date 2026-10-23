@@ -2,6 +2,7 @@ using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Seeding;
+using Iron.Kernel.History;
 using Iron.Kernel.Tenancy.Api;
 using Iron.Kernel.Tenancy.Contracts;
 using Iron.Kernel.Tenancy.Data;
@@ -23,6 +24,8 @@ public sealed class TenancyModule : IModule
     public string Name => "tenancy";
 
     public IReadOnlyList<Permission> Permissions => TenancyPermissions.All;
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => TenancyAuditEvents.Types;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {

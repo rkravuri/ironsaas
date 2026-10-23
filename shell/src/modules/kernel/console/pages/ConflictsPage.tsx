@@ -15,12 +15,13 @@ import {
 } from "@/api/authorization";
 import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
-import { ConfirmDialog } from "@/components/panels";
+import { ConfirmDialog, RecordHistoryButton } from "@/components/panels";
 import { ListPage } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
 import { ConflictRuleDialog } from "./ConflictRuleDialog";
 import { conflictGrantWords, ruleSidesWords } from "./conflict-words";
 import { formatDateTime } from "@/i18n/dates";
+import { useReadsAuditTrail } from "@/auth/record-history";
 
 const ruleSort = [{ field: "name", direction: "asc" as const }];
 const entrySort = [{ field: "principal_name", direction: "asc" as const }];
@@ -34,6 +35,7 @@ export function ConflictsPage() {
   const { t } = useTranslation();
   const session = useSession();
   const canManage = session.tenantPermissions.includes("authz.sod.manage");
+  const readsTrail = useReadsAuditTrail();
   const [tab, setTab] = useState<string | null>("rules");
   // The editor keeps its rule while it closes, so its title stays the same until it is gone.
   const [editor, setEditor] = useState<{
@@ -149,10 +151,17 @@ export function ConflictsPage() {
       })
     : t("conflicts.report.never");
 
+  const history = readsTrail && (
+    <RecordHistoryButton
+      record={selected ? { recordType: "conflict_rule", recordId: selected.id } : undefined}
+      name={selected?.name ?? ""}
+    />
+  );
   const actions =
     tab === "rules" ? (
       canManage ? (
         <>
+          {history}
           <Button variant="default" disabled={!selected} onClick={() => selected && setRemoving(selected)}>
             {t("conflicts.rules.remove")}
           </Button>
@@ -170,7 +179,9 @@ export function ConflictsPage() {
             {t("conflicts.rules.add")}
           </Button>
         </>
-      ) : undefined
+      ) : (
+        history || undefined
+      )
     ) : canManage ? (
       <Button loading={busy} onClick={() => void act(runConflictReport)}>
         {t("conflicts.report.run")}

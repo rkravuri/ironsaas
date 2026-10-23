@@ -1,3 +1,5 @@
+using Iron.Kernel.History;
+
 namespace Iron.Kernel.Files.Contracts;
 
 /// <summary>A stored object as read back: the content stream, its type and length. Dispose it after reading.</summary>
@@ -54,4 +56,13 @@ public static class FilesAuditEvents
     public const string Downloaded = "files.file.downloaded";
     public const string Deleted = "files.file.deleted";
     public const string IntegrityFailed = "files.file.integrity_failed";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(Uploaded, "File uploaded"),
+        new(Downloaded, "File downloaded"),
+        new(Deleted, "File deleted"),
+        new(IntegrityFailed, "File failed its integrity check"),
+    ];
 }

@@ -30,7 +30,8 @@ import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, FormDialog, HistoryPanel, LoadingState } from "@/components/panels";
 import { ConsolePage, type ConsoleSection } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
-import { displayValue, settingName, settingSlug as slug, sourceSentence } from "./setting-words";
+import { displayValue, settingName, settingSlug as slug, signingPoliciesKey, sourceSentence } from "./setting-words";
+import { SigningPolicyField, type PolicyMap } from "./SigningPolicyField";
 import { UnitPicker } from "./UnitPicker";
 
 const manage = "settings.values.manage";
@@ -339,13 +340,20 @@ const roleListKey = "identity.mfa.roles";
 const initialValue = (setting: SettingView): unknown =>
   setting.key === roleListKey
     ? (Array.isArray(setting.value) ? setting.value : []).filter((code): code is string => typeof code === "string")
-    : setting.type === "json"
-      ? JSON.stringify(setting.value, null, 2)
-      : (setting.value ?? (setting.type === "boolean" ? false : ""));
+    : setting.key === signingPoliciesKey
+      ? typeof setting.value === "object" && setting.value !== null && !Array.isArray(setting.value)
+        ? setting.value
+        : {}
+      : setting.type === "json"
+        ? JSON.stringify(setting.value, null, 2)
+        : (setting.value ?? (setting.type === "boolean" ? false : ""));
 
 function editSchema(setting: SettingView, t: TFunction): z.ZodType<EditValues> {
   if (setting.key === roleListKey) {
     return z.object({ value: z.array(z.string()) });
+  }
+  if (setting.key === signingPoliciesKey) {
+    return z.object({ value: z.record(z.string(), z.unknown()) });
   }
   // The type only: the rule is the server's, and its words come back on the field (TF-057 AC2).
   switch (setting.type) {
@@ -391,6 +399,14 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
   });
 
   const field = (() => {
+    if (setting.key === signingPoliciesKey) {
+      return (
+        <SigningPolicyField
+          value={form.values.value as PolicyMap}
+          onChange={(value) => form.setFieldValue("value", value)}
+        />
+      );
+    }
     if (roleList) {
       const held = (form.values.value as string[] | undefined) ?? [];
       const known = (roles.data?.data ?? []).map((role) => ({ value: role.code, label: role.name }));
@@ -479,11 +495,12 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
       submitLabel={t("settings.edit.save")}
       secondary={{ label: t("settings.cancel"), onClick: onClose }}
       onSubmit={async (values) => {
-        const value = roleList
-          ? values.value
-          : setting.type === "json"
-            ? (JSON.parse(String(values.value)) as unknown)
-            : values.value;
+        const value =
+          roleList || setting.key === signingPoliciesKey
+            ? values.value
+            : setting.type === "json"
+              ? (JSON.parse(String(values.value)) as unknown)
+              : values.value;
         await saveSetting(setting.key, place, typeof value === "string" ? value.trim() : value);
         await onSaved();
         onClose();

@@ -3,6 +3,7 @@
   "platform": [
     "audit",
     "authz",
+    "compliance",
     "entitlements",
     "files",
     "flags",
@@ -112,6 +113,38 @@
         }
       ],
       "settings": [
+        {
+          "key": "compliance.signing.later_second_factor",
+          "module": "compliance",
+          "type": "boolean",
+          "description": "Ask for the second factor at every signature, not only at the first of a session. The password is always asked.",
+          "default": false,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "On or off.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "compliance.signing.policies",
+          "module": "compliance",
+          "type": "json",
+          "description": "The signing policy per document type: whether a signature is required, which meanings it may have, and whether signing asks for the password again.",
+          "default": {},
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "An object keyed by document type, each with required (true or false), meanings (a list of approved, rejected, acknowledged, signed and reviewed) and reauthenticate (true or false).",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
         {
           "key": "identity.impersonation.max_minutes",
           "module": "identity",

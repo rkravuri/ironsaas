@@ -19,7 +19,7 @@ public enum PrincipalStatus
 }
 
 /// <summary>A principal of this tenant (TF-010). The login identifier is unique and stored in lowercase.</summary>
-public sealed class Principal : AuditedEntity, IOwnAccessRule
+public sealed class Principal : AuditedEntity, IOwnAccessRule, ITrackedChanges
 {
     public const int LoginIdMaxLength = 254;
     public const int DisplayNameMaxLength = 200;
@@ -60,15 +60,21 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     public string? TimeZone { get; private set; }
 
     /// <summary>The Argon2id hash in PHC string form, or null while the principal has no local credential.</summary>
+    [Secret]
     public string? PasswordHash { get; private set; }
 
+    // The sign-in counters change on every attempt; the sign-in events tell that story, not the record's history.
+    [NotTracked]
     public int FailedLoginAttempts { get; private set; }
 
+    [NotTracked]
     public DateTimeOffset? LastFailedLoginAt { get; private set; }
 
+    [NotTracked]
     public DateTimeOffset? LastLoginAt { get; private set; }
 
     /// <summary>SHA-256 of the invitation token while an invitation is open (TF-018).</summary>
+    [Secret]
     public string? InvitationTokenHash { get; private set; }
 
     public DateTimeOffset? InvitationExpiresAt { get; private set; }
@@ -80,14 +86,19 @@ public sealed class Principal : AuditedEntity, IOwnAccessRule
     public DateTimeOffset? PasswordChangedAt { get; private set; }
 
     /// <summary>SHA-256 of the code of an open recovery link (TF-017): one at a time, 15 minutes, consumed on use.</summary>
+    // A recovery link is asked for by someone not signed in; its own events record it (identity.recovery_*).
+    [NotTracked]
     public string? RecoveryTokenHash { get; private set; }
 
+    [NotTracked]
     public DateTimeOffset? RecoveryExpiresAt { get; private set; }
 
     /// <summary>Wrong second-factor codes in a row since the last right one (TF-013 AC2); a right one or a lock sets it to zero.</summary>
+    [NotTracked]
     public int SecondFactorFailures { get; private set; }
 
     /// <summary>Until when no code is checked, after every third wrong one in a row (TF-013 AC2).</summary>
+    [NotTracked]
     public DateTimeOffset? SecondFactorCoolingUntil { get; private set; }
 
     /// <summary>

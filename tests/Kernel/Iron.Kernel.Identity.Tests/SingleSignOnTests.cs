@@ -12,6 +12,8 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
+using Iron.Kernel.Compliance;
+using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
@@ -547,6 +549,45 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
         Assert.Equal(FactorKinds.AuthenticatorApp, JsonDocument.Parse(audited!.Details!).RootElement.GetProperty("second_factor").GetString());
     }
 
+    [Fact]
+    [Proves("TF-063 AC5", "TF-248 AC6", "ADR-0048", "ADR-0051")]
+    public async Task ACompanyLoginPersonSignsOnlyAfterAFreshSignInThereAndEachSignatureTakesItsOwn()
+    {
+        await using var host = await StartAsync();
+        var admin = await host.AdministratorSessionAsync();
+        var provider = await host.ProviderAsync(admin);
+        using var signedIn = await host.SignInThroughAsync(provider.Id, "signer", Claims($"signer@{Domain}", name: "Sam Signer"));
+        var session = Cookie(signedIn, SessionCookie)!;
+        await host.AssignAsync((await host.PrincipalAsync($"signer@{Domain}"))!.Id, SystemRoles.TenantAdministrator);
+
+        using var challenge = await host.SendAsync(HttpMethod.Get, "/api/v1/signatures/challenge?record_type=audit_trail_review", session);
+        using var withoutSignIn = await host.SendAsync(HttpMethod.Post, "/api/v1/audit-reviews", session, SigningTests.ReviewBody(host.Time.GetUtcNow(), new { }));
+        var (signIn, url) = await host.StartReauthenticationAsync(session, new { return_to = "/compliance/audit-reviews" });
+        using var confirmed = await host.ConfirmThroughAsync(session, signIn, url, "signer", Claims($"signer@{Domain}", authTime: host.Time.GetUtcNow()));
+        using var ready = await host.SendAsync(HttpMethod.Get, "/api/v1/signatures/challenge?record_type=audit_trail_review", session);
+        using var signed = await host.SendAsync(HttpMethod.Post, "/api/v1/audit-reviews", session, SigningTests.ReviewBody(host.Time.GetUtcNow(), new { }));
+        using var second = await host.SendAsync(HttpMethod.Post, "/api/v1/audit-reviews", session, SigningTests.ReviewBody(host.Time.GetUtcNow(), new { }));
+        var (staleSignIn, staleUrl) = await host.StartReauthenticationAsync(session, new { return_to = "/compliance/audit-reviews" });
+        using var staleConfirmed = await host.ConfirmThroughAsync(session, staleSignIn, staleUrl, "signer", Claims($"signer@{Domain}", authTime: host.Time.GetUtcNow()));
+        host.Time.Advance(TimeSpan.FromMinutes(6));
+        using var stale = await host.SendAsync(HttpMethod.Post, "/api/v1/audit-reviews", session, SigningTests.ReviewBody(host.Time.GetUtcNow(), new { }));
+
+        var asked = (await JsonAsync(challenge)).RootElement;
+        Assert.False(asked.GetProperty("password").GetBoolean());
+        Assert.Equal(provider.Id, asked.GetProperty("provider_id").GetGuid());
+        Assert.False(asked.GetProperty("provider_confirmed").GetBoolean());
+        Assert.Equal(ComplianceErrors.ProviderSignInRequired, await ProblemAsync(withoutSignIn, HttpStatusCode.Forbidden));
+        Assert.Equal(HttpStatusCode.OK, confirmed.StatusCode);
+        Assert.True((await JsonAsync(ready)).RootElement.GetProperty("provider_confirmed").GetBoolean());
+        Assert.Equal(HttpStatusCode.Created, signed.StatusCode);
+        var signature = (await JsonAsync(signed)).RootElement.GetProperty("signature");
+        Assert.Equal(SignatureMethods.CompanyLogin, signature.GetProperty("method").GetString());
+        Assert.Equal("Sam Signer", signature.GetProperty("signer_name").GetString());
+        Assert.Equal(ComplianceErrors.ProviderSignInRequired, await ProblemAsync(second, HttpStatusCode.Forbidden));
+        Assert.Equal(HttpStatusCode.OK, staleConfirmed.StatusCode);
+        Assert.Equal(ComplianceErrors.ProviderSignInRequired, await ProblemAsync(stale, HttpStatusCode.Forbidden));
+    }
+
     private static Dictionary<string, object?> Claims(string email, bool verified = true, string? name = null, IReadOnlyList<string>? groups = null, IReadOnlyList<string>? amr = null, DateTimeOffset? authTime = null)
     {
         var claims = new Dictionary<string, object?>(StringComparer.Ordinal) { ["email"] = email, ["email_verified"] = verified, ["name"] = name ?? email };
@@ -596,7 +637,7 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(connectionString);
         builder.Services.AddIronSecretStore(builder.Configuration);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

@@ -1,6 +1,7 @@
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Conventions;
+using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Sharing;
 using Iron.Kernel.Data.Transactions;
@@ -43,6 +44,10 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<UnitOfWork>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<UnitOfWork>());
         services.AddScoped<AuditStampInterceptor>();
+
+        // Field-level history (TF-062, ADR-0051): the Audit module supplies the recorder; without it nothing is recorded.
+        services.AddScoped<ChangeHistoryInterceptor>();
+        services.TryAddScoped<IChangeReason, ChangeReason>();
         services.AddScoped<OwningOrganisationInterceptor>();
         services.AddScoped<MigrationRunner>();
         services.AddScoped<SeedRunner>();
@@ -61,7 +66,8 @@ public static class DataServiceCollectionExtensions
 
     /// <summary>
     /// Registers a module's DbContext against the unit's database, in the module's schema, with snake_case names,
-    /// its own migrations history table, the audit stamp interceptor and the owning organisation check.
+    /// its own migrations history table, the audit stamp interceptor, the owning organisation check and the field-level
+    /// history of tracked entities.
     /// </summary>
     public static IServiceCollection AddIronDbContext<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder>? configure = null)
         where TContext : ModuleDbContext
@@ -73,7 +79,7 @@ public static class DataServiceCollectionExtensions
         services.AddDbContext<TContext>((provider, options) =>
         {
             DesignTime.Configure<TContext>(options, provider.GetRequiredService<SharedConnection>().Connection);
-            options.AddInterceptors(provider.GetRequiredService<OwningOrganisationInterceptor>(), provider.GetRequiredService<AuditStampInterceptor>());
+            options.AddInterceptors(provider.GetRequiredService<OwningOrganisationInterceptor>(), provider.GetRequiredService<AuditStampInterceptor>(), provider.GetRequiredService<ChangeHistoryInterceptor>());
             configure?.Invoke(options);
         });
 

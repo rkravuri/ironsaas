@@ -29,7 +29,7 @@ public static class Scopes
 }
 
 /// <summary>A role given to a principal for a scope (TF-033): the tenant, a unit with or without its children, or a record.</summary>
-public sealed class RoleAssignment : AuditedEntity, IOwnAccessRule
+public sealed class RoleAssignment : AuditedEntity, IOwnAccessRule, ITrackedChanges
 {
     private RoleAssignment()
     {

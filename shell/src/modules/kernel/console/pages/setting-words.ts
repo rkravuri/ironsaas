@@ -10,10 +10,39 @@ export const settingName = (setting: SettingView, t: TFunction) =>
 
 const asText = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value));
 
+/** The signing policy per document type (ADR-0051), edited per type and read as a sentence per type. */
+export const signingPoliciesKey = "compliance.signing.policies";
+
+function policyWords(value: unknown, t: TFunction): string {
+  const entries = typeof value === "object" && value !== null ? Object.entries(value as Record<string, unknown>) : [];
+  if (entries.length === 0) {
+    return t("signingPolicy.defaults");
+  }
+  return entries
+    .map(([type, policy]) => {
+      const p = (policy ?? {}) as { required?: boolean; reauthenticate?: boolean; meanings?: string[] };
+      return t("signingPolicy.summary", {
+        type: t(`signingPolicy.types.${type}`, { defaultValue: type }),
+        required: t(
+          p.required === false
+            ? "signingPolicy.notRequiredWord"
+            : p.required
+              ? "signingPolicy.requiredWord"
+              : "signingPolicy.defaultWord",
+        ),
+        password: t(p.reauthenticate === false ? "signingPolicy.noPasswordWord" : "signingPolicy.passwordWord"),
+      });
+    })
+    .join(" ");
+}
+
 /** A value in words: an amount with its unit, a choice by its word, on or off, a path, or the JSON as it is. */
 export function displayValue(setting: SettingView, value: unknown, t: TFunction): string {
   if (value === null || value === undefined) {
     return t("settings.none");
+  }
+  if (setting.key === signingPoliciesKey) {
+    return policyWords(value, t);
   }
   switch (setting.type) {
     case "number":

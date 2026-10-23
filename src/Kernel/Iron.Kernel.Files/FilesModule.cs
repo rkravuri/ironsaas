@@ -5,6 +5,7 @@ using Iron.Kernel.Files.Api;
 using Iron.Kernel.Files.Contracts;
 using Iron.Kernel.Files.Data;
 using Iron.Kernel.Files.Services;
+using Iron.Kernel.History;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,8 @@ public sealed class FilesModule : IModule
     public string Name => "files";
 
     public IReadOnlyList<Permission> Permissions => FilesPermissions.All;
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => FilesAuditEvents.Types;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {

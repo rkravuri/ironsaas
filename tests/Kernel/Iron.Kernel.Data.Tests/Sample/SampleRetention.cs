@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Iron.Kernel.Data.Tests.Sample;
 
 /// <summary>A business document of the sample module: an order from a supplier, kept for its class's period after it closed (TF-066).</summary>
-public sealed class SampleOrder : BusinessRecord
+public sealed class SampleOrder : BusinessRecord, ITrackedChanges
 {
+    public const string RecordType = "sample_order";
+
     private SampleOrder()
     {
     }
@@ -25,6 +27,24 @@ public sealed class SampleOrder : BusinessRecord
     public string Reference { get; private set; } = string.Empty;
 
     public DateTimeOffset ClosedAt { get; private set; }
+
+    /// <summary>Where the supplier is paid: its history keeps the last four characters only (TF-062 AC3).</summary>
+    [Sensitive]
+    public string? BankAccount { get; private set; }
+
+    /// <summary>The supplier portal's key for this order, as its hash: its history says only that it changed.</summary>
+    [Secret]
+    public string? PortalKeyHash { get; private set; }
+
+    /// <summary>When the supplier last opened the order in its portal: bookkeeping the history leaves out.</summary>
+    [NotTracked]
+    public DateTimeOffset? LastViewedAt { get; private set; }
+
+    public void PayTo(string bankAccount) => BankAccount = bankAccount;
+
+    public void ChangePortalKey(string hash) => PortalKeyHash = hash;
+
+    public void Viewed(DateTimeOffset at) => LastViewedAt = at;
 }
 
 /// <summary>

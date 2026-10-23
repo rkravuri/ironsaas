@@ -26,8 +26,11 @@ public static class ConflictModes
 /// delegation that would create the conflict, naming itself; a warn rule allows it and lists it in the report. A
 /// tenant writes its own rules; the kernel ships none.
 /// </summary>
-public sealed class ConflictRule : AuditedEntity, ITenantWide
+public sealed class ConflictRule : AuditedEntity, ITenantWide, ITrackedChanges
 {
+    /// <summary>The record type of a rule's events and history (TF-062).</summary>
+    public const string RecordType = "conflict_rule";
+
     public const int NameMaxLength = 200;
     public const int ValueMaxLength = 100;
     public const int ReasonMaxLength = 1000;

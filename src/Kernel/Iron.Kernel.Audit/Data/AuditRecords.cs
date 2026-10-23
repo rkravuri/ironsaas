@@ -91,7 +91,8 @@ public static class LegalHoldScopes
 /// A legal hold (TF-066 AC2, ADR-0050): while it stands, the retention job deletes nothing it names, and a hold on the
 /// whole tenant keeps the audit trail's oldest end too. Placing and releasing it need a reason and step-up, and are audited.
 /// </summary>
-public sealed class LegalHold : AuditedEntity, ITenantWide
+[TrackedAs("legal_hold")]
+public sealed class LegalHold : AuditedEntity, ITenantWide, ITrackedChanges
 {
     public const int ReasonMaxLength = 1000;
     public const int RecordTypeMaxLength = 100;
@@ -139,8 +140,11 @@ public sealed class LegalHold : AuditedEntity, ITenantWide
 }
 
 /// <summary>A tenant's choice of retention for one class (TF-066 AC3): within the operator's limits, checked when it is saved.</summary>
-public sealed class RetentionChoice : AuditedEntity, ITenantWide
+public sealed class RetentionChoice : AuditedEntity, ITenantWide, ITrackedChanges
 {
+    /// <summary>The record type of a choice's history (TF-062).</summary>
+    public const string RecordType = "retention_choice";
+
     private RetentionChoice()
     {
         ClassCode = string.Empty;

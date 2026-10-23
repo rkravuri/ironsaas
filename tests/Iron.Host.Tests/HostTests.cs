@@ -197,6 +197,9 @@ public class HostTests
         ["POST /api/v1/access-reviews"] = ["due_on"],
         ["POST /api/v1/tenants/{slug}/plan"] = ["starts_on", "ends_on"],
         ["POST /api/v1/audit-anchors"] = ["at"],
+
+        // The period of the audit trail a reviewer chooses to review (TF-219 AC3); the review and its signature carry the server's time.
+        ["POST /api/v1/audit-reviews"] = ["period_from", "period_to"],
     };
 
     [Fact]

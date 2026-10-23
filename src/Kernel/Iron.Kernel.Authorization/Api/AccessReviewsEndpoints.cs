@@ -7,6 +7,7 @@ using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
+using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data.Lists;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -27,7 +28,14 @@ public sealed class StartReviewRequestValidator : AbstractValidator<StartReviewR
     }
 }
 
-public sealed record DecideItemRequest(ReviewDecision Decision, string? Comment);
+/// <summary>A decision, with the signer's credentials when the tenant's policy has decisions signed (ADR-0051).</summary>
+public sealed record DecideItemRequest(ReviewDecision Decision, string? Comment, DecisionSignatureRequest? Signature = null);
+
+/// <summary>The credentials of a decision's signature, as the signing dialog asks for them.</summary>
+public sealed record DecisionSignatureRequest(string? LoginId, string? Password, string? Code, string? RecoveryCode, System.Text.Json.JsonElement? Passkey)
+{
+    public SigningCredentials ToCredentials() => new(LoginId, Password, Code, RecoveryCode, Passkey);
+}
 
 public sealed class DecideItemRequestValidator : AbstractValidator<DecideItemRequest>
 {
@@ -163,7 +171,7 @@ internal static class AccessReviewsEndpoints
     }
 
     private static async Task<IResult> DecideAsync(Guid id, Guid itemId, DecideItemRequest request, HttpContext http, ReviewService reviews, CancellationToken cancellationToken) =>
-        ApiResults.From(await reviews.DecideAsync(id, itemId, request.Decision, request.Comment, PermissionFilter.Operation(http), cancellationToken), http, view => TypedResults.Ok(view));
+        ApiResults.From(await reviews.DecideAsync(id, itemId, request.Decision, request.Comment, request.Signature?.ToCredentials(), PermissionFilter.Operation(http), cancellationToken), http, view => TypedResults.Ok(view));
 
     private static async Task<IResult> ConfirmAsync(Guid id, ConfirmItemsRequest request, HttpContext http, ReviewService reviews, CancellationToken cancellationToken) =>
         ApiResults.From(await reviews.ConfirmManyAsync(id, request.ItemIds, request.Comment, PermissionFilter.Operation(http), cancellationToken), http, view => TypedResults.Ok(view));

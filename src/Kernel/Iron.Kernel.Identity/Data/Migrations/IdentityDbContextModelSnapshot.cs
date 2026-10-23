@@ -257,6 +257,43 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.ToTable("factors", "kernel_identity");
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Identity.Data.LoginIdReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("LoginId")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("login_id");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_login_id_reservations");
+
+                    b.HasIndex("LoginId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_login_id_reservations_login_id");
+
+                    b.ToTable("login_id_reservations", "kernel_identity", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
             modelBuilder.Entity("Iron.Kernel.Identity.Data.LoginThrottle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -736,6 +773,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("principal_id");
 
+                    b.Property<DateTimeOffset?>("ProviderConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provider_confirmed_at");
+
                     b.Property<Guid?>("ProviderId")
                         .HasColumnType("uuid")
                         .HasColumnName("provider_id");
@@ -748,6 +789,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("second_factor");
+
+                    b.Property<DateTimeOffset?>("SigningSince")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("signing_since");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()

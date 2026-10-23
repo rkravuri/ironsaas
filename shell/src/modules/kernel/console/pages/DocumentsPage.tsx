@@ -17,9 +17,10 @@ import {
 } from "@/api/identity";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { Form, useZodForm } from "@/components/form";
-import { ConfirmDialog, FormDialog, LoadingState } from "@/components/panels";
+import { ConfirmDialog, FormDialog, LoadingState, RecordHistoryButton } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
 import { formatDate, formatDateTime } from "@/i18n/dates";
+import { useReadsAuditTrail } from "@/auth/record-history";
 
 const acceptedSort = [{ field: "accepted_at", direction: "desc" as const }];
 const keyPattern = /^[a-z][a-z0-9-]*$/;
@@ -38,6 +39,7 @@ interface PublishValues extends Record<string, unknown> {
  */
 export function DocumentsPage() {
   const { t } = useTranslation();
+  const readsTrail = useReadsAuditTrail();
   const queryClient = useQueryClient();
   const [publishing, setPublishing] = useState<{ key: string; title: string } | undefined>();
   const [document, setDocument] = useState<string | null>(null);
@@ -192,6 +194,13 @@ export function DocumentsPage() {
                                 >
                                   {t("documents.retire")}
                                 </Button>
+                                {readsTrail && row.id && (
+                                  <RecordHistoryButton
+                                    compact
+                                    record={{ recordType: "document", recordId: row.id }}
+                                    name={row.title}
+                                  />
+                                )}
                               </Group>
                             ) : (
                               <Text size="xs" c="dimmed">

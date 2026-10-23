@@ -31,7 +31,8 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide, IVerifierR
         string? correlationId,
         Guid? onBehalfOfId = null,
         Guid? impersonatorId = null,
-        string? severity = null)
+        string? severity = null,
+        string? changes = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventType);
         ArgumentException.ThrowIfNullOrWhiteSpace(outcome);
@@ -49,7 +50,14 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide, IVerifierR
         OnBehalfOfId = onBehalfOfId;
         ImpersonatorId = impersonatorId;
         Severity = string.IsNullOrWhiteSpace(severity) ? "normal" : severity;
+        Changes = changes;
     }
+
+    /// <summary>
+    /// The fields a save changed (TF-062, ADR-0051), as JSON: field, old, new and treatment, a sensitive value masked and a
+    /// secret never kept. Null for every event but a record's change; hashed by canonical form version 2.
+    /// </summary>
+    public string? Changes { get; private set; }
 
     public string EventType { get; private set; }
 
@@ -106,7 +114,7 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide, IVerifierR
 
     /// <summary>The content the chain hashes, at the position the sealer gives it.</summary>
     public Contracts.ChainedEvent Chained(long position) =>
-        new(Id, position, CreatedAt, CreatedBy, EventType, Outcome, ActorId, OnBehalfOfId, ImpersonatorId, Source, Severity, Target, RecordType, RecordId, Reason, CorrelationId, Details);
+        new(Id, position, CreatedAt, CreatedBy, EventType, Outcome, ActorId, OnBehalfOfId, ImpersonatorId, Source, Severity, Target, RecordType, RecordId, Reason, CorrelationId, Details, Changes);
 
     private static string? Trim(string? value, int max) => value is null || value.Length <= max ? value : value[..(max - 1)] + "\u2026";
 }

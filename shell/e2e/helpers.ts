@@ -164,6 +164,18 @@ async function keepPasskey(authenticator: VirtualAuthenticator): Promise<void> {
     administratorPasskey;
 }
 
+/**
+ * Keeps the administrator's passkey as the page's authenticator left it, after a use outside the sign-in, such as a
+ * signature (ADR-0051): the server refuses a counter that does not grow, as a cloned key's would, so the next page's
+ * sign-in must start from this one.
+ */
+export async function rememberPasskey(page: Page): Promise<void> {
+  const authenticator = authenticators.get(page);
+  if (authenticator) {
+    await keepPasskey(authenticator);
+  }
+}
+
 const totpSecret = process.env.E2E_TOTP_SECRET ?? "";
 let lastStep = -1;
 

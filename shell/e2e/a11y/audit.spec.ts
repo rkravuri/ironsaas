@@ -22,9 +22,19 @@ async function expectNoViolation(page: Page): Promise<void> {
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 const hash = (digit: string) => digit.repeat(64);
 
+/** The words each type reads as, as the API answers them (ADR-0051). */
+const names: Record<string, string> = {
+  "identity.user.deactivated": "Person deactivated",
+  "authz.assignment.granted": "Role assigned",
+  "identity.session.ended": "Session ended",
+  "identity.sign_in.failed": "Sign-in failed",
+  "identity.user.invited": "Invitation sent",
+};
+
 const event = (n: number, type: string, minutes: number, extra: Record<string, unknown> = {}) => ({
   id: `01a18000-0000-7000-8000-${String(n).padStart(12, "0")}`,
   event_type: type,
+  event_name: names[type] ?? type,
   outcome: "success",
   actor_id: me.id,
   actor_name: "Admin",
@@ -184,6 +194,7 @@ const retention = {
     maximum_days: maximum,
     days: code === "session" ? 180 : days,
     chosen: code === "session",
+    choice_id: code === "session" ? "01a18200-0000-7000-8000-000000000001" : null,
     record_types: types,
   })),
 };
@@ -218,7 +229,7 @@ async function stubAudit(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the audit trail's search and its archive in the ${scheme} scheme, every time with its zone, with no WCAG 2.1 AA violation [TF-064 AC2, TF-065 AC2, TF-172 AC1, ADR-0024, ADR-0050]`, async ({
+  test(`the audit trail's search and its archive in the ${scheme} scheme, every time with its zone, with no WCAG 2.1 AA violation [TF-064 AC2, TF-064 AC4, TF-065 AC2, TF-172 AC1, ADR-0024, ADR-0050]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -227,7 +238,7 @@ for (const scheme of schemes) {
 
     await page.goto("/audit");
     const grid = page.getByRole("region", { name: "Audit events" });
-    await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("identity.user.deactivated");
+    await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("Person deactivated");
     await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("GMT+5:30");
     await expect(grid.locator('.ag-row[row-index="2"]').first()).toContainText("Olga Operator signed in as Admin");
     // When, with its zone, and who read in full at 1280 pixels: no cell of theirs is cut short.
@@ -292,7 +303,7 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
-  test(`legal holds and placing one with a reason in the ${scheme} scheme, with no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0050]`, async ({
+  test(`legal holds, placing one with a reason, and a hold's History in the ${scheme} scheme, with no WCAG 2.1 AA violation [TF-062 AC1, TF-172 AC1, ADR-0024, ADR-0050, ADR-0051]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -310,6 +321,18 @@ for (const scheme of schemes) {
     await dialog.getByRole("button", { name: "Place the hold" }).click();
     await expect(dialog.getByText("Say which kind of record it is.")).toBeVisible();
     await page.screenshot({ path: `test-results/a11y/legal-holds-place-${scheme}.png` });
+    await expectNoViolation(page);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    // A hold's own History, each save as its fields (TF-062, the T7 review).
+    await page
+      .getByRole("button", { name: /^History of / })
+      .first()
+      .click();
+    const history = page.getByRole("dialog", { name: /^History: / });
+    await expect(history.locator("[data-panel=history]")).toContainText("Person deactivated");
+    await page.screenshot({ path: `test-results/a11y/legal-hold-history-${scheme}.png` });
     await expectNoViolation(page);
   });
 
@@ -346,7 +369,7 @@ for (const scheme of schemes) {
     await page.goto(`/users/${record.id}`);
     await page.getByRole("tab", { name: "History" }).click();
     const history = page.locator("[data-panel=history]");
-    await expect(history).toContainText("identity.user.deactivated");
+    await expect(history).toContainText("Person deactivated");
     await expect(history).toContainText("GMT+5:30");
     await page.screenshot({ path: `test-results/a11y/user-history-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);

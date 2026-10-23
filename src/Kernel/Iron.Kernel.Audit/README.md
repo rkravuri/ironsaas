@@ -50,12 +50,12 @@ After a restore an operator accepted in the control plane, the chain continues a
 
 The app role has SELECT and INSERT on `kernel_audit.events`, and EXECUTE on the schema's functions; no UPDATE and no DELETE (TF-060 AC2).
 
-### The canonical form, version 1, for auditors
+### The canonical form, for auditors
 
-Every sealed event keeps `hash_version` (1), `previous_hash` and `hash`. To recompute `hash`:
+Every sealed event keeps `hash_version`, `previous_hash` and `hash`. Version 2 (since T7, ADR-0051) adds a save's field changes; events sealed with version 1 keep it and still verify. To recompute `hash`:
 
-1. Write a JSON array, compactly (no spaces), of these 19 values in this order:
-   1. the text `"iron-audit-v1"`;
+1. Write a JSON array, compactly (no spaces), of these values in this order (19 in version 1, 20 in version 2):
+   1. the text `"iron-audit-v1"` or `"iron-audit-v2"`, by the event's `hash_version`;
    2. `id`;
    3. `chain_position`, a whole number;
    4. `created_at` in UTC as `yyyy-MM-ddTHH:mm:ss.ffffffZ` (six decimals, the database keeps microseconds);
@@ -73,10 +73,11 @@ Every sealed event keeps `hash_version` (1), `previous_hash` and `hash`. To reco
    16. `reason`;
    17. `correlation_id`;
    18. `details`;
-   19. `previous_hash`.
+   19. in version 2 only, `changes`: the save's fields as an array of objects, each with `field`, `old`, `new` and `treatment`, or `null` for an event that is not a save;
+   20. `previous_hash`.
 2. Identifiers are lowercase with hyphens (`01a14e12-f3a8-7155-b5b6-17c3abceae77`). A missing value is `null`.
 3. Text is Unicode normalisation form C. Only `"` and `\` and the control characters below U+0020 are escaped: `\b \f \n \r \t`, the rest as `\u00xx` in lowercase. Every other character is written as itself.
-4. `details` is a JSON object with its keys in ordinal order (by UTF-16 code unit; for the keys the platform writes, ASCII order), at every depth; strings follow rule 3; a number is its decimal value without exponent, without trailing zeros after the point, and without a point when whole.
+4. `details`, and each object in `changes`, is a JSON object with its keys in ordinal order (by UTF-16 code unit; for the keys the platform writes, ASCII order), at every depth; strings follow rule 3; a number is its decimal value without exponent, without trailing zeros after the point, and without a point when whole.
 5. The hash is SHA-256 of the array's UTF-8 bytes, in lowercase hexadecimal. The first event's `previous_hash` is 64 zeros; every other event's is the hash of the event at the position before it.
 
 An archived batch (`audit/archive/{first}-{last}.jsonl` in the tenant's container) holds one event per line with these fields under the same names, and the chain's. This Python, standard library only, recomputes every hash of a batch and checks the links:
@@ -112,10 +113,14 @@ def value(v):
 def canonical(e, previous):
     fields = ["id", "position", "created_at", "created_by", "event_type", "outcome", "actor_id", "on_behalf_of_id",
               "impersonator_id", "source", "severity", "target", "record_type", "record_id", "reason", "correlation_id"]
-    parts = [text("iron-audit-v1")]
+    version = int(e["hash_version"])
+    parts = [text(f"iron-audit-v{version}")]
     for name in fields:
         parts.append(str(e[name]) if name == "position" else text(e[name]))
-    parts += [value(e["details"]), text(previous)]
+    parts.append(value(e["details"]))
+    if version >= 2:
+        parts.append(value(e.get("changes")))
+    parts.append(text(previous))
     return "[" + ",".join(parts) + "]"
 
 previous = None
@@ -131,6 +136,31 @@ for line in open(sys.argv[1], encoding="utf-8"):
 
 For events still in the database, the same columns come from `kernel_audit.events` (`chain_position` is the position; `created_at` written as rule 4). A test recomputes the form with an implementation of its own (`AuditChainTests`).
 
+### A signed snapshot's canonical form, for auditors (ADR-0051)
+
+A signature (`kernel_compliance.signatures`, the Compliance module) keeps `snapshot`, the record's content at the version signed, already written in this form, and `snapshot_hash`, its SHA-256. The form, version 1 (`snapshot_form`):
+
+1. A JSON array, compactly, of five values: the text `"iron-snapshot-v1"`; `record_type`; `record_id`; `record_version`, a whole number; and the content, an object whose fields the record's module names in snake_case.
+2. Text, identifiers, objects and numbers follow rules 2 to 4 of the event's form above.
+3. The hash is SHA-256 of the array's UTF-8 bytes, in lowercase hexadecimal.
+
+The record's type, id and version are inside the hash, so the same content under another record or version hashes differently: a signature cannot be moved. To check a signature, hash `snapshot` and compare it with `snapshot_hash`; to check that the text is the canonical form, rebuild it from its own parts with the functions above:
+
+```python
+def snapshot_hash(row):
+    label, record_type, record_id, version, content = json.loads(row["snapshot"], parse_float=Decimal, parse_int=Decimal)
+    rebuilt = "[" + ",".join([text(label), text(record_type), text(record_id), str(int(version)), value(content)]) + "]"
+    assert rebuilt == row["snapshot"], "not in the canonical form"
+    assert (record_type, record_id, int(version)) == (row["record_type"], row["record_id"], row["record_version"])
+    return hashlib.sha256(rebuilt.encode("utf-8")).hexdigest() == row["snapshot_hash"]
+```
+
+## Field-level history (TF-062, ADR-0051)
+
+A business record, and every kernel entity people change (people, roles, assignments, units, settings, providers, delegations, conflict rules, legal holds, retention choices and tenant documents), is `ITrackedChanges`; the build fails for a business record without it (`ModelCheck`). `ChangeHistoryInterceptor` in `Iron.Kernel.Data` collects every tracked entity a save adds, changes or deletes, and in the same transaction `AuditChangeRecorder` writes one event per entity: `record.created`, `record.changed` or `record.deleted`, with the record's type and id, its new version in `details`, the actor, the person acted for or the impersonator, the reason (`IChangeReason`) and the correlation id, and the fields in `changes`, each with its old and new value as text. A field marked `[Sensitive]` keeps only its last four characters (`****3000`, treatment `masked`); a `[Secret]` field only says it changed (treatment `secret`, no values); `[NotTracked]` and the bookkeeping columns (stamps, version, soft delete) are left out. A save whose history cannot be written is rolled back.
+
+The events are chained like any other, with canonical form version 2. The History tab shows each save as one group, old and new side by side.
+
 ## Archive, pruning and retention (ADR-0050)
 
 The daily `AuditRetentionWorker`, in the unit's worker:
@@ -143,4 +173,4 @@ The operator's limits per class are configuration (`Retention:Limits:<class>:Min
 
 ## Model change
 
-Edit the entity, then `make ef-add MODULE=Audit NAME=<WhatChanged>` and commit `Data/Migrations`. A change to the canonical form is a new version: keep version 1's code, so every hash made with it still verifies.
+Edit the entity, then `make ef-add MODULE=Audit NAME=<WhatChanged>` and commit `Data/Migrations`. A change to the canonical form is a new version: keep every earlier version's code, so every hash made with it still verifies (`AuditCanonicalForm.Knows`).

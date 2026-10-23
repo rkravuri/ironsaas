@@ -146,6 +146,12 @@
       "legalHolds": "Legal holds",
       "retention": "Retention",
       "line": "What happened, who did it and why, sealed so that nobody can change it unseen."
+    },
+    "compliance": {
+      "title": "Compliance",
+      "auditReviews": "Audit-trail reviews",
+      "signedSnapshot": "What was signed",
+      "line": "Reviews of the audit trail, each signed by its reviewer, and what every signature signed."
     }
   },
   "users": {
@@ -692,7 +698,20 @@
     "title": "History",
     "empty": "Nothing has happened yet.",
     "tab": "History",
-    "impersonated": "{{impersonator}} signed in as {{actor}}"
+    "impersonated": "{{impersonator}} signed in as {{actor}}",
+    "changes": {
+      "caption_one": "{{count}} field changed",
+      "caption_other": "{{count}} fields changed",
+      "field": "Field",
+      "old": "Before",
+      "new": "After",
+      "none": "Empty",
+      "masked": "Kept masked: only its last characters are stored.",
+      "secret": "Changed. A secret value is never kept."
+    },
+    "open": "History",
+    "openNamed": "History of {{name}}",
+    "of": "History: {{name}}"
   },
   "approval": {
     "title": "Approval",
@@ -1204,7 +1223,8 @@
     },
     "modules": {
       "identity": "Sign-in and invitations",
-      "settings": "Preferences"
+      "settings": "Preferences",
+      "compliance": "Signing"
     },
     "names": {
       "identity_session_idle_minutes": "A session ends without activity after",
@@ -1216,7 +1236,9 @@
       "identity_mfa_roles": "The roles whose holders need a second factor",
       "identity_mfa_allowed_factors": "People may set up",
       "identity_mfa_grace_days": "Days a person may still sign in without a second factor",
-      "identity_mfa_passkey_sign_in": "Sign in with a passkey alone"
+      "identity_mfa_passkey_sign_in": "Sign in with a passkey alone",
+      "compliance_signing_policies": "Signing policy",
+      "compliance_signing_later_second_factor": "Second factor at every signature"
     },
     "amounts": {
       "identity_session_idle_minutes_one": "{{count}} minute",
@@ -1521,7 +1543,8 @@
       "reason": "Reason"
     },
     "endSelected": "End the chosen delegation",
-    "createForSomeone": "Delegate for someone"
+    "createForSomeone": "Delegate for someone",
+    "historyName": "{{delegator}} to {{delegate}}"
   },
   "reviews": {
     "title": "Access reviews",
@@ -1627,7 +1650,12 @@
       "yours": "About your own access: another reviewer decides it.",
       "withOwner": "No other reviewer here: the review's owner decides it.",
       "conflict": "Takes part in a conflict: {{rules}}",
-      "noConflict": "None"
+      "noConflict": "None",
+      "signed": "{{decided}}, signed: {{meaning}}",
+      "signedPolicy": "Your organisation asks for a signature on each decision: Confirm and Revoke open the signing dialog, and a page cannot be confirmed at once.",
+      "signConfirmTitle": "Sign the confirmation",
+      "signRevokeTitle": "Sign the revocation",
+      "signConfirmMessage": "Keep {{name}}'s role {{role}} at {{unit}}."
     },
     "units": {
       "label": "Units of this review",
@@ -2388,7 +2416,8 @@
       "reason": "Reason",
       "placed": "Placed",
       "released": "Released",
-      "actions": "Actions"
+      "actions": "Actions",
+      "history": "History"
     },
     "scopes": {
       "tenant": "Whole tenant",
@@ -2433,7 +2462,8 @@
       "kept": "Kept for",
       "limits": "Operator's limits",
       "records": "Records in it",
-      "actions": "Actions"
+      "actions": "Actions",
+      "history": "History"
     },
     "classes": {
       "business_document": {
@@ -2488,6 +2518,176 @@
       "daysWhole": "Enter whole days.",
       "belowMinimum": "The operator's minimum is {{days}} days. Choose that or more.",
       "aboveMaximum": "The operator's maximum is {{days}} days. Choose that or fewer."
+    },
+    "noHistory": "Default: nothing chosen yet"
+  },
+  "signatures": {
+    "title": "Signatures",
+    "print": "Print",
+    "meanings": {
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "acknowledged": "Acknowledged",
+      "signed": "Signed",
+      "reviewed": "Reviewed"
+    },
+    "methods": {
+      "password": "the password",
+      "password_and_app": "the password and an authenticator app",
+      "password_and_passkey": "the password and a passkey",
+      "password_and_recovery_code": "the password and a recovery code",
+      "company_login": "a fresh sign-in at the company login",
+      "session": "the signed-in session"
+    },
+    "line": "Signs version {{version}}, as {{login}}, with {{method}}.",
+    "comment": "Comment: {{comment}}",
+    "hashMatches": "The signed content's hash matches the snapshot kept with the signature.",
+    "hashDiffers": "The signed content's hash does not match the snapshot kept with it. Tell your administrator.",
+    "recordChanged": "The record has changed since this signature: it applies to version {{version}}, and the record is now at version {{current}}.",
+    "recordGone": "The record is no longer here: this signature applies to version {{version}}.",
+    "seeSigned": "See what was signed"
+  },
+  "signing": {
+    "meaning": "Meaning",
+    "comment": "Comment",
+    "commentHint": "Optional. It is kept with your signature.",
+    "statement": "You sign as {{name}}. Your signature is recorded with the time, its meaning and the record's version, and it is yours alone.",
+    "loading": "Finding out what your signature needs.",
+    "sessionOnly": "Your organisation does not ask for your password to sign this: your signature uses your signed-in session.",
+    "first": "This is your first signature since you signed in: type your login identifier and your password.",
+    "later": "Type your password to sign.",
+    "loginId": "Login identifier",
+    "password": "Password",
+    "code": "Code from your authenticator app",
+    "recovery": "Recovery code",
+    "passkey": "Sign with your passkey",
+    "sign": "Sign",
+    "provider": {
+      "intro": "Sign in again at {{name}} to sign. You come back to this page, and then sign.",
+      "introFactor": "Give your code here, then sign in again at {{name}}. You come back to this page, and then sign.",
+      "confirmed": "{{name}} confirmed it is you. Sign now.",
+      "again": "Sign in again at {{name}}"
+    },
+    "errors": {
+      "invalid": "That did not confirm it is you. Check your login identifier, your password and your code, and try again.",
+      "impersonation": "You are signed in as someone else, so you cannot sign: a signature is only ever its signer's own. End the sign-in as them first.",
+      "acting_for": "You are acting for someone. A signature is always your own: stop acting for them, then sign.",
+      "token": "A token cannot sign: a signature is a person's own, made in their own session.",
+      "service_account": "A service account cannot sign: a signature is a person's own.",
+      "break_glass": "A break-glass account repairs the organisation's setup; it never signs its records.",
+      "provider_sign_in_required": "Sign in again at your company login to sign: each signature asks for a fresh sign-in there.",
+      "required": "Your organisation asks for a signature on each decision, so decide them one at a time.",
+      "meaning_not_allowed": "This meaning is not allowed for this document. Choose another.",
+      "hash_mismatch": "This signature cannot apply here: it was made for another record or another version.",
+      "no_signer": "Signing is not available here. Ask your administrator.",
+      "proof_invalid": "Your signature was not confirmed in time. Sign again."
+    }
+  },
+  "auditReviews": {
+    "title": "Audit-trail reviews",
+    "description": "Reviews of the audit trail for a period, each signed by its reviewer. A month nobody reviewed shows here.",
+    "gridLabel": "Reviews of the audit trail",
+    "failed": "The review could not be read.",
+    "period": "{{from}} to {{to}}",
+    "outcomes": {
+      "no_findings": "No findings",
+      "findings": "Findings"
+    },
+    "columns": {
+      "period": "Period",
+      "outcome": "Outcome",
+      "reviewer": "Reviewer",
+      "recorded": "Recorded"
+    },
+    "coverage": {
+      "title": "The last twelve months",
+      "reviewed_one": "{{month}}: reviewed",
+      "reviewed_other": "{{month}}: reviewed {{count}} times",
+      "missing": "{{month}}: not reviewed",
+      "hint": "A month counts as reviewed when a review's period covers any of it."
+    },
+    "record": {
+      "open": "Record a review",
+      "title": "Record a review of the audit trail",
+      "heading": "Audit-trail review, {{period}}",
+      "reviewer": "Reviewer",
+      "recorded": "Recorded",
+      "tab": "Review",
+      "period": "Period",
+      "units": "Units",
+      "eventTypes": "Event types",
+      "outcome": "Outcome",
+      "notes": "Notes",
+      "noNotes": "No notes.",
+      "allUnits": "Every unit",
+      "allTypes": "Every event type",
+      "searches": "Searches run",
+      "noSearches": "No searches were linked."
+    },
+    "form": {
+      "intro": "Say which period you reviewed, what it covered and what you found. You sign the review next.",
+      "from": "From",
+      "to": "To",
+      "fromRequired": "Choose the first day you reviewed.",
+      "toRequired": "Choose the last day you reviewed.",
+      "toFuture": "A review covers days that have passed. Choose today or earlier.",
+      "toBeforeFrom": "The last day comes before the first. Choose a later one.",
+      "units": "Units",
+      "unitsHint": "Leave empty when you reviewed every unit.",
+      "eventTypes": "Event types",
+      "eventTypesHint": "Leave empty when you reviewed every type of event.",
+      "nothingFound": "Nothing matches.",
+      "outcome": "Outcome",
+      "notes": "Notes",
+      "notesHint": "Required with findings: say what you found and what was done.",
+      "notesRequired": "Say what you found: findings need notes.",
+      "notesTooLong": "Notes are at most {{count}} characters.",
+      "searches": "Searches you ran",
+      "searchesHint": "Copy each search's address from the Audit trail page, from /audit onwards.",
+      "searchLabel": "Search {{number}}: what it looked for",
+      "searchAddress": "Search {{number}}: address",
+      "searchLabelRequired": "Say what this search looked for.",
+      "searchLink": "Paste an address of the Audit trail page, starting /audit.",
+      "removeSearch": "Remove search {{number}}",
+      "addSearch": "Add a search",
+      "continue": "Continue to sign"
+    },
+    "sign": {
+      "title": "Sign the review",
+      "summary": "You sign the review of {{period}}, with the outcome {{outcome}}."
+    }
+  },
+  "signedSnapshot": {
+    "title": "What was signed: {{type}}",
+    "failed": "What this signature signed could not be read.",
+    "matches": "Hash matches",
+    "differs": "Hash differs",
+    "version": "Version signed",
+    "content": "Content",
+    "form": "Canonical form",
+    "contentIntro": "The record's content at version {{version}}, as it was signed.",
+    "formIntro": "The snapshot as kept, written in canonical form {{form}}, which the Audit README describes. Hash it with SHA-256 to check it.",
+    "hashKept": "Hash kept with the signature",
+    "hashNow": "Hash recomputed now"
+  },
+  "signingPolicy": {
+    "failed": "The kinds of document that can be signed could not be read. Try again.",
+    "intro": "For each kind of document: whether its decisions must be signed, what a signature may mean, and whether signing asks for the password again.",
+    "alwaysSigned": "Always signed, with the password: this does not change.",
+    "required": "A signature is required",
+    "meanings": "A signature may mean",
+    "reauthenticate": "Ask for the password at signing",
+    "reauthenticateHint": "Off, a signature uses the signed-in session alone. 21 CFR Part 11 asks for it on.",
+    "defaults": "Every kind of document as its module sets it.",
+    "summary": "{{type}}: {{required}}, {{password}}.",
+    "requiredWord": "signature required",
+    "notRequiredWord": "no signature required",
+    "defaultWord": "as its module sets it",
+    "passwordWord": "password asked",
+    "noPasswordWord": "no password asked",
+    "types": {
+      "access_review_decision": "Access review decisions",
+      "audit_trail_review": "Audit-trail reviews"
     }
   }
 }

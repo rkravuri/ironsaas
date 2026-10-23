@@ -57,6 +57,8 @@
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Flags/Contracts/Iron.Kernel.Flags.Contracts.csproj" />
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj" />
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Compliance/Iron.Kernel.Compliance.csproj" />
+    <ProjectReference Include="../../src/Kernel/Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
     <ProjectReference Include="../../src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />
     <ProjectReference Include="../../src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj" />
     <ProjectReference Include="../../src/Hosts/Iron.Host.ControlPlane/Iron.Host.ControlPlane.csproj" />

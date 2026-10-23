@@ -1299,8 +1299,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a tracked entity changed in two fields, When saved, Then one history group with two detail rows exists.
 - AC2 Given a business document entity without the tracked marker, When the build runs, Then it fails naming the entity. (error case)
 - AC3 Given a secret or sensitive field (bank account), When changed, Then history stores a masked value.
+- AC4 Given a save of a tracked record, When its history is written, Then it is an audit event in the trail's hash chain, in the save's own transaction, and a save whose history cannot be written is not saved (ADR-0051).
 
 *Depends on:* TF-060
+
+**Notes:** AC4 added on 2026-10-23 (S3 T7, ADR-0051): the history is part of the audit trail, not beside it.
 
 #### TF-063 Electronic signatures  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Audit and compliance
@@ -1314,8 +1317,13 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given re-authentication required, When an approver approves without it, Then the action is refused until re-authentication. (error case)
 - AC2 Given a signature, When viewed, Then signer, time, meaning and record version are shown and the record content hash matches.
 - AC3 Given a record changed after signing, When viewed, Then the signature is shown as applying to the earlier version.
+- AC4 Given a person's first signature in a session, When they sign, Then it asks for their login identifier, their password and their second factor when they have one; a later signature in the same session asks for their password, and for the second factor only when the tenant requires it; a session that ended, by sign-out or the idle limit, starts again at the first rule (21 CFR 11.200, ADR-0051).
+- AC5 Given a person who signs in through their company login, When they sign, Then each signature needs a fresh sign-in at the provider within the step-up window, taken by that signature only (ADR-0048, ADR-0051).
+- AC6 Given someone signed in as another person, acting for another person, or a token or service account, When they try to sign, Then the signature is refused whatever the credentials and the attempt is recorded in the audit trail. (error case) (ADR-0049, ADR-0051)
 
 *Depends on:* TF-060, TF-090
+
+**Notes:** AC4 to AC6 added on 2026-10-23 (S3 T7, ADR-0051): the tests prove Part 11's components rule and who may never sign, beyond the first three criteria. Meanings: approved, rejected, acknowledged, signed and reviewed.
 
 #### TF-064 Audit search, export and retention  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Audit and compliance
@@ -1329,8 +1337,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a search by record, When run, Then all events for the record appear in time order.
 - AC2 Given events older than the online period, When archived, Then they remain searchable by date range through the archive index.
 - AC3 Given a user without the audit permission, When searching, Then it is refused. (error case)
+- AC4 Given an audit event of any type, When shown in the audit trail, a record's History tab or an export, Then its type reads as words; the build fails for an event type no module names (ADR-0051).
 
 *Depends on:* TF-060
+
+**Notes:** AC4 added on 2026-10-23 (S3 T7, ADR-0051).
 
 #### TF-065 Time source  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Audit and compliance
@@ -3244,8 +3255,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a signed record printed, When viewed, Then the signature block shows name, time and meaning.
 - AC2 Given an attempt to attach a signature to another record, When made, Then it is refused because the version hash does not match. (error case)
 - AC3 Given a periodic audit trail review, When recorded, Then the review record lists the period and the reviewer.
+- AC4 Given a login identifier given to a person, When the person is deactivated or removed, Then it is never given to another person: creating a person with it is refused. (error case) (ADR-0051)
 
 *Depends on:* TF-063, TF-064
+
+**Notes:** AC4 added on 2026-10-23 (S3 T7, ADR-0051): the tombstone outlives the person. Built in `Iron.Kernel.Compliance` (signatures, manifestation, reviews) and `Iron.Kernel.Identity` (the identifiers); PDF output of the signature block comes with S4's document templates.
 
 ### 4.25 Multi-organisation (TF-220 to TF-223, 4 requirements)
 
