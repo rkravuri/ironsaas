@@ -57,7 +57,11 @@ public sealed class PublishDocumentRequestValidator : AbstractValidator<PublishD
 }
 
 /// <summary>How many people accepted a document's current version, beside the version itself.</summary>
-public sealed record DocumentSummaryResponse(string Source, string Key, int Version, string Title, DateTimeOffset PublishedAt, int Accepted, string Body);
+public sealed record DocumentSummaryResponse(string Source, string Key, int Version, string Title, DateTimeOffset PublishedAt, int Accepted, string Body)
+{
+    /// <summary>A tenant document version's id, whose field-level history the Documents page shows (TF-062); null for the platform's.</summary>
+    public Guid? Id { get; init; }
+}
 
 /// <summary>The documents people must accept now: a handful, so one answer rather than a page.</summary>
 public sealed record DocumentsResponse(IReadOnlyList<DocumentSummaryResponse> Documents);
@@ -160,7 +164,7 @@ internal static class TermsEndpoints
             d.Title,
             d.PublishedAt,
             counts.FirstOrDefault(c => c.Source == d.Source && c.DocumentKey == d.Key && c.Version == d.Version)?.Count ?? 0,
-            d.Body))]));
+            d.Body) { Id = d.Id })]));
     }
 
     private static async Task<IResult> PublishAsync(PublishDocumentRequest request, HttpContext http, TermsService terms, CancellationToken cancellationToken)

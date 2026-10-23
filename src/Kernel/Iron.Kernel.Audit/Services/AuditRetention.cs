@@ -30,7 +30,11 @@ public sealed class RetentionLimitsOptions
 }
 
 /// <summary>One class as the tenant sees it: its default, the operator's limits, its days now, and whether the tenant chose them.</summary>
-public sealed record RetentionClassView(RetentionClass Class, int MinimumDays, int MaximumDays, int Days, bool Chosen);
+public sealed record RetentionClassView(RetentionClass Class, int MinimumDays, int MaximumDays, int Days, bool Chosen)
+{
+    /// <summary>The tenant's choice for the class, whose history the Retention page shows; null while it has none.</summary>
+    public Guid? ChoiceId { get; init; }
+}
 
 /// <summary>
 /// How long each class keeps its records in this tenant (TF-066, ADR-0050): the tenant's choice within the operator's
@@ -58,12 +62,12 @@ public sealed class RetentionPolicy(AuditDbContext context, RetentionLimitsOptio
 
     public async Task<IReadOnlyList<RetentionClassView>> ClassesAsync(CancellationToken cancellationToken)
     {
-        var choices = await context.RetentionChoices.AsNoTracking().ToDictionaryAsync(c => c.ClassCode, c => c.Days, cancellationToken).ConfigureAwait(false);
+        var choices = await context.RetentionChoices.AsNoTracking().ToDictionaryAsync(c => c.ClassCode, cancellationToken).ConfigureAwait(false);
         return [.. RetentionClasses.All.Select(retention =>
         {
             var (minimum, maximum) = LimitsOf(retention);
-            var chosen = choices.TryGetValue(retention.Code, out var days);
-            return new RetentionClassView(retention, minimum, maximum, Math.Clamp(chosen ? days : retention.DefaultDays, minimum, maximum), chosen);
+            var chosen = choices.TryGetValue(retention.Code, out var choice);
+            return new RetentionClassView(retention, minimum, maximum, Math.Clamp(chosen ? choice!.Days : retention.DefaultDays, minimum, maximum), chosen) { ChoiceId = choice?.Id };
         })];
     }
 
@@ -91,7 +95,8 @@ public sealed class RetentionPolicy(AuditDbContext context, RetentionLimitsOptio
         var before = choice?.Days ?? retention.DefaultDays;
         if (choice is null)
         {
-            context.RetentionChoices.Add(new RetentionChoice(code, days));
+            choice = new RetentionChoice(code, days);
+            context.RetentionChoices.Add(choice);
         }
         else
         {
@@ -107,7 +112,7 @@ public sealed class RetentionPolicy(AuditDbContext context, RetentionLimitsOptio
         };
         await audit.WriteAsync(new AuditEvent(AuditEvents.RetentionChanged, AuditOutcome.Success, actor.Id, code, details, "retention_class", null, reason), cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        return new RetentionClassView(retention, minimum, maximum, days, true);
+        return new RetentionClassView(retention, minimum, maximum, days, true) { ChoiceId = choice.Id };
     }
 }
 

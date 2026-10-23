@@ -15,6 +15,7 @@ import {
 } from "@/api/compliance";
 import { useSession } from "@/auth/session-context";
 import { SigningDialog } from "@/auth/SigningDialog";
+import { useResumedSigning } from "@/auth/signing-resume";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { FormDialog, LoadingState } from "@/components/panels";
 import { ListPage } from "@/components/templates";
@@ -39,7 +40,11 @@ export function AuditReviewsPage() {
   const session = useSession();
   const canRecord = session.tenantPermissions.includes(record);
   const [writing, setWriting] = useState(false);
-  const [pending, setPending] = useState<AuditReviewInput | undefined>();
+  // Back from a company login's fresh sign-in, the review waiting for its signature opens again (ADR-0051).
+  const resumed = useResumedSigning("audit_trail_review");
+  const [pending, setPending] = useState<AuditReviewInput | undefined>(
+    () => resumed?.context as AuditReviewInput | undefined,
+  );
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchAuditReviews(query, signal), []);
   const columns: DataGridColumn<AuditReviewRow>[] = [
     {
@@ -120,6 +125,8 @@ export function AuditReviewsPage() {
         }
         meanings={["reviewed"]}
         comment={false}
+        context={pending}
+        initial={resumed}
         onClose={() => setPending(undefined)}
         onSign={async (credentials) => {
           if (pending) {

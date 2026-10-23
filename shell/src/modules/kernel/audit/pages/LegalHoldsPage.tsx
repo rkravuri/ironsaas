@@ -9,7 +9,7 @@ import { ApiError } from "@/api/client";
 import { auditQueryKey, fetchLegalHolds, placeLegalHold, releaseLegalHold, type LegalHold } from "@/api/audit";
 import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
-import { FormDialog, LoadingState, ReasonDialog } from "@/components/panels";
+import { FormDialog, LoadingState, ReasonDialog, RecordHistoryButton } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
 import { formatDateTime } from "@/i18n/dates";
 
@@ -65,6 +65,7 @@ export function LegalHoldsPage() {
           ) : (
             canManage && <Table.Th>{t("legalHolds.columns.actions")}</Table.Th>
           )}
+          <Table.Th>{t("legalHolds.columns.history")}</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -117,6 +118,13 @@ export function LegalHoldsPage() {
                 </Table.Td>
               )
             )}
+            <Table.Td>
+              <RecordHistoryButton
+                compact
+                record={{ recordType: "legal_hold", recordId: hold.id }}
+                name={scopeWords(hold, t)}
+              />
+            </Table.Td>
           </Table.Tr>
         ))}
       </Table.Tbody>

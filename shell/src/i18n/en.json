@@ -708,7 +708,10 @@
       "none": "Empty",
       "masked": "Kept masked: only its last characters are stored.",
       "secret": "Changed. A secret value is never kept."
-    }
+    },
+    "open": "History",
+    "openNamed": "History of {{name}}",
+    "of": "History: {{name}}"
   },
   "approval": {
     "title": "Approval",
@@ -1540,7 +1543,8 @@
       "reason": "Reason"
     },
     "endSelected": "End the chosen delegation",
-    "createForSomeone": "Delegate for someone"
+    "createForSomeone": "Delegate for someone",
+    "historyName": "{{delegator}} to {{delegate}}"
   },
   "reviews": {
     "title": "Access reviews",
@@ -2412,7 +2416,8 @@
       "reason": "Reason",
       "placed": "Placed",
       "released": "Released",
-      "actions": "Actions"
+      "actions": "Actions",
+      "history": "History"
     },
     "scopes": {
       "tenant": "Whole tenant",
@@ -2457,7 +2462,8 @@
       "kept": "Kept for",
       "limits": "Operator's limits",
       "records": "Records in it",
-      "actions": "Actions"
+      "actions": "Actions",
+      "history": "History"
     },
     "classes": {
       "business_document": {
@@ -2512,7 +2518,8 @@
       "daysWhole": "Enter whole days.",
       "belowMinimum": "The operator's minimum is {{days}} days. Choose that or more.",
       "aboveMaximum": "The operator's maximum is {{days}} days. Choose that or fewer."
-    }
+    },
+    "noHistory": "Default: nothing chosen yet"
   },
   "signatures": {
     "title": "Signatures",

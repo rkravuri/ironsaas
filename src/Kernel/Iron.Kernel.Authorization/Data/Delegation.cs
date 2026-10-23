@@ -8,8 +8,11 @@ namespace Iron.Kernel.Authorization.Data;
 /// ending early sets <see cref="EndedAt"/> and keeps the row, so the history of who could act for whom stays whole. The
 /// created pair says who set it up: the delegator, or an administrator for them.
 /// </summary>
-public sealed class Delegation : AuditedEntity, IOwnAccessRule
+public sealed class Delegation : AuditedEntity, IOwnAccessRule, ITrackedChanges
 {
+    /// <summary>The record type of a delegation's events and history (TF-062).</summary>
+    public const string RecordType = "delegation";
+
     public const int ReasonMaxLength = 500;
     public const int DutyMaxLength = 100;
 

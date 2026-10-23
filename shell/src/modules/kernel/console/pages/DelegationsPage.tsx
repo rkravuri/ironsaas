@@ -12,6 +12,8 @@ import { dutyList } from "@/shell/acting";
 import { DelegationDialog } from "./DelegationDialog";
 import { isRunning, periodLabel } from "./delegation-words";
 import { EndDelegationDialog } from "./PersonalDelegations";
+import { useReadsAuditTrail } from "@/auth/record-history";
+import { RecordHistoryButton } from "@/components/panels";
 
 const managedSort = [{ field: "starts_at", direction: "desc" as const }];
 
@@ -23,6 +25,7 @@ const managedSort = [{ field: "starts_at", direction: "desc" as const }];
 export function DelegationsPage() {
   const { t, i18n } = useTranslation();
   const session = useSession();
+  const readsTrail = useReadsAuditTrail();
   const [creating, setCreating] = useState(false);
   const [ending, setEnding] = useState<Delegation | undefined>();
   const [selected, setSelected] = useState<Delegation | undefined>();
@@ -97,6 +100,19 @@ export function DelegationsPage() {
         }
         actions={
           <>
+            {readsTrail && (
+              <RecordHistoryButton
+                record={selected ? { recordType: "delegation", recordId: selected.id } : undefined}
+                name={
+                  selected
+                    ? t("delegations.historyName", {
+                        delegator: selected.delegator.name,
+                        delegate: selected.delegate.name,
+                      })
+                    : ""
+                }
+              />
+            )}
             <Button
               variant="default"
               disabled={!selected || !isRunning(selected.status)}

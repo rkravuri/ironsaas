@@ -7,7 +7,9 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Policies;
+using Iron.Kernel.History;
 using Iron.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -81,6 +83,16 @@ public sealed class AuthorizationFixture : IAsyncLifetime
         return new TestScope(BuildServices(new FakeTimeProvider(), new FixedPrincipal(principal, workingUnit: workingUnit, allUnits: allUnits), audit), audit);
     }
 
+    /// <summary>
+    /// A scope whose saves hand their field-level history to <paramref name="history"/> (TF-062), as Audit's recorder takes
+    /// it in a unit; the other scopes record none, so their audit events are the module's own.
+    /// </summary>
+    public TestScope HistoryScope(Guid principal, RecordingChangeRecorder history, string? connectionString = null)
+    {
+        var audit = new RecordingAuditWriter();
+        return new TestScope(BuildServices(new FakeTimeProvider(), new FixedPrincipal(principal), audit, connectionString, history: history), audit);
+    }
+
     /// <summary>A scope of a principal on the given clock.</summary>
     public TestScope Scope(Guid principal, FakeTimeProvider time)
     {
@@ -89,9 +101,14 @@ public sealed class AuthorizationFixture : IAsyncLifetime
     }
 
     /// <summary>The services a host would have for this module, with a controllable clock, principal and audit writer.</summary>
-    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null, ILoggerProvider? logs = null)
+    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null, ILoggerProvider? logs = null, RecordingChangeRecorder? history = null)
     {
         var services = new ServiceCollection();
+        if (history is not null)
+        {
+            services.AddSingleton<IChangeRecorder>(history);
+        }
+
         services.AddSingleton<TimeProvider>(time);
         services.AddSingleton(principal);
         services.AddSingleton<IAuditWriter>(audit);
@@ -233,6 +250,18 @@ public sealed class TestPrincipals : IPrincipals
 
     public Task<IReadOnlyList<Guid>> HomedAtAsync(IReadOnlyCollection<Guid> unitIds, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<Guid>>([.. _principals.Values.Where(p => p.HomeUnitId is { } unit && unitIds.Contains(unit)).Select(p => p.Id)]);
+}
+
+/// <summary>Keeps every save's field-level history (TF-062), as Audit's change recorder would write it.</summary>
+public sealed class RecordingChangeRecorder : IChangeRecorder
+{
+    public List<RecordChange> Changes { get; } = [];
+
+    public Task RecordAsync(IReadOnlyList<RecordChange> changes, CancellationToken cancellationToken)
+    {
+        Changes.AddRange(changes);
+        return Task.CompletedTask;
+    }
 }
 
 public sealed class RecordingAuditWriter : IAuditWriter

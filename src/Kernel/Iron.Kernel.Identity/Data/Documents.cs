@@ -7,8 +7,11 @@ namespace Iron.Kernel.Identity.Data;
 /// One version of a document the tenant's people must accept (TF-028, ADR-0049): written once, never changed; a change is
 /// a new version, which everyone accepts again at their next request. The key names the document across its versions.
 /// </summary>
-public sealed partial class TenantDocument : AuditedEntity, ITenantWide
+public sealed partial class TenantDocument : AuditedEntity, ITenantWide, ITrackedChanges
 {
+    /// <summary>The record type of a document's events and history (TF-062).</summary>
+    public const string RecordType = "document";
+
     public const int KeyMaxLength = 64;
     public const int TitleMaxLength = 200;
     public const int BodyMaxLength = 100_000;

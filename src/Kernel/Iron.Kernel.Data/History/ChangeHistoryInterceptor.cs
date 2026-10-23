@@ -129,10 +129,15 @@ public sealed class ChangeHistoryInterceptor(IServiceProvider services) : SaveCh
         return changes;
     }
 
-    /// <summary>The record type in the history: the class's <c>RecordType</c> constant, or its table's name.</summary>
+    /// <summary>The record type in the history: the name <see cref="TrackedAsAttribute"/> gives, the class's <c>RecordType</c> constant, or its table's name.</summary>
     public static string RecordTypeOf(EntityEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
+        if (entry.Metadata.ClrType.GetCustomAttribute<TrackedAsAttribute>() is { } named)
+        {
+            return named.RecordType;
+        }
+
         var field = entry.Metadata.ClrType.GetField("RecordType", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
         return field?.GetValue(null) as string ?? entry.Metadata.GetTableName() ?? entry.Metadata.ClrType.Name;
     }

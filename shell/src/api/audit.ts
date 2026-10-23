@@ -192,6 +192,8 @@ export const RetentionClassSchema = z.object({
   days: z.number(),
   chosen: z.boolean(),
   record_types: z.array(z.string()),
+  /** The tenant's choice, whose history the page shows (TF-062); null while the class keeps its default. */
+  choice_id: z.string().nullable().optional(),
 });
 export type RetentionClass = z.infer<typeof RetentionClassSchema>;
 

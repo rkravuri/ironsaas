@@ -70,7 +70,11 @@ public sealed record ChainRestoreResponse(
     string AcceptedBy,
     DateTimeOffset AcceptedAt);
 
-public sealed record RetentionClassResponse(string Code, string Description, int DefaultDays, int MinimumDays, int MaximumDays, int Days, bool Chosen, IReadOnlyList<string> RecordTypes);
+public sealed record RetentionClassResponse(string Code, string Description, int DefaultDays, int MinimumDays, int MaximumDays, int Days, bool Chosen, IReadOnlyList<string> RecordTypes)
+{
+    /// <summary>The tenant's choice, whose field-level history the page shows (TF-062); null while the class keeps its default.</summary>
+    public Guid? ChoiceId { get; init; }
+}
 
 public sealed record RetentionClassesResponse(IReadOnlyList<RetentionClassResponse> Classes);
 
@@ -269,7 +273,10 @@ internal static class AuditTrailEndpoints
 
     private static RetentionClassResponse Response(RetentionClassView view, IReadOnlyList<IRetainedRecords> types) =>
         new(view.Class.Code, view.Class.Description, view.Class.DefaultDays, view.MinimumDays, view.MaximumDays, view.Days, view.Chosen,
-            [.. types.Where(t => t.Class.Code == view.Class.Code).Select(t => t.RecordType).Order(StringComparer.Ordinal)]);
+            [.. types.Where(t => t.Class.Code == view.Class.Code).Select(t => t.RecordType).Order(StringComparer.Ordinal)])
+        {
+            ChoiceId = view.ChoiceId,
+        };
 
     private static async Task<IReadOnlyDictionary<Guid, string>> NamesAsync(HttpContext http, IQueryable<AuditEventRecord> search, CancellationToken cancellationToken)
     {

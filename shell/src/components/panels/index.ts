@@ -21,4 +21,5 @@ export { CommentPanel } from "./CommentPanel";
 export type { Comment, CommentPanelProps } from "./CommentPanel";
 export { RecordHistory } from "./RecordHistory";
 export { RecordSignatures, SignatureBlock } from "./SignatureBlock";
+export { RecordHistoryButton } from "./RecordHistoryButton";
 export type { HistoryFieldChange } from "./HistoryPanel";

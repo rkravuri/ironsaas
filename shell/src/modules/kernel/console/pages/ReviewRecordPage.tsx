@@ -23,6 +23,7 @@ import { ConfirmDialog, EmptyState, FormDialog, LoadingState, type RecordStatus 
 import { RecordPage } from "@/components/templates";
 import { useHistoryOf } from "@/auth/record-history";
 import { SigningDialog } from "@/auth/SigningDialog";
+import { useResumedSigning } from "@/auth/signing-resume";
 import { dueLabel, progressLabel } from "./review-words";
 import { formatDate } from "@/i18n/dates";
 
@@ -175,7 +176,11 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
   const [notice, setNotice] = useState<string | undefined>();
   const [failure, setFailure] = useState<ApiError | undefined>();
   const [pageOpen, setPageOpen] = useState<ReviewItem[]>([]);
-  const [signing, setSigning] = useState<{ item: ReviewItem; decision: "confirm" | "revoke" } | undefined>();
+  // Back from a company login's fresh sign-in, the decision waiting for its signature opens again (ADR-0051).
+  const resumed = useResumedSigning(decisionType);
+  const [signing, setSigning] = useState<{ item: ReviewItem; decision: "confirm" | "revoke" } | undefined>(
+    () => resumed?.context as { item: ReviewItem; decision: "confirm" | "revoke" } | undefined,
+  );
   const open = review.status === "open";
   const types = useQuery({
     queryKey: [...complianceQueryKey, "types"],
@@ -411,6 +416,8 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
           })
         }
         meanings={signing?.decision === "revoke" ? ["rejected"] : ["approved"]}
+        context={signing}
+        initial={resumed}
         onClose={() => setSigning(undefined)}
         onSign={async (credentials, _meaning, comment) => {
           if (signing) {

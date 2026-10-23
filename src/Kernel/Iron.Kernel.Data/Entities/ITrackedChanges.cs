@@ -8,8 +8,8 @@ namespace Iron.Kernel.Data.Entities;
 /// changed, and <see cref="NotTrackedAttribute"/> not at all.
 /// </summary>
 /// <remarks>
-/// The record's type in its history is the class's public constant <c>RecordType</c> when it has one (the name its
-/// policies and audit events use), otherwise its table's name.
+/// The record's type in its history is the name <see cref="TrackedAsAttribute"/> gives, else the class's public constant
+/// <c>RecordType</c> when it has one (the name its policies and audit events use), otherwise its table's name.
 /// </remarks>
 public interface ITrackedChanges;
 
@@ -30,3 +30,13 @@ public sealed class SecretAttribute : Attribute;
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public sealed class NotTrackedAttribute : Attribute;
+
+/// <summary>
+/// The record's type in its history, for an entity that cannot hold a <c>RecordType</c> constant because a property
+/// has that name, such as a legal hold, which names the record it holds.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class TrackedAsAttribute(string recordType) : Attribute
+{
+    public string RecordType { get; } = recordType;
+}

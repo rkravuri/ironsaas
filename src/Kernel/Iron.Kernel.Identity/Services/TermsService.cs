@@ -69,7 +69,11 @@ public sealed class StorePlatformDocuments(ISecretStore store, TimeProvider time
 }
 
 /// <summary>A version of a document a person must accept, and where it comes from.</summary>
-public sealed record RequiredDocument(string Source, string Key, int Version, string Title, string Body, DateTimeOffset PublishedAt);
+public sealed record RequiredDocument(string Source, string Key, int Version, string Title, string Body, DateTimeOffset PublishedAt)
+{
+    /// <summary>A tenant document version's own id, whose history the Documents page shows (TF-062); null for the platform's.</summary>
+    public Guid? Id { get; init; }
+}
 
 /// <summary>A document version a person says they accept.</summary>
 public sealed record DocumentChoice(string Source, string Key, int Version);
@@ -140,7 +144,7 @@ public sealed class TermsService(
         return
         [
             .. platformDocuments.Select(d => new RequiredDocument(DocumentSources.Platform, d.Key, d.Version, d.Title, d.Body, d.PublishedAt)),
-            .. tenantDocuments.Select(d => new RequiredDocument(DocumentSources.Tenant, d.Key, d.Number, d.Title, d.Body, d.PublishedAt)),
+            .. tenantDocuments.Select(d => new RequiredDocument(DocumentSources.Tenant, d.Key, d.Number, d.Title, d.Body, d.PublishedAt) { Id = d.Id }),
         ];
     }
 

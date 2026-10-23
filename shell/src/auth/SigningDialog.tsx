@@ -26,6 +26,7 @@ import { leaveFor } from "./leave";
 import { CodeInput, ProblemAlert } from "./mfa";
 import type { ShownProblem } from "./mfa-problems";
 import { signingProblem } from "./signing-problems";
+import { rememberSigning } from "./signing-resume";
 import { passkeysSupported, signWithPasskey } from "./webauthn";
 
 const commentLimit = 500;
@@ -41,6 +42,13 @@ export interface SigningDialogProps {
   meanings: readonly string[];
   /** Whether the signer may add a comment (the record keeps it with the signature). */
   comment?: boolean;
+  /**
+   * What the page needs to show this signature again, as plain data: kept, with the meaning and the comment, while a
+   * company-login person signs in again at the provider, so the page reopens the dialog when they come back.
+   */
+  context?: unknown;
+  /** The meaning and the comment of a signature the page reopens, back from the provider. */
+  initial?: { meaning?: string; comment?: string } | undefined;
   onSign: (credentials: SigningCredentials, meaning: string, comment: string | undefined) => Promise<void>;
   onClose: () => void;
 }
@@ -67,6 +75,8 @@ function SigningForm({
   summary,
   meanings,
   comment: commentAllowed = true,
+  context,
+  initial,
   onSign,
   onClose,
   t,
@@ -74,8 +84,10 @@ function SigningForm({
   const session = useSession();
   const [challenge, setChallenge] = useState<SigningChallenge | undefined>();
   const [refusal, setRefusal] = useState<ShownProblem | undefined>();
-  const [meaning, setMeaning] = useState(meanings[0] ?? "signed");
-  const [comment, setComment] = useState("");
+  const [meaning, setMeaning] = useState(
+    initial?.meaning !== undefined && meanings.includes(initial.meaning) ? initial.meaning : (meanings[0] ?? "signed"),
+  );
+  const [comment, setComment] = useState(initial?.comment ?? "");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -139,6 +151,8 @@ function SigningForm({
         window.location.pathname + window.location.search,
         typedProof(),
       );
+      // Kept for the way back: the page reopens this dialog as it is now, ready to confirm.
+      rememberSigning({ recordType, meaning, comment, context });
       leaveFor(started.authorization_url);
     } catch (error) {
       setProblem(signingProblem(error, t));

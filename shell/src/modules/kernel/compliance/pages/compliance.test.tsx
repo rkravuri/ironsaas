@@ -11,6 +11,7 @@ import { fill, json, me, renderWithProviders, stubFetch } from "@/test/render";
 afterEach(() => {
   setTimeZone(undefined);
   vi.unstubAllGlobals();
+  window.sessionStorage.clear();
 });
 
 const reviewer = me(["compliance.audit_reviews.read", "compliance.audit_reviews.record", "audit.events.read"]);
@@ -210,5 +211,64 @@ describe("the signed snapshot", () => {
     expect(content).toHaveTextContent(/Bank accountEmpty/);
     await userEvent.setup().click(screen.getByRole("tab", { name: "Canonical form" }));
     await waitFor(() => expect(screen.getAllByText("ab".repeat(32))).toHaveLength(2));
+  });
+  it("reopens the review's signature when the reviewer comes back from their company login, ready to confirm [TF-063 AC5, TF-219 AC3, ADR-0051]", async () => {
+    const input = {
+      period_from: "2026-09-01",
+      period_to: "2026-09-30",
+      unit_ids: [],
+      event_types: [],
+      outcome: "no_findings",
+      notes: null,
+      searches: [],
+    };
+    window.sessionStorage.setItem(
+      "iron.signing.pending",
+      JSON.stringify({
+        path: "/",
+        recordType: "audit_trail_review",
+        meaning: "reviewed",
+        comment: "",
+        context: input,
+        savedAt: Date.now(),
+      }),
+    );
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(reviewer),
+      "GET /api/v1/audit-reviews/coverage?months=12": () => json({ months: [] }),
+      "GET /api/v1/audit-reviews?page_number=1&page_size=50&sort=-period_from": () => json(emptyPage),
+      "GET /api/v1/signatures/challenge?record_type=audit_trail_review": () =>
+        json({
+          first_in_session: false,
+          login_id: false,
+          password: false,
+          second_factor: false,
+          methods: [],
+          passkey_options: null,
+          provider_id: "p1",
+          provider_name: "Acme Login",
+          provider_confirmed: true,
+          reauthenticate: true,
+          policy: { required: true, meanings: ["reviewed"], reauthenticate: true },
+        }),
+      "POST /api/v1/audit-reviews": () => json(review, 201),
+    });
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<AuditReviewsPage />} />
+        <Route path="/compliance/audit-reviews/:id" element={<p>The review</p>} />
+      </Routes>,
+    );
+    const user = userEvent.setup();
+
+    const signing = await screen.findByRole("dialog", { name: "Sign the review" });
+    expect(signing).toHaveTextContent("You sign the review of Sep 1, 2026 to Sep 30, 2026");
+    expect(await within(signing).findByText("Acme Login confirmed it is you. Sign now.")).toBeInTheDocument();
+    await user.click(within(signing).getByRole("button", { name: "Sign" }));
+
+    expect(await screen.findByText("The review")).toBeInTheDocument();
+    const sent = calls.find((call) => call.key === "POST /api/v1/audit-reviews");
+    expect(JSON.parse(sent?.init?.body as string)).toEqual({ ...input, signature: {} });
+    expect(window.sessionStorage.getItem("iron.signing.pending")).toBeNull();
   });
 });
