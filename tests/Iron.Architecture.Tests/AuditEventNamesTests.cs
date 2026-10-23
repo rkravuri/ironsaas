@@ -44,7 +44,7 @@ public class AuditEventNamesTests
         foreach (var type in Modules(ModuleAssemblies()).SelectMany(m => m.AuditEventTypes))
         {
             var name = type.Name;
-            if (!char.IsUpper(name[0]) || name.Length > 60 || name.IndexOfAny(['.', '_', '!', '—']) >= 0 || name.EndsWith(' '))
+            if (!char.IsUpper(name[0]) || name.Length > 60 || name.IndexOfAny(['.', '_', '!', '\u2014']) >= 0 || name.EndsWith(' '))
             {
                 violations.Add($"'{type.Code}' reads as '{name}': a name is a short phrase in sentence case, without dots, underscores, dashes for pauses or exclamation marks.");
             }

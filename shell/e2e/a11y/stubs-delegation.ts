@@ -180,6 +180,23 @@ export async function stubReviews(target: Page): Promise<void> {
     },
   ];
   await target.route("**/api/v1/access-reviews?**", (route) => route.fulfill({ json: listOf(summaries) }));
+  // The tenant's signing policy (ADR-0051): decisions are not signed here; a spec that signs them routes its own.
+  await target.route("**/api/v1/signatures/types", (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            record_type: "access_review_decision",
+            name: "Access review decision",
+            meanings: ["approved", "rejected"],
+            always_signed: false,
+            policy: { required: false, meanings: ["approved", "rejected"], reauthenticate: true },
+            default: { required: false, meanings: ["approved", "rejected"], reauthenticate: true },
+          },
+        ],
+      },
+    }),
+  );
 
   const path = (unit: (typeof units)[number]) => {
     const steps = [unit];
