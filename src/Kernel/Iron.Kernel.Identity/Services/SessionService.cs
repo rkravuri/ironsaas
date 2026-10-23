@@ -303,8 +303,16 @@ public sealed class SessionService(
 
         if (now - found.Session.LastActivityAt >= options.Session.Touch)
         {
+            // A page's reads run side by side, so two requests of one session may touch it at the same moment. Saving the
+            // entity checks its version and refused the second, failing a read for nothing; a plain update of the time lets
+            // both through, and the later time stays. The entity takes the time without being marked changed.
+            var sessionId = found.Session.Id;
+            await context.Sessions.Where(s => s.Id == sessionId && s.EndedAt == null && s.LastActivityAt < now)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.LastActivityAt, now), cancellationToken).ConfigureAwait(false);
             found.Session.Touch(now);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            var touched = context.Entry(found.Session).Property(s => s.LastActivityAt);
+            touched.OriginalValue = now;
+            touched.IsModified = false;
 
             // The impersonator's own session waits under the impersonation and must still be there at its end (ADR-0049).
             if (found.Session.ReturnSessionId is { } own)

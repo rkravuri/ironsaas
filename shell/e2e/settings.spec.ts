@@ -71,7 +71,7 @@ test.describe("settings on a unit (ADR-0036)", () => {
     await page.context().close();
   });
 
-  test("a child unit's invitation validity, set on the Settings page, is what an invitation into it takes [TF-057 AC1, TF-059 AC2, ADR-0036]", async ({
+  test("a child unit's invitation validity, set on the Settings page, is what an invitation into it takes, its end shown with the zone [TF-057 AC1, TF-059 AC2, TF-065 AC2, ADR-0036]", async ({
     page,
   }) => {
     await signIn(page);
@@ -105,9 +105,20 @@ test.describe("settings on a unit (ADR-0036)", () => {
     const expires = new Date(answer.invitation_expires_at).getTime();
     expect(Math.abs(expires - (Date.now() + 5 * day))).toBeLessThan(5 * 60_000);
     const done = page.getByRole("dialog", { name: `${name} is invited` });
-    await expect(done).toContainText(
-      `expires on ${await page.evaluate((at) => new Date(at).toLocaleString(), answer.invitation_expires_at)}`,
+    // In the person's zone, the browser's here, with the zone named (TF-065 AC2, ADR-0050).
+    const shown = await page.evaluate(
+      (at) =>
+        new Intl.DateTimeFormat("en", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          timeZoneName: "short",
+        }).format(new Date(at)),
+      answer.invitation_expires_at,
     );
+    await expect(done).toContainText(`expires on ${shown}`);
     await page.screenshot({ path: "test-results/settings-invitation-echo.png" });
   });
 
