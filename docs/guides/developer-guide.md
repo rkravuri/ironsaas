@@ -163,6 +163,33 @@ await transaction.CommitAsync(cancellationToken);
 
 The app role cannot change or delete audit rows; PostgreSQL refuses it. `make migrate` grants the role's privileges when `Database:AppRole` is set (`Database__AppRole=acme_app`); the fleet sets it for every unit.
 
+The unit's worker seals each event into the tenant's chain a few seconds after its commit (ADR-0050); a module writes events exactly as before and never sets a chain column. A table the fleet's verifier must read is an entity marked `IVerifierReadable`; nothing outside the audit chain should be.
+
+**Times are the server's** (TF-065, ADR-0050). `CreatedAt` and `UpdatedAt` are stamped from `TimeProvider` on save, whatever a caller set. A request body never carries a time the server records: take `starts_at` or `due_on` only for a period a person chooses, and add it to `ChosenTimes` in `tests/Iron.Host.Tests/HostTests.cs` with why; any other date in a request body fails that test.
+
+## A record type under retention (TF-066, ADR-0050)
+
+A module that owns records with a life puts each record type into a retention class and lets the platform delete them:
+
+```csharp
+public sealed class OrderRetention(OrdersDbContext orders) : IRetainedRecords
+{
+    public string RecordType => "order";
+    public RetentionClass Class => RetentionClasses.BusinessDocument;
+
+    public async Task<IReadOnlyList<RetainedRecord>> ExpiredAsync(DateTimeOffset cutoff, int max, CancellationToken cancellationToken) =>
+        await orders.Orders.Where(o => o.ClosedAt < cutoff).OrderBy(o => o.ClosedAt).Take(max)
+            .Select(o => new RetainedRecord(o.Id, o.ClosedAt!.Value, "supplier", o.SupplierId, JsonSerializer.Serialize(o)))
+            .ToListAsync(cancellationToken);
+
+    public Task DeleteAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken) => ...;
+}
+
+services.AddRetainedRecords<OrderRetention>();
+```
+
+The retention job archives each expired record's `Content` to the tenant's container, skips any a legal hold keeps (the record, its master such as the supplier, or the whole tenant), calls `DeleteAsync` with the rest, and writes `audit.record_expired` for each. The data tests' `SampleOrderRetention` and Identity's `SessionRetention` are the references. A new class is a decision: an ADR, then `RetentionClasses`.
+
 ## Writing an endpoint (ADR-0009)
 
 - Group the resource with `endpoints.MapApiGroup("users")`; the path becomes `/api/v1/users`. Resource names are plural kebab-case nouns.
@@ -225,7 +252,8 @@ Files go through `IObjectStorage` (Iron.Kernel.Files.Contracts): `PutAsync`, `Ge
 - `builder.AddIronTelemetry("iron-api", t => t.TenantId = ...)` then `app.UseIronTelemetry()` first in the pipeline. Every request gets a trace, the response carries `X-Correlation-Id`, and metrics and logs flow to the collector. Set `OTEL_EXPORTER_OTLP_ENDPOINT` when the collector is not on `localhost:4317`.
 - `builder.Services.AddIronSecurity(builder.Configuration)` then `app.UseIronSecurity()` after `UseIronApi()`. Allowed browser origins go in `Security:Cors:AllowedOrigins`; the shell needs none.
 - `builder.Services.AddIronHealth()` plus `app.MapIronHealth()`; a module or infrastructure adds readiness checks with the tag `ready` (`AddIronDatabaseHealthCheck()` for PostgreSQL).
-- Log through `ILogger<T>` with structured values (`logger.LogInformation("Tenant {TenantId} provisioned", id)`); never string-concatenate values into the message. Do not log secrets or personal data.
+- Log through `ILogger<T>` with structured values (`logger.LogInformation("Tenant {TenantId} provisioned", id)`); never string-concatenate values into the message. Do not log secrets or personal data: log the person's id, never their name or email (TF-069). The scrubbing rule masks a property named like a name, an email, a phone or an address, and any email shape, so name a property for what it holds: a URL is `{Url}`, not `{Address}`. A log line is never the record of an action; its audit event is.
+- `builder.Services.AddIronClockCheck(builder.Configuration)` measures the process's clock (TF-065 AC3); every host has it.
 
 ## Where things are checked
 
@@ -544,6 +572,10 @@ The fleet worker needs nothing else: it runs the steps of the job's kind in orde
 4. For a form, `useZodForm({ schema, initialValues })` and `<Form form={form} onSubmit={save} submitLabel={...} secondary={...}>` with Mantine inputs bound through `form.getInputProps`. Field names are camelCase; when `save` rejects with an `ApiError`, the API's field problems land on their fields (`items[0].unit_price` becomes `items.0.unitPrice`) and the rest shows at the top with the correlation id. Never two primary actions.
 5. Add the route and the navigation entry to the module's manifest in `shell/src/modules/<layer>/<module>/manifest.tsx`, each with its `permission` (`null` for any signed-in principal), and the manifest to `shell/src/modules/index.ts` if it is new. Every string goes through `src/i18n/en.json`.
 6. `make shell-check`: Prettier's check fails unformatted code (`make format` fixes it); a route without a permission fails the strict validation; an `ag-grid-*` import outside the wrapper and a colour by value fail lint. A new component gets its tile in the gallery, and `make shell-a11y` scans it.
+
+Every time a page shows goes through `shell/src/i18n/dates.ts` (TF-065 AC2, ADR-0050): `formatDateTime` for a moment, with the person's zone named; `formatTime` for a moment today; `formatDate` for a moment's day; `formatDay` for a calendar day that has no time of its own (a due date, a day of a UTC summary), shown as that day in every zone; `startOfDay` for the first instant of a day the person typed, in their zone, for a search. Never `toLocaleString` or `Intl.DateTimeFormat` in a page. The zone is the person's `shell.time_zone`, or the browser's.
+
+A record page gives the template its record as the audit trail names it, `history={useHistoryOf("principal", user.id)}` from `@/auth/record-history`, and gets the History tab for people who may read the trail.
 
 A page reads the signed-in principal with `useSession()`; it never checks a permission itself beyond what the manifest declares, since the API's answer is the one that counts. Errors from `request()` are `ApiError` with the correlation id; the error views show it.
 

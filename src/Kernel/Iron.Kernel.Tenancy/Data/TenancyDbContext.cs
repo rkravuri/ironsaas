@@ -28,8 +28,63 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
 
     public DbSet<PlatformDocument> PlatformDocuments => Set<PlatformDocument>();
 
+    public DbSet<UnitClient> UnitClients => Set<UnitClient>();
+
+    public DbSet<AuditAnchorRecord> AuditAnchors => Set<AuditAnchorRecord>();
+
+    public DbSet<AuditVerificationRecord> AuditVerifications => Set<AuditVerificationRecord>();
+
+    public DbSet<AuditVerificationRequest> AuditVerificationRequests => Set<AuditVerificationRequest>();
+
+    public DbSet<AuditRestoreRecord> AuditRestores => Set<AuditRestoreRecord>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
+        // The tenants' audit chains (TF-061, ADR-0050): the anchors and the verifications are written once.
+        modelBuilder.Entity<UnitClient>(client =>
+        {
+            client.Property(c => c.TenantSlug).HasMaxLength(63);
+            client.HasIndex(c => c.TenantSlug).IsUnique();
+            client.HasIndex(c => c.PrincipalId).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditAnchorRecord>(anchor =>
+        {
+            anchor.ToTable("audit_anchors");
+            anchor.Property(a => a.TenantSlug).HasMaxLength(63);
+            anchor.Property(a => a.Kind).HasMaxLength(AuditAnchorRecord.KindMaxLength);
+            anchor.Property(a => a.Hash).HasMaxLength(AuditAnchorRecord.HashLength).IsFixedLength();
+            anchor.Property(a => a.Segment).HasDefaultValue(1);
+            anchor.HasIndex(a => new { a.TenantSlug, a.Segment, a.Kind, a.Position }).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditRestoreRecord>(restore =>
+        {
+            restore.ToTable("audit_restores");
+            restore.Property(r => r.TenantSlug).HasMaxLength(63);
+            restore.Property(r => r.PreviousHash).HasMaxLength(AuditAnchorRecord.HashLength).IsFixedLength();
+            restore.Property(r => r.Ticket).HasMaxLength(AuditRestoreRecord.TicketMaxLength);
+            restore.Property(r => r.Reason).HasMaxLength(AuditRestoreRecord.ReasonMaxLength);
+            restore.Property(r => r.AcceptedByName).HasMaxLength(200);
+            restore.HasIndex(r => new { r.TenantSlug, r.Segment }).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditVerificationRecord>(verification =>
+        {
+            verification.ToTable("audit_verifications");
+            verification.Property(v => v.TenantSlug).HasMaxLength(63);
+            verification.Property(v => v.Result).HasMaxLength(AuditVerificationRecord.ResultMaxLength);
+            verification.Property(v => v.ToHash).HasMaxLength(AuditAnchorRecord.HashLength).IsFixedLength();
+            verification.Property(v => v.Problems).HasColumnType("jsonb");
+            verification.HasIndex(v => new { v.TenantSlug, v.CreatedAt });
+        });
+
+        modelBuilder.Entity<AuditVerificationRequest>(request =>
+        {
+            request.Property(r => r.TenantSlug).HasMaxLength(63);
+            request.HasIndex(r => r.VerificationId);
+        });
+
         modelBuilder.Entity<BreakGlassAccess>(access =>
         {
             access.ToTable("break_glass_accesses");

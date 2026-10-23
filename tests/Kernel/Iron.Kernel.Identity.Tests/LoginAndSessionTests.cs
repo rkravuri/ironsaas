@@ -125,6 +125,34 @@ public class LoginAndSessionTests(IdentityFixture fixture)
     }
 
     [Fact]
+    [Untraced("A regression for a version conflict between two requests of one session touching it at once; no criterion or ADR says how a touch meets that race.")]
+    public async Task RequestsOfOneSessionThatTouchItAtOnceAllPass()
+    {
+        // Seen in the browser tests: the shell's context read and a page's own call arrived together a minute after the
+        // last touch, and the second save hit the session's version, failing /me/context.
+        var time = new FakeTimeProvider();
+        await using var provider = fixture.BuildServices(time);
+        (Session Session, string Token) started;
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var user = await IdentityFixture.CreateActiveUserAsync(scope.ServiceProvider, $"touched-{Ids.New():N}@acme.test", Password);
+            started = await scope.ServiceProvider.GetRequiredService<SessionService>().StartAsync(user, TestContext.Current.CancellationToken);
+        }
+
+        time.Advance(TimeSpan.FromMinutes(5));
+        var resolutions = await Task.WhenAll(Enumerable.Range(0, 8).Select(async _ =>
+        {
+            await using var scope = provider.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<SessionService>().ResolveAsync(started.Token, TestContext.Current.CancellationToken);
+        }));
+
+        Assert.All(resolutions, resolution => Assert.True(resolution.IsAlive));
+        await using var check = provider.CreateAsyncScope();
+        var row = await check.ServiceProvider.GetRequiredService<IdentityDbContext>().Sessions.AsNoTracking().SingleAsync(s => s.Id == started.Session.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(time.GetUtcNow(), row.LastActivityAt);
+    }
+
+    [Fact]
     [Proves("TF-021 AC1", "ADR-0014")]
     public async Task ASessionEndsAfterSixtyIdleMinutesAndTheExpiryIsAudited()
     {

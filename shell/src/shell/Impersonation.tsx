@@ -4,9 +4,9 @@ import { Alert, Button, Group, Stack, Text } from "@mantine/core";
 import { IconUserCircle } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
 import { useSession } from "@/auth/session-context";
+import { formatDateTime } from "@/i18n/dates";
 
-const until = (iso: string, language: string) =>
-  new Date(iso).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
+const until = (iso: string) => formatDateTime(iso);
 
 /**
  * The band an impersonator sees on every page (TF-025, ADR-0049): whose account this is, until when, why, and End. It sits
@@ -14,7 +14,7 @@ const until = (iso: string, language: string) =>
  * the same place says the impersonator is themselves again.
  */
 export function ImpersonationBand() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { me, impersonationEnded, endImpersonation, dismissImpersonationEnded } = useSession();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ApiError | undefined>();
@@ -49,7 +49,7 @@ export function ImpersonationBand() {
               <Text size="sm">
                 {t(impersonation.operator ? "impersonation.band.byOperator" : "impersonation.band.by", {
                   impersonator: impersonation.impersonator_name,
-                  until: until(impersonation.until, i18n.language),
+                  until: until(impersonation.until),
                 })}
               </Text>
               <Text size="sm">{t("impersonation.band.reason", { reason: impersonation.reason })}</Text>

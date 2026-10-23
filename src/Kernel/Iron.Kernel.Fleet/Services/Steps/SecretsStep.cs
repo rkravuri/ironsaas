@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Fleet.Contracts;
+using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Tenancy.Contracts;
 
@@ -15,11 +17,21 @@ namespace Iron.Kernel.Fleet.Services.Steps;
 /// An update runs it too (ADR-0028): the unit secret is written from what the two steps before it hold now, the policy
 /// is written again, so a unit made before a path was added reads it with its old token, and a lost unit token means a
 /// new token, which the unit step then puts into the unit's environment. The entitlements are written again as well,
-/// so a store that lost them heals with the unit.
+/// so a store that lost them heals with the unit. The unit's own client in the control plane (ADR-0050), which sends its
+/// audit anchors, is made or given its secret again here, and the unit secret carries its address, id and secret.
 /// </summary>
-public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, ITenantEntitlements entitlements, ITenantFlags flags) : IProvisioningStep
+public sealed class SecretsStep(
+    ISecretStore secrets,
+    ISecretStoreAdmin admin,
+    ITenantEntitlements entitlements,
+    ITenantFlags flags,
+    IServiceAccounts? serviceAccounts = null,
+    ITenantAuditChains? chains = null) : IProvisioningStep
 {
     public const string UnitTokenKey = "unit_token";
+
+    /// <summary>The unit's control-plane client secret, kept in the fleet secret so an update keeps it (ADR-0050).</summary>
+    public const string ControlClientSecretKey = "control_client_secret";
 
     /// <summary>The configuration key of the second factors' key (TF-073, ADR-0047): 32 random bytes in base64.</summary>
     public const string FactorKeyKey = "Identity:FactorKey";
@@ -46,7 +58,19 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, I
 
             // Kept as it is once made: a new key would leave every authenticator app's secret unreadable.
             [FactorKeyKey] = current?.GetValueOrDefault(FactorKeyKey) ?? Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)),
+
+            // migrate grants the verifier's role its reads of the chain (ADR-0050); the unit never connects with it.
+            ["Database:AuditReaderRole"] = context.AuditReaderRole,
         };
+
+        var client = await ControlClientAsync(context, cancellationToken).ConfigureAwait(false);
+        if (client is { } made)
+        {
+            unit["ControlPlane:Address"] = context.Options.ControlPlane.UnitAddress;
+            unit["ControlPlane:ClientId"] = context.ControlClientId;
+            unit["ControlPlane:ClientSecret"] = made;
+        }
+
         await secrets.WriteAsync(context.UnitSecretPath, unit, cancellationToken).ConfigureAwait(false);
 
         // On every run: the token carries the policy by name, so writing it again widens what an existing token may read.
@@ -67,6 +91,37 @@ public sealed class SecretsStep(ISecretStore secrets, ISecretStoreAdmin admin, I
         var published = await entitlements.PublishAsync(context.Slug, cancellationToken).ConfigureAwait(false);
         var flagsPublished = await flags.PublishAsync(context.Slug, cancellationToken).ConfigureAwait(false);
         return $"unit secret written with {unit.Count} keys; policy {context.UnitPolicy} reads the unit secret, the entitlements, the flag rules and the settings' secrets and manages the single sign-on secrets; unit token {(tokenCreated ? "created" : "kept")}; entitlements {(published ? "written" : "left to the reconcile")}; flag rules {(flagsPublished ? "written" : "left to the reconcile")}";
+    }
+
+    /// <summary>
+    /// The unit's client in the control plane (ADR-0050): a service account with the unit-client role, bound to the
+    /// tenant, its secret kept in the fleet secret. Null where the host has no Identity, such as the fleet's own tests.
+    /// </summary>
+    private async Task<string?> ControlClientAsync(ProvisioningContext context, CancellationToken cancellationToken)
+    {
+        if (serviceAccounts is null || chains is null)
+        {
+            return null;
+        }
+
+        var fleet = await secrets.ReadAsync(context.FleetSecretPath, cancellationToken).ConfigureAwait(false);
+        var secret = fleet?.GetValueOrDefault(ControlClientSecretKey);
+        if (secret is null)
+        {
+            secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+            var updated = fleet is null ? new Dictionary<string, string>(StringComparer.Ordinal) : new Dictionary<string, string>(fleet, StringComparer.Ordinal);
+            updated[ControlClientSecretKey] = secret;
+            await secrets.WriteAsync(context.FleetSecretPath, updated, cancellationToken).ConfigureAwait(false);
+        }
+
+        var account = await serviceAccounts.EnsureAsync(context.ControlClientId, $"Unit of {context.Slug}", SystemRoles.UnitClient, secret, cancellationToken).ConfigureAwait(false);
+        if (account.IsFailure)
+        {
+            throw new InvalidOperationException($"The unit's control-plane client could not be made: {account.Error.Message}");
+        }
+
+        await chains.BindUnitClientAsync(context.Slug, account.Value, cancellationToken).ConfigureAwait(false);
+        return secret;
     }
 
     private static string NewSigningKey()

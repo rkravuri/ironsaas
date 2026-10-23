@@ -159,7 +159,8 @@ services:
     environment: &control-environment
       ASPNETCORE_ENVIRONMENT: Production
       Tenant__Id: control
-      Tenant__HostnameList: control.localhost,localhost
+      # control-api is how units reach it on the platform network, for their audit anchors (ADR-0050).
+      Tenant__HostnameList: control.localhost,localhost,control-api
       Secrets__Address: http://openbao:8200
       Secrets__Token: ${OPENBAO_ROOT_TOKEN:-} # written into .env by scripts/init-store.sh on the first make up
       Secrets__Path: control

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Table, Text } from "@mantine/core";
 import { ApiError } from "@/api/client";
 import { fetchUser, type UserRecord } from "@/api/identity";
+import { useHistoryOf } from "@/auth/record-history";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { useRecentName } from "@/home/recent";
@@ -12,8 +13,9 @@ import { AccessTab } from "./AccessTab";
 import { SignInTab } from "./SignInTab";
 import { UserActions } from "./UserActions";
 import { userStatus } from "./user-status";
+import { formatDateTime } from "@/i18n/dates";
 
-const when = (value: string | null): string => (value ? new Date(value).toLocaleString() : "");
+const when = (value: string | null): string => (value ? formatDateTime(value) : "");
 
 /**
  * One user on the record template (A2): the details and the Access tab, with the actions an administrator of the
@@ -61,6 +63,7 @@ export function UserRecordPage() {
 function UserRecordView({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
   useRecentName(user.display_name);
+  const history = useHistoryOf("principal", user.id);
   const [now] = useState(() => Date.now());
   const locked = user.locked_until != null && Date.parse(user.locked_until) > now;
   const rows: [string, string][] = [
@@ -107,6 +110,7 @@ function UserRecordView({ user }: { user: UserRecord }) {
           ? [{ value: "sign-in", label: t("users.record.signIn"), panel: <SignInTab user={user} /> }]
           : []),
       ]}
+      history={history}
     />
   );
 }

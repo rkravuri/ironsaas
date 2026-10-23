@@ -15,6 +15,8 @@ public sealed class SampleDbContext(DbContextOptions<SampleDbContext> options) :
 
     public DbSet<Proposal> Proposals => Set<Proposal>();
 
+    public DbSet<SampleOrder> Orders => Set<SampleOrder>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Preference>().HasIndex(p => p.Key).IsUnique();

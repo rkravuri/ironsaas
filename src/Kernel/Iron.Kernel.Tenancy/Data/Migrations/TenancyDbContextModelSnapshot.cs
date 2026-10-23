@@ -24,6 +24,283 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.AuditAnchorRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<long>("Position")
+                        .HasColumnType("bigint")
+                        .HasColumnName("position");
+
+                    b.Property<int>("Segment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("segment");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_anchors");
+
+                    b.HasIndex("TenantSlug", "Segment", "Kind", "Position")
+                        .IsUnique()
+                        .HasDatabaseName("ix_audit_anchors_tenant_slug_segment_kind_position");
+
+                    b.ToTable("audit_anchors", "kernel_tenancy", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.AuditRestoreRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AcceptedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accepted_by_id");
+
+                    b.Property<string>("AcceptedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("accepted_by_name");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("LostFrom")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_from");
+
+                    b.Property<long>("LostTo")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_to");
+
+                    b.Property<string>("PreviousHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("previous_hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RestoreAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restore_at");
+
+                    b.Property<long>("RestorePosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("restore_position");
+
+                    b.Property<int>("Segment")
+                        .HasColumnType("integer")
+                        .HasColumnName("segment");
+
+                    b.Property<long>("StartPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("start_position");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<string>("Ticket")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ticket");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_restores");
+
+                    b.HasIndex("TenantSlug", "Segment")
+                        .IsUnique()
+                        .HasDatabaseName("ix_audit_restores_tenant_slug_segment");
+
+                    b.ToTable("audit_restores", "kernel_tenancy", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.AuditVerificationRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("EventsChecked")
+                        .HasColumnType("integer")
+                        .HasColumnName("events_checked");
+
+                    b.Property<long>("FromPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("from_position");
+
+                    b.Property<bool>("Full")
+                        .HasColumnType("boolean")
+                        .HasColumnName("full");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<string>("Problems")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("problems");
+
+                    b.Property<DateTimeOffset?>("RestoreAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restore_at");
+
+                    b.Property<long?>("RestorePosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("restore_position");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("result");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<string>("ToHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("to_hash")
+                        .IsFixedLength();
+
+                    b.Property<long>("ToPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("to_position");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_verifications");
+
+                    b.HasIndex("TenantSlug", "CreatedAt")
+                        .HasDatabaseName("ix_audit_verifications_tenant_slug_created_at");
+
+                    b.ToTable("audit_verifications", "kernel_tenancy", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.AuditVerificationRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("Full")
+                        .HasColumnType("boolean")
+                        .HasColumnName("full");
+
+                    b.Property<Guid>("RequestedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_id");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("VerificationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("verification_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_verification_requests");
+
+                    b.HasIndex("VerificationId")
+                        .HasDatabaseName("ix_audit_verification_requests_verification_id");
+
+                    b.ToTable("audit_verification_requests", "kernel_tenancy");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Tenancy.Data.BreakGlassAccess", b =>
                 {
                     b.Property<Guid>("Id")
@@ -801,6 +1078,57 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                         .HasDatabaseName("ix_hostnames_tenant_id");
 
                     b.ToTable("hostnames", "kernel_tenancy");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.UnitClient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_unit_clients");
+
+                    b.HasIndex("PrincipalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_unit_clients_principal_id");
+
+                    b.HasIndex("TenantSlug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_unit_clients_tenant_slug");
+
+                    b.ToTable("unit_clients", "kernel_tenancy");
                 });
 
             modelBuilder.Entity("Iron.Kernel.Tenancy.Data.TenantEntitlement", b =>

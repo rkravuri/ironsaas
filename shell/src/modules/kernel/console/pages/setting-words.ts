@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import type { SettingView } from "@/api/settings";
+import { formatDate } from "@/i18n/dates";
 
 /** The catalogue key of a setting's words: i18next reads dots as nesting, so the key's dots become underscores. */
 export const settingSlug = (key: string) => key.replaceAll(".", "_");
@@ -26,8 +27,7 @@ export function displayValue(setting: SettingView, value: unknown, t: TFunction)
   }
 }
 
-const day = (iso: string | null) =>
-  iso === null ? "" : new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
+const day = (iso: string | null) => (iso === null ? "" : formatDate(iso));
 
 /** Where the value at this place comes from, in a sentence (TF-058): the default, here, a unit above, or the organisation. */
 export function sourceSentence(setting: SettingView, t: TFunction): string {

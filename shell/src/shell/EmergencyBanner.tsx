@@ -6,6 +6,7 @@ import { Alert, Anchor, Stack, Text } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { fetchSecurityAlerts } from "@/api/identity";
 import { useSession } from "@/auth/session-context";
+import { formatDateTime } from "@/i18n/dates";
 
 const manage = "identity.users.manage";
 const dismissedKey = "iron.emergency-alerts.dismissed";
@@ -34,7 +35,7 @@ function writeDismissed(ids: string[]): void {
  * severity; this banner is where an administrator sees it at once. Closing it hides those sign-ins in this browser.
  */
 export function EmergencyBanner() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const session = useSession();
   const [dismissed, setDismissed] = useState<string[]>(readDismissed);
   const allowed = session.tenantPermissions.includes(manage);
@@ -50,7 +51,7 @@ export function EmergencyBanner() {
     return null;
   }
 
-  const at = (iso: string) => new Date(iso).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" });
+  const at = (iso: string) => formatDateTime(iso);
   const dismiss = () => {
     const ids = [...dismissed, ...fresh.map((alert) => alert.id)];
     writeDismissed(ids);

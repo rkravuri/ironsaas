@@ -74,6 +74,11 @@ public static class DatabaseCommands
                     logger.LogWarning("No app role is configured (Database:AppRole); the runtime privileges were not granted.");
                 }
 
+                if (options.AuditReaderRole is not null)
+                {
+                    await provider.GetRequiredService<GrantsRunner>().RunReaderAsync(options.AuditReaderRole, cancellationToken).ConfigureAwait(false);
+                }
+
                 return 0;
             case Grant:
                 var role = args.Length > 1 ? args[1] : options.AppRole;

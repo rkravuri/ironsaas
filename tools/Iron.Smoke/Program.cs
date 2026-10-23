@@ -473,6 +473,11 @@ var sessions = new SessionSteps(api, options, signIn, AdministratorAsync, run);
 await report.StepAsync("end-session", ["TF-022 AC1", "ADR-0049"], () => sessions.EndSessionAsync(ct));
 await report.StepAsync("revoke-person", ["TF-029 AC4", "ADR-0049"], () => sessions.RevokePersonAsync(ct));
 
+// S3 T6's step: the audit trail searched for this run's own events, by the record of the session step's person, in time
+// order, sealed into the chain, and exported to CSV (ADR-0050). It reads only.
+var trail = new AuditSteps(api, options, AdministratorAsync, run);
+await report.StepAsync("audit-trail", ["TF-064 AC1", "ADR-0050"], () => trail.SearchTheTrailAsync(ct));
+
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
 

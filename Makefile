@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -211,6 +211,18 @@ accept-documents: ## Accept the current document versions as a tenant's stored t
 	  || { echo "No administrator password at secret/tenants/$(TENANT)/smoke: run make smoke TENANT=$(TENANT) first."; exit 1; }; \
 	ACCEPT_TENANT=$(TENANT) ACCEPT_ADMIN_PASSWORD="$$(printf '%s\n' "$$secret" | sed -n 1p)" ACCEPT_ADMIN_TOTP_SECRET="$$(printf '%s\n' "$$secret" | sed -n 2p)" \
 	  python3 $(COMPOSE_DIR)/scripts/accept-documents.py
+
+verify-audit: ## Ask the fleet to verify a tenant's audit chain now and print the record it keeps (TF-061, ADR-0050): make verify-audit TENANT=echo [FULL=1]
+	@test -n "$(TENANT)" || (echo 'usage: make verify-audit TENANT=echo [FULL=1]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) FULL=$(or $(FULL),0) $(COMPOSE_DIR)/scripts/audit-chain.sh verify $(TENANT)
+
+audit-accept-restore: ## Accept the restore point a tenant's latest verification names, with a ticket and a reason; the chain continues as a new segment (ADR-0050): make audit-accept-restore TENANT=echo TICKET=INC-1 REASON="..."
+	@test -n "$(TENANT)" && test -n "$(TICKET)" && test -n "$(REASON)" || (echo 'usage: make audit-accept-restore TENANT=echo TICKET=INC-1 REASON="why, for both audit trails"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) TICKET="$(TICKET)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/audit-chain.sh accept $(TENANT)
+
+audit-chain: ## A tenant's latest audit chain verifications, accepted restores and anchors, as the control plane keeps them (ADR-0050): make audit-chain TENANT=echo
+	@test -n "$(TENANT)" || (echo 'usage: make audit-chain TENANT=echo' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/audit-chain.sh show $(TENANT)
 
 apply-plan: ## Preview a plan for a tenant, then apply it (DRY_RUN=1 previews only; STARTS=yyyy-mm-dd ENDS=yyyy-mm-dd set the dates): make apply-plan TENANT=echo PLAN=Enterprise
 	@test -n "$(TENANT)" && test -n "$(PLAN)" || (echo "usage: make apply-plan TENANT=echo PLAN=Enterprise [DRY_RUN=1] [STARTS=2026-11-01] [ENDS=2027-10-31]" && exit 1)

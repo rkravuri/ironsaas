@@ -447,6 +447,22 @@
           "minimum": null,
           "maximum": null,
           "whole_number": false
+        },
+        {
+          "key": "shell.time_zone",
+          "module": "settings",
+          "type": "text",
+          "description": "The time zone every time in the shell is shown in, with its name; empty follows the browser.",
+          "default": "",
+          "scopes": [
+            "user"
+          ],
+          "visible_to_shell": true,
+          "requirement": "a time zone's name, such as Europe/London, or nothing to follow the browser",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
         }
       ]
     }

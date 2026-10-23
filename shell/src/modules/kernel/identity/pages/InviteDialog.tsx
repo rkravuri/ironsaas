@@ -12,6 +12,7 @@ import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
 import { FormDialog, LoadingState } from "@/components/panels";
 import { UnitPicker } from "@/modules/kernel/console/pages/UnitPicker";
+import { formatDateTime } from "@/i18n/dates";
 
 const manage = "identity.users.manage";
 
@@ -138,7 +139,7 @@ function InvitationLink({ created, onDone }: { created: CreatedUser; onDone: () 
   const { t } = useTranslation();
   const field = useRef<HTMLInputElement>(null);
   const link = new URL(created.invitation_link, window.location.origin).toString();
-  const expires = new Date(created.invitation_expires_at).toLocaleString();
+  const expires = formatDateTime(created.invitation_expires_at);
   // The form that had focus is gone: the link takes it, selected, ready to copy.
   useEffect(() => {
     field.current?.focus();

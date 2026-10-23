@@ -458,8 +458,15 @@ public class ProvisioningTests(FleetFixture fixture)
         var runtime = new RecordingRuntime();
         var logs = new CapturingLogs();
         await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime, services => services.AddLogging(logging => logging.AddProvider(logs)));
-        var slug = await RegisterAndRequestAsync(provider, "india");
         var harness = new ProvisioningWorkerHarness(provider);
+
+        // Jobs are the fleet's, not a test's: another test's waiting job would otherwise run in this one's place.
+        while (await harness.RunNextAsync())
+        {
+        }
+
+        logs.Lines.Clear();
+        var slug = await RegisterAndRequestAsync(provider, "india");
         Assert.True(await harness.RunNextAsync());
         await using (var scope = provider.CreateAsyncScope())
         {
@@ -470,7 +477,7 @@ public class ProvisioningTests(FleetFixture fixture)
 
         await using var check = provider.CreateAsyncScope();
         var context = check.ServiceProvider.GetRequiredService<FleetDbContext>();
-        var jobs = await context.ProvisioningJobs.AsNoTracking().Where(j => j.TenantSlug == slug).OrderBy(j => j.RequestedAt).ToListAsync(ct);
+        var jobs = await context.ProvisioningJobs.AsNoTracking().Where(j => j.TenantSlug == slug).OrderBy(j => j.RequestedAt).ThenBy(j => j.Id).ToListAsync(ct);
         var steps = await context.ProvisioningSteps.AsNoTracking().Where(s => jobs.Select(j => j.Id).Contains(s.JobId)).ToListAsync(ct);
         var handovers = check.ServiceProvider.GetRequiredService<IJobHandovers>();
         var someoneElse = await handovers.TakeAsync(jobs[1].Id, Ids.New(), ct);
@@ -517,6 +524,37 @@ public class ProvisioningTests(FleetFixture fixture)
         }
 
         return names;
+    }
+
+    [Fact]
+    [Proves("ADR-0050")]
+    public async Task TheVerifiersRoleConnectsWithAPasswordTheUnitNeverHolds()
+    {
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var acme = await RegisterAndRequestAsync(provider, "audit");
+
+        // Jobs are the fleet's, not a test's: run every one waiting, this tenant's among them, and leave none behind.
+        var harness = new ProvisioningWorkerHarness(provider);
+        while (await harness.RunNextAsync())
+        {
+        }
+
+        using var root = new OpenBaoSecretStore(fixture.StoreOptions());
+        var database = await root.ReadAsync($"tenants/{acme}/database", TestContext.Current.CancellationToken);
+        var unit = await root.ReadAsync($"tenants/{acme}/unit", TestContext.Current.CancellationToken);
+        Assert.NotNull(database);
+        Assert.NotNull(unit);
+        var password = database[DatabaseStep.AuditPasswordKey];
+        Assert.Equal($"{acme}_audit", unit["Database:AuditReaderRole"]);
+        Assert.DoesNotContain(unit.Values, value => value.Contains(password, StringComparison.Ordinal));
+
+        // The fleet reaches the tenant's database with it; migrate then lets it read the chain and nothing else.
+        var reader = new NpgsqlConnectionStringBuilder(unit["ConnectionStrings:Database"]) { Username = $"{acme}_audit", Password = password }.ToString();
+        await using var connection = new NpgsqlConnection(reader);
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await using var command = new NpgsqlCommand("select current_user", connection);
+        Assert.Equal($"{acme}_audit", await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
     }
 
     private static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix)

@@ -5,6 +5,7 @@ import type { RecordSharing } from "@/api/authorization";
 import { ApprovalPanel, AttachmentPanel, CommentPanel, HistoryPanel } from "@/components/panels";
 import { SharingPanel } from "@/components/sharing";
 import { RecordPage } from "@/components/templates";
+import { formatDate } from "@/i18n/dates";
 
 const unit = (n: number, name: string, parent: number | null, depth: number) => ({
   id: `01a18000-0000-7000-8000-${String(n).padStart(12, "0")}`,
@@ -68,7 +69,7 @@ export function RecordSample() {
                     {[
                       [t("gallery.record.customer"), "Orbit Logistics"],
                       [t("gallery.record.total"), "12,480.00"],
-                      [t("gallery.record.due"), new Date(at(28)).toLocaleDateString()],
+                      [t("gallery.record.due"), formatDate(at(28))],
                     ].map(([label, value]) => (
                       <Table.Tr key={label}>
                         <Table.Th w={180}>{label}</Table.Th>

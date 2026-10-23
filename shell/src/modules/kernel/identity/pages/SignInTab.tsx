@@ -6,10 +6,11 @@ import { ApiError } from "@/api/client";
 import { setSsoOnly, type UserRecord } from "@/api/identity";
 import { useAccessAt } from "@/auth/access";
 import { EmptyState } from "@/components/panels";
+import { formatDateTime } from "@/i18n/dates";
 
 const manage = "identity.users.manage";
 
-const when = (value: string): string => new Date(value).toLocaleString();
+const when = (value: string): string => formatDateTime(value);
 
 /**
  * How a person signs in (TF-014, ADR-0048): the company logins they are linked to, and whether they sign in only through

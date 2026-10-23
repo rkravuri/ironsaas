@@ -9,6 +9,7 @@ import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ListPage } from "@/components/templates";
 import { workingScope } from "@/shell/working-unit";
 import { InviteDialog } from "./InviteDialog";
+import { formatDateTime } from "@/i18n/dates";
 
 const defaultSort = [{ field: "login_id", direction: "asc" as const }];
 
@@ -68,7 +69,7 @@ export function UsersPage() {
       sortable: true,
       filter: false,
       width: 190,
-      format: (user) => (user.last_login_at ? new Date(user.last_login_at).toLocaleString() : ""),
+      format: (user) => (user.last_login_at ? formatDateTime(user.last_login_at) : ""),
     },
     {
       field: "created_at",
@@ -77,7 +78,7 @@ export function UsersPage() {
       filter: false,
       width: 190,
       hidden: true,
-      format: (user) => new Date(user.created_at).toLocaleString(),
+      format: (user) => formatDateTime(user.created_at),
     },
   ];
 

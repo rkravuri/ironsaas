@@ -103,5 +103,17 @@ public static class ShellSettings
     public static readonly Setting<string> Density = Setting.Choice(
         "shell.density", "How closely grids and record pages set their rows: comfortable, or compact for more on the screen.", "comfortable", ["comfortable", "compact"], SettingScopes.User, visibleToShell: true);
 
-    public static IReadOnlyList<SettingDefinition> All => [ColourScheme, Density];
+    /// <summary>
+    /// The person's time zone for every time the shell shows, with its name (TF-065 AC2, ADR-0050): an IANA name such as
+    /// <c>Asia/Kolkata</c>, or empty to follow the browser. The server stores and compares UTC whatever it says.
+    /// </summary>
+    public static readonly Setting<string> TimeZone = Setting.Text(
+        "shell.time_zone",
+        "The time zone every time in the shell is shown in, with its name; empty follows the browser.",
+        string.Empty,
+        SettingScopes.User,
+        SettingRule.Matches("^([A-Za-z]+(/[A-Za-z0-9_+-]+)*)?$", "a time zone's name, such as Europe/London, or nothing to follow the browser"),
+        visibleToShell: true);
+
+    public static IReadOnlyList<SettingDefinition> All => [ColourScheme, Density, TimeZone];
 }

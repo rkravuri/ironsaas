@@ -58,6 +58,13 @@ public static class SystemRoles
     public const string BreakGlass = "break-glass";
 
     public static IReadOnlyList<string> All => [TenantAdministrator, ReadOnly, ServiceDefault, BreakGlass];
+
+    /// <summary>
+    /// A tenant unit's own client in the control plane (ADR-0050): the permissions marked for unit clients and nothing
+    /// else, so a unit can send its audit anchors and read its own chain's state. Seeded only where such permissions
+    /// exist, the control plane; it is not one of <see cref="All"/>, which every tenant has.
+    /// </summary>
+    public const string UnitClient = "unit-client";
 }
 
 public static class AuthorizationErrors

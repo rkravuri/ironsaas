@@ -108,6 +108,46 @@ describe("My profile", () => {
     );
   });
 
+  it("lets the person choose the time zone every time is shown in, kept as their own setting [TF-065 AC2, ADR-0050]", async () => {
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me([])),
+      "PUT /api/v1/settings/shell.time_zone": () =>
+        json({
+          key: "shell.time_zone",
+          module: "settings",
+          type: "text",
+          description: "The time zone the shell shows times in.",
+          requirement: "",
+          choices: null,
+          minimum: null,
+          maximum: null,
+          whole_number: false,
+          scopes: ["user"],
+          default: "",
+          value: "Europe/Berlin",
+          source: { level: "user", unit: null },
+          set_here: true,
+        }),
+    });
+    renderWithProviders(<ProfilePage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("tab", { name: "Preferences" }));
+    const preferences = await screen.findByRole("tabpanel", { name: "Preferences" });
+    const zone = within(preferences).getByRole("combobox", { name: "Time zone" });
+    expect(zone).toHaveValue(`This browser's (${Intl.DateTimeFormat().resolvedOptions().timeZone})`);
+    expect(preferences).toHaveTextContent("Every time the shell shows is in this zone, with its name.");
+    await user.click(zone);
+    await user.clear(zone);
+    await user.type(zone, "Europe/Berl");
+    // The dropdown lists the matching zones; the keys choose the first, as a person would.
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    await waitFor(() => expect(calls.some((call) => call.key === "PUT /api/v1/settings/shell.time_zone")).toBe(true));
+    const sent = calls.find((call) => call.key === "PUT /api/v1/settings/shell.time_zone");
+    expect(JSON.parse(sent?.init?.body as string)).toEqual({ scope: "user", unit_id: null, value: "Europe/Berlin" });
+  });
+
   it("says what will appear when the person holds no role yet [ADR-0027]", async () => {
     stubFetch({ "GET /api/v1/me": () => json(me([])), "GET /api/v1/role-assignments/mine": () => json({ data: [] }) });
     renderWithProviders(<ProfilePage />);

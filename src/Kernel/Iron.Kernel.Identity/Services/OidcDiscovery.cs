@@ -147,7 +147,7 @@ public sealed class OidcDiscovery(IHttpClientFactory factory, TimeProvider time,
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
         {
-            logger.LogWarning("Reading {What} at {Address} failed: {Message}", what, address, exception.Message);
+            logger.LogWarning("Reading {What} at {Url} failed: {Message}", what, address, exception.Message);
             return Error.Unavailable(IdentityErrors.SsoUnavailable, $"The provider could not be reached for {what} at {address}: {exception.Message}");
         }
     }

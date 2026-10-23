@@ -37,6 +37,12 @@ public sealed record AuditEventResponse(
     string? ImpersonatorName = null,
     string Severity = AuditSeverity.Normal)
 {
+    /// <summary>The event's place in the chain (TF-061); null until the sealer gave it one.</summary>
+    public long? ChainPosition { get; init; }
+
+    /// <summary>True for an event read from the archive rather than the database (TF-064 AC2).</summary>
+    public bool Archived { get; init; }
+
     public static AuditEventResponse From(AuditEventRecord record, IReadOnlyDictionary<Guid, string> names)
     {
         ArgumentNullException.ThrowIfNull(names);
@@ -50,6 +56,26 @@ public sealed record AuditEventResponse(
             ImpersonatorName = record.ImpersonatorId is { } impersonator
                 ? names.GetValueOrDefault(impersonator) ?? response.Details?.GetValueOrDefault(AuditWriter.ImpersonatorKey)
                 : null,
+        };
+    }
+
+    /// <summary>An archived event as the list answers a database row (TF-064 AC2), named the same way.</summary>
+    public static AuditEventResponse FromArchive(SealedEvent archived, IReadOnlyDictionary<Guid, string> names)
+    {
+        ArgumentNullException.ThrowIfNull(archived);
+        ArgumentNullException.ThrowIfNull(names);
+        var e = archived.Content;
+        var details = e.Details is null ? null : JsonSerializer.Deserialize<Dictionary<string, string>>(e.Details);
+        return new AuditEventResponse(
+            e.Id, e.EventType, e.Outcome, e.ActorId, e.Source, e.Target, e.RecordType, e.RecordId, e.Reason, e.CorrelationId, details, e.CreatedAt, e.CreatedBy, e.OnBehalfOfId,
+            names.GetValueOrDefault(e.ActorId),
+            e.OnBehalfOfId is { } onBehalfOf ? names.GetValueOrDefault(onBehalfOf) : null,
+            e.ImpersonatorId,
+            e.ImpersonatorId is { } impersonator ? names.GetValueOrDefault(impersonator) ?? details?.GetValueOrDefault(AuditWriter.ImpersonatorKey) : null,
+            e.Severity)
+        {
+            ChainPosition = archived.Position,
+            Archived = true,
         };
     }
 
@@ -73,7 +99,10 @@ public sealed record AuditEventResponse(
             record.CreatedBy,
             record.OnBehalfOfId,
             ImpersonatorId: record.ImpersonatorId,
-            Severity: record.Severity);
+            Severity: record.Severity)
+        {
+            ChainPosition = record.ChainPosition,
+        };
     }
 }
 
@@ -97,12 +126,20 @@ internal static class AuditEventsEndpoints
         .Add("details", e => e.Details, FieldUse.Select)
         .Add("created_at", e => e.CreatedAt, FieldUse.Select | FieldUse.Sort | FieldUse.Filter)
         .Add("created_by", e => e.CreatedBy, FieldUse.Select | FieldUse.Filter)
+        .Add("chain_position", e => e.ChainPosition, FieldUse.Select | FieldUse.Sort | FieldUse.Filter)
         .SortByDefault("created_at", SortDirection.Descending);
 
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var events = endpoints.MapApiGroup("audit-events").RequirePermission(AuditPermissions.EventsRead);
         events.MapGet("/", ListAsync).Produces<ListResponse<AuditEventResponse>>(StatusCodes.Status200OK).WithName("ListAuditEvents").WithSummary("Search the audit trail of this tenant.");
+        events.MapGet("/impersonators", ImpersonatorsAsync).Produces<SignedInAsListResponse>(StatusCodes.Status200OK).WithName("ListAuditImpersonators").WithSummary("Everyone who signed in as someone, or came in through break-glass, by name: the operators, the break-glass accounts and the tenant's people, each with the field that finds their events.");
+    }
+
+    private static async Task<IResult> ImpersonatorsAsync(AuditImpersonators impersonators, CancellationToken cancellationToken)
+    {
+        var found = await impersonators.ListAsync(cancellationToken);
+        return TypedResults.Ok(new SignedInAsListResponse([.. found.Select(s => new SignedInAsResponse(s.Id, s.Name, s.Kind, s.Field))]));
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, AuditDbContext context, CancellationToken cancellationToken)
@@ -131,3 +168,8 @@ internal static class AuditEventsEndpoints
         return ApiResults.List(page.Map(record => AuditEventResponse.From(record, names)), http, query);
     }
 }
+
+/// <summary>Someone the "signed in as them by" filter offers, by name, with the list field that finds their events.</summary>
+public sealed record SignedInAsResponse(Guid Id, string Name, string Kind, string Field);
+
+public sealed record SignedInAsListResponse(IReadOnlyList<SignedInAsResponse> Data);

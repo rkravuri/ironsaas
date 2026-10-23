@@ -42,6 +42,35 @@ public class AuditStampInterceptorTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-065 AC1", "ADR-0007")]
+    public async Task ATimeSetOnARecordBeforeItIsSavedGivesWayToTheServersClock()
+    {
+        var time = new FakeTimeProvider(Start);
+        await using var provider = fixture.BuildServices(time, new FixedPrincipal(Ids.New()));
+
+        // What a client's time would be if any code copied it onto the record: the stamp replaces it on save.
+        var widget = new Widget(Organisation, "clocked");
+        var claimed = Start.AddYears(-3);
+        foreach (var name in new[] { "CreatedAt", "UpdatedAt" })
+        {
+            typeof(Iron.Kernel.Data.Entities.AuditedEntity).GetProperty(name)!.SetValue(widget, claimed);
+        }
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<SampleDbContext>();
+            context.Widgets.Add(widget);
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var saved = await scope.ServiceProvider.GetRequiredService<SampleDbContext>().Widgets.AsNoTracking().SingleAsync(w => w.Id == widget.Id, TestContext.Current.CancellationToken);
+            Assert.Equal((Start, Start), (saved.CreatedAt, saved.UpdatedAt));
+        }
+    }
+
+    [Fact]
     [Proves("ADR-0008")]
     public async Task ChangingStampsUpdatedAndIncrementsTheVersionButKeepsCreated()
     {

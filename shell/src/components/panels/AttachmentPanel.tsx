@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { ActionIcon, Button, FileButton, Group, Stack, Table, Title, UnstyledButton } from "@mantine/core";
 import { IconTrash, IconUpload } from "@tabler/icons-react";
 import { EmptyState } from "./EmptyState";
+import { formatDateTime } from "@/i18n/dates";
 
 export interface Attachment {
   id: string;
@@ -79,7 +80,7 @@ export function AttachmentPanel({ attachments, onUpload, onDownload, onDelete }:
                   )}
                 </Table.Td>
                 <Table.Td>{t("attachments.kilobytes", { count: kilobytes(attachment.size) })}</Table.Td>
-                <Table.Td>{new Date(attachment.uploadedAt).toLocaleString()}</Table.Td>
+                <Table.Td>{formatDateTime(attachment.uploadedAt)}</Table.Td>
                 <Table.Td>{attachment.uploadedBy}</Table.Td>
                 {onDelete !== undefined && (
                   <Table.Td>

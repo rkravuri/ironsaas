@@ -4,6 +4,7 @@ import { Alert, Anchor, Text } from "@mantine/core";
 import { IconShieldLock } from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
 import { enrolNewFactorPath } from "@/auth/mfa-problems";
+import { formatDate } from "@/i18n/dates";
 
 /**
  * During the grace a tenant may give (ADR-0047): one calm line in the page's flow saying by when the person must add a
@@ -26,7 +27,7 @@ export function MfaEnrolBanner() {
       data-mfa-enrol-by
     >
       <Text size="sm">
-        {t("mfa.banner.text", { when: new Date(me.mfa_enrol_by).toLocaleDateString() })}{" "}
+        {t("mfa.banner.text", { when: formatDate(me.mfa_enrol_by) })}{" "}
         {/* The warning's own text colour, underlined: the link colour on the warning's background is too faint (axe). */}
         <Anchor component={Link} to={enrolNewFactorPath} size="sm" c="inherit" underline="always" fw={600}>
           {t("mfa.banner.link")}

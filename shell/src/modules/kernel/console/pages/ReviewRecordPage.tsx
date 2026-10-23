@@ -20,7 +20,9 @@ import { DataGrid, type DataGridColumn, type ListResult } from "@/components/dat
 import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, FormDialog, LoadingState, type RecordStatus } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
+import { useHistoryOf } from "@/auth/record-history";
 import { dueLabel, progressLabel } from "./review-words";
+import { formatDate } from "@/i18n/dates";
 
 const states: ItemState[] = ["open", "decided", "all"];
 const isState = (value: string): value is ItemState => (states as readonly string[]).includes(value);
@@ -32,9 +34,10 @@ const itemSort = [{ field: "unit_name", direction: "asc" as const }];
  * unit with its escalation. A revoke ends the access at once, so it asks first; confirming a page asks first too.
  */
 export function ReviewRecordPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { id = "" } = useParams();
   const queryClient = useQueryClient();
+  const history = useHistoryOf("access_review", id === "" ? undefined : id);
   const review = useQuery({
     queryKey: ["authz", "access-reviews", id],
     queryFn: ({ signal }) => fetchReview(id, signal),
@@ -101,7 +104,7 @@ export function ReviewRecordPage() {
           title: data.name,
           status,
           meta: [
-            { label: t("reviews.record.due"), value: dueLabel(data.due_on, i18n.language) },
+            { label: t("reviews.record.due"), value: dueLabel(data.due_on) },
             { label: t("reviews.record.owner"), value: data.owner.name },
             { label: t("reviews.record.progress"), value: progressLabel(data.progress, t) },
           ],
@@ -116,6 +119,7 @@ export function ReviewRecordPage() {
           { value: "items", label: t("reviews.record.tabs.items"), panel: <Items review={data} onDecided={reload} /> },
           { value: "units", label: t("reviews.record.tabs.units"), panel: <Units review={data} /> },
         ]}
+        history={history}
       />
       <ConfirmDialog
         opened={closing}
@@ -427,7 +431,7 @@ function Units({ review }: { review: Review }) {
           {unit.escalation && (
             <Text size="xs" c="dimmed">
               {t("reviews.units.escalated", {
-                date: new Date(unit.escalation.at).toLocaleDateString(i18n.language, { dateStyle: "medium" }),
+                date: formatDate(unit.escalation.at),
                 targets: new Intl.ListFormat(i18n.language, { type: "conjunction" }).format(
                   unit.escalation.targets.map((target) => target.name),
                 ),

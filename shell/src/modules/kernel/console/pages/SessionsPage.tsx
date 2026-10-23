@@ -18,6 +18,7 @@ import { LoadingState, ReasonDialog } from "@/components/panels";
 import { ListPage } from "@/components/templates";
 import { PlaceSource } from "@/modules/kernel/identity/pages/PlaceSource";
 import { deviceOf, placeOf } from "@/modules/kernel/identity/pages/session-words";
+import { formatDateTime, formatDay } from "@/i18n/dates";
 
 const summaryDays = 14;
 const liveSort = [{ field: "last_activity_at", direction: "desc" as const }];
@@ -32,7 +33,7 @@ type Tab = "live" | "summary" | "revoke";
  * ask the person to confirm it is them first (TF-248).
  */
 export function SessionsPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const session = useSession();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("live");
@@ -50,10 +51,8 @@ export function SessionsPage() {
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchSessions(query, signal), []);
   const tenant = window.location.hostname.split(".")[0] ?? "";
 
-  const day = (iso: string) =>
-    new Date(`${iso}T00:00:00Z`).toLocaleDateString(i18n.language, { dateStyle: "medium", timeZone: "UTC" });
-  const when = (iso: string) =>
-    new Date(iso).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" });
+  const day = (iso: string) => formatDay(iso);
+  const when = (iso: string) => formatDateTime(iso);
 
   // The person, the device and the place are what an administrator reads to decide; they keep readable widths at
   // 1280 pixels, and the start of a session waits in the Columns menu, as its last activity says whether it is live.

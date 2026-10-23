@@ -23,6 +23,156 @@ namespace Iron.Kernel.Audit.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditArchiveBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BlobKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("blob_key");
+
+                    b.Property<string>("ContentSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("content_sha256")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("EventCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_count");
+
+                    b.Property<DateTimeOffset>("FirstAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_at");
+
+                    b.Property<long>("FirstPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("first_position");
+
+                    b.Property<DateTimeOffset>("LastAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_at");
+
+                    b.Property<string>("LastHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("last_hash")
+                        .IsFixedLength();
+
+                    b.Property<long>("LastPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_position");
+
+                    b.HasKey("Id")
+                        .HasName("pk_archive_batches");
+
+                    b.HasIndex("LastPosition")
+                        .IsUnique()
+                        .HasDatabaseName("ix_archive_batches_last_position");
+
+                    b.HasIndex("FirstAt", "LastAt")
+                        .HasDatabaseName("ix_archive_batches_first_at_last_at");
+
+                    b.ToTable("archive_batches", "kernel_audit", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditChainRestore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<string>("AcceptedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("accepted_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("LostFrom")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_from");
+
+                    b.Property<long>("LostTo")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_to");
+
+                    b.Property<string>("PreviousHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("previous_hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RestoreAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restore_at");
+
+                    b.Property<long>("RestorePosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("restore_position");
+
+                    b.Property<int>("Segment")
+                        .HasColumnType("integer")
+                        .HasColumnName("segment");
+
+                    b.Property<long>("StartPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("start_position");
+
+                    b.Property<string>("Ticket")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ticket");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chain_restores");
+
+                    b.HasIndex("Segment")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chain_restores_segment");
+
+                    b.ToTable("chain_restores", "kernel_audit", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
             modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditEventRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -32,6 +182,10 @@ namespace Iron.Kernel.Audit.Data.Migrations
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uuid")
                         .HasColumnName("actor_id");
+
+                    b.Property<long?>("ChainPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("chain_position");
 
                     b.Property<string>("CorrelationId")
                         .HasMaxLength(32)
@@ -56,6 +210,16 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("event_type");
 
+                    b.Property<string>("Hash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("hash")
+                        .IsFixedLength();
+
+                    b.Property<short?>("HashVersion")
+                        .HasColumnType("smallint")
+                        .HasColumnName("hash_version");
+
                     b.Property<Guid?>("ImpersonatorId")
                         .HasColumnType("uuid")
                         .HasColumnName("impersonator_id");
@@ -70,6 +234,12 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("outcome");
 
+                    b.Property<string>("PreviousHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("previous_hash")
+                        .IsFixedLength();
+
                     b.Property<string>("Reason")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -83,6 +253,10 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("record_type");
+
+                    b.Property<DateTimeOffset?>("SealedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sealed_at");
 
                     b.Property<string>("Severity")
                         .IsRequired()
@@ -109,6 +283,10 @@ namespace Iron.Kernel.Audit.Data.Migrations
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_events_actor_id");
 
+                    b.HasIndex("ChainPosition")
+                        .IsUnique()
+                        .HasDatabaseName("ix_events_chain_position");
+
                     b.HasIndex("CorrelationId")
                         .HasDatabaseName("ix_events_correlation_id");
 
@@ -124,6 +302,9 @@ namespace Iron.Kernel.Audit.Data.Migrations
                     b.HasIndex("OnBehalfOfId")
                         .HasDatabaseName("ix_events_on_behalf_of_id");
 
+                    b.HasIndex("SealedAt")
+                        .HasDatabaseName("ix_events_sealed_at");
+
                     b.HasIndex("RecordType", "RecordId")
                         .HasDatabaseName("ix_events_record_type_record_id");
 
@@ -131,6 +312,252 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         {
                             t.HasComment("append-only");
                         });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditExport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BlobKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("blob_key");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Filters")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("filters");
+
+                    b.Property<int>("Rows")
+                        .HasColumnType("integer")
+                        .HasColumnName("rows");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("sha256")
+                        .IsFixedLength();
+
+                    b.HasKey("Id")
+                        .HasName("pk_exports");
+
+                    b.ToTable("exports", "kernel_audit", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditPrune", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("BatchesRemoved")
+                        .HasColumnType("integer")
+                        .HasColumnName("batches_removed");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("HashAtPosition")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("hash_at_position")
+                        .IsFixedLength();
+
+                    b.Property<long>("UpToPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("up_to_position");
+
+                    b.HasKey("Id")
+                        .HasName("pk_prunes");
+
+                    b.HasIndex("UpToPosition")
+                        .IsUnique()
+                        .HasDatabaseName("ix_prunes_up_to_position");
+
+                    b.ToTable("prunes", "kernel_audit", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditSeal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("FirstPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("first_position");
+
+                    b.Property<string>("LastHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("last_hash")
+                        .IsFixedLength();
+
+                    b.Property<long>("LastPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_position");
+
+                    b.HasKey("Id")
+                        .HasName("pk_seals");
+
+                    b.HasIndex("LastPosition")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seals_last_position");
+
+                    b.ToTable("seals", "kernel_audit", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.LegalHold", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid?>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<string>("RecordType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("record_type");
+
+                    b.Property<string>("ReleaseReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("release_reason");
+
+                    b.Property<DateTimeOffset?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("released_at");
+
+                    b.Property<Guid?>("ReleasedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("released_by_id");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("scope");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_legal_holds");
+
+                    b.HasIndex("RecordType", "RecordId")
+                        .HasDatabaseName("ix_legal_holds_record_type_record_id");
+
+                    b.ToTable("legal_holds", "kernel_audit");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.RetentionChoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ClassCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("class_code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Days")
+                        .HasColumnType("integer")
+                        .HasColumnName("days");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_retention_choices");
+
+                    b.HasIndex("ClassCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_retention_choices_class_code");
+
+                    b.ToTable("retention_choices", "kernel_audit");
                 });
 #pragma warning restore 612, 618
         }

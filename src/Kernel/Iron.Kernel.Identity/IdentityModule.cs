@@ -3,6 +3,7 @@ using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Data.Retention;
 using Iron.Kernel.Data.Seeding;
 using Iron.Kernel.Identity.Api;
 using Iron.Kernel.Identity.Contracts;
@@ -106,6 +107,8 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IPrincipals, PrincipalDirectory>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitMergeParticipant, HomeUnitMerge>());
         services.AddScoped<UserService>();
+        services.AddScoped<IServiceAccounts, ServiceAccounts>();
+        services.AddRetainedRecords<SessionRetention>();
         services.AddScoped<IValidator<CreateUserRequest>, CreateUserRequestValidator>();
         services.AddScoped<RequestPrincipal>();
         services.AddScoped<ICurrentPrincipal>(provider => provider.GetRequiredService<RequestPrincipal>());

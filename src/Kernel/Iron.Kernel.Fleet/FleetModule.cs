@@ -64,6 +64,10 @@ public sealed class FleetModule : IModule
         services.AddScoped<IProvisioningStep, ImpersonateStep>();
         services.AddScoped<IProvisioningStep, BreakGlassOpenStep>();
         services.AddScoped<IProvisioningStep, BreakGlassCloseStep>();
+
+        // The tenants' audit chains, verified by the fleet with each tenant's reader role (TF-061, ADR-0050).
+        services.AddSingleton<ArchivedChainReader>();
+        services.AddScoped<AuditChainVerifier>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -78,6 +82,17 @@ public static class FleetWorkerExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<ProvisioningWorker>();
+        return services;
+    }
+}
+
+public static class AuditVerificationHosting
+{
+    /// <summary>The fleet host's verification loop for the tenants' audit chains (ADR-0050); the control plane's API only takes requests for it.</summary>
+    public static IServiceCollection AddIronAuditVerification(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddHostedService<AuditVerificationWorker>();
         return services;
     }
 }

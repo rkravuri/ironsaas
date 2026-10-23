@@ -36,6 +36,7 @@ import { ModuleMark } from "@/design/patterns";
 import { CreateUnitDialog, MoveUnitDialog, RenameUnitDialog } from "./UnitDialogs";
 import { MergeUnitDialog, UnitReadiness } from "./UnitLifecycle";
 import { childKinds, kindOf, pathLabel, toTreeData } from "./unit-tree";
+import { formatDateTime } from "@/i18n/dates";
 
 const manage = "authz.units.manage";
 const unitsQueryKey = ["authz", "organisation-units"] as const;
@@ -316,7 +317,7 @@ function UnitRecord({
   const merged = Boolean(unit.merged_into_id);
   const below = units.filter((candidate) => candidate.parent_id === unit.id).length;
   const canHoldUnits = active && childKinds(kinds, unit.kind).length > 0;
-  const when = (value: string) => new Date(value).toLocaleString();
+  const when = (value: string) => formatDateTime(value);
   return (
     <Stack gap="md">
       <RecordHeader

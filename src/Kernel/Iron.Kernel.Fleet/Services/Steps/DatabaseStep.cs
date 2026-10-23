@@ -6,7 +6,8 @@ using Npgsql;
 namespace Iron.Kernel.Fleet.Services.Steps;
 
 /// <summary>
-/// Step 2: the owner role (migrations, seeds), the app role (runtime) and the database, as the platform superuser.
+/// Step 2: the owner role (migrations, seeds), the app role (runtime), the audit verifier's role (ADR-0050, which
+/// <c>migrate</c> lets read the chain's tables and nothing else) and the database, as the platform superuser.
 /// Passwords are generated once and kept in the store at <c>tenants/&lt;slug&gt;/database</c>; a re-run reuses them.
 /// PUBLIC loses CONNECT on the database, so no other tenant's role can reach it (TF-005).
 /// An update runs it too (ADR-0028): with the secret in place nothing changes; with the secret lost, new passwords are
@@ -16,6 +17,9 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 {
     public const string OwnerPasswordKey = "owner_password";
     public const string AppPasswordKey = "app_password";
+
+    /// <summary>The audit verifier's password (ADR-0050): the fleet reads the chain with it, never the unit.</summary>
+    public const string AuditPasswordKey = "audit_password";
 
     public string Name => StepNames.Database;
 
@@ -31,15 +35,18 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
         var existing = await secrets.ReadAsync(context.DatabaseSecretPath, cancellationToken).ConfigureAwait(false);
         var ownerPassword = existing?.GetValueOrDefault(OwnerPasswordKey) ?? NewPassword();
         var appPassword = existing?.GetValueOrDefault(AppPasswordKey) ?? NewPassword();
-        if (existing is null)
+        var auditPassword = existing?.GetValueOrDefault(AuditPasswordKey) ?? NewPassword();
+        if (existing is null || !existing.ContainsKey(AuditPasswordKey))
         {
-            await secrets.WriteAsync(context.DatabaseSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { [OwnerPasswordKey] = ownerPassword, [AppPasswordKey] = appPassword }, cancellationToken).ConfigureAwait(false);
+            // A unit made before the chain gets its verifier's password beside the two it has.
+            await secrets.WriteAsync(context.DatabaseSecretPath, new Dictionary<string, string>(StringComparer.Ordinal) { [OwnerPasswordKey] = ownerPassword, [AppPasswordKey] = appPassword, [AuditPasswordKey] = auditPassword }, cancellationToken).ConfigureAwait(false);
         }
 
         await using var dataSource = NpgsqlDataSource.Create(admin);
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await EnsureRoleAsync(connection, context.OwnerRole, ownerPassword, cancellationToken).ConfigureAwait(false);
         await EnsureRoleAsync(connection, context.AppRole, appPassword, cancellationToken).ConfigureAwait(false);
+        await EnsureRoleAsync(connection, context.AuditReaderRole, auditPassword, cancellationToken).ConfigureAwait(false);
 
         var database = context.Tenant.DatabaseName;
         var created = false;
@@ -51,7 +58,8 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 
         await ExecuteAsync(connection, $"REVOKE ALL ON DATABASE {Quote(database)} FROM PUBLIC", cancellationToken).ConfigureAwait(false);
         await ExecuteAsync(connection, $"GRANT CONNECT ON DATABASE {Quote(database)} TO {Quote(context.AppRole)}", cancellationToken).ConfigureAwait(false);
-        return $"database {database} {(created ? "created" : "exists")}; roles {context.OwnerRole} and {context.AppRole}";
+        await ExecuteAsync(connection, $"GRANT CONNECT ON DATABASE {Quote(database)} TO {Quote(context.AuditReaderRole)}", cancellationToken).ConfigureAwait(false);
+        return $"database {database} {(created ? "created" : "exists")}; roles {context.OwnerRole}, {context.AppRole} and {context.AuditReaderRole}";
     }
 
     private static async Task EnsureRoleAsync(NpgsqlConnection connection, string role, string password, CancellationToken cancellationToken)

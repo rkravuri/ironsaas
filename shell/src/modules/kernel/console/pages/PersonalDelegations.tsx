@@ -127,7 +127,7 @@ export function PersonalDelegations() {
         >
           {mine.data.data.map((delegation) => {
             const given = delegation.delegator.id === me?.id;
-            const period = periodLabel(delegation.starts_at, delegation.ends_at, i18n.language);
+            const period = periodLabel(delegation.starts_at, delegation.ends_at);
             const duties = dutyList(delegation.duties, i18n.language);
             const canAct = !given && delegation.status === "active" && me?.acting_for?.id !== delegation.delegator.id;
             return (

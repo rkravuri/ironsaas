@@ -15,6 +15,7 @@ import { Mandala } from "@/design/patterns";
 import { today } from "./delegation-words";
 import { dueLabel, progressLabel } from "./review-words";
 import { UnitPicker } from "./UnitPicker";
+import { formatDate } from "@/i18n/dates";
 
 const manage = "authz.reviews.manage";
 const defaultSort = [{ field: "created_at", direction: "desc" as const }];
@@ -24,7 +25,7 @@ const defaultSort = [{ field: "created_at", direction: "desc" as const }];
  * its progress over what the reader may see. Starting one needs authz.reviews.manage for the whole tenant.
  */
 export function ReviewsPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSession();
   const canStart = session.tenantPermissions.includes(manage);
@@ -37,7 +38,7 @@ export function ReviewsPage() {
       headerKey: "reviews.columns.due",
       sortable: true,
       width: 160,
-      format: (row) => dueLabel(row.due_on, i18n.language),
+      format: (row) => dueLabel(row.due_on),
     },
     {
       field: "status",
@@ -57,7 +58,7 @@ export function ReviewsPage() {
       sortable: true,
       width: 170,
       hidden: true,
-      format: (row) => new Date(row.started_at).toLocaleDateString(i18n.language),
+      format: (row) => formatDate(row.started_at),
     },
   ];
 

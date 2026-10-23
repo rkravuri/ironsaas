@@ -10,6 +10,7 @@ import { Welcome } from "@/design/illustrations";
 import { TenantMark } from "@/design/patterns";
 import type { EnrolmentState } from "@/shell/Guards";
 import { useSession } from "./session-context";
+import { formatDate } from "@/i18n/dates";
 
 /**
  * Terms acceptance (TF-028, ADR-0049): a new version of a document the person must accept, the platform's or their
@@ -18,7 +19,7 @@ import { useSession } from "./session-context";
  * their next sign-in. Someone signed in as the person never reaches this page: it is the person's alone.
  */
 export function TermsPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const session = useSession();
   const hostname = window.location.hostname;
@@ -69,7 +70,7 @@ export function TermsPage() {
     }
   };
 
-  const published = (iso: string) => new Date(iso).toLocaleDateString(i18n.language, { dateStyle: "long" });
+  const published = (iso: string) => formatDate(iso);
   const pending = terms.data?.pending ?? [];
   return (
     <Container size={760} py="xl" data-terms-required>

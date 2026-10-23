@@ -7,6 +7,7 @@ export interface SettingValues {
   "identity.session.idle_minutes": number;
   "shell.colour_scheme": "light" | "dark" | "auto";
   "shell.density": "comfortable" | "compact";
+  "shell.time_zone": string;
 }
 
 export type SettingKey = keyof SettingValues;
@@ -17,4 +18,5 @@ export const settingDefaults: SettingValues = {
   "identity.session.idle_minutes": 60,
   "shell.colour_scheme": "auto",
   "shell.density": "comfortable",
+  "shell.time_zone": "",
 };

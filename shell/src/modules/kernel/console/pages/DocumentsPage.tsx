@@ -19,6 +19,7 @@ import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, FormDialog, LoadingState } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
+import { formatDate, formatDateTime } from "@/i18n/dates";
 
 const acceptedSort = [{ field: "accepted_at", direction: "desc" as const }];
 const keyPattern = /^[a-z][a-z0-9-]*$/;
@@ -36,7 +37,7 @@ interface PublishValues extends Record<string, unknown> {
  * when, with a CSV export of the same.
  */
 export function DocumentsPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [publishing, setPublishing] = useState<{ key: string; title: string } | undefined>();
   const [document, setDocument] = useState<string | null>(null);
@@ -70,9 +71,8 @@ export function DocumentsPage() {
       fetchAcceptances([query, filter].filter((part) => part !== "").join("&"), signal),
     [filter],
   );
-  const published = (iso: string) => new Date(iso).toLocaleDateString(i18n.language, { dateStyle: "medium" });
-  const when = (iso: string) =>
-    new Date(iso).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" });
+  const published = (iso: string) => formatDate(iso);
+  const when = (iso: string) => formatDateTime(iso);
   const rows = documents.data?.documents ?? [];
 
   const columns: DataGridColumn<Acceptance>[] = [

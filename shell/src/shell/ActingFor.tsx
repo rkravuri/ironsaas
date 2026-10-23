@@ -3,9 +3,9 @@ import { Alert, Button, Group, Menu, Stack, Text, VisuallyHidden } from "@mantin
 import { IconCheck, IconChevronDown, IconUserShare } from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
 import { dutyList, type ActingChoice } from "./acting";
+import { formatDateTime } from "@/i18n/dates";
 
-const until = (iso: string, language: string) =>
-  new Date(iso).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
+const until = (iso: string) => formatDateTime(iso);
 
 /**
  * The header's "Acting for" control (TF-037, ADR-0037): only while the person holds an active delegation, or still acts
@@ -65,7 +65,7 @@ export function ActingForControl({ choice }: { choice: ActingChoice }) {
               <Text span size="xs" c="dimmed" display="block">
                 {t("acting.control.duties", {
                   duties: dutyList(delegation.duties, i18n.language),
-                  until: until(delegation.until, i18n.language),
+                  until: until(delegation.until),
                 })}
               </Text>
             </Menu.Item>
@@ -104,7 +104,7 @@ export function ActingBand({ choice }: { choice: ActingChoice }) {
                 {t("acting.band.rights", {
                   name: acting.name,
                   duties: dutyList(acting.duties, i18n.language),
-                  until: until(acting.until, i18n.language),
+                  until: until(acting.until),
                 })}
               </Text>
               <Text size="sm">{t("acting.band.both")}</Text>

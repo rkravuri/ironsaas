@@ -5,6 +5,7 @@ import { Alert, Anchor, Text } from "@mantine/core";
 import { IconClockExclamation } from "@tabler/icons-react";
 import { usePasswordPolicy } from "@/auth/password-policy";
 import { useSession } from "@/auth/session-context";
+import { formatDate } from "@/i18n/dates";
 
 const day = 24 * 60 * 60 * 1000;
 
@@ -35,7 +36,7 @@ export function PasswordExpiryBanner() {
       data-password-expiry
     >
       <Text size="sm">
-        {t("password.expiry.text", { count: days, when: new Date(expiresAt).toLocaleDateString() })}{" "}
+        {t("password.expiry.text", { count: days, when: formatDate(expiresAt) })}{" "}
         {/* The warning's own text colour, underlined: the link colour on the warning's background is too faint (axe). */}
         <Anchor component={Link} to="/me" size="sm" c="inherit" underline="always" fw={600}>
           {t("password.expiry.link")}

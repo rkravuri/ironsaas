@@ -25,6 +25,12 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
 
     public string AppRole => $"{Slug}_app";
 
+    /// <summary>The audit verifier's role (ADR-0050): it connects and reads the chain's tables, nothing else.</summary>
+    public string AuditReaderRole => $"{Slug}_audit";
+
+    /// <summary>The unit's own client in the control plane (ADR-0050), which sends its audit anchors.</summary>
+    public string ControlClientId => $"unit-{Slug}";
+
     public string DatabaseSecretPath => $"tenants/{Slug}/database";
 
     public string StorageSecretPath => $"tenants/{Slug}/storage";

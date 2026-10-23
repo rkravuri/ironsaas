@@ -25,6 +25,7 @@ import { ConfirmDialog, EmptyState, FormDialog, LoadingState } from "@/component
 import { scopeLabel, unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
 import { GrantConflictNotice } from "@/modules/kernel/console/pages/GrantConflictNotice";
 import { UnitPicker } from "@/modules/kernel/console/pages/UnitPicker";
+import { formatDate } from "@/i18n/dates";
 
 const read = "authz.assignments.read";
 const manage = "authz.assignments.manage";
@@ -196,7 +197,7 @@ function AssignmentRow({ assignment, onRemove }: { assignment: Assignment; onRem
       </Table.Td>
       <Table.Td>{scopeLabel(assignment, t)}</Table.Td>
       <Table.Td>{unitPathLabel(assignment) || t("access.noUnit")}</Table.Td>
-      <Table.Td>{new Date(assignment.created_at).toLocaleDateString()}</Table.Td>
+      <Table.Td>{formatDate(assignment.created_at)}</Table.Td>
       <Table.Td>
         {canRemove && (
           <Button

@@ -6,11 +6,12 @@ import { AlertDialog } from "@/components/panels";
 import { nextChangeIn, phaseAt } from "./session-clock";
 import { useSession } from "./session-context";
 import { useSessionWatch } from "./session-watch";
+import { formatTime } from "@/i18n/dates";
 
 /** A browser runs one timer at most this far ahead; a longer wait is taken in steps. */
 const longestTimer = 2_147_483_647;
 
-const clockTime = (at: number) => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(at);
+const clockTime = (at: number) => formatTime(at);
 
 interface Failure {
   message: string;
