@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Kernel.Changes: its permission, events, errors, settings and the states of a pending change. The four-eyes question itself is the kernel vocabulary's (IFourEyes). References Iron.Kernel only. -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

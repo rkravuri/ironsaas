@@ -16,6 +16,10 @@ COPY --from=docker:29.8.1-cli /usr/local/libexec/docker/cli-plugins/docker-compo
 WORKDIR /app
 COPY --from=build /app .
 RUN mkdir -p /var/lib/foundation/units
+# The release's version (ADR-0052), given by the release workflow; a laptop build has none and is a development build.
+ARG IRON_VERSION=development
+LABEL org.opencontainers.image.version=$IRON_VERSION
+ENV Release__Version=$IRON_VERSION
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=6 CMD ["dotnet", "Iron.Host.Fleet.dll", "health"]
 ENTRYPOINT ["dotnet", "Iron.Host.Fleet.dll"]

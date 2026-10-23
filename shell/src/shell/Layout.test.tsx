@@ -28,10 +28,23 @@ function Where() {
 }
 
 /** The shell's frame around placeholder pages, with the API answered from memory. */
-function renderShell({ permissions = administrator, route = "/" }: { permissions?: string[]; route?: string } = {}) {
+function renderShell({
+  permissions = administrator,
+  route = "/",
+  release,
+}: { permissions?: string[]; route?: string; release?: { version: string; development: boolean } } = {}) {
   stubFetch({
     "GET /api/v1/me": () => json({ ...me(permissions), home_unit: home }),
     [`GET /api/v1/me/access?unit=${home.id}`]: () => json({ scope: "unit", permissions }),
+    ...(release
+      ? {
+          "GET /api/v1/me/context": () =>
+            json({
+              entitlements: { revision: 1, plan: null, confirmed_at: null, stale: false, modules: [], features: [] },
+              release,
+            }),
+        }
+      : {}),
   });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -155,6 +168,18 @@ describe("the header", () => {
     expect(within(panel).getByRole("table", { name: "Keys on every page" })).toBeInTheDocument();
     expect(within(panel).getByRole("table", { name: "Keys on Users" })).toHaveTextContent("Open the selected row");
     expect(panel).toHaveTextContent(/The guide to each page will open from here/);
+  });
+
+  it("shows the version the unit runs in help, and says so of a development build [TF-218 AC3, ADR-0052]", async () => {
+    const first = renderShell({ release: { version: "2026.10.23.57", development: false } });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Help and keyboard shortcuts" }));
+    expect(await screen.findByText("Version 2026.10.23.57")).toBeInTheDocument();
+    first.unmount();
+
+    renderShell({ release: { version: "development", development: true } });
+    await user.click(await screen.findByRole("button", { name: "Help and keyboard shortcuts" }));
+    expect(await screen.findByText(/This is a development build/)).toBeInTheDocument();
   });
 
   it("puts Home first in the navigation and shows no control without a function [ADR-0033]", async () => {

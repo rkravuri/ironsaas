@@ -190,11 +190,12 @@ jobs:
       - name: Check out
         uses: actions/checkout@v7
 
+      # Retried: a lost connection while downloading once failed this job (run 39912627606).
       - name: Download the test results
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifacts
         with:
           pattern: test-results-*
-          merge-multiple: true
+          merge-multiple: "true"
           path: artifacts/test-results
 
       - name: Build the matrix

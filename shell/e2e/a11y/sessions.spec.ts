@@ -210,6 +210,66 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
   });
 
+  test(`my pending changes on My profile in the ${scheme} scheme, each with Withdraw, with no WCAG 2.1 AA violation [TF-068 AC1, TF-172 AC1, ADR-0024, ADR-0052]`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await stubSessions(page);
+    const waiting = (id: string, title: string, area: string, hoursAgo: number) => ({
+      id,
+      area,
+      kind: "settings.value.set",
+      subject: `setting:${id}`,
+      title,
+      before: { value: 12 },
+      after: { value: 14 },
+      reason: "As the security policy asks.",
+      requested_by: me.id,
+      requester_name: "Admin",
+      requested_at: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(),
+      status: "pending",
+      expires_at: new Date(Date.now() + (168 - hoursAgo) * 3_600_000).toISOString(),
+      reviews: 0,
+      restarted_at: null,
+      restart_note: null,
+      decided_by: null,
+      decider_name: null,
+      decided_at: null,
+      decision_reason: null,
+      signature_id: null,
+      permission: "settings.values.manage",
+      scope_unit_id: null,
+      may_decide: false,
+      signed: false,
+    });
+    await page.route("**/api/v1/changes?**", (route) =>
+      route.fulfill({
+        json: envelope(route.request().url(), [
+          waiting(
+            "01a1b000-0000-7000-8000-0000000000c1",
+            "Set identity.password.min_length for the organisation",
+            "mfa_and_password_policies",
+            2,
+          ),
+          waiting("01a1b000-0000-7000-8000-0000000000c2", "Change the role Buyer", "roles", 30),
+        ]),
+      }),
+    );
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+
+    await page.goto("/me?tab=changes");
+    const list = page.getByRole("list", { name: "My pending changes" });
+    await expect(list.getByRole("link", { name: "Change the role Buyer" })).toBeVisible();
+    await expect(list).toContainText("MFA and password policies.");
+    await page.screenshot({ path: `test-results/a11y/profile-pending-changes-${scheme}.png`, fullPage: true });
+    await expectNoViolation(page);
+
+    await list.getByRole("button", { name: "Withdraw: Change the role Buyer" }).click();
+    await expect(page.getByRole("dialog", { name: "Withdraw this change?" })).toBeVisible();
+    await page.screenshot({ path: `test-results/a11y/profile-pending-withdraw-${scheme}.png` });
+    await expectNoViolation(page);
+  });
+
   test(`the user record's Sign in as, Revoke everything and emergency mark in the ${scheme} scheme, with no WCAG 2.1 AA violation [TF-025 AC1, TF-029 AC4, TF-172 AC1, ADR-0024, ADR-0049]`, async ({
     page,
   }) => {

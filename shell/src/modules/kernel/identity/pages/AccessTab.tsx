@@ -68,7 +68,8 @@ export function AccessTab({ user }: { user: UserRecord }) {
       await removeAssignment(removing.id);
       await refresh();
     } catch (error) {
-      setFailure(error instanceof ApiError ? error : undefined);
+      // A removal held for a second administrator is no failure: the frame says it waits (ADR-0052).
+      setFailure(error instanceof ApiError && !error.isHeld ? error : undefined);
     } finally {
       setBusy(false);
       setRemoving(undefined);

@@ -57,6 +57,8 @@ builder.Services.AddIronAuditVerification();
 
 var app = builder.Build();
 
+// The database commands, and "publish-validation-pack <version> <file>", which puts a release's validation pack where
+// every unit's update finds it (ADR-0052).
 if (DatabaseCommands.IsCommand(args))
 {
     return await DatabaseCommands.RunAsync(app.Services, args, app.Lifetime.ApplicationStopping);

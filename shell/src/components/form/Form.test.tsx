@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TextInput } from "@mantine/core";
 import { describe, expect, it, vi } from "vitest";
@@ -60,5 +60,23 @@ describe("the form", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("The tenant does not exist.");
     expect(alert).toHaveTextContent("abc123");
+  });
+
+  it("says a change held for a second administrator waits, in the information colour, with a link, not as a failure [TF-068 AC1, ADR-0052]", async () => {
+    stubFetch({});
+    const user = userEvent.setup();
+    const problem = ProblemSchema.parse({ status: 202, error_code: "changes.change.held", change_id: "c-1" });
+    renderWithProviders(<Sample onSubmit={() => Promise.reject(new ApiError(202, problem, undefined))} />);
+    await fill(user, screen.getByLabelText("Display name"), "Ada");
+    await fill(user, screen.getByLabelText("Email"), "ada@example.com");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent("Your change waits for a second administrator's approval.");
+    expect(within(status).getByRole("link", { name: "Open the change" })).toHaveAttribute(
+      "href",
+      "/console/changes/c-1",
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

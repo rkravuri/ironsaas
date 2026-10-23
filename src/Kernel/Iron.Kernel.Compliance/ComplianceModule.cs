@@ -1,3 +1,4 @@
+using Iron.Kernel.Api.Context;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Compliance.Api;
 using Iron.Kernel.Compliance.Contracts;
@@ -43,11 +44,30 @@ public sealed class ComplianceModule : IModule
         services.AddScoped<ISignatures>(provider => provider.GetRequiredService<SignatureService>());
         services.AddScoped<AuditTrailReviews>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignableRecords, AuditTrailReviewRecords>());
+
+        // Evidence packs (TF-067) and the validation pack of the installed version (TF-218 AC3), ADR-0052.
+        services.AddScoped<EvidencePacks>();
+        var release = new ReleaseOptions();
+        configuration.GetSection(ReleaseOptions.SectionName).Bind(release);
+        services.AddSingleton(release);
+        services.AddScoped<ValidationPacks>();
+        services.AddContextPart<ReleaseContextPart>(ReleaseContextPart.PartName);
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         ComplianceEndpoints.Map(endpoints);
+    }
+}
+
+public static class EvidencePackHosting
+{
+    /// <summary>The pass that makes the evidence packs people asked for (ADR-0052), for the unit's worker host only.</summary>
+    public static IServiceCollection AddEvidencePacks(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddHostedService<EvidencePackWorker>();
+        return services;
     }
 }

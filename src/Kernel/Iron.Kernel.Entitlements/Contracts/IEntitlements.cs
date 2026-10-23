@@ -51,7 +51,7 @@ public static class EntitlementsAuditEvents
     public static IReadOnlyList<AuditEventType> Types { get; } =
     [
         new(AccessDenied, "Refused by the licence"),
-        new(SeatAssigned, "Seat assigned"),
-        new(SeatUnassigned, "Seat removed"),
+        new AuditEventType(SeatAssigned, "Seat assigned").AsAdministrative(),
+        new AuditEventType(SeatUnassigned, "Seat removed").AsAdministrative(),
     ];
 }

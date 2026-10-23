@@ -39,6 +39,9 @@ public static class DataServiceCollectionExtensions
         // Nobody signs in until Identity is there, so nothing needs a recent sign-in; Identity replaces it (TF-248).
         services.TryAddSingleton<IRecentAuthentication>(NoSignInRecentAuthentication.Instance);
 
+        // No change waits for a second administrator until the Changes module is there, which replaces it (TF-068).
+        services.TryAddScoped<IFourEyes>(_ => NoFourEyes.Instance);
+
         services.AddSingleton(new DatabaseOptions { AppRole = appRole, AuditReaderRole = auditReaderRole });
         services.AddScoped<SharedConnection>();
         services.AddScoped<UnitOfWork>();

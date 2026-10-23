@@ -29,6 +29,7 @@ public static class ProblemFactory
             ErrorKind.NotFound => StatusCodes.Status404NotFound,
             ErrorKind.Conflict => StatusCodes.Status409Conflict,
             ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
+            ErrorKind.Held => StatusCodes.Status202Accepted,
             _ => StatusCodes.Status500InternalServerError,
         };
     }
@@ -43,6 +44,7 @@ public static class ProblemFactory
             ErrorKind.NotFound => "Not found.",
             ErrorKind.Conflict => "The request conflicts with the current state.",
             ErrorKind.Unavailable => "This is stopped for now.",
+            ErrorKind.Held => "The change waits for a second administrator's approval.",
             _ => "Something went wrong.",
         };
     }

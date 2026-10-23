@@ -12,6 +12,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
+using Iron.Kernel.Changes;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
@@ -588,6 +589,36 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
         Assert.Equal(ComplianceErrors.ProviderSignInRequired, await ProblemAsync(stale, HttpStatusCode.Forbidden));
     }
 
+    [Fact]
+    [Proves("TF-068 AC1", "TF-068 AC3", "ADR-0048", "ADR-0052")]
+    public async Task WithFourEyesOnForSingleSignOnANewProviderWaitsItsSecretStagedInTheStoreOnlyAndAppliesWhenAnotherAdministratorApproves()
+    {
+        await using var host = await StartAsync();
+        var requester = await host.AdministratorSessionAsync();
+        var approver = await host.AdministratorSessionAsync();
+        await host.SetAsync(Iron.Kernel.Changes.Contracts.ChangesSettings.Areas.Key, JsonSerializer.SerializeToElement(new[] { ConfigurationAreas.SingleSignOn }));
+        var body = host.ProviderBody();
+
+        using var created = await host.SendAsync(HttpMethod.Post, "/api/v1/sso/providers", requester, body);
+        var held = (await JsonAsync(created)).RootElement;
+        var changeId = held.GetProperty("change_id").GetGuid();
+        var waiting = await host.ProviderNamedAsync((string)body["name"]!);
+        var leaks = await host.TextsHoldingAsync(ClientSecret);
+        using var own = await host.SendAsync(HttpMethod.Post, $"/api/v1/changes/{changeId}/approve", requester, new { reason = "Mine." });
+        using var approved = await host.SendAsync(HttpMethod.Post, $"/api/v1/changes/{changeId}/approve", approver, new { reason = "Checked with the identity team." });
+        var provider = await host.ProviderNamedAsync((string)body["name"]!);
+
+        Assert.Equal(HttpStatusCode.Accepted, created.StatusCode);
+        Assert.Equal(Iron.Kernel.Changes.Contracts.ChangesErrors.Held, held.GetProperty("error_code").GetString());
+        Assert.Null(waiting);
+        Assert.Empty(leaks);
+        Assert.Equal(Iron.Kernel.Changes.Contracts.ChangesErrors.Own, await ProblemAsync(own, HttpStatusCode.Forbidden));
+        Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+        Assert.NotNull(provider);
+        Assert.Equal(ClientSecret, await host.StoredSecretAsync(provider.Id));
+        Assert.NotNull(await host.AuditAsync(Iron.Kernel.Changes.Contracts.ChangesAuditEvents.ChangeApproved, $"Add the company login {body["name"]}"));
+    }
+
     private static Dictionary<string, object?> Claims(string email, bool verified = true, string? name = null, IReadOnlyList<string>? groups = null, IReadOnlyList<string>? amr = null, DateTimeOffset? authTime = null)
     {
         var claims = new Dictionary<string, object?>(StringComparer.Ordinal) { ["email"] = email, ["email_verified"] = verified, ["name"] = name ?? email };
@@ -637,7 +668,7 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(connectionString);
         builder.Services.AddIronSecretStore(builder.Configuration);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 
@@ -871,6 +902,12 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
             using var confirmed = await SendAsync(HttpMethod.Post, "/api/v1/me/factors/authenticator-app/confirm", session, new { code = Code(secret), name = "Phone" });
             Assert.Equal(HttpStatusCode.OK, confirmed.StatusCode);
             return secret;
+        }
+
+        public async Task<SsoProvider?> ProviderNamedAsync(string name)
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().SsoProviders.AsNoTracking().SingleOrDefaultAsync(p => p.Name == name, TestContext.Current.CancellationToken);
         }
 
         public async Task<Principal?> PrincipalAsync(string loginId)

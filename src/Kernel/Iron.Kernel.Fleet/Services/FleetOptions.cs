@@ -47,6 +47,9 @@ public sealed class FleetOptions
 
         /// <summary>How long a unit's container signature is valid.</summary>
         public int SasValidDays { get; set; } = 365;
+
+        /// <summary>The platform container that keeps each release's validation pack under its version (ADR-0052).</summary>
+        public string ReleasesContainer { get; set; } = "releases";
     }
 
     public sealed class FleetControlPlaneOptions

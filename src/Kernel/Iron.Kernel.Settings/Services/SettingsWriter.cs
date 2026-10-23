@@ -37,8 +37,14 @@ public sealed class SettingsWriter(
     SettingsRefresher refresher,
     IOrganisationUnits? units = null,
     SecretStoreOptions? store = null,
-    IRecentAuthentication? recent = null)
+    IRecentAuthentication? recent = null,
+    IFourEyes? fourEyes = null)
 {
+    /// <summary>The kinds of change a governed setting's save becomes while it waits for a second administrator (ADR-0052).</summary>
+    public const string SetKind = "settings.value.set";
+
+    public const string ResetKind = "settings.value.reset";
+
     private static readonly JsonSerializerOptions Compact = new();
 
     /// <summary>A setting whose change is a high-risk action, such as the MFA policy, needs a recent authentication (TF-248).</summary>
@@ -93,6 +99,11 @@ public sealed class SettingsWriter(
         }
 
         var json = JsonSerializer.Serialize(value, Compact);
+        if (await HeldAsync(setting, place, json, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
+        }
+
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         await LockAsync(key, cancellationToken).ConfigureAwait(false);
         var row = await FindAsync(key, place, cancellationToken).ConfigureAwait(false);
@@ -133,6 +144,11 @@ public sealed class SettingsWriter(
             return stale;
         }
 
+        if (await HeldAsync(checkedSetting.Value.Definition, place, null, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
+        }
+
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         await LockAsync(key, cancellationToken).ConfigureAwait(false);
         if (await FindAsync(key, place, cancellationToken).ConfigureAwait(false) is not { } row)
@@ -150,6 +166,17 @@ public sealed class SettingsWriter(
         return Result.Success();
     }
 
+    /// <summary>
+    /// The value set at a place now, as a pending change compares it (ADR-0052): <c>{"value": ...}</c>, null when nothing
+    /// is set there and the inherited value applies.
+    /// </summary>
+    public async Task<JsonElement> StateAsync(string key, SettingPlace place, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(place);
+        var row = await context.Values.AsNoTracking().SingleOrDefaultAsync(v => v.Key == key && v.Level == place.Level && v.TargetId == place.StoredTarget, cancellationToken).ConfigureAwait(false);
+        return State(row is null ? null : Normalise(row.ValueJson));
+    }
+
     public static string Where(SettingLevel level) => level switch
     {
         SettingLevel.Tenant => "for the whole organisation",
@@ -160,6 +187,36 @@ public sealed class SettingsWriter(
 
     private static string Allowed(SettingDefinition setting) =>
         string.Join(" or ", new[] { SettingLevel.Tenant, SettingLevel.Unit, SettingLevel.User }.Where(setting.Allows).Select(Where));
+
+    /// <summary>
+    /// A setting of a sensitive area waits for a second administrator when the tenant lists the area (TF-068, ADR-0052):
+    /// the save or reset becomes a pending change with the value before and after, and nothing is written yet.
+    /// </summary>
+    private async Task<Error?> HeldAsync(SettingDefinition setting, SettingPlace place, string? after, CancellationToken cancellationToken)
+    {
+        if (fourEyes is null || setting.GovernedArea is not { } area || !await fourEyes.AppliesAsync(area, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        var reset = after is null;
+        var payload = ChangeJson.Of(new SettingChangePayload(setting.Key, place.Level.ToString().ToLowerInvariant(), place.TargetId, reset ? null : JsonDocument.Parse(after!).RootElement.Clone()));
+        var title = reset ? $"Reset the setting {setting.Key} {Where(place.Level)}" : $"Change the setting {setting.Key} {Where(place.Level)}";
+        var scope = place.Level == SettingLevel.Unit && place.TargetId is { } unit ? AccessScope.Unit(unit) : AccessScope.Tenant;
+        var proposal = new ChangeProposal(
+            area,
+            reset ? ResetKind : SetKind,
+            $"setting:{setting.Key}:{place.Level.ToString().ToLowerInvariant()}:{place.StoredTarget:N}",
+            title,
+            await StateAsync(setting.Key, place, cancellationToken).ConfigureAwait(false),
+            State(after),
+            payload,
+            SettingsPermissions.Manage.Name,
+            scope);
+        return await fourEyes.HoldAsync(proposal, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static JsonElement State(string? json) => ChangeJson.Of(new { Value = json is null ? (JsonElement?)null : JsonDocument.Parse(json).RootElement.Clone() });
 
     private Task<SettingValue?> FindAsync(string key, SettingPlace place, CancellationToken cancellationToken) =>
         context.Values.SingleOrDefaultAsync(v => v.Key == key && v.Level == place.Level && v.TargetId == place.StoredTarget, cancellationToken);

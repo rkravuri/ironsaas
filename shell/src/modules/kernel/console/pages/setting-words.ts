@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import type { SettingView } from "@/api/settings";
 import { formatDate } from "@/i18n/dates";
+import { areaWords } from "./change-words";
 
 /** The catalogue key of a setting's words: i18next reads dots as nesting, so the key's dots become underscores. */
 export const settingSlug = (key: string) => key.replaceAll(".", "_");
@@ -36,6 +37,14 @@ function policyWords(value: unknown, t: TFunction): string {
     .join(" ");
 }
 
+/** The four-eyes lists of areas (ADR-0052): which changes wait for a second administrator, and which approvals are signed. */
+export const areaListKeys: readonly string[] = ["changes.four_eyes.areas", "changes.four_eyes.signed_areas"];
+
+const areaListWords = (value: unknown, t: TFunction): string => {
+  const areas = Array.isArray(value) ? value.filter((area): area is string => typeof area === "string") : [];
+  return areas.length === 0 ? t("settings.noAreas") : areas.map((area) => areaWords(area, t)).join(", ");
+};
+
 /** A value in words: an amount with its unit, a choice by its word, on or off, a path, or the JSON as it is. */
 export function displayValue(setting: SettingView, value: unknown, t: TFunction): string {
   if (value === null || value === undefined) {
@@ -43,6 +52,9 @@ export function displayValue(setting: SettingView, value: unknown, t: TFunction)
   }
   if (setting.key === signingPoliciesKey) {
     return policyWords(value, t);
+  }
+  if (areaListKeys.includes(setting.key)) {
+    return areaListWords(value, t);
   }
   switch (setting.type) {
     case "number":

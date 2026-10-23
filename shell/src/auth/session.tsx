@@ -211,6 +211,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const contextSettings = contextData?.settings;
   const settings = useMemo(() => settingsFrom(contextSettings), [contextSettings]);
   const settingsKnown = contextSettings !== undefined;
+  const release = contextData?.release;
   // Without an answer (signed out, still loading, or the call failed) the provider knows nothing and every flag has its
   // default. A layout effect, so the page re-renders with the new values before it paints: no flash of a hidden control.
   useLayoutEffect(() => flagProvider.update(flags?.values ?? []), [flags]);
@@ -274,6 +275,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       killSwitches,
       settings,
       settingsKnown,
+      release,
       ended,
       signedOutOf,
       actingEnded,
@@ -300,6 +302,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     killSwitches,
     settings,
     settingsKnown,
+    release,
     ended,
     signedOutOf,
     actingEnded,

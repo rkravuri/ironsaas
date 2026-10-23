@@ -7,6 +7,10 @@ import { ContextSettingsSchema } from "./settings";
 export const EntitlementStatusSchema = z.enum(["enabled", "read_only", "disabled"]);
 export type EntitlementStatus = z.infer<typeof EntitlementStatusSchema>;
 
+/** The version the unit runs (TF-218, ADR-0052): a release's, or "development" with development true on a laptop. */
+export const ReleaseSchema = z.object({ version: z.string(), development: z.boolean() });
+export type Release = z.infer<typeof ReleaseSchema>;
+
 /** One module or feature as /me/context answers it, for the signed-in person. */
 export const ContextEntrySchema = z.object({ code: z.string(), status: EntitlementStatusSchema, reason: z.string() });
 export type ContextEntry = z.infer<typeof ContextEntrySchema>;
@@ -27,6 +31,8 @@ export const ContextSchema = z.object({
   }),
   flags: FlagsContextSchema.optional().catch(undefined),
   settings: ContextSettingsSchema.optional().catch(undefined),
+  /** The version the unit runs, or a development build on a laptop (TF-218, ADR-0052). */
+  release: ReleaseSchema.optional().catch(undefined),
 });
 export type Context = z.infer<typeof ContextSchema>;
 

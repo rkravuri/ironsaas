@@ -214,6 +214,13 @@ public abstract partial class SettingDefinition
     /// </summary>
     public bool NeedsRecentAuthentication { get; protected set; }
 
+    /// <summary>
+    /// The area of sensitive configuration the setting belongs to (<see cref="ConfigurationAreas"/>): when the tenant lists
+    /// it for four-eyes, a change waits for a second administrator (TF-068, ADR-0052). Declared with
+    /// <see cref="Setting{T}.GovernedBy"/>; null for the rest.
+    /// </summary>
+    public string? GovernedArea { get; protected set; }
+
     /// <summary>What a value must be, in words: the type, the choices or the rule.</summary>
     public string Requirement => Type switch
     {
@@ -285,6 +292,14 @@ public sealed class Setting<T> : SettingDefinition
     public Setting<T> RequiringRecentAuthentication()
     {
         NeedsRecentAuthentication = true;
+        return this;
+    }
+
+    /// <summary>Puts the setting into an area of sensitive configuration, which four-eyes may govern (ADR-0052). Once, where it is declared.</summary>
+    public Setting<T> GovernedBy(string area)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(area);
+        GovernedArea = area;
         return this;
     }
 }

@@ -558,6 +558,8 @@ class Requirement:
     title: str
     document: str
     criteria: list[str]
+    priority: str = ""  # Must, Should or Could: the validation pack's risk class reads it with the area (ADR-0052)
+    area: str = ""
 
 
 def requirement_documents(root: Path) -> list[prd_check.Document]:
@@ -573,7 +575,12 @@ def requirement_documents(root: Path) -> list[prd_check.Document]:
 def requirements(root: Path) -> dict[str, Requirement]:
     """Every live requirement of every document prd_check knows, with its criteria. A retired one is not counted and
     no test proves it: a test names what replaced it (ADR-0041)."""
-    return {r.id: Requirement(r.id, r.title, d.path.relative_to(root).as_posix(), [text for _, text in r.criteria]) for d in requirement_documents(root) for r in d.requirements if not r.retired}
+    return {
+        r.id: Requirement(r.id, r.title, d.path.relative_to(root).as_posix(), [text for _, text in r.criteria], r.priority, r.area)
+        for d in requirement_documents(root)
+        for r in d.requirements
+        if not r.retired
+    }
 
 
 def retired_requirements(root: Path) -> dict[str, list[str]]:
@@ -937,7 +944,7 @@ def as_json(trace: Trace, root: Path) -> dict[str, object]:
             for t in trace.tests
         ],
         "requirements": {
-            r.id: {"title": r.title, "document": r.document, "criteria": {c: [t.label for t in trace.proven.get(c, [])] for c in criteria_of(r)}}
+            r.id: {"title": r.title, "document": r.document, "priority": r.priority, "area": r.area, "criteria": {c: [t.label for t in trace.proven.get(c, [])] for c in criteria_of(r)}}
             for r in trace.requirements.values()
         },
         "decisions": {d: [t.label for t in trace.proven.get(d, [])] for d in trace.decisions},

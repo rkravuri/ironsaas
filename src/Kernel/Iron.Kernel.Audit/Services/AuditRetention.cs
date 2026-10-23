@@ -41,8 +41,19 @@ public sealed record RetentionClassView(RetentionClass Class, int MinimumDays, i
 /// limits, or the class's default. A choice below the minimum or above the maximum is refused (AC3); a choice the limits
 /// later exclude is held to them, so a narrowed limit applies at once.
 /// </summary>
-public sealed class RetentionPolicy(AuditDbContext context, RetentionLimitsOptions limits, IUnitOfWork unitOfWork, IAuditWriter audit, ICurrentPrincipal actor) : IRetentionPeriods
+public sealed class RetentionPolicy(AuditDbContext context, RetentionLimitsOptions limits, IUnitOfWork unitOfWork, IAuditWriter audit, ICurrentPrincipal actor, IFourEyes? fourEyes = null) : IRetentionPeriods
 {
+    /// <summary>The kind of change a retention choice becomes while it waits for a second administrator (TF-068, ADR-0052).</summary>
+    public const string ChooseKind = "audit.retention.choose";
+
+    /// <summary>A class's retention as a pending change shows and compares it: the days kept, and whether the tenant chose them.</summary>
+    public async Task<JsonElement> StateAsync(string code, CancellationToken cancellationToken)
+    {
+        var retention = RetentionClasses.All.Single(c => c.Code == code);
+        var choice = await context.RetentionChoices.AsNoTracking().SingleOrDefaultAsync(c => c.ClassCode == code, cancellationToken).ConfigureAwait(false);
+        return ChangeJson.Of(new { Class = code, Days = choice?.Days ?? retention.DefaultDays, Chosen = choice is not null });
+    }
+
     public (int Minimum, int Maximum) LimitsOf(RetentionClass retention)
     {
         ArgumentNullException.ThrowIfNull(retention);
@@ -90,6 +101,23 @@ public sealed class RetentionPolicy(AuditDbContext context, RetentionLimitsOptio
             return Error.Validation(AuditErrors.RetentionAboveMaximum, $"{retention.Description} are kept at most {maximum} days.", new FieldError("days", "above_maximum", $"Choose {maximum} days or fewer."));
         }
 
+        // A retention choice waits for a second administrator when the tenant lists retention for four-eyes (TF-068 AC1).
+        if (fourEyes is not null && await fourEyes.AppliesAsync(ConfigurationAreas.Retention, cancellationToken).ConfigureAwait(false))
+        {
+            var proposal = new ChangeProposal(
+                ConfigurationAreas.Retention,
+                ChooseKind,
+                $"retention:{code}",
+                $"Keep {retention.Description.ToLowerInvariant()} for {days} days",
+                await StateAsync(code, cancellationToken).ConfigureAwait(false),
+                ChangeJson.Of(new { Class = code, Days = days, Chosen = true }),
+                ChangeJson.Of(new RetentionChangePayload(code, days)),
+                AuditPermissions.RetentionManage.Name,
+                AccessScope.Tenant,
+                reason);
+            return await fourEyes.HoldAsync(proposal, cancellationToken).ConfigureAwait(false);
+        }
+
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         var choice = await context.RetentionChoices.SingleOrDefaultAsync(c => c.ClassCode == code, cancellationToken).ConfigureAwait(false);
         var before = choice?.Days ?? retention.DefaultDays;
@@ -121,8 +149,43 @@ public sealed class RetentionPolicy(AuditDbContext context, RetentionLimitsOptio
 /// and releasing need a reason, step-up (on the endpoints) and are audited at high severity; a released hold stays as a
 /// record of when and why.
 /// </summary>
-public sealed class LegalHolds(AuditDbContext context, IUnitOfWork unitOfWork, IAuditWriter audit, ICurrentPrincipal actor, TimeProvider time) : ILegalHolds
+public sealed class LegalHolds(AuditDbContext context, IUnitOfWork unitOfWork, IAuditWriter audit, ICurrentPrincipal actor, TimeProvider time, IFourEyes? fourEyes = null) : ILegalHolds
 {
+    /// <summary>The kinds of change placing and releasing become while they wait for a second administrator (TF-068, ADR-0052).</summary>
+    public const string PlaceKind = "audit.legal_hold.place";
+
+    public const string ReleaseKind = "audit.legal_hold.release";
+
+    /// <summary>
+    /// What a held placing or release compares (ADR-0052): for a placing, a standing hold on the same target or nothing;
+    /// for a release, the hold with whether it is released.
+    /// </summary>
+    public async Task<JsonElement> StateAsync(LegalHoldChangePayload payload, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        var hold = payload.HoldId is { } id
+            ? await context.LegalHolds.AsNoTracking().SingleOrDefaultAsync(h => h.Id == id, cancellationToken).ConfigureAwait(false)
+            : await context.LegalHolds.AsNoTracking().FirstOrDefaultAsync(h => h.ReleasedAt == null && h.Scope == payload.Scope && h.RecordType == payload.RecordType && h.RecordId == payload.RecordId, cancellationToken).ConfigureAwait(false);
+        return hold is null ? ChangeJson.Nothing : State(hold);
+    }
+
+    public static JsonElement State(LegalHold hold)
+    {
+        ArgumentNullException.ThrowIfNull(hold);
+        return ChangeJson.Of(new { Hold = hold.Id, hold.Scope, hold.RecordType, hold.RecordId, hold.Reason, Released = hold.ReleasedAt is not null });
+    }
+
+    private async Task<Error?> HeldAsync(string kind, string subject, string title, JsonElement before, JsonElement after, LegalHoldChangePayload payload, string reason, CancellationToken cancellationToken)
+    {
+        if (fourEyes is null || !await fourEyes.AppliesAsync(ConfigurationAreas.LegalHolds, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        var proposal = new ChangeProposal(ConfigurationAreas.LegalHolds, kind, subject, title, before, after, ChangeJson.Of(payload), AuditPermissions.LegalHoldsManage.Name, AccessScope.Tenant, reason);
+        return await fourEyes.HoldAsync(proposal, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<HeldRecords> ActiveAsync(CancellationToken cancellationToken)
     {
         var active = await context.LegalHolds.AsNoTracking().Where(h => h.ReleasedAt == null).ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -146,6 +209,13 @@ public sealed class LegalHolds(AuditDbContext context, IUnitOfWork unitOfWork, I
             return Error.Validation(AuditErrors.LegalHoldScopeInvalid, "A hold is on the whole tenant, or on one record or master named by its type and id.");
         }
 
+        var placing = new LegalHoldChangePayload(null, scope, recordType?.Trim(), recordId, why);
+        var on = scope == LegalHoldScopes.Tenant ? "the whole tenant" : $"{placing.RecordType} {recordId:D}";
+        if (await HeldAsync(PlaceKind, $"legal_hold:new:{scope}:{placing.RecordType}:{recordId:N}", $"Place a legal hold on {on}", ChangeJson.Nothing, ChangeJson.Of(new { Scope = scope, placing.RecordType, RecordId = recordId, Reason = why, Released = false }), placing, why, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
+        }
+
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         var hold = new LegalHold(scope, recordType?.Trim(), recordId, why);
         context.LegalHolds.Add(hold);
@@ -162,6 +232,24 @@ public sealed class LegalHolds(AuditDbContext context, IUnitOfWork unitOfWork, I
         if (string.IsNullOrEmpty(why))
         {
             return Error.Validation(AuditErrors.LegalHoldReasonRequired, "Say why the hold is released: the auditors read it.", new FieldError("reason", "required", "Say why."));
+        }
+
+        var found = await context.LegalHolds.AsNoTracking().SingleOrDefaultAsync(h => h.Id == id, cancellationToken).ConfigureAwait(false);
+        if (found is null)
+        {
+            return Error.NotFound(AuditErrors.LegalHoldNotFound, "There is no such legal hold.");
+        }
+
+        if (!found.Active)
+        {
+            return Error.Conflict(AuditErrors.LegalHoldReleased, "This hold was released already.");
+        }
+
+        var releasing = new LegalHoldChangePayload(found.Id, found.Scope, found.RecordType, found.RecordId, why);
+        var on = found.Scope == LegalHoldScopes.Tenant ? "the whole tenant" : $"{found.RecordType} {found.RecordId:D}";
+        if (await HeldAsync(ReleaseKind, $"legal_hold:{found.Id:N}", $"Release the legal hold on {on}", State(found), ChangeJson.Of(new { Hold = found.Id, found.Scope, found.RecordType, found.RecordId, found.Reason, Released = true }), releasing, why, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
         }
 
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);

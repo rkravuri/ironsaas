@@ -16,7 +16,8 @@ namespace Iron.Kernel.Data.Commands;
 /// pipeline runs <c>schema-check</c> after migrating (T18). A module adds a command of its own as an
 /// <see cref="IUnitCommand"/>, named here so the host knows it before it is built: <c>recover-admin</c>, the operator's
 /// recovery link for a tenant administrator (ADR-0046); <c>impersonate</c>, <c>break-glass-open</c> and
-/// <c>break-glass-close</c>, the operator's support and emergency access (ADR-0049).
+/// <c>break-glass-close</c>, the operator's support and emergency access (ADR-0049); <c>publish-validation-pack</c>, the
+/// fleet's, which puts a release's validation pack where every unit's update finds it (ADR-0052).
 /// </summary>
 public static class DatabaseCommands
 {
@@ -28,15 +29,19 @@ public static class DatabaseCommands
     public const string Impersonate = "impersonate";
     public const string BreakGlassOpen = "break-glass-open";
     public const string BreakGlassClose = "break-glass-close";
+    public const string PublishValidationPack = "publish-validation-pack";
 
     public static bool IsCommand(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant or RecoverAdministrator or Impersonate or BreakGlassOpen or BreakGlassClose;
+        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant or RecoverAdministrator or Impersonate or BreakGlassOpen or BreakGlassClose or PublishValidationPack;
     }
 
-    /// <summary>The arguments without the command, for the web host builder.</summary>
-    public static string[] StripCommand(string[] args) => IsCommand(args) ? args[1..] : args;
+    /// <summary>
+    /// The arguments without the command, for the web host builder. A command whose arguments are values, not
+    /// configuration (a version and a file path, which the builder would read as switches), leaves the builder none.
+    /// </summary>
+    public static string[] StripCommand(string[] args) => !IsCommand(args) ? args : args[0] == PublishValidationPack ? [] : args[1..];
 
     /// <summary>Runs the command and returns the process exit code: 0 on success, 1 when the schema check finds violations.</summary>
     public static async Task<int> RunAsync(IServiceProvider services, string[] args, CancellationToken cancellationToken)

@@ -8,7 +8,9 @@ the second and third each hold a colleague, and a person homed at the second rea
 offers them a choice of unit (A8). They hold no role in the first branch, whose access review the delegation test runs
 (A7). In the run's unit itself, outside the branches, a person whose password the recovery test sets with a link and
 whom it then deactivates (S3 T2), a person with the run's MFA role, whom the passkey test sends to enrolment (S3 T3), a
-person the administrator signs in as, and a person who reads, declines and accepts the run's terms (S3 T5).
+person the administrator signs in as, a person who reads, declines and accepts the run's terms (S3 T5), and a second
+administrator, who may change roles and settings for the whole tenant, who approves the administrator's changes while
+the four-eyes test asks for a second administrator (S3 T8). Setup refuses to start while a test left four-eyes on.
 Every person is new and signs in with a password made here. It prints shell exports for make e2e.
 
 The tenant's MFA policy names the roles whose holders need a second factor (ADR-0047): the tenant administrator and the
@@ -49,6 +51,8 @@ REVIEWER_ROLE_CODE = "e2e-unit-reviewer"
 REVOCABLE_ROLE_CODE = "e2e-revocable"
 MFA_ROLE_CODE = "e2e-mfa"
 MFA_ROLES = ["tenant-administrator", MFA_ROLE_CODE]
+SECOND_ADMINISTRATOR_ROLE_CODE = "e2e-second-administrator"
+FOUR_EYES_AREAS = "changes.four_eyes.areas"
 
 
 def log(message):
@@ -194,10 +198,21 @@ def grant(cookie, principal_id, role_id, scope_kind, unit_id):
     api("POST", "/api/v1/role-assignments", cookie, {"principal_id": principal_id, "role_id": role_id, "scope_kind": scope_kind, "unit_id": unit_id}, expect=(200, 201))
 
 
+def refuse_four_eyes(cookie):
+    """Setup changes roles and grants, which wait for a second administrator while the tenant asks for one (ADR-0052)."""
+    settings = {s["key"]: s["value"] for s in api("GET", "/api/v1/settings?scope=tenant", cookie)["data"]}
+    if settings.get(FOUR_EYES_AREAS):
+        raise SystemExit(
+            f"The tenant asks a second administrator to approve changes to {', '.join(settings[FOUR_EYES_AREAS])}, which a "
+            "browser test left on. Reset changes.four_eyes.areas in Settings and approve the reset as the second "
+            "administrator of an earlier run under Pending changes, then run make e2e again.")
+
+
 def setup():
     admin = administrator()
     me = api("GET", "/api/v1/me", admin)
     run = run_id()
+    refuse_four_eyes(admin)
 
     units = api("GET", "/api/v1/organisation-units", admin)["data"]
     root = next(unit for unit in units if unit["parent_id"] is None)
@@ -211,6 +226,9 @@ def setup():
     reviewer = ensure_role(admin, REVIEWER_ROLE_CODE, "Unit access reviewer", "Confirms or revokes the roles held in a unit and the units below it.", ["authz.reviews.decide"])
     revocable = ensure_role(admin, REVOCABLE_ROLE_CODE, "Revocable in review", "Granted and revoked by the browser test of access reviews.", ["authz.units.read"])
     mfa = ensure_role(admin, MFA_ROLE_CODE, "Needs a second factor", "Its holders must sign in with a second factor; the passkey test's person holds it.", ["authz.units.read"])
+    # A second administrator for the four-eyes test (ADR-0052): they may change roles and settings for the whole tenant,
+    # so they may approve the administrator's changes of both, and their role is not one the MFA policy names.
+    second_administrator = ensure_role(admin, SECOND_ADMINISTRATOR_ROLE_CODE, "Second administrator", "Approves the administrator's changes of roles and settings in the browser test of four-eyes approval.", ["authz.roles.manage", "authz.roles.read", "authz.units.read", "settings.values.manage", "settings.values.read"])
     require_mfa_of_roles(admin)
 
     child_id, child_login, child_password = create_person(admin, run, "child-admin", "Child administrator", child)
@@ -219,7 +237,9 @@ def setup():
     mfa_id, mfa_login, mfa_password = create_person(admin, run, "passkey", "Passkey person", run_unit)
     impersonated_id, impersonated_login, impersonated_password = create_person(admin, run, "impersonated", f"Impersonated person {run}", run_unit)
     _, terms_login, terms_password = create_person(admin, run, "terms", f"Terms reader {run}", run_unit)
+    approver_id, approver_login, approver_password = create_person(admin, run, "approver", f"Second administrator {run}", run_unit)
     grant(admin, mfa_id, mfa["id"], "unit", run_unit["id"])
+    grant(admin, approver_id, second_administrator["id"], "tenant", None)
     colleague_id, _ = create_user(admin, f"colleague-{run}@{TENANT}.localhost", "A colleague", child["id"])
     for unit, prefix in ((second, "second-colleague"), (third, "third-colleague")):
         create_user(admin, f"{prefix}-{run}@{TENANT}.localhost", f"A colleague in {unit['name']}", unit["id"])
@@ -258,6 +278,9 @@ def setup():
         "E2E_IMPERSONATED_PASSWORD": impersonated_password,
         "E2E_TERMS_LOGIN_ID": terms_login,
         "E2E_TERMS_PASSWORD": terms_password,
+        "E2E_APPROVER_ID": approver_id,
+        "E2E_APPROVER_LOGIN_ID": approver_login,
+        "E2E_APPROVER_PASSWORD": approver_password,
     }
     for name, value in exports.items():
         print(f"export {name}={shlex.quote(value)}")

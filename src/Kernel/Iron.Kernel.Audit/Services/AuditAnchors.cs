@@ -32,11 +32,16 @@ public sealed class ControlPlaneOptions
 /// Talks to the control plane as the unit's client (ADR-0050): a client credentials token, kept until a minute before it
 /// ends, on every call. The control plane binds the client to this unit's tenant, so a call can only ever be this unit's.
 /// </summary>
-public sealed class ControlPlaneClient(ControlPlaneOptions options, TimeProvider time) : IDisposable
+public sealed class ControlPlaneClient(ControlPlaneOptions options, TimeProvider time, HttpMessageHandler handler) : IDisposable
 {
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly HttpClient _http = new(handler, disposeHandler: true) { Timeout = TimeSpan.FromSeconds(10) };
+
+    public ControlPlaneClient(ControlPlaneOptions options, TimeProvider time)
+        : this(options, time, new HttpClientHandler())
+    {
+    }
     private readonly SemaphoreSlim _gate = new(1, 1);
     private string? _token;
     private DateTimeOffset _tokenEnds;

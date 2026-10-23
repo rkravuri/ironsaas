@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { Release } from "@/api/entitlements";
 import type { KillSwitch } from "@/api/flags";
 import type { Me, SsoProviderButton, WorkFor } from "@/api/identity";
 import type { Entitlements } from "./entitlements";
@@ -23,6 +24,8 @@ export interface Session {
   settings: EffectiveSettings;
   /** False until /me/context has answered with its settings: a preference is not synced before the server's is known. */
   settingsKnown: boolean;
+  /** The version the unit runs, from /me/context, for the help panel (TF-218); undefined until it has answered. */
+  release?: Release | undefined;
   /** Why the last session ended, for the sentence on the login page; undefined when nothing ended it here. */
   ended: SessionEnd | undefined;
   /**

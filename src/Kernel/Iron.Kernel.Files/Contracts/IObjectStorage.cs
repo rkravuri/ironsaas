@@ -62,7 +62,7 @@ public static class FilesAuditEvents
     [
         new(Uploaded, "File uploaded"),
         new(Downloaded, "File downloaded"),
-        new(Deleted, "File deleted"),
+        new AuditEventType(Deleted, "File deleted").AsAdministrative(),
         new(IntegrityFailed, "File failed its integrity check"),
     ];
 }

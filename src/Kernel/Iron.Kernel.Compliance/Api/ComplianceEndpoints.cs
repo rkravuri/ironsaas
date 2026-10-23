@@ -125,6 +125,43 @@ public sealed record ReviewMonthResponse(DateOnly From, DateOnly To, IReadOnlyLi
 
 public sealed record ReviewCoverageResponse(IReadOnlyList<ReviewMonthResponse> Months);
 
+/// <summary>The period an evidence pack covers, as the person chose it: from, and up to (TF-067 AC1).</summary>
+public sealed record RequestEvidencePackRequest(DateTimeOffset From, DateTimeOffset To);
+
+/// <summary>
+/// An evidence pack (TF-067): its period, who asked and when, where it stands, and once made its size, its hash and its
+/// manifest's, and the audit chain's head it names with that position's anchor.
+/// </summary>
+public sealed record EvidencePackResponse(
+    Guid Id,
+    DateTimeOffset PeriodFrom,
+    DateTimeOffset PeriodTo,
+    Guid RequestedBy,
+    string RequesterName,
+    DateTimeOffset RequestedAt,
+    string Status,
+    long? Bytes,
+    string? Sha256,
+    string? ManifestSha256,
+    int? ChainSegment,
+    long? ChainPosition,
+    string? ChainHash,
+    Guid? AnchorId,
+    DateTimeOffset? MadeAt,
+    string? Failure)
+{
+    public static EvidencePackResponse From(EvidencePack pack)
+    {
+        ArgumentNullException.ThrowIfNull(pack);
+        return new(pack.Id, pack.PeriodFrom, pack.PeriodTo, pack.RequestedById, pack.RequesterName, pack.CreatedAt, pack.Status, pack.Bytes, pack.Sha256, pack.ManifestSha256, pack.ChainSegment, pack.ChainPosition, pack.ChainHash, pack.AnchorId, pack.MadeAt, pack.Failure);
+    }
+}
+
+public sealed record EvidenceLinkResponse(string Url, DateTimeOffset ExpiresAt);
+
+/// <summary>The version this tenant runs and whether its validation pack is here to download (TF-218 AC3).</summary>
+public sealed record ValidationResponse(string Version, bool Development, bool PackAvailable, long? PackBytes);
+
 /// <summary>
 /// Signatures and audit-trail reviews (TF-063, TF-219, ADR-0051). Reading a record's signatures and their snapshots needs
 /// what reading the record needs, which its module says; signing happens inside each module's own action. Reviews are
@@ -155,6 +192,74 @@ internal static class ComplianceEndpoints
         reviews.MapGet("/coverage", CoverageAsync).RequirePermission(CompliancePermissions.AuditReviewsRead).Produces<ReviewCoverageResponse>(StatusCodes.Status200OK).WithName("GetAuditReviewCoverage").WithSummary("The last months (?months=, 12 by default), each with the reviews that cover it, so a month nobody reviewed shows.");
         reviews.MapGet("/{id:guid}", GetReviewAsync).RequirePermission(CompliancePermissions.AuditReviewsRead).Produces<AuditReviewResponse>(StatusCodes.Status200OK).WithName("GetAuditReview").WithSummary("One review of the audit trail with its signature.");
         reviews.MapPost("/", RecordReviewAsync).RequirePermission(CompliancePermissions.AuditReviewsRecord).Produces<AuditReviewResponse>(StatusCodes.Status201Created).WithName("RecordAuditReview").WithSummary("Record a review of the audit trail for a period and sign it with the meaning reviewed: your credentials as the signing rule asks.");
+
+        var packs = endpoints.MapApiGroup("evidence-packs");
+        packs.MapPost("/", RequestPackAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<EvidencePackResponse>(StatusCodes.Status202Accepted).WithName("RequestEvidencePack").WithSummary("Ask for an evidence pack for a period; the unit makes it within seconds. The request is audited with you as its requester.");
+        packs.MapGet("/", ListPacksAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<ListResponse<EvidencePackResponse>>(StatusCodes.Status200OK).WithName("ListEvidencePacks").WithSummary("The evidence packs made, newest first.");
+        packs.MapGet("/{id:guid}", GetPackAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<EvidencePackResponse>(StatusCodes.Status200OK).WithName("GetEvidencePack").WithSummary("One evidence pack and where it stands.");
+        packs.MapPost("/{id:guid}/links", LinkAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<EvidenceLinkResponse>(StatusCodes.Status201Created).WithName("LinkEvidencePack").WithSummary("A link to download a ready pack: for you, once, within five minutes.");
+        packs.MapGet("/downloads/{token}", DownloadPackAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces(StatusCodes.Status200OK, typeof(byte[]), "application/zip").WithName("DownloadEvidencePack").WithSummary("Download a pack through its link, its bytes checked against its hash; the download is audited.");
+
+        var validation = endpoints.MapApiGroup("validation");
+        validation.MapGet("/", ValidationAsync).RequirePermission(CompliancePermissions.ValidationRead).Produces<ValidationResponse>(StatusCodes.Status200OK).WithName("GetValidation").WithSummary("The version this tenant runs, and whether its validation pack is here.");
+        validation.MapGet("/pack", ValidationPackAsync).RequirePermission(CompliancePermissions.ValidationRead).Produces(StatusCodes.Status200OK, typeof(byte[]), "application/zip").WithName("DownloadValidationPack").WithSummary("Download the validation pack of the version this tenant runs; the download is audited.");
+    }
+
+    private static async Task<IResult> RequestPackAsync(RequestEvidencePackRequest request, HttpContext http, EvidencePacks packs, CancellationToken cancellationToken)
+    {
+        var requested = await packs.RequestAsync(request.From, request.To, cancellationToken);
+        return ApiResults.From(requested, http, pack => TypedResults.Accepted($"{ApiRouting.Prefix}/evidence-packs/{pack.Id}", EvidencePackResponse.From(pack)));
+    }
+
+    private static async Task<IResult> ListPacksAsync(HttpContext http, EvidencePacks packs, [Microsoft.AspNetCore.Mvc.FromQuery(Name = "page_number")] int? pageNumber, [Microsoft.AspNetCore.Mvc.FromQuery(Name = "page_size")] int? pageSize, CancellationToken cancellationToken)
+    {
+        var page = await packs.ListAsync(PageRequest.From(pageNumber, pageSize), cancellationToken);
+        return ApiResults.List(page.Map(EvidencePackResponse.From), http);
+    }
+
+    private static async Task<IResult> GetPackAsync(Guid id, HttpContext http, EvidencePacks packs, CancellationToken cancellationToken)
+    {
+        var pack = await packs.FindAsync(id, cancellationToken);
+        return pack is null
+            ? ApiResults.Problem(Error.NotFound(ComplianceErrors.EvidencePackNotFound, "There is no such evidence pack."), http)
+            : TypedResults.Ok(EvidencePackResponse.From(pack));
+    }
+
+    private static async Task<IResult> LinkAsync(Guid id, HttpContext http, EvidencePacks packs, CancellationToken cancellationToken)
+    {
+        var link = await packs.LinkAsync(id, cancellationToken);
+        return ApiResults.From(link, http, made => TypedResults.Created(made.Url, new EvidenceLinkResponse(made.Url, made.ExpiresAt)));
+    }
+
+    private static async Task<IResult> DownloadPackAsync(string token, HttpContext http, EvidencePacks packs, CancellationToken cancellationToken)
+    {
+        var opened = await packs.OpenAsync(token, cancellationToken);
+        if (opened.IsFailure)
+        {
+            return ApiResults.Problem(opened.Error, http);
+        }
+
+        var pack = opened.Value.Pack;
+        http.Response.Headers.CacheControl = "no-store";
+        return TypedResults.File(opened.Value.Content, "application/zip", $"evidence-pack-{pack.PeriodFrom.UtcDateTime:yyyyMMdd}-{pack.PeriodTo.UtcDateTime:yyyyMMdd}.zip");
+    }
+
+    private static async Task<IResult> ValidationAsync(ValidationPacks validation, CancellationToken cancellationToken)
+    {
+        var installed = await validation.InstalledAsync(cancellationToken);
+        return TypedResults.Ok(new ValidationResponse(installed.Version, installed.Development, installed.Available, installed.Bytes));
+    }
+
+    private static async Task<IResult> ValidationPackAsync(HttpContext http, ValidationPacks validation, CancellationToken cancellationToken)
+    {
+        var opened = await validation.OpenAsync(cancellationToken);
+        if (opened.IsFailure)
+        {
+            return ApiResults.Problem(opened.Error, http);
+        }
+
+        http.Response.Headers.CacheControl = "no-store";
+        return TypedResults.File(opened.Value.Content, "application/zip", opened.Value.FileName);
     }
 
     private static async Task<IResult> TypesAsync(SignableCatalogue catalogue, SigningPolicies policies, CancellationToken cancellationToken)

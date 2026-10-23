@@ -59,5 +59,8 @@ public sealed class Error
 
     public static Error Unavailable(string code, string message) => new(ErrorKind.Unavailable, code, message);
 
+    /// <summary>The change waits for approval (TF-068): the extensions carry the pending change's id.</summary>
+    public static Error Held(string code, string message) => new(ErrorKind.Held, code, message);
+
     public override string ToString() => $"{Kind} {Code}: {Message}";
 }

@@ -217,6 +217,27 @@ public sealed partial class AuditChainService(
         return await LatestVerificationAsync(slug, false, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// The verification records of the caller's tenant made in a period, oldest first (TF-067 AC1, ADR-0052): what an
+    /// evidence pack lists as the chain's verification results. A unit reads its own only.
+    /// </summary>
+    public async Task<Result<IReadOnlyList<AuditVerificationInfo>>> VerificationsOfCallerAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
+    {
+        var slug = await TenantOfCallerAsync(cancellationToken).ConfigureAwait(false);
+        if (slug is null)
+        {
+            return Error.Forbidden(TenancyErrors.AuditAnchorNotAUnit, "Only a tenant's unit reads its own chain's verifications.");
+        }
+
+        var records = await context.AuditVerifications.AsNoTracking()
+            .Where(v => v.TenantSlug == slug && v.CreatedAt >= from && v.CreatedAt < to)
+            .OrderBy(v => v.CreatedAt)
+            .Take(5000)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return records.Select(Info).ToList();
+    }
+
     /// <summary>An operator asks for a verification now (TF-061); the fleet's minute loop runs it.</summary>
     public async Task<Result<AuditVerificationRequest>> RequestAsync(string slug, bool full, CancellationToken cancellationToken)
     {
@@ -405,7 +426,7 @@ public sealed partial class AuditChainService(
     {
         ArgumentNullException.ThrowIfNull(record);
         var problems = JsonSerializer.Deserialize<List<AuditChainProblemInfo>>(record.Problems, Json) ?? [];
-        return new AuditVerificationInfo(record.TenantSlug, record.JobId, record.Full, record.FromPosition, record.ToPosition, record.ToHash, record.Result, record.EventsChecked, problems, record.RestorePosition, record.RestoreAt, record.CreatedAt);
+        return new AuditVerificationInfo(record.TenantSlug, record.JobId, record.Full, record.FromPosition, record.ToPosition, record.ToHash, record.Result, record.EventsChecked, problems, record.RestorePosition, record.RestoreAt, record.CreatedAt) { Id = record.Id };
     }
 
     private async Task<AuditAnchorInfo?> LatestAnchorAsync(string slug, string kind, CancellationToken cancellationToken)
@@ -418,7 +439,7 @@ public sealed partial class AuditChainService(
         return latest is null ? null : Info(latest);
     }
 
-    private static AuditAnchorInfo Info(AuditAnchorRecord record) => new(record.Kind, record.Position, record.Hash, record.At, record.CreatedAt, record.Segment);
+    private static AuditAnchorInfo Info(AuditAnchorRecord record) => new(record.Kind, record.Position, record.Hash, record.At, record.CreatedAt, record.Segment) { Id = record.Id };
 
     private static AuditRestoreInfo Info(AuditRestoreRecord record) =>
         new(record.Id, record.TenantSlug, record.Segment, record.StartPosition, record.PreviousHash, record.RestorePosition, record.RestoreAt, record.LostFrom, record.LostTo, record.Ticket, record.Reason, record.AcceptedByName, record.CreatedAt);

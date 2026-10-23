@@ -108,6 +108,9 @@ public sealed class RequestPrincipal(IHttpContextAccessor accessor) : ICurrentPr
 
     public string? ImpersonatorName => Current is { Kind: AuthenticationKind.Session } signedIn ? signedIn.ImpersonatorName : null;
 
+    /// <summary>An operator's break-glass account (ADR-0049): it signs in only through the operators' one-time link, so its session's method says so.</summary>
+    public bool IsBreakGlass => Current is { Kind: AuthenticationKind.Session, Method: SessionMethods.BreakGlass };
+
     public SignedInPrincipal? Current
     {
         get

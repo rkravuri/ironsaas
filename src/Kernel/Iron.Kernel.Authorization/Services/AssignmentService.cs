@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
@@ -8,6 +9,27 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Authorization.Services;
+
+/// <summary>A role scope as a held change keeps it.</summary>
+public sealed record ScopePayload(RoleScopeKind Kind, Guid? UnitId, string? RecordType, Guid? RecordId)
+{
+    public static ScopePayload Of(RoleScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return new(scope.Kind, scope.UnitId, scope.RecordType, scope.RecordId);
+    }
+
+    public RoleScope ToScope() => Kind switch
+    {
+        RoleScopeKind.Unit => RoleScope.Unit(UnitId!.Value),
+        RoleScopeKind.UnitWithChildren => RoleScope.Unit(UnitId!.Value, includeChildren: true),
+        RoleScopeKind.Record => RoleScope.Record(RecordType!, RecordId!.Value),
+        _ => RoleScope.Tenant,
+    };
+}
+
+/// <summary>What a held grant or removal needs to apply: the assignment (for a removal), the person, the role and where.</summary>
+public sealed record AssignmentPayload(Guid? AssignmentId, Guid PrincipalId, Guid RoleId, ScopePayload Scope);
 
 /// <summary>One unit on the way from the root to an assignment's unit, for people to see where it applies.</summary>
 public sealed record UnitStep(Guid Id, string Name);
@@ -47,9 +69,15 @@ public sealed class AssignmentService(
     ConflictService segregation,
     PermissionCatalogue catalogue,
     IRecentAuthentication recent,
-    ILogger<AssignmentService> logger)
+    ILogger<AssignmentService> logger,
+    IFourEyes? fourEyes = null)
 {
     public const string RecordType = "role_assignment";
+
+    /// <summary>The kinds of change a grant or a removal becomes while it waits for a second administrator (TF-068, ADR-0052).</summary>
+    public const string GrantKind = "authz.assignment.grant";
+
+    public const string RemoveKind = "authz.assignment.remove";
 
     /// <summary>The key of the advisory lock a removal of a tenant administrator takes, so two removals cannot leave none.</summary>
     public const long AdministratorsLockKey = 0x1A_0B_AD_31;
@@ -185,6 +213,11 @@ public sealed class AssignmentService(
             return stale.Error;
         }
 
+        if (await HeldAsync(GrantKind, principalId, principal.DisplayName, role, scope, ChangeJson.Nothing, State(principal.DisplayName, role, scope), new AssignmentPayload(null, principalId, role.Id, ScopePayload.Of(scope)), cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
+        }
+
         var assignment = new RoleAssignment(role.Id, principalId, scope);
         await using (var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false))
         {
@@ -223,8 +256,72 @@ public sealed class AssignmentService(
             return refusal;
         }
 
+        var name = await NameAsync(assignment.PrincipalId, cancellationToken).ConfigureAwait(false);
+        if (await HeldAsync(RemoveKind, assignment.PrincipalId, name, role, scope, State(name, role, scope), ChangeJson.Nothing, new AssignmentPayload(assignment.Id, assignment.PrincipalId, role.Id, ScopePayload.Of(scope)), cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
+        }
+
         return await RemoveCheckedAsync(assignment, role, scope, reviewId: null, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// The state of the assignment a held change grants or removes, now (ADR-0052): the person, the role and where, or
+    /// nothing when no such assignment exists. Compared with the change's before on approval.
+    /// </summary>
+    public async Task<JsonElement> StateAsync(HeldChange change, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        var payload = Payload(change);
+        var scope = payload.Scope.ToScope();
+        var kind = Scopes.NameOf(scope.Kind);
+        var scopeId = scope.UnitId ?? scope.RecordId;
+        var existing = await context.RoleAssignments.AsNoTracking()
+            .SingleOrDefaultAsync(a => a.PrincipalId == payload.PrincipalId && a.RoleId == payload.RoleId && a.ScopeKind == kind && a.ScopeId == scopeId && a.ScopeRecordType == scope.RecordType, cancellationToken)
+            .ConfigureAwait(false);
+        var role = existing is null ? null : await context.Roles.AsNoTracking().SingleOrDefaultAsync(r => r.Id == payload.RoleId, cancellationToken).ConfigureAwait(false);
+        return existing is null || role is null ? ChangeJson.Nothing : State(await NameAsync(payload.PrincipalId, cancellationToken).ConfigureAwait(false), role, scope);
+    }
+
+    /// <summary>Applies an approved grant or removal through the same path a direct one takes, as the approver (ADR-0052).</summary>
+    public async Task<Result> ApplyAsync(HeldChange change, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        var payload = Payload(change);
+        if (change.Kind == GrantKind)
+        {
+            var granted = await GrantAsync(payload.PrincipalId, payload.RoleId, payload.Scope.ToScope(), cancellationToken).ConfigureAwait(false);
+            return granted.IsFailure ? granted.Error : Result.Success();
+        }
+
+        return await RemoveAsync(payload.AssignmentId!.Value, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>A grant or a removal waits for a second administrator when the tenant lists roles for four-eyes (TF-068 AC1).</summary>
+    private async Task<Error?> HeldAsync(string kind, Guid principalId, string principalName, Role role, RoleScope scope, JsonElement before, JsonElement after, AssignmentPayload payload, CancellationToken cancellationToken)
+    {
+        if (fourEyes is null || !await fourEyes.AppliesAsync(ConfigurationAreas.Roles, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        var title = kind == GrantKind ? $"Grant {role.Name} to {principalName} at {Describe(scope)}" : $"Remove {role.Name} from {principalName} at {Describe(scope)}";
+        var where = scope.UnitId is { } unit ? AccessScope.Unit(unit) : AccessScope.Tenant;
+        var proposal = new ChangeProposal(ConfigurationAreas.Roles, kind, $"assignment:{principalId:N}:{role.Id:N}:{scope}", title, before, after, ChangeJson.Of(payload), AuthorizationPermissions.AssignmentsManage.Name, where);
+        return await fourEyes.HoldAsync(proposal, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static JsonElement State(string principalName, Role role, RoleScope scope) =>
+        ChangeJson.Of(new { Person = principalName, Role = role.Code, RoleName = role.Name, Scope = scope.ToString(), Permissions = Role.Normalise(role.Permissions) });
+
+    private async Task<string> NameAsync(Guid principalId, CancellationToken cancellationToken)
+    {
+        var found = await principals.FindAsync([principalId], cancellationToken).ConfigureAwait(false);
+        return found.TryGetValue(principalId, out var person) ? person.DisplayName : principalId.ToString("D");
+    }
+
+    private static AssignmentPayload Payload(HeldChange change) =>
+        change.Payload.Deserialize<AssignmentPayload>(ChangeJson.Options) ?? throw new InvalidOperationException($"The change {change.Id} carries no assignment.");
 
     /// <summary>
     /// The removal an access review's revoke makes (TF-038 AC2): the reviewer's right is <c>authz.reviews.decide</c> at the

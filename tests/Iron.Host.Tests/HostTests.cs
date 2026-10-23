@@ -100,6 +100,36 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("ADR-0052")]
+    public async Task TheApiImageSaysItsVersionAndItsControlledConfigurationWithoutAHost()
+    {
+        var writer = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(writer);
+        try
+        {
+            Assert.Equal(0, await Iron.Host.Api.UnitModules.WriteReleaseAsync(["version"]));
+            Assert.Equal(0, await Iron.Host.Api.UnitModules.WriteReleaseAsync(["configuration"]));
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        var lines = writer.ToString().Split('\n', 2);
+        using var configuration = JsonDocument.Parse(lines[1]);
+        var root = configuration.RootElement;
+        var catalogue = await File.ReadAllBytesAsync(Path.Combine(RepositoryRoot(), CatalogueFile), TestContext.Current.CancellationToken);
+
+        Assert.Equal("development", lines[0].Trim());
+        Assert.True(Iron.Host.Api.UnitModules.IsReleaseCommand(["configuration"]) && !Iron.Host.Api.UnitModules.IsReleaseCommand(["configuration", "extra"]));
+        Assert.Equal(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(catalogue)), root.GetProperty("catalogue_sha256").GetString());
+        var seeds = root.GetProperty("seeds").EnumerateArray().Select(s => s.GetString()!).ToList();
+        Assert.Contains(seeds, s => s.StartsWith("tenant-administrator:", StringComparison.Ordinal) && s.Contains("compliance.evidence.export", StringComparison.Ordinal));
+        Assert.Equal(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Concat(seeds.Select(s => s + "\n"))))), root.GetProperty("seeds_sha256").GetString());
+    }
+
+    [Fact]
     [Proves("ADR-0036")]
     public void TheShellsTypedSettingKeysAreTheUnitsSettings()
     {
@@ -200,6 +230,9 @@ public class HostTests
 
         // The period of the audit trail a reviewer chooses to review (TF-219 AC3); the review and its signature carry the server's time.
         ["POST /api/v1/audit-reviews"] = ["period_from", "period_to"],
+
+        // The period an evidence pack covers, as its requester chooses it (TF-067 AC1); the pack's own times are the server's.
+        ["POST /api/v1/evidence-packs"] = ["from", "to"],
     };
 
     [Fact]

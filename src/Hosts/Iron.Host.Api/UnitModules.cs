@@ -1,6 +1,7 @@
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
+using Iron.Kernel.Changes;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Entitlements;
 using Iron.Kernel.Files;
@@ -13,7 +14,8 @@ namespace Iron.Host.Api;
 /// <summary>
 /// The modules a tenant unit runs, in order: Audit first (the others write events through its contract), then
 /// Authorization, then Identity (it replaces the default principal), then Files, Entitlements, Flags and Settings, then
-/// Compliance, which signs the records of the modules before it. The same list is
+/// Compliance, which signs the records of the modules before it, then Changes, which holds the sensitive changes of
+/// the modules before it for a second administrator (ADR-0052). The same list is
 /// the source of the licensing catalogue the control plane carries (ADR-0034), so a module added here is licensable
 /// there once <c>make catalogue</c> has written the file; a host test fails until it has.
 /// </summary>
@@ -21,13 +23,63 @@ public static class UnitModules
 {
     public const string CatalogueCommand = "catalogue";
 
-    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule()];
+    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()];
 
     public static bool IsCatalogueCommand(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
         return args.Length > 0 && string.Equals(args[0], CatalogueCommand, StringComparison.Ordinal);
     }
+
+    /// <summary><c>version</c>: the release this image was stamped with, or <c>development</c> (ADR-0052). The fleet asks it at each update.</summary>
+    public const string VersionCommand = "version";
+
+    /// <summary><c>configuration</c>: this build's controlled configuration and its hashes (TF-218, ADR-0052), for the installation record.</summary>
+    public const string ConfigurationCommand = "configuration";
+
+    public static bool IsReleaseCommand(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        return args.Length == 1 && args[0] is VersionCommand or ConfigurationCommand;
+    }
+
+    /// <summary>The version the image carries in <c>Release__Version</c>, which its Dockerfile sets from the release's build argument.</summary>
+    public static string ReleaseVersion() =>
+        Environment.GetEnvironmentVariable("Release__Version") is { Length: > 0 } version ? version : "development";
+
+    /// <summary>
+    /// The controlled configuration of this build (TF-218, ADR-0052): the licensing catalogue's hash (the bytes <c>make
+    /// catalogue</c> writes), the seeds' (the system roles and their permissions, in the canonical text the installation
+    /// record also reads from a tenant's database), and the permission catalogue's. Builds no host and needs no store.
+    /// </summary>
+    public static async Task<int> WriteReleaseAsync(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        if (args[0] == VersionCommand)
+        {
+            await Console.Out.WriteLineAsync(ReleaseVersion()).ConfigureAwait(false);
+            return 0;
+        }
+
+        var modules = All();
+        var catalogue = LicensingCatalogue.From(modules).ToJson();
+        var permissions = new Iron.Kernel.Api.Permissions.PermissionCatalogue(modules.SelectMany(m => m.Permissions));
+        var seeds = Iron.Kernel.Authorization.Contracts.SystemRoleSeeds.Text(
+            Iron.Kernel.Authorization.Contracts.SystemRoleSeeds.Definitions(permissions.All).Select(r => (r.Code, (IEnumerable<string>)r.Permissions)));
+        var permissionText = string.Concat(permissions.All.OrderBy(p => p.Name, StringComparer.Ordinal).Select(p => $"{p.Name}:{p.Risk.ToString().ToLowerInvariant()}\n"));
+        var description = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["version"] = ReleaseVersion(),
+            ["catalogue_sha256"] = Sha256(catalogue),
+            ["seeds_sha256"] = Sha256(seeds),
+            ["permissions_sha256"] = Sha256(permissionText),
+            ["seeds"] = seeds.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+        };
+        await Console.Out.WriteLineAsync(System.Text.Json.JsonSerializer.Serialize(description, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })).ConfigureAwait(false);
+        return 0;
+    }
+
+    private static string Sha256(string text) => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text)));
 
     /// <summary>
     /// <c>catalogue [file]</c>: the catalogue of this build, to the file or to standard output. Builds no host. Writing a

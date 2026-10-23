@@ -94,6 +94,177 @@ namespace Iron.Kernel.Compliance.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Compliance.Data.EvidenceDownloadLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("PackId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pack_id");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("token_hash")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_evidence_download_links");
+
+                    b.HasIndex("PackId")
+                        .HasDatabaseName("ix_evidence_download_links_pack_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_evidence_download_links_token_hash");
+
+                    b.ToTable("evidence_download_links", "kernel_compliance");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Compliance.Data.EvidencePack", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AnchorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("anchor_id");
+
+                    b.Property<string>("BlobKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("blob_key");
+
+                    b.Property<long?>("Bytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bytes");
+
+                    b.Property<string>("ChainHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("chain_hash")
+                        .IsFixedLength();
+
+                    b.Property<long?>("ChainPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("chain_position");
+
+                    b.Property<int?>("ChainSegment")
+                        .HasColumnType("integer")
+                        .HasColumnName("chain_segment");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Failure")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("failure");
+
+                    b.Property<DateTimeOffset?>("MadeAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("made_at");
+
+                    b.Property<string>("ManifestSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("manifest_sha256")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("PeriodFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_from");
+
+                    b.Property<DateTimeOffset>("PeriodTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_to");
+
+                    b.Property<Guid>("RequestedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_id");
+
+                    b.Property<string>("RequesterName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("requester_name");
+
+                    b.Property<string>("Sha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("sha256")
+                        .IsFixedLength();
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_evidence_packs");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_evidence_packs_status_created_at");
+
+                    b.ToTable("evidence_packs", "kernel_compliance");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Compliance.Data.Signature", b =>
                 {
                     b.Property<Guid>("Id")

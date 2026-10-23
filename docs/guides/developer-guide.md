@@ -245,6 +245,35 @@ await transaction.CommitAsync(cancellationToken);
 
 Identity decides what the credentials must be (the first signature of a session asks for the login identifier, the password and the second factor; later ones for the password), and refuses impersonation, acting for someone, tokens and service accounts; the module never reads a credential. The shell's `SigningDialog` asks for what `GET /api/v1/signatures/challenge?record_type=` says, and the record template's `SignatureBlock` shows a record's signatures, on screen and in print. Give the dialog `context`, the page's own description of what is signed as plain data: a company-login person leaves for the provider's fresh sign-in, and when they come back, `useResumedSigning(recordType)` hands the page that context with the meaning and the comment, so it reopens the dialog ready to confirm. Access review decisions (`AccessReviewSignatures`) and audit-trail reviews (`AuditTrailReviews`) are the references; the Compliance tests' sample document is a business record signed and changed.
 
+## A save that waits for a second administrator (TF-068, ADR-0052)
+
+A save of sensitive configuration asks the kernel's `IFourEyes` after its own checks and before it writes. The retention choice is the pattern:
+
+```csharp
+// After validation, escalation, conflict rules and step-up, exactly as a direct save checks them.
+if (fourEyes is not null && await fourEyes.AppliesAsync(ConfigurationAreas.Retention, cancellationToken))
+{
+    var proposal = new ChangeProposal(
+        ConfigurationAreas.Retention,
+        ChooseKind,                                      // "audit.retention.choose": the applier's key
+        $"retention:{code}",                             // the subject: one pending change per subject
+        $"Keep {retention.Description.ToLowerInvariant()} for {days} days",
+        await StateAsync(code, cancellationToken),       // before, as people read it
+        ChangeJson.Of(new { Class = code, Days = days, Chosen = true }),   // after, the same shape
+        ChangeJson.Of(new RetentionChangePayload(code, days)),            // what ApplyAsync needs
+        AuditPermissions.RetentionManage.Name,           // what the approver must hold
+        AccessScope.Tenant,                              // and where
+        reason);
+    return await fourEyes.HoldAsync(proposal, cancellationToken);   // an Error of kind Held: the API answers 202
+}
+```
+
+Then an `IConfigurationChangeApplier` (registered with `TryAddEnumerable`) answers for the module's kinds: `Handles(kind)`, `CurrentAsync` (the subject's state now, the same shape as the before, which Changes compares before applying), `ApplyAsync` (the same service method a direct save calls; inside it `AppliesAsync` answers false, so it writes), `DiscardAsync` when the module keeps something aside (a single sign-on secret staged in the store), and `AppliedAsync` after the approval's transaction committed, for a module that reads what it wrote back into a cache (the settings do). Take `IFourEyes?` with a null default, so a host without the Changes module still builds the service. A setting joins an area where it is declared: `.GovernedBy(ConfigurationAreas.MfaAndPasswordPolicies)`. The shell needs nothing: `request()` throws the held answer as an `ApiError` with `isHeld`, the form says it waits, and the frame links to the change.
+
+## Contributing to an evidence pack (TF-067, ADR-0052)
+
+A module adds its tables to a pack's documents with an `IEvidenceSource` (Compliance's contracts), registered with `TryAddEnumerable`: `TablesAsync(period)` answers its `EvidenceTable`s, each naming its document (an `EvidenceDocuments` code), a name for the CSV, a title, the columns, the rows as text, and a note when something is not covered. A state "at the period's end" is rebuilt from the field history: `TrackedFields.Of(context, entities)` gives the records' tracked fields now, and `IRecordHistory.AsOfAsync(recordType, current, period.To)` undoes every save after it (`RecordStates.Rewind`). Never a secret: a client secret, a key or a password hash is not evidence. A new event type an administrator causes is marked `.AsAdministrative()` beside its constant, and the administrative actions list it.
+
 ## Writing an endpoint (ADR-0009)
 
 - Group the resource with `endpoints.MapApiGroup("users")`; the path becomes `/api/v1/users`. Resource names are plural kebab-case nouns.

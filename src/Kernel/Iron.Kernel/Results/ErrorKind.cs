@@ -2,7 +2,8 @@ namespace Iron.Kernel;
 
 /// <summary>
 /// The kind of an expected failure. The API layer maps it to an HTTP status (T5):
-/// Validation 400, Unauthorized 401, Forbidden 403, NotFound 404, Conflict 409, Unexpected 500, Unavailable 503.
+/// Validation 400, Unauthorized 401, Forbidden 403, NotFound 404, Conflict 409, Unexpected 500, Unavailable 503, and
+/// Held 202.
 /// </summary>
 public enum ErrorKind
 {
@@ -26,4 +27,10 @@ public enum ErrorKind
 
     /// <summary>The operation is stopped for now, on purpose (a kill switch, ADR-0035): the caller may try again later.</summary>
     Unavailable,
+
+    /// <summary>
+    /// Nothing applied yet, on purpose: the change waits for a second administrator's approval (TF-068, ADR-0052). Not a
+    /// failure of the request, so the API answers 202 with the pending change's id; the change applies when approved.
+    /// </summary>
+    Held,
 }

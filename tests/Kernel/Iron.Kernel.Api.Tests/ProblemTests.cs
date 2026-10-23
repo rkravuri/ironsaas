@@ -24,6 +24,24 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-068 AC1", "ADR-0052")]
+    public void AChangeHeldForASecondAdministratorAnswers202WithItsIdNotAFailure()
+    {
+        var change = Ids.New();
+        var held = new Error(ErrorKind.Held, "changes.change.held", "Your change waits for a second administrator's approval.")
+        {
+            Extensions = new Dictionary<string, object>(StringComparer.Ordinal) { ["change_id"] = change },
+        };
+
+        var problem = Iron.Kernel.Api.Problems.ProblemFactory.Create(held, null);
+
+        Assert.Equal(202, problem.Status);
+        Assert.Equal("changes.change.held", problem.Extensions["error_code"]);
+        Assert.Equal(change, problem.Extensions["change_id"]);
+        Assert.Equal("The change waits for a second administrator's approval.", problem.Title);
+    }
+
+    [Fact]
     [Proves("ADR-0009")]
     public async Task AValidBodyPassesTheFilter()
     {

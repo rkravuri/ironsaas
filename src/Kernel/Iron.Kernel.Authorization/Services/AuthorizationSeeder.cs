@@ -40,18 +40,10 @@ public sealed class AuthorizationSeeder(
 
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
-        var all = catalogue.All.Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
-        var reads = all.Where(name => name.EndsWith(".read", StringComparison.Ordinal)).ToList();
-
-        await UpsertAsync(SystemRoles.TenantAdministrator, "Tenant administrator", "Every permission of this tenant.", PrincipalKind.Any, all, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ReadOnly, "Read only", "Read permissions only.", PrincipalKind.User, reads, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalKind.Service, reads, cancellationToken).ConfigureAwait(false);
-        var notCritical = catalogue.All.Where(p => p.Risk != Risk.Critical).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
-        await UpsertAsync(SystemRoles.BreakGlass, "Break-glass", "An operator's emergency access, for a limited time: every permission of this tenant but the critical ones.", PrincipalKind.User, notCritical, cancellationToken).ConfigureAwait(false);
-        var forUnits = catalogue.All.Where(p => p.ForUnitClients).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
-        if (forUnits.Count > 0)
+        // The definitions are in the contracts, so a host image states its seeds without a database (ADR-0052).
+        foreach (var role in SystemRoleSeeds.Definitions(catalogue.All))
         {
-            await UpsertAsync(SystemRoles.UnitClient, "Unit client", "A tenant unit's own client in the control plane: it sends the unit's audit anchors and reads its chain's state, nothing else.", PrincipalKind.Service, forUnits, cancellationToken).ConfigureAwait(false);
+            await UpsertAsync(role.Code, role.Name, role.Description, role.PrincipalType, [.. role.Permissions], cancellationToken).ConfigureAwait(false);
         }
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

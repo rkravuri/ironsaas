@@ -55,7 +55,12 @@ export function ImportRolesDialog({ onClose, onApplied }: { onClose: () => void;
       await importRoles(document, false);
       onApplied();
     } catch (error) {
-      fail(error);
+      if (error instanceof ApiError && error.isHeld) {
+        // Held for a second administrator (ADR-0052): nothing applied yet, and the frame says it waits.
+        onClose();
+      } else {
+        fail(error);
+      }
     } finally {
       setBusy(false);
     }
