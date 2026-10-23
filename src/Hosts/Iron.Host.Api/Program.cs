@@ -11,6 +11,7 @@ using Iron.Kernel.Identity;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Telemetry;
+using Iron.Kernel.Telemetry.Clock;
 using Iron.Kernel.Telemetry.Health;
 
 // The image answers "health" without building the host: container runtimes use it as the health check.
@@ -41,6 +42,7 @@ builder.Services.AddIronApi();
 builder.Services.AddIronSecurity(builder.Configuration);
 builder.Services.AddIronSecretStore(builder.Configuration);
 builder.Services.AddIronHealth();
+builder.Services.AddIronClockCheck(builder.Configuration);
 builder.Services.AddIronOpenApi("Foundation tenant API");
 
 // T12 reads the connection string from the unit's secrets path; until then it comes from configuration.

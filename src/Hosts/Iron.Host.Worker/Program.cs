@@ -15,6 +15,7 @@ using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Settings;
 using Iron.Kernel.Telemetry;
+using Iron.Kernel.Telemetry.Clock;
 using Iron.Kernel.Telemetry.Health;
 using Iron.Kernel.Telemetry.Heartbeat;
 
@@ -39,6 +40,7 @@ builder.Services.AddIronApi();
 builder.Services.AddIronSecurity(builder.Configuration);
 builder.Services.AddIronSecretStore(builder.Configuration);
 builder.Services.AddIronHealth();
+builder.Services.AddIronClockCheck(builder.Configuration);
 builder.Services.AddIronHeartbeat(builder.Configuration);
 
 var connectionString = builder.Configuration.GetConnectionString("Database")

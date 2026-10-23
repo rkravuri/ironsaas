@@ -105,6 +105,35 @@ public class AuditArchiveTests(AuditFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-069 AC2", "ADR-0050")]
+    public async Task AnActionsAuditEventOutlivesTheLogsThatAreDeletedAfterThirtyDays()
+    {
+        var time = new FakeTimeProvider(Start);
+        var database = await fixture.NewChainDatabaseAsync("outlives");
+        var container = $"audit-outlives-{Guid.NewGuid():N}"[..30];
+        await using var provider = fixture.BuildServices(time, new FixedPrincipal(SystemPrincipal.SystemId), database, container);
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IObjectStorage>().EnsureContainerAsync(Cancel);
+        }
+
+        await AuditChainTests.WriteAsync(provider, 1);
+        await AuditChainTests.SealEverythingAsync(provider);
+
+        // The log store deletes its lines after 30 days (loki.yaml, OperationalLogsTests); the trail's own passes run
+        // on their own clock, and neither moves nor deletes an event that young.
+        time.Advance(TimeSpan.FromDays(31));
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<AuditArchiver>().ArchiveAsync(Cancel));
+            Assert.Null(await scope.ServiceProvider.GetRequiredService<AuditPruner>().PruneAsync(Cancel));
+            var kept = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+                .SingleAsync(e => e.EventType == "tests.chain.event", Cancel);
+            Assert.Equal(1L, kept.ChainPosition);
+        }
+    }
+
+    [Fact]
     [Proves("TF-066 AC3", "ADR-0050")]
     public async Task ARetentionBelowTheOperatorsMinimumIsRefusedAndOneWithinItIsKept()
     {

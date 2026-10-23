@@ -186,6 +186,137 @@ public class HostTests
         Assert.True(problems.Count == 0, $"{problems.Count} operation(s) of the OpenAPI documents fall short of TF-100 AC3:{Environment.NewLine}{string.Join(Environment.NewLine, problems)}");
     }
 
+    /// <summary>
+    /// The times a request body may carry, each a period or a day a person chooses, never when something happened: the
+    /// server stamps every record's own times from its clock (TF-065 AC1, ADR-0007). An anchor's time is the unit's
+    /// server clock, kept beside the control plane's own receipt time (ADR-0050).
+    /// </summary>
+    private static readonly Dictionary<string, string[]> ChosenTimes = new(StringComparer.Ordinal)
+    {
+        ["POST /api/v1/delegations"] = ["starts_at", "ends_at"],
+        ["POST /api/v1/access-reviews"] = ["due_on"],
+        ["POST /api/v1/tenants/{slug}/plan"] = ["starts_on", "ends_on"],
+        ["POST /api/v1/audit-anchors"] = ["at"],
+    };
+
+    [Fact]
+    [Proves("TF-065 AC1", "ADR-0050")]
+    public async Task NoEndpointTakesAClientsTimeForWhatItRecords()
+    {
+        await using var api = new WebApplicationFactory<Iron.Host.Api.ApiHost>().WithWebHostBuilder(host => host.UseEnvironment(Environments.Development));
+        await using var controlPlane = new WebApplicationFactory<Iron.Host.ControlPlane.ControlPlaneHost>().WithWebHostBuilder(host => host.UseEnvironment(Environments.Development));
+
+        var found = new List<string>();
+        foreach (var factory in new object[] { api, controlPlane })
+        {
+            using var client = factory is WebApplicationFactory<Iron.Host.Api.ApiHost> apiFactory ? apiFactory.CreateClient() : ((WebApplicationFactory<Iron.Host.ControlPlane.ControlPlaneHost>)factory).CreateClient();
+            using var answer = await Send(client, "/openapi/v1.json", "acme.localhost");
+            using var document = JsonDocument.Parse(await answer.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+            found.AddRange(TimesInBodies(document));
+        }
+
+        var unexpected = found.Where(entry =>
+        {
+            var (operation, property) = (entry[..entry.LastIndexOf(' ')], entry[(entry.LastIndexOf(' ') + 1)..]);
+            return !ChosenTimes.TryGetValue(operation, out var allowed) || !allowed.Contains(property);
+        }).Distinct().ToList();
+        Assert.True(unexpected.Count == 0, $"A request body carries a time the server should stamp itself:{Environment.NewLine}{string.Join(Environment.NewLine, unexpected)}");
+        Assert.NotEmpty(found); // the walk found the chosen periods, so it reads the bodies at all
+    }
+
+    /// <summary>Every property of a request body that is a time or a day, as "METHOD /path property", following references.</summary>
+    private static IEnumerable<string> TimesInBodies(JsonDocument document)
+    {
+        var schemas = document.RootElement.TryGetProperty("components", out var components) && components.TryGetProperty("schemas", out var all) ? all : default;
+        foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            foreach (var operation in path.Value.EnumerateObject().Where(o => o.Name is "post" or "put" or "patch"))
+            {
+                if (!operation.Value.TryGetProperty("requestBody", out var body) || !body.TryGetProperty("content", out var content))
+                {
+                    continue;
+                }
+
+                foreach (var media in content.EnumerateObject())
+                {
+                    if (!media.Value.TryGetProperty("schema", out var schema))
+                    {
+                        continue;
+                    }
+
+                    foreach (var property in TimeProperties(schema, schemas, 0))
+                    {
+                        yield return $"{operation.Name.ToUpperInvariant()} {path.Name} {property}";
+                    }
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> TimeProperties(JsonElement schema, JsonElement schemas, int depth)
+    {
+        if (depth > 6)
+        {
+            yield break;
+        }
+
+        if (schema.TryGetProperty("$ref", out var reference) && schemas.ValueKind == JsonValueKind.Object)
+        {
+            var name = reference.GetString()![(reference.GetString()!.LastIndexOf('/') + 1)..];
+            if (schemas.TryGetProperty(name, out var target))
+            {
+                foreach (var nested in TimeProperties(target, schemas, depth + 1))
+                {
+                    yield return nested;
+                }
+            }
+
+            yield break;
+        }
+
+        foreach (var key in new[] { "allOf", "anyOf", "oneOf" })
+        {
+            if (schema.TryGetProperty(key, out var options))
+            {
+                foreach (var option in options.EnumerateArray())
+                {
+                    foreach (var nested in TimeProperties(option, schemas, depth + 1))
+                    {
+                        yield return nested;
+                    }
+                }
+            }
+        }
+
+        if (schema.TryGetProperty("items", out var items))
+        {
+            foreach (var nested in TimeProperties(items, schemas, depth + 1))
+            {
+                yield return nested;
+            }
+        }
+
+        if (!schema.TryGetProperty("properties", out var properties))
+        {
+            yield break;
+        }
+
+        foreach (var property in properties.EnumerateObject())
+        {
+            if (property.Value.TryGetProperty("format", out var format) && format.GetString() is "date-time" or "date")
+            {
+                yield return property.Name;
+            }
+            else
+            {
+                foreach (var nested in TimeProperties(property.Value, schemas, depth + 1))
+                {
+                    yield return $"{property.Name}.{nested}";
+                }
+            }
+        }
+    }
+
     private static async Task<IReadOnlyList<string>> DocumentProblemsAsync<TEntryPoint>(WebApplicationFactory<TEntryPoint> factory)
         where TEntryPoint : class
     {

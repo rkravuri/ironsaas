@@ -27,6 +27,9 @@ query_range:
         max_size_mb: 100
 
 limits_config:
+  # Operational logs are kept 30 days and then deleted (TF-069 AC2, ADR-0050). The audit trail lives in each tenant's
+  # database and archive, which nothing in this stack can reach.
+  retention_period: 720h
   metric_aggregation_enabled: true
   enable_multi_variant_queries: true
   allow_structured_metadata: true
@@ -36,6 +39,11 @@ limits_config:
         - action: index_label
           attributes:
             - tenant.id
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
 
 schema_config:
   configs:
