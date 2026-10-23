@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { call, loginId, open, password, signIn } from "./helpers";
+import { call, loginId, open, password, rememberPasskey, signIn } from "./helpers";
 
 /**
  * Electronic signatures against a real unit (S3 T7, TF-063, TF-219, ADR-0051). The administrator signs an access review
@@ -30,6 +30,7 @@ async function signFirst(page: Page, title: string): Promise<void> {
   await dialog.getByLabel(/^Password/).fill(password);
   await dialog.getByRole("button", { name: "Sign with your passkey" }).click();
   await expect(dialog).toBeHidden();
+  await rememberPasskey(page);
 }
 
 test.describe("electronic signatures", () => {
