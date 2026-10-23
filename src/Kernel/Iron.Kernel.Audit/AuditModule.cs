@@ -3,6 +3,7 @@ using Iron.Kernel.Audit.Api;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Audit.Services;
+using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Policies;
@@ -62,6 +63,12 @@ public sealed class AuditModule : IModule
         services.AddScoped<LegalHolds>();
         services.AddScoped<ILegalHolds>(provider => provider.GetRequiredService<LegalHolds>());
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IConfigurationChangeApplier, AuditChangeApplier>());
+
+        // Evidence packs (TF-067, ADR-0052): the trail's part, the chain's head, and any record's state at a past time.
+        services.AddScoped<IRecordHistory, RecordHistoryReader>();
+        services.AddScoped<AuditEvidence>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IEvidenceSource, AuditEvidence>(provider => provider.GetRequiredService<AuditEvidence>()));
+        services.AddScoped<IEvidenceChain>(provider => provider.GetRequiredService<AuditEvidence>());
         services.AddScoped<IRecordArchive, BlobRecordArchive>();
         services.AddScoped<IRetentionAudit, RetentionAuditWriter>();
         services.AddScoped<RecordRetentionRunner>();

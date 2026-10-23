@@ -15,6 +15,7 @@
     <ProjectReference Include="../Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
     <!-- The archive, record copies and exports go to the tenant's container (ADR-0050). -->
     <ProjectReference Include="../Iron.Kernel.Files/Contracts/Iron.Kernel.Files.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

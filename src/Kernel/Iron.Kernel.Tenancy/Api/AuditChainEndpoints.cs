@@ -28,12 +28,12 @@ public sealed class AuditAnchorRequestValidator : AbstractValidator<AuditAnchorR
     }
 }
 
-public sealed record AuditAnchorResponse(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt, int Segment = 1)
+public sealed record AuditAnchorResponse(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt, int Segment = 1, Guid? Id = null)
 {
     public static AuditAnchorResponse From(AuditAnchorInfo anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);
-        return new(anchor.Kind, anchor.Position, anchor.Hash, anchor.At, anchor.ReceivedAt, anchor.Segment);
+        return new(anchor.Kind, anchor.Position, anchor.Hash, anchor.At, anchor.ReceivedAt, anchor.Segment, anchor.Id);
     }
 }
 
@@ -81,7 +81,8 @@ public sealed record AuditVerificationResponse(
     IReadOnlyList<AuditChainProblemResponse> Problems,
     long? RestorePosition,
     DateTimeOffset? RestoreAt,
-    DateTimeOffset VerifiedAt)
+    DateTimeOffset VerifiedAt,
+    Guid? Id = null)
 {
     public static AuditVerificationResponse From(AuditVerificationInfo verification)
     {
@@ -96,11 +97,15 @@ public sealed record AuditVerificationResponse(
             [.. verification.Problems.Select(p => new AuditChainProblemResponse(p.Kind, p.Position, p.EventId, p.Message))],
             verification.RestorePosition,
             verification.RestoreAt,
-            verification.At);
+            verification.At,
+            verification.Id);
     }
 }
 
 public sealed record LatestVerificationResponse(AuditVerificationResponse? Verification);
+
+/// <summary>A unit's chain verifications in a period, oldest first, as its evidence pack lists them (ADR-0052).</summary>
+public sealed record AuditVerificationsResponse(IReadOnlyList<AuditVerificationResponse> Verifications);
 
 public sealed record AuditVerificationOrder(bool Full = false);
 
@@ -137,6 +142,7 @@ internal static class AuditChainEndpoints
 
         var verifications = endpoints.MapApiGroup("audit-verifications");
         verifications.MapGet("/latest", LatestVerificationAsync).RequirePermission(TenancyPermissions.AuditAnchorsAppend).Produces<LatestVerificationResponse>(StatusCodes.Status200OK).WithName("LatestAuditVerification").WithSummary("A unit's latest chain verification, for its chain page.");
+        verifications.MapGet("/", VerificationsOfCallerAsync).RequirePermission(TenancyPermissions.AuditAnchorsAppend).Produces<AuditVerificationsResponse>(StatusCodes.Status200OK).WithName("UnitAuditVerifications").WithSummary("A unit's own chain verifications made from one time up to another (?from=&to=), oldest first, for its evidence pack.");
 
         var tenants = endpoints.MapApiGroup("tenants");
         tenants.MapGet("/{slug}/audit-anchors", ListAnchorsAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ListResponse<AuditAnchorResponse>>(StatusCodes.Status200OK).WithName("ListAuditAnchors").WithSummary("A tenant's audit anchors, newest first.");
@@ -183,6 +189,17 @@ internal static class AuditChainEndpoints
     {
         var result = await chains.LatestVerificationOfCallerAsync(cancellationToken);
         return ApiResults.From(result, http, latest => TypedResults.Ok(new LatestVerificationResponse(latest is null ? null : AuditVerificationResponse.From(latest))));
+    }
+
+    private static async Task<IResult> VerificationsOfCallerAsync(HttpContext http, AuditChainService chains, DateTimeOffset? from, DateTimeOffset? to, CancellationToken cancellationToken)
+    {
+        if (from is null || to is null || to < from)
+        {
+            return ApiResults.Problem(Error.Validation("tenancy.audit_verifications.range_required", "Give the period: from and to, to not before from."), http);
+        }
+
+        var result = await chains.VerificationsOfCallerAsync(from.Value, to.Value, cancellationToken);
+        return ApiResults.From(result, http, found => TypedResults.Ok(new AuditVerificationsResponse([.. found.Select(AuditVerificationResponse.From)])));
     }
 
     private static async Task<IResult> ListAnchorsAsync(string slug, HttpContext http, TenancyDbContext context, CancellationToken cancellationToken)

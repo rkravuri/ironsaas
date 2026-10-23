@@ -27,6 +27,9 @@ public sealed class AuditEventNames
     /// <summary>Every declared type, by code.</summary>
     public IReadOnlyList<AuditEventType> All => [.. _types.Values.OrderBy(t => t.Code, StringComparer.Ordinal)];
 
+    /// <summary>The codes of the types declared as an administrator's actions (TF-067, ADR-0052), which an evidence pack lists.</summary>
+    public IReadOnlyList<string> Administrative => [.. _types.Values.Where(t => t.Administrative).Select(t => t.Code).Order(StringComparer.Ordinal)];
+
     /// <summary>The words an event type reads as, or its code when no module declares it.</summary>
     public string NameOf(string code)
     {

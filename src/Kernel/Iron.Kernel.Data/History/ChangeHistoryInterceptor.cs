@@ -129,17 +129,49 @@ public sealed class ChangeHistoryInterceptor(IServiceProvider services) : SaveCh
         return changes;
     }
 
+    /// <summary>
+    /// A tracked record's fields now, as its history writes them (ADR-0051): every field the history keeps, by its column,
+    /// the masked ones masked and the secret ones out. With the history's later saves undone (the Audit module's
+    /// <c>RecordStates</c>), it is the record as it stood at a time in the past (ADR-0052).
+    /// </summary>
+    public static IReadOnlyDictionary<string, string?> Fields(EntityEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        var fields = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach (var property in entry.Properties)
+        {
+            var metadata = property.Metadata;
+            var info = metadata.PropertyInfo;
+            if (info is null || Bookkeeping.Contains(metadata.Name) || info.IsDefined(typeof(NotTrackedAttribute)) || info.IsDefined(typeof(SecretAttribute)))
+            {
+                continue;
+            }
+
+            var text = Text(property.CurrentValue);
+            fields[metadata.GetColumnName()] = info.GetCustomAttribute<SensitiveAttribute>() is { } sensitive ? Mask(text, sensitive.Keep) : text;
+        }
+
+        return fields;
+    }
+
     /// <summary>The record type in the history: the name <see cref="TrackedAsAttribute"/> gives, the class's <c>RecordType</c> constant, or its table's name.</summary>
     public static string RecordTypeOf(EntityEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        if (entry.Metadata.ClrType.GetCustomAttribute<TrackedAsAttribute>() is { } named)
+        return RecordTypeOf(entry.Metadata);
+    }
+
+    /// <summary>The record type in the history of an entity type of a model.</summary>
+    public static string RecordTypeOf(Microsoft.EntityFrameworkCore.Metadata.IEntityType type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        if (type.ClrType.GetCustomAttribute<TrackedAsAttribute>() is { } named)
         {
             return named.RecordType;
         }
 
-        var field = entry.Metadata.ClrType.GetField("RecordType", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-        return field?.GetValue(null) as string ?? entry.Metadata.GetTableName() ?? entry.Metadata.ClrType.Name;
+        var field = type.ClrType.GetField("RecordType", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+        return field?.GetValue(null) as string ?? type.GetTableName() ?? type.ClrType.Name;
     }
 
     /// <summary>A value as the history keeps it: invariant text, times in UTC with microseconds, anything else as JSON.</summary>

@@ -15,6 +15,7 @@
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,6 +35,9 @@
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Compliance/Iron.Kernel.Compliance.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Files/Iron.Kernel.Files.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Files/Contracts/Iron.Kernel.Files.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Telemetry/Iron.Kernel.Telemetry.csproj" />
   </ItemGroup>
 
 </Project>

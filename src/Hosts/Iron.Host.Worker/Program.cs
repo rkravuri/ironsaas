@@ -58,6 +58,9 @@ builder.Services.AddConflictReport();
 // Pending configuration changes nobody decided in time expire (TF-068, ADR-0052).
 builder.Services.AddChangeExpiry();
 
+// Evidence packs people asked for are made here, a few seconds after they ask (TF-067, ADR-0052).
+builder.Services.AddEvidencePacks();
+
 // The audit chain's sealing and anchors (TF-061, ADR-0050): one worker per unit seals, every few seconds.
 builder.Services.AddAuditSealing(builder.Configuration);
 

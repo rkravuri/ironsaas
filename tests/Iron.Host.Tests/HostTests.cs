@@ -200,6 +200,9 @@ public class HostTests
 
         // The period of the audit trail a reviewer chooses to review (TF-219 AC3); the review and its signature carry the server's time.
         ["POST /api/v1/audit-reviews"] = ["period_from", "period_to"],
+
+        // The period an evidence pack covers, as its requester chooses it (TF-067 AC1); the pack's own times are the server's.
+        ["POST /api/v1/evidence-packs"] = ["from", "to"],
     };
 
     [Fact]

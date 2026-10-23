@@ -85,8 +85,8 @@ public static class SettingsAuditEvents
     /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
     public static IReadOnlyList<AuditEventType> Types { get; } =
     [
-        new(ValueChanged, "Setting changed"),
-        new(ValueReset, "Setting reset"),
+        new AuditEventType(ValueChanged, "Setting changed").AsAdministrative(),
+        new AuditEventType(ValueReset, "Setting reset").AsAdministrative(),
     ];
 }
 

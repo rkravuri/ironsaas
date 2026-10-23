@@ -149,6 +149,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<SsoPeople>();
         services.AddScoped<SsoProviderService>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IConfigurationChangeApplier, SsoChangeApplier>());
+
+        // People, company logins, emergency accounts and documents for an evidence pack (TF-067, ADR-0052).
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IEvidenceSource, IdentityEvidence>());
         services.AddScoped<SsoSignInService>();
         var store = new SecretStoreOptions();
         configuration.GetSection(SecretStoreOptions.SectionName).Bind(store);

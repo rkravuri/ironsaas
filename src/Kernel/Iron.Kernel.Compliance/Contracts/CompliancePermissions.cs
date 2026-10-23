@@ -10,7 +10,16 @@ public static class CompliancePermissions
     /// <summary>A review is signed with the meaning "reviewed" (TF-219 AC3): the reviewer's own credentials, never a token's.</summary>
     public static readonly Permission AuditReviewsRecord = new("compliance.audit_reviews.record", "Record and sign a review of the audit trail for a period.", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [AuditReviewsRead, AuditReviewsRecord];
+    /// <summary>
+    /// An evidence pack holds the whole tenant's access list, administrative actions and security settings (TF-067 AC3),
+    /// whatever its requester may read elsewhere: high risk for that reason.
+    /// </summary>
+    public static readonly Permission EvidenceExport = new("compliance.evidence.export", "Make and download evidence packs for auditors: the access list, administrative actions, security settings, chain verifications and drills of a period.", Risk.High);
+
+    /// <summary>The validation pack of the version the tenant runs (TF-218 AC3): what the release proved, nothing of the tenant's own data.</summary>
+    public static readonly Permission ValidationRead = new("compliance.validation.read", "See the version this tenant runs and download its validation pack.", Risk.Medium);
+
+    public static IReadOnlyList<Permission> All => [AuditReviewsRead, AuditReviewsRecord, EvidenceExport, ValidationRead];
 }
 
 public static class ComplianceAuditEvents
@@ -27,13 +36,32 @@ public static class ComplianceAuditEvents
     /// <summary>A review of the audit trail was recorded and signed (TF-219 AC3).</summary>
     public const string AuditReviewRecorded = "compliance.audit_review_recorded";
 
+    /// <summary>A person asked for an evidence pack for a period (TF-067 AC2): the event names them and the period.</summary>
+    public const string EvidencePackRequested = "compliance.evidence_pack_requested";
+
+    /// <summary>The worker made the pack, on behalf of its requester, with its hash and the chain head it names.</summary>
+    public const string EvidencePackMade = "compliance.evidence_pack_made";
+
+    public const string EvidencePackFailed = "compliance.evidence_pack_failed";
+
+    /// <summary>A pack was downloaded through its short-lived link: by whom, and whose pack it is (TF-067 AC2).</summary>
+    public const string EvidencePackDownloaded = "compliance.evidence_pack_downloaded";
+
+    /// <summary>The validation pack of the installed version was downloaded (TF-218 AC3).</summary>
+    public const string ValidationPackDownloaded = "compliance.validation_pack_downloaded";
+
     /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
     public static IReadOnlyList<AuditEventType> Types { get; } =
     [
         new(SignatureSigned, "Record signed"),
         new(SignatureRefused, "Signature refused"),
         new(SignatureAttachRefused, "Signature refused for another record"),
-        new(AuditReviewRecorded, "Audit-trail review recorded"),
+        new AuditEventType(AuditReviewRecorded, "Audit-trail review recorded").AsAdministrative(),
+        new AuditEventType(EvidencePackRequested, "Evidence pack requested").AsAdministrative(),
+        new AuditEventType(EvidencePackMade, "Evidence pack made").AsAdministrative(),
+        new AuditEventType(EvidencePackFailed, "Evidence pack failed").AsAdministrative(),
+        new AuditEventType(EvidencePackDownloaded, "Evidence pack downloaded").AsAdministrative(),
+        new AuditEventType(ValidationPackDownloaded, "Validation pack downloaded").AsAdministrative(),
     ];
 }
 
@@ -56,6 +84,12 @@ public static class ComplianceErrors
     public const string TypeUnknown = "compliance.signature.type_unknown";
     public const string ReviewNotFound = "compliance.audit_review.not_found";
     public const string ReviewInvalid = "compliance.audit_review.invalid";
+    public const string EvidencePeriodInvalid = "compliance.evidence.period_invalid";
+    public const string EvidencePackNotFound = "compliance.evidence.not_found";
+    public const string EvidencePackNotReady = "compliance.evidence.not_ready";
+    public const string EvidenceLinkInvalid = "compliance.evidence.link_invalid";
+    public const string EvidenceNoStorage = "compliance.evidence.no_storage";
+    public const string ValidationPackMissing = "compliance.validation.pack_missing";
 }
 
 /// <summary>The tenant's signing policy (TF-063, ADR-0051). Changing it is a high-risk action, behind a recent authentication (TF-248).</summary>

@@ -12,8 +12,33 @@ public sealed class ComplianceDbContext(DbContextOptions<ComplianceDbContext> op
 
     public DbSet<AuditTrailReview> AuditTrailReviews => Set<AuditTrailReview>();
 
+    public DbSet<EvidencePack> EvidencePacks => Set<EvidencePack>();
+
+    public DbSet<EvidenceDownloadLink> EvidenceDownloadLinks => Set<EvidenceDownloadLink>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<EvidencePack>(pack =>
+        {
+            pack.ToTable("evidence_packs");
+            pack.Property(p => p.RequesterName).HasMaxLength(200);
+            pack.Property(p => p.Status).HasMaxLength(20);
+            pack.Property(p => p.BlobKey).HasMaxLength(200);
+            pack.Property(p => p.Sha256).HasMaxLength(64).IsFixedLength();
+            pack.Property(p => p.ManifestSha256).HasMaxLength(64).IsFixedLength();
+            pack.Property(p => p.ChainHash).HasMaxLength(64).IsFixedLength();
+            pack.Property(p => p.Failure).HasMaxLength(EvidencePack.FailureMaxLength);
+            pack.HasIndex(p => new { p.Status, p.CreatedAt });
+        });
+
+        modelBuilder.Entity<EvidenceDownloadLink>(link =>
+        {
+            link.ToTable("evidence_download_links");
+            link.Property(l => l.TokenHash).HasMaxLength(64).IsFixedLength();
+            link.HasIndex(l => l.TokenHash).IsUnique();
+            link.HasIndex(l => l.PackId);
+        });
+
         modelBuilder.Entity<Signature>(signature =>
         {
             signature.ToTable("signatures");

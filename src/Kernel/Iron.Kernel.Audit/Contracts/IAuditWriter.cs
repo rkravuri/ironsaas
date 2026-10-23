@@ -103,14 +103,14 @@ public static class AuditEvents
     /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
     public static IReadOnlyList<AuditEventType> Types { get; } =
     [
-        new(EventsExported, "Audit trail exported"),
-        new(RestoreAccepted, "Audit chain restore accepted"),
+        new AuditEventType(EventsExported, "Audit trail exported").AsAdministrative(),
+        new AuditEventType(RestoreAccepted, "Audit chain restore accepted").AsAdministrative(),
         new(TrailArchived, "Audit trail archived"),
         new(TrailPruned, "Audit trail pruned"),
         new(RecordExpired, "Record removed at the end of its retention"),
-        new(LegalHoldPlaced, "Legal hold placed"),
-        new(LegalHoldReleased, "Legal hold released"),
-        new(RetentionChanged, "Retention period changed"),
+        new AuditEventType(LegalHoldPlaced, "Legal hold placed").AsAdministrative(),
+        new AuditEventType(LegalHoldReleased, "Legal hold released").AsAdministrative(),
+        new AuditEventType(RetentionChanged, "Retention period changed").AsAdministrative(),
         new(RecordCreated, "Record created"),
         new(RecordChanged, "Record changed"),
         new(RecordDeleted, "Record deleted"),

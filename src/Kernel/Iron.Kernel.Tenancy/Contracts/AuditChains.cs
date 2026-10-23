@@ -4,7 +4,11 @@ namespace Iron.Kernel.Tenancy.Contracts;
 /// One anchor a unit sent (ADR-0050): how far its chain reached, with which hash, when the unit said so, and the segment
 /// of the chain it belongs to (1 until an operator accepts a restore).
 /// </summary>
-public sealed record AuditAnchorInfo(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt, int Segment = 1);
+public sealed record AuditAnchorInfo(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt, int Segment = 1)
+{
+    /// <summary>The anchor's identifier in the control plane, which an evidence pack's manifest names (ADR-0052); none for one not stored.</summary>
+    public Guid? Id { get; init; }
+}
 
 /// <summary>
 /// A restore an operator accepted (ADR-0050): the chain continues as segment <paramref name="Segment"/> from
@@ -45,7 +49,11 @@ public sealed record AuditVerificationInfo(
     IReadOnlyList<AuditChainProblemInfo> Problems,
     long? RestorePosition,
     DateTimeOffset? RestoreAt,
-    DateTimeOffset At);
+    DateTimeOffset At)
+{
+    /// <summary>The record's identifier in the control plane, as an evidence pack lists it (ADR-0052); none before it is stored.</summary>
+    public Guid? Id { get; init; }
+}
 
 public static class AuditVerificationResults
 {

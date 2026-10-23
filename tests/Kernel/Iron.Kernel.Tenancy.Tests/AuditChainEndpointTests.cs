@@ -16,6 +16,7 @@ using Iron.Kernel.Fleet;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Telemetry;
 using Iron.Kernel.Tenancy.Contracts;
+using Iron.Kernel.Tenancy.Data;
 using Iron.Kernel.Tenancy.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -114,6 +115,43 @@ public class AuditChainEndpointTests(TenancyFixture fixture) : IAsyncLifetime
         var conflict = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
             .SingleAsync(e => e.EventType == TenancyAuditEvents.AuditAnchorConflict && e.Target == slug, Cancel);
         Assert.Equal(AuditSeverity.High, conflict.Severity);
+    }
+
+    [Fact]
+    [Proves("TF-067 AC1", "ADR-0052")]
+    public async Task AUnitReadsItsOwnVerificationsOfAPeriodAndItsLatestAnchorWithItsIdForAnEvidencePack()
+    {
+        var slug = $"evidence-{Ids.New():N}"[..20];
+        var other = $"other-{Ids.New():N}"[..20];
+        var unit = await UnitClientAsync(slug);
+        var operatorId = await GrantAsync(SystemRoles.TenantAdministrator);
+        using (var anchored = await Send(HttpMethod.Post, "/api/v1/audit-anchors", unit, new { kind = "seal", position = 30, hash = new string('e', 64), at = DateTimeOffset.UtcNow }))
+        {
+            Assert.Equal(HttpStatusCode.Created, anchored.StatusCode);
+        }
+
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var chains = scope.ServiceProvider.GetRequiredService<ITenantAuditChains>();
+            await chains.RecordVerificationAsync(new AuditVerificationInfo(slug, null, false, 1, 30, new string('e', 64), AuditVerificationResults.Passed, 30, [], null, null, DateTimeOffset.UtcNow), null, Cancel);
+            await chains.RecordVerificationAsync(new AuditVerificationInfo(other, null, false, 1, 9, new string('f', 64), AuditVerificationResults.Passed, 9, [], null, null, DateTimeOffset.UtcNow), null, Cancel);
+        }
+
+        var period = $"from={Uri.EscapeDataString(DateTimeOffset.UtcNow.AddHours(-1).ToString("O"))}&to={Uri.EscapeDataString(DateTimeOffset.UtcNow.AddHours(1).ToString("O"))}";
+        using var mine = await Send(HttpMethod.Get, $"/api/v1/audit-verifications?{period}", unit);
+        using var notAUnit = await Send(HttpMethod.Get, $"/api/v1/audit-verifications?{period}", operatorId);
+        using var latest = await Send(HttpMethod.Get, "/api/v1/audit-anchors/latest", unit);
+        using var verifications = JsonDocument.Parse(await mine.Content.ReadAsStringAsync(Cancel));
+        using var anchors = JsonDocument.Parse(await latest.Content.ReadAsStringAsync(Cancel));
+
+        Assert.Equal(HttpStatusCode.OK, mine.StatusCode);
+        var only = Assert.Single(verifications.RootElement.GetProperty("verifications").EnumerateArray());
+        Assert.Equal((slug, 30L), (only.GetProperty("tenant_slug").GetString(), only.GetProperty("to_position").GetInt64()));
+        Assert.NotEqual(Guid.Empty, only.GetProperty("id").GetGuid());
+        Assert.Equal(TenancyErrors.AuditAnchorNotAUnit, await ErrorCode(notAUnit));
+        await using var check = _app!.Services.CreateAsyncScope();
+        var stored = await check.ServiceProvider.GetRequiredService<TenancyDbContext>().AuditAnchors.AsNoTracking().SingleAsync(a => a.TenantSlug == slug && a.Position == 30, Cancel);
+        Assert.Equal(stored.Id, anchors.RootElement.GetProperty("seal").GetProperty("id").GetGuid());
     }
 
     [Fact]

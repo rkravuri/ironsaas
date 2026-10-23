@@ -72,6 +72,9 @@ public sealed class AuthorizationModule : IModule
 
         // Approved changes of roles and assignments apply through the services above (TF-068, ADR-0052).
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IConfigurationChangeApplier, AuthorizationChangeApplier>());
+
+        // The access list and the conflict rules of an evidence pack (TF-067, ADR-0052).
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IEvidenceSource, AuthorizationEvidence>());
         services.AddScoped<ITenantAdministrators, TenantAdministrators>();
         services.AddScoped<DelegationService>();
         services.AddScoped<IDelegations, DelegationQueries>();
