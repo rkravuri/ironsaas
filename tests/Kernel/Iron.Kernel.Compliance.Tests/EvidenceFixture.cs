@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
+using Iron.Kernel.Audit.Contracts;
+using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Audit.Services;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
@@ -63,7 +65,7 @@ public sealed class EvidenceFixture : IAsyncLifetime
         }
     }
 
-    public ServiceProvider BuildServices(FakeTimeProvider time, EvidenceActor actor, IReadOnlyDictionary<string, string?>? settings = null)
+    public ServiceProvider BuildServices(FakeTimeProvider time, EvidenceActor actor, IReadOnlyDictionary<string, string?>? settings = null, DateTimeOffset? fieldHistorySince = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<TimeProvider>(time);
@@ -82,8 +84,27 @@ public sealed class EvidenceFixture : IAsyncLifetime
         services.AddSingleton<IPrincipals>(People);
         services.Replace(ServiceDescriptor.Singleton<ICurrentPrincipal>(actor));
         services.Replace(ServiceDescriptor.Singleton(provider => new ControlPlaneClient(provider.GetRequiredService<ControlPlaneOptions>(), provider.GetRequiredService<TimeProvider>(), ControlPlane.Handler())));
+        if (fieldHistorySince is { } since)
+        {
+            services.Replace(ServiceDescriptor.Scoped<IRecordHistory>(provider => new HistoryKeptSince(new RecordHistoryReader(provider.GetRequiredService<AuditDbContext>()), since)));
+        }
+
         return services.BuildServiceProvider();
     }
+}
+
+/// <summary>
+/// The trail of a tenant made before T7, whose field history began at a given time; everything else as the trail answers.
+/// The Audit tests prove when a real trail says it began.
+/// </summary>
+public sealed class HistoryKeptSince(RecordHistoryReader trail, DateTimeOffset since) : IRecordHistory
+{
+    public Task<IReadOnlyList<RecordHistoryEvent>> BetweenAsync(string recordType, DateTimeOffset from, DateTimeOffset? to, CancellationToken cancellationToken) =>
+        trail.BetweenAsync(recordType, from, to, cancellationToken);
+
+    public Task<DateTimeOffset?> OnlineSinceAsync(CancellationToken cancellationToken) => trail.OnlineSinceAsync(cancellationToken);
+
+    public Task<DateTimeOffset?> KeptSinceAsync(CancellationToken cancellationToken) => Task.FromResult<DateTimeOffset?>(since);
 }
 
 [CollectionDefinition(Name)]

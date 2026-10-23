@@ -406,6 +406,45 @@ public class AuditChainTests(AuditFixture fixture)
         return provider;
     }
 
+    [Fact]
+    [Proves("ADR-0051", "ADR-0052")]
+    public async Task TheTrailSaysFieldHistoryBeganWithItsFirstVersionTwoSealOnlyWhenOlderEventsExist()
+    {
+        // A trail sealed in version 2 from its first event, as a tenant made after T7: field history from the start.
+        var fresh = await fixture.NewChainDatabaseAsync("history-fresh");
+        await using (var provider = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), new FixedPrincipal(SystemPrincipal.SystemId), fresh))
+        {
+            await WriteAsync(provider, 2);
+            await SealEverythingAsync(provider);
+            await using var scope = provider.CreateAsyncScope();
+            Assert.Null(await scope.ServiceProvider.GetRequiredService<IRecordHistory>().KeptSinceAsync(Cancel));
+        }
+
+        // A tenant made before T7: its first event sealed in version 1, as T6 sealed it, the next ones after T7 came.
+        var database = await fixture.NewChainDatabaseAsync("history-began");
+        var time = new FakeTimeProvider(new DateTimeOffset(2031, 1, 5, 9, 0, 0, TimeSpan.Zero));
+        await using var later = fixture.BuildServices(time, new FixedPrincipal(SystemPrincipal.SystemId), database);
+        await WriteAsync(later, 1);
+        await using (var scope = later.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+            var record = await context.Events.AsNoTracking().SingleAsync(Cancel);
+            var hash = AuditCanonicalForm.Hash(record.Chained(1), AuditCanonicalForm.Genesis, 1);
+            await context.Database.ExecuteSqlInterpolatedAsync($"select kernel_audit.seal_event({record.Id}, {1L}, {AuditCanonicalForm.Genesis}, {hash}, {(short)1}, {time.GetUtcNow()})", Cancel);
+            context.Seals.Add(new AuditSeal(1, 1, hash));
+            await context.SaveChangesAsync(Cancel);
+        }
+
+        time.Advance(TimeSpan.FromDays(3));
+        await WriteAsync(later, 2);
+        await SealEverythingAsync(later);
+
+        await using var check = later.CreateAsyncScope();
+        var firstWithHistory = await check.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking().Where(e => e.HashVersion == AuditCanonicalForm.FieldHistoryVersion).MinAsync(e => e.CreatedAt, Cancel);
+        Assert.Equal(new DateTimeOffset(2031, 1, 8, 9, 0, 0, TimeSpan.Zero), firstWithHistory);
+        Assert.Equal(firstWithHistory, await check.ServiceProvider.GetRequiredService<IRecordHistory>().KeptSinceAsync(Cancel));
+    }
+
     internal static async Task WriteAsync(ServiceProvider provider, int count)
     {
         for (var i = 0; i < count; i++)

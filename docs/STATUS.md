@@ -163,6 +163,8 @@ Decided in T8, each small enough for a line here (the larger ones are ADR-0052's
 - The browser tests' second administrator holds a tenant role of its own (`e2e-second-administrator`: roles and settings), outside the MFA policy's roles, so it signs in with a password; `e2e-data.py setup` refuses to start while a run left four-eyes on, since its grants would wait.
 - The validation pack's browser test skips, with the reason, when the unit has no pack of its version: a release's own integration stage runs before its pack exists.
 - The evidence pack page reads the pack again every two seconds until it is made or failed; the worker looks for work every five.
+- At the review: My profile gains "My pending changes" for everyone, a person's own changes that wait, with Withdraw; the console's list stays for approvers.
+- At the review: when an evidence pack's period starts before field history began, the access list says so at its top, on its page and in each CSV, with the time from which it is reliable, and the manifest names it (`field_history_since`). The trail says when it began (`IRecordHistory.KeptSinceAsync`): the first event sealed in canonical form version 2, when an older one exists; once the oldest events are archived the time can only move later, never earlier.
 
 Decided in T7, each small enough for a line here (the larger ones are ADR-0051's):
 
@@ -261,6 +263,6 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area. Sett
 - Settled at T6's review: the "signed in as them by" filter offers the operators and break-glass accounts by name.
 - `smoke`, the fifth laptop tenant, has no verifier role until `make update-unit TENANT=smoke`; the fleet says so once an hour.
 - From S3 T8 (ADR-0052): the evidence pack's drills document says that backups start with the first Azure deployment, which brings the drills; the pack's PDF waits for S4's document templates; a period older than the online audit trail names the archive rather than reading it in full.
-- From S3 T8: Pending changes has one navigation entry, for `changes.changes.read`; a requester or approver without it reaches a change from the frame's notice, a link or the address. A navigation entry for anyone who holds a governed permission needs a manifest entry with several permissions.
+- From S3 T8: Pending changes has one navigation entry, for `changes.changes.read`. Settled at the review for requesters, who find their own in My profile; an approver without the permission reaches a change from a link or the address, and a navigation entry for anyone who may approve needs a manifest entry with several permissions.
 - From S3 T8: a release's own integration stage runs before its validation pack exists, so the browser test of the download skips there with its reason and runs on the laptop and against the next release. The releases container is filled by `make validation-pack` on the laptop; the Azure deployment's pipeline fills it for a deployment.
 - From S3 T8: four-eyes is TF-247's first form; S5 extends the pending change into field-level change requests with field classes, the workflow engine's routing and effective dates (ADR-0052, section 4).

@@ -316,13 +316,52 @@ public class EvidencePackTests(EvidenceFixture fixture)
         await cleanup.ServiceProvider.GetRequiredService<EvidencePacks>().BuildNextAsync(Cancel);
     }
 
-    private (ServiceProvider Provider, EvidenceActor Actor, FakeTimeProvider Time) Setup(DateTimeOffset now)
+    [Fact]
+    [Proves("TF-067 AC1", "ADR-0052")]
+    public async Task WhenThePeriodStartsBeforeFieldHistoryTheAccessListSaysSoAtItsTopWithTheTimeItIsReliableFrom()
+    {
+        // At T8's review: a tenant made before T7 has kept field history only since T7 reached it.
+        var since = new DateTimeOffset(2031, 6, 15, 8, 30, 0, TimeSpan.Zero);
+        var (provider, actor, _) = Setup(new DateTimeOffset(2031, 7, 1, 9, 0, 0, TimeSpan.Zero), since);
+        await using var _ = provider;
+        var requester = fixture.People.Add("Ines Inquiry");
+        var end = new DateTimeOffset(2031, 7, 1, 0, 0, 0, TimeSpan.Zero);
+
+        var before = await MakeAsync(provider, actor, requester, new DateTimeOffset(2031, 6, 1, 0, 0, 0, TimeSpan.Zero), end);
+        var after = await MakeAsync(provider, actor, requester, new DateTimeOffset(2031, 6, 20, 0, 0, 0, TimeSpan.Zero), end);
+
+        using (var zip = await DownloadAsync(provider, actor, requester, before.Id))
+        {
+            var page = Read(zip, "1-access_list/access_list.html");
+            var notice = page.IndexOf("data-field-history-since=\"2031-06-15T08:30:00.000000Z\"", StringComparison.Ordinal);
+            Assert.True(notice > 0, "The access list names the time field history began.");
+            Assert.True(notice > page.IndexOf("</h1>", StringComparison.Ordinal) && notice < page.IndexOf("<dl>", StringComparison.Ordinal), "The notice is at the top, under the title.");
+            Assert.Contains("it is reliable from 2031-06-15T08:30:00.000000Z UTC", page, StringComparison.Ordinal);
+            var csvs = zip.Entries.Where(e => e.FullName.StartsWith("1-access_list/", StringComparison.Ordinal) && e.FullName.EndsWith(".csv", StringComparison.Ordinal)).ToList();
+            Assert.NotEmpty(csvs);
+            Assert.All(csvs, csv => Assert.StartsWith("# This period starts before the audit trail kept field-level history", Read(zip, csv.FullName).Split('\n')[2], StringComparison.Ordinal));
+            foreach (var document in EvidenceDocuments.All.Where(d => d != EvidenceDocuments.AccessList))
+            {
+                Assert.DoesNotContain("data-field-history-since", Read(zip, $"{EvidenceDocuments.FolderOf(document)}/{document}.html"), StringComparison.Ordinal);
+            }
+
+            using var manifest = JsonDocument.Parse(Read(zip, EvidencePackWriter.ManifestName));
+            Assert.Equal("2031-06-15T08:30:00.000000Z", manifest.RootElement.GetProperty("field_history_since").GetString());
+        }
+
+        using (var zip = await DownloadAsync(provider, actor, requester, after.Id))
+        {
+            Assert.DoesNotContain("data-field-history-since", Read(zip, "1-access_list/access_list.html"), StringComparison.Ordinal);
+        }
+    }
+
+    private (ServiceProvider Provider, EvidenceActor Actor, FakeTimeProvider Time) Setup(DateTimeOffset now, DateTimeOffset? fieldHistorySince = null)
     {
         var time = new FakeTimeProvider(now);
         var actor = new EvidenceActor();
         fixture.ControlPlane.Seal = null;
         fixture.ControlPlane.Verifications.Clear();
-        return (fixture.BuildServices(time, actor), actor, time);
+        return (fixture.BuildServices(time, actor, null, fieldHistorySince), actor, time);
     }
 
     private static async Task<EvidencePack> MakeAsync(IServiceProvider provider, EvidenceActor actor, Guid requester, DateTimeOffset from, DateTimeOffset to)

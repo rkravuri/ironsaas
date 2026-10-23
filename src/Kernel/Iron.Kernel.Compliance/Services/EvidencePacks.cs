@@ -115,7 +115,9 @@ public sealed class EvidencePacks(
             }
 
             var head = services.GetService<IEvidenceChain>() is { } chain ? await chain.HeadAsync(cancellationToken).ConfigureAwait(false) : null;
-            var written = EvidencePackWriter.Write(new EvidencePackHeading(tenant.Id.Value, period, pack.RequestedById, pack.RequesterName, pack.CreatedAt, time.GetUtcNow()), tables, head);
+            var historySince = services.GetService<IRecordHistory>() is { } history ? await history.KeptSinceAsync(cancellationToken).ConfigureAwait(false) : null;
+            var heading = new EvidencePackHeading(tenant.Id.Value, period, pack.RequestedById, pack.RequesterName, pack.CreatedAt, time.GetUtcNow()) { FieldHistorySince = historySince };
+            var written = EvidencePackWriter.Write(heading, tables, head);
             var key = $"evidence/{pack.Id:N}.zip";
             await using (var stream = new MemoryStream(written.Zip))
             {

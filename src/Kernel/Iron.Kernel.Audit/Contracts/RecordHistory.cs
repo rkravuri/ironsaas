@@ -19,6 +19,14 @@ public interface IRecordHistory
 
     /// <summary>The time of the oldest save the database still holds, of any type: before it, history is in the archive only.</summary>
     Task<DateTimeOffset?> OnlineSinceAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Since when the trail keeps field-level history (T7, ADR-0051): the first event sealed in a form that carries field
+    /// changes, when the trail holds an event from before it; null when the trail kept it from its first event, as for a
+    /// tenant made after T7. A state rebuilt for a time before it is not reliable, since earlier saves were not recorded
+    /// field by field (ADR-0052). Read from the database, so once the oldest events are archived it can only move later.
+    /// </summary>
+    Task<DateTimeOffset?> KeptSinceAsync(CancellationToken cancellationToken);
 }
 
 public static class RecordHistoryExtensions

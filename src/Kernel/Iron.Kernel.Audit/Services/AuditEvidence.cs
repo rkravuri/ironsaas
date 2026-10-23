@@ -46,6 +46,24 @@ public sealed class RecordHistoryReader(AuditDbContext context) : IRecordHistory
 
     public async Task<DateTimeOffset?> OnlineSinceAsync(CancellationToken cancellationToken) =>
         await context.Events.AsNoTracking().MinAsync(e => (DateTimeOffset?)e.CreatedAt, cancellationToken).ConfigureAwait(false);
+
+    public async Task<DateTimeOffset?> KeptSinceAsync(CancellationToken cancellationToken)
+    {
+        var events = context.Events.AsNoTracking();
+        var first = await events.Where(e => e.HashVersion >= AuditCanonicalForm.FieldHistoryVersion).MinAsync(e => (DateTimeOffset?)e.CreatedAt, cancellationToken).ConfigureAwait(false);
+        var lastBefore = await events.Where(e => e.HashVersion < AuditCanonicalForm.FieldHistoryVersion).MaxAsync(e => (DateTimeOffset?)e.CreatedAt, cancellationToken).ConfigureAwait(false);
+        if (lastBefore is not null)
+        {
+            // Events sealed before field history exist: it began with the first one sealed after, or not yet.
+            return first ?? lastBefore;
+        }
+
+        // Only archived events may be older than the first one with field history: the archive keeps batches by time.
+        var archivedBefore = first is { } start
+            ? await context.ArchiveBatches.AsNoTracking().AnyAsync(b => b.FirstAt < start, cancellationToken).ConfigureAwait(false)
+            : false;
+        return archivedBefore ? first : null;
+    }
 }
 
 /// <summary>

@@ -10,7 +10,17 @@ using Iron.Kernel.History;
 namespace Iron.Kernel.Compliance.Services;
 
 /// <summary>Who asked for a pack, when, for which tenant and period, and when it was made: what heads every document.</summary>
-public sealed record EvidencePackHeading(string Tenant, EvidencePeriod Period, Guid RequestedById, string RequesterName, DateTimeOffset RequestedAt, DateTimeOffset MadeAt);
+public sealed record EvidencePackHeading(string Tenant, EvidencePeriod Period, Guid RequestedById, string RequesterName, DateTimeOffset RequestedAt, DateTimeOffset MadeAt)
+{
+    /// <summary>Since when the audit trail keeps field-level history (<c>IRecordHistory.KeptSinceAsync</c>); null when always.</summary>
+    public DateTimeOffset? FieldHistorySince { get; init; }
+
+    /// <summary>
+    /// The period starts before field-level history began (at T8's review): the access list, rebuilt from that history,
+    /// is reliable only from that time, and says so at its top.
+    /// </summary>
+    public bool StartsBeforeFieldHistory => FieldHistorySince is { } since && Period.From < since;
+}
 
 /// <summary>A pack as written: the ZIP's bytes, its SHA-256, and its manifest's.</summary>
 public sealed record WrittenPack(byte[] Zip, string Sha256, string ManifestSha256, IReadOnlyList<PackFile> Files);
@@ -55,6 +65,7 @@ public static class EvidencePackWriter
             RequestedBy = new { Id = heading.RequestedById, Name = heading.RequesterName },
             RequestedAt = CanonicalJson.Time(heading.RequestedAt),
             MadeAt = CanonicalJson.Time(heading.MadeAt),
+            FieldHistorySince = heading.FieldHistorySince is { } since ? CanonicalJson.Time(since) : null,
             ChainHead = head is null ? null : new
             {
                 head.Segment,
@@ -98,11 +109,33 @@ public static class EvidencePackWriter
         return text.AsSpan().IndexOfAny(",\"\n\r") >= 0 ? "\"" + text.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"" : text;
     }
 
+    /// <summary>
+    /// What the access list says at its top when the period starts before field-level history began (at T8's review): its
+    /// state at the period's end and its changes in the period are rebuilt from that history, so they are reliable only
+    /// from that time. Null for the other documents, and when the history covers the whole period.
+    /// </summary>
+    public static string? FieldHistoryNotice(EvidencePackHeading heading, string document)
+    {
+        ArgumentNullException.ThrowIfNull(heading);
+        if (document != EvidenceDocuments.AccessList || !heading.StartsBeforeFieldHistory)
+        {
+            return null;
+        }
+
+        var since = CanonicalJson.Time(heading.FieldHistorySince!.Value);
+        return $"This period starts before the audit trail kept field-level history, which began at {since} UTC. The access list is rebuilt from that history, so it is reliable from {since} UTC: a grant, removal or change made before then is neither listed nor undone.";
+    }
+
     private static string Csv(EvidencePackHeading heading, string document, EvidenceTable table)
     {
         var csv = new StringBuilder();
         csv.Append("# ").Append(EvidenceDocuments.TitleOf(document)).Append(": ").Append(table.Title).Append('\n');
         csv.Append("# Tenant: ").Append(heading.Tenant).Append(". Period: ").Append(CanonicalJson.Time(heading.Period.From)).Append(" up to ").Append(CanonicalJson.Time(heading.Period.To)).Append(" UTC.\n");
+        if (FieldHistoryNotice(heading, document) is { } notice)
+        {
+            csv.Append("# ").Append(notice).Append('\n');
+        }
+
         if (table.Note is { } note)
         {
             csv.Append("# ").Append(note.Replace('\n', ' ')).Append('\n');
@@ -123,8 +156,14 @@ public static class EvidencePackWriter
         var title = EvidenceDocuments.TitleOf(document);
         var page = new StringBuilder();
         page.Append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>").Append(E(title)).Append(": ").Append(E(heading.Tenant)).Append("</title>");
-        page.Append("<style>body{font-family:system-ui,sans-serif;margin:2rem auto;max-width:80rem;padding:0 1rem;color:#1b1f24;background:#fff;line-height:1.45}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:2rem}table{border-collapse:collapse;width:100%;margin:.5rem 0 1rem}th,td{border:1px solid #c9ced6;padding:.3rem .45rem;text-align:left;vertical-align:top;font-size:.9rem}th{background:#eef1f5}.note{color:#4a525e}dl{display:grid;grid-template-columns:max-content 1fr;gap:.2rem 1rem}dt{font-weight:600}</style></head><body>");
-        page.Append("<h1>").Append(E(title)).Append("</h1><dl>");
+        page.Append("<style>body{font-family:system-ui,sans-serif;margin:2rem auto;max-width:80rem;padding:0 1rem;color:#1b1f24;background:#fff;line-height:1.45}h1{font-size:1.5rem}h2{font-size:1.15rem;margin-top:2rem}table{border-collapse:collapse;width:100%;margin:.5rem 0 1rem}th,td{border:1px solid #c9ced6;padding:.3rem .45rem;text-align:left;vertical-align:top;font-size:.9rem}th{background:#eef1f5}.note{color:#4a525e}.caution{border-left:4px solid #8a5a00;background:#fff6e5;padding:.6rem .8rem}dl{display:grid;grid-template-columns:max-content 1fr;gap:.2rem 1rem}dt{font-weight:600}</style></head><body>");
+        page.Append("<h1>").Append(E(title)).Append("</h1>");
+        if (FieldHistoryNotice(heading, document) is { } notice)
+        {
+            page.Append("<p class=\"caution\" role=\"note\" data-field-history-since=\"").Append(E(CanonicalJson.Time(heading.FieldHistorySince!.Value))).Append("\"><strong>").Append(E(notice)).Append("</strong></p>");
+        }
+
+        page.Append("<dl>");
         page.Append("<dt>Tenant</dt><dd>").Append(E(heading.Tenant)).Append("</dd>");
         page.Append("<dt>Period</dt><dd>").Append(E(CanonicalJson.Time(heading.Period.From))).Append(" up to ").Append(E(CanonicalJson.Time(heading.Period.To))).Append(" (UTC)</dd>");
         page.Append("<dt>Requested by</dt><dd>").Append(E(heading.RequesterName)).Append(", ").Append(E(CanonicalJson.Time(heading.RequestedAt))).Append(" (UTC)</dd>");

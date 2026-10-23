@@ -54,6 +54,12 @@ public static class AuditCanonicalForm
     /// <summary>The version new seals use, kept with every sealed event, so every earlier form stays verifiable.</summary>
     public const short Version = 2;
 
+    /// <summary>
+    /// The first form whose events carry a record's field changes (TF-062, ADR-0051): the trail has kept field-level
+    /// history since the first event sealed with it.
+    /// </summary>
+    public const short FieldHistoryVersion = 2;
+
     /// <summary>The first word of the array, which names the form and its version.</summary>
     public const string Label = "iron-audit-v2";
 
