@@ -67,7 +67,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 | T3 | MFA and step-up re-authentication | TF-013, TF-248 | done (main, e1752cc) |
 | T4 | Single sign-on with OpenID Connect | TF-014 | done (main, becf9a8) |
 | T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-021 AC2, TF-022, TF-025, TF-026, TF-028, TF-029 | done (main, 8f19e4b) |
-| T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | in review (slice/s3-t6) |
+| T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | done (main, 6a77a80) |
 | T7 | Field-level change history, electronic signatures, signature manifestation, audit-trail review | TF-062, TF-063, TF-219 | outline |
 | T8 | Evidence exports, second approval for sensitive changes, validation pack per release | TF-067, TF-068, TF-218 | outline |
 | T9 | Hardening: input validation and output encoding review, rate limits and anti-automation (the "Use your company login" answer included, T4's review), encryption in transit, key management and rotation; the control plane's own audit trail sealed into a chain, and the control plane connecting with its own database role, not as the database's owner (T6's review) | TF-070 to TF-075 | outline |
