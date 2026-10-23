@@ -36,10 +36,10 @@ public class ProvisioningTests(FleetFixture fixture)
         var job = await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken);
         Assert.NotNull(job);
         Assert.Equal(ProvisioningStatus.Completed, job.Status);
-        Assert.Equal(8, job.Steps.Count);
+        Assert.Equal(9, job.Steps.Count);
         Assert.All(job.Steps, step => Assert.Equal("completed", step.Status));
         Assert.All(job.Steps, step => Assert.NotNull(step.DurationMs));
-        Assert.Equal([StepNames.Reserve, StepNames.Database, StepNames.Storage, StepNames.Secrets, StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify], job.Steps.Select(s => s.Name));
+        Assert.Equal([StepNames.Reserve, StepNames.Database, StepNames.Storage, StepNames.Secrets, StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify, StepNames.ValidationPack], job.Steps.Select(s => s.Name));
         Assert.DoesNotContain(RecordingRuntime.InvitationToken, job.Output, StringComparison.Ordinal);
         var handover = await scope.ServiceProvider.GetRequiredService<IJobHandovers>().TakeAsync(job.Id, SystemPrincipal.SystemId, TestContext.Current.CancellationToken);
         Assert.Equal((HandoverState.Given, $"/invitations#{RecordingRuntime.InvitationToken}"), (handover.State, handover.Item?.LinkPath));
@@ -48,9 +48,10 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.Equal(TenantStatus.Active, tenant!.Status);
         Assert.NotNull(tenant.ActivatedAt);
 
-        // The image commands ran as the owner with the unit's environment; the unit itself was applied and checked.
-        Assert.Equal(["migrate", "seed"], runtime.Commands.Select(c => c.Command));
-        Assert.All(runtime.Commands, c => Assert.Contains("_owner;", c.Unit.Environment["ConnectionStrings__Database"], StringComparison.Ordinal));
+        // The image commands ran as the owner with the unit's environment; the unit itself was applied and checked; then
+        // the image said its version, for the validation pack (ADR-0052).
+        Assert.Equal(["migrate", "seed", "version"], runtime.Commands.Select(c => c.Command));
+        Assert.All(runtime.Commands.Where(c => c.Command != "version"), c => Assert.Contains("_owner;", c.Unit.Environment["ConnectionStrings__Database"], StringComparison.Ordinal));
         Assert.All(runtime.Commands, c => Assert.Equal($"tenants/{slug}", c.Unit.Environment["Secrets__Path"]));
         var seed = runtime.Commands.Single(c => c.Command == "seed").Unit.Environment;
         Assert.Equal(tenant.DisplayName, seed["Seed__RootUnit__Name"]);
@@ -147,7 +148,7 @@ public class ProvisioningTests(FleetFixture fixture)
             Assert.Equal(ProvisioningStatus.Failed, job.Status);
             Assert.Equal(StepNames.Migrate, job.CurrentStep);
             Assert.Contains("kernel_authz.roles", job.Error, StringComparison.Ordinal);
-            Assert.Equal(["completed", "completed", "completed", "completed", "failed", "pending", "pending", "pending"], job.Steps.Select(s => s.Status));
+            Assert.Equal(["completed", "completed", "completed", "completed", "failed", "pending", "pending", "pending", "pending"], job.Steps.Select(s => s.Status));
             Assert.Equal(TenantStatus.Provisioning, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
 
             // Asking again reopens the same job instead of making a new one.
@@ -167,7 +168,7 @@ public class ProvisioningTests(FleetFixture fixture)
             Assert.All(job.Steps, step => Assert.Equal("completed", step.Status));
 
             // The database step ran once; migrate ran twice; the steps before the failure kept their first timing.
-            Assert.Equal(["migrate", "migrate", "seed"], runtime.Commands.Select(c => c.Command));
+            Assert.Equal(["migrate", "migrate", "seed", "version"], runtime.Commands.Select(c => c.Command));
             var database = job.Steps.Single(s => s.Name == StepNames.Database);
             Assert.True(database.StartedAt < job.Steps.Single(s => s.Name == StepNames.Migrate).StartedAt);
             Assert.Equal(TenantStatus.Active, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
@@ -260,9 +261,52 @@ public class ProvisioningTests(FleetFixture fixture)
             Assert.Equal(ProvisioningStatus.Completed, job.Status);
             Assert.Equal(UpdateSteps, job.Steps.Select(s => s.Name));
             Assert.Equal(2, runtime.Applied.Count);
-            Assert.Equal(commandsBefore + 2, runtime.Commands.Count); // migrate and seed ran again, idempotently
+            Assert.Equal(commandsBefore + 3, runtime.Commands.Count); // migrate and seed ran again, idempotently, and the version was asked
             Assert.Equal(TenantStatus.Active, (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.Status);
         }
+    }
+
+    [Fact]
+    [Proves("TF-218 AC3", "ADR-0052")]
+    public async Task AnUpdatePlacesTheValidationPackOfExactlyTheVersionItInstallsInTheTenantsContainer()
+    {
+        var runtime = new RecordingRuntime { Version = "2031.07.08.42" };
+        var releases = new BlobContainerClient(fixture.StorageConnectionString, fixture.FleetOptions.Storage.ReleasesContainer);
+        await releases.CreateIfNotExistsAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await releases.GetBlobClient(ReleasePacks.ReleaseKeyOf("2031.07.08.42")).UploadAsync(BinaryData.FromString("the pack of 2031.07.08.42"), overwrite: true, TestContext.Current.CancellationToken);
+        await releases.GetBlobClient(ReleasePacks.ReleaseKeyOf("2031.07.01.40")).UploadAsync(BinaryData.FromString("an older release's pack"), overwrite: true, TestContext.Current.CancellationToken);
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var slug = await RegisterAndRequestAsync(provider, "india");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+
+        string container;
+        string? placedOutput;
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            container = (await scope.ServiceProvider.GetRequiredService<ITenantRegistry>().FindAsync(slug, TestContext.Current.CancellationToken))!.StorageContainer;
+            var job = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken))!;
+            placedOutput = job.Steps.Single(s => s.Name == StepNames.ValidationPack).Output;
+        }
+
+        var placed = await new BlobContainerClient(fixture.StorageConnectionString, container).GetBlobClient(ReleasePacks.TenantKeyOf("2031.07.08.42")).DownloadContentAsync(TestContext.Current.CancellationToken);
+
+        // A release whose pack is not published yet: the update completes and the unit says the pack is missing.
+        runtime.Version = "2031.07.09.43";
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            Assert.True((await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestUpdateAsync(slug, TestContext.Current.CancellationToken)).IsSuccess);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        await using var check = provider.CreateAsyncScope();
+        var update = (await check.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, TestContext.Current.CancellationToken))!;
+
+        Assert.Equal("the pack of 2031.07.08.42", placed.Value.Content.ToString());
+        Assert.StartsWith("validation pack of version 2031.07.08.42 placed", placedOutput, StringComparison.Ordinal);
+        Assert.Equal(ProvisioningStatus.Completed, update.Status);
+        Assert.StartsWith("no validation pack of version 2031.07.09.43", update.Steps.Single(s => s.Name == StepNames.ValidationPack).Output, StringComparison.Ordinal);
+        Assert.False(await new BlobContainerClient(fixture.StorageConnectionString, container).GetBlobClient(ReleasePacks.TenantKeyOf("2031.07.01.40")).ExistsAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -505,7 +549,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     /// <summary>The steps of an update, in order (ADR-0028): the three in-process steps heal, the rest re-apply the unit.</summary>
-    private static readonly string[] UpdateSteps = [StepNames.Database, StepNames.Storage, StepNames.Secrets, StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify];
+    private static readonly string[] UpdateSteps = [StepNames.Database, StepNames.Storage, StepNames.Secrets, StepNames.Migrate, StepNames.Seed, StepNames.Unit, StepNames.Verify, StepNames.ValidationPack];
 
     /// <summary>Deletes every secret under <c>tenants/&lt;slug&gt;</c>, every version, through OpenBao's metadata endpoint; returns their names.</summary>
     private async Task<List<string>> DeleteEverySecretOfAsync(string slug, CancellationToken cancellationToken)

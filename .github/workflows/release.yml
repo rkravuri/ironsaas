@@ -1,9 +1,13 @@
 name: Release
 
-# A push to main (ADR-0022): the five images are built and pushed to GitHub Container Registry tagged with the commit,
-# scanned, and then proven on the runner: the platform and the control plane start from those images, the fleet
-# provisions a tenant, and the smoke test and the browser tests run against it. Green runs tag the images "integration". The traceability
-# matrix of the commit, CI's results with the smoke's, is kept with the run that built the images (ADR-0044).
+# A push to main (ADR-0022): the run gives the release its version (ADR-0052), builds the five images stamped with it,
+# pushes them to GitHub Container Registry tagged with the commit, scans them, and proves them on the runner: the
+# platform and the control plane start from those images, the fleet provisions a tenant, the smoke test and the browser
+# tests run against it, and the installation is recorded and checked against the code. Green runs tag the images
+# "integration". Then the traceability matrix of the commit (ADR-0044) and the release's validation pack (TF-218): every
+# requirement with its tests and results, the gaps, the release notes, the risk assessment, the installation record
+# and the configuration's hashes. A pack that passes tags the commit and the images with the version and is kept with a
+# GitHub release; a gap without an approved exception fails the release.
 
 on:
   push:
@@ -18,9 +22,23 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
 jobs:
+  # The release's version (ADR-0052): the UTC date the run started and the workflow's run number, 2026.10.23.57. The run
+  # number grows with every run, so versions always increase and never repeat; a run that fails keeps its number unused.
+  # Re-running failed jobs keeps this job's answer, so the images and the tag carry the same version.
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: The release's version
+        id: version
+        run: echo "version=$(date -u +%Y.%m.%d).${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
   images:
     name: Image ${{ matrix.image.name }}
     runs-on: ubuntu-latest
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -48,12 +66,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The version goes into each image as its label and, for the hosts, as Release__Version, which the unit reports.
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.image.context }}
           file: ${{ matrix.image.file }}
           push: true
+          build-args: |
+            IRON_VERSION=${{ needs.version.outputs.version }}
           # The commit's tag always; "main" only from main, so a run from another branch never moves it.
           tags: |
             ${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:${{ github.sha }}
@@ -73,7 +94,7 @@ jobs:
   integration:
     name: Integration on the runner
     runs-on: ubuntu-latest
-    needs: images
+    needs: [version, images]
     # The smoke takes a few minutes and the browser tests about five more (ADR-0044).
     timeout-minutes: 45
     steps:
@@ -144,6 +165,26 @@ jobs:
           OPERATOR_SECRET: ${{ steps.secrets.outputs.operator }}
         run: make e2e TENANT=acme
 
+      # The installation verified against the infrastructure code (TF-218, ADR-0052): the images' digests, the version the
+      # API image says, the migrations applied per module against the repository's, the seeds in the tenant's database
+      # against the code's, the catalogue's hash, and the smoke's and the browser tests' results.
+      - name: Installation record
+        if: always() && steps.secrets.outcome == 'success'
+        run: |
+          python3 tools/installation_record.py --tenant acme \
+            --repository "${{ steps.repo.outputs.repository }}" --tag "${{ github.sha }}" --version "${{ needs.version.outputs.version }}" \
+            --smoke-report smoke-report.json --e2e-junit artifacts/test-results/e2e/junit.xml \
+            --output installation-record.json
+
+      - name: Upload the installation record
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: installation-record
+          path: installation-record.json
+          if-no-files-found: ignore
+          retention-days: 90
+
       - name: Upload the browser tests' results
         if: always()
         uses: actions/upload-artifact@v7
@@ -193,53 +234,79 @@ jobs:
 
   # The matrix of the commit the images were built from: CI's result files for the same commit, which this job waits
   # for, and the smoke's report and the browser tests' results from the integration stage, kept for 90 days with this
-  # run (TF-218, ADR-0044). T8's validation pack is built from it.
+  # run (TF-218, ADR-0044). Then the release's validation pack from the same results, the history since the last
+  # release, the risk classes and the installation record (ADR-0052). Both are kept whatever they found; a gap without
+  # an approved exception, a failed test or a failed installation check fails this job, and the release is not published.
   trace:
-    name: Traceability matrix of the release
+    name: Traceability matrix and validation pack of the release
     runs-on: ubuntu-latest
-    needs: integration
-    if: always()
+    needs: [version, integration]
+    if: always() && needs.version.result == 'success'
     timeout-minutes: 60
     permissions:
       contents: read
       actions: read
     steps:
+      # The whole history and the tags: the release notes start from the last release's tag.
       - name: Check out
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
+      # Each download is tried three times, as a connection lost on the way once failed CI's matrix (run 39912627606).
       - name: CI's results for this commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           run=""
           for attempt in $(seq 1 30); do
-            run=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --event push --json databaseId --jq '.[0].databaseId // empty')
+            run=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --event push --json databaseId --jq '.[0].databaseId // empty' || true)
             [ -n "$run" ] && break
             sleep 10
           done
           test -n "$run" || { echo "No CI run for $GITHUB_SHA"; exit 1; }
           # Waits for the run to end, whatever its result: a failing run's results belong in the matrix too.
           gh run watch "$run" --interval 30 > /dev/null || true
-          gh run download "$run" --pattern 'test-results-*' --dir ci-results
+          for attempt in 1 2 3; do
+            rm -rf ci-results
+            gh run download "$run" --pattern 'test-results-*' --dir ci-results && break
+            [ "$attempt" = 3 ] && { echo "CI's results could not be downloaded after three tries"; exit 1; }
+            echo "The download failed; trying again in $((attempt * 20)) seconds."
+            sleep $((attempt * 20))
+          done
           mkdir -p artifacts/test-results
           for folder in ci-results/*/; do cp -r "$folder". artifacts/test-results/; done
 
       - name: The smoke's report
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifacts
         with:
           name: smoke-report
           path: artifacts/test-results/smoke
         continue-on-error: true
 
       - name: The browser tests' results
-        uses: actions/download-artifact@v7
+        uses: ./.github/actions/download-artifacts
         with:
           name: test-results-e2e
           path: artifacts/test-results
         continue-on-error: true
 
+      - name: The installation record
+        uses: ./.github/actions/download-artifacts
+        with:
+          name: installation-record
+          path: installation
+        continue-on-error: true
+
       - name: Build the matrix
+        id: matrix
+        continue-on-error: true
         run: make trace
+
+      - name: Build the validation pack
+        id: pack
+        continue-on-error: true
+        run: python3 tools/validation_pack.py --version "${{ needs.version.outputs.version }}" --installation installation/installation-record.json --output artifacts/validation
 
       - name: Keep the matrix with the images
         if: always()
@@ -249,3 +316,72 @@ jobs:
           path: artifacts/trace
           if-no-files-found: ignore
           retention-days: 90
+
+      - name: Keep the validation pack with the run
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: validation-pack-${{ needs.version.outputs.version }}
+          path: artifacts/validation
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: The release passes only when the matrix and the pack do
+        if: steps.matrix.outcome != 'success' || steps.pack.outcome != 'success'
+        run: |
+          echo "The matrix (${{ steps.matrix.outcome }}) or the validation pack (${{ steps.pack.outcome }}) did not pass: the release is not published. The pack's index lists why."
+          exit 1
+
+  # A passing release (ADR-0052): the commit is tagged with the version, the images get the version as a tag, and a
+  # GitHub release keeps the validation pack for good. A deployment publishes the pack to the platform's releases
+  # container (the fleet's publish-validation-pack), from where each unit's next update places it.
+  publish:
+    name: Publish the release
+    runs-on: ubuntu-latest
+    needs: [version, integration, trace]
+    if: github.ref == 'refs/heads/main' && needs.integration.result == 'success' && needs.trace.result == 'success'
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: The validation pack
+        uses: ./.github/actions/download-artifacts
+        with:
+          name: validation-pack-${{ needs.version.outputs.version }}
+          path: artifacts/validation
+
+      - name: Image repository
+        id: repo
+        run: echo "repository=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the images with the version
+        run: |
+          for image in iron-api iron-worker iron-control-plane iron-fleet iron-shell; do
+            docker buildx imagetools create \
+              --tag "${{ steps.repo.outputs.repository }}/$image:${{ needs.version.outputs.version }}" \
+              "${{ steps.repo.outputs.repository }}/$image:${{ github.sha }}"
+          done
+
+      - name: Tag the commit and keep the pack with a GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          git tag "v$VERSION" "$GITHUB_SHA"
+          git push origin "v$VERSION"
+          {
+            echo "Version $VERSION, commit $GITHUB_SHA."
+            echo
+            echo "The validation pack is attached (TF-218): every requirement with its tests and results, the release notes, the risk assessment, the installation record and the configuration's hashes. Its manifest.json lists every file's SHA-256."
+          } > release-notes.md
+          gh release create "v$VERSION" "artifacts/validation/validation-pack-$VERSION.zip" --title "Release $VERSION" --notes-file release-notes.md --target "$GITHUB_SHA"

@@ -20,6 +20,9 @@ public sealed class RootUnitSeedOptions
     public string? Code { get; set; }
 }
 
+/// <summary>A system role as the seed makes it.</summary>
+public sealed record SystemRoleDefinition(string Code, string Name, string Description, PrincipalKind PrincipalType, IReadOnlyList<string> Permissions);
+
 /// <summary>
 /// Creates the system roles and keeps them in step with the permission catalogue (TF-032): the tenant administrator
 /// holds every permission of the host and is for any principal type (the control plane's operator is a service account,
@@ -38,20 +41,48 @@ public sealed class AuthorizationSeeder(
 {
     public int Order => 100;
 
-    public async Task SeedAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// The system roles a host's catalogue makes (TF-032): what the seed puts into every tenant, and what a release's
+    /// controlled configuration hashes (TF-218, ADR-0052). The unit-client role only where a permission is for units.
+    /// </summary>
+    public static IReadOnlyList<SystemRoleDefinition> SystemRoleDefinitions(PermissionCatalogue catalogue)
     {
+        ArgumentNullException.ThrowIfNull(catalogue);
         var all = catalogue.All.Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
         var reads = all.Where(name => name.EndsWith(".read", StringComparison.Ordinal)).ToList();
-
-        await UpsertAsync(SystemRoles.TenantAdministrator, "Tenant administrator", "Every permission of this tenant.", PrincipalKind.Any, all, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ReadOnly, "Read only", "Read permissions only.", PrincipalKind.User, reads, cancellationToken).ConfigureAwait(false);
-        await UpsertAsync(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalKind.Service, reads, cancellationToken).ConfigureAwait(false);
         var notCritical = catalogue.All.Where(p => p.Risk != Risk.Critical).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
-        await UpsertAsync(SystemRoles.BreakGlass, "Break-glass", "An operator's emergency access, for a limited time: every permission of this tenant but the critical ones.", PrincipalKind.User, notCritical, cancellationToken).ConfigureAwait(false);
         var forUnits = catalogue.All.Where(p => p.ForUnitClients).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
+        List<SystemRoleDefinition> roles =
+        [
+            new(SystemRoles.TenantAdministrator, "Tenant administrator", "Every permission of this tenant.", PrincipalKind.Any, all),
+            new(SystemRoles.ReadOnly, "Read only", "Read permissions only.", PrincipalKind.User, reads),
+            new(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalKind.Service, reads),
+            new(SystemRoles.BreakGlass, "Break-glass", "An operator's emergency access, for a limited time: every permission of this tenant but the critical ones.", PrincipalKind.User, notCritical),
+        ];
         if (forUnits.Count > 0)
         {
-            await UpsertAsync(SystemRoles.UnitClient, "Unit client", "A tenant unit's own client in the control plane: it sends the unit's audit anchors and reads its chain's state, nothing else.", PrincipalKind.Service, forUnits, cancellationToken).ConfigureAwait(false);
+            roles.Add(new(SystemRoles.UnitClient, "Unit client", "A tenant unit's own client in the control plane: it sends the unit's audit anchors and reads its chain's state, nothing else.", PrincipalKind.Service, forUnits));
+        }
+
+        return roles;
+    }
+
+    /// <summary>
+    /// The seeds' canonical text (ADR-0052): one line per system role, by code, <c>code:permission,permission</c>, the
+    /// permissions in order. A release hashes it, and the installation record hashes the same lines read from a tenant's
+    /// database, so an installation is checked against the code that seeded it.
+    /// </summary>
+    public static string SeedsText(IEnumerable<(string Code, IEnumerable<string> Permissions)> roles)
+    {
+        ArgumentNullException.ThrowIfNull(roles);
+        return string.Concat(roles.OrderBy(r => r.Code, StringComparer.Ordinal).Select(r => $"{r.Code}:{string.Join(',', r.Permissions.Order(StringComparer.Ordinal))}\n"));
+    }
+
+    public async Task SeedAsync(CancellationToken cancellationToken)
+    {
+        foreach (var role in SystemRoleDefinitions(catalogue))
+        {
+            await UpsertAsync(role.Code, role.Name, role.Description, role.PrincipalType, [.. role.Permissions], cancellationToken).ConfigureAwait(false);
         }
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

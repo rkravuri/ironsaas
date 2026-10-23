@@ -161,6 +161,9 @@ public sealed class RecordingRuntime : IUnitRuntime
     /// <summary>The next command of this name fails once with this message.</summary>
     public (string Command, string Message)? FailNext { get; set; }
 
+    /// <summary>What the image's <c>version</c> command says (ADR-0052): a laptop build's by default.</summary>
+    public string Version { get; set; } = "development";
+
     public async Task<CommandResult> RunCommandAsync(UnitDefinition unit, IReadOnlyList<string> command, CancellationToken cancellationToken)
     {
         var name = command[0];
@@ -173,6 +176,8 @@ public sealed class RecordingRuntime : IUnitRuntime
 
         switch (name)
         {
+            case "version":
+                return new CommandResult(0, $"{Version}\n");
             case "seed":
                 await HandOverAsync(unit, "invitation", unit.Tenant.AdministratorLoginId, $"/invitations#{InvitationToken}", DateTimeOffset.UtcNow.AddDays(3), cancellationToken);
                 return new CommandResult(0, $"The administrator {unit.Tenant.AdministratorLoginId} was created in Invited status. Handed over an invitation to the operator who asked.\n");

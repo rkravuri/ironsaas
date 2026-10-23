@@ -9,7 +9,7 @@ IronSaaS Foundation is the enterprise SaaS platform for regulated industries, an
 3. Write a short plan into the session (ten lines at most: order of work, decisions you take, what you will leave out) and build. Do not wait for approval unless the "When to stop" rule applies.
 4. Commit as you go, in steps that build and test, with messages that say why.
 5. Keep `docs/STATUS.md` current: what is done, what is next, open questions, later items.
-6. Finish with the checks the section names, `make format`, and a report: what you built, what you left out and why, the test counts, the answers to the brief's six questions for every page you touched (ADR-0024, `docs/design/design-language.md` section 9), and screenshots of every page in both colour schemes (Playwright, saved under `shell/test-results/`). Then stop. Never merge; the design session answers with the merge or with corrections.
+6. Finish with the checks the section names, `make format`, and a report: what you built, what you left out and why, the test counts, a **Risk** section, the answers to the brief's six questions for every page you touched (ADR-0024, `docs/design/design-language.md` section 9), and screenshots of every page in both colour schemes (Playwright, saved under `shell/test-results/`). The Risk section names the requirements the task touched, their class (critical, high or normal, `docs/trace/risk.md`), and in a few sentences what could go wrong and what proves it does not; commit the same text as `docs/risk/<task>.md` (the branch's name without `slice/`, such as `s3-t8.md`), which the release's validation pack quotes (ADR-0052). Then stop. Never merge; the design session answers with the merge or with corrections.
 
 ## When to stop
 

@@ -1,0 +1,62 @@
+name: Download artifacts, retried
+description: >-
+  actions/download-artifact, tried up to three times with a pause between, so a connection the runner loses on the way
+  (CI run 39912627606, ECONNRESET while signing the artifact's URL) does not fail the matrix job that needs the files.
+inputs:
+  name:
+    description: The one artifact to download; leave empty to use the pattern.
+    required: false
+    default: ""
+  pattern:
+    description: A glob of artifact names to download, when no name is given.
+    required: false
+    default: ""
+  path:
+    description: Where the files go.
+    required: true
+  merge-multiple:
+    description: Put the files of every matching artifact into one folder.
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Download (first try)
+      id: first
+      continue-on-error: true
+      uses: actions/download-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        pattern: ${{ inputs.pattern }}
+        path: ${{ inputs.path }}
+        merge-multiple: ${{ inputs.merge-multiple }}
+
+    - name: Wait before the second try
+      if: steps.first.outcome == 'failure'
+      shell: bash
+      run: sleep 20
+
+    - name: Download (second try)
+      id: second
+      if: steps.first.outcome == 'failure'
+      continue-on-error: true
+      uses: actions/download-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        pattern: ${{ inputs.pattern }}
+        path: ${{ inputs.path }}
+        merge-multiple: ${{ inputs.merge-multiple }}
+
+    - name: Wait before the last try
+      if: steps.second.outcome == 'failure'
+      shell: bash
+      run: sleep 60
+
+    - name: Download (last try)
+      if: steps.second.outcome == 'failure'
+      uses: actions/download-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        pattern: ${{ inputs.pattern }}
+        path: ${{ inputs.path }}
+        merge-multiple: ${{ inputs.merge-multiple }}

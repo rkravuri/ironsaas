@@ -59,6 +59,7 @@ public sealed class FleetModule : IModule
         services.AddScoped<IProvisioningStep, SeedStep>();
         services.AddScoped<IProvisioningStep, UnitStep>();
         services.AddScoped<IProvisioningStep, VerifyStep>();
+        services.AddScoped<IProvisioningStep, ValidationPackStep>();
         services.AddScoped<IProvisioningStep, RemoveStep>();
         services.AddScoped<IProvisioningStep, RecoverStep>();
         services.AddScoped<IProvisioningStep, ImpersonateStep>();

@@ -26,6 +26,13 @@ if (UnitModules.IsCatalogueCommand(args))
     return await UnitModules.WriteCatalogueAsync(args);
 }
 
+// "version" and "configuration" say what release this image is and what it configures, for the fleet's update and the
+// release's installation record (ADR-0052); like the catalogue, they build no host.
+if (UnitModules.IsReleaseCommand(args))
+{
+    return await UnitModules.WriteReleaseAsync(args);
+}
+
 var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 
 // With Secrets:Address, Secrets:Token and Secrets:Path in the environment, the unit's secret supplies the rest of the

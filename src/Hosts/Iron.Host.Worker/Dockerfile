@@ -10,6 +10,10 @@ RUN dotnet publish src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj --configur
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS runtime
 WORKDIR /app
 COPY --from=build /app .
+# The release's version (ADR-0052), given by the release workflow; a laptop build has none and is a development build.
+ARG IRON_VERSION=development
+LABEL org.opencontainers.image.version=$IRON_VERSION
+ENV Release__Version=$IRON_VERSION
 # The base image's own non-root user, said here so the image's scan and its readers see it.
 USER $APP_UID
 EXPOSE 8080

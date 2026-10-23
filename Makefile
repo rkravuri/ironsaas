@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -63,9 +63,23 @@ format-check: shell-node ## Check the code style without changing a file, as CI 
 # The traceability matrix (TF-218, ADR-0044): every test's identifiers read from the sources, its result from the last
 # run's files under artifacts/test-results, the matrix written to artifacts/trace. It fails on an identifier no document
 # holds, and on a criterion of a done slice without a test that docs/trace/exceptions.md does not list.
-trace: ## Build the traceability matrix into artifacts/trace from the last results (ADR-0044); its own tests first
+trace: ## Build the traceability matrix into artifacts/trace from the last results (ADR-0044); its own tests and the validation pack's first
 	python3 tools/trace_test.py --junit $(RESULTS)/python/trace.xml
+	python3 tools/validation_pack_test.py --junit $(RESULTS)/python/validation-pack.xml
+	python3 tools/installation_record_test.py --junit $(RESULTS)/python/installation-record.xml
 	python3 tools/trace.py
+
+VALIDATION := $(CURDIR)/artifacts/validation
+
+installation-record: env ## Record the installation of a laptop tenant from the local images and check it against the code (TF-218, ADR-0052): make installation-record TENANT=echo, after make smoke and make e2e
+	python3 tools/installation_record.py --tenant $(TEST_TENANT) --repository foundation --tag $(TAG) --version development \
+	  --smoke-report $(RESULTS)/smoke/smoke-report.json --e2e-junit $(RESULTS)/e2e/junit.xml --output $(VALIDATION)/installation-record.json
+
+validation-pack: env ## Build the development validation pack from the last runs and the installation record, and publish it where the next make update-unit places it (ADR-0052)
+	@status=0; python3 tools/validation_pack.py --version development --installation $(VALIDATION)/installation-record.json --output $(VALIDATION) || status=$$?; \
+	test -f $(VALIDATION)/validation-pack-development.zip || exit 1; \
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps --volume $(VALIDATION):/packs:ro fleet publish-validation-pack development /packs/validation-pack-development.zip || exit 1; \
+	exit $$status
 
 # Every check in order, each on its own, so the shell's tests never run beside make test (ADR-0044): the requirement
 # documents, the .NET suite, the shell (lint, format, tests, build), the accessibility scan, the format check, and the
