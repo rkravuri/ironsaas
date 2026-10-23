@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Iron.Kernel.History;
 
 namespace Iron.Kernel.Audit.Contracts;
 
@@ -131,143 +132,16 @@ public static class AuditCanonicalForm
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Write(chained, previousHash, version))));
 
     /// <summary>The time as the form writes it: UTC, microseconds, a Z.</summary>
-    public static string Time(DateTimeOffset at) => at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture);
+    public static string Time(DateTimeOffset at) => CanonicalJson.Time(at);
 
+    // The rules of text, identifiers and JSON are the kernel's canonical JSON, which the snapshot form shares (ADR-0051).
     private static void Separate(StringBuilder builder) => builder.Append(',');
 
-    private static void Identifier(StringBuilder builder, Guid? id)
-    {
-        if (id is { } value)
-        {
-            Text(builder, value.ToString("D"));
-        }
-        else
-        {
-            builder.Append("null");
-        }
-    }
+    private static void Identifier(StringBuilder builder, Guid? id) => CanonicalJson.Identifier(builder, id);
 
-    private static void Text(StringBuilder builder, string? value)
-    {
-        if (value is null)
-        {
-            builder.Append("null");
-            return;
-        }
+    private static void Text(StringBuilder builder, string? value) => CanonicalJson.Text(builder, value);
 
-        builder.Append('"');
-        foreach (var character in value.Normalize(NormalizationForm.FormC))
-        {
-            switch (character)
-            {
-                case '"':
-                    builder.Append("\\\"");
-                    break;
-                case '\\':
-                    builder.Append("\\\\");
-                    break;
-                case '\b':
-                    builder.Append("\\b");
-                    break;
-                case '\f':
-                    builder.Append("\\f");
-                    break;
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-                case < ' ':
-                    builder.Append("\\u00").Append(((int)character).ToString("x2", CultureInfo.InvariantCulture));
-                    break;
-                default:
-                    builder.Append(character);
-                    break;
-            }
-        }
-
-        builder.Append('"');
-    }
-
-    private static void Details(StringBuilder builder, string? details)
-    {
-        if (string.IsNullOrWhiteSpace(details))
-        {
-            builder.Append("null");
-            return;
-        }
-
-        using var document = JsonDocument.Parse(details);
-        Value(builder, document.RootElement);
-    }
-
-    private static void Value(StringBuilder builder, JsonElement element)
-    {
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Object:
-                builder.Append('{');
-                var first = true;
-                foreach (var property in element.EnumerateObject().OrderBy(p => p.Name, StringComparer.Ordinal))
-                {
-                    if (!first)
-                    {
-                        Separate(builder);
-                    }
-
-                    first = false;
-                    Text(builder, property.Name);
-                    builder.Append(':');
-                    Value(builder, property.Value);
-                }
-
-                builder.Append('}');
-                break;
-            case JsonValueKind.Array:
-                builder.Append('[');
-                var head = true;
-                foreach (var item in element.EnumerateArray())
-                {
-                    if (!head)
-                    {
-                        Separate(builder);
-                    }
-
-                    head = false;
-                    Value(builder, item);
-                }
-
-                builder.Append(']');
-                break;
-            case JsonValueKind.String:
-                Text(builder, element.GetString());
-                break;
-            case JsonValueKind.Number:
-                builder.Append(Number(element.GetRawText()));
-                break;
-            case JsonValueKind.True:
-                builder.Append("true");
-                break;
-            case JsonValueKind.False:
-                builder.Append("false");
-                break;
-            default:
-                builder.Append("null");
-                break;
-        }
-    }
-
-    /// <summary>A number as its decimal value: no exponent, no trailing zeros after the point, no point when whole.</summary>
-    private static string Number(string raw)
-    {
-        var value = decimal.Parse(raw, NumberStyles.Float, CultureInfo.InvariantCulture);
-        var text = value.ToString("0.############################", CultureInfo.InvariantCulture);
-        return text == "-0" ? "0" : text;
-    }
+    private static void Details(StringBuilder builder, string? details) => CanonicalJson.Json(builder, details);
 }
 
 /// <summary>Where a tenant's chain stands (TF-061): its last sealed position and that event's hash.</summary>

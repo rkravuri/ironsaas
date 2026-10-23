@@ -1,6 +1,7 @@
 using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Authorization.Contracts;
+using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Retention;
@@ -129,6 +130,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<AuthenticationChallenges>();
         services.AddScoped<FactorService>();
         services.AddScoped<ReauthenticationService>();
+
+        // Proving the signer of an electronic signature (ADR-0051): Compliance declares it, Identity holds the credentials.
+        services.AddScoped<ISignerAuthentication, SignerAuthentication>();
         services.Replace(ServiceDescriptor.Singleton<IRecentAuthentication, RequestRecentAuthentication>());
         services.AddScoped<IValidator<SecondFactorRequest>, SecondFactorRequestValidator>();
         services.AddScoped<IValidator<ConfirmAuthenticatorAppRequest>, ConfirmAuthenticatorAppRequestValidator>();

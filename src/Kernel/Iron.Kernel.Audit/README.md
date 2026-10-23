@@ -136,6 +136,25 @@ for line in open(sys.argv[1], encoding="utf-8"):
 
 For events still in the database, the same columns come from `kernel_audit.events` (`chain_position` is the position; `created_at` written as rule 4). A test recomputes the form with an implementation of its own (`AuditChainTests`).
 
+### A signed snapshot's canonical form, for auditors (ADR-0051)
+
+A signature (`kernel_compliance.signatures`, the Compliance module) keeps `snapshot`, the record's content at the version signed, already written in this form, and `snapshot_hash`, its SHA-256. The form, version 1 (`snapshot_form`):
+
+1. A JSON array, compactly, of five values: the text `"iron-snapshot-v1"`; `record_type`; `record_id`; `record_version`, a whole number; and the content, an object whose fields the record's module names in snake_case.
+2. Text, identifiers, objects and numbers follow rules 2 to 4 of the event's form above.
+3. The hash is SHA-256 of the array's UTF-8 bytes, in lowercase hexadecimal.
+
+The record's type, id and version are inside the hash, so the same content under another record or version hashes differently: a signature cannot be moved. To check a signature, hash `snapshot` and compare it with `snapshot_hash`; to check that the text is the canonical form, rebuild it from its own parts with the functions above:
+
+```python
+def snapshot_hash(row):
+    label, record_type, record_id, version, content = json.loads(row["snapshot"], parse_float=Decimal, parse_int=Decimal)
+    rebuilt = "[" + ",".join([text(label), text(record_type), text(record_id), str(int(version)), value(content)]) + "]"
+    assert rebuilt == row["snapshot"], "not in the canonical form"
+    assert (record_type, record_id, int(version)) == (row["record_type"], row["record_id"], row["record_version"])
+    return hashlib.sha256(rebuilt.encode("utf-8")).hexdigest() == row["snapshot_hash"]
+```
+
 ## Field-level history (TF-062, ADR-0051)
 
 A business record, and every kernel entity people change (people, roles, assignments, units, settings, providers), is `ITrackedChanges`; the build fails for a business record without it (`ModelCheck`). `ChangeHistoryInterceptor` in `Iron.Kernel.Data` collects every tracked entity a save adds, changes or deletes, and in the same transaction `AuditChangeRecorder` writes one event per entity: `record.created`, `record.changed` or `record.deleted`, with the record's type and id, its new version in `details`, the actor, the person acted for or the impersonator, the reason (`IChangeReason`) and the correlation id, and the fields in `changes`, each with its old and new value as text. A field marked `[Sensitive]` keeps only its last four characters (`****3000`, treatment `masked`); a `[Secret]` field only says it changed (treatment `secret`, no values); `[NotTracked]` and the bookkeeping columns (stamps, version, soft delete) are left out. A save whose history cannot be written is rolled back.

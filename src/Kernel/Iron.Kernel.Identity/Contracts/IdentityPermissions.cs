@@ -79,6 +79,9 @@ public static class IdentityErrors
     /// <summary>A person may not deactivate themselves: another administrator does it, so the tenant always keeps one.</summary>
     public const string UserSelf = "identity.user.self";
     public const string LoginIdTaken = "identity.login_id.taken";
+
+    /// <summary>The login identifier was given to someone before (TF-219): it stays theirs, after deactivation and removal.</summary>
+    public const string LoginIdRetired = "identity.login_id.retired";
     public const string ClientInvalid = "identity.client.invalid";
 
     /// <summary>No user with this id, or none the reader may see: the same answer, so a link reveals nothing (ADR-0031).</summary>

@@ -50,6 +50,10 @@
     <Project Path="src/Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
   </Folder>
+  <Folder Name="/src/Kernel/Iron.Kernel.Compliance/">
+    <Project Path="src/Kernel/Iron.Kernel.Compliance/Iron.Kernel.Compliance.csproj" />
+    <Project Path="src/Kernel/Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/Hosts/">
     <Project Path="src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />
     <Project Path="src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj" />
@@ -78,6 +82,7 @@
     <Project Path="tests/Kernel/Iron.Kernel.Entitlements.Tests/Iron.Kernel.Entitlements.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Flags.Tests/Iron.Kernel.Flags.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Settings.Tests/Iron.Kernel.Settings.Tests.csproj" />
+    <Project Path="tests/Kernel/Iron.Kernel.Compliance.Tests/Iron.Kernel.Compliance.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Iron.ProcessMaps/Iron.ProcessMaps.csproj" />

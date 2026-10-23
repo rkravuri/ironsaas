@@ -15,6 +15,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 {
     public DbSet<Principal> Principals => Set<Principal>();
 
+    public DbSet<LoginIdReservation> LoginIdReservations => Set<LoginIdReservation>();
+
     public DbSet<Session> Sessions => Set<Session>();
 
     public DbSet<PasswordHistoryEntry> PasswordHistory => Set<PasswordHistoryEntry>();
@@ -127,6 +129,13 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             entry.HasOne<Principal>().WithMany().HasForeignKey(e => e.PrincipalId).OnDelete(DeleteBehavior.Cascade);
             entry.Property(e => e.PasswordHash).HasMaxLength(200);
             entry.HasIndex(e => new { e.PrincipalId, e.SetAt });
+        });
+
+        modelBuilder.Entity<LoginIdReservation>(reservation =>
+        {
+            reservation.ToTable("login_id_reservations");
+            reservation.Property(r => r.LoginId).HasMaxLength(Principal.LoginIdMaxLength);
+            reservation.HasIndex(r => r.LoginId).IsUnique();
         });
 
         modelBuilder.Entity<LoginThrottle>(throttle =>

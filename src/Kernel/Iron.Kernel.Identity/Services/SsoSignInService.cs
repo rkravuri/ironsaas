@@ -344,6 +344,9 @@ public sealed class SsoSignInService(
         }
 
         var stamped = await sessions.ReauthenticatedAsync(sessionId, cancellationToken).ConfigureAwait(false);
+
+        // The fresh sign-in a signature by someone without a password needs (ADR-0051): one signature takes it.
+        await context.Sessions.Where(s => s.Id == sessionId).ExecuteUpdateAsync(s => s.SetProperty(x => x.ProviderConfirmedAt, stamped), cancellationToken).ConfigureAwait(false);
         var details = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["method"] = "sso",
@@ -445,6 +448,13 @@ public sealed class SsoSignInService(
         if (home is not { Status: UnitStatus.Active })
         {
             return await RefuseAsync(provider, null, email, "home_unit", IdentityErrors.SsoNoAccount, $"{provider.Name} would create your account in a unit that is closed. Ask your administrator.", cancellationToken).ConfigureAwait(false);
+        }
+
+        // An identifier that belonged to someone removed stays theirs (TF-219, ADR-0051): no new account takes it.
+        var wanted = Principal.NormaliseLoginId(email);
+        if (await context.LoginIdReservations.AnyAsync(r => r.LoginId == wanted, cancellationToken).ConfigureAwait(false))
+        {
+            return await RefuseAsync(provider, null, email, "login_id_retired", IdentityErrors.LoginIdRetired, $"{provider.Name} signed you in as {email}, but that login identifier belonged to someone before here and is never given to a second person. Ask your administrator.", cancellationToken).ConfigureAwait(false);
         }
 
         var name = string.IsNullOrWhiteSpace(identity.Name) ? email : identity.Name.Trim();

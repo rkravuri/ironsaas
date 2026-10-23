@@ -170,6 +170,19 @@ public sealed class Session : AuditedEntity
 
     public bool IsImpersonation => ImpersonatorName is not null;
 
+    /// <summary>
+    /// When the first signature of this session was made with every component (ADR-0051, Part 11 section 11.200): the
+    /// series it starts lets later signatures ask for the password alone. A new session, after sign-out or after the idle
+    /// limit ended this one, starts again at the first rule.
+    /// </summary>
+    public DateTimeOffset? SigningSince { get; private set; }
+
+    /// <summary>
+    /// When a fresh sign-in at the person's company login last confirmed them in this session (TF-248 AC6, ADR-0048):
+    /// a signature by someone without a password takes it, once (ADR-0051).
+    /// </summary>
+    public DateTimeOffset? ProviderConfirmedAt { get; private set; }
+
     /// <summary>Someone signs in as the person: who, why, until when, and the session to return to.</summary>
     public void Impersonated(Guid impersonatorId, string impersonatorName, string reason, DateTimeOffset endsAt, Guid? returnSessionId)
     {

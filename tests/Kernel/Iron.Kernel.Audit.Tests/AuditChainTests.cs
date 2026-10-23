@@ -97,7 +97,7 @@ public class AuditChainTests(AuditFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-062 AC1", "ADR-0051")]
+    [Proves("TF-062 AC1", "TF-062 AC4", "ADR-0051")]
     public async Task VersionOneEventsStayVerifiableBesideVersionTwoAndAChangedFieldListIsFound()
     {
         var database = await fixture.NewChainDatabaseAsync("versions");

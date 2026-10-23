@@ -190,6 +190,61 @@ services.AddRetainedRecords<OrderRetention>();
 
 The retention job archives each expired record's `Content` to the tenant's container, skips any a legal hold keeps (the record, its master such as the supplier, or the whole tenant), calls `DeleteAsync` with the rest, and writes `audit.record_expired` for each. The data tests' `SampleOrderRetention` and Identity's `SessionRetention` are the references. A new class is a decision: an ADR, then `RetentionClasses`.
 
+## A record's history (TF-062, ADR-0051)
+
+Every business record is tracked: mark the entity `ITrackedChanges`, or the model check fails naming it. Mark a field `[Sensitive]` to keep only its last four characters in the history (a bank account), `[Secret]` to keep only that it changed (a key's hash), and `[NotTracked]` for what changes by itself and other events already tell (a counter, a last-seen time). Nothing else is needed: each save writes one `record.changed` event per record with its fields, old and new, in the save's own transaction, and the record's History tab shows it. A public `const string RecordType` on the entity names it in the history; otherwise its table's name does. To give the change a reason, set `IChangeReason.Reason` before the save.
+
+## Signing a record (TF-063, TF-219, ADR-0051)
+
+A module lets people sign a document type by declaring it and writing its snapshot:
+
+```csharp
+public sealed class OrderSignatures(OrdersDbContext orders, IOrderAccess access) : ISignableRecords
+{
+    public static SignableType Type { get; } = new("order", "Purchase order",
+        [SignatureMeanings.Approved, SignatureMeanings.Rejected],
+        new SigningPolicy(Required: true, [SignatureMeanings.Approved, SignatureMeanings.Rejected], Reauthenticate: true));
+
+    public IReadOnlyList<SignableType> Types => [Type];
+
+    public static RecordSnapshot Snapshot(Order order) =>
+        RecordSnapshot.Of("order", order.Id, order.Version, order.Number, new { order.Number, order.SupplierId, order.Total, Lines = order.Lines.Select(l => new { l.Item, l.Quantity, l.Price }) });
+
+    public async Task<RecordSnapshot?> CurrentAsync(string recordType, Guid id, CancellationToken cancellationToken) =>
+        await orders.Orders.AsNoTracking().Include(o => o.Lines).SingleOrDefaultAsync(o => o.Id == id, cancellationToken) is { } order ? Snapshot(order) : null;
+
+    public Task<bool> MayReadAsync(string recordType, Guid id, CancellationToken cancellationToken) => access.MayReadAsync(id, cancellationToken);
+}
+
+services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignableRecords, OrderSignatures>());
+```
+
+The snapshot is every field a person decided on, at the record's version; never a time the database rounds, nor a name that can change elsewhere. Then the module signs inside its own action, the signer proved before the transaction so a wrong password counts whatever happens next:
+
+```csharp
+var policy = await signatures.PolicyAsync("order", cancellationToken);
+SignerProof? proof = null;
+if (policy.Required)
+{
+    var proved = await signatures.AuthenticateAsync("order", request.Signature?.ToCredentials() ?? SigningCredentials.None, cancellationToken);
+    if (proved.IsFailure) return proved.Error;
+    proof = proved.Value;
+}
+
+await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
+order.Approve();
+await orders.SaveChangesAsync(cancellationToken);
+if (proof is not null)
+{
+    var signed = await signatures.RecordAsync(proof, OrderSignatures.Snapshot(order), SignatureMeanings.Approved, request.Comment, cancellationToken);
+    if (signed.IsFailure) return signed.Error;
+}
+
+await transaction.CommitAsync(cancellationToken);
+```
+
+Identity decides what the credentials must be (the first signature of a session asks for the login identifier, the password and the second factor; later ones for the password), and refuses impersonation, acting for someone, tokens and service accounts; the module never reads a credential. The shell's `SigningDialog` asks for what `GET /api/v1/signatures/challenge?record_type=` says, and the record template's `SignatureBlock` shows a record's signatures, on screen and in print. Access review decisions (`AccessReviewSignatures`) and audit-trail reviews (`AuditTrailReviews`) are the references; the Compliance tests' sample document is a business record signed and changed.
+
 ## Writing an endpoint (ADR-0009)
 
 - Group the resource with `endpoints.MapApiGroup("users")`; the path becomes `/api/v1/users`. Resource names are plural kebab-case nouns.

@@ -115,7 +115,7 @@ public class ChangeHistoryTests(PostgresFixture fixture)
     }
 
     [Fact]
-    [Proves("ADR-0051", "ADR-0013")]
+    [Proves("TF-062 AC4", "ADR-0051", "ADR-0013")]
     public async Task ASaveWhoseHistoryCannotBeWrittenIsRolledBack()
     {
         var recorder = new CapturingRecorder { Fail = true };

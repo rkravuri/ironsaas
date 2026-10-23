@@ -2,6 +2,7 @@ using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
+using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Data.Transactions;
 using Microsoft.EntityFrameworkCore;
@@ -43,7 +44,14 @@ public sealed record ReviewView(
     IReadOnlyList<ReviewUnitProgress> ByUnit,
     bool CanManage);
 
-public sealed record ItemDecisionView(ReviewDecision Decision, string? Comment, ReviewPerson DecidedBy, DateTimeOffset DecidedAt, bool AssignmentRemoved);
+public sealed record ItemDecisionView(ReviewDecision Decision, string? Comment, ReviewPerson DecidedBy, DateTimeOffset DecidedAt, bool AssignmentRemoved)
+{
+    /// <summary>The decision's own id: the record its signature applies to (ADR-0051).</summary>
+    public Guid? DecisionId { get; init; }
+
+    /// <summary>The decision's signature, when the tenant's policy had it signed (TF-063).</summary>
+    public SignatureSummary? Signature { get; init; }
+}
 
 /// <summary>
 /// One item to decide: the assignment as it stood when the campaign started, and the decision once there is one.
@@ -97,6 +105,7 @@ public sealed class ReviewService(
     IAuditWriter audit,
     ICurrentPrincipal current,
     UnitReviewers reviewers,
+    ISignatures signatures,
     TimeProvider time)
 {
     public const string RecordType = "access_review";
@@ -326,6 +335,9 @@ public sealed class ReviewService(
         var ids = items.Select(i => i.Id).ToArray();
         var decisions = await context.AccessReviewDecisions.AsNoTracking().Where(d => ids.Contains(d.ItemId)).ToDictionaryAsync(d => d.ItemId, cancellationToken).ConfigureAwait(false);
         var people = await principals.FindAsync([.. decisions.Values.Select(d => d.CreatedBy).Distinct()], cancellationToken).ConfigureAwait(false);
+        var signed = (await signatures.SummariesAsync(AccessReviewSignatures.RecordType, [.. decisions.Values.Select(d => d.Id)], cancellationToken).ConfigureAwait(false))
+            .GroupBy(s => s.RecordId)
+            .ToDictionary(g => g.Key, g => g.Last());
         var withOwner = new HashSet<Guid>();
         foreach (var reviewId in items.Select(i => i.ReviewId).Distinct())
         {
@@ -348,6 +360,10 @@ public sealed class ReviewService(
         {
             ItemDecisionView? decision = decisions.TryGetValue(item.Id, out var made)
                 ? new ItemDecisionView(made.Decision, made.Comment, new ReviewPerson(made.CreatedBy, people.TryGetValue(made.CreatedBy, out var by) ? by.DisplayName : made.CreatedBy.ToString("D")), made.CreatedAt, made.AssignmentRemoved)
+                {
+                    DecisionId = made.Id,
+                    Signature = signed.GetValueOrDefault(made.Id),
+                }
                 : null;
             return new ReviewItemView(
                 item.Id,
@@ -375,7 +391,15 @@ public sealed class ReviewService(
     /// of a unit the reader does not review is refused and audited like any check at that place; an item about the
     /// reader's own access is refused with its own code.
     /// </summary>
-    public async Task<Result<ReviewItemView>> DecideAsync(Guid reviewId, Guid itemId, ReviewDecision decision, string? comment, string operation, CancellationToken cancellationToken)
+    public Task<Result<ReviewItemView>> DecideAsync(Guid reviewId, Guid itemId, ReviewDecision decision, string? comment, string operation, CancellationToken cancellationToken) =>
+        DecideAsync(reviewId, itemId, decision, comment, null, operation, cancellationToken);
+
+    /// <summary>
+    /// Decides one item, signed when the tenant's policy for access review decisions requires it (TF-063 AC1, ADR-0051):
+    /// the signer is proved before the transaction, so a wrong password counts whatever happens next, and the decision
+    /// and its signature, "approved" for a confirm and "rejected" for a revoke, commit together.
+    /// </summary>
+    public async Task<Result<ReviewItemView>> DecideAsync(Guid reviewId, Guid itemId, ReviewDecision decision, string? comment, SigningCredentials? credentials, string operation, CancellationToken cancellationToken)
     {
         var review = await context.AccessReviews.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reviewId, cancellationToken).ConfigureAwait(false);
         if (review is null)
@@ -405,6 +429,18 @@ public sealed class ReviewService(
             return Error.Conflict(AuthorizationErrors.ReviewClosed, "This review is closed, so its items cannot be decided any more.");
         }
 
+        SignerProof? proof = null;
+        if ((await signatures.PolicyAsync(AccessReviewSignatures.RecordType, cancellationToken).ConfigureAwait(false)).Required)
+        {
+            var proved = await signatures.AuthenticateAsync(AccessReviewSignatures.RecordType, credentials ?? SigningCredentials.None, cancellationToken).ConfigureAwait(false);
+            if (proved.IsFailure)
+            {
+                return proved.Error;
+            }
+
+            proof = proved.Value;
+        }
+
         bool removed;
         await using (var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false))
         {
@@ -427,8 +463,18 @@ public sealed class ReviewService(
                 removed = removal.IsSuccess;
             }
 
-            context.AccessReviewDecisions.Add(new AccessReviewDecision(reviewId, itemId, decision, comment, removed));
+            var made = new AccessReviewDecision(reviewId, itemId, decision, comment, removed);
+            context.AccessReviewDecisions.Add(made);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            if (proof is not null)
+            {
+                var signed = await signatures.RecordAsync(proof, AccessReviewSignatures.Snapshot(made, item), AccessReviewSignatures.MeaningOf(decision), comment, cancellationToken).ConfigureAwait(false);
+                if (signed.IsFailure)
+                {
+                    return signed.Error;
+                }
+            }
+
             await WriteDecisionAsync(item, decision, comment, removed, cancellationToken).ConfigureAwait(false);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -475,6 +521,12 @@ public sealed class ReviewService(
         if (!review.IsOpen)
         {
             return Error.Conflict(AuthorizationErrors.ReviewClosed, "This review is closed, so its items cannot be decided any more.");
+        }
+
+        // A signature is one person's act on one decision (ADR-0051): when they must be signed, they are decided one by one.
+        if ((await signatures.PolicyAsync(AccessReviewSignatures.RecordType, cancellationToken).ConfigureAwait(false)).Required)
+        {
+            return Error.Conflict(ComplianceErrors.Required, "Your organisation asks for a signature on each decision, so confirm them one at a time.");
         }
 
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
