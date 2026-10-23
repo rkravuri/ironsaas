@@ -44,7 +44,8 @@ export function AuditPage() {
     {
       field: "created_at",
       headerKey: "audit.columns.at",
-      width: 205,
+      // The zone's name reads in full, "GMT+5:30" as much as "UTC" (TF-065 AC2).
+      width: 235,
       sortable: true,
       format: (e) => formatDateTime(e.created_at),
     },

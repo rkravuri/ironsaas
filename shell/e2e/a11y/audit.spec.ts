@@ -183,6 +183,12 @@ for (const scheme of schemes) {
     await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("identity.user.deactivated");
     await expect(grid.locator('.ag-row[row-index="0"]').first()).toContainText("GMT+5:30");
     await expect(grid.locator('.ag-row[row-index="2"]').first()).toContainText("Olga Operator signed in as Admin");
+    // When, with its zone, and who read in full at 1280 pixels: no cell of theirs is cut short.
+    for (const column of ["created_at", "actor_id"]) {
+      for (const cell of await grid.locator(`.ag-row .ag-cell[col-id="${column}"]`).all()) {
+        expect(await cell.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+      }
+    }
     await page.screenshot({ path: `test-results/a11y/audit-search-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
