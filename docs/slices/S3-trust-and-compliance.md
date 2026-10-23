@@ -70,7 +70,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 | T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | in review (slice/s3-t6) |
 | T7 | Field-level change history, electronic signatures, signature manifestation, audit-trail review | TF-062, TF-063, TF-219 | outline |
 | T8 | Evidence exports, second approval for sensitive changes, validation pack per release | TF-067, TF-068, TF-218 | outline |
-| T9 | Hardening: input validation and output encoding review, rate limits and anti-automation (the "Use your company login" answer included, T4's review), encryption in transit, key management and rotation | TF-070 to TF-075 | outline |
+| T9 | Hardening: input validation and output encoding review, rate limits and anti-automation (the "Use your company login" answer included, T4's review), encryption in transit, key management and rotation; the control plane's own audit trail sealed into a chain, and the control plane connecting with its own database role, not as the database's owner (T6's review) | TF-070 to TF-075 | outline |
 | T10 | Secure development lifecycle, vulnerability management, security monitoring and incident response | TF-076, TF-077, TF-079 | outline |
 | S3-close | Smoke steps, documentation, closing notes | | not started |
 

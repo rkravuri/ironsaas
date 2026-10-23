@@ -171,7 +171,15 @@ A tenant's administrators see the same on the Chain status page under Audit.
 
 The alert is an error line starting `ALERT:` in the fleet's log, the counter `audit.verification_failures`, and `tenancy.audit_chain_broken` at high severity in the control plane's trail. Treat it as an incident: keep the tenant's database as it is (a copy for the investigation), find the event's time and correlation id in the archive or a backup, and check the database's own logs for who connected as the owner. The Audit README's canonical form lets anyone recompute a hash by hand.
 
-*A restore point.* After the tenant's database is restored from a backup, its chain ends before the latest anchor. The record says `RESTORED` and names the restore point: the last position whose hash matches an anchor, and that anchor's time. Every event after it was lost with the restore; the trail from before is intact. New events are sealed from the restored head, so the anchors for positions the control plane already held are refused as conflicts (`tenancy.audit_anchor_conflict`), and each verification keeps reporting the same restore point. Record the incident with the restore point; accepting a restore so the chain continues from it is a later item.
+*A restore point.* After the tenant's database is restored from a backup, its chain ends before the latest anchor. The record says `RESTORED` and names the restore point: the last position whose hash matches an anchor, and that anchor's time. Every event after it was lost with the restore; the trail from before is intact. New events are sealed from the restored head, so the anchors for positions the control plane already held are refused as conflicts (`tenancy.audit_anchor_conflict`), and each verification reports the same restore point until it is accepted.
+
+*Accepting a restore.* Once the incident is investigated and the restore point is the one you expect, accept it with its ticket and a reason:
+
+```
+make audit-accept-restore TENANT=echo TICKET=INC-77 REASON="Restored from last night's backup after the disk failure"
+```
+
+It needs `tenancy.audit_restores.accept` (critical) and a fresh token, which the script asks for. The control plane keeps the restore for good, writes `tenancy.audit_restore_accepted`, and asks the fleet for a full verification, which the script waits for and prints: it passes. The chain continues as a new segment from the position after the restore point; the lost positions keep their old anchors in the segment before. Within a minute the unit records the acceptance in the tenant's own trail (`audit.restore_accepted`) and the Chain status page shows the restore and the range lost from then on. A restore that is not the one you expect is not to be accepted: treat it as a verification failure. `make audit-chain TENANT=echo` lists the accepted restores with the verifications and anchors.
 
 *An anchor conflict* without a restore means the unit sealed a different event at a position the control plane anchored: treat it as a verification failure.
 

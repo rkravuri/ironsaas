@@ -1,8 +1,8 @@
 # ADR-0050: The audit chain, its verification, archive and retention, legal holds, the time source and logs apart
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-23
-**Decided by:** Product owner and architect (S3 T6; for the design session's review)
+**Decided by:** Product owner and architect, at the design session's review of S3 T6 (2026-10-23), which added the accepted restore and its segments, and the operators and break-glass accounts in the search
 
 ## Context
 
@@ -29,7 +29,7 @@ The audit trail has been append-only since S1 (TF-060, ADR-0013): the app role m
 - After each seal, the unit sends an anchor (position, hash, time) to the control plane, as the unit's own client: the fleet makes one per unit (client credentials, the `unit-client` role, which carries only `tenancy.audit_anchors.append`) and puts its secret in the unit secret. The control plane binds the client to its tenant, so a unit can only anchor its own chain.
 - The control plane keeps anchors append-only: the same anchor again is answered as taken; another hash for an anchored position is refused (409), audited at high severity and counted (`audit.anchor_conflicts`). Its tables take inserts only (a test proves the grants refuse updates and deletes).
 - **In Azure, anchors also go to immutable blob storage** (time-based retention). The laptop's storage emulator cannot enforce immutability, so this is the first Azure deployment's requirement.
-- On the laptop the control plane connects as its database's owner; the insert-only grants are proven in tests, and a control-plane app role of its own is a later item (T9).
+- On the laptop the control plane connects as its database's owner; the insert-only grants are proven in tests, and a control-plane role of its own is T9's (the review set it there).
 
 ### The verifier is not the writer
 
@@ -38,11 +38,20 @@ The audit trail has been append-only since S1 (TF-060, ADR-0013): the app role m
 - Every event must follow at the next position, link to the hash before it, and recompute to its own hash; every anchor in the range must match. A missing position is a deleted event, a recomputation that differs is a changed event, each reported with its position and the event's identifier (TF-061 AC2).
 - **A record of every run** goes to the control plane: the range, the result, what it found, the time (AC1). A run that did not pass raises the alert: an error line starting `ALERT:`, the counter `audit.verification_failures`, and a high-severity event in the control plane's trail.
 - **After a restore** the chain ends before its latest anchor. The result is `restored`, not `failed`, when that is the only disagreement, and the record names the restore point: the last position whose hash matches an anchor, with the anchor's time (AC3). Anything else, a missing or changed event above all, is `failed`.
+
+### An accepted restore, and the chain's segments
+
+- **An operator accepts a restore point** the latest verification names, with a ticket, a reason and a fresh token (`tenancy.audit_restores.accept`, critical; `make audit-accept-restore TENANT=x TICKET=y REASON="..."`). Only a `restored` result can be accepted, and only once. The control plane keeps the record (the restore point, its hash and time, the range lost, the ticket, the reason, the operator) for good, writes `tenancy.audit_restore_accepted` at high severity, and asks the fleet for a full verification.
+- **The chain continues as a new segment.** The first segment starts at position 1 from the genesis hash; each accepted restore starts the next from the position after the restore point, its first event linking to the restore point's hash. A position belongs to the latest segment that starts at or before it.
+- **Anchors are keyed by segment and position.** An anchor goes to the segment that covers its position when it arrives. A position the restore lost keeps its old anchor in the segment before, as the record of what was lost, and the new segment anchors that position afresh without a conflict.
+- **The verification covers every segment and the links between them.** An anchor counts only in the segment that covers its position, so the lost range is no disagreement; the first event of each segment must link to the restore point the operator accepted, or the result is `failed` (`relinked`). After an accepted restore, the verification passes.
+- **The tenant's own trail records it.** The unit asks the control plane where it stands once a minute: a restore it has not recorded goes into its `chain_restores` table with the event `audit.restore_accepted`, in one transaction, and it sends its anchors again from the restore point in the new segment. The Chain status page always shows every accepted restore with the range it lost, who accepted it, the ticket and the reason.
 - A tenant the fleet cannot reach is tried again an hour later.
 
 ### Search, export and the History tab
 
 - `audit.events.read` searches by time, actor, impersonator, record, type and source; a search by record answers its events in time order (TF-064 AC1); without the permission it is refused (AC3).
+- **"Signed in as them by"** offers, by name and grouped, everyone the trail names as having signed in as someone (the platform's operators, by the name the writer kept with each event, and the tenant's people) and every break-glass account. A break-glass account acts as itself, so choosing one finds its events as the actor (ADR-0049); the results name them all.
 - **An export** writes the search to CSV in the tenant's container (`audit/exports/{id}.csv`), its first lines the title and the filters, every cell guarded against spreadsheet formulas, and hands it over as a download. The export is itself an audit event.
 - The record template's History tab shows a record's events, newest first, to a person who may read the trail.
 
@@ -86,6 +95,6 @@ The audit trail has been append-only since S1 (TF-060, ADR-0013): the app role m
 - Tampering with the trail is now detectable by someone outside the unit, and the trail is searchable for its whole retention, in the database and the archive alike.
 - An event waits a few seconds for its place in the chain; a page may show "Not sealed yet".
 - Units made before T6 have no verifier role and no unit client: `make update-unit` gives them both. Until then the fleet logs once an hour that it cannot verify them, and nothing is anchored. Units reach the control plane at `http://control-api:8080` when it runs in containers (`make up-control`), not from `make run-control`.
-- After a restore, the unit seals new events at positions the control plane anchored before; those anchors are refused as conflicts, and each verification reports `restored` with the same restore point. Recording that an operator accepted a restore, so the chain continues from it, is a later item.
-- The control plane's own audit trail is not sealed yet; its anchors and verification records are append-only. Sealing it is a later item.
-- Later: the control plane's own database role (T9); immutable blob storage for anchors (the first Azure deployment); the operator console's pages for verifications (the records and alerts exist now).
+- After a restore and before its acceptance, the unit's anchors for positions the control plane anchored before are refused as conflicts, and each verification reports `restored` with the same restore point; that is the state an operator investigates and then accepts.
+- T9 seals the control plane's own audit trail into a chain and gives the control plane its own database role rather than the owner's (the review set both there); its anchors, restores and verification records are append-only now.
+- Later: immutable blob storage for anchors (the first Azure deployment); the operator console's pages for verifications and restores (the records, alerts and make targets exist now).

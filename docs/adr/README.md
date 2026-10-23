@@ -57,7 +57,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0047](0047-second-factors-and-step-up.md) | Second factors, the MFA policy, recovery of a lost device, and step-up re-authentication | Accepted |
 | [0048](0048-single-sign-on-with-openid-connect.md) | Single sign-on with OpenID Connect: providers, the code flow, who it signs in, and a test provider | Accepted |
 | [0049](0049-sessions-revocation-impersonation-break-glass-and-terms.md) | Sessions, revocation, impersonation, break-glass, emergency accounts and terms | Accepted |
-| [0050](0050-audit-chain-time-retention-and-legal-holds.md) | The audit chain, its verification, archive and retention, legal holds, the time source and logs apart | Proposed |
+| [0050](0050-audit-chain-time-retention-and-legal-holds.md) | The audit chain, its verification, archive and retention, legal holds, the time source and logs apart | Accepted |
 
 ## Reading order
 

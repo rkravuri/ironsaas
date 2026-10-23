@@ -25,7 +25,8 @@ Kernel module (ADR-0029). Schema `kernel_audit`. The audit trail (TF-060, ADR-00
 | `POST /api/v1/audit-events/exports` | The same query to CSV in the tenant's container, its first lines the title and the filters, every cell guarded against spreadsheet formulas; answers its download address. Audited as `audit.events_exported`. |
 | `GET /api/v1/audit-events/exports/{id}/content` | The CSV. |
 | `GET /api/v1/audit-events/archived` | The archive by date range (`from`, `to`) and `event_type`, `actor_id`, `impersonator_id`, `record_type`, `record_id`, `source`; at most 500 rows, oldest first (TF-064 AC2). |
-| `GET /api/v1/audit-chain` | The chain's head, what waits for a seal, archived and pruned positions, the latest seals, how far the control plane holds anchors, and its latest verification. |
+| `GET /api/v1/audit-events/impersonators` | Everyone the "signed in as them by" filter offers, by name: the operators and people who signed in as someone (found by `impersonator_id`) and the break-glass accounts (found by `actor_id`, since they act as themselves). |
+| `GET /api/v1/audit-chain` | The chain's head and segment, what waits for a seal, archived and pruned positions, the latest seals, how far the control plane holds anchors, its latest verification, and every accepted restore with the range it lost. |
 | `GET /api/v1/retention`, `PUT /api/v1/retention/{code}` | The classes with their days and the operator's limits; a choice with `days` and `reason`, refused below the minimum (TF-066 AC3). |
 | `GET /api/v1/legal-holds`, `POST /api/v1/legal-holds`, `POST /api/v1/legal-holds/{id}/release` | Holds on the tenant, a record or a master's records, each placed and released with a reason. |
 
@@ -44,6 +45,8 @@ Event types are named by the module that raises them: `authz.permission_denied`,
 Events are written as before, by many transactions at once. The unit's worker seals them every few seconds (`Audit:Sealing:Seconds`, 5): under the chain's lock, oldest first, each takes the next position, the hash before it and its own hash, through `kernel_audit.seal_event`, the one way the chain columns are set, once, at the position after the head. A trigger refuses any change to a sealed event and any change but the chain columns to an unsealed one, whatever the role. Positions are consecutive, so a gap always means a deleted event.
 
 After each seal the worker sends the control plane an anchor (position, hash, time) as the unit's own client (`ControlPlane:ClientId` and `ClientSecret` in the unit secret, made by the fleet). The fleet verifies the chain daily against those anchors with a reader role of its own (`<tenant>_audit`, `IVerifierReadable` tables only); the unit never verifies itself.
+
+After a restore an operator accepted in the control plane, the chain continues as a new segment from the position after the restore point, its first event linking to the point's hash (`AuditChainSegments`). The anchor sender asks the control plane where it stands once a minute: a restore it has not recorded goes into `kernel_audit.chain_restores` with the event `audit.restore_accepted` (`AuditRestoreRecorder`), and it sends its anchors again from the restore point in the new segment.
 
 The app role has SELECT and INSERT on `kernel_audit.events`, and EXECUTE on the schema's functions; no UPDATE and no DELETE (TF-060 AC2).
 

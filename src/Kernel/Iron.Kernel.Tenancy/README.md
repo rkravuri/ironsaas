@@ -79,11 +79,14 @@ The control plane keeps every tenant's audit anchors and the fleet's verificatio
 | A tenant's anchors, verifications | `GET /api/v1/tenants/{slug}/audit-anchors`, `GET /api/v1/tenants/{slug}/audit-verifications` (list grammar, newest first) | `tenancy.tenants.read` | |
 | Verify now | `POST /api/v1/tenants/{slug}/audit-verifications` with `full` | `tenancy.audit_chains.verify` (High) | |
 | The request's record | `GET /api/v1/tenants/{slug}/audit-verifications/requests/{id}` | `tenancy.tenants.read` | |
+| Accept a restore point | `POST /api/v1/tenants/{slug}/audit-restores` with `ticket` and `reason` | `tenancy.audit_restores.accept` (Critical), with a fresh token | no ticket or reason (`tenancy.audit_restore.invalid`); the latest verification names no restore point, or it was accepted already (`tenancy.audit_restore.none`, 409); no anchor counts at the point (`tenancy.audit_restore.no_anchor`, 409: verify in full first) |
+| The accepted restores | `GET /api/v1/tenants/{slug}/audit-restores` | `tenancy.tenants.read` | |
 
 - **Which client is which unit** is `kernel_tenancy.unit_clients`, written by the fleet's secrets step through `ITenantAuditChains`; the caller's tenant is never taken from the request.
+- **Segments** (`kernel_tenancy.audit_restores`): an accepted restore starts the next segment of the chain from the position after its restore point. An anchor is kept in the segment that covers its position when it arrives (`audit_anchors.segment`, unique with tenant, kind and position), so a position the restore lost keeps its old anchor as a record. The unit's `latest` answer gives the current segment, its latest seal anchor (or the restore point while it has none) and every accepted restore; the rules are `AuditChainSegments` in Audit's Contracts, shared with the fleet's check.
 - **What is due**: each active tenant once a day, in full once every 30 days, after a failure, and at once when an operator asks; the fleet asks every minute (`ITenantAuditChains.DueAsync`).
 - **A record that did not pass** raises the alert: an error line starting `ALERT:`, the counter `audit.verification_failures` (meter `Iron.AuditChains`), and `tenancy.audit_chain_broken` (or `tenancy.audit_chain_restored`) at high severity in the control plane's trail.
-- `make verify-audit TENANT=x [FULL=1]` asks for a run and prints its record; `make audit-chain TENANT=x` lists the latest records and anchors.
+- `make verify-audit TENANT=x [FULL=1]` asks for a run and prints its record; `make audit-accept-restore TENANT=x TICKET=y REASON="..."` accepts a restore point and waits for the full verification it asks for; `make audit-chain TENANT=x` lists the latest records, accepted restores and anchors.
 
 Configuration (`Tenancy` section): `BaseDomain` (`localhost`; a tenant without hostnames gets `<slug>.<BaseDomain>`), `DefaultRegion` (`local`), `DefaultPlan` (`standard`).
 
