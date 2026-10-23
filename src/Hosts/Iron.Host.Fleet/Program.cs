@@ -10,7 +10,6 @@ using Iron.Kernel.Data.Health;
 using Iron.Kernel.Entitlements;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Fleet;
-using Iron.Kernel.Fleet.Services;
 using Iron.Kernel.Identity;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
@@ -26,8 +25,7 @@ if (HealthProbe.IsCommand(args))
     return await HealthProbe.RunAsync(args);
 }
 
-// "publish-validation-pack <version> <file>" puts a release's validation pack where every unit's update finds it (ADR-0052).
-var builder = WebApplication.CreateBuilder(ReleasePackCommand.IsCommand(args) ? [] : DatabaseCommands.StripCommand(args));
+var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 
 // With Secrets:Address, Secrets:Token and Secrets:Path in the environment, the unit's secret supplies the rest of the
 // configuration (connection string, storage, signing key); without them, the environment does (laptop, tests).
@@ -59,14 +57,11 @@ builder.Services.AddIronAuditVerification();
 
 var app = builder.Build();
 
+// The database commands, and "publish-validation-pack <version> <file>", which puts a release's validation pack where
+// every unit's update finds it (ADR-0052).
 if (DatabaseCommands.IsCommand(args))
 {
     return await DatabaseCommands.RunAsync(app.Services, args, app.Lifetime.ApplicationStopping);
-}
-
-if (ReleasePackCommand.IsCommand(args))
-{
-    return await ReleasePackCommand.RunAsync(app.Services, args, app.Lifetime.ApplicationStopping);
 }
 
 app.UseIronTelemetry();

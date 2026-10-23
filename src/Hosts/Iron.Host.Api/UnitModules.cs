@@ -64,8 +64,8 @@ public static class UnitModules
         var modules = All();
         var catalogue = LicensingCatalogue.From(modules).ToJson();
         var permissions = new Iron.Kernel.Api.Permissions.PermissionCatalogue(modules.SelectMany(m => m.Permissions));
-        var seeds = Iron.Kernel.Authorization.Services.AuthorizationSeeder.SeedsText(
-            Iron.Kernel.Authorization.Services.AuthorizationSeeder.SystemRoleDefinitions(permissions).Select(r => (r.Code, (IEnumerable<string>)r.Permissions)));
+        var seeds = Iron.Kernel.Authorization.Contracts.SystemRoleSeeds.Text(
+            Iron.Kernel.Authorization.Contracts.SystemRoleSeeds.Definitions(permissions.All).Select(r => (r.Code, (IEnumerable<string>)r.Permissions)));
         var permissionText = string.Concat(permissions.All.OrderBy(p => p.Name, StringComparer.Ordinal).Select(p => $"{p.Name}:{p.Risk.ToString().ToLowerInvariant()}\n"));
         var description = new Dictionary<string, object>(StringComparer.Ordinal)
         {

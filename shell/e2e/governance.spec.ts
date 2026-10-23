@@ -163,6 +163,7 @@ test.describe("evidence, four-eyes approval and validation", () => {
       await dialog.getByLabel(/^Why you approve it/).fill(`Checked with the requester, e2e run ${run}.`);
       await dialog.getByRole("button", { name: "Approve" }).click();
       await expect(second.getByText("Approved and applied", { exact: true })).toBeVisible();
+      await expect(dialog).toBeHidden();
       await second.screenshot({ path: "test-results/e2e/change-approved.png", fullPage: true });
 
       const made = await call<{ data: { id: string }[] }>(page, "GET", `/api/v1/roles?filter=code:eq:${code}`);

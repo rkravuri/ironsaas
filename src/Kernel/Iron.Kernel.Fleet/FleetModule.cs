@@ -1,5 +1,6 @@
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Data;
+using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Fleet.Contracts;
 using Iron.Kernel.Fleet.Data;
 using Iron.Kernel.Fleet.Services;
@@ -83,6 +84,8 @@ public static class FleetWorkerExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<ProvisioningWorker>();
+        // The fleet image publishes validation packs where every unit's update finds them (ADR-0052).
+        services.AddScoped<IUnitCommand, ReleasePackCommand>();
         return services;
     }
 }

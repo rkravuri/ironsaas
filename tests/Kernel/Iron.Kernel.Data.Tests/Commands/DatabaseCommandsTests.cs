@@ -23,6 +23,16 @@ public class DatabaseCommandsTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0011", "ADR-0052")]
+    public void TheFleetsPublishCommandKeepsItsVersionAndFileFromTheHostBuilder()
+    {
+        string[] publish = ["publish-validation-pack", "development", "/packs/validation-pack-development.zip"];
+
+        Assert.True(DatabaseCommands.IsCommand(publish));
+        Assert.Empty(DatabaseCommands.StripCommand(publish));
+    }
+
+    [Fact]
     [Proves("ADR-0011")]
     public async Task MigrateRunsOverEveryRegisteredContextAndOwnsAHistoryTablePerSchema()
     {
