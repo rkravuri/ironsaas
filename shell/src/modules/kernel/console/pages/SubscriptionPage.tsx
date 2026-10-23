@@ -14,14 +14,13 @@ import {
 import { EmptyState, LoadingState, type StatusTone } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
+import { formatDateTime, formatDay } from "@/i18n/dates";
 
 const tones: Record<EntitlementStatus, StatusTone> = { enabled: "success", read_only: "info", disabled: "neutral" };
 
 /** A date of the subscription, `yyyy-mm-dd` in UTC, as the person reads dates. */
 function day(date: string | null): string | undefined {
-  return date === null
-    ? undefined
-    : new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { timeZone: "UTC", dateStyle: "medium" });
+  return date === null ? undefined : formatDay(date);
 }
 
 /** The status in a word, with an icon beside it: the tone is never the only sign (brief section 5). */
@@ -183,10 +182,7 @@ function PlanSection({ subscription }: { subscription: Subscription }) {
     subscription.plan === null
       ? t("subscription.plan.none")
       : t(`subscription.plans.${subscription.plan}`, { defaultValue: subscription.plan });
-  const confirmed =
-    subscription.confirmed_at === null
-      ? undefined
-      : new Date(subscription.confirmed_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const confirmed = subscription.confirmed_at === null ? undefined : formatDateTime(subscription.confirmed_at);
   return (
     <Stack gap="sm">
       <Group gap="md" wrap="nowrap" align="center">

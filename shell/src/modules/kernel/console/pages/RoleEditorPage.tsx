@@ -30,12 +30,14 @@ import {
   type Permission,
   type Role,
 } from "@/api/authorization";
+import { useHistoryOf } from "@/auth/record-history";
 import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { RiskLabel } from "./RiskLabel";
 import { scopeLabel, unitPathLabel } from "./assignment-scope";
+import { formatDate } from "@/i18n/dates";
 
 const manage = "authz.roles.manage";
 const readAssignments = "authz.assignments.read";
@@ -103,6 +105,7 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
   const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSession();
+  const history = useHistoryOf("role", role?.id);
   const queryClient = useQueryClient();
   const isNew = role === undefined;
   const editable = !(role?.is_system ?? false) && session.tenantPermissions.includes(manage);
@@ -255,6 +258,7 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
             ? [{ value: "holders", label: t("roles.editor.holders"), panel: <RoleHolders roleId={role.id} /> }]
             : []),
         ]}
+        history={history}
       />
       {role !== undefined && (
         <ConfirmDialog
@@ -422,7 +426,7 @@ function RoleHolders({ roleId }: { roleId: string }) {
                 </Text>
               )}
             </Table.Td>
-            <Table.Td>{new Date(assignment.created_at).toLocaleDateString()}</Table.Td>
+            <Table.Td>{formatDate(assignment.created_at)}</Table.Td>
           </Table.Tr>
         ))}
       </Table.Tbody>

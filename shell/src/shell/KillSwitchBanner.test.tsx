@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import type { KillSwitch } from "@/api/flags";
 import { SessionProvider } from "@/auth/session";
+import { formatDateTime } from "@/i18n/dates";
 import { json, me, renderWithProviders, stubFetch } from "@/test/render";
 import { cssVariablesResolver, theme } from "@/theme";
 import { KillSwitchBanner } from "./KillSwitchBanner";
@@ -71,9 +72,8 @@ describe("the kill-switch banner (TF-051, ADR-0035)", () => {
 
     const banner = await screen.findByRole("status");
     expect(banner).toHaveTextContent("The platform's operator has stopped imports for now");
-    expect(banner).toHaveTextContent(
-      `Since ${new Date(killed.since).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}.`,
-    );
+    // In the person's zone, with the zone named (ADR-0050).
+    expect(banner).toHaveTextContent(`Since ${formatDateTime(killed.since)}.`);
     expect(banner).toHaveTextContent("The operator's reason: An import fault is being fixed.");
     // The icon is beside the words, never instead of them, and has no name of its own.
     expect(banner.querySelector("svg")).toHaveAttribute("aria-hidden", "true");

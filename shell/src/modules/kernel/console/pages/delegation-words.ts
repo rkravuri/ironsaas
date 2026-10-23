@@ -1,5 +1,6 @@
 import type { DelegationStatus } from "@/api/authorization";
 import type { StatusTone } from "@/components/panels";
+import { formatDate } from "@/i18n/dates";
 
 /** A status in a meaning and in words, never colour alone (brief section 5). */
 export const statusTone: Record<DelegationStatus, StatusTone> = {
@@ -35,9 +36,9 @@ export function periodOf(from: string, until: string, now: Date = new Date()): {
   return { starts_at: starts.toISOString(), ends_at: end.toISOString() };
 }
 
-/** A period for people: the first day and the last, in the reader's language. */
-export function periodLabel(startsAt: string, endsAt: string, language: string): { from: string; until: string } {
-  const day = (value: Date) => value.toLocaleDateString(language, { dateStyle: "medium" });
+/** A period for people: the first day and the last, in the person's time zone (TF-065). */
+export function periodLabel(startsAt: string, endsAt: string): { from: string; until: string } {
+  const day = (value: Date) => formatDate(value);
   // The end is the first instant after the period; the last day is the one before it.
   const last = new Date(new Date(endsAt).getTime() - 1);
   return { from: day(new Date(startsAt)), until: day(last) };

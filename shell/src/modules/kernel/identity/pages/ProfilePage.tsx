@@ -1,12 +1,16 @@
+import { useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Alert, SegmentedControl, Stack, Table, Text, useMantineColorScheme } from "@mantine/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, SegmentedControl, Select, Stack, Table, Text, useMantineColorScheme } from "@mantine/core";
 import { ApiError } from "@/api/client";
 import { fetchMyAssignments, type Assignment } from "@/api/authorization";
 import type { Me } from "@/api/identity";
+import { saveSetting } from "@/api/settings";
+import { contextQueryKey } from "@/auth/entitlements";
 import { useSession } from "@/auth/session-context";
+import { useSetting } from "@/auth/settings";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { densities, setDensity, useDensity, type Density } from "@/design/density";
@@ -16,6 +20,7 @@ import { PersonalDelegations } from "@/modules/kernel/console/pages/PersonalDele
 import { SecurityTab } from "./SecurityTab";
 import { SessionsTab } from "./SessionsTab";
 import { userStatus } from "./user-status";
+import { browserTimeZone, formatDate, formatTime, timeZones } from "@/i18n/dates";
 
 const isScheme = (value: string): value is SchemeChoice => (schemeChoices as readonly string[]).includes(value);
 const isDensity = (value: string): value is Density => (densities as readonly string[]).includes(value);
@@ -131,7 +136,7 @@ function MyAccess() {
               {where(assignment, t)}
             </Text>
             <Text size="xs" c="dimmed">
-              {t("profile.access.since", { date: new Date(assignment.created_at).toLocaleDateString() })}
+              {t("profile.access.since", { date: formatDate(assignment.created_at) })}
             </Text>
           </li>
         ))}
@@ -189,6 +194,50 @@ function MyPreferences() {
           {t("profile.preferences.densityExplain")}
         </Text>
       </Stack>
+      <TimeZoneChoice />
+    </Stack>
+  );
+}
+
+/**
+ * The person's time zone (TF-065 AC2): every time the shell shows is in it, with its name. None chosen follows this
+ * browser. Saved with the person at once, so it follows them to every browser, as the scheme does.
+ */
+function TimeZoneChoice() {
+  const { t } = useTranslation();
+  const zone = useSetting("shell.time_zone");
+  const queryClient = useQueryClient();
+  const [now] = useState(() => Date.now());
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState<string | undefined>();
+  const data = [
+    { value: "", label: t("profile.preferences.timeZoneBrowser", { zone: browserTimeZone() }) },
+    ...timeZones().map((value) => ({ value, label: value })),
+  ];
+  return (
+    <Stack gap={6} w="100%" maw={420}>
+      <Select
+        label={t("profile.preferences.timeZone")}
+        description={t("profile.preferences.timeZoneExplain", { example: formatTime(now) })}
+        searchable
+        allowDeselect={false}
+        data={data}
+        value={zone}
+        disabled={saving}
+        onChange={(value) => {
+          setSaving(true);
+          setFailed(undefined);
+          void saveSetting("shell.time_zone", { scope: "user" }, value ?? "")
+            .then(() => queryClient.invalidateQueries({ queryKey: contextQueryKey }))
+            .catch((error: unknown) => setFailed(error instanceof ApiError ? error.message : t("errors.unexpected")))
+            .finally(() => setSaving(false));
+        }}
+      />
+      {failed && (
+        <Text size="sm" c="var(--mantine-color-error)" role="alert">
+          {failed}
+        </Text>
+      )}
     </Stack>
   );
 }

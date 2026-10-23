@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Stack, Text, Timeline, Title } from "@mantine/core";
 import { EmptyState } from "./EmptyState";
+import { formatDateTime } from "@/i18n/dates";
 
 /** One audit event of a record (ADR-0013), as the page reads it from the audit API. */
 export interface HistoryEvent {
@@ -25,7 +26,7 @@ export function HistoryPanel({ events }: { events: HistoryEvent[] }) {
             <Timeline.Item key={event.id} title={event.action}>
               {event.summary !== undefined && <Text size="sm">{event.summary}</Text>}
               <Text size="xs" c="dimmed">
-                {event.actor}, {new Date(event.at).toLocaleString()}
+                {event.actor}, {formatDateTime(event.at)}
               </Text>
             </Timeline.Item>
           ))}

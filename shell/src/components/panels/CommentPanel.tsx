@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Group, Paper, Stack, Text, Textarea, Title } from "@mantine/core";
+import { formatDateTime } from "@/i18n/dates";
 
 export interface Comment {
   id: string;
@@ -43,7 +44,7 @@ export function CommentPanel({ comments, onAdd }: CommentPanelProps) {
         comments.map((comment) => (
           <Paper key={comment.id} withBorder p="sm">
             <Text size="xs" c="dimmed">
-              {comment.author}, {new Date(comment.at).toLocaleString()}
+              {comment.author}, {formatDateTime(comment.at)}
             </Text>
             <Text size="sm">{comment.text}</Text>
           </Paper>

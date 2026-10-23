@@ -18,9 +18,9 @@ import { useSessionWatch } from "@/auth/session-watch";
 import { ConfirmDialog, EmptyState, LoadingState } from "@/components/panels";
 import { PlaceSource } from "./PlaceSource";
 import { deviceOf, placeOf } from "./session-words";
+import { formatDateTime } from "@/i18n/dates";
 
-const when = (value: string | number, language: string) =>
-  new Date(value).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
+const when = (value: string | number) => formatDateTime(value);
 
 /**
  * My profile's Sessions tab (TF-021, TF-022 AC4): this session's times, as the warning knows them, then every live session
@@ -29,7 +29,7 @@ const when = (value: string | number, language: string) =>
  * sees the person's sessions but changes none: the API refuses, and the actions are not offered.
  */
 export function SessionsTab({ me }: { me: Me }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const session = useSession();
   const queryClient = useQueryClient();
   const idleMinutes = useSetting("identity.session.idle_minutes");
@@ -79,10 +79,10 @@ export function SessionsTab({ me }: { me: Me }) {
             {[
               [
                 t("profile.session.started"),
-                me.session.started_at ? when(me.session.started_at, i18n.language) : t("profile.session.unknown"),
+                me.session.started_at ? when(me.session.started_at) : t("profile.session.unknown"),
               ],
-              [t("profile.session.idle"), when(times?.idleEndsAt ?? me.session.idle_expires_at, i18n.language)],
-              [t("profile.session.absolute"), when(me.session.expires_at, i18n.language)],
+              [t("profile.session.idle"), when(times?.idleEndsAt ?? me.session.idle_expires_at)],
+              [t("profile.session.absolute"), when(me.session.expires_at)],
             ].map(([label, value]) => (
               <Table.Tr key={label}>
                 <Table.Th w={220}>{label}</Table.Th>
@@ -180,8 +180,8 @@ export function SessionsTab({ me }: { me: Me }) {
                     )}
                   </Table.Td>
                   <Table.Td>{placeOf(row, t)}</Table.Td>
-                  <Table.Td>{when(row.started_at, i18n.language)}</Table.Td>
-                  <Table.Td>{when(row.last_activity_at, i18n.language)}</Table.Td>
+                  <Table.Td>{when(row.started_at)}</Table.Td>
+                  <Table.Td>{when(row.last_activity_at)}</Table.Td>
                   <Table.Td>{t(`sessions.methods.${row.method}`, { defaultValue: row.method })}</Table.Td>
                   <Table.Td>
                     {!row.current && !impersonated && (

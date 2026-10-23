@@ -138,6 +138,14 @@
       "sso": "Single sign-on",
       "sessions": "Sessions",
       "documents": "Documents"
+    },
+    "audit": {
+      "title": "Audit",
+      "search": "Audit trail",
+      "chain": "Chain status",
+      "legalHolds": "Legal holds",
+      "retention": "Retention",
+      "line": "What happened, who did it and why, sealed so that nobody can change it unseen."
     }
   },
   "users": {
@@ -323,7 +331,10 @@
     },
     "preferences": {
       "intro": "How the shell looks for you. Your choices are kept with your account, so they follow you to every browser you sign in on.",
-      "densityExplain": "Compact sets the rows of grids and record pages closer together, so more fits on the screen."
+      "densityExplain": "Compact sets the rows of grids and record pages closer together, so more fits on the screen.",
+      "timeZone": "Time zone",
+      "timeZoneBrowser": "This browser's ({{zone}})",
+      "timeZoneExplain": "Every time the shell shows is in this zone, with its name. Now it is {{example}}."
     },
     "access": {
       "failed": "Your access could not be loaded.",
@@ -679,7 +690,9 @@
   },
   "history": {
     "title": "History",
-    "empty": "Nothing has happened yet."
+    "empty": "Nothing has happened yet.",
+    "tab": "History",
+    "impersonated": "{{impersonator}} signed in as {{actor}}"
   },
   "approval": {
     "title": "Approval",
@@ -861,7 +874,9 @@
     },
     "resources": {
       "audit": {
-        "events": "Audit events"
+        "events": "Audit events",
+        "legal_holds": "Legal holds",
+        "retention": "Retention"
       },
       "authz": {
         "access": "Access explanations",
@@ -2203,5 +2218,249 @@
     "retireTitle": "Retire {{title}}?",
     "retireMessage": "Nobody is asked to accept it any more. The acceptances stay, and publishing a version later asks everyone again.",
     "retired": "{{title}} is retired: nobody is asked to accept it any more."
+  },
+  "audit": {
+    "title": "Audit trail",
+    "description": "Every action that changed something, or was refused, with who did it, when and why. Times are in your time zone.",
+    "gridLabel": "Audit events",
+    "unsealed": "Not sealed yet",
+    "tabs": {
+      "search": "Recent events",
+      "archive": "Archive"
+    },
+    "columns": {
+      "at": "When",
+      "event": "Event",
+      "actor": "Who",
+      "target": "What",
+      "recordType": "Record type",
+      "outcome": "Outcome",
+      "source": "Source",
+      "severity": "Severity",
+      "position": "Chain position"
+    },
+    "sources": {
+      "ui": "Shell",
+      "api": "API",
+      "job": "Job"
+    },
+    "outcomes": {
+      "success": "Done",
+      "denied": "Refused",
+      "failure": "Failed"
+    },
+    "severities": {
+      "normal": "Normal",
+      "high": "Needs attention"
+    },
+    "actor": {
+      "system": "The system",
+      "onBehalfOf": "{{actor}} for {{onBehalfOf}}"
+    },
+    "filters": {
+      "eventType": "Event type",
+      "actor": "Who",
+      "actorPlaceholder": "Anyone",
+      "recordType": "Record type",
+      "recordId": "Record identifier",
+      "source": "Source",
+      "anySource": "Any source",
+      "from": "From",
+      "to": "To",
+      "apply": "Search"
+    },
+    "export": {
+      "open": "Export to CSV",
+      "done_one": "The export holds {{count}} event. It is downloading, and the export itself is in the audit trail.",
+      "done_other": "The export holds {{count}} events. It is downloading, and the export itself is in the audit trail."
+    },
+    "archive": {
+      "search": "Search the archive",
+      "explain": "Events older than the online period move from the database to the archive, with their chain. Choose a date range, and any of the other fields, then search the archive.",
+      "none": "No archived events match",
+      "noneText_one": "{{count}} archive batch was read for that range. Try a wider range or fewer fields.",
+      "noneText_other": "{{count}} archive batches were read for that range. Try a wider range or fewer fields.",
+      "caption_one": "{{count}} archived event, from {{batches}} batches, oldest first",
+      "caption_other": "{{count}} archived events, from {{batches}} batches, oldest first",
+      "truncated_one": "The first {{count}} archived event. Narrow the range to see the rest.",
+      "truncated_other": "The first {{count}} archived events. Narrow the range to see the rest.",
+      "badge": "Archived"
+    },
+    "chain": {
+      "title": "Chain status",
+      "description": "Each audit event is sealed into a chain of hashes, and the control plane keeps anchors of it outside this tenant. Every day the fleet checks the chain against them.",
+      "failed": "The chain's status could not be loaded",
+      "verificationTitle": "Last verification",
+      "verificationDescription": "What the fleet's last check of this chain found. A restore shows where the chain is whole up to.",
+      "noVerification": "Not verified yet",
+      "noVerificationText": "The fleet verifies every tenant's chain once a day. The first result shows here.",
+      "results": {
+        "passed": "Passed",
+        "restored": "Restored",
+        "failed": "Failed"
+      },
+      "dailyRun": "Daily check, {{when}}",
+      "fullRun": "Full check from the start, {{when}}",
+      "checked_one": "{{count}} event checked, positions {{from}} to {{to}}.",
+      "checked_other": "{{count}} events checked, positions {{from}} to {{to}}.",
+      "restoreTitle": "The database was restored",
+      "restoreText": "The chain is whole up to position {{position}}, sealed {{when}}. Events after it that the control plane had anchored are not in the database any more.",
+      "problemsCaption_one": "{{count}} problem found",
+      "problemsCaption_other": "{{count}} problems found",
+      "problem": "What was found",
+      "eventId": "Event",
+      "noEvent": "None: the event is missing",
+      "problems": {
+        "missing": "An event is missing at this position.",
+        "modified": "The event was changed after it was sealed.",
+        "relinked": "The event points to a different event before it.",
+        "anchor_mismatch": "The chain does not match the control plane's anchor here.",
+        "unknown_version": "The event was sealed with a form this version does not know."
+      },
+      "chainTitle": "The chain here",
+      "chainDescription": "Where the chain stands in this tenant's database and archive.",
+      "head": "Last position",
+      "empty": "No events yet",
+      "sealedAt": "Last sealed",
+      "never": "Never",
+      "unsealed": "Waiting for a seal",
+      "anchoredUpTo": "Anchored in the control plane",
+      "notAnchored": "Not yet",
+      "anchoredAll": "Up to position {{position}}, the whole chain",
+      "anchoredBehind": "Up to position {{position}}; the rest follows",
+      "archivedUpTo": "Archived up to position",
+      "prunedUpTo": "Pruned up to position",
+      "none": "None",
+      "headHash": "Hash at the last position",
+      "sealsTitle": "Latest seals",
+      "sealsDescription": "Each seal adds the events written since the one before, in order.",
+      "noSeals": "Nothing has been sealed yet.",
+      "sealsCaption_one": "The latest seal",
+      "sealsCaption_other": "The latest {{count}} seals, newest first",
+      "sealedAtColumn": "Sealed",
+      "positions": "Positions",
+      "lastHash": "Last hash, first 16 characters",
+      "range": "{{first}} to {{last}}"
+    }
+  },
+  "legalHolds": {
+    "title": "Legal holds",
+    "description": "A legal hold keeps records that their retention would delete, until it is released. It can keep the whole tenant, one record, or every record of a master such as a supplier.",
+    "standingTitle": "Standing holds",
+    "standingDescription": "While a hold stands, nothing it keeps is deleted, the audit trail's oldest end included.",
+    "releasedTitle": "Released holds",
+    "releasedDescription": "Holds stay listed after their release, with who released them and why.",
+    "standingCaption_one": "{{count}} standing hold",
+    "standingCaption_other": "{{count}} standing holds",
+    "releasedCaption_one": "{{count}} released hold",
+    "releasedCaption_other": "{{count}} released holds",
+    "noneStanding": "No hold stands. Retention deletes records when their time comes.",
+    "noneReleased": "No hold has been released.",
+    "columns": {
+      "scope": "What it keeps",
+      "reason": "Reason",
+      "placed": "Placed",
+      "released": "Released",
+      "actions": "Actions"
+    },
+    "scopes": {
+      "tenant": "Whole tenant",
+      "record": "One record",
+      "master": "A master's records",
+      "tenantText": "Every record of this tenant, and the audit trail.",
+      "recordText": "The {{type}} {{id}}.",
+      "masterText": "Every record that belongs to the {{type}} {{id}}."
+    },
+    "place": "Place a legal hold",
+    "placed": "The hold stands. Nothing it keeps will be deleted until it is released.",
+    "release": "Release",
+    "releaseNamed": "Release the hold on: {{what}}",
+    "releaseTitle": "Release this legal hold?",
+    "releaseMessage": "{{what}} Once released, the retention deletes these records when their time comes. The hold stays listed.",
+    "releaseReason": "Why it is released",
+    "released": "The hold is released.",
+    "reasonHint": "Kept with the hold and in the audit trail. Auditors read it.",
+    "form": {
+      "title": "Place a legal hold",
+      "message": "Placing a hold needs a reason, and you confirm it is you before it is placed.",
+      "scope": "What it keeps",
+      "recordType": "Record type",
+      "recordTypeHint": "The kind of record, as the audit trail names it, such as principal.",
+      "masterTypeHint": "The kind of master, such as supplier.",
+      "recordId": "Record identifier",
+      "recordIdHint": "The record's identifier, as its page or the audit trail shows it.",
+      "reason": "Why it is held",
+      "confirm": "Place the hold",
+      "typeRequired": "Say which kind of record it is.",
+      "idRule": "Enter the record's identifier: 32 letters and digits in five groups."
+    }
+  },
+  "retention": {
+    "title": "Retention",
+    "description": "How long each kind of record is kept, within the limits the operator set. When its time comes, a record is archived and then deleted, unless a legal hold keeps it.",
+    "classesTitle": "Retention classes",
+    "classesDescription": "Each kind of record belongs to one class. Changing a class needs a reason, and you confirm it is you.",
+    "caption": "Retention classes, their period and limits",
+    "columns": {
+      "class": "Class",
+      "kept": "Kept for",
+      "limits": "Operator's limits",
+      "records": "Records in it",
+      "actions": "Actions"
+    },
+    "classes": {
+      "business_document": {
+        "name": "Business documents",
+        "text": "Business documents, counted from their closure."
+      },
+      "session": {
+        "name": "Sessions",
+        "text": "Sign-in sessions, counted from their end."
+      },
+      "security_event": {
+        "name": "Security activity",
+        "text": "A person's security activity."
+      },
+      "notification": {
+        "name": "Notifications",
+        "text": "Notifications sent to people."
+      },
+      "audit_event": {
+        "name": "Audit trail",
+        "text": "The audit trail, counted from each event's time. Removed from its oldest end only, after it was archived."
+      },
+      "audit_online": {
+        "name": "Audit trail online",
+        "text": "How long audit events stay in the database before they move to the archive. The archive keeps them searchable."
+      }
+    },
+    "recordTypes": {
+      "session": "Sessions",
+      "audit_event": "Audit events"
+    },
+    "chosen": "Chosen here",
+    "byDefault": "Standard",
+    "limits": "From {{minimum}} to {{maximum}}",
+    "noRecords": "None yet",
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "change": "Change",
+    "changeNamed": "Change the retention of {{name}}",
+    "saved": "{{name}}: now kept for {{period}}.",
+    "form": {
+      "title": "Retention of {{name}}",
+      "message": "The operator allows from {{minimum}} to {{maximum}}. The standard is {{standard}}.",
+      "days": "Days",
+      "daysHint": "Counted from when each record's retention begins.",
+      "reason": "Why it changes",
+      "reasonHint": "Kept in the audit trail. Auditors read it.",
+      "confirm": "Save",
+      "daysRequired": "Enter a number of days.",
+      "daysWhole": "Enter whole days.",
+      "belowMinimum": "The operator's minimum is {{days}} days. Choose that or more.",
+      "aboveMaximum": "The operator's maximum is {{days}} days. Choose that or fewer."
+    }
   }
 }

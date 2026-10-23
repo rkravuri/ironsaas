@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Stack, Text } from "@mantine/core";
 import { IconPlayerPause } from "@tabler/icons-react";
 import { useSession } from "@/auth/session-context";
+import { formatDateTime } from "@/i18n/dates";
 
 /**
  * The kill-switch banner (TF-051, ADR-0035): for an administrator, one calm line per path the platform operator has
@@ -10,14 +11,13 @@ import { useSession } from "@/auth/session-context";
  * what it is given and decides nothing.
  */
 export function KillSwitchBanner() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { killSwitches } = useSession();
   if (killSwitches.length === 0) {
     return null;
   }
 
-  const since = (iso: string) =>
-    new Date(iso).toLocaleString(i18n.language, { dateStyle: "medium", timeStyle: "short" });
+  const since = (iso: string) => formatDateTime(iso);
   return (
     <Stack gap="xs" mb="md">
       {killSwitches.map((killed) => (

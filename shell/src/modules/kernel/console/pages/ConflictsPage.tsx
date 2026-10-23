@@ -20,6 +20,7 @@ import { ListPage } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
 import { ConflictRuleDialog } from "./ConflictRuleDialog";
 import { conflictGrantWords, ruleSidesWords } from "./conflict-words";
+import { formatDateTime } from "@/i18n/dates";
 
 const ruleSort = [{ field: "name", direction: "asc" as const }];
 const entrySort = [{ field: "principal_name", direction: "asc" as const }];
@@ -30,7 +31,7 @@ const entrySort = [{ field: "principal_name", direction: "asc" as const }];
  * and running it now. Reading needs authz.sod.read; changing a rule and running the report, authz.sod.manage.
  */
 export function ConflictsPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const session = useSession();
   const canManage = session.tenantPermissions.includes("authz.sod.manage");
   const [tab, setTab] = useState<string | null>("rules");
@@ -141,10 +142,7 @@ export function ConflictsPage() {
   const run = latest.data?.run;
   const lastRun = run
     ? t("conflicts.report.last", {
-        when: new Date(run.computed_at).toLocaleString(i18n.language, {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }),
+        when: formatDateTime(run.computed_at),
         how: t(run.trigger === "daily" ? "conflicts.report.daily" : "conflicts.report.onDemand"),
         count: run.conflicts,
         rules: run.rules,

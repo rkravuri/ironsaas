@@ -12,8 +12,9 @@ import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { SecondFactors } from "./SecondFactors";
+import { formatDateTime } from "@/i18n/dates";
 
-const when = (value: string) => new Date(value).toLocaleString();
+const when = (value: string) => formatDateTime(value);
 
 const securityEventsKey = ["identity", "me", "security-events"] as const;
 

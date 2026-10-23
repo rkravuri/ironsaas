@@ -5,8 +5,10 @@ import type { SettingKey } from "@/api/setting-keys";
 import { saveSetting } from "@/api/settings";
 import { densities, setDensity, useDensity, type Density } from "@/design/density";
 import { schemeChoices, type SchemeChoice } from "@/design/scheme";
+import { setTimeZone } from "@/i18n/dates";
 import { contextQueryKey } from "./entitlements";
 import { useSession } from "./session-context";
+import { useSetting } from "./settings";
 
 const isScheme = (value: unknown): value is SchemeChoice =>
   typeof value === "string" && (schemeChoices as readonly string[]).includes(value);
@@ -21,6 +23,10 @@ const isDensity = (value: unknown): value is Density =>
  * one made here is saved, one made in another browser arrives with /me/context and is applied.
  */
 export function usePreferenceSync(): void {
+  // The person's time zone for every time the shell shows (TF-065 AC2): their setting, or this browser's when they
+  // chose none. Set while the frame renders, before the pages under it, so no time shows in another zone first.
+  setTimeZone(useSetting("shell.time_zone"));
+
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const density = useDensity();
   const applyScheme = useCallback((value: SchemeChoice) => setColorScheme(value), [setColorScheme]);

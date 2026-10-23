@@ -19,3 +19,4 @@ export { ApprovalPanel } from "./ApprovalPanel";
 export type { ApprovalState, ApprovalStep } from "./ApprovalPanel";
 export { CommentPanel } from "./CommentPanel";
 export type { Comment, CommentPanelProps } from "./CommentPanel";
+export { RecordHistory } from "./RecordHistory";

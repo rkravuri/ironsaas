@@ -69,14 +69,14 @@ export function DelegationsPage() {
       headerKey: "delegations.columns.from",
       sortable: true,
       width: 150,
-      format: (row) => periodLabel(row.starts_at, row.ends_at, i18n.language).from,
+      format: (row) => periodLabel(row.starts_at, row.ends_at).from,
     },
     {
       field: "ends_at",
       headerKey: "delegations.columns.until",
       sortable: true,
       width: 150,
-      format: (row) => periodLabel(row.starts_at, row.ends_at, i18n.language).until,
+      format: (row) => periodLabel(row.starts_at, row.ends_at).until,
     },
     {
       field: "status",

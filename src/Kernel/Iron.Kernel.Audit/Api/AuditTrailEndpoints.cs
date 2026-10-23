@@ -59,6 +59,9 @@ public sealed record RetentionChoiceRequest(int Days, string? Reason);
 
 public sealed record LegalHoldResponse(Guid Id, string Scope, string? RecordType, Guid? RecordId, string Reason, DateTimeOffset PlacedAt, Guid PlacedBy, DateTimeOffset? ReleasedAt, string? ReleaseReason)
 {
+    /// <summary>The name of who placed it, when the directory knows them.</summary>
+    public string? PlacedByName { get; init; }
+
     public static LegalHoldResponse From(LegalHold hold)
     {
         ArgumentNullException.ThrowIfNull(hold);
@@ -218,10 +221,13 @@ internal static class AuditTrailEndpoints
         return ApiResults.From(result, http, view => TypedResults.Ok(Response(view, [.. types])));
     }
 
-    private static async Task<IResult> HoldsAsync(AuditDbContext context, CancellationToken cancellationToken)
+    private static async Task<IResult> HoldsAsync(HttpContext http, AuditDbContext context, CancellationToken cancellationToken)
     {
         var holds = await context.LegalHolds.AsNoTracking().OrderByDescending(h => h.CreatedAt).ToListAsync(cancellationToken);
-        return TypedResults.Ok(new LegalHoldsResponse([.. holds.Select(LegalHoldResponse.From)]));
+        var names = http.RequestServices.GetService<IPrincipals>() is { } principals
+            ? (await principals.FindAsync([.. holds.Select(h => h.CreatedBy).Distinct()], cancellationToken)).ToDictionary(p => p.Key, p => p.Value.DisplayName)
+            : new Dictionary<Guid, string>();
+        return TypedResults.Ok(new LegalHoldsResponse([.. holds.Select(h => LegalHoldResponse.From(h) with { PlacedByName = names.GetValueOrDefault(h.CreatedBy) })]));
     }
 
     private static async Task<IResult> PlaceAsync(PlaceLegalHoldRequest request, HttpContext http, LegalHolds holds, CancellationToken cancellationToken)

@@ -33,6 +33,7 @@ import { useAccessAt } from "@/auth/access";
 import { useSession } from "@/auth/session-context";
 import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, FormDialog, ReasonDialog } from "@/components/panels";
+import { formatDateTime } from "@/i18n/dates";
 
 const manage = "identity.users.manage";
 const impersonate = "identity.impersonation.start";
@@ -450,7 +451,7 @@ function LinkDialog({ link, name, onClose }: { link: ShownLink; name: string; on
   const { t } = useTranslation();
   const field = useRef<HTMLInputElement>(null);
   const url = new URL(link.path, window.location.origin).toString();
-  const expires = new Date(link.expiresAt).toLocaleString();
+  const expires = formatDateTime(link.expiresAt);
   useEffect(() => {
     field.current?.focus();
     field.current?.select();

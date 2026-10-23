@@ -12,6 +12,7 @@ import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { ListPage } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
 import { ImportRolesDialog } from "./ImportRolesDialog";
+import { formatDateTime } from "@/i18n/dates";
 
 const manage = "authz.roles.manage";
 /** Role export and import are licensed on their own (ADR-0034): the enterprise plan has them. */
@@ -80,7 +81,7 @@ export function RolesPage() {
       filter: false,
       width: 190,
       hidden: true,
-      format: (role) => new Date(role.updated_at).toLocaleString(),
+      format: (role) => formatDateTime(role.updated_at),
     },
   ];
 
