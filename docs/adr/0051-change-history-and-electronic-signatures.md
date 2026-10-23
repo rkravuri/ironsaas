@@ -1,8 +1,8 @@
 # ADR-0051: Change history in the audit chain, electronic signatures bound to their version, and identifiers never reused
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-23
-**Decided by:** Product owner and architect, in the brief of S3 T7; written by the build session, for the design session's review
+**Decided by:** Product owner and architect, in the brief of S3 T7 and at the design session's review of it (2026-10-23), which added the five kinds of record tracked with their History and the signature resumed after a company login's fresh sign-in
 
 ## Context
 
@@ -12,7 +12,8 @@ S3 T7 builds the core of 21 CFR Part 11 and EU Annex 11 on the audit trail T6 se
 
 ### Change history is part of the audit trail
 
-- An entity declares itself tracked with `ITrackedChanges`. The model check fails, naming the entity, for a business record without it (TF-062 AC2). The kernel entities people change are tracked too: people, roles, assignments, units, settings and company logins.
+- An entity declares itself tracked with `ITrackedChanges`. The model check fails, naming the entity, for a business record without it (TF-062 AC2). The kernel entities people change are tracked too: people, roles, assignments, units, settings and company logins, and, since the review, delegations, conflict rules, legal holds, retention choices and tenant documents.
+- A record's type in its history is the name its own events use: the class's `RecordType` constant, or `[TrackedAs("...")]` where a property has that name (a legal hold, `legal_hold`). So a record's History reads both its own events and its saves. A page without the record template opens the same History from a button (`RecordHistoryButton`).
 - On every save, the data layer's interceptor takes each tracked entity the save creates, changes or deletes, with every changed field's old and new value, and in the same transaction writes one audit event per record: `record.created`, `record.changed` or `record.deleted`, with the record's type, id and new version, the actor, the person acted for or the impersonator, the reason when one was given, and the correlation id. A save whose history cannot be written is rolled back.
 - A field marked `[Sensitive]` keeps its last four characters (`****3000`); a `[Secret]` field keeps only that it changed. `[NotTracked]` leaves out what other events already tell (the sign-in counters, the recovery fields), and the bookkeeping columns (stamps, version, soft delete) are never history.
 - The field list is a column of the audit event, hashed by the canonical form's **version 2**: version 1 with the label `iron-audit-v2` and the changes between the details and the previous hash. Events sealed with version 1 keep it and still verify; the verifier knows both. Why: Part 11 asks for a secure, computer-generated trail, and a second, unchained store would be weaker than the chain.
@@ -30,7 +31,7 @@ S3 T7 builds the core of 21 CFR Part 11 and EU Annex 11 on the audit trail T6 se
 - The first signature of a continuous session asks for both components, the login identifier and the password, and the second factor when the person has one.
 - Later signatures in the same session ask for the password, and the second factor when the tenant's `compliance.signing.later_second_factor` is on.
 - A session ends at the tenant's idle limit, so a person back after it signs in again, and the new session starts at the first rule.
-- A person without a password, or held to their company login, signs after a fresh sign-in at the provider within the step-up window (TF-248 AC6); each signature takes its own.
+- A person without a password, or held to their company login, signs after a fresh sign-in at the provider within the step-up window (TF-248 AC6); each signature takes its own. The signing dialog keeps the record, the meaning and the comment in the tab before it leaves for the provider, and the page reopens the dialog with them when the provider sends the person back, ready to confirm (the review's change).
 - Identity proves the signer behind `ISignerAuthentication`, declared in Compliance's contracts; Compliance never reads a credential. A wrong identifier or password counts against the login as a failed sign-in does, in its own transaction, so it counts whatever happens next.
 
 ### Meanings and policy
