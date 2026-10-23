@@ -413,6 +413,20 @@ export const ReviewItemSchema = z.object({
       comment: z.string().nullable(),
       decided_by: PersonSchema,
       decided_at: z.string(),
+      /** The decision itself: the record its signature applies to (ADR-0051). */
+      decision_id: z.string().nullable().optional(),
+      /** The decision's signature, when the tenant's policy had it signed (TF-063). */
+      signature: z
+        .object({
+          id: z.string(),
+          record_version: z.number(),
+          signer_name: z.string(),
+          meaning: z.string(),
+          method: z.string(),
+          signed_at: z.string(),
+        })
+        .nullable()
+        .optional(),
       assignment_removed: z.boolean(),
     })
     .nullable(),
@@ -453,10 +467,17 @@ export const startReview = (body: NewReview) => request(reviews, { method: "POST
 export const closeReview = (id: string) =>
   request(`${reviews}/${encodeURIComponent(id)}/close`, { method: "POST", schema: ReviewSchema });
 
-export const decideItem = (review: string, item: string, decision: ReviewDecision, comment?: string) =>
+/** Decides one item; with the signer's credentials when the tenant's policy has decisions signed (ADR-0051). */
+export const decideItem = (
+  review: string,
+  item: string,
+  decision: ReviewDecision,
+  comment?: string,
+  signature?: Record<string, unknown>,
+) =>
   request(`${reviews}/${encodeURIComponent(review)}/items/${encodeURIComponent(item)}/decision`, {
     method: "POST",
-    body: { decision, comment: comment ?? null },
+    body: { decision, comment: comment ?? null, ...(signature ? { signature } : {}) },
     schema: ReviewItemSchema,
   });
 

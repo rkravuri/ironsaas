@@ -93,8 +93,21 @@ const decided = [item("01a17b00-0000-7000-8000-0000000000e3", "Dan Decided", tru
 const heavy = { timeout: 10_000 };
 const heavyTest = 20_000;
 
-function show() {
+function show(signed = false) {
   const stub = stubFetch({
+    "GET /api/v1/signatures/types": () =>
+      json({
+        data: [
+          {
+            record_type: "access_review_decision",
+            name: "Access review decision",
+            meanings: ["approved", "rejected"],
+            always_signed: false,
+            policy: { required: signed, meanings: ["approved", "rejected"], reauthenticate: true },
+            default: { required: false, meanings: ["approved", "rejected"], reauthenticate: true },
+          },
+        ],
+      }),
     "GET /api/v1/me": () => json(me(reviewer)),
     [`GET /api/v1/access-reviews/${review}`]: () => json(record),
     [`GET ${items}?state=open&page_number=1&page_size=50&sort=unit_name`]: () => json(list(open)),
@@ -171,6 +184,18 @@ describe("the access review page (TF-038)", () => {
         item_ids: others.map((row) => row.id),
         comment: null,
       });
+    },
+    heavyTest,
+  );
+  it(
+    "asks for a signature on each decision when the tenant's policy says so, and turns the page's confirmation off [TF-063 AC1, ADR-0051]",
+    async () => {
+      show(true);
+
+      expect(
+        await screen.findByText(/Your organisation asks for a signature on each decision/, {}, heavy),
+      ).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: "Confirm the 2 items on this page" }, heavy)).toBeDisabled();
     },
     heavyTest,
   );

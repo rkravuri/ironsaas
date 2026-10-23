@@ -1,10 +1,21 @@
 import { z } from "zod";
 import { listSchema, request } from "./client";
 
+/** One field of a save (TF-062): old and new as kept; a masked field keeps its last characters, a secret none. */
+export const FieldChangeSchema = z.object({
+  field: z.string(),
+  old: z.string().nullable(),
+  new: z.string().nullable(),
+  treatment: z.enum(["plain", "masked", "secret"]),
+});
+export type FieldChange = z.infer<typeof FieldChangeSchema>;
+
 /** One audit event as the trail answers it (TF-060), from the database or the archive (TF-064 AC2). */
 export const AuditEventSchema = z.object({
   id: z.string(),
   event_type: z.string(),
+  /** The words the type reads as (ADR-0051); the code when no module of the unit names it. */
+  event_name: z.string().nullable().optional(),
   outcome: z.string(),
   actor_id: z.string(),
   actor_name: z.string().nullable().optional(),
@@ -24,8 +35,23 @@ export const AuditEventSchema = z.object({
   severity: z.string(),
   chain_position: z.number().nullable().optional(),
   archived: z.boolean().optional(),
+  /** A save's fields, for a record's change event (TF-062): one group per save. */
+  changes: z.array(FieldChangeSchema).nullable().optional(),
 });
 export type AuditEvent = z.infer<typeof AuditEventSchema>;
+
+/** The event type as a person reads it: its name, else its code. */
+export const eventName = (event: Pick<AuditEvent, "event_type" | "event_name">) => event.event_name ?? event.event_type;
+
+export const AuditEventTypeSchema = z.object({ code: z.string(), name: z.string() });
+export type AuditEventType = z.infer<typeof AuditEventTypeSchema>;
+
+/** Every event type the unit's modules write, with its name (ADR-0051). */
+export const fetchAuditEventTypes = (signal?: AbortSignal) =>
+  request("/api/v1/audit-events/types", {
+    schema: z.object({ data: z.array(AuditEventTypeSchema) }),
+    ...(signal ? { signal } : {}),
+  });
 
 export const AuditEventListSchema = listSchema(AuditEventSchema);
 

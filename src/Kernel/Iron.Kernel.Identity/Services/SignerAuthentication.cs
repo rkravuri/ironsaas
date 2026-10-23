@@ -49,7 +49,9 @@ public sealed class SignerAuthentication(
         var first = session.SigningSince is null;
         if (await CompanyLoginAsync(principal, cancellationToken).ConfigureAwait(false) is { } provider)
         {
-            return new SignerChallenge(first, false, false, false, [], null)
+            // The fresh sign-in there asks for the second factor here first, when the person has one (TF-248 AC6).
+            var factorsHere = await factors.MethodsAsync(principal.Id, cancellationToken).ConfigureAwait(false);
+            return new SignerChallenge(first, false, false, factorsHere.Count > 0, factorsHere, null)
             {
                 ProviderId = provider.Id,
                 ProviderName = provider.Name,

@@ -2,13 +2,14 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Text } from "@mantine/core";
 import { ApiError } from "@/api/client";
-import { auditQueryKey, fetchRecordHistory } from "@/api/audit";
+import { auditQueryKey, eventName, fetchRecordHistory } from "@/api/audit";
 import { HistoryPanel } from "./HistoryPanel";
 import { LoadingState } from "./LoadingState";
 
 /**
  * A record's audit events, newest first (TF-064 AC1, ADR-0050): every event that names the record, read from the audit
- * trail, on the History tab of the record template. Who did it, what, why, and when, in the person's time zone.
+ * trail, on the History tab of the record template. Who did it, what, why, and when, in the person's time zone; the
+ * event type in words, and a save as one group of its fields, old and new side by side (TF-062, ADR-0051).
  */
 export function RecordHistory({ recordType, recordId }: { recordType: string; recordId: string }) {
   const { t } = useTranslation();
@@ -44,8 +45,9 @@ export function RecordHistory({ recordType, recordId }: { recordType: string; re
             impersonator: event.impersonator_name,
           })
         : (event.actor_name ?? event.actor_id),
-      action: event.event_type,
+      action: eventName(event),
       ...(summary !== "" ? { summary } : {}),
+      ...(event.changes ? { changes: event.changes } : {}),
     };
   });
   return <HistoryPanel events={events} />;

@@ -43,7 +43,7 @@ public sealed record SignerChallengeResponse(
     bool Password,
     bool SecondFactor,
     IReadOnlyList<string> Methods,
-    string? PasskeyOptions,
+    JsonElement? PasskeyOptions,
     Guid? ProviderId,
     string? ProviderName,
     bool ProviderConfirmed,
@@ -179,7 +179,7 @@ internal static class ComplianceEndpoints
         var policy = await signatures.PolicyAsync(recordType, cancellationToken);
         var challenge = await signatures.ChallengeAsync(recordType, cancellationToken);
         return ApiResults.From(challenge, http, c => TypedResults.Ok(new SignerChallengeResponse(
-            c.FirstInSession, c.LoginId, c.Password, c.SecondFactor, c.Methods, c.PasskeyOptions, c.ProviderId, c.ProviderName, c.ProviderConfirmed, c.Reauthenticate, SigningPolicyResponse.From(policy))));
+            c.FirstInSession, c.LoginId, c.Password, c.SecondFactor, c.Methods, c.PasskeyOptions is { } json ? JsonDocument.Parse(json).RootElement.Clone() : null, c.ProviderId, c.ProviderName, c.ProviderConfirmed, c.Reauthenticate, SigningPolicyResponse.From(policy))));
     }
 
     private static async Task<IResult> ForRecordAsync(HttpContext http, [Microsoft.AspNetCore.Mvc.FromQuery(Name = "record_type")] string? recordType, [Microsoft.AspNetCore.Mvc.FromQuery(Name = "record_id")] Guid? recordId, SignableCatalogue catalogue, ISignatures signatures, CancellationToken cancellationToken)

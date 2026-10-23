@@ -6,6 +6,7 @@ import { Alert, Button, Group, SegmentedControl, Stack, Text, Textarea } from "@
 import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
+import { complianceQueryKey, fetchSignableTypes } from "@/api/compliance";
 import {
   closeReview,
   confirmItems,
@@ -21,6 +22,7 @@ import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, FormDialog, LoadingState, type RecordStatus } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { useHistoryOf } from "@/auth/record-history";
+import { SigningDialog } from "@/auth/SigningDialog";
 import { dueLabel, progressLabel } from "./review-words";
 import { formatDate } from "@/i18n/dates";
 
@@ -134,7 +136,7 @@ export function ReviewRecordPage() {
   );
 }
 
-/** What an item says: who decided what, or who decides it, in words. */
+/** What an item says: who decided what, or who decides it, in words; a signed decision says it was signed. */
 function decisionLabel(item: ReviewItem, t: ReturnType<typeof useTranslation>["t"]): string {
   if (!item.decision) {
     if (item.yours) {
@@ -142,10 +144,20 @@ function decisionLabel(item: ReviewItem, t: ReturnType<typeof useTranslation>["t
     }
     return item.with_owner ? t("reviews.items.withOwner") : t("reviews.items.toDecide");
   }
-  return t(item.decision.decision === "confirm" ? "reviews.items.confirmedBy" : "reviews.items.revokedBy", {
+  const decided = t(item.decision.decision === "confirm" ? "reviews.items.confirmedBy" : "reviews.items.revokedBy", {
     name: item.decision.decided_by.name,
   });
+  const signature = item.decision.signature;
+  return signature
+    ? t("reviews.items.signed", {
+        decided,
+        meaning: t(`signatures.meanings.${signature.meaning}`, { defaultValue: signature.meaning }),
+      })
+    : decided;
 }
+
+/** The access review decision as a signable document type (ADR-0051): its policy says whether decisions are signed. */
+const decisionType = "access_review_decision";
 
 /**
  * The items to decide: the grid with a choice of which, Confirm and Revoke for the chosen row, and Confirm for the
@@ -163,7 +175,14 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
   const [notice, setNotice] = useState<string | undefined>();
   const [failure, setFailure] = useState<ApiError | undefined>();
   const [pageOpen, setPageOpen] = useState<ReviewItem[]>([]);
+  const [signing, setSigning] = useState<{ item: ReviewItem; decision: "confirm" | "revoke" } | undefined>();
   const open = review.status === "open";
+  const types = useQuery({
+    queryKey: [...complianceQueryKey, "types"],
+    queryFn: ({ signal }) => fetchSignableTypes(signal),
+  });
+  // Signed when the tenant's policy says so (TF-063 AC1): each decision then goes through the signing dialog, one by one.
+  const signed = types.data?.data.find((type) => type.record_type === decisionType)?.policy.required ?? false;
 
   const fetchPage = useCallback(
     async (query: string, signal?: AbortSignal): Promise<ListResult<ReviewItem>> => {
@@ -283,7 +302,15 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
             leftSection={<IconCheck size={16} aria-hidden="true" />}
             disabled={!undecided}
             loading={busy && undecided}
-            onClick={() => selected && void confirmOne(selected)}
+            onClick={() => {
+              if (selected) {
+                if (signed) {
+                  setSigning({ item: selected, decision: "confirm" });
+                } else {
+                  void confirmOne(selected);
+                }
+              }
+            }}
           >
             {t("reviews.items.confirm")}
           </Button>
@@ -292,13 +319,15 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
             color="danger"
             leftSection={<IconX size={16} aria-hidden="true" />}
             disabled={!undecided}
-            onClick={() => setRevoking(selected)}
+            onClick={() =>
+              selected && (signed ? setSigning({ item: selected, decision: "revoke" }) : setRevoking(selected))
+            }
           >
             {t("reviews.items.revoke")}
           </Button>
           <Button
             leftSection={<IconChecks size={16} aria-hidden="true" />}
-            disabled={!open || pageOpen.length === 0}
+            disabled={!open || pageOpen.length === 0 || signed}
             onClick={() => setConfirming({ opened: true, items: pageOpen })}
           >
             {t("reviews.items.confirmPage", { count: pageOpen.length })}
@@ -308,6 +337,11 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
       <Text size="sm" c="dimmed">
         {t("reviews.items.intro")}
       </Text>
+      {signed && open && (
+        <Text size="sm" data-signed-decisions>
+          {t("reviews.items.signedPolicy")}
+        </Text>
+      )}
       {notice && (
         <Alert
           role="status"
@@ -364,6 +398,34 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
           />
         )}
       </FormDialog>
+      <SigningDialog
+        opened={signing !== undefined}
+        recordType={decisionType}
+        title={t(signing?.decision === "revoke" ? "reviews.items.signRevokeTitle" : "reviews.items.signConfirmTitle")}
+        summary={
+          signing &&
+          t(signing.decision === "revoke" ? "reviews.items.revokeMessage" : "reviews.items.signConfirmMessage", {
+            name: signing.item.principal_name,
+            role: signing.item.role_name,
+            unit: signing.item.unit_name,
+          })
+        }
+        meanings={signing?.decision === "revoke" ? ["rejected"] : ["approved"]}
+        onClose={() => setSigning(undefined)}
+        onSign={async (credentials, _meaning, comment) => {
+          if (signing) {
+            const { item, decision } = signing;
+            await decideItem(review.id, item.id, decision, comment, credentials);
+            setSigning(undefined);
+            await after(
+              t(decision === "revoke" ? "reviews.items.revoked" : "reviews.items.confirmed", {
+                name: item.principal_name,
+                role: item.role_name,
+              }),
+            );
+          }
+        }}
+      />
       <ConfirmDialog
         opened={confirming.opened}
         title={t("reviews.items.confirmPageTitle")}

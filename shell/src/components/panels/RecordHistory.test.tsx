@@ -72,4 +72,31 @@ describe("a record's History tab", () => {
     expect(screen.getByText("Ada Admin, Oct 20, 2026, 2:30 PM GMT+5:30")).toBeInTheDocument();
     expect(calls.filter((call) => call.key.includes("/audit-events"))).toHaveLength(1);
   });
+  it("reads each event type as words and a save as its fields, old and new [TF-064 AC4, TF-062 AC1, ADR-0051]", async () => {
+    stubFetch({
+      [`GET /api/v1/audit-events?filter=record_type:eq:principal&filter=record_id:eq:${record}&sort=-created_at&page_size=200`]:
+        () =>
+          json(
+            page([
+              event("e3", "record.changed", "2026-10-22T11:00:00Z", {
+                event_name: "Record changed",
+                target: null,
+                changes: [
+                  { field: "display_name", old: "Grace H", new: "Grace Hopper", treatment: "plain" },
+                  { field: "password_hash", old: null, new: null, treatment: "secret" },
+                ],
+              }),
+              event("e2", "identity.user_deactivated", "2026-10-22T10:00:00Z", { event_name: "Person deactivated" }),
+            ]),
+          ),
+    });
+    renderWithProviders(<RecordHistory recordType="principal" recordId={record} />);
+
+    expect(await screen.findByText("Record changed")).toBeInTheDocument();
+    expect(screen.getByText("Person deactivated")).toBeInTheDocument();
+    expect(screen.queryByText("identity.user_deactivated")).toBeNull();
+    const group = screen.getByRole("table", { name: "2 fields changed" });
+    expect(group).toHaveTextContent(/Display nameGrace HGrace Hopper/);
+    expect(group).toHaveTextContent("Changed. A secret value is never kept.");
+  });
 });

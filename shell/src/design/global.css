@@ -13,3 +13,19 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * A record on paper (TF-219 AC1, ADR-0051): the page alone, its header, its signature block and its open tab. The frame,
+ * the tab list and anything marked data-print="hide" stay on the screen.
+ */
+@media print {
+  .mantine-AppShell-header,
+  .mantine-AppShell-navbar,
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  .mantine-AppShell-main {
+    padding: 0 !important;
+  }
+}

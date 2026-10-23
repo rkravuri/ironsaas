@@ -3,7 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Alert, Badge, Box, Button, Group, Select, Stack, Table, Tabs, Text, TextInput } from "@mantine/core";
 import { IconArchive, IconFileExport } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
-import { exportAuditEvents, fetchAuditEvents, searchArchive, type ArchivedEvents, type AuditEvent } from "@/api/audit";
+import {
+  type ArchivedEvents,
+  type AuditEvent,
+  eventName,
+  exportAuditEvents,
+  fetchAuditEvents,
+  searchArchive,
+} from "@/api/audit";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { EmptyState } from "@/components/panels";
 import { ListPage } from "@/components/templates";
@@ -50,7 +57,16 @@ export function AuditPage() {
       sortable: true,
       format: (e) => formatDateTime(e.created_at),
     },
-    { field: "event_type", headerKey: "audit.columns.event", flex: 1, minWidth: 200, sortable: true, filter: "text" },
+    {
+      // The type in words (ADR-0051); the filter and the sort stay on its code.
+      field: "event_type",
+      headerKey: "audit.columns.event",
+      flex: 1,
+      minWidth: 200,
+      sortable: true,
+      filter: "text",
+      format: (e) => eventName(e),
+    },
     // Who reads in full at 1280 pixels, an operator signed in as someone too.
     { field: "actor_id", headerKey: "audit.columns.actor", flex: 1.3, minWidth: 250, format: (e) => actorWords(e, t) },
     { field: "target", headerKey: "audit.columns.target", flex: 1, minWidth: 150 },
@@ -283,7 +299,7 @@ export function AuditPage() {
                     <Table.Tr key={event.id}>
                       <Table.Td>{formatDateTime(event.created_at)}</Table.Td>
                       <Table.Td>
-                        {event.event_type}{" "}
+                        {eventName(event)}{" "}
                         <Badge variant="light" color="info" size="sm">
                           {t("audit.archive.badge")}
                         </Badge>
