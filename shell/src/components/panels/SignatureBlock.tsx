@@ -78,7 +78,15 @@ function SignatureLine({ signature }: { signature: Signature }) {
                   version: signature.record_version,
                   current: signature.current_version,
                 })}{" "}
-            <Anchor component={Link} to={`/signatures/${signature.id}`} size="sm">
+            {/* The notice's own colour, underlined: a link in the accent fails contrast on the warning's light ground. */}
+            <Anchor
+              component={Link}
+              to={`/signatures/${signature.id}`}
+              size="sm"
+              c="inherit"
+              underline="always"
+              fw={600}
+            >
               {t("signatures.seeSigned")}
             </Anchor>
           </Text>
