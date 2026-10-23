@@ -179,3 +179,64 @@ export interface AuditReviewInput {
 /** Records a review and signs it "reviewed" with the signer's credentials (TF-219 AC3, ADR-0051). */
 export const recordAuditReview = (input: AuditReviewInput, signature: SigningCredentials) =>
   request("/api/v1/audit-reviews", { method: "POST", body: { ...input, signature }, schema: AuditReviewSchema });
+
+/** An evidence pack (TF-067): its period, its requester, where it stands, and once made its hashes and the chain's head. */
+export const EvidencePackSchema = z.object({
+  id: z.string(),
+  period_from: z.string(),
+  period_to: z.string(),
+  requested_by: z.string(),
+  requester_name: z.string(),
+  requested_at: z.string(),
+  status: z.string(),
+  bytes: z.number().nullable(),
+  sha256: z.string().nullable(),
+  manifest_sha256: z.string().nullable(),
+  chain_segment: z.number().nullable(),
+  chain_position: z.number().nullable(),
+  chain_hash: z.string().nullable(),
+  anchor_id: z.string().nullable(),
+  made_at: z.string().nullable(),
+  failure: z.string().nullable(),
+});
+export type EvidencePack = z.infer<typeof EvidencePackSchema>;
+
+export const evidencePackStates = ["requested", "building", "ready", "failed"] as const;
+
+export const fetchEvidencePacks = (query: string, signal?: AbortSignal) =>
+  request(`/api/v1/evidence-packs${query ? `?${query}` : ""}`, {
+    schema: listSchema(EvidencePackSchema),
+    ...(signal ? { signal } : {}),
+  });
+
+export const fetchEvidencePack = (id: string, signal?: AbortSignal) =>
+  request(`/api/v1/evidence-packs/${encodeURIComponent(id)}`, {
+    schema: EvidencePackSchema,
+    ...(signal ? { signal } : {}),
+  });
+
+/** Asks for a pack covering from up to to, both instants in UTC; the unit makes it within seconds (TF-067 AC1). */
+export const requestEvidencePack = (from: string, to: string) =>
+  request("/api/v1/evidence-packs", { method: "POST", body: { from, to }, schema: EvidencePackSchema });
+
+/** A link to download a ready pack: for this person, once, within five minutes. */
+export const linkEvidencePack = (id: string) =>
+  request(`/api/v1/evidence-packs/${encodeURIComponent(id)}/links`, {
+    method: "POST",
+    schema: z.object({ url: z.string(), expires_at: z.string() }),
+  });
+
+/** The version this tenant runs and whether its validation pack is here to download (TF-218 AC3). */
+export const ValidationSchema = z.object({
+  version: z.string(),
+  development: z.boolean(),
+  pack_available: z.boolean(),
+  pack_bytes: z.number().nullable(),
+});
+export type Validation = z.infer<typeof ValidationSchema>;
+
+export const fetchValidation = (signal?: AbortSignal) =>
+  request("/api/v1/validation", { schema: ValidationSchema, ...(signal ? { signal } : {}) });
+
+/** The pack's address: the browser downloads it with the session, and the API audits the download. */
+export const validationPackPath = "/api/v1/validation/pack";

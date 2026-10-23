@@ -137,7 +137,8 @@
       "conflicts": "Conflict rules",
       "sso": "Single sign-on",
       "sessions": "Sessions",
-      "documents": "Documents"
+      "documents": "Documents",
+      "changes": "Pending changes"
     },
     "audit": {
       "title": "Audit",
@@ -151,7 +152,9 @@
       "title": "Compliance",
       "auditReviews": "Audit-trail reviews",
       "signedSnapshot": "What was signed",
-      "line": "Reviews of the audit trail, each signed by its reviewer, and what every signature signed."
+      "evidencePacks": "Evidence packs",
+      "validation": "Validation",
+      "line": "Reviews of the audit trail, each signed by its reviewer, what every signature signed, the evidence an auditor asks for, and the validation of the version you run."
     }
   },
   "users": {
@@ -1074,7 +1077,9 @@
     "title": "Help",
     "shell": "Keys on every page",
     "page": "Keys on {{page}}",
-    "documentation": "The guide to each page will open from here once it is written. Until then, your administrator can help."
+    "documentation": "The guide to each page will open from here once it is written. Until then, your administrator can help.",
+    "version": "Version {{version}}",
+    "development": "This is a development build, without a release version."
   },
   "shortcuts": {
     "keys": {
@@ -1224,7 +1229,8 @@
     "modules": {
       "identity": "Sign-in and invitations",
       "settings": "Preferences",
-      "compliance": "Signing"
+      "compliance": "Signing",
+      "changes": "Four-eyes approval"
     },
     "names": {
       "identity_session_idle_minutes": "A session ends without activity after",
@@ -1238,9 +1244,15 @@
       "identity_mfa_grace_days": "Days a person may still sign in without a second factor",
       "identity_mfa_passkey_sign_in": "Sign in with a passkey alone",
       "compliance_signing_policies": "Signing policy",
-      "compliance_signing_later_second_factor": "Second factor at every signature"
+      "compliance_signing_later_second_factor": "Second factor at every signature",
+      "changes_four_eyes_areas": "Changes that wait for a second administrator",
+      "changes_four_eyes_signed_areas": "Approvals signed electronically",
+      "changes_four_eyes_expiry_days": "A change waits for approval for"
     },
+    "noAreas": "None: every change applies at once",
     "amounts": {
+      "changes_four_eyes_expiry_days_one": "{{count}} day",
+      "changes_four_eyes_expiry_days_other": "{{count}} days",
       "identity_session_idle_minutes_one": "{{count}} minute",
       "identity_session_idle_minutes_other": "{{count}} minutes",
       "identity_session_absolute_hours_one": "{{count}} hour",
@@ -1302,7 +1314,12 @@
       "jsonInvalid": "This is not a JSON document. Check the brackets and the quotes.",
       "roles": "Roles",
       "rolesHint": "The people who hold one of these roles, anywhere, must have a second factor. With none chosen, every role that holds a high-risk or critical permission.",
-      "rolesNone": "No role has that name."
+      "rolesNone": "No role has that name.",
+      "areas": "Areas",
+      "areasHint": {
+        "changes_four_eyes_areas": "A change in these areas waits until a second administrator who may make it approves it. While any area is chosen, a change of these four-eyes settings waits too.",
+        "changes_four_eyes_signed_areas": "In these areas, approving or rejecting a change is an electronic signature, with the password and the meaning approved or rejected. Elsewhere, the approver confirms it is them."
+      }
     },
     "history": {
       "open": "History",
@@ -2687,7 +2704,176 @@
     "noPasswordWord": "no password asked",
     "types": {
       "access_review_decision": "Access review decisions",
-      "audit_trail_review": "Audit-trail reviews"
+      "audit_trail_review": "Audit-trail reviews",
+      "configuration_change": "Approvals of configuration changes"
     }
+  },
+  "changes": {
+    "title": "Pending changes",
+    "description": "Changes of sensitive configuration that wait for a second administrator, and how each was decided. A change applies only when someone other than its requester approves it.",
+    "which": "Which changes",
+    "views": {
+      "to_approve": "To approve",
+      "mine": "Mine",
+      "all": "All"
+    },
+    "gridLabel": {
+      "to_approve": "Changes you may approve",
+      "mine": "Changes you asked for",
+      "all": "Every change"
+    },
+    "columns": {
+      "title": "Change",
+      "area": "Area",
+      "status": "Status",
+      "requester": "Asked for by",
+      "requested": "Asked for at",
+      "expires": "Waits until"
+    },
+    "areas": {
+      "roles": "Roles and their assignments",
+      "single_sign_on": "Single sign-on",
+      "retention": "Audit retention",
+      "mfa_and_password_policies": "MFA and password policies",
+      "legal_holds": "Legal holds",
+      "signing_policy": "Signing policy",
+      "four_eyes": "Four-eyes approval"
+    },
+    "states": {
+      "pending": "Waiting for approval",
+      "applied": "Approved and applied",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn",
+      "expired": "Expired"
+    },
+    "values": {
+      "none": "Nothing",
+      "empty": "Empty",
+      "emptyList": "None",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "failed": "The change could not be loaded.",
+    "held": {
+      "title": "Waiting for approval",
+      "form": "Your change waits for a second administrator's approval. Nothing changes until they approve it.",
+      "banner": "Your change waits for a second administrator's approval. Nothing changes until they approve it, and you can follow it under Pending changes.",
+      "open": "Open the change"
+    },
+    "record": {
+      "tab": "Change",
+      "area": "Area",
+      "requester": "Asked for by",
+      "requested": "Asked for at",
+      "expires": "Waits until",
+      "reason": "Reason given",
+      "noReason": "No reason given",
+      "decider": "Decided by",
+      "decidedBy": "{{name}}, {{at}}",
+      "decision": "Reason for the decision",
+      "restarted": "Back for a new review",
+      "yours": "You asked for this change, so someone else approves it. You can withdraw it until they decide.",
+      "decide": "You may approve or reject this change. Approving applies it at once, after you confirm it is you.",
+      "decideSigned": "You may approve or reject this change. Your decision is an electronic signature, and approving applies the change at once.",
+      "notYours": "You cannot decide this change: it waits for an administrator who holds its permission where it applies.",
+      "compareCaption": "The configuration before the change and after it, field by field.",
+      "field": "Field",
+      "before": "Now",
+      "after": "After the change",
+      "beforeNothing": "Now: does not exist",
+      "afterNothing": "After the change: removed",
+      "changed": "Changed"
+    },
+    "reasonHint": "The audit trail keeps your reason with the decision, beside the requester's.",
+    "continueToSign": "Continue to sign",
+    "signSummary": "{{title}}. Your reason: {{reason}}",
+    "approve": {
+      "open": "Approve",
+      "title": "Approve the change",
+      "message": "The change applies at once. If what it changes has changed since it was asked for, it does not apply and goes back for a new review.",
+      "messageSigned": "The change applies once you sign. If what it changes has changed since it was asked for, it does not apply and goes back for a new review.",
+      "reason": "Why you approve it",
+      "confirm": "Approve",
+      "signTitle": "Sign your approval"
+    },
+    "reject": {
+      "open": "Reject",
+      "title": "Reject the change",
+      "message": "Nothing changes, and the requester sees your reason.",
+      "reason": "Why you reject it",
+      "confirm": "Reject",
+      "signTitle": "Sign your rejection"
+    },
+    "withdraw": {
+      "open": "Withdraw",
+      "title": "Withdraw this change?",
+      "message": "{{title}}: nothing changes, and nobody can approve it any more. Ask for it again to change your mind.",
+      "confirm": "Withdraw",
+      "keep": "Keep waiting"
+    }
+  },
+  "evidencePacks": {
+    "title": "Evidence packs",
+    "description": "The documents an auditor asks for, for a period: who has access and with which roles, what administrators did, the security settings, the audit chain's verifications and the backup drills, with a manifest of their hashes.",
+    "request": {
+      "open": "Make a pack",
+      "title": "Make an evidence pack",
+      "intro": "Choose the period. The pack shows the state at its end and what happened within it, in UTC. A period that ends today ends now.",
+      "from": "From",
+      "to": "Up to and including",
+      "fromRequired": "Choose the first day.",
+      "toRequired": "Choose the last day.",
+      "toBeforeFrom": "Choose a last day on or after the first.",
+      "toFuture": "Choose a day that is not in the future.",
+      "confirm": "Make the pack",
+      "audited": "Making a pack, and each download, is recorded in the audit trail with your name."
+    },
+    "gridLabel": "Evidence packs",
+    "columns": {
+      "period": "Period",
+      "status": "Status",
+      "requester": "Asked for by",
+      "requested": "Asked for at",
+      "size": "Size"
+    },
+    "states": {
+      "requested": "Waiting to be made",
+      "building": "Being made",
+      "ready": "Ready",
+      "failed": "Failed"
+    },
+    "period": "{{from}} to {{to}}",
+    "failed": "The evidence pack could not be loaded.",
+    "record": {
+      "tab": "Pack",
+      "requester": "Asked for by",
+      "requested": "Asked for at",
+      "made": "Made at",
+      "documents": "Documents",
+      "documentList": "Access list with roles and scopes; administrative actions; security settings; audit chain verifications; backup and restore drills. Each as CSV and as a page you can print, with the tenant and the period.",
+      "size": "Size",
+      "sha256": "SHA-256 of the pack",
+      "manifest": "SHA-256 of the manifest",
+      "chain": "Audit chain head",
+      "chainValue": "Segment {{segment}}, position {{position}}: {{hash}}",
+      "anchor": "Anchor in the control plane",
+      "noAnchor": "No anchor covers this position yet",
+      "waiting": "The pack is being made. This page updates when it is ready.",
+      "failure": "The pack could not be made",
+      "download": "Download",
+      "downloadHint": "The link is yours alone, works once and lasts five minutes. The download is recorded in the audit trail."
+    }
+  },
+  "validation": {
+    "title": "Validation",
+    "description": "The version this organisation runs and its validation pack: every requirement with its tests and their results, the release notes, the risk assessment, the installation record and the configuration's hashes.",
+    "version": "Installed version",
+    "development": "A development build: it has no release version. Its pack is the last one made on this machine, for trying the page, not for validation.",
+    "pack": "Validation pack",
+    "packReady": "The pack of version {{version}}, {{size}}.",
+    "packMissing": "The pack of this version is not here yet. It is placed at each update; ask your operator if it stays missing.",
+    "download": "Download the pack",
+    "audited": "Each download is recorded in the audit trail with your name.",
+    "failed": "The installed version could not be read."
   }
 }

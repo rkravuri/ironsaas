@@ -173,7 +173,8 @@ function RoleEditor({ role, catalogue }: { role: Role | undefined; catalogue: re
       await navigate("/console/roles");
     } catch (error) {
       setDeleting(false);
-      setFailure(error instanceof ApiError ? error : undefined);
+      // A removal held for a second administrator is no failure: the frame says it waits (ADR-0052).
+      setFailure(error instanceof ApiError && !error.isHeld ? error : undefined);
     } finally {
       setBusy(false);
     }

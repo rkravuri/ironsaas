@@ -22,6 +22,7 @@ import { IconHistory, IconPencil, IconRestore } from "@tabler/icons-react";
 import { z } from "zod";
 import { ApiError } from "@/api/client";
 import { fetchRoles, fetchUnits } from "@/api/authorization";
+import { configurationAreas } from "@/api/changes";
 import { fetchSettingHistory, fetchSettings, resetSetting, saveSetting, type SettingView } from "@/api/settings";
 import { useAccessAt } from "@/auth/access";
 import { contextQueryKey } from "@/auth/entitlements";
@@ -30,7 +31,15 @@ import { Form, useZodForm } from "@/components/form";
 import { ConfirmDialog, EmptyState, FormDialog, HistoryPanel, LoadingState } from "@/components/panels";
 import { ConsolePage, type ConsoleSection } from "@/components/templates";
 import { Mandala } from "@/design/patterns";
-import { displayValue, settingName, settingSlug as slug, signingPoliciesKey, sourceSentence } from "./setting-words";
+import { areaWords } from "./change-words";
+import {
+  areaListKeys,
+  displayValue,
+  settingName,
+  settingSlug as slug,
+  signingPoliciesKey,
+  sourceSentence,
+} from "./setting-words";
 import { SigningPolicyField, type PolicyMap } from "./SigningPolicyField";
 import { UnitPicker } from "./UnitPicker";
 
@@ -218,7 +227,8 @@ function SettingRow({
       setResetting(false);
       await refresh();
     } catch (error) {
-      setFailure(error instanceof ApiError ? error : undefined);
+      // A reset held for a second administrator is no failure: the frame says it waits (ADR-0052).
+      setFailure(error instanceof ApiError && !error.isHeld ? error : undefined);
       setResetting(false);
     } finally {
       setBusy(false);
@@ -338,7 +348,7 @@ const roleListKey = "identity.mfa.roles";
 
 /** The form's value for the setting's type: JSON as text, a role list as its codes, everything else as it is. */
 const initialValue = (setting: SettingView): unknown =>
-  setting.key === roleListKey
+  setting.key === roleListKey || areaListKeys.includes(setting.key)
     ? (Array.isArray(setting.value) ? setting.value : []).filter((code): code is string => typeof code === "string")
     : setting.key === signingPoliciesKey
       ? typeof setting.value === "object" && setting.value !== null && !Array.isArray(setting.value)
@@ -349,7 +359,7 @@ const initialValue = (setting: SettingView): unknown =>
         : (setting.value ?? (setting.type === "boolean" ? false : ""));
 
 function editSchema(setting: SettingView, t: TFunction): z.ZodType<EditValues> {
-  if (setting.key === roleListKey) {
+  if (setting.key === roleListKey || areaListKeys.includes(setting.key)) {
     return z.object({ value: z.array(z.string()) });
   }
   if (setting.key === signingPoliciesKey) {
@@ -392,6 +402,8 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
   const schema = useMemo(() => editSchema(setting, t), [setting, t]);
   const form = useZodForm<EditValues>({ schema, initialValues: { value: initialValue(setting) } });
   const roleList = setting.key === roleListKey;
+  // The four-eyes areas (ADR-0052): chosen from the kernel's list by their words, never typed as JSON.
+  const areaList = areaListKeys.includes(setting.key);
   const roles = useQuery({
     queryKey: ["authz", "roles", "all"],
     queryFn: ({ signal }) => fetchRoles("page_size=200&sort=name", signal),
@@ -425,6 +437,18 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
           searchable
           clearable
           nothingFoundMessage={t("settings.edit.rolesNone")}
+          data-autofocus
+          {...form.getInputProps("value")}
+        />
+      );
+    }
+    if (areaList) {
+      return (
+        <MultiSelect
+          label={t("settings.edit.areas")}
+          description={t(`settings.edit.areasHint.${slug(setting.key)}`)}
+          data={configurationAreas.map((area) => ({ value: area, label: areaWords(area, t) }))}
+          clearable
           data-autofocus
           {...form.getInputProps("value")}
         />
@@ -496,7 +520,7 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
       secondary={{ label: t("settings.cancel"), onClick: onClose }}
       onSubmit={async (values) => {
         const value =
-          roleList || setting.key === signingPoliciesKey
+          roleList || areaList || setting.key === signingPoliciesKey
             ? values.value
             : setting.type === "json"
               ? (JSON.parse(String(values.value)) as unknown)

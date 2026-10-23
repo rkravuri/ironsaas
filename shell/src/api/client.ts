@@ -27,6 +27,9 @@ export const ProblemSchema = z.object({
   provider_name: z.string().optional(),
   /** Where a refused re-authentication through a company login returns the person, to do the action again (TF-248 AC6). */
   return_to: z.string().optional(),
+  /** The pending change a change of sensitive configuration became, waiting for a second administrator (TF-068, ADR-0052). */
+  change_id: z.string().optional(),
+  expires_at: z.string().optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
@@ -71,6 +74,8 @@ export class ApiError extends Error {
   readonly provider: { id: string; name: string } | undefined;
   /** The page a refused re-authentication through a company login goes back to (TF-248 AC6, ADR-0048). */
   readonly returnTo: string | undefined;
+  /** The pending change the request became, when the tenant asks a second administrator to approve it (ADR-0052). */
+  readonly changeId: string | undefined;
 
   constructor(status: number, problem: Problem, correlationId: string | undefined) {
     super(problem.detail ?? problem.title ?? `The request failed with status ${status}.`);
@@ -87,6 +92,15 @@ export class ApiError extends Error {
         ? { id: problem.provider_id, name: problem.provider_name }
         : undefined;
     this.returnTo = problem.return_to;
+    this.changeId = problem.change_id;
+  }
+
+  /**
+   * Not a failure: the change waits for a second administrator's approval (TF-068, ADR-0052). Nothing changed yet, so the
+   * caller does not go on as if it had; the form says so in the information colour and the frame links to the change.
+   */
+  get isHeld(): boolean {
+    return this.status === 202 && this.errorCode === changeHeld;
   }
 
   /** A high-risk action refused for an old sign-in (TF-248): the person confirms it is them, and it is sent again. */
@@ -184,6 +198,18 @@ export function onTermsRequired(listener: TermsListener): () => void {
   return () => termsListeners.delete(listener);
 }
 
+/** The code of a change held for a second administrator's approval: the answer is 202 with a problem (ADR-0052). */
+export const changeHeld = "changes.change.held";
+
+type HeldListener = (error: ApiError) => void;
+const heldListeners = new Set<HeldListener>();
+
+/** The shell's frame subscribes to learn that a change the person made waits for approval, from any call (TF-068 AC1). */
+export function onChangeHeld(listener: HeldListener): () => void {
+  heldListeners.add(listener);
+  return () => heldListeners.delete(listener);
+}
+
 /** The header the API sets on the first answer after a delegation the session acted with has ended. */
 export const actingEndedHeader = "Iron-Acting-Ended";
 
@@ -266,6 +292,18 @@ async function send<T>(path: string, options: RequestOptions<T>): Promise<T> {
 
   if (response.status === 204) {
     return undefined as T;
+  }
+
+  // A held change answers 202 with a problem rather than the thing it would have made: thrown, so no caller reads it as
+  // done. A 202 with its resource (an evidence pack accepted) is an ordinary answer.
+  if (response.status === 202 && (response.headers.get("Content-Type") ?? "").includes("problem+json")) {
+    const held = new ApiError(response.status, await readProblem(response), correlationId);
+    if (held.isHeld) {
+      for (const listener of heldListeners) {
+        listener(held);
+      }
+    }
+    throw held;
   }
 
   const json: unknown = await response.json();

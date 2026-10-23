@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   ApiError,
   listSchema,
+  onChangeHeld,
   onEnrolmentRequired,
   onReauthenticationRequired,
   onResponse,
@@ -171,5 +172,28 @@ describe("the API client", () => {
 
     expect(heard).toHaveBeenCalledTimes(1);
     expect((refused as ApiError).status).toBe(403); // the session stays: a 403, not a 401
+  });
+
+  it("throws a change held for a second administrator, with its id, and tells the frame, while a 202 with its resource is an answer [TF-068 AC1, ADR-0052]", async () => {
+    stubFetch({
+      "PUT /api/v1/settings/tenant/identity.password.min_length": () =>
+        problem(202, { error_code: "changes.change.held", change_id: "c-1", expires_at: "2026-10-30T10:00:00Z" }),
+      "POST /api/v1/evidence-packs": () => json({ id: "p-1" }, 202),
+    });
+    const heard = vi.fn();
+    const stop = onChangeHeld(heard);
+
+    const held = await request("/api/v1/settings/tenant/identity.password.min_length", {
+      method: "PUT",
+      body: { value: 14 },
+    }).catch((error: unknown) => error);
+    const accepted = await request("/api/v1/evidence-packs", { method: "POST", body: {} });
+    stop();
+
+    expect(held).toBeInstanceOf(ApiError);
+    expect((held as ApiError).isHeld).toBe(true);
+    expect((held as ApiError).changeId).toBe("c-1");
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(accepted).toEqual({ id: "p-1" });
   });
 });

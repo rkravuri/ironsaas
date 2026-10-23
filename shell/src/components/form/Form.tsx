@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Group, Stack, Text } from "@mantine/core";
+import { Link } from "react-router";
+import { Alert, Anchor, Button, Group, Stack, Text } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { ApiError } from "@/api/client";
 import { applyProblem, type ProblemSummary } from "./problems";
@@ -25,15 +26,20 @@ export function Form<Values extends Record<string, unknown>>({
 }: FormProps<Values>) {
   const { t } = useTranslation();
   const [summary, setSummary] = useState<ProblemSummary | undefined>();
+  // A change the tenant holds for a second administrator (ADR-0052) is not a failure: it waits, and the form says so.
+  const [held, setHeld] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
   const submit = form.onSubmit(async (values) => {
     setSubmitting(true);
     setSummary(undefined);
+    setHeld(undefined);
     try {
       await onSubmit(values);
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof ApiError && error.isHeld) {
+        setHeld(error.changeId ?? "");
+      } else if (error instanceof ApiError) {
         setSummary(applyProblem(form, error));
       } else {
         setSummary({ message: t("errors.unexpected"), correlationId: undefined, unmapped: [] });
@@ -47,6 +53,24 @@ export function Form<Values extends Record<string, unknown>>({
     <form onSubmit={submit} noValidate>
       <Stack>
         {children}
+        {held !== undefined && (
+          <Alert color="info" role="status" title={t("changes.held.title")}>
+            {t("changes.held.form")}
+            {held !== "" && (
+              <Anchor
+                component={Link}
+                to={`/console/changes/${held}`}
+                display="block"
+                mt={4}
+                c="inherit"
+                underline="always"
+                fw={600}
+              >
+                {t("changes.held.open")}
+              </Anchor>
+            )}
+          </Alert>
+        )}
         {summary && summary.message !== "" && (
           <Alert color="danger" role="alert">
             {summary.message}

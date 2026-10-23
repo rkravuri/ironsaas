@@ -319,7 +319,8 @@ function ProviderEditor({
       await navigate("/console/sso");
     } catch (error) {
       setRemoving(false);
-      setRemoveFailure(error instanceof ApiError ? error : undefined);
+      // A removal held for a second administrator is no failure: the frame says it waits (ADR-0052).
+      setRemoveFailure(error instanceof ApiError && !error.isHeld ? error : undefined);
     } finally {
       setBusy(false);
     }

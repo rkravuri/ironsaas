@@ -3,6 +3,7 @@ import { useLocation } from "react-router";
 import { ActionIcon, Drawer, Stack, Text, Title, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconHelp } from "@tabler/icons-react";
+import { useSession } from "@/auth/session-context";
 import { ShortcutList } from "@/components/ShortcutList";
 import { shellShortcuts } from "@/components/shortcuts";
 import { manifests } from "@/modules";
@@ -10,7 +11,8 @@ import { routeAt } from "@/modules/registry";
 
 /**
  * Help (TF-170, ADR-0033): a panel from the right edge with the shell's keys, the current page's keys from its manifest,
- * and where the documentation will live. The panel is a Mantine drawer: Escape closes it and focus returns to the button.
+ * where the documentation will live, and the version installed (TF-218). The panel is a Mantine drawer: Escape closes it
+ * and focus returns to the button.
  */
 export function HelpButton() {
   const { t } = useTranslation();
@@ -18,6 +20,8 @@ export function HelpButton() {
   const { pathname } = useLocation();
   const route = pathname === "/" ? undefined : routeAt(manifests, pathname);
   const page = route?.shortcuts ?? [];
+  // The version installed, so a person reporting a problem, or a validator, can say which release they used (TF-218).
+  const { release } = useSession();
   return (
     <>
       <Tooltip label={t("help.open")} withinPortal>
@@ -50,6 +54,11 @@ export function HelpButton() {
           <Text size="sm" c="dimmed">
             {t("help.documentation")}
           </Text>
+          {release && (
+            <Text size="sm" data-version={release.version}>
+              {release.development ? t("help.development") : t("help.version", { version: release.version })}
+            </Text>
+          )}
         </Stack>
       </Drawer>
     </>

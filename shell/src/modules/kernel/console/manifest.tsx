@@ -11,9 +11,12 @@ import {
   IconSitemap,
   IconSquarePlus,
   IconUserShare,
+  IconUsersGroup,
 } from "@tabler/icons-react";
 import { gridShortcuts, tabShortcuts, treeShortcuts } from "@/components/shortcuts";
 import type { ModuleManifest } from "@/modules/registry";
+import { ChangeRecordPage } from "./pages/ChangeRecordPage";
+import { ChangesPage } from "./pages/ChangesPage";
 import { ConflictsPage } from "./pages/ConflictsPage";
 import { DelegationsPage } from "./pages/DelegationsPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
@@ -36,7 +39,8 @@ import { UnitsPage } from "./pages/UnitsPage";
  * reviews (for their reviewers, ADR-0037), A9 the explanation of a person's access and the conflict rules with their
  * report (ADR-0039). Flag rules are the operator's, in the control plane (ADR-0035). S3 T4 brought the company logins
  * (TF-014, ADR-0048), for the holders of the critical identity.sso.manage. S3 T5 brought the sessions, with the summary and
- * the tenant-wide revocation (TF-022, TF-029), and the documents people accept (TF-028, ADR-0049).
+ * the tenant-wide revocation (TF-022, TF-029), and the documents people accept (TF-028, ADR-0049). S3 T8 brought the
+ * changes of sensitive configuration that wait for a second administrator (TF-068, ADR-0052).
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -135,6 +139,22 @@ export const consoleManifest: ModuleManifest = {
       titleKey: "modules.console.documents",
       shortcuts: gridShortcuts,
     },
+    // Whoever asked for a change, or may decide one, reaches it from the frame's notice or a link; the API decides which
+    // changes each sees (ADR-0052), so the routes ask only for a signed-in person.
+    {
+      path: "/console/changes",
+      permission: null,
+      element: <ChangesPage />,
+      titleKey: "modules.console.changes",
+      shortcuts: gridShortcuts,
+    },
+    {
+      path: "/console/changes/:id",
+      permission: null,
+      element: <ChangeRecordPage />,
+      titleKey: "modules.console.changes",
+      shortcuts: tabShortcuts,
+    },
     {
       path: "/console/sso/new",
       permission: "identity.sso.manage",
@@ -214,6 +234,12 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/documents",
       permission: "identity.documents.manage",
       icon: <IconFileCertificate size={16} />,
+    },
+    {
+      labelKey: "modules.console.changes",
+      path: "/console/changes",
+      permission: "changes.changes.read",
+      icon: <IconUsersGroup size={16} />,
     },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },

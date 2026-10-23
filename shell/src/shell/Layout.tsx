@@ -15,6 +15,7 @@ import { useActingChoice } from "./acting";
 import { ActingBand, ActingForControl } from "./ActingFor";
 import { HelpButton } from "./HelpPanel";
 import { EmergencyBanner } from "./EmergencyBanner";
+import { HeldChangeNotice } from "./HeldChangeNotice";
 import { ImpersonationBand } from "./Impersonation";
 import { KillSwitchBanner } from "./KillSwitchBanner";
 import { ReauthenticationDialog } from "@/auth/Reauthentication";
@@ -114,6 +115,7 @@ export function Layout() {
         <PasswordExpiryBanner />
         <MfaEnrolBanner />
         <ReauthenticationNotice />
+        <HeldChangeNotice />
         <Outlet />
         <ReauthenticationDialog />
       </AppShell.Main>
