@@ -100,7 +100,7 @@ public class HostTests
     }
 
     [Fact]
-    [Proves("TF-218", "ADR-0052")]
+    [Proves("ADR-0052")]
     public async Task TheApiImageSaysItsVersionAndItsControlledConfigurationWithoutAHost()
     {
         var writer = new StringWriter();
