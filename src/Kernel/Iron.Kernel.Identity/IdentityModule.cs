@@ -148,6 +148,7 @@ public sealed class IdentityModule : IModule
         services.AddSingleton<IdTokenValidator>();
         services.AddScoped<SsoPeople>();
         services.AddScoped<SsoProviderService>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IConfigurationChangeApplier, SsoChangeApplier>());
         services.AddScoped<SsoSignInService>();
         var store = new SecretStoreOptions();
         configuration.GetSection(SecretStoreOptions.SectionName).Bind(store);

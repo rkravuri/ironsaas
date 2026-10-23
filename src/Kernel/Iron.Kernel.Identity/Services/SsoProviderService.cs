@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
@@ -8,6 +9,21 @@ using Iron.Kernel.Identity.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Identity.Services;
+
+/// <summary>What a held provider change needs to apply: the provider (none for a new one), its values (none for a removal), and where its new secret waits.</summary>
+public sealed record SsoChangePayload(Guid? Id, SsoProviderValues? Values, Guid? StagedSecretId);
+
+/// <summary>Applies approved changes of company logins (TF-068, ADR-0052).</summary>
+public sealed class SsoChangeApplier(SsoProviderService providers) : IConfigurationChangeApplier
+{
+    public bool Handles(string kind) => kind is SsoProviderService.CreateKind or SsoProviderService.UpdateKind or SsoProviderService.DeleteKind;
+
+    public Task<JsonElement> CurrentAsync(HeldChange change, CancellationToken cancellationToken) => providers.StateAsync(change, cancellationToken);
+
+    public Task<Result> ApplyAsync(HeldChange change, CancellationToken cancellationToken) => providers.ApplyAsync(change, cancellationToken);
+
+    public Task DiscardAsync(HeldChange change, CancellationToken cancellationToken) => providers.DiscardAsync(change, cancellationToken);
+}
 
 /// <summary>One check of "Test connection": what was checked, how it went (<c>passed</c>, <c>warning</c>, <c>failed</c>), and why, in words.</summary>
 public sealed record SsoTestItem(string Check, string Status, string Message);
@@ -40,9 +56,16 @@ public sealed partial class SsoProviderService(
     OidcDiscovery discovery,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
-    ICurrentPrincipal actor)
+    ICurrentPrincipal actor,
+    IFourEyes? fourEyes = null)
 {
     public const string RecordType = "sso_provider";
+
+    /// <summary>The kinds of change a provider's save becomes while it waits for a second administrator (TF-068, ADR-0052).</summary>
+    public const string CreateKind = "identity.sso.create";
+
+    public const string UpdateKind = "identity.sso.update";
+    public const string DeleteKind = "identity.sso.delete";
 
     public const int ClientSecretMaxLength = 1000;
 
@@ -66,6 +89,13 @@ public sealed partial class SsoProviderService(
         if (refusal is not null)
         {
             return refusal;
+        }
+
+        var after = Describe(values);
+        after["client_secret"] = "set";
+        if (await HeldAsync(CreateKind, $"sso:new:{values.Name.Trim().ToLowerInvariant()}", $"Add the company login {values.Name.Trim()}", ChangeJson.Nothing, after, null, values, clientSecret, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
         }
 
         var provider = new SsoProvider(values);
@@ -104,6 +134,13 @@ public sealed partial class SsoProviderService(
         }
 
         var before = Describe(provider.Values());
+        var proposed = Describe(values);
+        proposed["client_secret"] = string.IsNullOrWhiteSpace(clientSecret) ? "kept" : "replaced";
+        if (await HeldAsync(UpdateKind, $"sso:{provider.Id:N}", $"Change the company login {provider.Name}", ChangeJson.Of(before), proposed, provider.Id, values, clientSecret, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
+        }
+
         provider.Apply(values);
         var after = Describe(provider.Values());
         var changed = after.Where(pair => !before.TryGetValue(pair.Key, out var old) || old != pair.Value).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -133,6 +170,11 @@ public sealed partial class SsoProviderService(
         if (provider is null)
         {
             return Error.NotFound(IdentityErrors.SsoProviderNotFound, "There is no single sign-on provider with this id.");
+        }
+
+        if (await HeldAsync(DeleteKind, $"sso:{provider.Id:N}", $"Remove the company login {provider.Name}", ChangeJson.Of(Describe(provider.Values())), null, provider.Id, null, null, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
         }
 
         await using (var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false))
@@ -209,6 +251,85 @@ public sealed partial class SsoProviderService(
         items.Add(new("client", SsoTestStatus.Passed, "The client identifier and secret are proved by the first sign-in; the provider must list https://<your address>/sso/callback as a redirect URI."));
         return new SsoTestReport(items);
     }
+
+    /// <summary>
+    /// What a held provider change compares on approval (ADR-0052): the provider's fields, without its secret, or nothing
+    /// for a provider that does not exist (by its id, or by its name for one not added yet).
+    /// </summary>
+    public async Task<JsonElement> StateAsync(HeldChange change, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        var payload = Payload(change);
+        var provider = payload.Id is { } id
+            ? await context.SsoProviders.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id, cancellationToken).ConfigureAwait(false)
+            : await context.SsoProviders.AsNoTracking().SingleOrDefaultAsync(p => p.Name == payload.Values!.Name.Trim(), cancellationToken).ConfigureAwait(false);
+        return provider is null ? ChangeJson.Nothing : ChangeJson.Of(Describe(provider.Values()));
+    }
+
+    /// <summary>
+    /// Applies an approved provider change through the same path a direct save takes, as the approver, with the secret
+    /// the change staged in the store, which then leaves its staging place (ADR-0052).
+    /// </summary>
+    public async Task<Result> ApplyAsync(HeldChange change, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        var payload = Payload(change);
+        var secret = payload.StagedSecretId is { } staged ? await secrets.ReadAsync(staged, cancellationToken).ConfigureAwait(false) : null;
+        Result outcome = change.Kind switch
+        {
+            CreateKind => await CreateAsync(payload.Values!, secret ?? string.Empty, cancellationToken).ConfigureAwait(false) is { IsFailure: true } created ? created.Error : Result.Success(),
+            UpdateKind => await UpdateAsync(payload.Id!.Value, payload.Values!, secret, cancellationToken).ConfigureAwait(false) is { IsFailure: true } updated ? updated.Error : Result.Success(),
+            DeleteKind => await DeleteAsync(payload.Id!.Value, cancellationToken).ConfigureAwait(false),
+            _ => throw new InvalidOperationException($"The single sign-on service does not apply changes of the kind {change.Kind}."),
+        };
+        if (outcome.IsSuccess)
+        {
+            await DiscardAsync(change, cancellationToken).ConfigureAwait(false);
+        }
+
+        return outcome;
+    }
+
+    /// <summary>The secret a held change staged leaves the store when the change ends without applying, or once it applied.</summary>
+    public async Task DiscardAsync(HeldChange change, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        if (Payload(change).StagedSecretId is { } staged)
+        {
+            await secrets.DeleteAsync(staged, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// A save of a provider waits for a second administrator when the tenant lists single sign-on for four-eyes (TF-068
+    /// AC1). A new client secret waits in the store under a staging id of its own, never in the change's row.
+    /// </summary>
+    private async Task<Error?> HeldAsync(string kind, string subject, string title, JsonElement before, Dictionary<string, string>? after, Guid? providerId, SsoProviderValues? values, string? clientSecret, CancellationToken cancellationToken)
+    {
+        if (fourEyes is null || !await fourEyes.AppliesAsync(ConfigurationAreas.SingleSignOn, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        Guid? staged = null;
+        if (!string.IsNullOrWhiteSpace(clientSecret))
+        {
+            staged = Ids.New();
+            await secrets.WriteAsync(staged.Value, clientSecret.Trim(), cancellationToken).ConfigureAwait(false);
+        }
+
+        var proposal = new ChangeProposal(ConfigurationAreas.SingleSignOn, kind, subject, title, before, after is null ? ChangeJson.Nothing : ChangeJson.Of(after), ChangeJson.Of(new SsoChangePayload(providerId, values, staged)), IdentityPermissions.SsoManage.Name, AccessScope.Tenant);
+        var held = await fourEyes.HoldAsync(proposal, cancellationToken).ConfigureAwait(false);
+        if (held.Kind != ErrorKind.Held && staged is { } unused)
+        {
+            await secrets.DeleteAsync(unused, cancellationToken).ConfigureAwait(false);
+        }
+
+        return held;
+    }
+
+    private static SsoChangePayload Payload(HeldChange change) =>
+        change.Payload.Deserialize<SsoChangePayload>(ChangeJson.Options) ?? throw new InvalidOperationException($"The change {change.Id} carries no provider.");
 
     /// <summary>The provider's fields as audit details: everything but the secret, which is never here.</summary>
     private static Dictionary<string, string> Describe(SsoProviderValues values) => new(StringComparer.Ordinal)

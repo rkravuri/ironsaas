@@ -20,4 +20,13 @@ public sealed record AuditEventType
 
     /// <summary>The words a reader sees, in sentence case: "Sign-in failed".</summary>
     public string Name { get; }
+
+    /// <summary>
+    /// An administrator's action on the tenant's people, access or configuration (TF-067, ADR-0052): what an evidence
+    /// pack lists as the period's administrative actions. Declared with <see cref="AsAdministrative"/>.
+    /// </summary>
+    public bool Administrative { get; private init; }
+
+    /// <summary>The same type, marked as an administrative action.</summary>
+    public AuditEventType AsAdministrative() => this with { Administrative = true };
 }

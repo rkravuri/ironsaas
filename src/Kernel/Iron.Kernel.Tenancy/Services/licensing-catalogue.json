@@ -3,6 +3,7 @@
   "platform": [
     "audit",
     "authz",
+    "changes",
     "compliance",
     "entitlements",
     "files",
@@ -113,6 +114,54 @@
         }
       ],
       "settings": [
+        {
+          "key": "changes.four_eyes.areas",
+          "module": "changes",
+          "type": "json",
+          "description": "The areas of sensitive configuration whose changes wait for a second administrator: roles, single_sign_on, retention, mfa_and_password_policies, legal_holds, signing_policy. Empty: nothing waits.",
+          "default": [],
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A list of areas, each once: roles, single_sign_on, retention, mfa_and_password_policies, legal_holds and signing_policy.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "changes.four_eyes.expiry_days",
+          "module": "changes",
+          "type": "number",
+          "description": "How many days a change waits for a second administrator before it expires without applying.",
+          "default": 7,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 1 to 30.",
+          "choices": null,
+          "minimum": 1,
+          "maximum": 30,
+          "whole_number": true
+        },
+        {
+          "key": "changes.four_eyes.signed_areas",
+          "module": "changes",
+          "type": "json",
+          "description": "The areas whose approvals and rejections are electronic signatures (approved or rejected) rather than a confirmation that it is you.",
+          "default": [],
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A list of areas, each once: roles, single_sign_on, retention, mfa_and_password_policies, legal_holds and signing_policy.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
         {
           "key": "compliance.signing.later_second_factor",
           "module": "compliance",

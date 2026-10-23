@@ -51,6 +51,9 @@ public sealed class SettingsModule : IModule
         services.AddScoped<ISettings>(provider => provider.GetRequiredService<SettingsService>());
         services.AddScoped<ISecretSettings, SecretSettings>();
         services.AddScoped<SettingsWriter>();
+
+        // A governed setting's approved change applies through the writer (TF-068, ADR-0052).
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IConfigurationChangeApplier, SettingChangeApplier>());
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitMergeParticipant, UnitSettingsMerge>());
         services.AddScoped<SettingsConsole>();
         services.AddContextPart<SettingsContextPart>(SettingsContextPart.PartName);

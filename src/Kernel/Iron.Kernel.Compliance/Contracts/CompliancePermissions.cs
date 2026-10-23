@@ -72,14 +72,16 @@ public static class ComplianceSettings
         "{}",
         SettingScopes.Tenant,
         SettingRule.Must(IsPolicyObject, "An object keyed by document type, each with required (true or false), meanings (a list of approved, rejected, acknowledged, signed and reviewed) and reauthenticate (true or false)."))
-        .RequiringRecentAuthentication();
+        .RequiringRecentAuthentication()
+        .GovernedBy(ConfigurationAreas.SigningPolicy);
 
     public static readonly Setting<bool> LaterSecondFactor = Setting.Boolean(
         "compliance.signing.later_second_factor",
         "Ask for the second factor at every signature, not only at the first of a session. The password is always asked.",
         false,
         SettingScopes.Tenant)
-        .RequiringRecentAuthentication();
+        .RequiringRecentAuthentication()
+        .GovernedBy(ConfigurationAreas.SigningPolicy);
 
     public static IReadOnlyList<SettingDefinition> All => [Policies, LaterSecondFactor];
 

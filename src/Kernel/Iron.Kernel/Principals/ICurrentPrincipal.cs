@@ -36,4 +36,10 @@ public interface ICurrentPrincipal
 
     /// <summary>The impersonator's name as the session keeps it, so an operator, who is nobody here, is still named.</summary>
     string? ImpersonatorName => null;
+
+    /// <summary>
+    /// The principal is an operator's break-glass account (TF-026, ADR-0049): it repairs a tenant, and never approves a
+    /// change of the tenant's sensitive configuration (TF-068, ADR-0052) nor signs. False for everyone else.
+    /// </summary>
+    bool IsBreakGlass => false;
 }

@@ -61,6 +61,7 @@ public sealed class AuditModule : IModule
         services.AddScoped<IRetentionPeriods>(provider => provider.GetRequiredService<RetentionPolicy>());
         services.AddScoped<LegalHolds>();
         services.AddScoped<ILegalHolds>(provider => provider.GetRequiredService<LegalHolds>());
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IConfigurationChangeApplier, AuditChangeApplier>());
         services.AddScoped<IRecordArchive, BlobRecordArchive>();
         services.AddScoped<IRetentionAudit, RetentionAuditWriter>();
         services.AddScoped<RecordRetentionRunner>();

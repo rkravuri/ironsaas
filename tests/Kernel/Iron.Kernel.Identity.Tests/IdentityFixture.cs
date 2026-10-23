@@ -3,6 +3,7 @@ using System.Text.Json;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
+using Iron.Kernel.Changes;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
@@ -134,7 +135,7 @@ public sealed class IdentityFixture : IAsyncLifetime
         services.AddSingleton(Tenant);
         services.AddLogging();
         services.AddIronDatabase(connectionString ?? ConnectionString);
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
+        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
         configure?.Invoke(services);
         return services.BuildServiceProvider();
     }

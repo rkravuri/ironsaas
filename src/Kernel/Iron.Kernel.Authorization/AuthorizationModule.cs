@@ -69,6 +69,9 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<ISeeder, AuthorizationSeeder>();
         services.AddScoped<RoleService>();
         services.AddScoped<AssignmentService>();
+
+        // Approved changes of roles and assignments apply through the services above (TF-068, ADR-0052).
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IConfigurationChangeApplier, AuthorizationChangeApplier>());
         services.AddScoped<ITenantAdministrators, TenantAdministrators>();
         services.AddScoped<DelegationService>();
         services.AddScoped<IDelegations, DelegationQueries>();

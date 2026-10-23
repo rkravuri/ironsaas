@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Problems;
 using Iron.Kernel.Audit.Contracts;
@@ -23,6 +24,12 @@ public sealed record RoleChange(string Code, IReadOnlyList<string> Added, IReadO
 
 public sealed record UnknownPermissions(string Code, IReadOnlyList<string> Permissions);
 
+/// <summary>A role as a pending change shows it before and after (ADR-0052): its code, words, type and permissions in order.</summary>
+public sealed record RoleState(string Code, string Name, string Description, string PrincipalType, IReadOnlyList<string> Permissions);
+
+/// <summary>What a held role change needs to apply: the role's id (none for a new one), its code, and what to save (none for a deletion).</summary>
+public sealed record RolePayload(Guid? Id, string Code, RoleInput? Input);
+
 /// <summary>What an import does or would do: the roles it creates, changes (with the permissions added and removed), leaves as they are, and cannot take.</summary>
 public sealed record ImportDiff(
     bool DryRun,
@@ -47,9 +54,17 @@ public sealed class RoleService(
     ConflictService segregation,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
-    ICurrentPrincipal actor)
+    ICurrentPrincipal actor,
+    IFourEyes? fourEyes = null)
 {
     public const string RecordType = "role";
+
+    /// <summary>The kinds of change a role's save becomes while it waits for a second administrator (TF-068, ADR-0052).</summary>
+    public const string CreateKind = "authz.role.create";
+
+    public const string UpdateKind = "authz.role.update";
+    public const string DeleteKind = "authz.role.delete";
+    public const string ImportKind = "authz.role.import";
 
     public async Task<Role?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         await context.Roles.AsNoTracking().SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
@@ -72,6 +87,11 @@ public sealed class RoleService(
         if (await context.Roles.AnyAsync(r => r.Code == normalised, cancellationToken).ConfigureAwait(false))
         {
             return new Error(ErrorKind.Conflict, AuthorizationErrors.RoleCodeTaken, $"A role with the code '{normalised}' exists already.", [new FieldError("code", "taken", "Another role has this code. Choose another.")]);
+        }
+
+        if (await HeldAsync(CreateKind, $"role:new:{normalised}", $"Create the role {input.Name.Trim()}", ChangeJson.Nothing, State(normalised, input), new RolePayload(null, normalised, input), cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
         }
 
         var role = new Role(normalised, input.Name, input.Description, isSystem: false, input.PrincipalType, input.Permissions);
@@ -115,6 +135,11 @@ public sealed class RoleService(
             return blocked;
         }
 
+        if (await HeldAsync(UpdateKind, $"role:{role.Id:N}", $"Change the role {role.Name}", State(role), State(role.Code, input), new RolePayload(role.Id, role.Code, input), cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
+        }
+
         var before = role.Permissions.ToList();
         var fields = ChangedFields(role, input.Name, input.Description, input.PrincipalType);
         role.Change(input.Name, input.Description, input.PrincipalType, input.Permissions);
@@ -147,6 +172,11 @@ public sealed class RoleService(
         if (await InUseAsync(role.Id, cancellationToken).ConfigureAwait(false))
         {
             return Error.Conflict(AuthorizationErrors.RoleInUse, $"'{role.Name}' is still assigned. Remove its assignments before you delete it.");
+        }
+
+        if (await HeldAsync(DeleteKind, $"role:{role.Id:N}", $"Delete the role {role.Name}", State(role), ChangeJson.Nothing, new RolePayload(role.Id, role.Code, null), cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
         }
 
         var before = role.Permissions.ToList();
@@ -253,6 +283,12 @@ public sealed class RoleService(
         if (permissionChanges.Count > 0 && await BlockedAsync(permissionChanges, cancellationToken).ConfigureAwait(false) is { } blocked)
         {
             return blocked;
+        }
+
+        if (created.Count + changed.Count > 0
+            && await HeldAsync(ImportKind, "roles:import", $"Import {created.Count + changed.Count} roles", await ImportStateAsync(document, cancellationToken).ConfigureAwait(false), ChangeJson.Of(ImportAfter(document)), document, cancellationToken).ConfigureAwait(false) is { } held)
+        {
+            return held;
         }
 
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
@@ -398,6 +434,86 @@ public sealed class RoleService(
 
         return audit.WriteAsync(new AuditEvent(action, AuditOutcome.Success, actor.Id, role.Code, details, RecordType, role.Id, reason), cancellationToken);
     }
+
+    /// <summary>
+    /// The state of what a held role change changes, now (ADR-0052): the role by its id, or by its code for a role not
+    /// created yet, or for an import every role the document names. Compared with the change's before on approval.
+    /// </summary>
+    public async Task<JsonElement> StateAsync(HeldChange change, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        if (change.Kind == ImportKind)
+        {
+            return await ImportStateAsync(Import(change), cancellationToken).ConfigureAwait(false);
+        }
+
+        var payload = Payload(change);
+        var role = payload.Id is { } id
+            ? await context.Roles.AsNoTracking().SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false)
+            : await context.Roles.AsNoTracking().SingleOrDefaultAsync(r => r.Code == payload.Code, cancellationToken).ConfigureAwait(false);
+        return role is null ? ChangeJson.Nothing : State(role);
+    }
+
+    /// <summary>Applies an approved role change through the same path a direct save takes, as the approver (ADR-0052).</summary>
+    public async Task<Result> ApplyAsync(HeldChange change, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        if (change.Kind == ImportKind)
+        {
+            var imported = await ImportAsync(Import(change), dryRun: false, cancellationToken).ConfigureAwait(false);
+            return imported.IsFailure ? imported.Error : Result.Success();
+        }
+
+        var payload = Payload(change);
+        switch (change.Kind)
+        {
+            case CreateKind:
+                var created = await CreateAsync(payload.Code, payload.Input!, cancellationToken).ConfigureAwait(false);
+                return created.IsFailure ? created.Error : Result.Success();
+            case UpdateKind:
+                var updated = await UpdateAsync(payload.Id!.Value, payload.Input!, cancellationToken).ConfigureAwait(false);
+                return updated.IsFailure ? updated.Error : Result.Success();
+            case DeleteKind:
+                return await DeleteAsync(payload.Id!.Value, cancellationToken).ConfigureAwait(false);
+            default:
+                throw new InvalidOperationException($"The role service does not apply changes of the kind {change.Kind}.");
+        }
+    }
+
+    /// <summary>A save of a role waits for a second administrator when the tenant lists roles for four-eyes (TF-068 AC1).</summary>
+    private async Task<Error?> HeldAsync(string kind, string subject, string title, JsonElement before, JsonElement after, object payload, CancellationToken cancellationToken)
+    {
+        if (fourEyes is null || !await fourEyes.AppliesAsync(ConfigurationAreas.Roles, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return await fourEyes.HoldAsync(new ChangeProposal(ConfigurationAreas.Roles, kind, subject, title, before, after, ChangeJson.Of(payload), AuthorizationPermissions.RolesManage.Name, AccessScope.Tenant), cancellationToken).ConfigureAwait(false);
+    }
+
+    private static JsonElement State(Role role) => ChangeJson.Of(new RoleState(role.Code, role.Name, role.Description, role.PrincipalType.ToString().ToLowerInvariant(), Role.Normalise(role.Permissions)));
+
+    private static JsonElement State(string code, RoleInput input) =>
+        ChangeJson.Of(new RoleState(code, (input.Name ?? string.Empty).Trim(), (input.Description ?? string.Empty).Trim(), input.PrincipalType.ToString().ToLowerInvariant(), Role.Normalise(input.Permissions)));
+
+    private async Task<JsonElement> ImportStateAsync(RoleExport document, CancellationToken cancellationToken)
+    {
+        var codes = document.Roles.Select(r => r.Code).ToArray();
+        var roles = await context.Roles.AsNoTracking().Where(r => codes.Contains(r.Code)).ToDictionaryAsync(r => r.Code, StringComparer.Ordinal, cancellationToken).ConfigureAwait(false);
+        return ChangeJson.Of(codes.Order(StringComparer.Ordinal).ToDictionary(code => code, code => roles.TryGetValue(code, out var role) ? State(role) : ChangeJson.Nothing, StringComparer.Ordinal));
+    }
+
+    private static Dictionary<string, JsonElement> ImportAfter(RoleExport document) =>
+        document.Roles.OrderBy(r => r.Code, StringComparer.Ordinal).ToDictionary(
+            r => r.Code,
+            r => State(r.Code, new RoleInput(r.Name, r.Description, r.PrincipalType, r.Permissions)),
+            StringComparer.Ordinal);
+
+    private static RolePayload Payload(HeldChange change) =>
+        change.Payload.Deserialize<RolePayload>(ChangeJson.Options) ?? throw new InvalidOperationException($"The change {change.Id} carries no role.");
+
+    private static RoleExport Import(HeldChange change) =>
+        change.Payload.Deserialize<RoleExport>(ChangeJson.Options) ?? throw new InvalidOperationException($"The change {change.Id} carries no import.");
 
     private static Error NotFound() => Error.NotFound(AuthorizationErrors.RoleNotFound, "There is no role with this id.");
 

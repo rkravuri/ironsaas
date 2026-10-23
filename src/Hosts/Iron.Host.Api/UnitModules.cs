@@ -1,6 +1,7 @@
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
+using Iron.Kernel.Changes;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Entitlements;
 using Iron.Kernel.Files;
@@ -13,7 +14,8 @@ namespace Iron.Host.Api;
 /// <summary>
 /// The modules a tenant unit runs, in order: Audit first (the others write events through its contract), then
 /// Authorization, then Identity (it replaces the default principal), then Files, Entitlements, Flags and Settings, then
-/// Compliance, which signs the records of the modules before it. The same list is
+/// Compliance, which signs the records of the modules before it, then Changes, which holds the sensitive changes of
+/// the modules before it for a second administrator (ADR-0052). The same list is
 /// the source of the licensing catalogue the control plane carries (ADR-0034), so a module added here is licensable
 /// there once <c>make catalogue</c> has written the file; a host test fails until it has.
 /// </summary>
@@ -21,7 +23,7 @@ public static class UnitModules
 {
     public const string CatalogueCommand = "catalogue";
 
-    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule()];
+    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()];
 
     public static bool IsCatalogueCommand(string[] args)
     {
