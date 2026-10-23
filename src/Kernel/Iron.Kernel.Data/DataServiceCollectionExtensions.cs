@@ -19,9 +19,10 @@ public static class DataServiceCollectionExtensions
     /// Registers the one database connection of this unit (TF-003: a unit holds credentials for its own database only)
     /// and the shared data services. Call once per host. A host that serves people registers its request
     /// <c>ICurrentPrincipal</c> as well; without one, the system principal acts. <paramref name="appRole"/> is the
-    /// runtime database role whose privileges <c>migrate</c> grants (TF-060 AC2); the fleet configures it per unit.
+    /// runtime database role whose privileges <c>migrate</c> grants (TF-060 AC2); the fleet configures it per unit, and
+    /// <paramref name="auditReaderRole"/>, the audit verifier's, which may only read the chain (ADR-0050).
     /// </summary>
-    public static IServiceCollection AddIronDatabase(this IServiceCollection services, string connectionString, string? appRole = null)
+    public static IServiceCollection AddIronDatabase(this IServiceCollection services, string connectionString, string? appRole = null, string? auditReaderRole = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
@@ -37,7 +38,7 @@ public static class DataServiceCollectionExtensions
         // Nobody signs in until Identity is there, so nothing needs a recent sign-in; Identity replaces it (TF-248).
         services.TryAddSingleton<IRecentAuthentication>(NoSignInRecentAuthentication.Instance);
 
-        services.AddSingleton(new DatabaseOptions { AppRole = appRole });
+        services.AddSingleton(new DatabaseOptions { AppRole = appRole, AuditReaderRole = auditReaderRole });
         services.AddScoped<SharedConnection>();
         services.AddScoped<UnitOfWork>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<UnitOfWork>());

@@ -63,9 +63,46 @@ public static class AuditSource
 
 public static class AuditPermissions
 {
-    public static readonly Permission EventsRead = new("audit.events.read", "Search and read the audit trail", Risk.Medium);
+    public static readonly Permission EventsRead = new("audit.events.read", "Search and read the audit trail, export it and see its chain", Risk.Medium);
 
-    public static IReadOnlyList<Permission> All => [EventsRead];
+    /// <summary>A legal hold stops records being deleted after their retention (TF-066 AC2): placed and released with a reason and step-up.</summary>
+    public static readonly Permission LegalHoldsManage = new("audit.legal_holds.manage", "Place and release legal holds, with a reason", Risk.Critical);
+
+    /// <summary>How long each kind of record is kept, within the operator's limits (TF-066 AC3).</summary>
+    public static readonly Permission RetentionManage = new("audit.retention.manage", "Choose how long records and the audit trail are kept, within the operator's limits", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [EventsRead, LegalHoldsManage, RetentionManage];
+}
+
+/// <summary>The audit trail's own events (ADR-0050): its export, archive and pruning, retention and legal holds.</summary>
+public static class AuditEvents
+{
+    public const string EventsExported = "audit.events_exported";
+    public const string TrailArchived = "audit.trail_archived";
+    public const string TrailPruned = "audit.trail_pruned";
+    public const string RecordExpired = "audit.record_expired";
+    public const string LegalHoldPlaced = "audit.legal_hold_placed";
+    public const string LegalHoldReleased = "audit.legal_hold_released";
+    public const string RetentionChanged = "audit.retention_changed";
+}
+
+public static class AuditErrors
+{
+    public const string RetentionClassUnknown = "audit.retention.class_unknown";
+
+    /// <summary>A choice below the operator's minimum for the class (TF-066 AC3).</summary>
+    public const string RetentionBelowMinimum = "audit.retention.below_minimum";
+
+    public const string RetentionAboveMaximum = "audit.retention.above_maximum";
+    public const string LegalHoldScopeInvalid = "audit.legal_hold.scope_invalid";
+    public const string LegalHoldReasonRequired = "audit.legal_hold.reason_required";
+    public const string LegalHoldNotFound = "audit.legal_hold.not_found";
+    public const string LegalHoldReleased = "audit.legal_hold.released";
+
+    /// <summary>A search of the archive needs a date range: the archive index finds batches by date (TF-064 AC2).</summary>
+    public const string ArchiveRangeRequired = "audit.archive.range_required";
+
+    public const string ExportNotFound = "audit.export.not_found";
 }
 
 /// <summary>

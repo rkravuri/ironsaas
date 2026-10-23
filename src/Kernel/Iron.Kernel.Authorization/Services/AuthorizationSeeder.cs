@@ -48,6 +48,12 @@ public sealed class AuthorizationSeeder(
         await UpsertAsync(SystemRoles.ServiceDefault, "Service default", "The default for service accounts: read permissions.", PrincipalKind.Service, reads, cancellationToken).ConfigureAwait(false);
         var notCritical = catalogue.All.Where(p => p.Risk != Risk.Critical).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
         await UpsertAsync(SystemRoles.BreakGlass, "Break-glass", "An operator's emergency access, for a limited time: every permission of this tenant but the critical ones.", PrincipalKind.User, notCritical, cancellationToken).ConfigureAwait(false);
+        var forUnits = catalogue.All.Where(p => p.ForUnitClients).Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
+        if (forUnits.Count > 0)
+        {
+            await UpsertAsync(SystemRoles.UnitClient, "Unit client", "A tenant unit's own client in the control plane: it sends the unit's audit anchors and reads its chain's state, nothing else.", PrincipalKind.Service, forUnits, cancellationToken).ConfigureAwait(false);
+        }
+
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var fallback = tenant?.Id.Value;

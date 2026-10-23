@@ -18,6 +18,11 @@ public sealed class FleetOptions
 
     public FleetUnitsOptions Units { get; set; } = new();
 
+    public FleetControlPlaneOptions ControlPlane { get; set; } = new();
+
+    /// <summary>The audit chains' daily verification (TF-061, ADR-0050).</summary>
+    public FleetAuditOptions Audit { get; set; } = new();
+
     /// <summary>How often the worker looks for Requested jobs.</summary>
     public int PollSeconds { get; set; } = 5;
 
@@ -42,6 +47,18 @@ public sealed class FleetOptions
 
         /// <summary>How long a unit's container signature is valid.</summary>
         public int SasValidDays { get; set; } = 365;
+    }
+
+    public sealed class FleetControlPlaneOptions
+    {
+        /// <summary>The control plane's API as the units see it, for their audit anchors (ADR-0050): <c>http://control-api:8080</c>.</summary>
+        public string UnitAddress { get; set; } = "http://control-api:8080";
+    }
+
+    public sealed class FleetAuditOptions
+    {
+        /// <summary>How often the fleet asks what verification is due; a tenant's own is due once a day.</summary>
+        public int PollSeconds { get; set; } = 60;
     }
 
     public sealed class FleetSecretsOptions

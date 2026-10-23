@@ -43,13 +43,16 @@ builder.Services.AddIronHeartbeat(builder.Configuration);
 
 var connectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException("ConnectionStrings:Database is required. Set ConnectionStrings__Database for this unit.");
-builder.Services.AddIronDatabase(connectionString, builder.Configuration["Database:AppRole"]);
+builder.Services.AddIronDatabase(connectionString, builder.Configuration["Database:AppRole"], builder.Configuration["Database:AuditReaderRole"]);
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 
 // The daily passes that belong to one process per unit, not to every API replica.
 builder.Services.AddAccessReviewEscalation();
 builder.Services.AddConflictReport();
+
+// The audit chain's sealing and anchors (TF-061, ADR-0050): one worker per unit seals, every few seconds.
+builder.Services.AddAuditSealing(builder.Configuration);
 
 var app = builder.Build();
 

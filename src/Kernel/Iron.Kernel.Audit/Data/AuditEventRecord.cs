@@ -3,7 +3,7 @@ using Iron.Kernel.Data.Entities;
 namespace Iron.Kernel.Audit.Data;
 
 /// <summary>One row of <c>kernel_audit.events</c> (TF-060): written once, never changed. The app role cannot update or delete it.</summary>
-public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
+public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide, IVerifierReadable
 {
     public const int EventTypeMaxLength = 100;
     public const int TargetMaxLength = 500;
@@ -88,6 +88,25 @@ public sealed class AuditEventRecord : AppendOnlyEntity, ITenantWide
 
     /// <summary>The trace id of the request or job that raised the event.</summary>
     public string? CorrelationId { get; private set; }
+
+    /// <summary>The event's place in the tenant's chain, from 1, set once by the sealer (TF-061, ADR-0050); null until sealed.</summary>
+    public long? ChainPosition { get; private set; }
+
+    /// <summary>The hash of the event at the position before, or 64 zeros at position 1.</summary>
+    public string? PreviousHash { get; private set; }
+
+    /// <summary>SHA-256 of the canonical form (<see cref="Contracts.AuditCanonicalForm"/>) with the previous hash, in lowercase hexadecimal.</summary>
+    public string? Hash { get; private set; }
+
+    /// <summary>The canonical form's version the hash was made with.</summary>
+    public short? HashVersion { get; private set; }
+
+    /// <summary>When the sealer gave the event its place: the server's time, after the event was committed.</summary>
+    public DateTimeOffset? SealedAt { get; private set; }
+
+    /// <summary>The content the chain hashes, at the position the sealer gives it.</summary>
+    public Contracts.ChainedEvent Chained(long position) =>
+        new(Id, position, CreatedAt, CreatedBy, EventType, Outcome, ActorId, OnBehalfOfId, ImpersonatorId, Source, Severity, Target, RecordType, RecordId, Reason, CorrelationId, Details);
 
     private static string? Trim(string? value, int max) => value is null || value.Length <= max ? value : value[..(max - 1)] + "\u2026";
 }

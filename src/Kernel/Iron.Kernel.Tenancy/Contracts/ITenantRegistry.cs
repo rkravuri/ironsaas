@@ -83,7 +83,16 @@ public static class TenancyPermissions
     /// <summary>The platform's terms of service and privacy notice, which every person accepts (TF-028).</summary>
     public static readonly Permission DocumentsManage = new("tenancy.documents.manage", "Publish new versions of the platform's terms of service and privacy notice", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage];
+    /// <summary>
+    /// A unit's own client sends its audit anchors here and reads its chain's state (TF-061, ADR-0050): the one
+    /// permission of the unit-client role. Every anchor is the sending unit's tenant's, whatever the request says.
+    /// </summary>
+    public static readonly Permission AuditAnchorsAppend = new("tenancy.audit_anchors.append", "Send a unit's audit anchors and read its chain's verification", Risk.Medium) { ForUnitClients = true };
+
+    /// <summary>Asking the fleet to verify a tenant's audit chain now, beside its daily run (TF-061).</summary>
+    public static readonly Permission AuditChainsVerify = new("tenancy.audit_chains.verify", "Ask the fleet to verify a tenant's audit chain now", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify];
 }
 
 public static class TenancyErrors
@@ -127,6 +136,14 @@ public static class TenancyErrors
 
     /// <summary>Not one of the platform's documents.</summary>
     public const string DocumentKeyUnknown = "tenancy.document.key_unknown";
+
+    /// <summary>The caller is no tenant's unit client: only a unit sends anchors, and only its own (ADR-0050).</summary>
+    public const string AuditAnchorNotAUnit = "tenancy.audit_anchor.not_a_unit";
+
+    /// <summary>An anchor for a position the tenant anchored before, with another hash: the chain was rewritten, an alert.</summary>
+    public const string AuditAnchorConflict = "tenancy.audit_anchor.conflict";
+
+    public const string AuditAnchorKindUnknown = "tenancy.audit_anchor.kind_unknown";
 }
 
 public static class TenancyAuditEvents
@@ -164,6 +181,18 @@ public static class TenancyAuditEvents
 
     /// <summary>The operator published a version of the platform's terms of service or privacy notice (TF-028).</summary>
     public const string PlatformDocumentPublished = "tenancy.platform_document_published";
+
+    /// <summary>An operator asked the fleet to verify a tenant's audit chain now (TF-061).</summary>
+    public const string AuditVerificationRequested = "tenancy.audit_verification_requested";
+
+    /// <summary>A verification found a changed or deleted event, or a chain that disagrees with its anchors (TF-061 AC2).</summary>
+    public const string AuditChainBroken = "tenancy.audit_chain_broken";
+
+    /// <summary>A verification found the chain ending before its latest anchor: the restore point is named (TF-061 AC3).</summary>
+    public const string AuditChainRestored = "tenancy.audit_chain_restored";
+
+    /// <summary>A unit sent an anchor for a position it anchored before, with another hash.</summary>
+    public const string AuditAnchorConflict = "tenancy.audit_anchor_conflict";
 }
 
 /// <summary>

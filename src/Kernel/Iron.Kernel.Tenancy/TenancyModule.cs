@@ -59,6 +59,9 @@ public sealed class TenancyModule : IModule
         services.AddScoped<OperatorImpersonation>();
         services.AddScoped<BreakGlassService>();
         services.AddScoped<PlatformDocumentService>();
+        services.AddScoped<AuditChainService>();
+        services.AddScoped<ITenantAuditChains>(provider => provider.GetRequiredService<AuditChainService>());
+        services.AddScoped<IValidator<AuditAnchorRequest>, AuditAnchorRequestValidator>();
         services.AddScoped<IValidator<OperatorImpersonationRequest>, OperatorImpersonationRequestValidator>();
         services.AddScoped<IValidator<BreakGlassRequest>, BreakGlassRequestValidator>();
         services.AddScoped<IValidator<PlatformDocumentRequest>, PlatformDocumentRequestValidator>();
@@ -75,6 +78,7 @@ public sealed class TenancyModule : IModule
         EntitlementEndpoints.Map(endpoints);
         FlagEndpoints.Map(endpoints);
         OperatorAccessEndpoints.Map(endpoints);
+        AuditChainEndpoints.Map(endpoints);
     }
 }
 

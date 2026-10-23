@@ -37,6 +37,12 @@ public sealed partial class Permission : IEquatable<Permission>
 
     public Risk Risk { get; }
 
+    /// <summary>
+    /// A permission of the control plane that each tenant unit's own client holds there (ADR-0050), such as sending its
+    /// audit anchors. The seed puts exactly these into the <c>unit-client</c> role, where a host has any.
+    /// </summary>
+    public bool ForUnitClients { get; init; }
+
     /// <summary>The first segment: the module that owns the permission.</summary>
     public string Module => Name[..Name.IndexOf('.', StringComparison.Ordinal)];
 
