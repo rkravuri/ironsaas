@@ -8,6 +8,7 @@ import { HeldChangeNotice } from "@/shell/HeldChangeNotice";
 import { fill, json, me, problem, renderWithProviders, stubFetch } from "@/test/render";
 import { ChangeRecordPage } from "./ChangeRecordPage";
 import { ChangesPage } from "./ChangesPage";
+import { MyPendingChanges } from "./MyPendingChanges";
 import { changeRows } from "./change-words";
 import { displayValue } from "./setting-words";
 import i18n from "@/i18n";
@@ -240,5 +241,41 @@ describe("the pending changes", () => {
     const t = i18n.t.bind(i18n);
     expect(displayValue(setting, ["roles", "single_sign_on"], t)).toBe("Roles and their assignments, Single sign-on");
     expect(displayValue(setting, [], t)).toBe("None: every change applies at once");
+  });
+});
+
+describe("my pending changes", () => {
+  it("lists a person's own changes that wait, without any permission, and withdraws one [TF-068 AC1, ADR-0052]", async () => {
+    const plain = { ...me([]), id: "u-requester" };
+    let withdrawn = false;
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(plain),
+      "GET /api/v1/changes?view=mine&status=pending&page_size=100": () =>
+        json({
+          ...emptyPage,
+          data: withdrawn ? [] : [change],
+          meta: { ...emptyPage.meta, total_count: withdrawn ? 0 : 1 },
+        }),
+      "POST /api/v1/changes/c-1/withdraw": () => {
+        withdrawn = true;
+        return json({ ...change, status: "withdrawn" });
+      },
+    });
+    renderWithProviders(<MyPendingChanges />);
+    const user = userEvent.setup();
+
+    const list = await screen.findByRole("list", { name: "My pending changes" });
+    expect(within(list).getByRole("link", { name: "Change the role Buyer" })).toHaveAttribute(
+      "href",
+      "/console/changes/c-1",
+    );
+    expect(list).toHaveTextContent("Roles and their assignments.");
+
+    await user.click(within(list).getByRole("button", { name: "Withdraw: Change the role Buyer" }));
+    const dialog = await screen.findByRole("dialog", { name: "Withdraw this change?" });
+    await user.click(within(dialog).getByRole("button", { name: "Withdraw" }));
+
+    expect(await screen.findByText("No change of yours waits for approval.")).toBeInTheDocument();
+    expect(calls.some((call) => call.key === "POST /api/v1/changes/c-1/withdraw")).toBe(true);
   });
 });

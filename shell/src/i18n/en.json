@@ -336,7 +336,8 @@
       "session": "Session",
       "delegations": "Delegations",
       "security": "Security",
-      "sessions": "Sessions"
+      "sessions": "Sessions",
+      "changes": "My pending changes"
     },
     "preferences": {
       "intro": "How the shell looks for you. Your choices are kept with your account, so they follow you to every browser you sign in on.",
@@ -2754,6 +2755,15 @@
       "no": "No"
     },
     "failed": "The change could not be loaded.",
+    "mine": {
+      "title": "My pending changes",
+      "intro": "The changes you asked for that wait for a second administrator. Nothing has changed yet; withdraw one to stop it.",
+      "none": "No change of yours waits for approval.",
+      "noneText": "When your organisation asks a second administrator to approve a change you make, it waits here until they decide.",
+      "failed": "Your pending changes could not be loaded. Try again.",
+      "facts": "{{area}}. Asked for {{at}}; waits until {{until}}.",
+      "withdrawLabel": "Withdraw: {{title}}"
+    },
     "held": {
       "title": "Waiting for approval",
       "form": "Your change waits for a second administrator's approval. Nothing changes until they approve it.",

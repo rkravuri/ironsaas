@@ -16,6 +16,7 @@ import { RecordPage } from "@/components/templates";
 import { densities, setDensity, useDensity, type Density } from "@/design/density";
 import { schemeChoices, type SchemeChoice } from "@/design/scheme";
 import { unitPathLabel } from "@/modules/kernel/console/pages/assignment-scope";
+import { MyPendingChanges } from "@/modules/kernel/console/pages/MyPendingChanges";
 import { PersonalDelegations } from "@/modules/kernel/console/pages/PersonalDelegations";
 import { SecurityTab } from "./SecurityTab";
 import { SessionsTab } from "./SessionsTab";
@@ -28,7 +29,8 @@ const isDensity = (value: string): value is Density => (densities as readonly st
 /**
  * My profile (D4) on the record template: the person's name, login identifier, home unit and status, then their
  * details, their own access in words, their preferences (A6), their password and security activity (T2), and their
- * sessions: this one and the others, which they end from here (T5, TF-022). A signed-in principal is active by construction: the API ends
+ * sessions: this one and the others, which they end from here (T5, TF-022), and their own changes that wait for a second
+ * administrator, which they withdraw from here (TF-068, T8). A signed-in principal is active by construction: the API ends
  * the sessions of anyone who is not (SessionService), so the status needs no request of its own.
  */
 export function ProfilePage() {
@@ -59,6 +61,7 @@ export function ProfilePage() {
         { value: "preferences", label: t("profile.tabs.preferences"), panel: <MyPreferences /> },
         { value: "security", label: t("profile.tabs.security"), panel: <SecurityTab /> },
         { value: "sessions", label: t("profile.tabs.sessions"), panel: <SessionsTab me={me} /> },
+        { value: "changes", label: t("profile.tabs.changes"), panel: <MyPendingChanges /> },
       ]}
     />
   );
