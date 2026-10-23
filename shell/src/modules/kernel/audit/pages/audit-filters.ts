@@ -3,6 +3,8 @@ import { startOfDay } from "@/i18n/dates";
 export interface Filters {
   eventType: string;
   actorId: string;
+  /** Someone who signed in as another person: their events, whoever they acted as (TF-025, TF-064). */
+  impersonatorId: string;
   recordType: string;
   recordId: string;
   source: string;
@@ -15,6 +17,7 @@ export interface Filters {
 export const emptyFilters: Filters = {
   eventType: "",
   actorId: "",
+  impersonatorId: "",
   recordType: "",
   recordId: "",
   source: "",
@@ -41,6 +44,7 @@ export function filterQuery(filters: Filters): string[] {
     terms.push(`filter=${encodeURIComponent(`${field}:${operator}:${value}`)}`);
   if (filters.eventType.trim() !== "") add("event_type", "eq", filters.eventType.trim());
   if (filters.actorId !== "") add("actor_id", "eq", filters.actorId);
+  if (filters.impersonatorId !== "") add("impersonator_id", "eq", filters.impersonatorId);
   if (filters.recordType.trim() !== "") add("record_type", "eq", filters.recordType.trim());
   if (filters.recordId.trim() !== "") add("record_id", "eq", filters.recordId.trim());
   if (filters.source !== "") add("source", "eq", filters.source);

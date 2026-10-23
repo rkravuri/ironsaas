@@ -119,6 +119,7 @@ export function AuditPage() {
           to: new Date(to.getTime() - 1).toISOString(),
           event_type: filters.eventType.trim(),
           actor_id: filters.actorId,
+          impersonator_id: filters.impersonatorId,
           record_type: filters.recordType.trim(),
           record_id: filters.recordId.trim(),
           source: filters.source,
@@ -163,6 +164,14 @@ export function AuditPage() {
             placeholder={t("audit.filters.actorPlaceholder")}
             value={filters.actorId === "" ? null : filters.actorId}
             onChange={(value) => set("actorId")(value ?? "")}
+            clearable
+            w={240}
+          />
+          <PersonPicker
+            label={t("audit.filters.impersonator")}
+            placeholder={t("audit.filters.impersonatorPlaceholder")}
+            value={filters.impersonatorId === "" ? null : filters.impersonatorId}
+            onChange={(value) => set("impersonatorId")(value ?? "")}
             clearable
             w={240}
           />

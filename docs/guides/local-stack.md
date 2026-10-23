@@ -151,6 +151,38 @@ make accept-documents TENANT=echo
 
 It signs in as `admin@<tenant>.localhost` with the password and the authenticator app's key `make smoke` keeps at `secret/tenants/<tenant>/smoke`, prints each version it accepts, and accepts nothing for anyone else. Checked on echo on 2026-10-23 with a tenant document: the administrator's requests answered 403 `identity.terms.acceptance_required`, the target accepted the one version, the same session then answered 200, and a second run said there was nothing to accept.
 
+**The audit chain** (TF-061, ADR-0050). Each unit's worker seals its audit events into a chain every few seconds and sends the control plane an anchor after each seal; the fleet verifies every tenant once a day, in full once a month. Units made before S3 T6 have neither the fleet's verifier role nor their own control-plane client: `make update-unit TENANT=x` gives them both (the fleet logs once an hour that it cannot verify a unit until then). Units reach the control plane at `http://control-api:8080`, so anchors flow when it runs as containers (`make up-control`), not from `make run-control`.
+
+```
+make verify-audit TENANT=echo            # verify now and print the record
+make verify-audit TENANT=echo FULL=1     # from the first position kept
+make audit-chain TENANT=echo             # the latest records and anchors
+```
+
+A tenant's administrators see the same on the Chain status page under Audit.
+
+*Reading a verification failure.* A record that did not pass says `FAILED` and lists each problem with its position and the event's identifier:
+
+- `missing`: no event at that position. Someone deleted it past the database's permissions.
+- `modified`: the event's content no longer gives its hash. Someone changed it.
+- `relinked`: the event points at a different event before it.
+- `anchor_mismatch`: the chain disagrees with the control plane's anchor at that position.
+- `unknown_version`: a hash made with a canonical form this build does not know; a newer build sealed it.
+
+The alert is an error line starting `ALERT:` in the fleet's log, the counter `audit.verification_failures`, and `tenancy.audit_chain_broken` at high severity in the control plane's trail. Treat it as an incident: keep the tenant's database as it is (a copy for the investigation), find the event's time and correlation id in the archive or a backup, and check the database's own logs for who connected as the owner. The Audit README's canonical form lets anyone recompute a hash by hand.
+
+*A restore point.* After the tenant's database is restored from a backup, its chain ends before the latest anchor. The record says `RESTORED` and names the restore point: the last position whose hash matches an anchor, and that anchor's time. Every event after it was lost with the restore; the trail from before is intact. New events are sealed from the restored head, so the anchors for positions the control plane already held are refused as conflicts (`tenancy.audit_anchor_conflict`), and each verification keeps reporting the same restore point. Record the incident with the restore point; accepting a restore so the chain continues from it is a later item.
+
+*An anchor conflict* without a restore means the unit sealed a different event at a position the control plane anchored: treat it as a verification failure.
+
+**Legal holds** (TF-066, ADR-0050). A hold keeps records their retention would delete: one record, every record of a master (a supplier's documents), or the whole tenant, the audit trail's oldest end included. A person with `audit.legal_holds.manage` (critical; the tenant administrator's role carries it) places one on the Legal holds page under Audit, with what it keeps and a reason, after confirming it is them (step-up). Releasing needs a reason too; a released hold stays listed. Both are in the audit trail. Place a hold before the retention job's next run (daily) for anything that must stay.
+
+**Retention** (TF-066, ADR-0050). The Retention page under Audit lists each class (business documents, sessions, security activity, notifications, the audit trail and how long it stays in the database before the archive), its period and the operator's limits. A person with `audit.retention.manage` changes a period within them, with a reason and step-up; below the minimum is refused. The operator's limits are configuration in the unit secret (`Retention:Limits:<class>:MinimumDays` and `MaximumDays`). The daily retention job archives each expired record to the tenant's container (`retention/<type>/<yyyy-MM>/<id>.json`) before deleting it, and archives audit events past the online period to `audit/archive/`, where the Archive tab of the Audit trail searches them by date range.
+
+**The clock** (TF-065, ADR-0050). Every process measures its clock against `pool.ntp.org` every ten minutes (`Telemetry__Clock__Server` to change it, `Telemetry__Clock__Enabled=false` to stop it). More than a second off raises `ALERT: this process's clock is ... seconds off` in its log, the gauge `clock.offset_seconds`, and the readiness check `clock` Degraded. WSL's clock drifts after the laptop sleeps: `wsl --shutdown` from Windows, or `sudo hwclock -s` inside WSL, sets it right. A time server it cannot reach is only a warning.
+
+**Logs.** Operational logs keep identifiers, not people: emails and properties named like a name, an email, a phone or an address show as `[masked]`, and Loki deletes lines after 30 days. Look a person up by their id in the console; the audit trail, not the log, is the record of what they did.
+
 ## 6. The control plane
 
 From source, for daily work: `make secret-control && make migrate-control && make seed-control` once, then `make run-control` (API on :5200) and `make run-fleet` (the fleet worker with the Compose runtime, driving this machine's Docker) in two terminals. The seed creates the `operator` account (tenant-administrator), `operator-two` (tenant-administrator, the second operator break-glass needs) and the `smoke-reader` account (service-default, for the smoke's denial case); re-run `make seed-control` after pulling a change that adds accounts.

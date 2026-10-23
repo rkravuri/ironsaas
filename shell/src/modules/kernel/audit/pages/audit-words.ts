@@ -6,8 +6,7 @@ export const systemPrincipalId = "00000000-0000-0000-0000-000000000001";
 
 /** Who acted, in words: the person's name, the system for a job, an operator signed in as them, or a delegate for someone. */
 export function actorWords(event: AuditEvent, t: TFunction): string {
-  const actor =
-    event.actor_id === systemPrincipalId ? t("audit.actor.system") : (event.actor_name ?? event.actor_id);
+  const actor = event.actor_id === systemPrincipalId ? t("audit.actor.system") : (event.actor_name ?? event.actor_id);
   if (event.impersonator_id) {
     return t("history.impersonated", {
       actor,

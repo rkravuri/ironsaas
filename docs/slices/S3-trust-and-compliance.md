@@ -32,15 +32,15 @@ To be written in the design session.
 | TF-027 | Device and login risk signals | Could | | |
 | TF-028 | Consent and terms acceptance | Should | | T5 (ADR-0049): the platform's and the tenant's documents, a required step per version, declining signs out |
 | TF-029 | Logout and revocation | Must | logout ends the session and the old cookie is refused (S1, the smoke proves it) | T5 (ADR-0049): "valid after" times for a principal and the tenant, within a minute; refresh rotation waits for refresh tokens |
-| TF-061 | Audit integrity chain | Must | the append-only trail, the app role cannot change or delete it (S1, ADR-0013) | |
+| TF-061 | Audit integrity chain | Must | the append-only trail, the app role cannot change or delete it (S1, ADR-0013) | T6 (ADR-0050): sealed by the unit's worker, anchored in the control plane, verified daily by the fleet with its own role |
 | TF-062 | Change history (field level) | Must | the history panel in the design system (D3); settings and role changes keep before and after in their events | |
 | TF-063 | Electronic signatures | Must | | |
-| TF-064 | Audit search, export and retention | Must | the audit list endpoint (S1) | |
-| TF-065 | Time source | Must | time through `TimeProvider` everywhere, enforced by the build (ADR-0007) | |
-| TF-066 | Data retention and legal hold | Should | | also S6's retention jobs |
+| TF-064 | Audit search, export and retention | Must | the audit list endpoint (S1) | T6 (ADR-0050): search by time, who, impersonator, record, type and source; CSV export; the archive after 13 months, searched by date range; the History tab |
+| TF-065 | Time source | Must | time through `TimeProvider` everywhere, enforced by the build (ADR-0007) | T6 (ADR-0050): no client time in a request body, every shell time in the person's zone, the clock check's alert |
+| TF-066 | Data retention and legal hold | Should | | T6 (ADR-0050): retention classes within the operator's limits, the job that archives then deletes, legal holds; also S6's retention jobs |
 | TF-067 | Compliance evidence exports | Must | | |
 | TF-068 | Approval of sensitive configuration changes | Should | | the approval engine is S5 |
-| TF-069 | Operational logs separate from audit | Must | logs to Loki through OpenTelemetry, the audit in the database (S1, ADR-0010) | |
+| TF-069 | Operational logs separate from audit | Must | logs to Loki through OpenTelemetry, the audit in the database (S1, ADR-0010) | T6 (ADR-0050): personal data masked, Loki keeps 30 days, no log tool reaches the audit store |
 | TF-071 | Input validation and output encoding | Must | validation with FluentValidation on every body (ADR-0009) | |
 | TF-072 | Rate limiting and anti-automation | Must | | every refused request is audited, so a client that keeps calling fills the trail until this lands |
 | TF-073 | Secrets management | Must | secrets from the store at start, one secret per unit (S1, ADR-0016); the store persists (ADR-0028); settings that are secret references (A6) | |
@@ -67,7 +67,7 @@ From `docs/prompts/S3.md`, where each task has its section: T1 complete, T2 to T
 | T3 | MFA and step-up re-authentication | TF-013, TF-248 | done (main, e1752cc) |
 | T4 | Single sign-on with OpenID Connect | TF-014 | done (main, becf9a8) |
 | T5 | Sessions console, logout and revocation, impersonation, break-glass, terms acceptance | TF-021 AC2, TF-022, TF-025, TF-026, TF-028, TF-029 | done (main, 8f19e4b) |
-| T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | outline |
+| T6 | Audit integrity chain, time source, audit search, export and retention, legal hold, operational logs apart | TF-061, TF-064 to TF-066, TF-069 | in review (slice/s3-t6) |
 | T7 | Field-level change history, electronic signatures, signature manifestation, audit-trail review | TF-062, TF-063, TF-219 | outline |
 | T8 | Evidence exports, second approval for sensitive changes, validation pack per release | TF-067, TF-068, TF-218 | outline |
 | T9 | Hardening: input validation and output encoding review, rate limits and anti-automation (the "Use your company login" answer included, T4's review), encryption in transit, key management and rotation | TF-070 to TF-075 | outline |

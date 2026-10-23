@@ -283,7 +283,9 @@ for (const scheme of schemes) {
     const zone = page.getByRole("combobox", { name: "Time zone" });
     // ICU names the zone Asia/Calcutta in some builds and Asia/Kolkata in others.
     await expect(zone).toHaveValue(/^This browser's \(Asia\/(Kolkata|Calcutta)\)$/);
-    await expect(page.getByText(/Every time the shell shows is in this zone, with its name\. Now it is .* GMT\+5:30\./)).toBeVisible();
+    await expect(
+      page.getByText(/Every time the shell shows is in this zone, with its name\. Now it is .* GMT\+5:30\./),
+    ).toBeVisible();
     await page.screenshot({ path: `test-results/a11y/profile-time-zone-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
   });

@@ -77,9 +77,7 @@ describe("retention", () => {
     await user.clear(days);
     await fill(user, days, "90");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(
-      await within(dialog).findByText(/The operator's minimum for session is 180 days/),
-    ).toBeInTheDocument();
+    expect(await within(dialog).findByText(/The operator's minimum for session is 180 days/)).toBeInTheDocument();
     const sent = calls.find((call) => call.key === "PUT /api/v1/retention/session");
     expect(JSON.parse(sent?.init?.body as string)).toEqual({ days: 90, reason: "Shorter sessions policy" });
   });

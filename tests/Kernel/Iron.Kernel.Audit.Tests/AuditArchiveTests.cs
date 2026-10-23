@@ -55,6 +55,21 @@ public class AuditArchiveTests(AuditFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-060 AC3", "ADR-0050")]
+    public async Task TheArchiveJobsOwnEventNamesTheSystemAsItsActorAndTheJobAsItsSource()
+    {
+        // The worker's archive pass runs with no request and under the system principal, as every unit job does.
+        var (_, _, _, provider) = await ArchivedChainAsync("system-job");
+        await using (provider)
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var archived = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+                .SingleAsync(e => e.EventType == AuditEvents.TrailArchived, Cancel);
+            Assert.Equal((SystemPrincipal.SystemId, SystemPrincipal.SystemId, AuditSource.Job), (archived.ActorId, archived.CreatedBy, archived.Source));
+        }
+    }
+
+    [Fact]
     [Proves("ADR-0050")]
     public async Task PruningRemovesTheOldestEndAndTheRestStillVerifiesFromItsAnchor()
     {

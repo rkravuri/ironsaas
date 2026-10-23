@@ -69,6 +69,7 @@ export interface ArchiveSearch {
   to: string;
   event_type?: string;
   actor_id?: string;
+  impersonator_id?: string;
   record_type?: string;
   record_id?: string;
   source?: string;

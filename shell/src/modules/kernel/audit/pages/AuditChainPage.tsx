@@ -89,9 +89,7 @@ function Verification({ verification }: { verification: ChainVerification }) {
             {verification.problems.map((problem) => (
               <Table.Tr key={`${problem.kind}:${problem.position}`}>
                 <Table.Td ta="right">{problem.position}</Table.Td>
-                <Table.Td>
-                  {t(`audit.chain.problems.${problem.kind}`, { defaultValue: problem.message })}
-                </Table.Td>
+                <Table.Td>{t(`audit.chain.problems.${problem.kind}`, { defaultValue: problem.message })}</Table.Td>
                 <Table.Td>{problem.event_id ? <Code>{problem.event_id}</Code> : t("audit.chain.noEvent")}</Table.Td>
               </Table.Tr>
             ))}

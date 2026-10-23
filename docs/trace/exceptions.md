@@ -18,7 +18,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | TF-051 AC2 | As AC1: retrying blocked emails comes with S4's email. | 2026-10-21 |
 | TF-056 AC1 | One flag provider exists, the in-house one behind OpenFeature (ADR-0035); a second provider arrives when one is needed. | 2026-10-21 |
 | TF-056 AC3 | As AC1: with one provider there is no primary to choose. | 2026-10-21 |
-| TF-060 AC3 | No job acts for the system yet (S4); the audit writer's source and actor fields are proven for requests (`AuditTableTests`). | 2026-10-21 |
 | TF-070 AC3 | The content security policy is sent, but its report endpoint is S3 T9, which re-checks the secure defaults. | 2026-10-21 |
 | TF-130 AC3 | No job is started by a request yet (S4). | 2026-10-21 |
 | TF-130 AC4 | Requests complete while the collector is down (S1's demo), but the counter of lost spans was never built, although the S1 plan said so until T1's review corrected it; it is S3 T10's, with the security monitoring. | 2026-10-21 |

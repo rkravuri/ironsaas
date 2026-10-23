@@ -7,12 +7,13 @@ afterEach(() => {
 });
 
 describe("the audit search's filters", () => {
-  it("search by who, which record, which type and which days, the days in the person's zone [TF-064 AC1, TF-065 AC2, ADR-0050]", () => {
+  it("search by who, who signed in as them, which record, which type and which days, the days in the person's zone [TF-064 AC1, TF-065 AC2, ADR-0050]", () => {
     setTimeZone("Asia/Kolkata");
     const terms = filterQuery({
       ...emptyFilters,
       eventType: " identity.user.invited ",
       actorId: "01a14e12-f3a8-7155-b5b6-17c3abceae77",
+      impersonatorId: "01a14e12-0000-7000-8000-0000000000f1",
       recordType: "principal",
       recordId: "01a14e12-0000-7000-8000-000000000009",
       source: "ui",
@@ -23,6 +24,7 @@ describe("the audit search's filters", () => {
     expect(terms).toEqual([
       "filter=event_type:eq:identity.user.invited",
       "filter=actor_id:eq:01a14e12-f3a8-7155-b5b6-17c3abceae77",
+      "filter=impersonator_id:eq:01a14e12-0000-7000-8000-0000000000f1",
       "filter=record_type:eq:principal",
       "filter=record_id:eq:01a14e12-0000-7000-8000-000000000009",
       "filter=source:eq:ui",

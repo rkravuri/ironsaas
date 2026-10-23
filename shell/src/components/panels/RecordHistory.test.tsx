@@ -66,7 +66,9 @@ describe("a record's History tab", () => {
     const items = await screen.findAllByText(/^identity\.user\./);
     expect(items.map((item) => item.textContent)).toEqual(["identity.user.deactivated", "identity.user.invited"]);
     expect(screen.getByText("Grace Hopper: Left the company")).toBeInTheDocument();
-    expect(screen.getByText("Olga Operator signed in as Ada Admin, Oct 22, 2026, 3:30 PM GMT+5:30")).toBeInTheDocument();
+    expect(
+      screen.getByText("Olga Operator signed in as Ada Admin, Oct 22, 2026, 3:30 PM GMT+5:30"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Ada Admin, Oct 20, 2026, 2:30 PM GMT+5:30")).toBeInTheDocument();
     expect(calls.filter((call) => call.key.includes("/audit-events"))).toHaveLength(1);
   });
