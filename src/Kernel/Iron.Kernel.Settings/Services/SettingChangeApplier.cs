@@ -17,7 +17,7 @@ public sealed record SettingChangePayload(string Key, string Level, Guid? Target
 /// Applies an approved change of a governed setting (ADR-0052): the save or reset the requester asked for, through the
 /// writer's own checks, as the approver. The state compared before it applies is the value set at the place.
 /// </summary>
-public sealed class SettingChangeApplier(SettingsWriter writer) : IConfigurationChangeApplier
+public sealed class SettingChangeApplier(SettingsWriter writer, SettingsRefresher refresher) : IConfigurationChangeApplier
 {
     public bool Handles(string kind) => kind is SettingsWriter.SetKind or SettingsWriter.ResetKind;
 
@@ -36,6 +36,13 @@ public sealed class SettingChangeApplier(SettingsWriter writer) : IConfiguration
             ? writer.ResetAsync(payload.Key, payload.Place, cancellationToken)
             : writer.SetAsync(payload.Key, payload.Place, payload.Value.Value, cancellationToken);
     }
+
+    /// <summary>
+    /// The writer reads the settings back into the unit's cache after its own commit, which inside an approval is not yet
+    /// the database's: read them again once the approval committed, so the approved value applies at once, not within 30 s.
+    /// </summary>
+    public async Task AppliedAsync(HeldChange change, CancellationToken cancellationToken) =>
+        await refresher.RefreshOnceAsync(cancellationToken).ConfigureAwait(false);
 
     private static SettingChangePayload Payload(HeldChange change) =>
         change.Payload.Deserialize<SettingChangePayload>(ChangeJson.Options) ?? throw new InvalidOperationException($"The change {change.Id} carries no setting.");

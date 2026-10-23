@@ -120,6 +120,12 @@ public interface IConfigurationChangeApplier
 
     /// <summary>Forgets what the change kept outside its row, such as a staged secret, when it ends without applying.</summary>
     Task DiscardAsync(HeldChange change, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    /// <summary>
+    /// After the approval's transaction committed: <see cref="ApplyAsync"/> ran inside it, so a module that reads what it
+    /// wrote back into a cache does it here, when the database holds it (the settings' cache, read again at once).
+    /// </summary>
+    Task AppliedAsync(HeldChange change, CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
 /// <summary>JSON for proposals: snake_case names, as the API writes them, so the console shows the same words.</summary>

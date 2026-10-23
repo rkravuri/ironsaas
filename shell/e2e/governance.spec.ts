@@ -171,6 +171,15 @@ test.describe("evidence, four-eyes approval and validation", () => {
       expect(approved?.actor_id).toBe(approver.id);
       expect(approved?.details).toMatchObject({ requested_by: me.body.id, decided_by: approver.id });
     } finally {
+      // A change of this run or an earlier one that still waits holds its subject: the administrator withdraws it.
+      const waiting = await call<{ data: { id: string }[] }>(
+        page,
+        "GET",
+        "/api/v1/changes?view=mine&status=pending&page_size=100",
+      );
+      for (const left of waiting.body.data ?? []) {
+        expect((await call(page, "POST", `/api/v1/changes/${left.id}/withdraw`)).status).toBe(200);
+      }
       if (fourEyesOn) {
         // Setting four-eyes back is itself a change that waits while an area is listed: the second administrator approves it.
         const reset = await call<{ change_id?: string }>(
@@ -187,7 +196,12 @@ test.describe("evidence, four-eyes approval and validation", () => {
           expect(reset.status).toBe(200);
         }
       }
-      const left = await call<{ data: { id: string }[] }>(page, "GET", `/api/v1/roles?filter=code:eq:${code}`);
+      // The run's role, and any an earlier run left: with four-eyes off again, each goes at once.
+      const left = await call<{ data: { id: string }[] }>(
+        page,
+        "GET",
+        "/api/v1/roles?filter=code:startswith:e2e-four-eyes-&page_size=100",
+      );
       for (const role of left.body.data ?? []) {
         expect((await call(page, "DELETE", `/api/v1/roles/${role.id}`)).status).toBe(204);
       }

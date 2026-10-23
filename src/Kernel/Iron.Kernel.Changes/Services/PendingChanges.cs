@@ -285,6 +285,12 @@ public sealed class PendingChanges(
             new AuditEvent(approve ? ChangesAuditEvents.ChangeApproved : ChangesAuditEvents.ChangeRejected, AuditOutcome.Success, current.Id, change.Title, decided, PendingChange.RecordType, change.Id, string.IsNullOrWhiteSpace(reason) ? change.Reason : reason.Trim()),
             cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        if (approve)
+        {
+            // Only now is the change in the database, for a module that reads it back into a cache (the settings).
+            await applier.AppliedAsync(change.Held(), cancellationToken).ConfigureAwait(false);
+        }
+
         return new ChangeItem(change, false, signed);
     }
 

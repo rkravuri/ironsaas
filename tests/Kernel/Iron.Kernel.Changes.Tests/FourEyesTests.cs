@@ -303,7 +303,7 @@ public class FourEyesTests(ChangesFixture fixture)
             Assert.True(approved.IsSuccess, approved.IsFailure ? approved.Error.ToString() : null);
         }
 
-        Assert.Equal(16, await ValueAsync(provider, IdentitySettings.PasswordMinimumLength));
+        Assert.Equal(16, await CachedValueAsync(provider, IdentitySettings.PasswordMinimumLength));
         Assert.Equal("everyone", await ValueAsync(provider, IdentitySettings.MfaRequiredFor));
         Assert.True(await ValueAsync(provider, ComplianceSettings.LaterSecondFactor));
         await ResetAsync(provider, actor, [IdentitySettings.PasswordMinimumLength.Key, IdentitySettings.MfaRequiredFor.Key, ComplianceSettings.LaterSecondFactor.Key, IdentitySettings.SessionIdleMinutes.Key]);
@@ -356,7 +356,8 @@ public class FourEyesTests(ChangesFixture fixture)
         var stillOn = ChangesSettings.AreasOf(await ValueAsync(provider, ChangesSettings.Areas));
         actor.As(approver);
         var approved = await DecideAsync(provider, c => c.ApproveAsync((Guid)off.Error.Extensions["change_id"], null, null, Cancel));
-        var nowOff = ChangesSettings.AreasOf(await ValueAsync(provider, ChangesSettings.Areas));
+        // As the unit sees it at once, without waiting for the cache's next read: the browser test found it 30 s late.
+        var nowOff = ChangesSettings.AreasOf(await CachedValueAsync(provider, ChangesSettings.Areas));
         actor.As(requester);
         var on = await SetAsync(provider, ChangesSettings.Areas.Key, JsonSerializer.SerializeToElement(new[] { ConfigurationAreas.Roles }));
 
@@ -519,6 +520,13 @@ public class FourEyesTests(ChangesFixture fixture)
     {
         await using var scope = provider.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SettingsRefresher>().RefreshOnceAsync(Cancel);
+        return await scope.ServiceProvider.GetRequiredService<ISettings>().GetAsync(setting, SettingContext.Tenant, Cancel);
+    }
+
+    /// <summary>The value the unit's cache holds now, without reading the database again.</summary>
+    private static async Task<T> CachedValueAsync<T>(IServiceProvider provider, Setting<T> setting)
+    {
+        await using var scope = provider.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<ISettings>().GetAsync(setting, SettingContext.Tenant, Cancel);
     }
 
