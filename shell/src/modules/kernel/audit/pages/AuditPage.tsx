@@ -9,8 +9,9 @@ import { EmptyState } from "@/components/panels";
 import { ListPage } from "@/components/templates";
 import { formatDateTime, startOfDay } from "@/i18n/dates";
 import { PersonPicker } from "@/modules/kernel/console/pages/PersonPicker";
-import { emptyFilters as empty, endOfDay, filterQuery, type Filters } from "./audit-filters";
+import { emptyFilters as empty, endOfDay, filterQuery, signedInByTerm, type Filters } from "./audit-filters";
 import { actorWords, outcomeWords, severityWords } from "./audit-words";
+import { SignedInByPicker } from "./SignedInByPicker";
 
 const newestFirst = [{ field: "created_at", direction: "desc" as const }];
 const sources = ["ui", "api", "job"] as const;
@@ -115,13 +116,15 @@ export function AuditPage() {
     setMessage(undefined);
     try {
       const to = endOfDay(filters.to);
+      const signedInBy = signedInByTerm(filters.signedInBy);
       setArchive(
         await searchArchive({
           from: startOfDay(filters.from).toISOString(),
           to: new Date(to.getTime() - 1).toISOString(),
           event_type: filters.eventType.trim(),
-          actor_id: filters.actorId,
-          impersonator_id: filters.impersonatorId,
+          // A break-glass account acts as itself: chosen here, it is the actor the archive searches for.
+          actor_id: signedInBy?.field === "actor_id" ? signedInBy.id : filters.actorId,
+          impersonator_id: signedInBy?.field === "impersonator_id" ? signedInBy.id : "",
           record_type: filters.recordType.trim(),
           record_id: filters.recordId.trim(),
           source: filters.source,
@@ -169,14 +172,7 @@ export function AuditPage() {
             clearable
             w={240}
           />
-          <PersonPicker
-            label={t("audit.filters.impersonator")}
-            placeholder={t("audit.filters.impersonatorPlaceholder")}
-            value={filters.impersonatorId === "" ? null : filters.impersonatorId}
-            onChange={(value) => set("impersonatorId")(value ?? "")}
-            clearable
-            w={240}
-          />
+          <SignedInByPicker value={filters.signedInBy} onChange={set("signedInBy")} />
           <TextInput
             label={t("audit.filters.recordType")}
             value={filters.recordType}

@@ -49,15 +49,20 @@ public sealed record ChainCheckResult(
 /// starting position and the hash before it, every event must follow at the next position, link to the hash before
 /// it, and recompute to its own hash from its content; every anchor in the range must match. A missing position is a
 /// deleted event; a mismatch names the event. When the chain ends before the latest anchor, the database was restored:
-/// the restore point is the last position whose hash matches an anchor, with that anchor's time (AC3).
+/// the restore point is the last position whose hash matches an anchor, with that anchor's time (AC3). After a restore an
+/// operator accepted, the chain continues as a new segment: its first event must link to the restore point's hash, and
+/// each anchor counts only in the segment that covers its position, so the range the restore lost is no disagreement.
 /// </summary>
 public static class AuditChainCheck
 {
-    public static ChainCheckResult Check(long startPosition, string startPreviousHash, IEnumerable<SealedEvent> events, IReadOnlyList<AuditAnchor> anchors)
+    public static ChainCheckResult Check(long startPosition, string startPreviousHash, IEnumerable<SealedEvent> events, IReadOnlyList<AuditAnchor> anchors, IReadOnlyList<ChainSegment>? segments = null)
     {
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(anchors);
         ArgumentException.ThrowIfNullOrWhiteSpace(startPreviousHash);
+        segments ??= [];
+        // Two restores to the same point make two segments from one position: the later one stands.
+        var starts = segments.GroupBy(s => s.StartPosition).ToDictionary(g => g.Key, g => g.MaxBy(s => s.Number)!);
         var problems = new List<ChainProblem>();
         var hashes = new Dictionary<long, (string Hash, Guid Id)>();
         var expected = startPosition;
@@ -99,6 +104,10 @@ public static class AuditChainCheck
             {
                 problems.Add(new ChainProblem(ChainProblemKinds.Modified, sealedEvent.Position, sealedEvent.Content.Id, $"Event {sealedEvent.Content.Id:D} at position {sealedEvent.Position} was changed after it was sealed: its content no longer gives its hash."));
             }
+            else if (starts.TryGetValue(sealedEvent.Position, out var segment) && !string.Equals(sealedEvent.PreviousHash, segment.PreviousHash, StringComparison.Ordinal))
+            {
+                problems.Add(new ChainProblem(ChainProblemKinds.Relinked, sealedEvent.Position, sealedEvent.Content.Id, $"Event {sealedEvent.Content.Id:D} starts segment {segment.Number} but does not link to the restore point the operator accepted."));
+            }
 
             hashes[sealedEvent.Position] = (sealedEvent.Hash, sealedEvent.Content.Id);
             previous = sealedEvent.Hash;
@@ -107,7 +116,8 @@ public static class AuditChainCheck
         }
 
         var end = expected - 1;
-        var seals = anchors.Where(a => a.Kind == AuditAnchorKinds.Seal).OrderBy(a => a.Position).ToList();
+        // An anchor in a segment that a later one covers marks a position a restore lost: a record, not a comparison.
+        var seals = anchors.Where(a => a.Kind == AuditAnchorKinds.Seal && AuditChainSegments.Counts(a, segments)).OrderBy(a => a.Position).ToList();
         foreach (var anchor in seals.Where(a => a.Position >= startPosition && a.Position <= end))
         {
             if (hashes.TryGetValue(anchor.Position, out var found) && !string.Equals(found.Hash, anchor.Hash, StringComparison.Ordinal))

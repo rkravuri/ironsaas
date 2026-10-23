@@ -36,6 +36,8 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
 
     public DbSet<AuditVerificationRequest> AuditVerificationRequests => Set<AuditVerificationRequest>();
 
+    public DbSet<AuditRestoreRecord> AuditRestores => Set<AuditRestoreRecord>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         // The tenants' audit chains (TF-061, ADR-0050): the anchors and the verifications are written once.
@@ -52,7 +54,19 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
             anchor.Property(a => a.TenantSlug).HasMaxLength(63);
             anchor.Property(a => a.Kind).HasMaxLength(AuditAnchorRecord.KindMaxLength);
             anchor.Property(a => a.Hash).HasMaxLength(AuditAnchorRecord.HashLength).IsFixedLength();
-            anchor.HasIndex(a => new { a.TenantSlug, a.Kind, a.Position }).IsUnique();
+            anchor.Property(a => a.Segment).HasDefaultValue(1);
+            anchor.HasIndex(a => new { a.TenantSlug, a.Segment, a.Kind, a.Position }).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditRestoreRecord>(restore =>
+        {
+            restore.ToTable("audit_restores");
+            restore.Property(r => r.TenantSlug).HasMaxLength(63);
+            restore.Property(r => r.PreviousHash).HasMaxLength(AuditAnchorRecord.HashLength).IsFixedLength();
+            restore.Property(r => r.Ticket).HasMaxLength(AuditRestoreRecord.TicketMaxLength);
+            restore.Property(r => r.Reason).HasMaxLength(AuditRestoreRecord.ReasonMaxLength);
+            restore.Property(r => r.AcceptedByName).HasMaxLength(200);
+            restore.HasIndex(r => new { r.TenantSlug, r.Segment }).IsUnique();
         });
 
         modelBuilder.Entity<AuditVerificationRecord>(verification =>

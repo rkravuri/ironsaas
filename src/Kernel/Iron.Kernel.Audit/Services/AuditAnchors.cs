@@ -100,22 +100,33 @@ public sealed class ControlPlaneClient(ControlPlaneOptions options, TimeProvider
     private sealed record TokenAnswer([property: JsonPropertyName("access_token")] string AccessToken, [property: JsonPropertyName("expires_in")] int ExpiresIn);
 }
 
-/// <summary>How far this process knows the control plane has the unit's anchors; asked again after a restart.</summary>
+/// <summary>
+/// How far this process knows the control plane has the unit's anchors, in which segment, and when it last asked; asked
+/// again after a restart and once a minute, so an accepted restore reaches the unit within a minute (ADR-0050).
+/// </summary>
 public sealed class AnchorProgress
 {
     public long? SealedUpTo { get; set; }
 
     public long? PrunedUpTo { get; set; }
+
+    public int? Segment { get; set; }
+
+    public DateTimeOffset AskedAt { get; set; } = DateTimeOffset.MinValue;
 }
 
 /// <summary>
 /// Sends the anchors the control plane does not have yet (TF-061, ADR-0050): one per seal, the position and hash the chain
 /// reached, and one per pruning, how far the oldest end went. The same anchor sent again is answered as taken; another
 /// hash for an anchored position is refused there and raises the alert, so the unit moves on and the verification
-/// reports it. A control plane it cannot reach is tried again at the next pass.
+/// reports it. A control plane it cannot reach is tried again at the next pass. Once a minute it asks where the control
+/// plane stands: a restore an operator accepted is recorded in the tenant's trail, and when the chain has a new segment
+/// the unit sends its anchors again from the restore point, now in that segment (ADR-0050).
 /// </summary>
-public sealed class AuditAnchorSender(AuditDbContext context, ControlPlaneClient client, AnchorProgress progress, ILogger<AuditAnchorSender> logger)
+public sealed class AuditAnchorSender(AuditDbContext context, ControlPlaneClient client, AnchorProgress progress, AuditRestoreRecorder restores, TimeProvider time, ILogger<AuditAnchorSender> logger)
 {
+    private static readonly TimeSpan AskEvery = TimeSpan.FromMinutes(1);
+
     public async Task<int> SendAsync(CancellationToken cancellationToken)
     {
         if (!client.IsConfigured)
@@ -125,13 +136,25 @@ public sealed class AuditAnchorSender(AuditDbContext context, ControlPlaneClient
 
         try
         {
-            if (progress.SealedUpTo is null || progress.PrunedUpTo is null)
+            var now = time.GetUtcNow();
+            if (progress.SealedUpTo is null || progress.PrunedUpTo is null || now - progress.AskedAt >= AskEvery)
             {
                 using var latest = await client.SendAsync(HttpMethod.Get, "/api/v1/audit-anchors/latest", null, cancellationToken).ConfigureAwait(false);
                 latest.EnsureSuccessStatusCode();
                 var answer = await latest.Content.ReadFromJsonAsync<LatestAnchors>(ControlPlaneClient.Json, cancellationToken).ConfigureAwait(false);
-                progress.SealedUpTo = answer?.Seal?.Position ?? 0;
-                progress.PrunedUpTo = answer?.Pruned?.Position ?? 0;
+                await restores.RecordAsync([.. (answer?.Restores ?? []).Select(r => new AcceptedRestoreNotice(r.Segment, r.StartPosition, r.PreviousHash, r.RestorePosition, r.RestoreAt, r.LostFrom, r.LostTo, r.Ticket, r.Reason, r.AcceptedBy, r.AcceptedAt))], cancellationToken).ConfigureAwait(false);
+                var segment = answer?.Segment ?? AuditChainSegments.First;
+
+                // The first look, or a new segment: resume from where the control plane stands. Otherwise keep this
+                // process's own progress, which runs ahead of an anchor refused before a restore was accepted.
+                if (progress.SealedUpTo is null || progress.Segment != segment)
+                {
+                    progress.SealedUpTo = answer?.Seal?.Position ?? 0;
+                }
+
+                progress.PrunedUpTo ??= answer?.Pruned?.Position ?? 0;
+                progress.Segment = segment;
+                progress.AskedAt = now;
             }
 
             var sent = 0;
@@ -201,5 +224,7 @@ public sealed class AuditAnchorSender(AuditDbContext context, ControlPlaneClient
 
     private sealed record LatestAnchor(long Position, string Hash, DateTimeOffset At);
 
-    private sealed record LatestAnchors(LatestAnchor? Seal, LatestAnchor? Pruned);
+    private sealed record LatestRestore(int Segment, long StartPosition, string PreviousHash, long RestorePosition, DateTimeOffset RestoreAt, long LostFrom, long LostTo, string Ticket, string Reason, string AcceptedBy, DateTimeOffset AcceptedAt);
+
+    private sealed record LatestAnchors(LatestAnchor? Seal, LatestAnchor? Pruned, int? Segment, IReadOnlyList<LatestRestore>? Restores);
 }

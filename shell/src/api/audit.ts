@@ -116,12 +116,46 @@ export const AuditChainSchema = z.object({
   anchored: z.boolean(),
   anchored_up_to: z.number().nullable(),
   latest_verification: VerificationSchema.nullable(),
+  segment: z.number(),
+  restores: z.array(
+    z.object({
+      segment: z.number(),
+      start_position: z.number(),
+      restore_position: z.number(),
+      restore_at: z.string(),
+      lost_from: z.number(),
+      lost_to: z.number(),
+      ticket: z.string(),
+      reason: z.string(),
+      accepted_by: z.string(),
+      accepted_at: z.string(),
+    }),
+  ),
 });
 export type AuditChain = z.infer<typeof AuditChainSchema>;
+export type ChainRestore = AuditChain["restores"][number];
 
-/** Where the chain stands, with the control plane's latest verification (TF-061). */
+/** Where the chain stands, with the control plane's latest verification and every accepted restore (TF-061, ADR-0050). */
 export const fetchAuditChain = (signal?: AbortSignal) =>
   request("/api/v1/audit-chain", { schema: AuditChainSchema, ...(signal ? { signal } : {}) });
+
+export const SignedInAsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(["operator", "break_glass", "person"]),
+  field: z.enum(["impersonator_id", "actor_id"]),
+});
+export type SignedInAs = z.infer<typeof SignedInAsSchema>;
+
+/**
+ * Everyone who signed in as someone, or came in through break-glass, by name (TF-025, ADR-0049): the operators, the
+ * break-glass accounts and the tenant's people, each with the field that finds their events.
+ */
+export const fetchImpersonators = (signal?: AbortSignal) =>
+  request("/api/v1/audit-events/impersonators", {
+    schema: z.object({ data: z.array(SignedInAsSchema) }),
+    ...(signal ? { signal } : {}),
+  });
 
 export const RetentionClassSchema = z.object({
   code: z.string(),

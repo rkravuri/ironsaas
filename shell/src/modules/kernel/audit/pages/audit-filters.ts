@@ -3,8 +3,11 @@ import { startOfDay } from "@/i18n/dates";
 export interface Filters {
   eventType: string;
   actorId: string;
-  /** Someone who signed in as another person: their events, whoever they acted as (TF-025, TF-064). */
-  impersonatorId: string;
+  /**
+   * Someone who signed in as another person or came in through break-glass, as "field:id": an operator or a person by
+   * <c>impersonator_id</c>, a break-glass account, which acts as itself, by <c>actor_id</c> (TF-025, ADR-0049).
+   */
+  signedInBy: string;
   recordType: string;
   recordId: string;
   source: string;
@@ -17,13 +20,19 @@ export interface Filters {
 export const emptyFilters: Filters = {
   eventType: "",
   actorId: "",
-  impersonatorId: "",
+  signedInBy: "",
   recordType: "",
   recordId: "",
   source: "",
   from: "",
   to: "",
 };
+
+/** The filter's field and id from its "field:id" value; nothing when none is chosen. */
+export function signedInByTerm(value: string): { field: "impersonator_id" | "actor_id"; id: string } | undefined {
+  const [field, id] = value.split(":");
+  return (field === "impersonator_id" || field === "actor_id") && id ? { field, id } : undefined;
+}
 
 /** The day after a yyyy-mm-dd day, as yyyy-mm-dd. */
 export function nextDay(day: string): string {
@@ -44,7 +53,8 @@ export function filterQuery(filters: Filters): string[] {
     terms.push(`filter=${encodeURIComponent(`${field}:${operator}:${value}`)}`);
   if (filters.eventType.trim() !== "") add("event_type", "eq", filters.eventType.trim());
   if (filters.actorId !== "") add("actor_id", "eq", filters.actorId);
-  if (filters.impersonatorId !== "") add("impersonator_id", "eq", filters.impersonatorId);
+  const signedInBy = signedInByTerm(filters.signedInBy);
+  if (signedInBy) add(signedInBy.field, "eq", signedInBy.id);
   if (filters.recordType.trim() !== "") add("record_type", "eq", filters.recordType.trim());
   if (filters.recordId.trim() !== "") add("record_id", "eq", filters.recordId.trim());
   if (filters.source !== "") add("source", "eq", filters.source);

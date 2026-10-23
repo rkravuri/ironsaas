@@ -2262,14 +2262,21 @@
       "actor": "Who",
       "actorPlaceholder": "Anyone",
       "impersonator": "Signed in as them by",
-      "impersonatorPlaceholder": "Nobody chosen",
+      "impersonatorPlaceholder": "Anyone",
       "recordType": "Record type",
       "recordId": "Record identifier",
       "source": "Source",
       "anySource": "Any source",
       "from": "From",
       "to": "To",
-      "apply": "Search"
+      "apply": "Search",
+      "impersonatorNone": "Nobody has signed in as someone",
+      "impersonatorNothing": "Nobody of that name",
+      "signedInGroups": {
+        "operator": "The platform's operators",
+        "break_glass": "Break-glass accounts",
+        "person": "People of this organisation"
+      }
     },
     "export": {
       "open": "Export to CSV",
@@ -2342,7 +2349,25 @@
       "sealedAtColumn": "Sealed",
       "positions": "Positions",
       "lastHash": "Last hash, first 16 characters",
-      "range": "{{first}} to {{last}}"
+      "range": "{{first}} to {{last}}",
+      "restoreNext": "An operator accepts the restore point once the incident is investigated; the chain then continues from it, and this page keeps the restore.",
+      "restoresTitle": "Restores",
+      "restoresDescription": "Every restore of the database an operator accepted, and what it lost. Each stays here for good.",
+      "noRestores": "The database has not been restored.",
+      "restoresCaption_one": "{{count}} accepted restore",
+      "restoresCaption_other": "{{count}} accepted restores, newest first",
+      "restoredTo": "Restored to",
+      "restoredToPosition": "Position {{position}}, sealed {{when}}",
+      "continuesAs": "The chain continues as segment {{segment}} from position {{position}}.",
+      "lost": "Lost",
+      "lostRange": "Positions {{from}} to {{to}}",
+      "lostNone": "Nothing",
+      "accepted": "Accepted",
+      "acceptedBy": "By {{name}}, ticket {{ticket}}",
+      "why": "Why",
+      "segment": "Segment",
+      "firstSegment": "1, since the chain began",
+      "laterSegment": "{{segment}}, since the last accepted restore"
     }
   },
   "legalHolds": {

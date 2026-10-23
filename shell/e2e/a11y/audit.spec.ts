@@ -93,6 +93,52 @@ const chain = {
     restore_at: ago(60 * 10),
     verified_at: ago(60 * 2),
   },
+  segment: 1,
+  restores: [] as unknown[],
+};
+
+/** The same chain after an operator accepted the restore: the fleet's next full run passed, and the restore stays shown. */
+const acceptedChain = {
+  ...chain,
+  segment: 2,
+  latest_verification: {
+    result: "passed",
+    full: true,
+    from_position: 1,
+    to_position: 1204,
+    events_checked: 1204,
+    problems: [],
+    restore_position: null,
+    restore_at: null,
+    verified_at: ago(30),
+  },
+  restores: [
+    {
+      segment: 2,
+      start_position: 1101,
+      restore_position: 1100,
+      restore_at: ago(60 * 10),
+      lost_from: 1101,
+      lost_to: 1180,
+      ticket: "INC-77",
+      reason: "Restored from last night's backup after the disk failure",
+      accepted_by: "Olga Operator",
+      accepted_at: ago(40),
+    },
+  ],
+};
+
+const impersonators = {
+  data: [
+    { id: "01a18000-0000-7000-8000-0000000000f1", name: "Olga Operator", kind: "operator", field: "impersonator_id" },
+    {
+      id: "01a18000-0000-7000-8000-0000000000b9",
+      name: "Break-glass access (Olga Operator)",
+      kind: "break_glass",
+      field: "actor_id",
+    },
+    { id: me.id, name: "Admin", kind: "person", field: "impersonator_id" },
+  ],
 };
 
 const holds = [
@@ -163,6 +209,7 @@ async function stubAudit(page: Page): Promise<void> {
   await page.route("**/api/v1/audit-events/archived?**", (route) =>
     route.fulfill({ json: { data: archived, batches_read: 1, truncated: false } }),
   );
+  await page.route("**/api/v1/audit-events/impersonators", (route) => route.fulfill({ json: impersonators }));
   await page.route("**/api/v1/audit-chain", (route) => route.fulfill({ json: chain }));
   await page.route("**/api/v1/legal-holds", (route) => route.fulfill({ json: { holds } }));
   await page.route("**/api/v1/retention", (route) => route.fulfill({ json: retention }));
@@ -192,6 +239,15 @@ for (const scheme of schemes) {
     await page.screenshot({ path: `test-results/a11y/audit-search-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
+    // Who signed in as someone: the operator, the break-glass accounts and the people, by name and grouped.
+    await page.getByRole("combobox", { name: "Signed in as them by" }).click();
+    const offered = page.getByRole("listbox");
+    await expect(offered.getByRole("option", { name: "Break-glass access (Olga Operator)" })).toBeVisible();
+    await expect(offered).toContainText("The platform's operators");
+    await page.screenshot({ path: `test-results/a11y/audit-signed-in-by-${scheme}.png` });
+    await expectNoViolation(page);
+    await page.keyboard.press("Escape");
+
     await page.getByRole("tab", { name: "Archive" }).click();
     await page.getByLabel("From", { exact: true }).fill("2025-01-06");
     await page.getByLabel("To", { exact: true }).fill("2025-01-08");
@@ -215,6 +271,24 @@ for (const scheme of schemes) {
     await expect(problems).toContainText("01a18000-0000-7000-8000-000000000017");
     await expect(page.locator("[data-restore-point]")).toContainText("whole up to position 1100");
     await page.screenshot({ path: `test-results/a11y/audit-chain-${scheme}.png`, fullPage: true });
+    await expectNoViolation(page);
+  });
+
+  test(`the audit chain's status after an accepted restore in the ${scheme} scheme: passed, with the restore and what it lost still shown, and no WCAG 2.1 AA violation [TF-061 AC3, TF-065 AC2, TF-172 AC1, ADR-0024, ADR-0050]`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await stubAudit(page);
+    await page.route("**/api/v1/audit-chain", (route) => route.fulfill({ json: acceptedChain }));
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+
+    await page.goto("/audit/chain");
+    await expect(page.locator("[data-verification-result=passed]")).toHaveText("Passed");
+    const restores = page.getByRole("table", { name: "1 accepted restore" });
+    await expect(restores).toContainText("Positions 1101 to 1180");
+    await expect(restores).toContainText("By Olga Operator, ticket INC-77");
+    await expect(restores).toContainText("GMT+5:30");
+    await page.screenshot({ path: `test-results/a11y/audit-chain-accepted-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
   });
 

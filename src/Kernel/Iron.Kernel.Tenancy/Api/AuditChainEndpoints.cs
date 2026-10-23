@@ -28,16 +28,46 @@ public sealed class AuditAnchorRequestValidator : AbstractValidator<AuditAnchorR
     }
 }
 
-public sealed record AuditAnchorResponse(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt)
+public sealed record AuditAnchorResponse(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt, int Segment = 1)
 {
     public static AuditAnchorResponse From(AuditAnchorInfo anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);
-        return new(anchor.Kind, anchor.Position, anchor.Hash, anchor.At, anchor.ReceivedAt);
+        return new(anchor.Kind, anchor.Position, anchor.Hash, anchor.At, anchor.ReceivedAt, anchor.Segment);
     }
 }
 
-public sealed record LatestAnchorsResponse(AuditAnchorResponse? Seal, AuditAnchorResponse? Pruned);
+/// <summary>A restore an operator accepted: the segment it began, the restore point, the range lost, and who, when and why.</summary>
+public sealed record AuditRestoreResponse(
+    Guid Id,
+    int Segment,
+    long StartPosition,
+    string PreviousHash,
+    long RestorePosition,
+    DateTimeOffset RestoreAt,
+    long LostFrom,
+    long LostTo,
+    string Ticket,
+    string Reason,
+    string AcceptedBy,
+    DateTimeOffset AcceptedAt)
+{
+    public static AuditRestoreResponse From(AuditRestoreInfo restore)
+    {
+        ArgumentNullException.ThrowIfNull(restore);
+        return new(restore.Id, restore.Segment, restore.StartPosition, restore.PreviousHash, restore.RestorePosition, restore.RestoreAt, restore.LostFrom, restore.LostTo, restore.Ticket, restore.Reason, restore.AcceptedBy, restore.AcceptedAt);
+    }
+}
+
+public sealed record AuditRestoresResponse(IReadOnlyList<AuditRestoreResponse> Restores);
+
+/// <summary>An operator's acceptance of a restore point: a ticket and a reason, both kept with the record and in both trails.</summary>
+public sealed record AuditRestoreAcceptance(string? Ticket, string? Reason);
+
+public sealed record AuditRestoreAcceptedResponse(AuditRestoreResponse Restore, Guid VerificationRequestId);
+
+/// <summary>Where a unit resumes: the latest anchors of its current segment, the segment, and every accepted restore.</summary>
+public sealed record LatestAnchorsResponse(AuditAnchorResponse? Seal, AuditAnchorResponse? Pruned, int Segment = 1, IReadOnlyList<AuditRestoreResponse>? Restores = null);
 
 public sealed record AuditChainProblemResponse(string Kind, long Position, Guid? EventId, string Message);
 
@@ -84,6 +114,7 @@ internal static class AuditChainEndpoints
 {
     public static readonly ListFields<AuditAnchorRecord> AnchorFields = new ListFields<AuditAnchorRecord>()
         .Add("kind", a => a.Kind, FieldUse.Select | FieldUse.Filter)
+        .Add("segment", a => a.Segment, FieldUse.Select | FieldUse.Sort | FieldUse.Filter)
         .Add("position", a => a.Position, FieldUse.Select | FieldUse.Sort | FieldUse.Filter)
         .Add("hash", a => a.Hash, FieldUse.Select)
         .Add("at", a => a.At, FieldUse.Select | FieldUse.Sort | FieldUse.Filter)
@@ -111,6 +142,8 @@ internal static class AuditChainEndpoints
         tenants.MapGet("/{slug}/audit-anchors", ListAnchorsAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ListResponse<AuditAnchorResponse>>(StatusCodes.Status200OK).WithName("ListAuditAnchors").WithSummary("A tenant's audit anchors, newest first.");
         tenants.MapGet("/{slug}/audit-verifications", ListVerificationsAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ListResponse<AuditVerificationResponse>>(StatusCodes.Status200OK).WithName("ListAuditVerifications").WithSummary("A tenant's chain verifications, newest first.");
         tenants.MapPost("/{slug}/audit-verifications", RequestAsync).RequirePermission(TenancyPermissions.AuditChainsVerify).Produces<AuditVerificationRequestResponse>(StatusCodes.Status202Accepted).WithName("RequestAuditVerification").WithSummary("Ask the fleet to verify a tenant's audit chain now, or in full; it runs within a minute.");
+        tenants.MapPost("/{slug}/audit-restores", AcceptRestoreAsync).RequirePermission(TenancyPermissions.AuditRestoresAccept).RequireRecentAuthentication().Produces<AuditRestoreAcceptedResponse>(StatusCodes.Status201Created).WithName("AcceptAuditRestore").WithSummary("Accept the restore point a tenant's latest verification names, with a ticket and a reason and a fresh token: the chain continues as a new segment from it.");
+        tenants.MapGet("/{slug}/audit-restores", ListRestoresAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<AuditRestoresResponse>(StatusCodes.Status200OK).WithName("ListAuditRestores").WithSummary("A tenant's accepted restores, oldest first: each segment, its restore point and the range lost.");
         tenants.MapGet("/{slug}/audit-verifications/requests/{id:guid}", RequestStatusAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<AuditVerificationRequestResponse>(StatusCodes.Status200OK).WithName("GetAuditVerificationRequest").WithSummary("A verification request, with its record once the fleet answered it.");
     }
 
@@ -127,7 +160,23 @@ internal static class AuditChainEndpoints
         var result = await chains.LatestOfCallerAsync(cancellationToken);
         return ApiResults.From(result, http, latest => TypedResults.Ok(new LatestAnchorsResponse(
             latest.Seal is null ? null : AuditAnchorResponse.From(latest.Seal),
-            latest.Pruned is null ? null : AuditAnchorResponse.From(latest.Pruned))));
+            latest.Pruned is null ? null : AuditAnchorResponse.From(latest.Pruned),
+            latest.Segment,
+            [.. latest.Restores.Select(AuditRestoreResponse.From)])));
+    }
+
+    private static async Task<IResult> AcceptRestoreAsync(string slug, AuditRestoreAcceptance? acceptance, HttpContext http, AuditChainService chains, CancellationToken cancellationToken)
+    {
+        var result = await chains.AcceptRestoreAsync(slug, acceptance?.Ticket, acceptance?.Reason, cancellationToken);
+        return ApiResults.From(result, http, accepted => TypedResults.Created(
+            $"{ApiRouting.Prefix}/tenants/{slug}/audit-restores",
+            new AuditRestoreAcceptedResponse(AuditRestoreResponse.From(accepted.Restore), accepted.VerificationRequestId)));
+    }
+
+    private static async Task<IResult> ListRestoresAsync(string slug, AuditChainService chains, CancellationToken cancellationToken)
+    {
+        var restores = await chains.RestoresAsync(slug, cancellationToken);
+        return TypedResults.Ok(new AuditRestoresResponse([.. restores.Select(AuditRestoreResponse.From)]));
     }
 
     private static async Task<IResult> LatestVerificationAsync(HttpContext http, AuditChainService chains, CancellationToken cancellationToken)
@@ -146,7 +195,7 @@ internal static class AuditChainEndpoints
 
         var query = parsed.Value;
         var page = await context.AuditAnchors.AsNoTracking().Where(a => a.TenantSlug == slug).ApplyListQuery(query, AnchorFields).ToPageAsync(query.Page, cancellationToken);
-        return ApiResults.List(page.Map(a => new AuditAnchorResponse(a.Kind, a.Position, a.Hash, a.At, a.CreatedAt)), http, query);
+        return ApiResults.List(page.Map(a => new AuditAnchorResponse(a.Kind, a.Position, a.Hash, a.At, a.CreatedAt, a.Segment)), http, query);
     }
 
     private static async Task<IResult> ListVerificationsAsync(string slug, HttpContext http, TenancyDbContext context, CancellationToken cancellationToken)

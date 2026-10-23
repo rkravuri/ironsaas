@@ -49,7 +49,25 @@ public sealed record AuditChainResponse(
     IReadOnlyList<ChainSealResponse> Seals,
     bool Anchored,
     long? AnchoredUpTo,
-    ChainVerificationResponse? LatestVerification);
+    ChainVerificationResponse? LatestVerification,
+    int Segment,
+    IReadOnlyList<ChainRestoreResponse> Restores);
+
+/// <summary>
+/// A restore an operator accepted (ADR-0050): the chain continues as <paramref name="Segment"/> from the position after
+/// <paramref name="RestorePosition"/>; the positions from <paramref name="LostFrom"/> to <paramref name="LostTo"/> were lost.
+/// </summary>
+public sealed record ChainRestoreResponse(
+    int Segment,
+    long StartPosition,
+    long RestorePosition,
+    DateTimeOffset RestoreAt,
+    long LostFrom,
+    long LostTo,
+    string Ticket,
+    string Reason,
+    string AcceptedBy,
+    DateTimeOffset AcceptedAt);
 
 public sealed record RetentionClassResponse(string Code, string Description, int DefaultDays, int MinimumDays, int MaximumDays, int Days, bool Chosen, IReadOnlyList<string> RecordTypes);
 
@@ -179,6 +197,11 @@ internal static class AuditTrailEndpoints
         var seals = await context.Seals.AsNoTracking().OrderByDescending(s => s.LastPosition).Take(10)
             .Select(s => new ChainSealResponse(s.FirstPosition, s.LastPosition, s.LastHash, s.CreatedAt)).ToListAsync(cancellationToken);
 
+        // Every restore stays on the page for good, with what it lost (ADR-0050), newest first.
+        var restores = await context.ChainRestores.AsNoTracking().OrderByDescending(r => r.Segment)
+            .Select(r => new ChainRestoreResponse(r.Segment, r.StartPosition, r.RestorePosition, r.RestoreAt, r.LostFrom, r.LostTo, r.Ticket, r.Reason, r.AcceptedBy, r.AcceptedAt))
+            .ToListAsync(cancellationToken);
+
         long? anchoredUpTo = null;
         ChainVerificationResponse? verification = null;
         var anchored = false;
@@ -205,7 +228,7 @@ internal static class AuditTrailEndpoints
             }
         }
 
-        return TypedResults.Ok(new AuditChainResponse(head?.Position, head?.Hash, head?.SealedAt, unsealed, archivedUpTo, prunedUpTo, seals, anchored, anchoredUpTo, verification));
+        return TypedResults.Ok(new AuditChainResponse(head?.Position, head?.Hash, head?.SealedAt, unsealed, archivedUpTo, prunedUpTo, seals, anchored, anchoredUpTo, verification, restores.Count == 0 ? 1 : restores[0].Segment, restores));
     }
 
     private static async Task<IResult> RetentionAsync(RetentionPolicy policy, IEnumerable<IRetainedRecords> types, CancellationToken cancellationToken)

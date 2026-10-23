@@ -93,6 +93,86 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditChainRestore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<string>("AcceptedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("accepted_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("LostFrom")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_from");
+
+                    b.Property<long>("LostTo")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_to");
+
+                    b.Property<string>("PreviousHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("previous_hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RestoreAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restore_at");
+
+                    b.Property<long>("RestorePosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("restore_position");
+
+                    b.Property<int>("Segment")
+                        .HasColumnType("integer")
+                        .HasColumnName("segment");
+
+                    b.Property<long>("StartPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("start_position");
+
+                    b.Property<string>("Ticket")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ticket");
+
+                    b.HasKey("Id")
+                        .HasName("pk_chain_restores");
+
+                    b.HasIndex("Segment")
+                        .IsUnique()
+                        .HasDatabaseName("ix_chain_restores_segment");
+
+                    b.ToTable("chain_restores", "kernel_audit", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
             modelBuilder.Entity("Iron.Kernel.Audit.Data.AuditEventRecord", b =>
                 {
                     b.Property<Guid>("Id")

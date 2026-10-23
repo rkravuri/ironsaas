@@ -250,9 +250,10 @@ public sealed record ChainHead(long Position, string Hash, DateTimeOffset Sealed
 
 /// <summary>
 /// What the unit tells the control plane after a seal (ADR-0050): the position and hash it reached, and, after a
-/// retention pass, how far the oldest end was pruned. The control plane keeps every anchor in its own database.
+/// retention pass, how far the oldest end was pruned. The control plane keeps every anchor in its own database, in the
+/// segment that covers its position (<see cref="AuditChainSegments"/>).
 /// </summary>
-public sealed record AuditAnchor(string Kind, long Position, string Hash, DateTimeOffset At);
+public sealed record AuditAnchor(string Kind, long Position, string Hash, DateTimeOffset At, int Segment = AuditChainSegments.First);
 
 public static class AuditAnchorKinds
 {

@@ -41,6 +41,8 @@ public sealed class AuditModule : IModule
         services.AddSingleton(controlPlane);
         services.AddSingleton<ControlPlaneClient>();
         services.AddSingleton<AnchorProgress>();
+        services.AddScoped<AuditRestoreRecorder>();
+        services.AddScoped<AuditImpersonators>();
         services.AddScoped<AuditAnchorSender>();
 
         // Archive, retention and legal holds (TF-064, TF-066, ADR-0050): the worker runs them daily; the API serves them.

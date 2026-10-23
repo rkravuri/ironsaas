@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Badge, Code, Group, SimpleGrid, Stack, Table, Text } from "@mantine/core";
 import { IconAlertTriangle, IconCircleCheck, IconCircleX, IconHistory } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
-import { auditQueryKey, fetchAuditChain, type ChainVerification } from "@/api/audit";
+import { auditQueryKey, fetchAuditChain, type ChainRestore, type ChainVerification } from "@/api/audit";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { ConsolePage } from "@/components/templates";
 import { formatDateTime } from "@/i18n/dates";
@@ -72,7 +72,8 @@ function Verification({ verification }: { verification: ChainVerification }) {
           {t("audit.chain.restoreText", {
             position: verification.restore_position,
             when: verification.restore_at ? formatDateTime(verification.restore_at) : "",
-          })}
+          })}{" "}
+          {t("audit.chain.restoreNext")}
         </Alert>
       )}
       {verification.problems.length > 0 && (
@@ -100,10 +101,70 @@ function Verification({ verification }: { verification: ChainVerification }) {
   );
 }
 
+/** Every restore an operator accepted, newest first, with what it lost: they stay on the page for good (ADR-0050). */
+function Restores({ restores }: { restores: ChainRestore[] }) {
+  const { t } = useTranslation();
+  if (restores.length === 0) {
+    return (
+      <Text size="sm" c="dimmed">
+        {t("audit.chain.noRestores")}
+      </Text>
+    );
+  }
+
+  return (
+    <Table withTableBorder striped data-chain-restores>
+      <Table.Caption>{t("audit.chain.restoresCaption", { count: restores.length })}</Table.Caption>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>{t("audit.chain.restoredTo")}</Table.Th>
+          <Table.Th>{t("audit.chain.lost")}</Table.Th>
+          <Table.Th>{t("audit.chain.accepted")}</Table.Th>
+          <Table.Th>{t("audit.chain.why")}</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        {restores.map((restore) => (
+          <Table.Tr key={restore.segment}>
+            <Table.Td>
+              <Text size="sm">
+                {t("audit.chain.restoredToPosition", {
+                  position: restore.restore_position,
+                  when: formatDateTime(restore.restore_at),
+                })}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {t("audit.chain.continuesAs", { segment: restore.segment, position: restore.start_position })}
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm">
+                {restore.lost_to < restore.lost_from
+                  ? t("audit.chain.lostNone")
+                  : t("audit.chain.lostRange", { from: restore.lost_from, to: restore.lost_to })}
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm">{formatDateTime(restore.accepted_at)}</Text>
+              <Text size="xs" c="dimmed">
+                {t("audit.chain.acceptedBy", { name: restore.accepted_by, ticket: restore.ticket })}
+              </Text>
+            </Table.Td>
+            <Table.Td>
+              <Text size="sm">{restore.reason}</Text>
+            </Table.Td>
+          </Table.Tr>
+        ))}
+      </Table.Tbody>
+    </Table>
+  );
+}
+
 /**
  * The audit chain's status (TF-061, ADR-0050): the fleet's last verification of this tenant's chain, its result and
- * what it found, the restore point after a restore; then where the chain stands here (its head, what waits for a seal,
- * what moved to the archive or was pruned, how far the control plane holds anchors), and the latest seals.
+ * what it found, the restore point after a restore; every restore an operator accepted, with the range it lost, for
+ * good; then where the chain stands here (its head and segment, what waits for a seal, what moved to the archive or
+ * was pruned, how far the control plane holds anchors), and the latest seals.
  */
 export function AuditChainPage() {
   const { t } = useTranslation();
@@ -148,6 +209,12 @@ export function AuditChainPage() {
           ),
         },
         {
+          id: "restores",
+          title: t("audit.chain.restoresTitle"),
+          description: t("audit.chain.restoresDescription"),
+          children: <Restores restores={status.restores} />,
+        },
+        {
           id: "chain",
           title: t("audit.chain.chainTitle"),
           description: t("audit.chain.chainDescription"),
@@ -160,6 +227,11 @@ export function AuditChainPage() {
                 {status.head_sealed_at ? formatDateTime(status.head_sealed_at) : t("audit.chain.never")}
               </Figure>
               <Figure label={t("audit.chain.unsealed")}>{status.unsealed}</Figure>
+              <Figure label={t("audit.chain.segment")}>
+                {status.segment === 1
+                  ? t("audit.chain.firstSegment")
+                  : t("audit.chain.laterSegment", { segment: status.segment })}
+              </Figure>
               <Figure label={t("audit.chain.anchoredUpTo")}>
                 {status.anchored_up_to === null
                   ? t("audit.chain.notAnchored")

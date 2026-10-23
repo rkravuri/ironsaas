@@ -1,7 +1,30 @@
 namespace Iron.Kernel.Tenancy.Contracts;
 
-/// <summary>One anchor a unit sent (ADR-0050): how far its chain reached, with which hash, and when the unit said so.</summary>
-public sealed record AuditAnchorInfo(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt);
+/// <summary>
+/// One anchor a unit sent (ADR-0050): how far its chain reached, with which hash, when the unit said so, and the segment
+/// of the chain it belongs to (1 until an operator accepts a restore).
+/// </summary>
+public sealed record AuditAnchorInfo(string Kind, long Position, string Hash, DateTimeOffset At, DateTimeOffset ReceivedAt, int Segment = 1);
+
+/// <summary>
+/// A restore an operator accepted (ADR-0050): the chain continues as segment <paramref name="Segment"/> from
+/// <paramref name="StartPosition"/>, its first event linking to <paramref name="PreviousHash"/>, the restore point's hash;
+/// the positions from <paramref name="LostFrom"/> to <paramref name="LostTo"/> were lost with the restore. Kept for good.
+/// </summary>
+public sealed record AuditRestoreInfo(
+    Guid Id,
+    string TenantSlug,
+    int Segment,
+    long StartPosition,
+    string PreviousHash,
+    long RestorePosition,
+    DateTimeOffset RestoreAt,
+    long LostFrom,
+    long LostTo,
+    string Ticket,
+    string Reason,
+    string AcceptedBy,
+    DateTimeOffset AcceptedAt);
 
 /// <summary>Something the verification found wrong, at a position, with the event's identifier when it has one.</summary>
 public sealed record AuditChainProblemInfo(string Kind, long Position, Guid? EventId, string Message);
@@ -48,8 +71,11 @@ public interface ITenantAuditChains
     /// <summary>Makes this control-plane service account the tenant's unit client: its anchors are that tenant's.</summary>
     Task BindUnitClientAsync(string slug, Guid principalId, CancellationToken cancellationToken);
 
-    /// <summary>Every anchor of the tenant, in position order.</summary>
+    /// <summary>Every anchor of the tenant, in position order, each with its segment.</summary>
     Task<IReadOnlyList<AuditAnchorInfo>> AnchorsAsync(string slug, CancellationToken cancellationToken);
+
+    /// <summary>The restores operators accepted for the tenant, oldest first: the chain's segments after the first.</summary>
+    Task<IReadOnlyList<AuditRestoreInfo>> RestoresAsync(string slug, CancellationToken cancellationToken);
 
     /// <summary>The tenant's latest verification, or its latest full one.</summary>
     Task<AuditVerificationInfo?> LatestVerificationAsync(string slug, bool fullOnly, CancellationToken cancellationToken);

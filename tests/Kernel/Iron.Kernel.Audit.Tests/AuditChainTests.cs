@@ -230,6 +230,67 @@ public class AuditChainTests(AuditFixture fixture)
         Assert.All(resealed.Problems, p => Assert.Equal(ChainProblemKinds.AnchorMismatch, p.Kind));
     }
 
+    [Fact]
+    [Proves("TF-061 AC3", "ADR-0050")]
+    public async Task ARestoreIsReportedAcceptedAndThenVerifiedAsPassedWithTheRestoreStillShown()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 10, 20, 9, 0, 0, TimeSpan.Zero));
+        var database = await fixture.NewChainDatabaseAsync("accepted");
+        await using var provider = fixture.BuildServices(time, new FixedPrincipal(SystemPrincipal.SystemId), database);
+        await WriteAsync(provider, 4);
+        await SealEverythingAsync(provider);
+        time.Advance(TimeSpan.FromHours(3));
+        await WriteAsync(provider, 3);
+        await SealEverythingAsync(provider);
+        var chains = new FakeChains(await AnchorsOfAsync(provider));
+
+        // The backup from before the last three events comes back, and the unit seals new events at those positions.
+        await TamperAsync(database, "delete from kernel_audit.events where chain_position > 4; delete from kernel_audit.seals where last_position > 4");
+        await WriteAsync(provider, 2);
+        await SealEverythingAsync(provider);
+        var reported = await Verifier(chains, database).VerifyAsync(Due(database, full: true), Cancel);
+        Assert.Equal((AuditVerificationResults.Restored, 4L), (reported.Result, reported.RestorePosition));
+
+        // The operator accepts the restore point, as the control plane does; the unit sends its anchors again from it, now
+        // in segment 2, and the lost positions' anchors stay in segment 1.
+        var accepted = AuditChainSegments.Accept(4, [.. chains.Anchors.Select(a => new AuditAnchor(a.Kind, a.Position, a.Hash, a.At, a.Segment))], [])!;
+        Assert.Equal((2, 5L, 5L, 7L), (accepted.Segment.Number, accepted.Segment.StartPosition, accepted.LostFrom, accepted.LostTo));
+        var restore = new AuditRestoreInfo(Ids.New(), AuditFixture.ChainTenant, 2, 5, accepted.Segment.PreviousHash, 4, accepted.RestoreAt, 5, 7, "INC-77", "Restored from last night's backup", "Olga Operator", time.GetUtcNow());
+        chains.Restores.Add(restore);
+        chains.Anchors.AddRange((await AnchorsOfAsync(provider)).Where(a => a.Position > 4).Select(a => a with { Segment = 2 }));
+
+        var full = await Verifier(chains, database).VerifyAsync(Due(database, full: true), Cancel);
+        Assert.Equal(AuditVerificationResults.Passed, full.Result);
+        Assert.Empty(full.Problems);
+        chains.Latest = full;
+        await WriteAsync(provider, 2);
+        await SealEverythingAsync(provider);
+        Assert.Equal(AuditVerificationResults.Passed, (await Verifier(chains, database).VerifyAsync(Due(database, full: false), Cancel)).Result);
+
+        // The unit records the restore once, with the range lost, and its own trail names it.
+        var notice = new AcceptedRestoreNotice(2, 5, restore.PreviousHash, 4, restore.RestoreAt, 5, 7, restore.Ticket, restore.Reason, restore.AcceptedBy, restore.AcceptedAt);
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<AuditRestoreRecorder>().RecordAsync([notice], Cancel));
+        }
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<AuditRestoreRecorder>().RecordAsync([notice], Cancel));
+            var context = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+            var shown = await context.ChainRestores.AsNoTracking().SingleAsync(Cancel);
+            Assert.Equal((4L, 5L, 7L, "Olga Operator"), (shown.RestorePosition, shown.LostFrom, shown.LostTo, shown.AcceptedBy));
+            var recorded = await context.Events.AsNoTracking().SingleAsync(e => e.EventType == AuditEvents.RestoreAccepted, Cancel);
+            Assert.Equal((AuditSeverity.High, restore.Reason, shown.Id), (recorded.Severity, recorded.Reason, recorded.RecordId));
+        }
+
+        // The link between the segments counts: a segment that says another restore point is a broken chain.
+        chains.Restores[0] = restore with { PreviousHash = new string('f', 64) };
+        var relinked = await Verifier(chains, database).VerifyAsync(Due(database, full: true), Cancel);
+        Assert.Equal(AuditVerificationResults.Failed, relinked.Result);
+        Assert.Contains(relinked.Problems, p => p.Kind == ChainProblemKinds.Relinked && p.Position == 5);
+    }
+
     // The canonical form as the README documents it, written apart from Iron.Kernel.Audit's: a JSON array built with the
     // framework's writer for structure, and the form's own escaping applied by hand to every text.
     private static string IndependentHash(ChainedEvent e, string previousHash)
@@ -373,7 +434,11 @@ public sealed class FakeChains(List<AuditAnchorInfo> anchors) : ITenantAuditChai
 
     public List<AuditVerificationInfo> Recorded { get; } = [];
 
+    public List<AuditRestoreInfo> Restores { get; } = [];
+
     public Task BindUnitClientAsync(string slug, Guid principalId, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task<IReadOnlyList<AuditRestoreInfo>> RestoresAsync(string slug, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<AuditRestoreInfo>>(Restores);
 
     public Task<IReadOnlyList<AuditAnchorInfo>> AnchorsAsync(string slug, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<AuditAnchorInfo>>(Anchors);
 

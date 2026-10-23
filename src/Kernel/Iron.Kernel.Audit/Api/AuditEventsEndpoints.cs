@@ -133,6 +133,13 @@ internal static class AuditEventsEndpoints
     {
         var events = endpoints.MapApiGroup("audit-events").RequirePermission(AuditPermissions.EventsRead);
         events.MapGet("/", ListAsync).Produces<ListResponse<AuditEventResponse>>(StatusCodes.Status200OK).WithName("ListAuditEvents").WithSummary("Search the audit trail of this tenant.");
+        events.MapGet("/impersonators", ImpersonatorsAsync).Produces<SignedInAsListResponse>(StatusCodes.Status200OK).WithName("ListAuditImpersonators").WithSummary("Everyone who signed in as someone, or came in through break-glass, by name: the operators, the break-glass accounts and the tenant's people, each with the field that finds their events.");
+    }
+
+    private static async Task<IResult> ImpersonatorsAsync(AuditImpersonators impersonators, CancellationToken cancellationToken)
+    {
+        var found = await impersonators.ListAsync(cancellationToken);
+        return TypedResults.Ok(new SignedInAsListResponse([.. found.Select(s => new SignedInAsResponse(s.Id, s.Name, s.Kind, s.Field))]));
     }
 
     private static async Task<IResult> ListAsync(HttpContext http, AuditDbContext context, CancellationToken cancellationToken)
@@ -161,3 +168,8 @@ internal static class AuditEventsEndpoints
         return ApiResults.List(page.Map(record => AuditEventResponse.From(record, names)), http, query);
     }
 }
+
+/// <summary>Someone the "signed in as them by" filter offers, by name, with the list field that finds their events.</summary>
+public sealed record SignedInAsResponse(Guid Id, string Name, string Kind, string Field);
+
+public sealed record SignedInAsListResponse(IReadOnlyList<SignedInAsResponse> Data);

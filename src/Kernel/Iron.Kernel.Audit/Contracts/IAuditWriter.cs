@@ -78,6 +78,9 @@ public static class AuditPermissions
 public static class AuditEvents
 {
     public const string EventsExported = "audit.events_exported";
+
+    /// <summary>An operator accepted a restore of the chain; it continues as a new segment (ADR-0050).</summary>
+    public const string RestoreAccepted = "audit.restore_accepted";
     public const string TrailArchived = "audit.trail_archived";
     public const string TrailPruned = "audit.trail_pruned";
     public const string RecordExpired = "audit.record_expired";

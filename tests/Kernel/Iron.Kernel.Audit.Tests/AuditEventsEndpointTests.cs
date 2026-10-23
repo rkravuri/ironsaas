@@ -6,6 +6,8 @@ using Iron.Kernel.Api.Flags;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
+using Iron.Kernel.Audit.Data;
+using Iron.Kernel.Audit.Services;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
@@ -25,6 +27,7 @@ namespace Iron.Kernel.Audit.Tests;
 [Collection(AuditCollection.Name)]
 public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
 {
+    private readonly KnownPrincipals _people = new();
     private WebApplication? _app;
     private HttpClient _client = null!;
 
@@ -45,6 +48,7 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FilesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
+        builder.Services.AddSingleton<IPrincipals>(_people);
 
         _app = builder.Build();
         _app.UseIronTelemetry();
@@ -92,6 +96,44 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
         Assert.Equal(AuditSource.Api, row.GetProperty("source").GetString());
         Assert.Equal("GET /api/v1/audit-events", row.GetProperty("target").GetString());
         Assert.Equal(AuditPermissions.EventsRead.Name, row.GetProperty("details").GetProperty("permission").GetString());
+    }
+
+    [Fact]
+    [Proves("TF-025 AC2", "ADR-0049", "ADR-0050")]
+    public async Task TheSignedInAsFilterOffersTheOperatorBreakGlassAccountsAndPeopleByName()
+    {
+        var (reader, _) = await ReaderWithEventsAsync("tests.signed_in.seed", 1);
+        var (person, account, operatorId, someone) = (Ids.New(), Ids.New(), Ids.New(), Ids.New());
+        _people.Names[person] = "Ada Admin";
+        _people.Names[account] = "Break-glass access (Olga Operator)";
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+            context.Events.Add(new AuditEventRecord("identity.user_updated", AuditOutcome.Success, someone, AuditSource.Ui, "someone", null, null, null, null, null, impersonatorId: person));
+            context.Events.Add(new AuditEventRecord("identity.user_updated", AuditOutcome.Success, someone, AuditSource.Ui, "someone", null, null, null, "{\"impersonator\":\"Olga Operator\"}", null, impersonatorId: operatorId));
+            context.Events.Add(new AuditEventRecord(AuditImpersonators.BreakGlassOpened, AuditOutcome.Success, SystemPrincipal.SystemId, AuditSource.Job, "break-glass-1@break-glass.invalid", "principal", account, "Orders stuck", null, null));
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        using var answer = await Send(reader, "/api/v1/audit-events/impersonators");
+        Assert.Equal(HttpStatusCode.OK, answer.StatusCode);
+        using var body = JsonDocument.Parse(await answer.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var offered = body.RootElement.GetProperty("data").EnumerateArray()
+            .Select(e => (e.GetProperty("id").GetGuid(), e.GetProperty("name").GetString(), e.GetProperty("kind").GetString(), e.GetProperty("field").GetString()))
+            .Where(e => e.Item1 == person || e.Item1 == account || e.Item1 == operatorId)
+            .ToList();
+        Assert.Equal(
+            [
+                (operatorId, "Olga Operator", SignedInAsKinds.Operator, "impersonator_id"),
+                (account, "Break-glass access (Olga Operator)", SignedInAsKinds.BreakGlass, "actor_id"),
+                (person, "Ada Admin", SignedInAsKinds.Person, "impersonator_id"),
+            ],
+            offered);
+
+        // The results show the operator by name too.
+        using var found = await Send(reader, $"/api/v1/audit-events?filter=impersonator_id:eq:{operatorId}");
+        using var rows = JsonDocument.Parse(await found.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("Olga Operator", Assert.Single(rows.RootElement.GetProperty("data").EnumerateArray()).GetProperty("impersonator_name").GetString());
     }
 
     [Fact]
@@ -197,4 +239,15 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
 
         return await _client.SendAsync(request, TestContext.Current.CancellationToken);
     }
+}
+
+/// <summary>The directory as Identity answers it, for the people a test names.</summary>
+public sealed class KnownPrincipals : IPrincipals
+{
+    public Dictionary<Guid, string> Names { get; } = [];
+
+    public Task<IReadOnlyDictionary<Guid, PrincipalSummary>> FindAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyDictionary<Guid, PrincipalSummary>>(ids.Where(Names.ContainsKey).Distinct().ToDictionary(id => id, id => new PrincipalSummary(id, PrincipalKind.User, Names[id], null)));
+
+    public Task<IReadOnlyList<Guid>> HomedAtAsync(IReadOnlyCollection<Guid> unitIds, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<Guid>>([]);
 }

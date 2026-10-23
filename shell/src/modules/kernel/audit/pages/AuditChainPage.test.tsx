@@ -11,7 +11,22 @@ afterEach(() => {
 
 const hash = (digit: string) => digit.repeat(64);
 
-const chain = (verification: unknown) => ({
+const accepted = {
+  segment: 2,
+  start_position: 1101,
+  restore_position: 1100,
+  restore_at: "2026-10-22T23:00:00Z",
+  lost_from: 1101,
+  lost_to: 1180,
+  ticket: "INC-77",
+  reason: "Restored from last night's backup after the disk failure",
+  accepted_by: "Olga Operator",
+  accepted_at: "2026-10-23T03:00:00Z",
+};
+
+const chain = (verification: unknown, restores: unknown[] = []) => ({
+  segment: restores.length === 0 ? 1 : 2,
+  restores,
   head_position: 1204,
   head_hash: hash("a"),
   head_sealed_at: "2026-10-23T08:59:55Z",
@@ -104,5 +119,41 @@ describe("the audit chain's status", () => {
     renderWithProviders(<AuditChainPage />, { route: "/audit/chain" });
 
     expect(await screen.findByText("Not verified yet")).toBeInTheDocument();
+    expect(screen.getByText("The database has not been restored.")).toBeInTheDocument();
+  });
+
+  it("after an accepted restore, shows the pass and still the restore with the range it lost, who accepted it and why [TF-061 AC3, TF-065 AC2, ADR-0050]", async () => {
+    setTimeZone("Asia/Kolkata");
+    stubFetch({
+      "GET /api/v1/me": () => json(me(["audit.events.read"])),
+      "GET /api/v1/audit-chain": () =>
+        json(
+          chain(
+            {
+              result: "passed",
+              full: true,
+              from_position: 1,
+              to_position: 1204,
+              events_checked: 1204,
+              problems: [],
+              restore_position: null,
+              restore_at: null,
+              verified_at: "2026-10-23T03:01:00Z",
+            },
+            [accepted],
+          ),
+        ),
+    });
+    renderWithProviders(<AuditChainPage />, { route: "/audit/chain" });
+
+    expect(await screen.findByText("Passed")).toBeInTheDocument();
+    const restores = screen.getByRole("table", { name: "1 accepted restore" });
+    const row = within(restores).getAllByRole("row")[1]!;
+    expect(row).toHaveTextContent("Position 1100, sealed Oct 23, 2026, 4:30 AM GMT+5:30");
+    expect(row).toHaveTextContent("The chain continues as segment 2 from position 1101.");
+    expect(row).toHaveTextContent("Positions 1101 to 1180");
+    expect(row).toHaveTextContent("By Olga Operator, ticket INC-77");
+    expect(row).toHaveTextContent(accepted.reason);
+    expect(screen.getByText("2, since the last accepted restore")).toBeInTheDocument();
   });
 });

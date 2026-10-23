@@ -59,6 +59,12 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("position");
 
+                    b.Property<int>("Segment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("segment");
+
                     b.Property<string>("TenantSlug")
                         .IsRequired()
                         .HasMaxLength(63)
@@ -68,11 +74,97 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_audit_anchors");
 
-                    b.HasIndex("TenantSlug", "Kind", "Position")
+                    b.HasIndex("TenantSlug", "Segment", "Kind", "Position")
                         .IsUnique()
-                        .HasDatabaseName("ix_audit_anchors_tenant_slug_kind_position");
+                        .HasDatabaseName("ix_audit_anchors_tenant_slug_segment_kind_position");
 
                     b.ToTable("audit_anchors", "kernel_tenancy", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.AuditRestoreRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AcceptedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accepted_by_id");
+
+                    b.Property<string>("AcceptedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("accepted_by_name");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("LostFrom")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_from");
+
+                    b.Property<long>("LostTo")
+                        .HasColumnType("bigint")
+                        .HasColumnName("lost_to");
+
+                    b.Property<string>("PreviousHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("previous_hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RestoreAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("restore_at");
+
+                    b.Property<long>("RestorePosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("restore_position");
+
+                    b.Property<int>("Segment")
+                        .HasColumnType("integer")
+                        .HasColumnName("segment");
+
+                    b.Property<long>("StartPosition")
+                        .HasColumnType("bigint")
+                        .HasColumnName("start_position");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<string>("Ticket")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ticket");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_restores");
+
+                    b.HasIndex("TenantSlug", "Segment")
+                        .IsUnique()
+                        .HasDatabaseName("ix_audit_restores_tenant_slug_segment");
+
+                    b.ToTable("audit_restores", "kernel_tenancy", t =>
                         {
                             t.HasComment("append-only");
                         });

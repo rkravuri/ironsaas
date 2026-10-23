@@ -43,8 +43,9 @@ public sealed class AuditAnchorRecord : AppendOnlyEntity, ITenantWide
         Hash = string.Empty;
     }
 
-    public AuditAnchorRecord(string tenantSlug, string kind, long position, string hash, DateTimeOffset at)
+    public AuditAnchorRecord(string tenantSlug, string kind, long position, string hash, DateTimeOffset at, int segment = 1)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(segment, 1);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantSlug);
         ArgumentException.ThrowIfNullOrWhiteSpace(kind);
         ArgumentException.ThrowIfNullOrWhiteSpace(hash);
@@ -54,9 +55,13 @@ public sealed class AuditAnchorRecord : AppendOnlyEntity, ITenantWide
         Position = position;
         Hash = hash;
         At = at;
+        Segment = segment;
     }
 
     public string TenantSlug { get; private set; }
+
+    /// <summary>The segment of the chain the anchor belongs to: the one that covered its position when it came (ADR-0050).</summary>
+    public int Segment { get; private set; } = 1;
 
     /// <summary><c>seal</c> or <c>pruned</c> (Iron.Kernel.Audit.Contracts.AuditAnchorKinds).</summary>
     public string Kind { get; private set; }
@@ -164,4 +169,71 @@ public sealed class AuditVerificationRequest : AuditedEntity, ITenantWide
     public Guid? VerificationId { get; private set; }
 
     public void Answer(Guid verificationId) => VerificationId = verificationId;
+}
+
+/// <summary>
+/// A restore an operator accepted (ADR-0050): with a ticket and a reason, the chain continues as a new segment from the
+/// position after the restore point, linking to its hash; the range the restore lost is kept with it. Written once.
+/// </summary>
+public sealed class AuditRestoreRecord : AppendOnlyEntity, ITenantWide
+{
+    public const int TicketMaxLength = 100;
+    public const int ReasonMaxLength = 500;
+
+    private AuditRestoreRecord()
+    {
+        TenantSlug = string.Empty;
+        PreviousHash = string.Empty;
+        Ticket = string.Empty;
+        Reason = string.Empty;
+        AcceptedByName = string.Empty;
+    }
+
+    public AuditRestoreRecord(string tenantSlug, int segment, long startPosition, string previousHash, long restorePosition, DateTimeOffset restoreAt, long lostFrom, long lostTo, string ticket, string reason, Guid acceptedById, string acceptedByName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantSlug);
+        ArgumentException.ThrowIfNullOrWhiteSpace(previousHash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ticket);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ArgumentOutOfRangeException.ThrowIfLessThan(segment, 2);
+        TenantSlug = tenantSlug;
+        Segment = segment;
+        StartPosition = startPosition;
+        PreviousHash = previousHash;
+        RestorePosition = restorePosition;
+        RestoreAt = restoreAt;
+        LostFrom = lostFrom;
+        LostTo = lostTo;
+        Ticket = ticket;
+        Reason = reason;
+        AcceptedById = acceptedById;
+        AcceptedByName = acceptedByName;
+    }
+
+    public string TenantSlug { get; private set; }
+
+    /// <summary>The segment this restore begins: 2 for the first accepted restore.</summary>
+    public int Segment { get; private set; }
+
+    public long StartPosition { get; private set; }
+
+    /// <summary>The restore point's hash, which the segment's first event links to.</summary>
+    public string PreviousHash { get; private set; }
+
+    public long RestorePosition { get; private set; }
+
+    /// <summary>When the restore point was sealed, by the unit's clock, as its anchor says.</summary>
+    public DateTimeOffset RestoreAt { get; private set; }
+
+    public long LostFrom { get; private set; }
+
+    public long LostTo { get; private set; }
+
+    public string Ticket { get; private set; }
+
+    public string Reason { get; private set; }
+
+    public Guid AcceptedById { get; private set; }
+
+    public string AcceptedByName { get; private set; }
 }

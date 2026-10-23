@@ -87,6 +87,47 @@ describe("the audit trail's search", () => {
     expect(click).toHaveBeenCalled();
   });
 
+  it("offers the platform's operator, break-glass accounts and people who signed in as someone, by name, and searches by the one chosen [TF-025 AC2, ADR-0049, ADR-0050]", async () => {
+    const operator = "01a14e12-0000-7000-8000-0000000000f1";
+    const { calls } = stubFetch({
+      "GET /api/v1/me": () => json(me(["audit.events.read"])),
+      [first]: () => json(emptyList),
+      "GET /api/v1/audit-events/impersonators": () =>
+        json({
+          data: [
+            { id: operator, name: "Olga Operator", kind: "operator", field: "impersonator_id" },
+            {
+              id: "01a14e12-0000-7000-8000-0000000000b9",
+              name: "Break-glass access (Olga Operator)",
+              kind: "break_glass",
+              field: "actor_id",
+            },
+            { id: "01a14e12-0000-7000-8000-0000000000a1", name: "Ada Admin", kind: "person", field: "impersonator_id" },
+          ],
+        }),
+      [`${first}&filter=impersonator_id%3Aeq%3A${operator}`]: () => json(emptyList),
+    });
+    renderWithProviders(<AuditPage />, { route: "/audit" });
+    const user = userEvent.setup();
+
+    const picker = await screen.findByRole("combobox", { name: "Signed in as them by" });
+    await waitFor(() => expect(picker).toBeEnabled());
+    await user.click(picker);
+    const list = document.getElementById(picker.getAttribute("aria-controls") ?? "") as HTMLElement;
+    expect(
+      within(list)
+        .getAllByRole("option", { hidden: true })
+        .map((option) => option.textContent),
+    ).toEqual(["Olga Operator", "Break-glass access (Olga Operator)", "Ada Admin"]);
+    expect(screen.getByText("The platform's operators")).toBeInTheDocument();
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(picker).toHaveValue("Olga Operator");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() =>
+      expect(calls.some((call) => call.key === `${first}&filter=impersonator_id%3Aeq%3A${operator}`)).toBe(true),
+    );
+  });
+
   it("finds archived events by date range, each marked archived and its time shown in the person's zone [TF-064 AC2, TF-065 AC2, ADR-0050]", async () => {
     setTimeZone("America/New_York");
     const { calls } = stubFetch({

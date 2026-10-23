@@ -15,7 +15,8 @@ namespace Iron.Kernel.Fleet.Services;
 /// the tenant's verifier role, which can read the chain's tables and nothing else, and compares it with the anchors the
 /// control plane keeps outside the tenant's database. A daily run checks what was sealed since the last verification
 /// that passed; a full run, once a month, after a failure, or when an operator asks, checks from the oldest position
-/// still kept. The archived part of the chain is read from the tenant's container.
+/// still kept. The archived part of the chain is read from the tenant's container. After a restore an operator accepted,
+/// the chain has segments: the check covers each, and the link from each segment to the restore point it continues from.
 /// </summary>
 public sealed class AuditChainVerifier(ITenantAuditChains chains, ISecretStore secrets, FleetOptions options, ArchivedChainReader archive, TimeProvider time)
 {
@@ -23,7 +24,10 @@ public sealed class AuditChainVerifier(ITenantAuditChains chains, ISecretStore s
     {
         ArgumentNullException.ThrowIfNull(due);
         var anchors = (await chains.AnchorsAsync(due.TenantSlug, cancellationToken).ConfigureAwait(false))
-            .Select(a => new AuditAnchor(a.Kind, a.Position, a.Hash, a.At))
+            .Select(a => new AuditAnchor(a.Kind, a.Position, a.Hash, a.At, a.Segment))
+            .ToList();
+        var segments = (await chains.RestoresAsync(due.TenantSlug, cancellationToken).ConfigureAwait(false))
+            .Select(r => new ChainSegment(r.Segment, r.StartPosition, r.PreviousHash))
             .ToList();
 
         // The oldest end: everything before the latest pruned anchor was removed after its retention, which that anchor's
@@ -51,14 +55,14 @@ public sealed class AuditChainVerifier(ITenantAuditChains chains, ISecretStore s
             }
         }
 
-        var result = await CheckAsync(due, start, previous, anchors, cancellationToken).ConfigureAwait(false);
+        var result = await CheckAsync(due, start, previous, anchors, segments, cancellationToken).ConfigureAwait(false);
         if (!full && result.Restored)
         {
             // A restore to before the last verification: only the whole chain shows where it ends.
             full = true;
             start = anchors.Where(a => a.Kind == AuditAnchorKinds.Pruned).MaxBy(a => a.Position) is { } oldest ? oldest.Position + 1 : 1;
             previous = anchors.Where(a => a.Kind == AuditAnchorKinds.Pruned).MaxBy(a => a.Position)?.Hash ?? AuditCanonicalForm.Genesis;
-            result = await CheckAsync(due, start, previous, anchors, cancellationToken).ConfigureAwait(false);
+            result = await CheckAsync(due, start, previous, anchors, segments, cancellationToken).ConfigureAwait(false);
         }
 
         return new AuditVerificationInfo(
@@ -93,7 +97,7 @@ public sealed class AuditChainVerifier(ITenantAuditChains chains, ISecretStore s
             : AuditVerificationResults.Failed;
     }
 
-    private async Task<ChainCheckResult> CheckAsync(AuditVerificationDue due, long start, string previous, IReadOnlyList<AuditAnchor> anchors, CancellationToken cancellationToken)
+    private async Task<ChainCheckResult> CheckAsync(AuditVerificationDue due, long start, string previous, IReadOnlyList<AuditAnchor> anchors, IReadOnlyList<ChainSegment> segments, CancellationToken cancellationToken)
     {
         await using var dataSource = await ReaderAsync(due, cancellationToken).ConfigureAwait(false);
         var events = new List<SealedEvent>();
@@ -101,7 +105,7 @@ public sealed class AuditChainVerifier(ITenantAuditChains chains, ISecretStore s
         var online = await ReadOnlineAsync(dataSource, start, cancellationToken).ConfigureAwait(false);
         var archivedUpTo = events.Count == 0 ? 0 : events.Max(e => e.Position);
         events.AddRange(online.Where(e => e.Position > archivedUpTo));
-        return AuditChainCheck.Check(start, previous, events, anchors);
+        return AuditChainCheck.Check(start, previous, events, anchors, segments);
     }
 
     /// <summary>The tenant's database as its verifier role reaches it, on the fleet's own route to the server.</summary>

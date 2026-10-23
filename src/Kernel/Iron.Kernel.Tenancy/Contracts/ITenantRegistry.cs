@@ -92,7 +92,10 @@ public static class TenancyPermissions
     /// <summary>Asking the fleet to verify a tenant's audit chain now, beside its daily run (TF-061).</summary>
     public static readonly Permission AuditChainsVerify = new("tenancy.audit_chains.verify", "Ask the fleet to verify a tenant's audit chain now", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify];
+    /// <summary>Accepting a tenant's restore point, so its chain continues as a new segment (ADR-0050): critical, with a ticket, a reason and a fresh token.</summary>
+    public static readonly Permission AuditRestoresAccept = new("tenancy.audit_restores.accept", "Accept a tenant's audit chain restore point, so the chain continues from it", Risk.Critical);
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept];
 }
 
 public static class TenancyErrors
@@ -144,6 +147,15 @@ public static class TenancyErrors
     public const string AuditAnchorConflict = "tenancy.audit_anchor.conflict";
 
     public const string AuditAnchorKindUnknown = "tenancy.audit_anchor.kind_unknown";
+
+    /// <summary>The tenant's latest verification names no restore point: there is nothing to accept (ADR-0050).</summary>
+    public const string AuditRestoreNone = "tenancy.audit_restore.none";
+
+    /// <summary>No anchor counts at the restore point: a full verification names one that does.</summary>
+    public const string AuditRestoreNoAnchor = "tenancy.audit_restore.no_anchor";
+
+    /// <summary>Accepting a restore needs a ticket and a reason.</summary>
+    public const string AuditRestoreInvalid = "tenancy.audit_restore.invalid";
 }
 
 public static class TenancyAuditEvents
@@ -193,6 +205,9 @@ public static class TenancyAuditEvents
 
     /// <summary>A unit sent an anchor for a position it anchored before, with another hash.</summary>
     public const string AuditAnchorConflict = "tenancy.audit_anchor_conflict";
+
+    /// <summary>An operator accepted a restore point; the chain continues as a new segment (ADR-0050).</summary>
+    public const string AuditRestoreAccepted = "tenancy.audit_restore_accepted";
 }
 
 /// <summary>

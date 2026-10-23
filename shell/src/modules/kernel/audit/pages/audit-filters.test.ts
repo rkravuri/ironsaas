@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { setTimeZone } from "@/i18n/dates";
-import { emptyFilters, endOfDay, filterQuery } from "./audit-filters";
+import { emptyFilters, endOfDay, filterQuery, signedInByTerm } from "./audit-filters";
 
 afterEach(() => {
   setTimeZone(undefined);
@@ -13,7 +13,7 @@ describe("the audit search's filters", () => {
       ...emptyFilters,
       eventType: " identity.user.invited ",
       actorId: "01a14e12-f3a8-7155-b5b6-17c3abceae77",
-      impersonatorId: "01a14e12-0000-7000-8000-0000000000f1",
+      signedInBy: "impersonator_id:01a14e12-0000-7000-8000-0000000000f1",
       recordType: "principal",
       recordId: "01a14e12-0000-7000-8000-000000000009",
       source: "ui",
@@ -32,6 +32,14 @@ describe("the audit search's filters", () => {
       "filter=created_at:lt:2026-10-22T18:30:00.000Z",
     ]);
     expect(filterQuery(emptyFilters)).toEqual([]);
+  });
+
+  it("find a break-glass account's events as the actor's, since it acts as itself [TF-025 AC2, ADR-0049, ADR-0050]", () => {
+    const account = "01a14e12-0000-7000-8000-0000000000b9";
+    expect(filterQuery({ ...emptyFilters, signedInBy: `actor_id:${account}` }).map(decodeURIComponent)).toEqual([
+      `filter=actor_id:eq:${account}`,
+    ]);
+    expect(signedInByTerm("anything")).toBeUndefined();
   });
 
   it("end a searched day at the next midnight in the person's zone, 25 hours after its start when the clocks go back [ADR-0050]", () => {

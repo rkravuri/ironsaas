@@ -25,6 +25,8 @@ public sealed class AuditDbContext(DbContextOptions<AuditDbContext> options) : M
 
     public DbSet<AuditExport> Exports => Set<AuditExport>();
 
+    public DbSet<AuditChainRestore> ChainRestores => Set<AuditChainRestore>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AuditEventRecord>(record =>
@@ -92,6 +94,16 @@ public sealed class AuditDbContext(DbContextOptions<AuditDbContext> options) : M
         {
             choice.Property(c => c.ClassCode).HasMaxLength(50);
             choice.HasIndex(c => c.ClassCode).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditChainRestore>(restore =>
+        {
+            restore.ToTable("chain_restores");
+            restore.Property(r => r.PreviousHash).HasMaxLength(HashLength).IsFixedLength();
+            restore.Property(r => r.Ticket).HasMaxLength(100);
+            restore.Property(r => r.Reason).HasMaxLength(AuditEventRecord.ReasonMaxLength);
+            restore.Property(r => r.AcceptedBy).HasMaxLength(200);
+            restore.HasIndex(r => r.Segment).IsUnique();
         });
 
         modelBuilder.Entity<AuditExport>(export =>

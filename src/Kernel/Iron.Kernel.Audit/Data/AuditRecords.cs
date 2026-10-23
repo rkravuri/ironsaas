@@ -188,3 +188,63 @@ public sealed class AuditExport : AppendOnlyEntity, ITenantWide
 
     public string Sha256 { get; private set; }
 }
+
+/// <summary>
+/// A restore an operator accepted, as the unit recorded it when the control plane told it (ADR-0050): the segment the
+/// chain continues as, the restore point it continues from, the range the restore lost, and who accepted it, when, with
+/// which ticket and why. Written once; the chain page shows every one for good.
+/// </summary>
+public sealed class AuditChainRestore : AppendOnlyEntity, ITenantWide
+{
+    /// <summary>The record type of the restore's own event in the trail.</summary>
+    public const string RecordType = "audit_restore";
+
+    private AuditChainRestore()
+    {
+        PreviousHash = string.Empty;
+        Ticket = string.Empty;
+        Reason = string.Empty;
+        AcceptedBy = string.Empty;
+    }
+
+    public AuditChainRestore(int segment, long startPosition, string previousHash, long restorePosition, DateTimeOffset restoreAt, long lostFrom, long lostTo, string ticket, string reason, string acceptedBy, DateTimeOffset acceptedAt)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(segment, 2);
+        ArgumentException.ThrowIfNullOrWhiteSpace(previousHash);
+        Segment = segment;
+        StartPosition = startPosition;
+        PreviousHash = previousHash;
+        RestorePosition = restorePosition;
+        RestoreAt = restoreAt;
+        LostFrom = lostFrom;
+        LostTo = lostTo;
+        Ticket = ticket ?? string.Empty;
+        Reason = reason ?? string.Empty;
+        AcceptedBy = acceptedBy ?? string.Empty;
+        AcceptedAt = acceptedAt;
+    }
+
+    public int Segment { get; private set; }
+
+    public long StartPosition { get; private set; }
+
+    public string PreviousHash { get; private set; }
+
+    public long RestorePosition { get; private set; }
+
+    public DateTimeOffset RestoreAt { get; private set; }
+
+    public long LostFrom { get; private set; }
+
+    public long LostTo { get; private set; }
+
+    public string Ticket { get; private set; }
+
+    public string Reason { get; private set; }
+
+    /// <summary>The operator's name, as the control plane gave it.</summary>
+    public string AcceptedBy { get; private set; }
+
+    /// <summary>When the operator accepted it in the control plane; the row's own time is when the unit heard of it.</summary>
+    public DateTimeOffset AcceptedAt { get; private set; }
+}
