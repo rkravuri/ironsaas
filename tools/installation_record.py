@@ -37,7 +37,8 @@ ROOT = Path(__file__).resolve().parent.parent
 FORMAT = "iron-installation-record-v1"
 IMAGES = ["iron-api", "iron-worker", "iron-control-plane", "iron-fleet", "iron-shell"]
 CATALOGUE = Path("src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json")
-SCHEMA = re.compile(r'\[Schema\("([a-z_]+)"\)\]')
+# An attribute at the start of its line: the attribute's own documentation shows an example in a comment.
+SCHEMA = re.compile(r'^\s*\[Schema\((?:"([a-z_]+)"|([A-Za-z_][\w.]*))\)\]', re.MULTILINE)
 MIGRATION = re.compile(r"^(\d{14}_\w+)\.cs$")
 
 
@@ -45,12 +46,27 @@ def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def declared_schema(project: Path) -> str | None:
+    """The schema a project's context declares: `[Schema("kernel_x")]`, or `[Schema(Type.Constant)]` with the constant
+    declared in the project (the Data module names `kernel_data` through `RecordShare.Schema`, beside its record)."""
+    sources = [path for path in sorted(project.rglob("*.cs")) if "Migrations" not in path.parts and "bin" not in path.parts and "obj" not in path.parts]
+    texts = [path.read_text(encoding="utf-8") for path in sources]
+    for text in texts:
+        found = SCHEMA.search(text)
+        if found is None:
+            continue
+        if found.group(1):
+            return found.group(1)
+        constant = re.compile(rf'const string {re.escape(found.group(2).split(".")[-1])} = "([a-z_]+)"')
+        return next((m.group(1) for other in texts if (m := constant.search(other))), None)
+    return None
+
+
 def expected_migrations(root: Path) -> dict[str, list[str]]:
     """Every module's migrations in the repository, by the schema its context declares."""
     found: dict[str, list[str]] = {}
     for folder in sorted(root.glob("src/**/Data/Migrations")):
-        project = folder.parent.parent
-        schema = next((m.group(1) for path in sorted(project.rglob("*DbContext.cs")) if "Migrations" not in path.parts for m in [SCHEMA.search(path.read_text(encoding="utf-8"))] if m), None)
+        schema = declared_schema(folder.parent.parent)
         if schema is None:
             continue
         found.setdefault(schema, []).extend(m.group(1) for path in sorted(folder.iterdir()) if (m := MIGRATION.match(path.name)))

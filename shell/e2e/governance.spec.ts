@@ -155,7 +155,7 @@ test.describe("evidence, four-eyes approval and validation", () => {
       expect(own.body.error_code).toBe("changes.change.own");
 
       await open(second, "/console/changes");
-      await second.getByRole("gridcell", { name: `Create the role Four-eyes role ${run}` }).click();
+      await second.getByRole("gridcell", { name: `Create the role Four-eyes role ${run}` }).dblclick();
       await expect(second.locator("[data-before-after]")).toContainText("authz.roles.read");
       await second.screenshot({ path: "test-results/e2e/change-to-approve.png", fullPage: true });
       await second.getByRole("button", { name: "Approve" }).click();

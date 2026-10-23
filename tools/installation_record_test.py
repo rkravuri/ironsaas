@@ -60,6 +60,21 @@ class InstallationRecordTest(unittest.TestCase):
         """The repository's migrations, without designers and snapshots, by the schema the module's context declares. [ADR-0052]"""
         self.assertEqual(installation_record.expected_migrations(self.root), {"kernel_probe": ["20310101000000_Initial", "20310202000000_Things"]})
 
+    def test_a_schema_named_through_a_constant_beside_its_record_is_found(self) -> None:
+        """A context may name its schema through a constant declared elsewhere in its project, as the Data module's does (the laptop's first installation record found `kernel_data` unmatched). [ADR-0052]"""
+        files = {
+            # The attribute's own documentation shows an example, which is no declaration.
+            "src/Kernel/Iron.Kernel.Shared/Contexts/Attribute.cs": '/// Names the schema: <c>[Schema("kernel_identity")]</c>.\npublic sealed class SchemaAttribute { }\n',
+            "src/Kernel/Iron.Kernel.Shared/Sharing/Share.cs": 'public sealed class Share { public const string Schema = "kernel_shared"; }\n'
+            '[Schema(Share.Schema)]\npublic sealed class SharedDbContext { }\n',
+            "src/Kernel/Iron.Kernel.Shared/Data/Migrations/20310303000000_Shares.cs": "// a migration",
+        }
+        for name, text in files.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        self.assertEqual(installation_record.expected_migrations(self.root)["kernel_shared"], ["20310303000000_Shares"])
+
     def test_the_record_holds_the_images_migrations_hashes_and_results_and_passes_when_they_match_the_code(self) -> None:
         """The record names the images' digests, the migrations per module, the seeds' and catalogue's hashes and the smoke's and browser tests' results, and its checks pass when the installation matches the code. [ADR-0052]"""
         record = self.record()
