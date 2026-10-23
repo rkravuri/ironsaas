@@ -2,6 +2,7 @@ using Iron.Kernel.Api.Context;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.History;
 using Iron.Kernel.Settings.Api;
 using Iron.Kernel.Settings.Contracts;
 using Iron.Kernel.Settings.Data;
@@ -25,6 +26,8 @@ public sealed class SettingsModule : IModule
     public string Name => "settings";
 
     public IReadOnlyList<Permission> Permissions => SettingsPermissions.All;
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => SettingsAuditEvents.Types;
 
     public IReadOnlyList<SettingDefinition> Settings => ShellSettings.All;
 

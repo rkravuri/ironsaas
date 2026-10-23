@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Data.Retention;
@@ -200,13 +201,13 @@ public sealed class AuditArchiveSearch(AuditDbContext context, IObjectStorage st
 /// event in the order searched, kept as a file in the tenant's container and handed over as a download. The export is
 /// itself an audit event. A text that starts like a spreadsheet formula is written with a leading apostrophe.
 /// </summary>
-public sealed class AuditExporter(AuditDbContext context, IObjectStorage storage, IUnitOfWork unitOfWork, IAuditWriter audit, ICurrentPrincipal actor, TimeProvider time)
+public sealed class AuditExporter(AuditDbContext context, IObjectStorage storage, IUnitOfWork unitOfWork, IAuditWriter audit, ICurrentPrincipal actor, TimeProvider time, AuditEventNames? eventNames = null)
 {
     public const int MaxRows = 100_000;
 
     public static readonly string[] Columns =
     [
-        "id", "created_at", "event_type", "outcome", "actor_id", "actor_name", "on_behalf_of_id", "impersonator_id", "impersonator_name",
+        "id", "created_at", "event_type", "event_name", "outcome", "actor_id", "actor_name", "on_behalf_of_id", "impersonator_id", "impersonator_name",
         "source", "severity", "target", "record_type", "record_id", "reason", "correlation_id", "details", "chain_position", "hash",
     ];
 
@@ -225,7 +226,7 @@ public sealed class AuditExporter(AuditDbContext context, IObjectStorage storage
         {
             string?[] values =
             [
-                e.Id.ToString("D"), AuditCanonicalForm.Time(e.CreatedAt), e.EventType, e.Outcome, e.ActorId.ToString("D"), names.GetValueOrDefault(e.ActorId),
+                e.Id.ToString("D"), AuditCanonicalForm.Time(e.CreatedAt), e.EventType, eventNames?.NameOf(e.EventType) ?? e.EventType, e.Outcome, e.ActorId.ToString("D"), names.GetValueOrDefault(e.ActorId),
                 e.OnBehalfOfId?.ToString("D"), e.ImpersonatorId?.ToString("D"), e.ImpersonatorId is { } impersonator ? names.GetValueOrDefault(impersonator) : null,
                 e.Source, e.Severity, e.Target, e.RecordType, e.RecordId?.ToString("D"), e.Reason, e.CorrelationId, e.Details,
                 e.ChainPosition?.ToString(CultureInfo.InvariantCulture), e.Hash,

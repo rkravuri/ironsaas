@@ -7,8 +7,11 @@ namespace Iron.Kernel.Settings.Data;
 /// person's id, and <see cref="Guid.Empty"/> for the tenant, so one unique index holds one value per place. The value is
 /// JSON as the declaration's type writes it; for a secret reference it is the path, never the secret (ADR-0036).
 /// </summary>
-public sealed class SettingValue : AuditedEntity, ITenantWide
+public sealed class SettingValue : AuditedEntity, ITenantWide, ITrackedChanges
 {
+    /// <summary>The record type of a value's history (TF-062).</summary>
+    public const string RecordType = "setting_value";
+
     public const int KeyMaxLength = 100;
 
     private SettingValue()

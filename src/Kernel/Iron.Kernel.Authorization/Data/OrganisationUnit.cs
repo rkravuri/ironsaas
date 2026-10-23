@@ -9,7 +9,7 @@ namespace Iron.Kernel.Authorization.Data;
 /// its parent, and the materialised path of ids from the root, <c>/&lt;root&gt;/&lt;parent&gt;/&lt;unit&gt;/</c>. No business
 /// fields (ADR-0029). Only <c>OrganisationUnitService</c> changes the path, in the transaction that changes the parent.
 /// </summary>
-public sealed partial class OrganisationUnit : AuditedEntity
+public sealed partial class OrganisationUnit : AuditedEntity, ITrackedChanges
 {
     public const int NameMaxLength = 200;
     public const int CodeMaxLength = 50;

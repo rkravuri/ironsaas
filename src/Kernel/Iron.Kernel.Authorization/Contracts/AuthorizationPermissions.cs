@@ -1,3 +1,5 @@
+using Iron.Kernel.History;
+
 namespace Iron.Kernel.Authorization.Contracts;
 
 /// <summary>The permissions of the Authorization module (TF-030).</summary>
@@ -161,4 +163,32 @@ public static class AuthorizationAuditEvents
     public const string SodRuleChanged = "authz.sod_rule_changed";
     public const string SodRuleDeleted = "authz.sod_rule_deleted";
     public const string SodReportRun = "authz.sod_report_run";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(PermissionDenied, "Permission denied"),
+        new(RoleAssigned, "Role assigned"),
+        new(RoleUnassigned, "Role removed from a person"),
+        new(RoleCreated, "Role created"),
+        new(RoleChanged, "Role changed"),
+        new(RoleDeleted, "Role deleted"),
+        new(UnitCreated, "Unit created"),
+        new(UnitRenamed, "Unit renamed"),
+        new(UnitMoved, "Unit moved"),
+        new(UnitDeactivated, "Unit deactivated"),
+        new(UnitReactivated, "Unit reactivated"),
+        new(UnitMerged, "Units merged"),
+        new(DelegationCreated, "Delegation created"),
+        new(DelegationEnded, "Delegation ended"),
+        new(ReviewStarted, "Access review started"),
+        new(ReviewDecided, "Access review decision made"),
+        new(ReviewClosed, "Access review closed"),
+        new(ReviewEscalated, "Access review escalated"),
+        new(AccessExplained, "Access explained"),
+        new(SodRuleCreated, "Segregation of duties rule created"),
+        new(SodRuleChanged, "Segregation of duties rule changed"),
+        new(SodRuleDeleted, "Segregation of duties rule deleted"),
+        new(SodReportRun, "Segregation of duties report run"),
+    ];
 }

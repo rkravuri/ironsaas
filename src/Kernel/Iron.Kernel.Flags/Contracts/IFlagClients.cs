@@ -1,3 +1,4 @@
+using Iron.Kernel.History;
 using OpenFeature;
 
 namespace Iron.Kernel.Flags.Contracts;
@@ -49,4 +50,10 @@ public static class ExampleFlags
 public static class FlagsAuditEvents
 {
     public const string AccessDenied = "flags.access_denied";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(AccessDenied, "Refused by a feature flag"),
+    ];
 }

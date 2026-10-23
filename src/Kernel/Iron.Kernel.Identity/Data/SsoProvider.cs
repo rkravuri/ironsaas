@@ -46,7 +46,7 @@ public sealed record SsoProviderValues(
 /// which of its groups map to roles. The client secret is never here: it lives in the store at
 /// <c>tenants/&lt;slug&gt;/sso/&lt;provider id&gt;</c>.
 /// </summary>
-public sealed class SsoProvider : AuditedEntity, ITenantWide
+public sealed class SsoProvider : AuditedEntity, ITenantWide, ITrackedChanges
 {
     public const int NameMaxLength = 100;
     public const int PresetMaxLength = 20;

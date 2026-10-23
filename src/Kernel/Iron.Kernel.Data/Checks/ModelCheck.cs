@@ -9,7 +9,8 @@ namespace Iron.Kernel.Data.Checks;
 /// Checks an Entity Framework model before any database exists: every mapped type derives from <see cref="Entity"/>,
 /// and in a business module (a product) every entity is a <see cref="BusinessRecord"/> unless it is marked
 /// <see cref="ITenantWide"/> on purpose (TF-220: the build fails when a business entity lacks the owning organisation).
-/// In every module, a business record carries neither ITenantWide nor IOwnAccessRule, which would let it page without its policy (ADR-0032).
+/// In every module, a business record carries neither ITenantWide nor IOwnAccessRule, which would let it page without its policy (ADR-0032),
+/// and records its field-level history: it is marked <see cref="ITrackedChanges"/> (TF-062 AC2, ADR-0051).
 /// </summary>
 public static class ModelCheck
 {
@@ -40,6 +41,13 @@ public static class ModelCheck
                 var marker = typeof(ITenantWide).IsAssignableFrom(clrType) ? nameof(ITenantWide) : nameof(IOwnAccessRule);
                 violations.Add(
                     $"{contextName}: {clrType.Name} is a BusinessRecord marked {marker}. A business record is read and paged through its record policy; remove {marker} (ADR-0032).");
+                continue;
+            }
+
+            if (typeof(BusinessRecord).IsAssignableFrom(clrType) && !typeof(ITrackedChanges).IsAssignableFrom(clrType))
+            {
+                violations.Add(
+                    $"{contextName}: {clrType.Name} is a business record without its change history. Mark it ITrackedChanges, with Sensitive or Secret on the fields that need it (TF-062).");
                 continue;
             }
 

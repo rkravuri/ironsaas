@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Iron.Kernel.Api.Lists;
+using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
@@ -185,7 +186,8 @@ internal static class AuditTrailEndpoints
         var names = http.RequestServices.GetService<IPrincipals>() is { } principals
             ? (await principals.FindAsync(ids, cancellationToken)).ToDictionary(p => p.Key, p => p.Value.DisplayName)
             : new Dictionary<Guid, string>();
-        return TypedResults.Ok(new ArchivedEventsResponse([.. events.Select(e => AuditEventResponse.FromArchive(e, names))], batches, truncated));
+        var eventNames = http.RequestServices.GetService<AuditEventNames>();
+        return TypedResults.Ok(new ArchivedEventsResponse([.. events.Select(e => AuditEventResponse.FromArchive(e, names) with { EventName = eventNames?.NameOf(e.Content.EventType) ?? e.Content.EventType })], batches, truncated));
     }
 
     private static async Task<IResult> ChainAsync(AuditDbContext context, ControlPlaneClient controlPlane, CancellationToken cancellationToken)

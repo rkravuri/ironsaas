@@ -1,3 +1,5 @@
+using Iron.Kernel.History;
+
 namespace Iron.Kernel.Entitlements.Contracts;
 
 /// <summary>
@@ -44,4 +46,12 @@ public static class EntitlementsAuditEvents
     public const string AccessDenied = "entitlements.access_denied";
     public const string SeatAssigned = "entitlements.seat_assigned";
     public const string SeatUnassigned = "entitlements.seat_unassigned";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(AccessDenied, "Refused by the licence"),
+        new(SeatAssigned, "Seat assigned"),
+        new(SeatUnassigned, "Seat removed"),
+    ];
 }

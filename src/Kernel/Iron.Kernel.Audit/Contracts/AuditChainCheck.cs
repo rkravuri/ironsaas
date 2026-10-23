@@ -92,7 +92,7 @@ public static class AuditChainCheck
             }
 
             checkedCount++;
-            if (sealedEvent.HashVersion != AuditCanonicalForm.Version)
+            if (!AuditCanonicalForm.Knows(sealedEvent.HashVersion))
             {
                 problems.Add(new ChainProblem(ChainProblemKinds.UnknownVersion, sealedEvent.Position, sealedEvent.Content.Id, $"Event {sealedEvent.Content.Id:D} was hashed with canonical form {sealedEvent.HashVersion}, which this verifier does not know."));
             }
@@ -100,7 +100,7 @@ public static class AuditChainCheck
             {
                 problems.Add(new ChainProblem(ChainProblemKinds.Relinked, sealedEvent.Position, sealedEvent.Content.Id, $"Event {sealedEvent.Content.Id:D} at position {sealedEvent.Position} does not link to the hash of the event before it."));
             }
-            else if (!string.Equals(AuditCanonicalForm.Hash(sealedEvent.Content, sealedEvent.PreviousHash), sealedEvent.Hash, StringComparison.Ordinal))
+            else if (!string.Equals(AuditCanonicalForm.Hash(sealedEvent.Content, sealedEvent.PreviousHash, sealedEvent.HashVersion), sealedEvent.Hash, StringComparison.Ordinal))
             {
                 problems.Add(new ChainProblem(ChainProblemKinds.Modified, sealedEvent.Position, sealedEvent.Content.Id, $"Event {sealedEvent.Content.Id:D} at position {sealedEvent.Position} was changed after it was sealed: its content no longer gives its hash."));
             }

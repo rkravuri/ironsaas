@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Iron.Kernel.History;
 
 namespace Iron.Kernel.Settings.Contracts;
 
@@ -80,6 +81,13 @@ public static class SettingsAuditEvents
 {
     public const string ValueChanged = "settings.value_changed";
     public const string ValueReset = "settings.value_reset";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(ValueChanged, "Setting changed"),
+        new(ValueReset, "Setting reset"),
+    ];
 }
 
 public static class SettingsErrors

@@ -5,6 +5,7 @@ using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Retention;
 using Iron.Kernel.Data.Seeding;
+using Iron.Kernel.History;
 using Iron.Kernel.Identity.Api;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
@@ -32,6 +33,8 @@ public sealed class IdentityModule : IModule
     public string Name => "identity";
 
     public IReadOnlyList<Permission> Permissions => IdentityPermissions.All;
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => IdentityAuditEvents.Types;
 
     public IReadOnlyList<SettingDefinition> Settings => IdentitySettings.All;
 

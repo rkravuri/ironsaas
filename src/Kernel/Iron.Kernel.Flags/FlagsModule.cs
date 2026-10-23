@@ -6,6 +6,7 @@ using Iron.Kernel.Flags.Api;
 using Iron.Kernel.Flags.Contracts;
 using Iron.Kernel.Flags.Data;
 using Iron.Kernel.Flags.Services;
+using Iron.Kernel.History;
 using Iron.Kernel.Security.Secrets;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +29,8 @@ public sealed class FlagsModule : IModule
     public string Name => "flags";
 
     public IReadOnlyList<Permission> Permissions => [];
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => FlagsAuditEvents.Types;
 
     public IReadOnlyList<Flag> Flags => ExampleFlags.All;
 

@@ -4,9 +4,11 @@ using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Audit.Services;
 using Iron.Kernel.Data;
+using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Retention;
 using Iron.Kernel.Files.Contracts;
+using Iron.Kernel.History;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +26,8 @@ public sealed class AuditModule : IModule
 
     public IReadOnlyList<Permission> Permissions => AuditPermissions.All;
 
+    public IReadOnlyList<AuditEventType> AuditEventTypes => [.. AuditEvents.Types, .. RecordAuditEvents.Types];
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -31,6 +35,9 @@ public sealed class AuditModule : IModule
         services.AddIronDbContext<AuditDbContext>();
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuditTrail, AuditTrail>();
+
+        // Field-level history (TF-062, ADR-0051): every tracked record's save becomes an event of the trail.
+        services.AddScoped<IChangeRecorder, AuditChangeRecorder>();
 
         // The data library's record events (ADR-0038): it declares where they go, the audit trail is where.
         services.AddScoped<IRecordAudit, RecordAuditWriter>();

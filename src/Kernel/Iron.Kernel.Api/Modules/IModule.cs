@@ -1,3 +1,4 @@
+using Iron.Kernel.History;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +51,12 @@ public interface IModule
     /// The kernel's <c>all</c> is every host's; a module never declares it.
     /// </summary>
     IReadOnlyList<Duty> Duties => [];
+
+    /// <summary>
+    /// The audit event types the module writes, each with the words it reads as (ADR-0051): the audit trail, the History
+    /// tab and the exports show the name. A test fails for an event constant no module names.
+    /// </summary>
+    IReadOnlyList<AuditEventType> AuditEventTypes => [];
 
     void AddServices(IServiceCollection services, IConfiguration configuration);
 

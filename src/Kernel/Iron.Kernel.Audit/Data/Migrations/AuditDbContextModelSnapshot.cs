@@ -187,6 +187,10 @@ namespace Iron.Kernel.Audit.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("chain_position");
 
+                    b.Property<string>("Changes")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("changes");
+
                     b.Property<string>("CorrelationId")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")

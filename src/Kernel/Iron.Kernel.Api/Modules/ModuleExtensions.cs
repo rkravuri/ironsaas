@@ -57,6 +57,7 @@ public static class ModuleExtensions
         services.AddSingleton(LicensingCatalogue.From(modules));
         services.AddSingleton(new SettingDeclarations(modules));
         services.AddSingleton(new DutyDeclarations(modules));
+        services.AddSingleton(new AuditEventNames(modules.SelectMany(m => m.AuditEventTypes)));
         return services;
     }
 

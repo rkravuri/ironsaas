@@ -1,3 +1,5 @@
+using Iron.Kernel.History;
+
 namespace Iron.Kernel.Tenancy.Contracts;
 
 /// <summary>Where a tenant stands (TF-001).</summary>
@@ -208,6 +210,34 @@ public static class TenancyAuditEvents
 
     /// <summary>An operator accepted a restore point; the chain continues as a new segment (ADR-0050).</summary>
     public const string AuditRestoreAccepted = "tenancy.audit_restore_accepted";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(TenantCreated, "Tenant created"),
+        new(ProvisioningRequested, "Provisioning requested"),
+        new(DeprovisioningRequested, "Deprovisioning requested"),
+        new(UpdateRequested, "Update requested"),
+        new(StatusChanged, "Tenant status changed"),
+        new(PlanSaved, "Plan saved"),
+        new(PlanApplied, "Plan applied"),
+        new(FlagRulesChanged, "Feature flag rules changed"),
+        new(KillSwitchFlipped, "Kill switch changed"),
+        new(AdministratorRecoveryRequested, "Administrator recovery requested"),
+        new(ImpersonationRequested, "Sign-in-as requested"),
+        new(BreakGlassRequested, "Break-glass access requested"),
+        new(BreakGlassApproved, "Break-glass access approved"),
+        new(BreakGlassExpired, "Break-glass request expired"),
+        new(BreakGlassEnding, "Break-glass access ending"),
+        new(BreakGlassEnded, "Break-glass access ended"),
+        new(BreakGlassFailed, "Break-glass access failed"),
+        new(PlatformDocumentPublished, "Platform document published"),
+        new(AuditVerificationRequested, "Audit chain verification requested"),
+        new(AuditChainBroken, "Audit chain found broken"),
+        new(AuditChainRestored, "Audit chain found restored"),
+        new(AuditAnchorConflict, "Conflicting audit anchor"),
+        new(AuditRestoreAccepted, "Audit chain restore accepted"),
+    ];
 }
 
 /// <summary>

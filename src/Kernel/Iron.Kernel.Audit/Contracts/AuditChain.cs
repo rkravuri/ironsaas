@@ -26,7 +26,8 @@ public sealed record ChainedEvent(
     Guid? RecordId,
     string? Reason,
     string? CorrelationId,
-    string? Details);
+    string? Details,
+    string? Changes = null);
 
 /// <summary>
 /// The canonical form of an audit event, version 1, and its hash (TF-061, ADR-0050). Documented field by field in the
@@ -43,25 +44,41 @@ public sealed record ChainedEvent(
 /// without exponent or trailing zeros.</item>
 /// <item>The hash is SHA-256 of those UTF-8 bytes, in lowercase hexadecimal. The first event's previous hash is 64 zeros.</item>
 /// </list>
+/// Version 2 (ADR-0051) is version 1 with the label <c>iron-audit-v2</c> and the field changes of a record's save
+/// (TF-062) between the details and the previous hash: null, or an array of objects with the keys <c>field</c>,
+/// <c>new</c>, <c>old</c> and <c>treatment</c>, written as the details are. Events sealed with version 1 keep it.
 /// </summary>
 public static class AuditCanonicalForm
 {
-    /// <summary>The version a hash was made with, kept with every sealed event, so a later form can sit beside this one.</summary>
-    public const short Version = 1;
+    /// <summary>The version new seals use, kept with every sealed event, so every earlier form stays verifiable.</summary>
+    public const short Version = 2;
 
     /// <summary>The first word of the array, which names the form and its version.</summary>
-    public const string Label = "iron-audit-v1";
+    public const string Label = "iron-audit-v2";
+
+    /// <summary>The forms this build can recompute.</summary>
+    public static bool Knows(short version) => version is 1 or 2;
+
+    /// <summary>The first word of a version's array.</summary>
+    public static string LabelOf(short version) => $"iron-audit-v{version.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>The previous hash of position 1.</summary>
     public static readonly string Genesis = new('0', 64);
 
-    public static string Write(ChainedEvent chained, string previousHash)
+    public static string Write(ChainedEvent chained, string previousHash) => Write(chained, previousHash, Version);
+
+    public static string Write(ChainedEvent chained, string previousHash, short version)
     {
         ArgumentNullException.ThrowIfNull(chained);
         ArgumentException.ThrowIfNullOrWhiteSpace(previousHash);
+        if (!Knows(version))
+        {
+            throw new ArgumentOutOfRangeException(nameof(version), version, "This build knows the canonical forms 1 and 2.");
+        }
+
         var builder = new StringBuilder(512);
         builder.Append('[');
-        Text(builder, Label);
+        Text(builder, LabelOf(version));
         Separate(builder);
         Identifier(builder, chained.Id);
         Separate(builder);
@@ -97,13 +114,21 @@ public static class AuditCanonicalForm
         Separate(builder);
         Details(builder, chained.Details);
         Separate(builder);
+        if (version >= 2)
+        {
+            Details(builder, chained.Changes);
+            Separate(builder);
+        }
+
         Text(builder, previousHash);
         builder.Append(']');
         return builder.ToString();
     }
 
-    public static string Hash(ChainedEvent chained, string previousHash) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Write(chained, previousHash))));
+    public static string Hash(ChainedEvent chained, string previousHash) => Hash(chained, previousHash, Version);
+
+    public static string Hash(ChainedEvent chained, string previousHash, short version) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(Write(chained, previousHash, version))));
 
     /// <summary>The time as the form writes it: UTC, microseconds, a Z.</summary>
     public static string Time(DateTimeOffset at) => at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture);

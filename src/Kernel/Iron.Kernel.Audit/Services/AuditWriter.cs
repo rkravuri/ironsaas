@@ -30,6 +30,11 @@ public sealed class AuditWriter(AuditDbContext context, IHttpContextAccessor acc
 
         var details = values is null ? null : JsonSerializer.Serialize(values);
 
+        // The fields a save changed (TF-062), as the canonical form hashes them: field, old, new, treatment.
+        var changes = auditEvent.Changes is not { Count: > 0 } fields
+            ? null
+            : JsonSerializer.Serialize(fields.Select(f => new Dictionary<string, string?>(StringComparer.Ordinal) { ["field"] = f.Field, ["old"] = f.Old, ["new"] = f.New, ["treatment"] = f.Treatment }));
+
         context.Events.Add(new AuditEventRecord(
             auditEvent.Action,
             auditEvent.Outcome,
@@ -44,7 +49,8 @@ public sealed class AuditWriter(AuditDbContext context, IHttpContextAccessor acc
             // A request made while acting for someone names them on every event it writes (ADR-0037); a job never acts.
             auditEvent.OnBehalfOfId ?? (http is null ? null : current.ActingForId),
             impersonatorId,
-            auditEvent.Severity));
+            auditEvent.Severity,
+            changes));
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

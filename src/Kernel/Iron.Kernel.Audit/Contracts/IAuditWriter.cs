@@ -1,3 +1,5 @@
+using Iron.Kernel.History;
+
 namespace Iron.Kernel.Audit.Contracts;
 
 /// <summary>
@@ -16,7 +18,8 @@ public sealed record AuditEvent(
     Guid? RecordId = null,
     string? Reason = null,
     Guid? OnBehalfOfId = null,
-    string? Severity = null);
+    string? Severity = null,
+    IReadOnlyList<Iron.Kernel.History.FieldChange>? Changes = null);
 
 /// <summary>How much an event asks for attention (ADR-0049): normal, or high for one an administrator must look at.</summary>
 public static class AuditSeverity
@@ -87,6 +90,31 @@ public static class AuditEvents
     public const string LegalHoldPlaced = "audit.legal_hold_placed";
     public const string LegalHoldReleased = "audit.legal_hold_released";
     public const string RetentionChanged = "audit.retention_changed";
+
+    /// <summary>A tracked record was created, with its fields (TF-062, ADR-0051).</summary>
+    public const string RecordCreated = "record.created";
+
+    /// <summary>A save changed a tracked record: every changed field with its old and new value (TF-062 AC1).</summary>
+    public const string RecordChanged = "record.changed";
+
+    /// <summary>A tracked record was deleted, with the values it had.</summary>
+    public const string RecordDeleted = "record.deleted";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(EventsExported, "Audit trail exported"),
+        new(RestoreAccepted, "Audit chain restore accepted"),
+        new(TrailArchived, "Audit trail archived"),
+        new(TrailPruned, "Audit trail pruned"),
+        new(RecordExpired, "Record removed at the end of its retention"),
+        new(LegalHoldPlaced, "Legal hold placed"),
+        new(LegalHoldReleased, "Legal hold released"),
+        new(RetentionChanged, "Retention period changed"),
+        new(RecordCreated, "Record created"),
+        new(RecordChanged, "Record changed"),
+        new(RecordDeleted, "Record deleted"),
+    ];
 }
 
 public static class AuditErrors

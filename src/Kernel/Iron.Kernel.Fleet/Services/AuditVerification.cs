@@ -131,8 +131,10 @@ public sealed class AuditChainVerifier(ITenantAuditChains chains, ISecretStore s
         ArgumentNullException.ThrowIfNull(dataSource);
         await using var command = dataSource.CreateCommand(
             "select id, chain_position, created_at, created_by, event_type, outcome, actor_id, on_behalf_of_id, impersonator_id, source, severity, " +
-            "target, record_type, record_id, reason, correlation_id, details::text, previous_hash, hash, hash_version, sealed_at " +
-            "from kernel_audit.events where chain_position >= @start order by chain_position");
+            "target, record_type, record_id, reason, correlation_id, details::text, previous_hash, hash, hash_version, sealed_at, " +
+            // The field changes of version 2 (ADR-0051), read so that a unit not migrated yet still answers: null there.
+            "(to_jsonb(e) -> 'changes')::text " +
+            "from kernel_audit.events e where chain_position >= @start order by chain_position");
         command.Parameters.AddWithValue("start", start);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         var events = new List<SealedEvent>();
@@ -156,7 +158,8 @@ public sealed class AuditChainVerifier(ITenantAuditChains chains, ISecretStore s
                     reader.IsDBNull(13) ? null : reader.GetGuid(13),
                     reader.IsDBNull(14) ? null : reader.GetString(14),
                     reader.IsDBNull(15) ? null : reader.GetString(15),
-                    reader.IsDBNull(16) ? null : reader.GetString(16)),
+                    reader.IsDBNull(16) ? null : reader.GetString(16),
+                    reader.IsDBNull(21) || reader.GetString(21) == "null" ? null : reader.GetString(21)),
                 reader.GetString(17),
                 reader.GetString(18),
                 reader.GetInt16(19),

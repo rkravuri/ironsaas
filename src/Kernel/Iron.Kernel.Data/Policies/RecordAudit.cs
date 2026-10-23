@@ -1,4 +1,5 @@
 using Iron.Kernel.Data.Entities;
+using Iron.Kernel.History;
 
 namespace Iron.Kernel.Data.Policies;
 
@@ -22,6 +23,14 @@ public static class RecordAuditEvents
 
     /// <summary>A record's sharing changed.</summary>
     public const string SharingChanged = "data.record_sharing_changed";
+
+    /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new(Read, "Record read from another unit"),
+        new(Listed, "Records listed from another unit"),
+        new(SharingChanged, "Record sharing changed"),
+    ];
 }
 
 /// <summary>A read by id of a private or shared record from outside the reader's home unit and its subtree.</summary>

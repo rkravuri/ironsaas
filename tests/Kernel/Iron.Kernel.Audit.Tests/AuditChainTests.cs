@@ -7,6 +7,7 @@ using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Audit.Services;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Fleet.Services;
+using Iron.Kernel.History;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Tenancy.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -79,15 +80,60 @@ public class AuditChainTests(AuditFixture fixture)
             // accent written as two code points, and details whose keys arrive out of order.
             var details = new Dictionary<string, string> { ["zeta"] = "last", ["alpha"] = "Café \"quoted\" back\\slash\nnext\u0001" };
             await scope.ServiceProvider.GetRequiredService<IAuditWriter>().WriteAsync(new AuditEvent("tests.chain.form", AuditOutcome.Success, Ids.New(), "Zoë\t", details, "widget", Ids.New(), "a reason"), Cancel);
+
+            // A record's save, with a masked and a secret field (version 2 hashes the changes, ADR-0051).
+            FieldChange[] changes = [new("bank_account", "****5555", "****3000", FieldTreatments.Masked), new("name", "Valve", "Valve \"B\""), new("portal_key_hash", null, null, FieldTreatments.Secret)];
+            await scope.ServiceProvider.GetRequiredService<IAuditWriter>().WriteAsync(new AuditEvent(AuditEvents.RecordChanged, AuditOutcome.Success, Ids.New(), null, null, "widget", Ids.New(), Changes: changes), Cancel);
         }
 
         await SealEverythingAsync(provider);
         var chain = await ReadChainAsync(fixture.ConnectionString);
         Assert.Contains(chain, e => e.Content.EventType == "tests.chain.form");
+        Assert.Contains(chain, e => e.Content.EventType == AuditEvents.RecordChanged && e.Content.Changes is not null && e.HashVersion == 2);
         foreach (var sealedEvent in chain)
         {
-            Assert.Equal(sealedEvent.Hash, IndependentHash(sealedEvent.Content, sealedEvent.PreviousHash));
+            Assert.Equal(sealedEvent.Hash, IndependentHash(sealedEvent.Content, sealedEvent.PreviousHash, sealedEvent.HashVersion));
         }
+    }
+
+    [Fact]
+    [Proves("TF-062 AC1", "ADR-0051")]
+    public async Task VersionOneEventsStayVerifiableBesideVersionTwoAndAChangedFieldListIsFound()
+    {
+        var database = await fixture.NewChainDatabaseAsync("versions");
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), new FixedPrincipal(SystemPrincipal.SystemId), database);
+        await WriteAsync(provider, 1);
+
+        // The first event sealed as T6 sealed it, with version 1, before version 2 came.
+        Guid first;
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+            var record = await context.Events.AsNoTracking().SingleAsync(Cancel);
+            first = record.Id;
+            var hash = AuditCanonicalForm.Hash(record.Chained(1), AuditCanonicalForm.Genesis, 1);
+            await context.Database.ExecuteSqlInterpolatedAsync($"select kernel_audit.seal_event({record.Id}, {1L}, {AuditCanonicalForm.Genesis}, {hash}, {(short)1}, {DateTimeOffset.UtcNow})", Cancel);
+            context.Seals.Add(new AuditSeal(1, 1, hash));
+            await context.SaveChangesAsync(Cancel);
+        }
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            FieldChange[] changes = [new("title", "Draft", "Final")];
+            await scope.ServiceProvider.GetRequiredService<IAuditWriter>().WriteAsync(new AuditEvent(AuditEvents.RecordChanged, AuditOutcome.Success, Ids.New(), null, null, "proposal", Ids.New(), Changes: changes), Cancel);
+        }
+
+        await SealEverythingAsync(provider);
+        var chain = await ReadChainAsync(database);
+        Assert.Equal([(short)1, (short)2], chain.Select(e => e.HashVersion));
+        Assert.Empty(AuditChainCheck.Check(1, AuditCanonicalForm.Genesis, chain, []).Problems);
+        Assert.All(chain, e => Assert.Equal(e.Hash, IndependentHash(e.Content, e.PreviousHash, e.HashVersion)));
+
+        // The field list is part of the hash: a changed value in it is a changed event.
+        await TamperAsync(database, "update kernel_audit.events set changes = '[{\"field\": \"title\", \"old\": \"Draft\", \"new\": \"Signed off\", \"treatment\": \"plain\"}]' where chain_position = 2");
+        var problem = Assert.Single(AuditChainCheck.Check(1, AuditCanonicalForm.Genesis, await ReadChainAsync(database), []).Problems);
+        Assert.Equal((ChainProblemKinds.Modified, 2L), (problem.Kind, problem.Position));
+        Assert.NotEqual(first, problem.EventId);
     }
 
     [Fact]
@@ -293,7 +339,7 @@ public class AuditChainTests(AuditFixture fixture)
 
     // The canonical form as the README documents it, written apart from Iron.Kernel.Audit's: a JSON array built with the
     // framework's writer for structure, and the form's own escaping applied by hand to every text.
-    private static string IndependentHash(ChainedEvent e, string previousHash)
+    private static string IndependentHash(ChainedEvent e, string previousHash, short version)
     {
         static string Escape(string? text)
         {
@@ -336,12 +382,19 @@ public class AuditChainTests(AuditFixture fixture)
         };
 
         var details = string.IsNullOrWhiteSpace(e.Details) ? "null" : Json(JsonDocument.Parse(e.Details).RootElement);
-        var parts = new[]
+        var parts = new List<string>
         {
-            Escape("iron-audit-v1"), Id(e.Id), e.Position.ToString(CultureInfo.InvariantCulture), Escape(e.CreatedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture)),
+            Escape($"iron-audit-v{version}"), Id(e.Id), e.Position.ToString(CultureInfo.InvariantCulture), Escape(e.CreatedAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture)),
             Id(e.CreatedBy), Escape(e.EventType), Escape(e.Outcome), Id(e.ActorId), Id(e.OnBehalfOfId), Id(e.ImpersonatorId), Escape(e.Source), Escape(e.Severity),
-            Escape(e.Target), Escape(e.RecordType), Id(e.RecordId), Escape(e.Reason), Escape(e.CorrelationId), details, Escape(previousHash),
+            Escape(e.Target), Escape(e.RecordType), Id(e.RecordId), Escape(e.Reason), Escape(e.CorrelationId), details,
         };
+        if (version >= 2)
+        {
+            // Version 2 hashes a save's field changes after the details (ADR-0051).
+            parts.Add(string.IsNullOrWhiteSpace(e.Changes) ? "null" : Json(JsonDocument.Parse(e.Changes).RootElement));
+        }
+
+        parts.Add(Escape(previousHash));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("[" + string.Join(",", parts) + "]"))).ToLowerInvariant();
     }
 

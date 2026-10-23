@@ -9,6 +9,7 @@ using Iron.Kernel.Data;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Seeding;
+using Iron.Kernel.History;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,8 @@ public sealed class AuthorizationModule : IModule
     public string Name => "authz";
 
     public IReadOnlyList<Permission> Permissions => AuthorizationPermissions.All;
+
+    public IReadOnlyList<AuditEventType> AuditEventTypes => AuthorizationAuditEvents.Types;
 
     public IReadOnlyList<Feature> Features => AuthorizationFeatures.All;
 

@@ -40,6 +40,7 @@ public sealed class AuditDbContext(DbContextOptions<AuditDbContext> options) : M
             record.Property(e => e.Reason).HasMaxLength(AuditEventRecord.ReasonMaxLength);
             record.Property(e => e.CorrelationId).HasMaxLength(CorrelationId.Length);
             record.Property(e => e.Details).HasColumnType("jsonb");
+            record.Property(e => e.Changes).HasColumnType("jsonb");
             record.Property(e => e.Severity).HasMaxLength(AuditEventRecord.SeverityMaxLength).HasDefaultValue("normal");
             record.HasIndex(e => e.CreatedAt);
             record.HasIndex(e => e.ActorId);

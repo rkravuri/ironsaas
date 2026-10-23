@@ -3,7 +3,7 @@ using Iron.Kernel.Data.Entities;
 namespace Iron.Kernel.Data.Tests.Sample;
 
 /// <summary>A business record that can be soft-deleted: the common case for master data.</summary>
-public sealed class Widget : BusinessRecord, ISoftDeletable
+public sealed class Widget : BusinessRecord, ISoftDeletable, ITrackedChanges
 {
     private Widget()
     {
