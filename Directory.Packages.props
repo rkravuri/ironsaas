@@ -25,7 +25,7 @@
 
   <ItemGroup Label="Api">
     <!-- Request validation with a fluent interface (Apache-2.0). -->
-    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="FluentValidation" Version="12.2.0" />
     <!-- Argon2id for password hashing (MIT, managed code). -->
     <PackageVersion Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
     <!-- JWT creation and validation (MIT). OpenIddict (7.7.2 today) joins when the authorization code flow arrives. -->
@@ -39,7 +39,7 @@
     <!-- OpenAPI document generation (MIT), same version train as the runtime. -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <!-- Interactive API reference on top of the OpenAPI document (MIT). Development only. -->
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.13" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.14" />
     <!-- The OpenFeature SDK (Apache-2.0, CNCF): flags evaluated through one interface, provider chosen by configuration (ADR-0035). 2.14.1 of 2026-08-10. -->
     <PackageVersion Include="OpenFeature" Version="2.14.1" />
   </ItemGroup>
@@ -72,9 +72,9 @@
     <!-- Iron.Testing.Analyzers is built against the same Roslyn: the analyzer that refuses a test without what it proves
          (ADR-0044) loads into the SDK's compiler, which must be as new as the version it was built against. -->
     <!-- Throw-away PostgreSQL containers for integration tests (MIT). -->
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers.Azurite" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
     <!-- FakeTimeProvider for tests (MIT). -->
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
   </ItemGroup>
