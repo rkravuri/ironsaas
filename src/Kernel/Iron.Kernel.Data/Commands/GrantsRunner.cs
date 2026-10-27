@@ -19,6 +19,7 @@ public sealed partial class GrantsRunner(NpgsqlDataSource dataSource, IEnumerabl
 {
     public static bool IsValidRole(string? role) => role is not null && RolePattern().IsMatch(role);
 
+    [SqlFromIdentifiers("GRANT names the role, checked against the role pattern, and the database, schemas and tables of the model, each quoted; PostgreSQL takes no parameters there.")]
     public async Task<IReadOnlyList<string>> RunAsync(string role, CancellationToken cancellationToken)
     {
         if (!IsValidRole(role))
@@ -44,6 +45,7 @@ public sealed partial class GrantsRunner(NpgsqlDataSource dataSource, IEnumerabl
     }
 
     /// <summary>The audit verifier's role (ADR-0050): connect, and read the chain's tables, nothing else.</summary>
+    [SqlFromIdentifiers("GRANT names the role, checked against the role pattern, and the database, schemas and tables of the model, each quoted; PostgreSQL takes no parameters there.")]
     public async Task<IReadOnlyList<string>> RunReaderAsync(string role, CancellationToken cancellationToken)
     {
         if (!IsValidRole(role))

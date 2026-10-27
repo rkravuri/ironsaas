@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The analyzers of production code: IRON0010 refuses SQL built from strings, IRON0011 an exemption without a reason
+    (TF-071 AC3, ADR-0053). Directory.Build.props puts it into the compile of every Kernel, Business, Suite and Host
+    project, so the build stops at the line, in the IDE as on the command line. An analyzer loads into the compiler,
+    which runs on .NET Standard 2.0 assemblies, hence the target.
+  -->
+  <PropertyGroup>
+    <IronLayer>Tool</IronLayer>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- The SDK's implicit usings include System.Net.Http, which .NET Standard 2.0 does not have. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IsRoslynComponent>true</IsRoslynComponent>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- The rules this analyzer ships, which the analyzer authoring rules ask every analyzer project to list (RS2008). -->
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+</Project>

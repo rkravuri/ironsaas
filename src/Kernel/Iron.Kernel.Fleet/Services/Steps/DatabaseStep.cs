@@ -50,7 +50,7 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 
         var database = context.Tenant.DatabaseName;
         var created = false;
-        if (!await ExistsAsync(connection, "select 1 from pg_database where datname = @name", database, cancellationToken).ConfigureAwait(false))
+        if (!await ExistsAsync(new NpgsqlCommand("select 1 from pg_database where datname = @name", connection), database, cancellationToken).ConfigureAwait(false))
         {
             await ExecuteAsync(connection, $"CREATE DATABASE {Quote(database)} OWNER {Quote(context.OwnerRole)}", cancellationToken).ConfigureAwait(false);
             created = true;
@@ -64,19 +64,22 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 
     private static async Task EnsureRoleAsync(NpgsqlConnection connection, string role, string password, CancellationToken cancellationToken)
     {
-        var sql = await ExistsAsync(connection, "select 1 from pg_roles where rolname = @name", role, cancellationToken).ConfigureAwait(false)
+        var sql = await ExistsAsync(new NpgsqlCommand("select 1 from pg_roles where rolname = @name", connection), role, cancellationToken).ConfigureAwait(false)
             ? $"ALTER ROLE {Quote(role)} WITH LOGIN PASSWORD {Literal(password)}"
             : $"CREATE ROLE {Quote(role)} WITH LOGIN PASSWORD {Literal(password)}";
         await ExecuteAsync(connection, sql, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<bool> ExistsAsync(NpgsqlConnection connection, string sql, string name, CancellationToken cancellationToken)
+    private static async Task<bool> ExistsAsync(NpgsqlCommand query, string name, CancellationToken cancellationToken)
     {
-        await using var command = new NpgsqlCommand(sql, connection);
-        command.Parameters.AddWithValue("name", name);
-        return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) is not null;
+        await using (query)
+        {
+            query.Parameters.AddWithValue("name", name);
+            return await query.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) is not null;
+        }
     }
 
+    [SqlFromIdentifiers("Runs the definitions this step builds: CREATE DATABASE, CREATE or ALTER ROLE and GRANT name the tenant's database and roles, quoted, and a role's generated password as a quoted literal; PostgreSQL takes no parameters there.")]
     private static async Task ExecuteAsync(NpgsqlConnection connection, string sql, CancellationToken cancellationToken)
     {
         await using var command = new NpgsqlCommand(sql, connection);

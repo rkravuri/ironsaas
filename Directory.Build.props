@@ -68,4 +68,14 @@
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <!--
+    Every project of the product (Kernel, Business, Suite and Host) compiles with the analyzer that refuses SQL built
+    from strings (TF-071 AC3, ADR-0053, IRON0010 and IRON0011). Tests and tools may build SQL for their fixtures.
+  -->
+  <ItemGroup Condition="'$(IronLayer)' == 'Kernel' or '$(IronLayer)' == 'Business' or '$(IronLayer)' == 'Suite' or '$(IronLayer)' == 'Host'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)tools/Iron.Analyzers/Iron.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>
