@@ -16,6 +16,7 @@ import { applyDensity, readDensity } from "@/design/density";
 import { shareStyleNonce, styleNonce } from "@/design/csp";
 import { colorSchemeManager } from "@/design/scheme";
 import { ErrorBoundary } from "@/shell/ErrorBoundary";
+import { z } from "zod";
 import { cssVariablesResolver, theme } from "./theme";
 
 const queryClient = new QueryClient({
@@ -28,6 +29,9 @@ const queryClient = new QueryClient({
 applyDensity(readDensity());
 // Every library that makes a style element gets the page's nonce before it makes one (ADR-0053).
 shareStyleNonce();
+// Zod compiles its parsers with new Function unless told not to, and first tries whether it may: the policy allows no
+// eval, so that try is a violation on every page. Interpreted parsing is all the shell needs.
+z.config({ jitless: true });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

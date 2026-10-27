@@ -27,6 +27,30 @@ async function setOrigins(page: Page, origins: string[]): Promise<void> {
   expect(saved.status).toBe(200);
 }
 
+/**
+ * Chromium sends a policy's reports through its Reporting API when the policy names report-to, and those uploads do not
+ * reach the laptop's ingress, whose certificate the test browser trusts only for pages; without report-to it reports
+ * through report-uri at once. The test takes report-to out of the page it opens, so the browser's own report arrives;
+ * the report-to form is the in-memory tests' (ADR-0053). The page comes through localhost with the tenant's Host header,
+ * since Node's resolver behind route.fetch does not know *.localhost.
+ */
+async function reportThroughUri(page: Page, path: string): Promise<void> {
+  await page.route(`**${path}`, async (route) => {
+    if (route.request().resourceType() !== "document") {
+      await route.continue();
+      return;
+    }
+    const url = new URL(route.request().url());
+    const response = await route.fetch({
+      url: `${url.protocol}//localhost${url.pathname}${url.search}`,
+      headers: { ...route.request().headers(), host: url.host },
+    });
+    const headers = { ...response.headers() };
+    headers["content-security-policy"] = (headers["content-security-policy"] ?? "").replace("; report-to csp", "");
+    await route.fulfill({ response, headers });
+  });
+}
+
 test.describe("the web surface's protection", () => {
   test("a page of another site may call the API only once the tenant lists its origin, and not after it is removed [TF-070 AC2, ADR-0053]", async ({
     page,
@@ -97,46 +121,52 @@ test.describe("the web surface's protection", () => {
     expect([...hosts].filter((host) => host !== tenant)).toEqual([]);
   });
 
-  test("the shell's page runs no inline code: its own styles carry the page's nonce, and an injected script is blocked and reported [TF-070 AC1, TF-070 AC3, ADR-0053]", async ({
+  test("the shell's page runs no inline code: its own styles carry the page's nonce, nothing of its own breaks the policy, and an injected script is blocked and reported [TF-070 AC1, TF-070 AC3, ADR-0053]", async ({
     page,
   }) => {
-    const violations: string[] = [];
-    page.on("console", (message) => {
-      if (message.type() === "error" && /Content Security Policy/i.test(message.text())) {
-        violations.push(message.text());
-      }
+    // Every violation from the page's first script on, the console's or not: a library's caught probe counts too.
+    await page.addInitScript(() => {
+      const seen: string[] = [];
+      (window as unknown as { violations: string[] }).violations = seen;
+      document.addEventListener("securitypolicyviolation", (event) =>
+        seen.push(`${event.effectiveDirective} ${event.blockedURI} ${event.sample}`),
+      );
     });
     await signIn(page);
+    await reportThroughUri(page, "/users");
     await open(page, "/users");
     await expect(page.getByRole("grid").first()).toBeVisible();
-    expect(violations).toEqual([]);
+    expect(await page.evaluate(() => (window as unknown as { violations: string[] }).violations)).toEqual([]);
 
+    const marker = `injected_${Math.random().toString(36).slice(2)}`;
     const injected = await page.evaluate(
-      () =>
+      (name) =>
         new Promise<{ ran: boolean; directive: string }>((resolve) => {
-          const marker = `__injected_${Math.random().toString(36).slice(2)}`;
           document.addEventListener(
             "securitypolicyviolation",
             (event) => {
               resolve({
-                ran: (window as unknown as Record<string, unknown>)[marker] === true,
+                ran: (window as unknown as Record<string, unknown>)[name] === true,
                 directive: event.effectiveDirective,
               });
             },
             { once: true },
           );
           const script = document.createElement("script");
-          script.textContent = `window.${marker} = true;`;
+          script.textContent = `window.${name} = true;`;
           document.head.append(script);
         }),
+      marker,
     );
 
     expect(injected).toEqual({ ran: false, directive: "script-src-elem" });
     await expect
       .poll(
         async () =>
-          (await call<{ data: { directive: string }[] }>(page, "GET", "/api/v1/csp-reports")).body.data.some(
-            (report) => report.directive === "script-src-elem",
+          (
+            await call<{ data: { directive: string; sample: string | null }[] }>(page, "GET", "/api/v1/csp-reports")
+          ).body.data.some(
+            (report) => report.directive === "script-src-elem" && (report.sample ?? "").includes(marker),
           ),
         { timeout: 30_000 },
       )
