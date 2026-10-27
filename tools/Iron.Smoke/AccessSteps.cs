@@ -105,6 +105,8 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
     /// <summary>
     /// A plan applied in the control plane reaches the unit's API: the plan without role transfer refuses role export, the
     /// plan the tenant had gives it back. A tenant without role transfer goes the other way: Enterprise, then its own plan.
+    /// The step waits on the session's entitlements and exports once to confirm, since exports have a limit of their own
+    /// (20 an hour per person, ADR-0053) that polling the export would spend.
     /// </summary>
     public async Task<string> PlanChangeAsync(CancellationToken cancellationToken)
     {
@@ -119,10 +121,12 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
             var other = hadTransfer ? "standard" : "enterprise";
             await ApplyPlanAsync(other, cancellationToken).ConfigureAwait(false);
             changed = true;
-            var first = await WaitAsync(async () => await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false) != hadTransfer, $"role export to {(hadTransfer ? "be refused" : "work")} on {other}", cancellationToken).ConfigureAwait(false);
+            var first = await WaitAsync(async () => await RoleTransferAsync(admin, cancellationToken).ConfigureAwait(false) != hadTransfer, $"role transfer to be {(hadTransfer ? "off" : "on")} on {other}", cancellationToken).ConfigureAwait(false);
+            await WaitAsync(async () => await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false) != hadTransfer, $"role export to {(hadTransfer ? "be refused" : "work")} on {other}", cancellationToken).ConfigureAwait(false);
             await ApplyPlanAsync(before, cancellationToken).ConfigureAwait(false);
             changed = false;
-            var second = await WaitAsync(async () => await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false) == hadTransfer, $"role export to {(hadTransfer ? "work" : "be refused")} on {before} again", cancellationToken).ConfigureAwait(false);
+            var second = await WaitAsync(async () => await RoleTransferAsync(admin, cancellationToken).ConfigureAwait(false) == hadTransfer, $"role transfer to be {(hadTransfer ? "on" : "off")} on {before} again", cancellationToken).ConfigureAwait(false);
+            await WaitAsync(async () => await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false) == hadTransfer, $"role export to {(hadTransfer ? "work" : "be refused")} on {before} again", cancellationToken).ConfigureAwait(false);
             finished = true;
             return hadTransfer
                 ? $"{other} applied: role export answers {RoleTransferRefused} after {Seconds(first)}; {before} again: it works after {Seconds(second)}"
@@ -253,6 +257,17 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
         {
             answer.Expect(HttpStatusCode.NoContent, "sign out");
         }
+    }
+
+    /// <summary>Whether the session's entitlements hold role transfer enabled, as the shell reads them.</summary>
+    private async Task<bool> RoleTransferAsync(string admin, CancellationToken cancellationToken)
+    {
+        var context = (await TenantAsync(HttpMethod.Get, "/api/v1/me/context", admin, cancellationToken: cancellationToken).ConfigureAwait(false))
+            .Expect(HttpStatusCode.OK, "the session's context");
+        return context.Body is { } body
+            && body.TryGetProperty("entitlements", out var entitlements)
+            && entitlements.TryGetProperty("features", out var features)
+            && features.EnumerateArray().Any(f => f.GetProperty("code").GetString() == "authorization.role_transfer" && f.GetProperty("status").GetString() == "enabled");
     }
 
     private async Task<bool> ExportAllowedAsync(string admin, CancellationToken cancellationToken)
