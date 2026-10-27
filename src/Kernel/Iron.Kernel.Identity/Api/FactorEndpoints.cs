@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Validation;
@@ -161,7 +162,7 @@ internal static class FactorEndpoints
         auth.MapPost("/second-factor/passkey-options", SecondFactorPasskeyOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("SecondFactorPasskeyOptions").WithSummary("The options for your passkey at the second step of a sign-in.");
         auth.MapGet("/sign-in-options", SignInOptionsAsync).AllowAnonymous().Produces<SignInOptionsResponse>(StatusCodes.Status200OK).WithName("SignInOptions").WithSummary("Whether this tenant lets people sign in with a passkey alone, and its company logins.");
         auth.MapPost("/passkey/options", PasskeySignInOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("PasskeySignInOptions").WithSummary("The options for a sign-in with a passkey alone, where the tenant allows it.");
-        auth.MapPost("/passkey", PasskeySignInAsync).Validate<PasskeySignInRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("PasskeySignIn").WithSummary("Sign in with a passkey alone, where the tenant allows it.");
+        auth.MapPost("/passkey", PasskeySignInAsync).Validate<PasskeySignInRequest>().AllowAnonymous().RateLimited(RateLimitPolicies.Login).Produces<LoginResponse>(StatusCodes.Status200OK).WithName("PasskeySignIn").WithSummary("Sign in with a passkey alone, where the tenant allows it.");
         auth.MapPost("/enrolment/authenticator-app", EnrolmentAppAsync).AllowAnonymous().Produces<AuthenticatorAppSetupResponse>(StatusCodes.Status200OK).WithName("EnrolmentAuthenticatorApp").WithSummary("At sign-in, when you must have a second factor: start an authenticator app.");
         auth.MapPost("/enrolment/authenticator-app/confirm", EnrolmentAppConfirmAsync).Validate<ConfirmAuthenticatorAppRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("EnrolmentAuthenticatorAppConfirm").WithSummary("At sign-in: the app's first code saves it and signs you in; the answer shows your recovery codes once.");
         auth.MapPost("/enrolment/passkey/options", EnrolmentPasskeyOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("EnrolmentPasskeyOptions").WithSummary("At sign-in, when you must have a second factor: the options to create a passkey.");

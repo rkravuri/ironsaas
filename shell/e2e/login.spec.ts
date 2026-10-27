@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { loginId, password, signIn } from "./helpers";
+import { loginId, password, signIn, submitSignIn } from "./helpers";
 
 test.describe("login", () => {
   test("a wrong password shows the fixed message and a correlation id [TF-130 AC2, ADR-0014]", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel(/login identifier/i).fill(loginId);
     await page.getByLabel(/^password/i).fill("definitely-not-" + password);
-    await page.getByRole("button", { name: /sign in/i }).click();
-
     const alert = page.getByRole("alert");
+    await submitSignIn(page, alert.filter({ hasText: "The login details are not correct." }));
+
     await expect(alert).toContainText("The login details are not correct.");
     await expect(alert).toContainText(/correlation id/i);
   });

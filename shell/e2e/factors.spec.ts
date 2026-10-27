@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { virtualAuthenticator } from "./helpers";
+import { submitSignIn, virtualAuthenticator } from "./helpers";
 
 // The person of the run who holds the role the tenant requires a second factor of (e2e-data.py, ADR-0047).
 const person = { loginId: process.env.E2E_MFA_LOGIN_ID ?? "", password: process.env.E2E_MFA_PASSWORD ?? "" };
@@ -15,7 +15,7 @@ test.describe("second factors", () => {
     await page.goto("/login");
     await page.getByLabel(/login identifier/i).fill(person.loginId);
     await page.getByLabel(/^password/i).fill(person.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await submitSignIn(page, page.getByRole("heading", { name: "Set up a second factor" }));
 
     // Enrolment, before any page: the password made no session.
     await expect(page.getByRole("heading", { name: "Set up a second factor" })).toBeVisible();
@@ -43,8 +43,7 @@ test.describe("second factors", () => {
     await expect(page).toHaveURL(/\/login/);
     await page.getByLabel(/login identifier/i).fill(person.loginId);
     await page.getByLabel(/^password/i).fill(person.password);
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Confirm it is you" })).toBeVisible();
+    await submitSignIn(page, page.getByRole("heading", { name: "Confirm it is you" }));
     await page.screenshot({ path: "test-results/e2e/passkey-second-step.png", fullPage: true });
     await page.getByRole("button", { name: "Use your passkey" }).click();
     await expect(shell).toBeVisible();

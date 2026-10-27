@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { call, open, signIn } from "./helpers";
+import { call, open, signIn, submitSignIn } from "./helpers";
 
 /**
  * Terms acceptance on a real unit (S3 T5, TF-028, ADR-0049). The administrator publishes a document of the run in the
@@ -15,8 +15,7 @@ async function signInToTerms(page: Page): Promise<void> {
   await page.goto("/login");
   await page.getByLabel(/login identifier/i).fill(person.loginId);
   await page.getByLabel(/^password/i).fill(person.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Read and accept" })).toBeVisible();
+  await submitSignIn(page, page.getByRole("heading", { name: "Read and accept" }));
 }
 
 test.describe("terms acceptance", () => {
