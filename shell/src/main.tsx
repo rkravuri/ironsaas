@@ -13,7 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import { SessionProvider } from "@/auth/session";
 import { applyDensity, readDensity } from "@/design/density";
-import { styleNonce } from "@/design/csp";
+import { shareStyleNonce, styleNonce } from "@/design/csp";
 import { colorSchemeManager } from "@/design/scheme";
 import { ErrorBoundary } from "@/shell/ErrorBoundary";
 import { cssVariablesResolver, theme } from "./theme";
@@ -26,6 +26,8 @@ const queryClient = new QueryClient({
 
 // The density is on the root before anything renders, so the first paint is already the viewer's.
 applyDensity(readDensity());
+// Every library that makes a style element gets the page's nonce before it makes one (ADR-0053).
+shareStyleNonce();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

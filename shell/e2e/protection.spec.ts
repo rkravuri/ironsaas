@@ -84,6 +84,9 @@ test.describe("the web surface's protection", () => {
     );
     await page.screenshot({ path: "test-results/e2e/login-check.png", fullPage: true });
 
+    // Another login for the answer: the first is locked by its failures, as the lockout still applies on top, and the
+    // address alone still asks for the check.
+    await page.getByLabel(/login identifier/i).fill(`nobody-${run}-again@${tenant}`);
     await check.check();
     await expect(page.getByText("Checked. Select Sign in.")).toBeVisible({ timeout: 120_000 });
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
