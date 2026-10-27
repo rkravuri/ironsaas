@@ -459,7 +459,7 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
                       <Checkbox
                         label={t("login.challenge.label")}
                         description={t("login.challenge.description")}
-                        checked={check.kind === "solved"}
+                        checked={check.kind === "solving" || check.kind === "solved"}
                         disabled={check.kind === "solving" || check.kind === "solved"}
                         onChange={(event) => {
                           if (event.currentTarget.checked) {

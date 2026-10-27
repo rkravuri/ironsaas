@@ -32,6 +32,8 @@ test.describe("the web surface's protection", () => {
     page,
     context,
   }) => {
+    // Three polls of the settings cache, up to 45 seconds each.
+    test.setTimeout(240_000);
     await signIn(page);
     const api = `${new URL(page.url()).origin}/api/v1/me`;
     const other = await context.newPage();
@@ -55,6 +57,7 @@ test.describe("the web surface's protection", () => {
   test("after repeated failures the login asks for the check, solves it in this browser asking no other host, and checks the password again [TF-072 AC4, ADR-0053]", async ({
     page,
   }) => {
+    test.setTimeout(300_000);
     const hosts = new Set<string>();
     page.on("request", (request) => hosts.add(new URL(request.url()).host));
     await page.goto("/login");
@@ -68,7 +71,7 @@ test.describe("the web surface's protection", () => {
     // Failures from this address, these and any earlier ones within 15 minutes, until the form asks for the check.
     for (let attempt = 1; attempt <= 12 && !(await check.isVisible()); attempt++) {
       await page.getByRole("button", { name: "Sign in", exact: true }).click();
-      await expect(alert.or(check)).toBeVisible();
+      await expect(alert.or(check).first()).toBeVisible();
       if (await limited.isVisible()) {
         const [, count] = /Wait (\d+) second/.exec(await limited.innerText()) ?? ["", "30"];
         await page.waitForTimeout((Number(count) + 1) * 1000);

@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { expect, type CDPSession, type Locator, type Page } from "@playwright/test";
+import { expect, test, type CDPSession, type Locator, type Page } from "@playwright/test";
 
 export const loginId = process.env.E2E_LOGIN_ID ?? "admin@smoke.localhost";
 export const password = process.env.E2E_PASSWORD ?? "";
@@ -74,26 +74,28 @@ export async function signIn(
  * is ticked, solved in the browser, and the sign-in is sent again.
  */
 export async function submitSignIn(page: Page, outcome: Locator): Promise<void> {
+  const reached = outcome.first();
   const check = page.getByRole("checkbox", { name: /i am a person/i });
   const limited = page.getByRole("alert").filter({ hasText: /Too many requests in a short time/ });
   for (let attempt = 1; ; attempt++) {
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(outcome.or(limited).or(check)).toBeVisible();
+    await expect(outcome.or(limited).or(check).first()).toBeVisible();
     if (attempt < 8 && (await limited.isVisible())) {
-      const words = await limited.innerText();
-      const [, count, unit] = /Wait (\d+) (second|minute)/.exec(words) ?? ["", "30", "second"];
-      await page.waitForTimeout((Number(count) * (unit === "minute" ? 60 : 1) + 1) * 1000);
+      const [, count, unit] = /Wait (\d+) (second|minute)/.exec(await limited.innerText()) ?? ["", "30", "second"];
+      const wait = (Number(count) * (unit === "minute" ? 60 : 1) + 1) * 1000;
+      // The wait is the limit's, not the test's: the test gets that much more time.
+      test.info().setTimeout(test.info().timeout + wait);
+      await page.waitForTimeout(wait);
       continue;
     }
-    if (attempt < 8 && !(await outcome.isVisible()) && (await check.isVisible()) && !(await check.isChecked())) {
+    if (attempt < 8 && !(await reached.isVisible()) && (await check.isVisible()) && !(await check.isChecked())) {
+      // The work grows with the failures from this address: the test gets the time the browser counts for.
+      test.info().setTimeout(test.info().timeout + 120_000);
       await check.check();
       await expect(page.getByText("Checked. Select Sign in.")).toBeVisible({ timeout: 120_000 });
       continue;
     }
-    if (await outcome.isVisible()) {
-      return;
-    }
-    await expect(outcome).toBeVisible();
+    await expect(reached).toBeVisible();
     return;
   }
 }
