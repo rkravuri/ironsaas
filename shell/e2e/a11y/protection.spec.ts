@@ -65,10 +65,16 @@ const protection = {
       type: "json",
       whole_number: false,
       description: "The web origins whose pages may call this tenant's API from a browser.",
-      requirement: "A list of at most 20 origins, each a scheme and a host with an optional port, like https://portal.example.com, without a path.",
+      requirement:
+        "A list of at most 20 origins, each a scheme and a host with an optional port, like https://portal.example.com, without a path.",
       default: [],
       value: ["https://portal.example.com"],
-      source: { level: "tenant", unit: null, changed_by: { id: "01a15100-0000-7000-8000-0000000000d1", name: "Ravi Ravuri" }, changed_at: "2026-10-27T10:00:00Z" },
+      source: {
+        level: "tenant",
+        unit: null,
+        changed_by: { id: "01a15100-0000-7000-8000-0000000000d1", name: "Ravi Ravuri" },
+        changed_at: "2026-10-27T10:00:00Z",
+      },
       set_here: true,
     }),
     setting("protection.limits.login_per_minute", {
@@ -78,7 +84,8 @@ const protection = {
       value: 10,
     }),
     setting("protection.limits.api_per_minute", {
-      description: "How many calls one person or client, or one address before sign-in, may make to the API in a minute.",
+      description:
+        "How many calls one person or client, or one address before sign-in, may make to the API in a minute.",
       requirement: "A whole number within the bounds your platform operator set, by default from 60 to 6000 a minute.",
       default: 600,
       value: 600,
@@ -97,7 +104,11 @@ for (const scheme of schemes) {
       route.fulfill(
         attempts++ === 0
           ? problem(403, { error_code: "identity.login.challenge_required" })
-          : problem(429, { error_code: "protection.rate_limited", retry_after_seconds: 42, limit: "login" }, { "Retry-After": "42" }),
+          : problem(
+              429,
+              { error_code: "protection.rate_limited", retry_after_seconds: 42, limit: "login" },
+              { "Retry-After": "42" },
+            ),
       ),
     );
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
@@ -121,7 +132,9 @@ for (const scheme of schemes) {
     await expectNoViolation(page);
 
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("alert")).toContainText("Too many requests in a short time. Wait 42 seconds, then try again.");
+    await expect(page.getByRole("alert")).toContainText(
+      "Too many requests in a short time. Wait 42 seconds, then try again.",
+    );
     await page.screenshot({ path: `test-results/a11y/login-limited-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
   });
@@ -138,7 +151,9 @@ for (const scheme of schemes) {
     await expect(page.getByRole("heading", { level: 3, name: "Protection of the sign-in and the API" })).toBeVisible();
     const origins = page.getByRole("article", { name: "Other sites allowed to call the API from a browser" });
     await expect(origins).toContainText("https://portal.example.com");
-    await expect(page.getByRole("article", { name: "Sign-in attempts from one address" })).toContainText("10 attempts a minute");
+    await expect(page.getByRole("article", { name: "Sign-in attempts from one address" })).toContainText(
+      "10 attempts a minute",
+    );
     await page.screenshot({ path: `test-results/a11y/settings-protection-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
 
