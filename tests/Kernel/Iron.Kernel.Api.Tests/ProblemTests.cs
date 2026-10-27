@@ -42,6 +42,40 @@ public class ProblemTests(ApiFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-071 AC1", "ADR-0053")]
+    public async Task ARequestOverAFieldsLimitIsRefusedWithAValidationProblemNamingTheField()
+    {
+        var tooMany = new CreateThing(new string('x', 51), 12, ["a", "b", "c", "d"]);
+        var tooLong = new CreateThing("hammer", 12, ["short", new string('y', 21)]);
+
+        using var first = await fixture.Client.PostAsJsonAsync(new Uri("/api/v1/things", UriKind.Relative), tooMany, TestContext.Current.CancellationToken);
+        using var second = await fixture.Client.PostAsJsonAsync(new Uri("/api/v1/things", UriKind.Relative), tooLong, TestContext.Current.CancellationToken);
+        var tooManyErrors = (await Json(first)).GetProperty("errors").EnumerateArray().Select(e => (e.GetProperty("field").GetString(), e.GetProperty("code").GetString())).ToList();
+        var tooLongErrors = (await Json(second)).GetProperty("errors").EnumerateArray().Select(e => (e.GetProperty("field").GetString(), e.GetProperty("code").GetString())).ToList();
+
+        Assert.Equal((HttpStatusCode.BadRequest, HttpStatusCode.BadRequest), (first.StatusCode, second.StatusCode));
+        Assert.Equal([("name", "maximum_length"), ("tags", "maximum_count")], tooManyErrors);
+        Assert.Equal([("tags[1]", "maximum_length")], tooLongErrors);
+    }
+
+    [Fact]
+    [Proves("TF-071 AC1", "ADR-0053")]
+    public async Task AQueryParameterOverItsLimitOrTooManyOfThemAreRefusedNamingTheParameter()
+    {
+        var parameters = string.Join('&', Enumerable.Range(1, 51).Select(i => $"p{i}=1"));
+        using var tooLong = await fixture.Client.GetAsync(new Uri($"/api/v1/things?filter={new string('x', 2001)}", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var tooMany = await fixture.Client.GetAsync(new Uri($"/api/v1/things?{parameters}", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var fine = await fixture.Client.GetAsync(new Uri($"/api/v1/things?q={new string('x', 2000)}", UriKind.Relative), TestContext.Current.CancellationToken);
+        var longError = (await Json(tooLong)).GetProperty("errors")[0];
+        var manyError = (await Json(tooMany)).GetProperty("errors")[0];
+
+        Assert.Equal((HttpStatusCode.BadRequest, HttpStatusCode.BadRequest), (tooLong.StatusCode, tooMany.StatusCode));
+        Assert.Equal(("filter", "maximum_length"), (longError.GetProperty("field").GetString(), longError.GetProperty("code").GetString()));
+        Assert.Equal(("query", "maximum_count"), (manyError.GetProperty("field").GetString(), manyError.GetProperty("code").GetString()));
+        Assert.NotEqual(HttpStatusCode.BadRequest, fine.StatusCode);
+    }
+
+    [Fact]
     [Proves("ADR-0009")]
     public async Task AValidBodyPassesTheFilter()
     {

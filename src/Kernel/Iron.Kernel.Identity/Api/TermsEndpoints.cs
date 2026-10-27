@@ -33,7 +33,7 @@ public sealed class AcceptTermsRequestValidator : AbstractValidator<AcceptTermsR
 {
     public AcceptTermsRequestValidator()
     {
-        RuleFor(r => r.Documents).NotEmpty();
+        RuleFor(r => r.Documents).NotEmpty().MaximumCount(50);
         RuleForEach(r => r.Documents).ChildRules(document =>
         {
             document.RuleFor(d => d.Source).NotEmpty().MaximumLength(DocumentAcceptance.SourceMaxLength);

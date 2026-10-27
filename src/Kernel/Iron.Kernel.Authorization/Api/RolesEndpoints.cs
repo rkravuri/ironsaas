@@ -56,7 +56,8 @@ public sealed class CreateRoleRequestValidator : AbstractValidator<CreateRoleReq
         RuleFor(r => r.Code).NotEmpty().MaximumLength(Role.CodeMaxLength).Must(code => Role.IsValidCode(code?.Trim().ToLowerInvariant())).WithErrorCode("invalid").WithMessage("Use lowercase letters, digits and hyphens, starting with a letter.");
         RuleFor(r => r.Name).NotEmpty().MaximumLength(Role.NameMaxLength);
         RuleFor(r => r.Description).MaximumLength(Role.DescriptionMaxLength);
-        RuleFor(r => r.Permissions).NotNull();
+        RuleFor(r => r.Permissions).NotNull().MaximumCount(Role.PermissionsMaxCount);
+        RuleForEach(r => r.Permissions).NotEmpty().MaximumLength(FieldLimits.PermissionName);
     }
 }
 
@@ -66,7 +67,8 @@ public sealed class UpdateRoleRequestValidator : AbstractValidator<UpdateRoleReq
     {
         RuleFor(r => r.Name).NotEmpty().MaximumLength(Role.NameMaxLength);
         RuleFor(r => r.Description).MaximumLength(Role.DescriptionMaxLength);
-        RuleFor(r => r.Permissions).NotNull();
+        RuleFor(r => r.Permissions).NotNull().MaximumCount(Role.PermissionsMaxCount);
+        RuleForEach(r => r.Permissions).NotEmpty().MaximumLength(FieldLimits.PermissionName);
     }
 }
 
@@ -74,7 +76,31 @@ public sealed class ImportRolesRequestValidator : AbstractValidator<ImportRolesR
 {
     public ImportRolesRequestValidator()
     {
-        RuleFor(r => r.Document).NotNull();
+        RuleFor(r => r.Document).NotNull().SetValidator(new RoleExportValidator());
+    }
+}
+
+public sealed class RoleExportValidator : AbstractValidator<RoleExport>
+{
+    /// <summary>The roles one export may carry: far more than a tenant defines.</summary>
+    public const int RolesMaxCount = 500;
+
+    public RoleExportValidator()
+    {
+        RuleFor(e => e.Roles).NotNull().MaximumCount(RolesMaxCount);
+        RuleForEach(e => e.Roles).SetValidator(new RoleDocumentValidator());
+    }
+}
+
+public sealed class RoleDocumentValidator : AbstractValidator<RoleDocument>
+{
+    public RoleDocumentValidator()
+    {
+        RuleFor(r => r.Code).NotEmpty().MaximumLength(Role.CodeMaxLength);
+        RuleFor(r => r.Name).NotEmpty().MaximumLength(Role.NameMaxLength);
+        RuleFor(r => r.Description).MaximumLength(Role.DescriptionMaxLength);
+        RuleFor(r => r.Permissions).NotNull().MaximumCount(Role.PermissionsMaxCount);
+        RuleForEach(r => r.Permissions).NotEmpty().MaximumLength(FieldLimits.PermissionName);
     }
 }
 

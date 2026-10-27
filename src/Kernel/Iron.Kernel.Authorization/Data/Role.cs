@@ -14,6 +14,9 @@ public sealed partial class Role : AuditedEntity, ITenantWide, ITrackedChanges
     public const int NameMaxLength = 200;
     public const int DescriptionMaxLength = 500;
 
+    /// <summary>The permissions one role may hold in a request: more than the catalogue has.</summary>
+    public const int PermissionsMaxCount = 500;
+
     private Role()
     {
         Code = string.Empty;

@@ -1,3 +1,4 @@
+using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit.Api;
 using Iron.Kernel.Audit.Contracts;
@@ -36,6 +37,9 @@ public sealed class AuditModule : IModule
         services.AddIronDbContext<AuditDbContext>();
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuditTrail, AuditTrail>();
+        services.AddScoped<IValidator<RetentionChoiceRequest>, RetentionChoiceRequestValidator>();
+        services.AddScoped<IValidator<PlaceLegalHoldRequest>, PlaceLegalHoldRequestValidator>();
+        services.AddScoped<IValidator<ReleaseLegalHoldRequest>, ReleaseLegalHoldRequestValidator>();
 
         // Field-level history (TF-062, ADR-0051): every tracked record's save becomes an event of the trail.
         services.AddScoped<IChangeRecorder, AuditChangeRecorder>();

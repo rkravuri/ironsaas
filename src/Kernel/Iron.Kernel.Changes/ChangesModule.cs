@@ -1,3 +1,4 @@
+using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Changes.Api;
 using Iron.Kernel.Changes.Contracts;
@@ -41,6 +42,7 @@ public sealed class ChangesModule : IModule
         services.AddScoped<FourEyes>();
         services.Replace(ServiceDescriptor.Scoped<IFourEyes>(provider => provider.GetRequiredService<FourEyes>()));
         services.AddScoped<PendingChanges>();
+        services.AddScoped<IValidator<DecideChangeRequest>, DecideChangeRequestValidator>();
         services.TryAddScoped<ISignatures, NoSignatures>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignableRecords, PendingChangeRecords>());
     }

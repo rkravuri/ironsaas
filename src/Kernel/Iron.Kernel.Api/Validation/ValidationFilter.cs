@@ -42,6 +42,8 @@ public static class ValidationExtensions
         where TRequest : class
     {
         ArgumentNullException.ThrowIfNull(builder);
-        return builder.AddEndpointFilter<ValidationFilter<TRequest>>().ProducesValidationProblem();
+        return builder.AddEndpointFilter<ValidationFilter<TRequest>>()
+            .WithMetadata(new ValidatedRequestMetadata(typeof(TRequest)))
+            .ProducesValidationProblem();
     }
 }

@@ -1,10 +1,12 @@
 using System.Text.Json;
+using FluentValidation;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Problems;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
+using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Settings.Contracts;
 using Iron.Kernel.Settings.Data;
@@ -19,6 +21,16 @@ namespace Iron.Kernel.Settings.Api;
 
 /// <summary>A save: where (<c>tenant</c>, <c>unit</c> with its id, or <c>user</c> for oneself) and the value as JSON.</summary>
 public sealed record SaveSettingRequest(string? Scope, Guid? UnitId, JsonElement Value);
+
+/// <summary>The setting's own rule checks the value; this is the outer bound of any value.</summary>
+public sealed class SaveSettingRequestValidator : AbstractValidator<SaveSettingRequest>
+{
+    public SaveSettingRequestValidator()
+    {
+        RuleFor(r => r.Scope).MaximumLength(10);
+        RuleFor(r => r.Value).MaximumJsonSize(SettingValue.ValueMaxBytes);
+    }
+}
 
 /// <summary>The settings a place may hold, with the place they were read for.</summary>
 public sealed record SettingsListResponse(string Scope, UnitReference? Unit, IReadOnlyList<SettingView> Data);
@@ -47,7 +59,7 @@ internal static class SettingsEndpoints
         var settings = endpoints.MapApiGroup("settings");
         settings.MapGet("/", ListAsync).RequirePermission(SettingsPermissions.Read).ScopedByRow().Produces<SettingsListResponse>(StatusCodes.Status200OK).WithName("ListSettings").WithSummary("Every setting a place may hold (scope=tenant, or scope=unit&unit=<id>), with its effective value there and where it comes from.");
         settings.MapGet("/{key}/history", HistoryAsync).RequirePermission(SettingsPermissions.Read).ScopedByRow().Produces<ListResponse<SettingChangeResponse>>(StatusCodes.Status200OK).WithName("GetSettingHistory").WithSummary("Every change of a setting at a place, newest first, with who and when.");
-        settings.MapPut("/{key}", SaveAsync).RequireSignedIn().Produces<SettingView>(StatusCodes.Status200OK).WithName("SaveSetting").WithSummary("Set a value for the tenant, a unit, or yourself; settings.values.manage at that place for the first two.");
+        settings.MapPut("/{key}", SaveAsync).RequireSignedIn().Validate<SaveSettingRequest>().Produces<SettingView>(StatusCodes.Status200OK).WithName("SaveSetting").WithSummary("Set a value for the tenant, a unit, or yourself; settings.values.manage at that place for the first two.");
         settings.MapDelete("/{key}", ResetAsync).RequireSignedIn().Produces<SettingView>(StatusCodes.Status200OK).WithName("ResetSetting").WithSummary("Remove the value at a place, so the inherited value applies; settings.values.manage at that place for a tenant or a unit.");
     }
 

@@ -1,9 +1,11 @@
 using System.Text.Json;
+using FluentValidation;
 using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
+using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Compliance.Data;
 using Iron.Kernel.Compliance.Services;
@@ -21,6 +23,18 @@ public sealed record SigningCredentialsRequest(string? LoginId, string? Password
     public SigningCredentials ToCredentials() => new(LoginId, Password, Code, RecoveryCode, Passkey);
 
     public static SigningCredentials Of(SigningCredentialsRequest? request) => request?.ToCredentials() ?? SigningCredentials.None;
+}
+
+public sealed class SigningCredentialsRequestValidator : AbstractValidator<SigningCredentialsRequest>
+{
+    public SigningCredentialsRequestValidator()
+    {
+        RuleFor(r => r.LoginId).MaximumLength(FieldLimits.LoginId);
+        RuleFor(r => r.Password).MaximumLength(FieldLimits.Password);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
+    }
 }
 
 public sealed record SigningPolicyResponse(bool Required, IReadOnlyList<string> Meanings, bool Reauthenticate)
@@ -86,6 +100,14 @@ public sealed record SignedSnapshotResponse(SignatureResponse Signature, string 
 
 public sealed record AttachSignatureRequest(string RecordType, Guid RecordId);
 
+public sealed class AttachSignatureRequestValidator : AbstractValidator<AttachSignatureRequest>
+{
+    public AttachSignatureRequestValidator()
+    {
+        RuleFor(r => r.RecordType).NotEmpty().MaximumLength(Signature.RecordTypeMaxLength);
+    }
+}
+
 public sealed record ReviewSearchRequest(string Label, string Link);
 
 public sealed record RecordAuditReviewRequest(
@@ -97,6 +119,29 @@ public sealed record RecordAuditReviewRequest(
     string? Notes,
     IReadOnlyList<ReviewSearchRequest>? Searches,
     SigningCredentialsRequest? Signature);
+
+/// <summary>The limits the review's own checks apply (AuditTrailReviews), declared so a request over them is refused first.</summary>
+public sealed class RecordAuditReviewRequestValidator : AbstractValidator<RecordAuditReviewRequest>
+{
+    /// <summary>The units or event types a review names; none means all.</summary>
+    public const int ChoicesMaxCount = 200;
+
+    public RecordAuditReviewRequestValidator()
+    {
+        RuleFor(r => r.UnitIds).MaximumCount(ChoicesMaxCount);
+        RuleFor(r => r.EventTypes).MaximumCount(ChoicesMaxCount);
+        RuleForEach(r => r.EventTypes).MaximumLength(100);
+        RuleFor(r => r.Outcome).NotEmpty().MaximumLength(20);
+        RuleFor(r => r.Notes).MaximumLength(AuditTrailReview.NotesMaxLength);
+        RuleFor(r => r.Searches).MaximumCount(AuditTrailReviews.MaxSearches);
+        RuleForEach(r => r.Searches).ChildRules(search =>
+        {
+            search.RuleFor(s => s.Label).MaximumLength(200);
+            search.RuleFor(s => s.Link).MaximumLength(2000);
+        });
+        RuleFor(r => r.Signature!).SetValidator(new SigningCredentialsRequestValidator());
+    }
+}
 
 public sealed record AuditReviewResponse(
     Guid Id,
@@ -186,13 +231,13 @@ internal static class ComplianceEndpoints
         signatures.MapGet("/challenge", ChallengeAsync).RequireSignedIn().Produces<SignerChallengeResponse>(StatusCodes.Status200OK).WithName("GetSigningChallenge").WithSummary("What your next signature of a document type asks for: the login identifier at the first of a session, the password, the second factor, or a fresh company sign-in.");
         signatures.MapGet("/", ForRecordAsync).RequireSignedIn().Produces<SignaturesResponse>(StatusCodes.Status200OK).WithName("ListRecordSignatures").WithSummary("A record's signatures, oldest first, each with its hash checked against its snapshot and whether the record has changed since.");
         signatures.MapGet("/{id:guid}/snapshot", SnapshotAsync).RequireSignedIn().Produces<SignedSnapshotResponse>(StatusCodes.Status200OK).WithName("GetSignedSnapshot").WithSummary("The snapshot a signature signed, its canonical text and its hash recomputed now.");
-        signatures.MapPost("/{id:guid}/attach", AttachAsync).RequireSignedIn().Produces<SignatureResponse>(StatusCodes.Status200OK).WithName("AttachSignature").WithSummary("Apply a signature to a record: refused, and recorded, unless the record's current snapshot has the signature's hash.");
+        signatures.MapPost("/{id:guid}/attach", AttachAsync).RequireSignedIn().Validate<AttachSignatureRequest>().Produces<SignatureResponse>(StatusCodes.Status200OK).WithName("AttachSignature").WithSummary("Apply a signature to a record: refused, and recorded, unless the record's current snapshot has the signature's hash.");
 
         var reviews = endpoints.MapApiGroup("audit-reviews");
         reviews.MapGet("/", ListReviewsAsync).RequirePermission(CompliancePermissions.AuditReviewsRead).Produces<ListResponse<AuditReviewRowResponse>>(StatusCodes.Status200OK).WithName("ListAuditReviews").WithSummary("The reviews of the audit trail, newest period first.");
         reviews.MapGet("/coverage", CoverageAsync).RequirePermission(CompliancePermissions.AuditReviewsRead).Produces<ReviewCoverageResponse>(StatusCodes.Status200OK).WithName("GetAuditReviewCoverage").WithSummary("The last months (?months=, 12 by default), each with the reviews that cover it, so a month nobody reviewed shows.");
         reviews.MapGet("/{id:guid}", GetReviewAsync).RequirePermission(CompliancePermissions.AuditReviewsRead).Produces<AuditReviewResponse>(StatusCodes.Status200OK).WithName("GetAuditReview").WithSummary("One review of the audit trail with its signature.");
-        reviews.MapPost("/", RecordReviewAsync).RequirePermission(CompliancePermissions.AuditReviewsRecord).Produces<AuditReviewResponse>(StatusCodes.Status201Created).WithName("RecordAuditReview").WithSummary("Record a review of the audit trail for a period and sign it with the meaning reviewed: your credentials as the signing rule asks.");
+        reviews.MapPost("/", RecordReviewAsync).RequirePermission(CompliancePermissions.AuditReviewsRecord).Validate<RecordAuditReviewRequest>().Produces<AuditReviewResponse>(StatusCodes.Status201Created).WithName("RecordAuditReview").WithSummary("Record a review of the audit trail for a period and sign it with the meaning reviewed: your credentials as the signing rule asks.");
 
         var packs = endpoints.MapApiGroup("evidence-packs");
         packs.MapPost("/", RequestPackAsync).RequirePermission(CompliancePermissions.EvidenceExport).RateLimited(RateLimitPolicies.Exports).Produces<EvidencePackResponse>(StatusCodes.Status202Accepted).WithName("RequestEvidencePack").WithSummary("Ask for an evidence pack for a period; the unit makes it within seconds. The request is audited with you as its requester.");

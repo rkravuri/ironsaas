@@ -64,6 +64,15 @@ public sealed record AuditRestoresResponse(IReadOnlyList<AuditRestoreResponse> R
 /// <summary>An operator's acceptance of a restore point: a ticket and a reason, both kept with the record and in both trails.</summary>
 public sealed record AuditRestoreAcceptance(string? Ticket, string? Reason);
 
+public sealed class AuditRestoreAcceptanceValidator : AbstractValidator<AuditRestoreAcceptance>
+{
+    public AuditRestoreAcceptanceValidator()
+    {
+        RuleFor(r => r.Ticket).MaximumLength(AuditRestoreRecord.TicketMaxLength);
+        RuleFor(r => r.Reason).MaximumLength(AuditRestoreRecord.ReasonMaxLength);
+    }
+}
+
 public sealed record AuditRestoreAcceptedResponse(AuditRestoreResponse Restore, Guid VerificationRequestId);
 
 /// <summary>Where a unit resumes: the latest anchors of its current segment, the segment, and every accepted restore.</summary>
@@ -148,7 +157,7 @@ internal static class AuditChainEndpoints
         tenants.MapGet("/{slug}/audit-anchors", ListAnchorsAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ListResponse<AuditAnchorResponse>>(StatusCodes.Status200OK).WithName("ListAuditAnchors").WithSummary("A tenant's audit anchors, newest first.");
         tenants.MapGet("/{slug}/audit-verifications", ListVerificationsAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ListResponse<AuditVerificationResponse>>(StatusCodes.Status200OK).WithName("ListAuditVerifications").WithSummary("A tenant's chain verifications, newest first.");
         tenants.MapPost("/{slug}/audit-verifications", RequestAsync).RequirePermission(TenancyPermissions.AuditChainsVerify).Produces<AuditVerificationRequestResponse>(StatusCodes.Status202Accepted).WithName("RequestAuditVerification").WithSummary("Ask the fleet to verify a tenant's audit chain now, or in full; it runs within a minute.");
-        tenants.MapPost("/{slug}/audit-restores", AcceptRestoreAsync).RequirePermission(TenancyPermissions.AuditRestoresAccept).RequireRecentAuthentication().Produces<AuditRestoreAcceptedResponse>(StatusCodes.Status201Created).WithName("AcceptAuditRestore").WithSummary("Accept the restore point a tenant's latest verification names, with a ticket and a reason and a fresh token: the chain continues as a new segment from it.");
+        tenants.MapPost("/{slug}/audit-restores", AcceptRestoreAsync).RequirePermission(TenancyPermissions.AuditRestoresAccept).RequireRecentAuthentication().Validate<AuditRestoreAcceptance>().Produces<AuditRestoreAcceptedResponse>(StatusCodes.Status201Created).WithName("AcceptAuditRestore").WithSummary("Accept the restore point a tenant's latest verification names, with a ticket and a reason and a fresh token: the chain continues as a new segment from it.");
         tenants.MapGet("/{slug}/audit-restores", ListRestoresAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<AuditRestoresResponse>(StatusCodes.Status200OK).WithName("ListAuditRestores").WithSummary("A tenant's accepted restores, oldest first: each segment, its restore point and the range lost.");
         tenants.MapGet("/{slug}/audit-verifications/requests/{id:guid}", RequestStatusAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<AuditVerificationRequestResponse>(StatusCodes.Status200OK).WithName("GetAuditVerificationRequest").WithSummary("A verification request, with its record once the fleet answered it.");
     }

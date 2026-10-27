@@ -32,6 +32,7 @@ internal static class ProtectionEndpoints
         reports.MapPost("/", ReportAsync)
             .AllowAnonymous()
             .RateLimited(RateLimitPolicies.CspReports)
+            .LimitBodySize(ProtectionOptions.CspReportOptions.LargestBody)
             .Accepts<JsonElement>("application/csp-report", "application/reports+json", "application/json")
             .Produces(StatusCodes.Status204NoContent)
             .WithName("ReportCspViolation")

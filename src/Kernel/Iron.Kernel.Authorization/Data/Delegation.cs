@@ -15,6 +15,7 @@ public sealed class Delegation : AuditedEntity, IOwnAccessRule, ITrackedChanges
 
     public const int ReasonMaxLength = 500;
     public const int DutyMaxLength = 100;
+    public const int DutiesMaxCount = 50;
 
     private Delegation()
     {

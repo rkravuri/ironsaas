@@ -48,8 +48,11 @@ public sealed class ProtectionOptions
         /// <summary>Reports written to the log in a minute; the counter counts every one.</summary>
         public int LogPerMinute { get; set; } = 20;
 
+        /// <summary>The largest body the endpoint declares to the server; the operator may set a smaller limit below it.</summary>
+        public const int LargestBody = 64 * 1024;
+
         /// <summary>The largest report read, in bytes.</summary>
-        public int MaxBytes { get; set; } = 64 * 1024;
+        public int MaxBytes { get; set; } = LargestBody;
     }
 }
 

@@ -83,8 +83,9 @@ public sealed class SecondFactorRequestValidator : AbstractValidator<SecondFacto
 {
     public SecondFactorRequestValidator()
     {
-        RuleFor(r => r.Code).MaximumLength(20);
-        RuleFor(r => r.RecoveryCode).MaximumLength(40);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
         RuleFor(r => r).Must(r => !r.Proof.IsEmpty).WithName("code").WithMessage("Type the code from your app or a recovery code, or use your passkey.");
     }
 }
@@ -103,7 +104,7 @@ public sealed class RegisterPasskeyRequestValidator : AbstractValidator<Register
     public RegisterPasskeyRequestValidator()
     {
         RuleFor(r => r.Name).MaximumLength(Factor.NameMaxLength);
-        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.");
+        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.").MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -119,9 +120,10 @@ public sealed class ReauthenticateRequestValidator : AbstractValidator<Reauthent
 {
     public ReauthenticateRequestValidator()
     {
-        RuleFor(r => r.Password).NotEmpty().MaximumLength(1024);
-        RuleFor(r => r.Code).MaximumLength(20);
-        RuleFor(r => r.RecoveryCode).MaximumLength(40);
+        RuleFor(r => r.Password).NotEmpty().MaximumLength(FieldLimits.Password);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -129,9 +131,10 @@ public sealed class SsoReauthenticationRequestValidator : AbstractValidator<SsoR
 {
     public SsoReauthenticationRequestValidator()
     {
-        RuleFor(r => r.ReturnTo).MaximumLength(500);
-        RuleFor(r => r.Code).MaximumLength(20);
-        RuleFor(r => r.RecoveryCode).MaximumLength(40);
+        RuleFor(r => r.ReturnTo).MaximumLength(FieldLimits.ReturnPath);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -139,7 +142,7 @@ public sealed class PasskeySignInRequestValidator : AbstractValidator<PasskeySig
 {
     public PasskeySignInRequestValidator()
     {
-        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.");
+        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.").MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 

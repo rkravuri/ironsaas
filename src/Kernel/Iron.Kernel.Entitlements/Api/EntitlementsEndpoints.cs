@@ -50,7 +50,7 @@ public sealed class AssignSeatRequestValidator : AbstractValidator<AssignSeatReq
 {
     public AssignSeatRequestValidator()
     {
-        RuleFor(r => r.Module).NotEmpty().Must(ModuleLicence.IsValidCode).WithMessage("Use the module's licence code.");
+        RuleFor(r => r.Module).NotEmpty().MaximumLength(64).Must(ModuleLicence.IsValidCode).WithMessage("Use the module's licence code.");
         RuleFor(r => r.PrincipalId).NotEmpty();
     }
 }

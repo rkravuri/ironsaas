@@ -92,6 +92,7 @@ public sealed class AuthorizationModule : IModule
         services.AddScoped<IValidator<DecideItemRequest>, DecideItemRequestValidator>();
         services.AddScoped<IValidator<ConfirmItemsRequest>, ConfirmItemsRequestValidator>();
         services.AddScoped<IValidator<CreateDelegationRequest>, CreateDelegationRequestValidator>();
+        services.AddScoped<IValidator<EndDelegationRequest>, EndDelegationRequestValidator>();
         services.AddScoped<IValidator<GrantRoleRequest>, GrantRoleRequestValidator>();
         services.AddScoped<IValidator<CreateRoleRequest>, CreateRoleRequestValidator>();
         services.AddScoped<IValidator<UpdateRoleRequest>, UpdateRoleRequestValidator>();

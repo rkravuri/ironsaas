@@ -1,3 +1,4 @@
+using FluentValidation;
 using Iron.Kernel.Api.Context;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Compliance.Api;
@@ -43,6 +44,8 @@ public sealed class ComplianceModule : IModule
         services.AddScoped<SignatureService>();
         services.AddScoped<ISignatures>(provider => provider.GetRequiredService<SignatureService>());
         services.AddScoped<AuditTrailReviews>();
+        services.AddScoped<IValidator<AttachSignatureRequest>, AttachSignatureRequestValidator>();
+        services.AddScoped<IValidator<RecordAuditReviewRequest>, RecordAuditReviewRequestValidator>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignableRecords, AuditTrailReviewRecords>());
 
         // Evidence packs (TF-067) and the validation pack of the installed version (TF-218 AC3), ADR-0052.
