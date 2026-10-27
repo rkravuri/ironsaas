@@ -15,7 +15,8 @@ REST conventions for every endpoint of every host (TF-100, TF-101, ADR-0009). No
 | `Iron.Kernel.Api.Responses` | `ApiResults` (problem, result mapping, list envelope) and `ListResponse`, `ListMeta`, `ListLinks` |
 | `Iron.Kernel.Api.Problems` | `ProblemFactory` (Error to problem details), `ApiErrors` (the API's own codes), `UnexpectedExceptionHandler` |
 | `Iron.Kernel.Api.Lists` | `ListQueryParser` (query string to `ListQuery` against a resource's `ListFields`) and `FieldShaper` (sparse fields) |
-| `Iron.Kernel.Api.Validation` | `Validate<TRequest>()` endpoint filter on FluentValidation and `FieldErrorMapper` |
+| `Iron.Kernel.Api.Validation` | `Validate<TRequest>()` endpoint filter on FluentValidation and `FieldErrorMapper`; `RequestLimitCheck`, the start-up check that every request field has a declared limit, and the rules it reads besides FluentValidation's lengths: `MaximumCount(n)` for a list, `MaximumJsonSize(bytes)` for a free JSON value; `FieldLimits`, the limits of fields many modules share; `QueryLimitMiddleware`, the query's limits (TF-071 AC1, ADR-0053) |
+| `Iron.Kernel.Api.Http` | `ClientAddress` (the caller's address behind the ingress), `RateLimited(policy)` (the rate limits an endpoint is under besides the API's own, which the Protection module counts) and `LimitBodySize(bytes)` for a body the handler reads itself (ADR-0053) |
 | `Iron.Kernel.Api.OpenApi` | `AddIronOpenApi(title)` and `MapIronOpenApi()`: OpenAPI document and Scalar browser, Development only |
 
 The conventions in one view:
@@ -26,6 +27,8 @@ The conventions in one view:
 - Errors are RFC 9457 problem details with `type` (`urn:iron:error:<code>`), `title`, `status`, `detail`, `instance`, and the extensions `error_code`, `correlation_id` and `errors` (field, code, message). `ErrorKind` maps to the status: Validation 400, Unauthorized 401, Forbidden 403, NotFound 404, Conflict 409, Unexpected 500.
 - Unhandled exceptions become a 500 problem with the correlation id and no internals; the exception goes to the log with the same id.
 - Request bodies are validated by a FluentValidation validator registered in the module; `.Validate<TRequest>()` runs it before the handler.
+- Every request field has a declared limit (TF-071 AC1, ADR-0053). At start the host reads each endpoint's body through its validator: a string needs a maximum length, a list `MaximumCount` and its items their limits, a free JSON value `MaximumJsonSize`, an object a validator of its own (`SetValidator` or `ChildRules`). Numbers, dates, identifiers, flags and enumerations are limited by their types; a body of only those needs no validator. A handler that reads its body itself declares `LimitBodySize`. A host with a field without a limit does not start, and the message names the endpoint and the field; the host tests start every host, so the build fails. The query is limited for every request: 50 parameters, 2,000 characters each. A request over any limit is a 400 `api.validation.failed` whose `errors` name the field (`maximum_length`, `maximum_count`).
+- A rate limit's refusal is a 429 with `Retry-After`, `error_code` `protection.rate_limited` and `retry_after_seconds` (TF-072, ADR-0053).
 
 An endpoint, as a module writes it:
 

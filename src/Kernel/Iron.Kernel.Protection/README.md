@@ -16,7 +16,7 @@ Hosts add the module and call `UseIronProtection()` after `UseIronIdentity()`: t
 
 | Limit | Default | Per | Bounds by default | Endpoints |
 |---|---|---|---|---|
-| `login` | 10 a minute | address | 3 to 60 | `POST /auth/login` (the "Use your company login" answer included), `POST /connect/token` |
+| `login` | 10 a minute | address | 3 to 60 | `POST /auth/login` (the "Use your company login" answer included), `POST /auth/passkey`, `POST /connect/token` |
 | `recovery` | 5 an hour | account (the route's person or tenant), else address | 1 to 20 | `POST /api/v1/users/{id}/recovery-link`, `POST /api/v1/tenants/{slug}/administrator-recovery`, `POST /auth/recovery` |
 | `api` | 600 a minute | principal, else address | 60 to 6000 | every path under `/api`, `/auth` and `/connect` |
 | `exports` | 20 an hour | principal | 1 to 200 | audit exports, role export, evidence packs, the validation pack's download |

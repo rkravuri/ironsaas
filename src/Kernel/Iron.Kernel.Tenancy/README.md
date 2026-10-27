@@ -91,3 +91,7 @@ The control plane keeps every tenant's audit anchors and the fleet's verificatio
 Configuration (`Tenancy` section): `BaseDomain` (`localhost`; a tenant without hostnames gets `<slug>.<BaseDomain>`), `DefaultRegion` (`local`), `DefaultPlan` (`standard`).
 
 Model change: edit the entity, then `make ef-add MODULE=Tenancy NAME=<WhatChanged>` and commit `Data/Migrations`.
+
+## The control plane's own role and chain (ADR-0053)
+
+The control plane runs with `control_app`, which its migrations, run as `control_owner` with `Secrets__Path=control-migrate`, grant only what it needs: append-only on the audit tables, no schema change anywhere. The fleet's `prepare-control` makes the roles and the secrets (Fleet's README). The control plane's own chain is sealed in its API and anchored in object storage it may only add to; the fleet verifies it daily with `control_audit` and records the result in `audit_verifications` under `control`, so `make audit-chain TENANT=control` lists it beside a tenant's, and a run that does not pass raises the same alert. The administrator recovery (`POST /api/v1/tenants/{slug}/administrator-recovery`) is under the recovery limit per tenant (TF-072, ADR-0053).
