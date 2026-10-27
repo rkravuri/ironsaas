@@ -386,8 +386,24 @@ export const ReauthenticationSchema = z.object({
 });
 export type Reauthentication = z.infer<typeof ReauthenticationSchema>;
 
-export const signIn = (loginId: string, password: string) =>
-  request("/auth/login", { method: "POST", body: { login_id: loginId, password }, schema: SignInAnswerSchema });
+/** A password sign-in; after repeated failures it carries the answer to the login's challenge (TF-072 AC4, ADR-0053). */
+export const signIn = (loginId: string, password: string, challenge?: string) =>
+  request("/auth/login", {
+    method: "POST",
+    body: { login_id: loginId, password, ...(challenge ? { challenge } : {}) },
+    schema: SignInAnswerSchema,
+  });
+
+/** A proof-of-work challenge, which the shell solves itself; no other host is asked (TF-072 AC4, ADR-0053). */
+export const LoginChallengeSchema = z.object({
+  algorithm: z.string(),
+  challenge: z.string(),
+  max_number: z.number(),
+  salt: z.string(),
+  signature: z.string(),
+});
+
+export const fetchLoginChallenge = () => request("/auth/challenge", { schema: LoginChallengeSchema });
 
 export const fetchSignInOptions = (signal?: AbortSignal) =>
   request("/auth/sign-in-options", {

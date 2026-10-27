@@ -1,4 +1,5 @@
 import { z } from "zod";
+import i18n from "@/i18n";
 
 /** One field of a validation problem, as ProblemFactory writes it: the snake_case JSON path, a short code, the message. */
 export const FieldProblemSchema = z.object({
@@ -270,7 +271,7 @@ async function send<T>(path: string, options: RequestOptions<T>): Promise<T> {
   }
 
   if (!response.ok) {
-    const problem = await readProblem(response);
+    const problem = rateLimited(response, await readProblem(response));
     const error = new ApiError(response.status, problem, correlationId);
     if (error.isUnauthenticated) {
       for (const listener of unauthenticatedListeners) {
@@ -308,6 +309,29 @@ async function send<T>(path: string, options: RequestOptions<T>): Promise<T> {
 
   const json: unknown = await response.json();
   return options.schema ? options.schema.parse(json) : (json as T);
+}
+
+/** The rate-limited code the API answers 429 with (TF-072 AC1, ADR-0053). */
+export const rateLimitedCode = "protection.rate_limited";
+
+/**
+ * A refusal by a rate limit says, in the catalogue's words, how long to wait (TF-072 AC1, ADR-0053): the problem's
+ * seconds, else the Retry-After header's. Every view that shows an error's message shows these words.
+ */
+function rateLimited(response: Response, problem: Problem): Problem {
+  if (response.status !== 429) {
+    return problem;
+  }
+  const header = Number.parseInt(response.headers.get("Retry-After") ?? "", 10);
+  const seconds = problem.retry_after_seconds ?? (Number.isNaN(header) ? 60 : header);
+  return { ...problem, retry_after_seconds: seconds, detail: waitWords(seconds) };
+}
+
+/** "Wait 42 seconds" under two minutes, else whole minutes, rounded up. */
+export function waitWords(seconds: number): string {
+  return seconds < 120
+    ? i18n.t("errors.rateLimited.seconds", { count: Math.max(1, Math.ceil(seconds)) })
+    : i18n.t("errors.rateLimited.minutes", { count: Math.ceil(seconds / 60) });
 }
 
 async function readProblem(response: Response): Promise<Problem> {

@@ -45,6 +45,14 @@ const areaListWords = (value: unknown, t: TFunction): string => {
   return areas.length === 0 ? t("settings.noAreas") : areas.map((area) => areaWords(area, t)).join(", ");
 };
 
+/** The origins allowed to call the API from a browser (TF-070 AC2, ADR-0053): a list, edited one origin at a time. */
+export const originListKey = "protection.cors.allowed_origins";
+
+const originListWords = (value: unknown, t: TFunction): string => {
+  const origins = Array.isArray(value) ? value.filter((origin): origin is string => typeof origin === "string") : [];
+  return origins.length === 0 ? t("settings.noOrigins") : origins.join(", ");
+};
+
 /** A value in words: an amount with its unit, a choice by its word, on or off, a path, or the JSON as it is. */
 export function displayValue(setting: SettingView, value: unknown, t: TFunction): string {
   if (value === null || value === undefined) {
@@ -55,6 +63,9 @@ export function displayValue(setting: SettingView, value: unknown, t: TFunction)
   }
   if (areaListKeys.includes(setting.key)) {
     return areaListWords(value, t);
+  }
+  if (setting.key === originListKey) {
+    return originListWords(value, t);
   }
   switch (setting.type) {
     case "number":

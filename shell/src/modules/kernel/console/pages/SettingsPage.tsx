@@ -14,6 +14,7 @@ import {
   Select,
   Stack,
   Switch,
+  TagsInput,
   Text,
   TextInput,
   Textarea,
@@ -35,6 +36,7 @@ import { areaWords } from "./change-words";
 import {
   areaListKeys,
   displayValue,
+  originListKey,
   settingName,
   settingSlug as slug,
   signingPoliciesKey,
@@ -346,9 +348,12 @@ const isJson = (text: string) => {
 /** The MFA policy's roles (ADR-0047): a list of role codes, chosen from the tenant's roles rather than typed as JSON. */
 const roleListKey = "identity.mfa.roles";
 
-/** The form's value for the setting's type: JSON as text, a role list as its codes, everything else as it is. */
+/** The settings edited as a list of words rather than as JSON: role codes, four-eyes areas, allowed origins. */
+const isListSetting = (key: string) => key === roleListKey || key === originListKey || areaListKeys.includes(key);
+
+/** The form's value for the setting's type: JSON as text, a list as its words, everything else as it is. */
 const initialValue = (setting: SettingView): unknown =>
-  setting.key === roleListKey || areaListKeys.includes(setting.key)
+  isListSetting(setting.key)
     ? (Array.isArray(setting.value) ? setting.value : []).filter((code): code is string => typeof code === "string")
     : setting.key === signingPoliciesKey
       ? typeof setting.value === "object" && setting.value !== null && !Array.isArray(setting.value)
@@ -359,7 +364,7 @@ const initialValue = (setting: SettingView): unknown =>
         : (setting.value ?? (setting.type === "boolean" ? false : ""));
 
 function editSchema(setting: SettingView, t: TFunction): z.ZodType<EditValues> {
-  if (setting.key === roleListKey || areaListKeys.includes(setting.key)) {
+  if (isListSetting(setting.key)) {
     return z.object({ value: z.array(z.string()) });
   }
   if (setting.key === signingPoliciesKey) {
@@ -437,6 +442,19 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
           searchable
           clearable
           nothingFoundMessage={t("settings.edit.rolesNone")}
+          data-autofocus
+          {...form.getInputProps("value")}
+        />
+      );
+    }
+    if (setting.key === originListKey) {
+      // The server's rule checks each origin and comes back on the field in words (TF-057 AC2).
+      return (
+        <TagsInput
+          label={t("settings.edit.origins")}
+          description={t("settings.edit.originsHint")}
+          clearable
+          splitChars={[",", " "]}
           data-autofocus
           {...form.getInputProps("value")}
         />
@@ -520,7 +538,7 @@ function EditSettingForm({ setting, place, placeLabel, onClose, onSaved }: EditP
       secondary={{ label: t("settings.cancel"), onClick: onClose }}
       onSubmit={async (values) => {
         const value =
-          roleList || areaList || setting.key === signingPoliciesKey
+          isListSetting(setting.key) || setting.key === signingPoliciesKey
             ? values.value
             : setting.type === "json"
               ? (JSON.parse(String(values.value)) as unknown)

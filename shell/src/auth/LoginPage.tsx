@@ -6,9 +6,11 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Container,
   Divider,
   Group,
+  Loader,
   Paper,
   PasswordInput,
   Stack,
@@ -37,6 +39,7 @@ import {
   type SsoProviderButton,
 } from "@/api/identity";
 import type { RecoveryState } from "./RecoveryPage";
+import { proveNotAProgram } from "./challenge";
 import { Welcome } from "@/design/illustrations";
 import { TenantMark } from "@/design/patterns";
 import { LoadingState } from "@/components/panels";
@@ -74,6 +77,12 @@ type Stage =
   | { kind: "enrolment"; step: SignInStep }
   | { kind: "codes"; answer: SignInAnswer; codes: readonly string[] };
 
+/** The login's challenge (TF-072 AC4, ADR-0053): absent until the API asks for it; each answer works once. */
+type Check =
+  { kind: "none" } | { kind: "needed" } | { kind: "solving" } | { kind: "solved"; answer: string } | { kind: "failed" };
+
+const challengeCodes = new Set(["identity.login.challenge_required", "identity.login.challenge_invalid"]);
+
 const looksLikeEmail = (value: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim());
 
 /**
@@ -103,6 +112,7 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
   const [companyLogin, setCompanyLogin] = useState<SsoProviderButton | undefined>();
   const [submitting, setSubmitting] = useState<"password" | "passkey" | "provider" | undefined>();
   const [signedOutThere, setSignedOutThere] = useState<"idle" | "leaving" | "nothing">("idle");
+  const [check, setCheck] = useState<Check>({ kind: "none" });
   const options = useQuery({
     queryKey: ["auth", "sign-in-options"],
     queryFn: ({ signal }) => fetchSignInOptions(signal),
@@ -185,6 +195,24 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
       refused(error);
       return;
     }
+    // After repeated failures the API asks for the check first, and it refuses an answer that expired or was used.
+    if (error instanceof ApiError && challengeCodes.has(error.errorCode ?? "")) {
+      setCheck({ kind: "needed" });
+      setProblem({
+        message: t(
+          error.errorCode === "identity.login.challenge_required"
+            ? "login.challenge.required"
+            : "login.challenge.invalid",
+        ),
+        correlationId: error.correlationId,
+      });
+      return;
+    }
+    // A rate limit's refusal says how long to wait, in the catalogue's words (TF-072 AC1).
+    if (error instanceof ApiError && error.status === 429) {
+      setProblem({ message: error.message, correlationId: error.correlationId });
+      return;
+    }
     if (error instanceof ApiError && error.errorCode === "identity.login.use_company_login") {
       setCompanyLogin(error.provider);
       setProblem({ message: t("login.useCompanyLogin"), correlationId: error.correlationId });
@@ -224,10 +252,19 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
         form.setFieldError("password", providers.length > 0 ? t("login.passwordOrCompany") : t("login.required"));
         return;
       }
+      if (check.kind !== "none" && check.kind !== "solved") {
+        setProblem({ message: t("login.challenge.mustTick"), correlationId: undefined });
+        return;
+      }
+      const challenge = check.kind === "solved" ? check.answer : undefined;
       let answer: SignInAnswer;
       try {
-        answer = await signIn(values.loginId.trim(), values.password);
+        answer = await signIn(values.loginId.trim(), values.password, challenge);
       } catch (error) {
+        if (challenge !== undefined) {
+          // An answer works once: the next attempt needs the box ticked again.
+          setCheck({ kind: "needed" });
+        }
         passwordRefused(error);
         return;
       }
@@ -238,6 +275,20 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
       setSubmitting((current) => (current === "provider" ? current : undefined));
     }
   });
+
+  /** Ticking the box fetches a challenge and solves it in this browser; no other site is asked (ADR-0053). */
+  const tick = async () => {
+    setCheck({ kind: "solving" });
+    setProblem(undefined);
+    try {
+      setCheck({ kind: "solved", answer: await proveNotAProgram() });
+    } catch (error) {
+      setCheck({ kind: "failed" });
+      if (error instanceof ApiError) {
+        setProblem({ message: error.message, correlationId: error.correlationId });
+      }
+    }
+  };
 
   const withPasskey = async () => {
     setSubmitting("passkey");
@@ -402,6 +453,33 @@ export function LoginPage({ autoFocus = true, callback = false }: LoginPageProps
                   required={providers.length === 0}
                   {...form.getInputProps("password")}
                 />
+                {check.kind !== "none" && (
+                  <Paper withBorder p="sm" data-login-challenge>
+                    <Stack gap={6}>
+                      <Checkbox
+                        label={t("login.challenge.label")}
+                        description={t("login.challenge.description")}
+                        checked={check.kind === "solved"}
+                        disabled={check.kind === "solving" || check.kind === "solved"}
+                        onChange={(event) => {
+                          if (event.currentTarget.checked) {
+                            void tick();
+                          }
+                        }}
+                      />
+                      <Group gap="xs" role="status" aria-live="polite" mih={20}>
+                        {check.kind === "solving" && (
+                          <>
+                            <Loader size="xs" aria-hidden="true" />
+                            <Text size="sm">{t("login.challenge.checking")}</Text>
+                          </>
+                        )}
+                        {check.kind === "solved" && <Text size="sm">{t("login.challenge.checked")}</Text>}
+                        {check.kind === "failed" && <Text size="sm">{t("login.challenge.failed")}</Text>}
+                      </Group>
+                    </Stack>
+                  </Paper>
+                )}
                 {problem && <ProblemAlert problem={problem} />}
                 {companyLogin && (
                   <Button

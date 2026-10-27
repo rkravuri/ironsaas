@@ -330,6 +330,60 @@ describe("the console's settings page (TF-058, ADR-0036)", () => {
       value: ["buyer", "tenant-administrator"],
     });
   });
+  it("lists the allowed origins in words, edits them one origin at a time and shows the rate limits with their units [TF-070 AC2, TF-072 AC3, ADR-0053]", async () => {
+    const user = userEvent.setup();
+    const origins = view("protection.cors.allowed_origins", "protection", {
+      type: "json",
+      requirement: "A list of at most 20 origins, each a scheme and a host with an optional port.",
+      minimum: null,
+      maximum: null,
+      whole_number: false,
+      default: [],
+      value: [],
+    });
+    const login = view("protection.limits.login_per_minute", "protection", {
+      requirement: "A whole number within the bounds your platform operator set, by default from 3 to 60 a minute.",
+      minimum: null,
+      maximum: null,
+      default: 10,
+      value: 10,
+    });
+    const { calls } = open(administrator, {
+      "GET /api/v1/settings?scope=tenant": () => json({ ...tenantList, data: [origins, login] }),
+      "PUT /api/v1/settings/protection.cors.allowed_origins": () =>
+        json({ ...origins, value: ["https://portal.example.com"] }),
+    });
+
+    expect(
+      (await row("Other sites allowed to call the API from a browser")).getAllByText(
+        /None: only this organisation's own pages/,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      (await row("Sign-in attempts from one address")).getAllByText("10 attempts a minute").length,
+    ).toBeGreaterThan(0);
+
+    const setting = await row("Other sites allowed to call the API from a browser");
+    await user.click(
+      setting.getByRole("button", { name: "Change: Other sites allowed to call the API from a browser" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Change: Other sites allowed to call the API from a browser",
+    });
+    await user.type(within(dialog).getByLabelText(/^Origins/), "https://portal.example.com{Enter}");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(calls.some((call) => call.key === "PUT /api/v1/settings/protection.cors.allowed_origins")).toBe(true),
+    );
+    const sent = calls.find((call) => call.key === "PUT /api/v1/settings/protection.cors.allowed_origins");
+    expect(JSON.parse(sent?.init?.body as string)).toEqual({
+      scope: "tenant",
+      unit_id: null,
+      value: ["https://portal.example.com"],
+    });
+  });
+
   it("sets the signing policy per document type, an always-signed type fixed, and saves it as one value [TF-063 AC1, ADR-0051]", async () => {
     const user = userEvent.setup();
     const policies = view("compliance.signing.policies", "compliance", {
