@@ -165,7 +165,11 @@ for (const scheme of schemes) {
     await expect(dialog).toContainText("Type an origin, such as https://portal.example.com, and press Enter.");
     await page.screenshot({ path: `test-results/a11y/settings-origins-${scheme}.png` });
     await expectNoViolation(page);
+    // Keyboard only: the first Escape is the tags field's, as a combobox's is; the second closes the dialog, and focus
+    // goes back to its button.
+    await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
+    await expect(change).toBeFocused();
   });
 }
