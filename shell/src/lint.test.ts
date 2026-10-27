@@ -189,6 +189,36 @@ describe("the lint rules", () => {
   });
 
   /** What a test proves (ADR-0044): a Vitest or Playwright test's title ends with the criteria or decisions it proves. */
+  describe("the inner HTML rule", () => {
+    const innerHtmlRule = "iron/inner-html";
+    const source = `${[
+      'export const a = <div dangerouslySetInnerHTML={{ __html: "<b>x</b>" }} />;',
+      'export const b = { dangerouslySetInnerHTML: { __html: "x" } };',
+      'export const c = (e: HTMLElement) => { e.innerHTML = "<b>x</b>"; };',
+      'export const d = (e: HTMLElement) => { e["outerHTML"] = "x"; };',
+      'export const f = (e: HTMLElement) => e.insertAdjacentHTML("beforeend", "x");',
+      'export const g = () => document.write("x");',
+      'export const h = <div>{"<b>shown as text</b>"}</div>;',
+      'export const i = (e: HTMLElement) => { e.textContent = "<b>x</b>"; };',
+    ].join("\n")}\n`;
+
+    it("refuses every way of putting HTML into a page and lets text be text [TF-071 AC5, ADR-0053]", async () => {
+      const eslint = new ESLint();
+
+      const [inPage] = await eslint.lintText(source, { filePath: pagePath });
+
+      expect(findings(inPage, innerHtmlRule).map((message) => message.line)).toEqual([1, 2, 3, 4, 5, 6]);
+    }, 60_000);
+
+    it("allows HTML in the one rich-text component [TF-071 AC5, ADR-0053]", async () => {
+      const eslint = new ESLint();
+
+      const [inComponent] = await eslint.lintText(source, { filePath: "src/components/rich-text/RichTextView.tsx" });
+
+      expect(findings(inComponent, innerHtmlRule)).toEqual([]);
+    }, 60_000);
+  });
+
   describe("the test rule", () => {
     const testRule = "iron/test-proves";
     const verify = (lines: string[]): Linter.LintMessage[] =>
