@@ -1,4 +1,5 @@
 using Iron.Kernel.Api.Permissions;
+using Iron.Kernel.Api.Problems;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
 using Iron.Kernel.Files.Contracts;
@@ -28,6 +29,9 @@ internal static class FilesEndpoints
 {
     public const string ChecksumHeader = "X-Checksum-SHA256";
 
+    /// <summary>The form's record type, as its column holds it (TF-071 AC1); the file's own limits are the storage options'.</summary>
+    private const int RecordTypeMaxLength = 100;
+
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var files = endpoints.MapApiGroup("files");
@@ -52,6 +56,11 @@ internal static class FilesEndpoints
         }
 
         var recordType = form["record_type"].ToString();
+        if (recordType.Length > RecordTypeMaxLength)
+        {
+            return ApiResults.Problem(Error.Validation(ApiErrors.Validation, "The request is not valid.", new FieldError("record_type", "maximum_length", $"'record_type' must be {RecordTypeMaxLength} characters or fewer.")), http);
+        }
+
         Guid? recordId = Guid.TryParse(form["record_id"].ToString(), out var parsedRecordId) ? parsedRecordId : null;
         await using var content = upload.OpenReadStream();
         var result = await service.UploadAsync(upload.FileName, upload.ContentType, upload.Length, content, string.IsNullOrWhiteSpace(recordType) ? null : recordType, recordId, cancellationToken);
