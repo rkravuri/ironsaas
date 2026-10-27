@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Security;
 
-/// <summary>Secure by default (P5, TF-070): headers on every response, hardened cookies, cross-origin access only for configured origins.</summary>
+/// <summary>Secure by default (P5, TF-070): headers on every response and hardened cookies; cross-origin access is the Protection module's.</summary>
 public static class SecurityExtensions
 {
     public static IServiceCollection AddIronSecurity(this IServiceCollection services, IConfiguration configuration, Action<SecurityOptions>? configure = null)
@@ -26,32 +26,18 @@ public static class SecurityExtensions
             cookies.MinimumSameSitePolicy = SameSiteMode.Strict;
         });
 
-        if (options.Cors.AllowedOrigins.Length > 0)
-        {
-            services.AddCors(cors => cors.AddDefaultPolicy(policy => policy
-                .WithOrigins(options.Cors.AllowedOrigins)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials()
-                .WithExposedHeaders(CorrelationId.HeaderName)));
-        }
-
         return services;
     }
 
-    /// <summary>Headers, cookie policy and (when origins are configured) CORS. Call after UseIronApi and before the endpoints.</summary>
+    /// <summary>
+    /// Headers and the cookie policy. Call after UseIronApi and before the endpoints. Cross-origin access is the Protection
+    /// module's (UseIronProtection), which reads the operator's origins from these options and the tenant's from its settings.
+    /// </summary>
     public static IApplicationBuilder UseIronSecurity(this IApplicationBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);
-        var options = app.ApplicationServices.GetRequiredService<SecurityOptions>();
-
         app.UseMiddleware<SecurityHeadersMiddleware>();
         app.UseCookiePolicy();
-        if (options.Cors.AllowedOrigins.Length > 0)
-        {
-            app.UseCors();
-        }
-
         return app;
     }
 }

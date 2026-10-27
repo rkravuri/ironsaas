@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Protection module in a small host served in memory: the rate limits and their answer, the login's challenge, the CSP report endpoint and the tenant's origins. No database: settings, the principal, permissions and the audit trail stand in. -->
+  <PropertyGroup>
+    <IronLayer>Test</IronLayer>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Iron.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Testing/Iron.Testing.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Protection/Iron.Kernel.Protection.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Protection/Contracts/Iron.Kernel.Protection.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

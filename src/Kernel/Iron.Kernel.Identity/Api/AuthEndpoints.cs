@@ -1,4 +1,5 @@
 using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
@@ -11,6 +12,7 @@ using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
+using Iron.Kernel.Protection.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -19,7 +21,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Identity.Api;
 
-public sealed record LoginRequest(string LoginId, string Password);
+/// <summary>
+/// A sign-in with a password. After repeated failures from the address or for the identifier it also carries a solved
+/// challenge (ALTCHA's payload, ADR-0053), which the shell solves when the answer asks for it.
+/// </summary>
+public sealed record LoginRequest(string LoginId, string Password, string? Challenge = null);
 
 /// <summary>The invitation's token comes in the body, from the link's fragment, never in a path a log or a trace keeps (ADR-0046).</summary>
 public sealed record AcceptInvitationRequest(string Token, string Password, string? DisplayName);
@@ -124,6 +130,7 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
     {
         RuleFor(r => r.LoginId).NotEmpty().MaximumLength(Principal.LoginIdMaxLength);
         RuleFor(r => r.Password).NotEmpty().MaximumLength(1024);
+        RuleFor(r => r.Challenge).MaximumLength(2000);
     }
 }
 
@@ -152,7 +159,7 @@ internal static class AuthEndpoints
     {
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
 
-        auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("Login").WithSummary("Sign in with login identifier and password.");
+        auth.MapPost("/login", LoginAsync).Validate<LoginRequest>().AllowAnonymous().RateLimited(RateLimitPolicies.Login).Produces<LoginResponse>(StatusCodes.Status200OK).WithName("Login").WithSummary("Sign in with login identifier and password; after repeated failures, with a solved challenge too (GET /auth/challenge).");
         auth.MapPost("/logout", LogoutAsync).RequireSignedIn().AllowDuringRequiredStep().Produces(StatusCodes.Status204NoContent).WithName("Logout").WithSummary("End the current session.");
         auth.MapPost("/invitations/accept", AcceptInvitationAsync).Validate<AcceptInvitationRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("AcceptInvitation").WithSummary("Set a password and activate an invited account; the token comes from the link's fragment.");
 
@@ -172,8 +179,40 @@ internal static class AuthEndpoints
         TermsEndpoints.Map(endpoints);
     }
 
-    private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken) =>
-        FactorEndpoints.SignIn(await login.LoginAsync(request.LoginId, request.Password, cancellationToken), http, options);
+    /// <summary>
+    /// A password sign-in (TF-011). After repeated failures from the address or for the identifier it needs a solved
+    /// challenge first, checked before any password is (TF-072, ADR-0053); the lockout of T2 applies on top. A failure is
+    /// counted for the challenge; the "Use your company login" answer is not, as it counts nothing (ADR-0048).
+    /// </summary>
+    private static async Task<IResult> LoginAsync(LoginRequest request, HttpContext http, LoginService login, IdentityOptions options, CancellationToken cancellationToken)
+    {
+        var challenges = http.RequestServices.GetService<ILoginChallenges>();
+        var address = ClientAddress.Of(http);
+        var loginId = Principal.NormaliseLoginId(request.LoginId);
+        if (challenges is not null && challenges.IsRequired(address, loginId) && !challenges.Verify(request.Challenge))
+        {
+            return ApiResults.Problem(
+                request.Challenge is null
+                    ? Error.Forbidden(IdentityErrors.ChallengeRequired, "After several failed sign-ins, show that a person is signing in: solve the check, then sign in again.")
+                    : Error.Forbidden(IdentityErrors.ChallengeInvalid, "The check did not pass or has expired. Solve a new one, then sign in again."),
+                http);
+        }
+
+        var result = await login.LoginAsync(request.LoginId, request.Password, cancellationToken);
+        if (challenges is not null)
+        {
+            if (result.IsSuccess)
+            {
+                challenges.Succeeded(loginId);
+            }
+            else if (result.Error.Code is IdentityErrors.LoginInvalid or IdentityErrors.LoginLocked)
+            {
+                challenges.Failed(address, loginId);
+            }
+        }
+
+        return FactorEndpoints.SignIn(result, http, options);
+    }
 
     private static async Task<IResult> LogoutAsync(HttpContext http, RequestPrincipal principal, SessionService sessions, IdentityOptions options, IAuditWriter audit, CancellationToken cancellationToken)
     {

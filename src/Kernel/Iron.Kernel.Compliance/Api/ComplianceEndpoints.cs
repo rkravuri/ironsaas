@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
@@ -194,7 +195,7 @@ internal static class ComplianceEndpoints
         reviews.MapPost("/", RecordReviewAsync).RequirePermission(CompliancePermissions.AuditReviewsRecord).Produces<AuditReviewResponse>(StatusCodes.Status201Created).WithName("RecordAuditReview").WithSummary("Record a review of the audit trail for a period and sign it with the meaning reviewed: your credentials as the signing rule asks.");
 
         var packs = endpoints.MapApiGroup("evidence-packs");
-        packs.MapPost("/", RequestPackAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<EvidencePackResponse>(StatusCodes.Status202Accepted).WithName("RequestEvidencePack").WithSummary("Ask for an evidence pack for a period; the unit makes it within seconds. The request is audited with you as its requester.");
+        packs.MapPost("/", RequestPackAsync).RequirePermission(CompliancePermissions.EvidenceExport).RateLimited(RateLimitPolicies.Exports).Produces<EvidencePackResponse>(StatusCodes.Status202Accepted).WithName("RequestEvidencePack").WithSummary("Ask for an evidence pack for a period; the unit makes it within seconds. The request is audited with you as its requester.");
         packs.MapGet("/", ListPacksAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<ListResponse<EvidencePackResponse>>(StatusCodes.Status200OK).WithName("ListEvidencePacks").WithSummary("The evidence packs made, newest first.");
         packs.MapGet("/{id:guid}", GetPackAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<EvidencePackResponse>(StatusCodes.Status200OK).WithName("GetEvidencePack").WithSummary("One evidence pack and where it stands.");
         packs.MapPost("/{id:guid}/links", LinkAsync).RequirePermission(CompliancePermissions.EvidenceExport).Produces<EvidenceLinkResponse>(StatusCodes.Status201Created).WithName("LinkEvidencePack").WithSummary("A link to download a ready pack: for you, once, within five minutes.");
@@ -202,7 +203,7 @@ internal static class ComplianceEndpoints
 
         var validation = endpoints.MapApiGroup("validation");
         validation.MapGet("/", ValidationAsync).RequirePermission(CompliancePermissions.ValidationRead).Produces<ValidationResponse>(StatusCodes.Status200OK).WithName("GetValidation").WithSummary("The version this tenant runs, and whether its validation pack is here.");
-        validation.MapGet("/pack", ValidationPackAsync).RequirePermission(CompliancePermissions.ValidationRead).Produces(StatusCodes.Status200OK, typeof(byte[]), "application/zip").WithName("DownloadValidationPack").WithSummary("Download the validation pack of the version this tenant runs; the download is audited.");
+        validation.MapGet("/pack", ValidationPackAsync).RequirePermission(CompliancePermissions.ValidationRead).RateLimited(RateLimitPolicies.Exports).Produces(StatusCodes.Status200OK, typeof(byte[]), "application/zip").WithName("DownloadValidationPack").WithSummary("Download the validation pack of the version this tenant runs; the download is audited.");
     }
 
     private static async Task<IResult> RequestPackAsync(RequestEvidencePackRequest request, HttpContext http, EvidencePacks packs, CancellationToken cancellationToken)

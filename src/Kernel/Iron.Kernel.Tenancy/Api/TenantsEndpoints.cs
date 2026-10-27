@@ -1,4 +1,5 @@
 using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
@@ -110,7 +111,7 @@ internal static class TenantsEndpoints
         tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
         tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
         tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
-        tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason, and to reset their second factors when asked; the link is handed over once, valid 15 minutes and once.");
+        tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).RateLimited(RateLimitPolicies.Recovery, "slug").Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason, and to reset their second factors when asked; the link is handed over once, valid 15 minutes and once.");
         tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ProvisioningResponse>(StatusCodes.Status200OK).WithName("GetProvisioning").WithSummary("The latest job of the tenant; once it completed, the invitation or recovery link it handed over, given once to the operator who asked and then deleted.");
     }
 

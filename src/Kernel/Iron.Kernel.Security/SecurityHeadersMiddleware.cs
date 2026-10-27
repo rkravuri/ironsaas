@@ -24,9 +24,12 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next, SecurityOpti
             if (!IsExempt(context.Request.Path))
             {
                 headers["Content-Security-Policy"] = options.Headers.ContentSecurityPolicy;
+                headers["Reporting-Endpoints"] = $"{SecurityOptions.HeaderSettings.ReportGroup}=\"{SecurityOptions.HeaderSettings.ReportPath}\"";
             }
 
-            if (options.Headers.EnableHsts && context.Request.IsHttps)
+            // On every response: behind the ingress the request reaches the host as http, and a browser ignores the header on
+            // a response that did not come over https (RFC 6797, section 7.2), so sending it always is safe (ADR-0053).
+            if (options.Headers.EnableHsts)
             {
                 headers["Strict-Transport-Security"] = HstsValue;
             }

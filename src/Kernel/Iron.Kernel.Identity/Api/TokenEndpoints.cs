@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
@@ -30,7 +31,7 @@ internal static class TokenEndpoints
 
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost(TokenPath, TokenAsync).AllowAnonymous().WithTags("oauth").Produces<TokenResponse>(StatusCodes.Status200OK).WithName("Token").WithSummary("Client credentials grant: an access token for a service account.");
+        endpoints.MapPost(TokenPath, TokenAsync).AllowAnonymous().RateLimited(RateLimitPolicies.Login).WithTags("oauth").Produces<TokenResponse>(StatusCodes.Status200OK).WithName("Token").WithSummary("Client credentials grant: an access token for a service account.");
         endpoints.MapGet(JwksPath, (SigningKeys keys) => TypedResults.Ok(keys.JsonWebKeySet())).AllowAnonymous().WithTags("oauth").Produces<JsonWebKeySetResponse>(StatusCodes.Status200OK).WithName("JsonWebKeySet").WithSummary("The public keys that sign access tokens.");
     }
 

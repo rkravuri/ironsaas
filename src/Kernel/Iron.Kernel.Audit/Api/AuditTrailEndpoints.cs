@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
@@ -109,7 +110,7 @@ internal static class AuditTrailEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var events = endpoints.MapApiGroup("audit-events");
-        events.MapPost("/exports", ExportAsync).RequirePermission(AuditPermissions.EventsRead).Produces<AuditExportResponse>(StatusCodes.Status201Created).WithName("ExportAuditEvents").WithSummary("Export a search of the audit trail to CSV, with its filters in the first lines; the export is itself audited.");
+        events.MapPost("/exports", ExportAsync).RequirePermission(AuditPermissions.EventsRead).RateLimited(RateLimitPolicies.Exports).Produces<AuditExportResponse>(StatusCodes.Status201Created).WithName("ExportAuditEvents").WithSummary("Export a search of the audit trail to CSV, with its filters in the first lines; the export is itself audited.");
         events.MapGet("/exports/{id:guid}/content", DownloadAsync).RequirePermission(AuditPermissions.EventsRead).Produces<string>(StatusCodes.Status200OK, "text/csv").WithName("DownloadAuditExport").WithSummary("Download an export of the audit trail.");
         events.MapGet("/archived", ArchivedAsync).RequirePermission(AuditPermissions.EventsRead).Produces<ArchivedEventsResponse>(StatusCodes.Status200OK).WithName("SearchArchivedAuditEvents").WithSummary("Search the archived audit trail by date range, actor, record, type and source, oldest first.");
 

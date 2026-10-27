@@ -1,4 +1,5 @@
 using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
@@ -69,7 +70,7 @@ internal static class PasswordEndpoints
     {
         var auth = endpoints.MapGroup("/auth").WithTags("auth");
         auth.MapGet("/password-policy", PolicyAsync).AllowAnonymous().Produces<PasswordPolicyResponse>(StatusCodes.Status200OK).WithName("PasswordPolicy").WithSummary("The tenant's password rules, for the forms that set a password.");
-        auth.MapPost("/recovery", RecoverAsync).Validate<RecoverPasswordRequest>().AllowAnonymous().Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("RecoverPassword").WithSummary("Set a new password with a recovery link: one use, 15 minutes; every session of the person ends.");
+        auth.MapPost("/recovery", RecoverAsync).Validate<RecoverPasswordRequest>().AllowAnonymous().RateLimited(RateLimitPolicies.Recovery).Produces<PrincipalResponse>(StatusCodes.Status200OK).WithName("RecoverPassword").WithSummary("Set a new password with a recovery link: one use, 15 minutes; every session of the person ends.");
 
         endpoints.MapPost("/api/v1/me/password", ChangeAsync).Validate<ChangePasswordRequest>().RequireSignedIn().ForbiddenDuringImpersonation().WithTags("me").Produces(StatusCodes.Status204NoContent).WithName("ChangePassword").WithSummary("Change your password with the current one; end your other sessions unless you say not to.");
         endpoints.MapGet("/api/v1/me/security-events", SecurityEventsAsync).RequireSignedIn().WithTags("me").Produces<ListResponse<SecurityEventResponse>>(StatusCodes.Status200OK).WithName("MySecurityEvents").WithSummary("Your security activity, newest first: password changes, recovery links, lockouts, deactivation.");

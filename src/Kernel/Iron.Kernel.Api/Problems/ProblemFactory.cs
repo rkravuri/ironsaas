@@ -30,6 +30,7 @@ public static class ProblemFactory
             ErrorKind.Conflict => StatusCodes.Status409Conflict,
             ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
             ErrorKind.Held => StatusCodes.Status202Accepted,
+            ErrorKind.TooManyRequests => StatusCodes.Status429TooManyRequests,
             _ => StatusCodes.Status500InternalServerError,
         };
     }
@@ -45,6 +46,7 @@ public static class ProblemFactory
             ErrorKind.Conflict => "The request conflicts with the current state.",
             ErrorKind.Unavailable => "This is stopped for now.",
             ErrorKind.Held => "The change waits for a second administrator's approval.",
+            ErrorKind.TooManyRequests => "Too many requests.",
             _ => "Something went wrong.",
         };
     }

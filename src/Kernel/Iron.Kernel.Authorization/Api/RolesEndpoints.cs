@@ -1,6 +1,7 @@
 using FluentValidation;
 using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Flags;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
@@ -102,7 +103,7 @@ internal static class RolesEndpoints
         var roles = endpoints.MapApiGroup("roles");
         roles.MapGet("/", ListAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().Produces<ListResponse<RoleResponse>>(StatusCodes.Status200OK).WithName("ListRoles").WithSummary("List the roles of this tenant.");
         // Export and import are an enterprise feature (ADR-0034): a tenant without it gets entitlements.feature_disabled.
-        roles.MapGet("/export", ExportAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().RequireFeature(AuthorizationFeatures.RoleTransfer.Code).Produces<RoleExport>(StatusCodes.Status200OK).WithName("ExportRoles").WithSummary("The tenant roles as a document another tenant can import.");
+        roles.MapGet("/export", ExportAsync).RequirePermission(AuthorizationPermissions.RolesRead).RateLimited(RateLimitPolicies.Exports).ScopedByRow().RequireFeature(AuthorizationFeatures.RoleTransfer.Code).Produces<RoleExport>(StatusCodes.Status200OK).WithName("ExportRoles").WithSummary("The tenant roles as a document another tenant can import.");
         // An import is a critical path: the kill switch kill.imports stops it (flags.killed, ADR-0035).
         roles.MapPost("/import", ImportAsync).RequirePermission(AuthorizationPermissions.RolesManage).RequireFeature(AuthorizationFeatures.RoleTransfer.Code).RequireFlagOff(KillSwitches.Imports.Key).Validate<ImportRolesRequest>().Produces<ImportDiff>(StatusCodes.Status200OK).WithName("ImportRoles").WithSummary("Compare a role export with this tenant's roles, and apply it unless it is a dry run.");
         roles.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().Produces<RoleResponse>(StatusCodes.Status200OK).WithName("GetRole").WithSummary("One role.");

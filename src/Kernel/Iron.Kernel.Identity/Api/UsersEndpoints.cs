@@ -1,4 +1,5 @@
 using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Problems;
@@ -141,7 +142,7 @@ internal static class UsersEndpoints
         users.MapGet("/{id:guid}", GetAsync).RequirePermission(IdentityPermissions.UsersRead).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("GetUser").WithSummary("One user or service account you may see.");
         users.MapPost("/", CreateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Validate<CreateUserRequest>().Produces<CreateUserResponse>(StatusCodes.Status201Created).WithName("CreateUser").WithSummary("Create a user in a unit and answer the invitation link.");
         users.MapPost("/{id:guid}/unlock", UnlockAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("UnlockUser").WithSummary("Lift the lock on a person's login after too many failed sign-ins.");
-        users.MapPost("/{id:guid}/recovery-link", RecoveryLinkAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<RecoveryLinkResponse>(StatusCodes.Status200OK).WithName("IssueRecoveryLink").WithSummary("Issue a recovery link for a person, shown once: one use, 15 minutes; it replaces any earlier link.");
+        users.MapPost("/{id:guid}/recovery-link", RecoveryLinkAsync).RequirePermission(IdentityPermissions.UsersManage).RateLimited(RateLimitPolicies.Recovery, "id").ScopedByRow().RequireRecentAuthentication().Produces<RecoveryLinkResponse>(StatusCodes.Status200OK).WithName("IssueRecoveryLink").WithSummary("Issue a recovery link for a person, shown once: one use, 15 minutes; it replaces any earlier link.");
         users.MapPost("/{id:guid}/factors/reset", ResetFactorsAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Validate<ResetFactorsRequest>().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("ResetFactors").WithSummary("Remove a person's second factors and recovery codes, with a reason, for someone whose permissions you hold; their sessions end.");
         users.MapPost("/{id:guid}/deactivate", DeactivateAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("DeactivateUser").WithSummary("Deactivate a person: they cannot sign in, their sessions end and their tokens are refused.");
         users.MapPut("/{id:guid}/sso-only", SetSsoOnlyAsync).RequirePermission(IdentityPermissions.UsersManage).ScopedByRow().RequireRecentAuthentication().Produces<UserRecordResponse>(StatusCodes.Status200OK).WithName("SetSsoOnly").WithSummary("Mark a person to sign in only through a single sign-on provider, or let them use a password again.");
