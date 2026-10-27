@@ -184,3 +184,7 @@ A module that declares a new event type an administrator causes marks it `.AsAdm
 ## Model change
 
 Edit the entity, then `make ef-add MODULE=Audit NAME=<WhatChanged>` and commit `Data/Migrations`. A change to the canonical form is a new version: keep every earlier version's code, so every hash made with it still verifies (`AuditCanonicalForm.Knows`).
+
+## The control plane's chain (ADR-0053)
+
+The control plane seals its own trail with the same `AuditSealer`, in its API: `AddAuditSealing(configuration, AuditAnchoring.OwnStore)`. Its anchors go through `IAuditAnchorSink` to `AuditAnchorKeeper`, which hands each new seal to the host's `IAuditAnchorStore` (Audit's contracts; the fleet's `BlobAuditAnchorStore`), outside its database; a unit's still go to the control plane through `AuditAnchorSender`. The control plane keeps no archive and prunes nothing.

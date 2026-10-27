@@ -100,8 +100,9 @@ public sealed class AuditSealingOptions
 }
 
 /// <summary>
-/// The unit worker's loop (ADR-0050): seal until nothing waits, then send the anchors the control plane has not taken.
-/// One worker per unit runs it; a second would wait on the chain's lock and find nothing.
+/// The sealing loop (ADR-0050, ADR-0053): seal until nothing waits, then send the anchors not sent yet, a unit's to the
+/// control plane and the control plane's to its anchor store. A second worker would wait on the chain's lock and find
+/// nothing.
 /// </summary>
 public sealed class AuditSealingWorker(IServiceScopeFactory scopes, AuditSealingOptions options, TimeProvider time, ILogger<AuditSealingWorker> logger) : BackgroundService
 {
@@ -119,9 +120,9 @@ public sealed class AuditSealingWorker(IServiceScopeFactory scopes, AuditSealing
                     logger.LogInformation("Sealed audit positions {First} to {Last}.", seal.FirstPosition, seal.LastPosition);
                 }
 
-                if (scope.ServiceProvider.GetService<AuditAnchorSender>() is { } sender)
+                if (scope.ServiceProvider.GetService<IAuditAnchorSink>() is { } sink)
                 {
-                    await sender.SendAsync(stoppingToken).ConfigureAwait(false);
+                    await sink.SendAsync(stoppingToken).ConfigureAwait(false);
                 }
             }
             catch (Exception exception) when (exception is not OperationCanceledException)

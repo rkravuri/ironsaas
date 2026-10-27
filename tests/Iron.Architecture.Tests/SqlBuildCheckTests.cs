@@ -27,8 +27,10 @@ public partial class SqlBuildCheckTests
         {
             private const string Constant = "select 1";
 
-            public static async Task RunAsync(DbContext context, NpgsqlConnection connection, string name, int id)
+            public static async Task RunAsync(DbContext context, NpgsqlConnection connection, NpgsqlDataSource source, string name, int id)
             {
+                await using var made = source.CreateCommand("select * from t where name = '" + name + "'"); // refused: a data source's command
+                await using var parameterised = source.CreateCommand("select * from t where name = @name"); // accepted: a parameter
                 await context.Database.ExecuteSqlRawAsync("delete from t where name = '" + name + "'"); // refused: concatenation
                 await context.Database.ExecuteSqlRawAsync($"delete from t where id = {id}"); // refused: interpolation into raw
                 context.Database.ExecuteSqlRaw(string.Format("delete from t where name = '{0}'", name)); // refused: formatting
@@ -113,6 +115,7 @@ public partial class SqlBuildCheckTests
             Assert.Contains("error IRON0010: The SQL text of ExecuteSqlRawAsync is built at run time", output, StringComparison.Ordinal);
             Assert.Contains("error IRON0010: The SQL text of new NpgsqlCommand is built at run time", output, StringComparison.Ordinal);
             Assert.Contains("error IRON0010: The SQL text of NpgsqlCommand.CommandText is built at run time", output, StringComparison.Ordinal);
+            Assert.Contains("error IRON0010: The SQL text of NpgsqlDataSource.CreateCommand is built at run time", output, StringComparison.Ordinal);
             Assert.Contains("error IRON0011: [SqlFromIdentifiers] on 'DropRoleAsync' gives no reason", output, StringComparison.Ordinal);
         }
         finally

@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -113,6 +113,8 @@ DEV_SECOND_OPERATOR_SECRET = dev-second-operator-secret-not-for-real-deployments
 CONTROL_URL ?= http://localhost:5200
 CONTROL_TENANT = Tenant__Id=control Tenant__Hostnames__0=localhost Tenant__Hostnames__1=control.localhost
 CONTROL_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=control
+# Migrations and seeds run as the control plane's owner role, whose connection only this secret holds (ADR-0053).
+CONTROL_MIGRATE_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=control-migrate
 FLEET_LAPTOP = Fleet__Units__Runtime=compose Fleet__Units__ComposeDirectory=$(CURDIR)/$(COMPOSE_DIR)/units Fleet__Units__IngressUrl=http://localhost Fleet__Units__ImageTag=$(TAG) \
 	Fleet__Database__UnitHost=postgres Fleet__Storage__UnitBlobEndpoint=http://blob:10000/$$BLOB_ACCOUNT_NAME Fleet__Secrets__UnitAddress=http://openbao:8200 Fleet__PollSeconds=3
 TAG ?= dev
@@ -157,16 +159,17 @@ seed: env ## Run the tenant API image command "seed" against the laptop database
 	Seed__ServiceAccounts__0__ClientId=smoke-client Seed__ServiceAccounts__0__Secret=$(DEV_SMOKE_SECRET) \
 	dotnet run --project src/Hosts/Iron.Host.Api -- seed
 
-secret-control: env ## Write the control plane's unit secret to OpenBao (control database, fleet admin connections, signing key)
+secret-control: env ## Write the control plane's secrets to OpenBao and give it its own database roles and anchors container (ADR-0053)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-control-secret.sh
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(CONTROL_TENANT) $(CONTROL_SECRETS) dotnet run --project src/Hosts/Iron.Host.Fleet -- prepare-control
 
 migrate-control: env ## Migrate the control plane database (created on first run); needs make secret-control
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(CONTROL_TENANT) $(CONTROL_SECRETS) dotnet run --project src/Hosts/Iron.Host.ControlPlane -- migrate
+	$(CONTROL_TENANT) $(CONTROL_MIGRATE_SECRETS) dotnet run --project src/Hosts/Iron.Host.ControlPlane -- migrate
 
 seed-control: env ## Seed the control plane: system roles, the operator service account and a second operator for break-glass
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(CONTROL_TENANT) $(CONTROL_SECRETS) \
+	$(CONTROL_TENANT) $(CONTROL_MIGRATE_SECRETS) \
 	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
 	Seed__ServiceAccounts__1__ClientId=smoke-reader Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) Seed__ServiceAccounts__1__Role=service-default Seed__ServiceAccounts__1__DisplayName="Smoke reader (denial case)" \
 	Seed__ServiceAccounts__2__ClientId=operator-two Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) Seed__ServiceAccounts__2__Role=tenant-administrator Seed__ServiceAccounts__2__DisplayName="Second local operator" \
@@ -229,6 +232,9 @@ accept-documents: ## Accept the current document versions as a tenant's stored t
 verify-audit: ## Ask the fleet to verify a tenant's audit chain now and print the record it keeps (TF-061, ADR-0050): make verify-audit TENANT=echo [FULL=1]
 	@test -n "$(TENANT)" || (echo 'usage: make verify-audit TENANT=echo [FULL=1]' && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) FULL=$(or $(FULL),0) $(COMPOSE_DIR)/scripts/audit-chain.sh verify $(TENANT)
+
+verify-control-audit: env ## Verify the control plane's own audit chain now with its read-only role, against its anchors outside its database, and record the result (ADR-0053): make verify-control-audit [FULL=1]
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps fleet verify-control-audit $(if $(filter 1,$(FULL)),full,)
 
 audit-accept-restore: ## Accept the restore point a tenant's latest verification names, with a ticket and a reason; the chain continues as a new segment (ADR-0050): make audit-accept-restore TENANT=echo TICKET=INC-1 REASON="..."
 	@test -n "$(TENANT)" && test -n "$(TICKET)" && test -n "$(REASON)" || (echo 'usage: make audit-accept-restore TENANT=echo TICKET=INC-1 REASON="why, for both audit trails"' && exit 1)
@@ -341,9 +347,11 @@ up-ci: env ## Start the slim platform plus the collector and Tempo (what the pip
 
 up-control: env ## Run the control plane API and the fleet worker as containers from the images, migrated and seeded first (make images first; secret with container hosts)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob $(COMPOSE_DIR)/scripts/write-control-secret.sh
-	@# As the pipeline does: a new image may bring a migration or a permission, and the API must not start without them.
-	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps control-api migrate
-	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps \
+	@# As the pipeline does: its own roles and anchors first (ADR-0053), then, as the owner, a new image's migrations and
+	@# permissions, which the API must not start without.
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps fleet prepare-control
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Path=control-migrate control-api migrate
+	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Path=control-migrate \
 	  -e Seed__ServiceAccounts__0__ClientId=operator -e Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) -e Seed__ServiceAccounts__0__Role=tenant-administrator -e "Seed__ServiceAccounts__0__DisplayName=Local operator" \
 	  -e Seed__ServiceAccounts__1__ClientId=smoke-reader -e Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) -e Seed__ServiceAccounts__1__Role=service-default -e "Seed__ServiceAccounts__1__DisplayName=Smoke reader (denial case)" \
 	  -e Seed__ServiceAccounts__2__ClientId=operator-two -e Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) -e Seed__ServiceAccounts__2__Role=tenant-administrator -e "Seed__ServiceAccounts__2__DisplayName=Second local operator" \

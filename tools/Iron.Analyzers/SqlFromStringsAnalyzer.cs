@@ -9,7 +9,8 @@ namespace Iron.Analyzers;
 /// <summary>
 /// SQL is never built from strings (TF-071 AC3, ADR-0053). The text handed to EF Core's raw SQL methods
 /// (<c>FromSqlRaw</c>, <c>ExecuteSqlRaw</c>, <c>ExecuteSqlRawAsync</c>, <c>SqlQueryRaw</c>), to a command's constructor
-/// (<c>NpgsqlCommand</c>, <c>NpgsqlBatchCommand</c>) or to a command's <c>CommandText</c> is a compile-time constant;
+/// (<c>NpgsqlCommand</c>, <c>NpgsqlBatchCommand</c>), to a data source's <c>CreateCommand</c> or to a command's
+/// <c>CommandText</c> is a compile-time constant;
 /// values go in as parameters, or through the interpolated forms (<c>FromSql</c>, <c>ExecuteSql</c>), which make them
 /// parameters. A method that must name roles or schemas, which PostgreSQL takes no parameters for, says why with
 /// <c>[SqlFromIdentifiers("...")]</c>, and a reviewer reads it.
@@ -57,6 +58,14 @@ public sealed class SqlFromStringsAnalyzer : DiagnosticAnalyzer
     {
         var invocation = (IInvocationOperation)context.Operation;
         var method = invocation.TargetMethod;
+        if (method.Name == "CreateCommand" && Derives(method.ContainingType, "System.Data.Common.DbDataSource"))
+        {
+            // A data source's command made with its text: NpgsqlDataSource.CreateCommand("...").
+            var text = invocation.Arguments.FirstOrDefault(argument => argument.Parameter?.Name == "commandText");
+            Check(context, text?.Value, $"{method.ContainingType.Name}.CreateCommand");
+            return;
+        }
+
         if (!RawMethods.Contains(method.Name) || !InNamespace(method.ContainingType, "Microsoft.EntityFrameworkCore"))
         {
             return;
@@ -142,18 +151,21 @@ public sealed class SqlFromStringsAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>A database command: a <c>DbCommand</c> or <c>DbBatchCommand</c>, or anything implementing <c>IDbCommand</c>.</summary>
-    private static bool IsCommand(INamedTypeSymbol type)
+    private static bool IsCommand(INamedTypeSymbol type) =>
+        Derives(type, "System.Data.Common.DbCommand") || Derives(type, "System.Data.Common.DbBatchCommand")
+        || type.AllInterfaces.Any(i => i.ToDisplayString() == "System.Data.IDbCommand");
+
+    private static bool Derives(INamedTypeSymbol? type, string baseName)
     {
         for (var current = type; current is not null; current = current.BaseType)
         {
-            var name = current.ToDisplayString();
-            if (name is "System.Data.Common.DbCommand" or "System.Data.Common.DbBatchCommand")
+            if (current.ToDisplayString() == baseName)
             {
                 return true;
             }
         }
 
-        return type.AllInterfaces.Any(i => i.ToDisplayString() == "System.Data.IDbCommand");
+        return false;
     }
 
     private static bool InNamespace(INamedTypeSymbol? type, string name)
