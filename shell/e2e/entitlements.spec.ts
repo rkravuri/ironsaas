@@ -53,6 +53,26 @@ async function exportAnswer(page: Page): Promise<string> {
   });
 }
 
+/**
+ * What the unit's API answers for an empty role import as a dry run, under the same feature as the export: polled in
+ * the export's place, since exports have a limit of their own (20 an hour per person, ADR-0053) that polling would spend.
+ */
+async function importAnswer(page: Page): Promise<string> {
+  return page.evaluate(async () => {
+    const response = await fetch("/api/v1/roles/import", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ dry_run: true, document: { format_version: 1, roles: [] } }),
+    });
+    if (response.ok) {
+      return "ok";
+    }
+    const problem = (await response.json()) as { error_code?: string };
+    return `${response.status} ${problem.error_code ?? ""}`;
+  });
+}
+
 test.describe("a plan changed in the control plane reaches the shell and the API within a minute", () => {
   // The worst case is two reads of thirty seconds in a row, twice, plus the sign-in.
   test.setTimeout(5 * minute);
@@ -78,8 +98,9 @@ test.describe("a plan changed in the control plane reaches the shell and the API
     await expect(importButton).toBeHidden();
     const hiddenAfter = Date.now() - toStandard;
     await expect
-      .poll(() => exportAnswer(page), { timeout: minute, intervals: [2_000] })
+      .poll(() => importAnswer(page), { timeout: minute, intervals: [2_000] })
       .toBe("403 entitlements.feature_disabled");
+    expect(await exportAnswer(page)).toBe("403 entitlements.feature_disabled");
     // The page stays, without the two actions: nothing else of the roles page needs the feature.
     await expect(page.getByRole("heading", { level: 2, name: "Roles" })).toBeVisible();
 
@@ -87,7 +108,8 @@ test.describe("a plan changed in the control plane reaches the shell and the API
     await expect(exportButton).toBeVisible({ timeout: minute });
     await expect(importButton).toBeVisible();
     const shownAfter = Date.now() - toEnterprise;
-    await expect.poll(() => exportAnswer(page), { timeout: minute, intervals: [2_000] }).toBe("ok");
+    await expect.poll(() => importAnswer(page), { timeout: minute, intervals: [2_000] }).toBe("ok");
+    expect(await exportAnswer(page)).toBe("ok");
 
     const latency = `hidden after ${Math.round(hiddenAfter / 1000)} s, shown again after ${Math.round(shownAfter / 1000)} s`;
     test.info().annotations.push({ type: "latency", description: latency });

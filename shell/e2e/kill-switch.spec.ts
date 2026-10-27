@@ -38,19 +38,25 @@ async function killImports(on: boolean): Promise<number> {
 }
 
 /**
- * What the unit's API answers for a role import, asked from the page with the browser's session cookie and its name
- * resolution: the tenant's own export as a dry run, so nothing changes when it is allowed.
+ * The tenant's roles as their export gives them, asked once from the page with the browser's session cookie and its name
+ * resolution: exports have a limit of their own (20 an hour per person, ADR-0053), which polling the export would spend.
  */
-async function importAnswer(page: Page): Promise<string> {
+async function exportRoles(page: Page): Promise<unknown> {
   return page.evaluate(async () => {
     const exported = await fetch("/api/v1/roles/export", {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
     });
     if (!exported.ok) {
-      return `export ${exported.status}`;
+      throw new Error(`The roles' export answered ${exported.status}.`);
     }
-    const document: unknown = await exported.json();
+    return (await exported.json()) as unknown;
+  });
+}
+
+/** What the unit's API answers for a role import of that export as a dry run, so nothing changes when it is allowed. */
+async function importAnswer(page: Page, document: unknown): Promise<string> {
+  return page.evaluate(async (document) => {
     const response = await fetch("/api/v1/roles/import", {
       method: "POST",
       credentials: "same-origin",
@@ -62,7 +68,7 @@ async function importAnswer(page: Page): Promise<string> {
     }
     const problem = (await response.json()) as { error_code?: string };
     return `${response.status} ${problem.error_code ?? ""}`;
-  });
+  }, document);
 }
 
 test.describe("the import kill switch reaches the shell and the API within a minute", () => {
@@ -84,13 +90,16 @@ test.describe("the import kill switch reaches the shell and the API within a min
     const banner = page.getByRole("status").filter({ hasText: "has stopped imports" });
     await expect(importButton).toBeVisible({ timeout: minute });
     await expect(banner).toHaveCount(0);
+    const roles = await exportRoles(page);
 
     const on = await killImports(true);
     await expect(banner).toBeVisible({ timeout: minute });
     await expect(banner).toContainText(`The operator's reason: ${reason}`);
     await expect(importButton).toBeHidden();
     const shownAfter = Date.now() - on;
-    await expect.poll(() => importAnswer(page), { timeout: minute, intervals: [2_000] }).toBe("503 flags.killed");
+    await expect
+      .poll(() => importAnswer(page, roles), { timeout: minute, intervals: [2_000] })
+      .toBe("503 flags.killed");
     const refusedAfter = Date.now() - on;
     // Everything else of the page stays: export and the list.
     await expect(page.getByRole("button", { name: "Export roles" })).toBeVisible();
@@ -101,7 +110,7 @@ test.describe("the import kill switch reaches the shell and the API within a min
     await expect(banner).toBeHidden({ timeout: minute });
     await expect(importButton).toBeVisible();
     const goneAfter = Date.now() - off;
-    await expect.poll(() => importAnswer(page), { timeout: minute, intervals: [2_000] }).toBe("ok");
+    await expect.poll(() => importAnswer(page, roles), { timeout: minute, intervals: [2_000] }).toBe("ok");
     const allowedAfter = Date.now() - off;
 
     const latency = `banner after ${Math.round(shownAfter / 1000)} s, refused after ${Math.round(refusedAfter / 1000)} s; off: banner gone after ${Math.round(goneAfter / 1000)} s, allowed after ${Math.round(allowedAfter / 1000)} s`;
