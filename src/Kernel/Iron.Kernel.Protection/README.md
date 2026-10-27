@@ -17,7 +17,7 @@ Hosts add the module and call `UseIronProtection()` after `UseIronIdentity()`: t
 | Limit | Default | Per | Bounds by default | Endpoints |
 |---|---|---|---|---|
 | `login` | 10 a minute | address | 3 to 60 | `POST /auth/login` (the "Use your company login" answer included), `POST /auth/passkey`, `POST /connect/token` |
-| `recovery` | 5 an hour | account (the route's person or tenant), else address | 1 to 20 | `POST /api/v1/users/{id}/recovery-link`, `POST /api/v1/tenants/{slug}/administrator-recovery`, `POST /auth/recovery` |
+| `recovery` | 5 an hour | account (the route's person or tenant) | 1 to 20 | `POST /api/v1/users/{id}/recovery-link`, `POST /api/v1/tenants/{slug}/administrator-recovery`; using a link (`POST /auth/recovery`) names no account until its one-time, 15-minute code is checked, so it is under the API's limit alone, as counting it per address would stop everyone behind one company address |
 | `api` | 600 a minute | principal, else address | 60 to 6000 | every path under `/api`, `/auth` and `/connect` |
 | `exports` | 20 an hour | principal | 1 to 200 | audit exports, role export, evidence packs, the validation pack's download |
 | `csp_reports` | 60 a minute | address | the operator's | `POST /api/v1/csp-reports` |

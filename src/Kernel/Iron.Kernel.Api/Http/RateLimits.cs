@@ -12,7 +12,10 @@ public static class RateLimitPolicies
     /// <summary>Sign-in attempts, per address: 10 a minute by default.</summary>
     public const string Login = "login";
 
-    /// <summary>Recovery links, per account where the route names it, else per address: 5 an hour by default.</summary>
+    /// <summary>
+    /// Recovery links issued, per account, the person or tenant the route names: 5 an hour by default. Using a link names
+    /// no account until its one-time code is checked, so it is under the API's limit alone.
+    /// </summary>
     public const string Recovery = "recovery";
 
     /// <summary>Every call, per principal, or per address before sign-in: 600 a minute by default.</summary>

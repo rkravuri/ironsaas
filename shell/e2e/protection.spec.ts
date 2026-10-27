@@ -104,7 +104,7 @@ test.describe("the web surface's protection", () => {
       }
     });
     await signIn(page);
-    await open(page, "/console/users");
+    await open(page, "/users");
     await expect(page.getByRole("grid").first()).toBeVisible();
     expect(violations).toEqual([]);
 
