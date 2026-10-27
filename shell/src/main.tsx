@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import { SessionProvider } from "@/auth/session";
 import { applyDensity, readDensity } from "@/design/density";
+import { styleNonce } from "@/design/csp";
 import { colorSchemeManager } from "@/design/scheme";
 import { ErrorBoundary } from "@/shell/ErrorBoundary";
 import { cssVariablesResolver, theme } from "./theme";
@@ -33,6 +34,7 @@ createRoot(document.getElementById("root")!).render(
       defaultColorScheme="auto"
       colorSchemeManager={colorSchemeManager}
       cssVariablesResolver={cssVariablesResolver}
+      getStyleNonce={styleNonce}
     >
       <Notifications position="top-right" />
       <ErrorBoundary>

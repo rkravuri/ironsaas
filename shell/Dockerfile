@@ -12,6 +12,7 @@ RUN npm run build
 # NGINX's own unprivileged image: nginx runs as the user nginx and listens above 1024, as nginx.conf does on 8080.
 FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 # The release's version (ADR-0052), given by the release workflow; the shell shows the unit's, from /me/context.
 ARG IRON_VERSION=development

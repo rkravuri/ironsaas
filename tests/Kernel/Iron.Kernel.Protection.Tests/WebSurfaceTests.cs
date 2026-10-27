@@ -37,7 +37,7 @@ public class WebSurfaceTests
     [Proves("TF-070 AC2", "ADR-0053")]
     public async Task OnlyTheOriginsATenantListsMayCallItsApiFromABrowser()
     {
-        await using var host = await ProtectionHost.StartAsync();
+        await using var host = await ProtectionHost.StartAsync(new Dictionary<string, string?> { ["Security:Cors:AllowedOrigins:0"] = "https://operator.example" });
         host.Settings.Set(ProtectionSettings.AllowedOrigins, JsonSerializer.SerializeToElement(new[] { "https://portal.example.com" }));
 
         using var preflight = ProtectionHost.Request(HttpMethod.Options, "/api/v1/things", origin: "https://portal.example.com");
@@ -47,12 +47,15 @@ public class WebSurfaceTests
         using var other = await host.Client.SendAsync(ProtectionHost.Request(HttpMethod.Get, "/api/v1/things", origin: "https://elsewhere.example"), Cancel);
         host.Settings.Set(ProtectionSettings.AllowedOrigins, JsonSerializer.SerializeToElement(Array.Empty<string>()));
         using var removed = await host.Client.SendAsync(ProtectionHost.Request(HttpMethod.Get, "/api/v1/things", origin: "https://portal.example.com"), Cancel);
+        using var operatorOrigin = await host.Client.SendAsync(ProtectionHost.Request(HttpMethod.Get, "/api/v1/things", origin: "https://operator.example"), Cancel);
 
         Assert.Equal("https://portal.example.com", allowed.Headers.GetValues("Access-Control-Allow-Origin").Single());
         Assert.Equal("https://portal.example.com", listed.Headers.GetValues("Access-Control-Allow-Origin").Single());
         Assert.Equal("true", listed.Headers.GetValues("Access-Control-Allow-Credentials").Single());
         Assert.False(other.Headers.Contains("Access-Control-Allow-Origin"), "An origin the tenant does not list gets no CORS answer, so the browser refuses the page its response.");
         Assert.False(removed.Headers.Contains("Access-Control-Allow-Origin"), "A removed origin applies at the next request.");
+        Assert.Equal("https://operator.example", operatorOrigin.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.Contains("X-Correlation-Id", operatorOrigin.Headers.GetValues("Access-Control-Expose-Headers").Single(), StringComparison.Ordinal);
     }
 
     [Theory]

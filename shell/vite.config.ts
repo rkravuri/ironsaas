@@ -27,6 +27,9 @@ export default defineConfig({
     port: 5173,
     proxy: Object.fromEntries(apiPaths.map((path) => [path, { target: apiTarget, changeOrigin: false }])),
   },
+  // Vite puts this placeholder in a meta tag and on its script and style tags; nginx replaces it with each response's
+  // nonce, which the content security policy names for style elements (ADR-0053).
+  html: { cspNonce: "CSP_NONCE" },
   build: {
     sourcemap: true,
     target: "es2022",

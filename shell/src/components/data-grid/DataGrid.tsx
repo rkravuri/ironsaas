@@ -36,6 +36,7 @@ import {
   type GridFilterModel,
   type SortTerm,
 } from "./list-query";
+import { styleNonce } from "@/design/csp";
 import { NoRowsOverlay } from "./NoRowsOverlay";
 import { rowKeyAction } from "./keys";
 import { dataGridTheme } from "./theme";
@@ -325,6 +326,8 @@ export function DataGridImpl<T>({
       <div style={{ flex: 1, minHeight: 360, fontVariantNumeric: "tabular-nums" }} role="region" aria-label={label}>
         <AgGridReact<T>
           theme={dataGridTheme}
+          // The grid's theme is style elements it writes: they carry the page's nonce, as the policy asks (ADR-0053).
+          styleNonce={styleNonce()}
           columnDefs={columnDefs}
           rowModelType="infinite"
           datasource={datasource}

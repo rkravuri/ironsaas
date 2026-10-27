@@ -20,7 +20,6 @@ public sealed class SecurityFixture : IAsyncLifetime
         builder.Logging.ClearProviders();
         builder.Services.AddIronSecurity(builder.Configuration, security =>
         {
-            security.Cors.AllowedOrigins = ["https://allowed.example"];
             security.Headers.CspExemptPathPrefixes = ["/docs"];
         });
 
@@ -31,8 +30,11 @@ public sealed class SecurityFixture : IAsyncLifetime
         app.MapGet("/docs/page", () => "docs");
         app.MapGet("/cookie", (HttpContext http) =>
         {
+            // As weak as code could ask: the policy makes each Secure, HttpOnly and SameSite=Strict (TF-070 AC4).
             http.Response.Cookies.Append("session", "abc");
-            return "cookie set";
+            http.Response.Cookies.Append("loose", "def", new CookieOptions { Secure = false, HttpOnly = false, SameSite = SameSiteMode.None });
+            http.Response.Cookies.Append("lax", "ghi", new CookieOptions { SameSite = SameSiteMode.Lax });
+            return "cookies set";
         });
 
         await app.StartAsync(TestContext.Current.CancellationToken);
