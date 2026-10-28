@@ -1,4 +1,3 @@
-using Iron.Kernel.Data.Encryption;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
@@ -18,6 +17,7 @@ using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Data.Encryption;
 using Iron.Kernel.Handover;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;

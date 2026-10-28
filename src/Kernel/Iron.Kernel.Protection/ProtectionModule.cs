@@ -1,9 +1,9 @@
-using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.History;
 using Iron.Kernel.Protection.Api;
 using Iron.Kernel.Protection.Contracts;
 using Iron.Kernel.Protection.Services;
+using Iron.Kernel.Security.Secrets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Routing;

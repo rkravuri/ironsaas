@@ -1,4 +1,3 @@
-using Iron.Kernel.Keys;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
@@ -8,6 +7,7 @@ using Iron.Kernel.Entitlements;
 using Iron.Kernel.Files;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Identity;
+using Iron.Kernel.Keys;
 using Iron.Kernel.Protection;
 using Iron.Kernel.Settings;
 
