@@ -29,8 +29,12 @@ public static class DataServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        // Built by the container, so disposing a provider closes its pooled connections (tests build many providers).
-        services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString).Build());
+        // Built by the container, so disposing a provider closes its pooled connections (tests build many providers). With
+        // a store, the password comes from the unit's secret for each new connection, so a rotated one is used without a
+        // restart (TF-073 AC2, ADR-0054); the connection string's own is used otherwise.
+        services.TryAddSingleton<IDatabaseCredentials>(ConnectionStringCredentials.Instance);
+        services.AddSingleton(provider => DataSource(connectionString, provider.GetRequiredService<IDatabaseCredentials>()));
+        services.AddSingleton<CredentialRetryInterceptor>();
         services.AddLogging(); // the runners and the health check log; a host already has logging, a bare container gets a silent one
         services.TryAddSingleton(TimeProvider.System);
 
@@ -73,6 +77,24 @@ public static class DataServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>The unit's data source; when the password rotates, it asks the credentials for each new physical connection.</summary>
+    public static NpgsqlDataSource DataSource(string connectionString, IDatabaseCredentials credentials)
+    {
+        ArgumentNullException.ThrowIfNull(credentials);
+        var builder = new NpgsqlDataSourceBuilder(connectionString);
+        if (credentials.Rotates)
+        {
+            // Npgsql takes a password provider or a password, not both; the configured one stays the fallback.
+            var configured = builder.ConnectionStringBuilder.Password;
+            builder.ConnectionStringBuilder.Password = null;
+            builder.UsePasswordProvider(
+                _ => credentials.PasswordAsync(CancellationToken.None).AsTask().GetAwaiter().GetResult() ?? configured ?? string.Empty,
+                async (_, cancellationToken) => await credentials.PasswordAsync(cancellationToken).ConfigureAwait(false) ?? configured ?? string.Empty);
+        }
+
+        return builder.Build();
+    }
+
     /// <summary>
     /// Registers a module's DbContext against the unit's database, in the module's schema, with snake_case names,
     /// its own migrations history table, the audit stamp interceptor, the owning organisation check and the field-level
@@ -88,7 +110,7 @@ public static class DataServiceCollectionExtensions
         services.AddDbContext<TContext>((provider, options) =>
         {
             DesignTime.Configure<TContext>(options, provider.GetRequiredService<SharedConnection>().Connection);
-            options.AddInterceptors(provider.GetRequiredService<OwningOrganisationInterceptor>(), provider.GetRequiredService<AuditStampInterceptor>(), provider.GetRequiredService<ChangeHistoryInterceptor>());
+            options.AddInterceptors(provider.GetRequiredService<OwningOrganisationInterceptor>(), provider.GetRequiredService<AuditStampInterceptor>(), provider.GetRequiredService<ChangeHistoryInterceptor>(), provider.GetRequiredService<CredentialRetryInterceptor>());
             configure?.Invoke(options);
         });
 

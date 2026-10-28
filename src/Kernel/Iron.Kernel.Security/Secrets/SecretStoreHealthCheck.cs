@@ -52,6 +52,12 @@ public static class SecretStoreServiceCollectionExtensions
             services.AddSingleton<ISecretStore>(provider => provider.GetRequiredService<OpenBaoSecretStore>());
             services.AddSingleton<ISecretStoreAdmin>(provider => provider.GetRequiredService<OpenBaoSecretStore>());
             services.AddHealthChecks().AddCheck<SecretStoreHealthCheck>("secret-store", tags: ["ready"]);
+
+            // The database password from the unit's secret, read again on a short schedule and after a refusal, so a
+            // password the fleet rotated is used without a restart (TF-073 AC2, ADR-0054).
+            var refresh = TimeSpan.FromSeconds(Math.Max(5, configuration.GetValue("Database:PasswordRefreshSeconds", 60)));
+            var connectionString = configuration.GetConnectionString("Database");
+            services.TryAddSingleton<IDatabaseCredentials>(provider => new StoreDatabaseCredentials(provider.GetRequiredService<ISecretStore>(), options, connectionString, provider.GetService<TimeProvider>() ?? TimeProvider.System, refresh));
         }
         else
         {
