@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Security.Keys;
 using Iron.Kernel.Security.Secrets;
 using Npgsql;
 
@@ -14,10 +15,14 @@ namespace Iron.Kernel.Fleet.Services;
 /// what they need; and <c>control_audit</c>, which reads the audit chain and nothing else. A database made before this
 /// moves to the owner, with every schema, table, sequence, view and function in it. It makes the container of the
 /// control plane's anchors and a SAS that may read, list and create blobs there, never write over or delete one. It then
-/// writes the control plane's secret with the app role's connection and that SAS, and the migrate secret with the
-/// owner's connection and the two roles to grant. Safe to run again: passwords made once are kept.
+/// writes three secrets (ADR-0054): the API's (<c>control/unit</c>: the app role's connection, that SAS and the control
+/// plane's key family), the fleet's (<c>fleet/unit</c>: the same with the administrative connection, the storage account's
+/// and the token role), and the migrate secret (the owner's connection and the two roles to grant); makes the control
+/// plane's keys, and gives the API and the fleet a policy and a token each (<see cref="ControlPlaneAccess"/>). It reads the
+/// administrative connections from the fleet's secret, which <c>make secret-control</c> writes first, and runs with the
+/// store's root token. Safe to run again: passwords made once are kept, and so are tokens that still work.
 /// </summary>
-public sealed class ControlPlaneDatabase(FleetOptions options, ISecretStore secrets, TimeProvider time) : IUnitCommand
+public sealed class ControlPlaneDatabase(FleetOptions options, ISecretStore secrets, IKeyAdministration keys, SecretStoreOptions store, TimeProvider time) : IUnitCommand
 {
     public const string OwnerPasswordKey = "owner_password";
     public const string AppPasswordKey = "app_password";
@@ -62,30 +67,54 @@ public sealed class ControlPlaneDatabase(FleetOptions options, ISecretStore secr
 
     public async Task<int> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken)
     {
-        var admin = options.Database.AdminConnectionString ?? throw new InvalidOperationException("Fleet:Database:AdminConnectionString is required to prepare the control plane's database.");
-        var account = options.Storage.AccountConnectionString ?? throw new InvalidOperationException("Fleet:Storage:AccountConnectionString is required to make the control plane's anchors container.");
-        var unit = await secrets.ReadAsync(ControlPlaneNames.UnitSecretPath, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("The control plane has no secret yet: make secret-control writes it first.");
+        var admin = options.Database.AdminConnectionString ?? throw new InvalidOperationException("Fleet:Database:AdminConnectionString is required to prepare the control plane's database: make secret-control writes it into the fleet's secret first.");
+        var account = options.Storage.AccountConnectionString ?? throw new InvalidOperationException("Fleet:Storage:AccountConnectionString is required to make the control plane's anchors container: make secret-control writes it into the fleet's secret first.");
 
         var passwords = await PasswordsAsync(cancellationToken).ConfigureAwait(false);
         await PrepareDatabaseAsync(admin, passwords, cancellationToken).ConfigureAwait(false);
         var anchors = await PrepareAnchorsAsync(account, cancellationToken).ConfigureAwait(false);
+        var (api, fleet, migrate) = Secrets(admin, account, passwords, anchors);
+        await secrets.WriteAsync(ControlPlaneNames.UnitSecretPath, api, cancellationToken).ConfigureAwait(false);
+        await secrets.WriteAsync(ControlPlaneNames.FleetSecretPath, fleet, cancellationToken).ConfigureAwait(false);
+        await secrets.WriteAsync(ControlPlaneNames.MigrateSecretPath, migrate, cancellationToken).ConfigureAwait(false);
 
-        var runtime = new Dictionary<string, string>(unit, StringComparer.Ordinal)
+        // Policies and tokens with the root token this command runs with, never through the fleet's token role, which
+        // makes tenants' tokens only. A run without a store, as the database's own tests, leaves them alone.
+        if (store.IsConfigured)
+        {
+            using var root = new OpenBaoSecretStore(new SecretStoreOptions { Address = store.Address, Token = store.Token, Mount = store.Mount, TransitMount = store.TransitMount });
+            await new ControlPlaneAccess(root, root, keys, store).PrepareAsync(cancellationToken).ConfigureAwait(false);
+        }
+        await Console.Out.WriteLineAsync($"Prepared the control plane: database {ControlPlaneNames.Database} owned by {ControlPlaneNames.OwnerRole}, the API and the fleet as {ControlPlaneNames.AppRole}, verification as {ControlPlaneNames.ReaderRole}, anchors in {ControlPlaneNames.AnchorsContainer}; the API reads {ControlPlaneNames.UnitSecretPath} and the fleet {ControlPlaneNames.FleetSecretPath}, each with its own token, kept at {ControlPlaneNames.TokensSecretPath}; keys {ControlPlaneNames.KeyPrefix}-data, -index and -signing. Migrate and seed with Secrets__Path=control-migrate and the fleet's token.").ConfigureAwait(false);
+        return 0;
+    }
+
+    /// <summary>
+    /// The three secrets (ADR-0054): the API's, which never holds the administrative connection or the storage account's
+    /// key; the fleet's, which adds them and the token role; and the migrate secret, the owner's.
+    /// </summary>
+    public static (Dictionary<string, string> Api, Dictionary<string, string> Fleet, Dictionary<string, string> Migrate) Secrets(string admin, string account, IReadOnlyDictionary<string, string> passwords, string anchors)
+    {
+        ArgumentNullException.ThrowIfNull(passwords);
+        var api = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["ConnectionStrings:Database"] = ConnectionString(admin, ControlPlaneNames.AppRole, passwords[AppPasswordKey]),
             ["ControlAudit:AnchorsSasUrl"] = anchors,
+            ["Keys:Prefix"] = ControlPlaneNames.KeyPrefix,
         };
-        var migrate = new Dictionary<string, string>(runtime, StringComparer.Ordinal)
+        var fleet = new Dictionary<string, string>(api, StringComparer.Ordinal)
+        {
+            ["Fleet:Database:AdminConnectionString"] = admin,
+            ["Fleet:Storage:AccountConnectionString"] = account,
+            ["Secrets:TokenRole"] = ControlPlaneNames.TokenRole,
+        };
+        var migrate = new Dictionary<string, string>(api, StringComparer.Ordinal)
         {
             ["ConnectionStrings:Database"] = ConnectionString(admin, ControlPlaneNames.OwnerRole, passwords[OwnerPasswordKey]),
             ["Database:AppRole"] = ControlPlaneNames.AppRole,
             ["Database:AuditReaderRole"] = ControlPlaneNames.ReaderRole,
         };
-        await secrets.WriteAsync(ControlPlaneNames.UnitSecretPath, runtime, cancellationToken).ConfigureAwait(false);
-        await secrets.WriteAsync(ControlPlaneNames.MigrateSecretPath, migrate, cancellationToken).ConfigureAwait(false);
-        await Console.Out.WriteLineAsync($"Prepared the control plane: database {ControlPlaneNames.Database} owned by {ControlPlaneNames.OwnerRole}, the API and the fleet as {ControlPlaneNames.AppRole}, verification as {ControlPlaneNames.ReaderRole}, anchors in {ControlPlaneNames.AnchorsContainer}. Migrate and seed with Secrets__Path=control-migrate.").ConfigureAwait(false);
-        return 0;
+        return (api, fleet, migrate);
     }
 
     /// <summary>The control plane's database as a role reaches it, on the same route as the fleet's own connection.</summary>

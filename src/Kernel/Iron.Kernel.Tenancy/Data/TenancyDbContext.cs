@@ -38,6 +38,10 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
 
     public DbSet<AuditRestoreRecord> AuditRestores => Set<AuditRestoreRecord>();
 
+    public DbSet<TenantKeyRecord> TenantKeys => Set<TenantKeyRecord>();
+
+    public DbSet<KeyRotationRecord> KeyRotations => Set<KeyRotationRecord>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
         // The tenants' audit chains (TF-061, ADR-0050): the anchors and the verifications are written once.
@@ -56,6 +60,28 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
             anchor.Property(a => a.Hash).HasMaxLength(AuditAnchorRecord.HashLength).IsFixedLength();
             anchor.Property(a => a.Segment).HasDefaultValue(1);
             anchor.HasIndex(a => new { a.TenantSlug, a.Segment, a.Kind, a.Position }).IsUnique();
+        });
+
+        modelBuilder.Entity<TenantKeyRecord>(key =>
+        {
+            key.ToTable("tenant_keys");
+            key.Property(k => k.TenantSlug).HasMaxLength(63);
+            key.Property(k => k.Key).HasMaxLength(TenantKeyRecord.KeyMaxLength);
+            key.HasIndex(k => new { k.TenantSlug, k.Key }).IsUnique();
+        });
+
+        modelBuilder.Entity<KeyRotationRecord>(rotation =>
+        {
+            rotation.ToTable("key_rotations");
+            rotation.Property(r => r.TenantSlug).HasMaxLength(63);
+            rotation.Property(r => r.Key).HasMaxLength(TenantKeyRecord.KeyMaxLength);
+            rotation.Property(r => r.Trigger).HasMaxLength(20);
+            rotation.Property(r => r.RequestedByName).HasMaxLength(KeyRotationRecord.NameMaxLength);
+            rotation.Property(r => r.Reason).HasMaxLength(KeyRotationRecord.ReasonMaxLength);
+            rotation.Property(r => r.State).HasMaxLength(20);
+            rotation.Property(r => r.Error).HasMaxLength(KeyRotationRecord.ErrorMaxLength);
+            rotation.HasIndex(r => new { r.TenantSlug, r.Key, r.State });
+            rotation.HasIndex(r => r.State);
         });
 
         modelBuilder.Entity<AuditRestoreRecord>(restore =>

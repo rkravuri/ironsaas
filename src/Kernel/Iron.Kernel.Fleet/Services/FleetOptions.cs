@@ -23,6 +23,9 @@ public sealed class FleetOptions
     /// <summary>The audit chains' daily verification (TF-061, ADR-0050).</summary>
     public FleetAuditOptions Audit { get; set; } = new();
 
+    /// <summary>The key worker (ADR-0054).</summary>
+    public FleetKeysOptions Keys { get; set; } = new();
+
     /// <summary>How often the worker looks for Requested jobs.</summary>
     public int PollSeconds { get; set; } = 5;
 
@@ -56,6 +59,12 @@ public sealed class FleetOptions
     {
         /// <summary>The control plane's API as the units see it, for their audit anchors (ADR-0050): <c>http://control-api:8080</c>.</summary>
         public string UnitAddress { get; set; } = "http://control-api:8080";
+    }
+
+    public sealed class FleetKeysOptions
+    {
+        /// <summary>How often the key worker looks for rotations to carry out and old versions to retire.</summary>
+        public int PollSeconds { get; set; } = 5;
     }
 
     public sealed class FleetAuditOptions

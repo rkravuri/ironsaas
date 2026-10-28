@@ -68,6 +68,10 @@ public sealed class FleetModule : IModule
         services.AddScoped<IProvisioningStep, BreakGlassOpenStep>();
         services.AddScoped<IProvisioningStep, BreakGlassCloseStep>();
 
+        // The tenants' keys and database passwords, rotated and retired by the fleet (ADR-0054).
+        services.AddScoped<KeyRotationRunner>();
+        services.AddScoped<DatabasePasswordRotation>();
+
         // The tenants' audit chains, verified by the fleet with each tenant's reader role (TF-061, ADR-0050).
         services.AddSingleton<ArchivedChainReader>();
         services.AddScoped<AuditChainVerifier>();
@@ -94,6 +98,7 @@ public static class FleetWorkerExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<ProvisioningWorker>();
+        services.AddHostedService<KeyRotationWorker>();
         // The fleet image publishes validation packs where every unit's update finds them (ADR-0052), prepares the control
         // plane's roles and anchors, and verifies its chain by hand (ADR-0053).
         services.AddScoped<IUnitCommand, ReleasePackCommand>();
