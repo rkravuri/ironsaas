@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security coverage protect-main protection-check
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -24,6 +24,11 @@ build: ## Build every project (warnings are errors)
 # failed Testcontainers' five-second image name check before any test ran. The services go whatever the result.
 TEST_PARALLEL ?= 4
 TEST_ARGS ?=
+# Line coverage of the product's code (TF-077 AC4, ADR-0055): make test COVERAGE=1 has each test project write a
+# Cobertura file beside its results (coverage.cobertura.<time>.xml), the generated migrations left out; make coverage
+# checks the total against its floor. make verify and CI measure it.
+COVERAGE ?=
+COVERAGE_ARGS = $(if $(COVERAGE),--coverlet --coverlet-output-format cobertura --coverlet-include '[Iron.Kernel*]*' --coverlet-include '[Iron.Business*]*' --coverlet-include '[Iron.Suites*]*' --coverlet-include '[Iron.Host*]*' --coverlet-exclude-by-file '**/Migrations/*.cs')
 
 # Every test run leaves its result files under artifacts/test-results (not committed), one folder per kind, which make
 # trace joins to the tests and what they prove (ADR-0044). A kind's folder holds its last run only.
@@ -34,7 +39,7 @@ test: ## Run every test project (Microsoft Testing Platform, see global.json) on
 	services=$$(sh tests/test-services.sh up) || { sh tests/test-services.sh down; exit 1; }; \
 	eval "$$services"; \
 	dotnet test --solution Foundation.slnx --configuration $(CONFIG) --max-parallel-test-modules $(TEST_PARALLEL) \
-	  --results-directory $(RESULTS)/dotnet --report-xunit-trx $(TEST_ARGS); \
+	  --results-directory $(RESULTS)/dotnet --report-xunit-trx $(COVERAGE_ARGS) $(TEST_ARGS); \
 	status=$$?; sh tests/test-services.sh down; exit $$status
 
 check: ## Run only the architecture checks (module boundaries, layout)
@@ -70,6 +75,8 @@ trace: ## Build the traceability matrix into artifacts/trace from the last resul
 	python3 tools/policy_yaml_test.py --junit $(RESULTS)/python/policy-yaml.xml
 	python3 tools/security_gate_test.py --junit $(RESULTS)/python/security-gate.xml
 	python3 tools/security_report_test.py --junit $(RESULTS)/python/security-report.xml
+	python3 tools/coverage_check_test.py --junit $(RESULTS)/python/coverage-check.xml
+	python3 tools/branch_protection_test.py --junit $(RESULTS)/python/branch-protection.xml
 	python3 tools/trace.py
 
 VALIDATION := $(CURDIR)/artifacts/validation
@@ -85,16 +92,17 @@ validation-pack: env ## Build the development validation pack from the last runs
 	exit $$status
 
 # Every check in order, each on its own, so the shell's tests never run beside make test (ADR-0044): the requirement
-# documents, the .NET suite, the shell (lint, format, tests, build), the accessibility scan, the format check, the
-# security scans and their gate (ADR-0055), and the matrix from what those runs wrote. With the stack running it is the
-# check before a push.
-verify: ## Run prd-check, test, shell-check, shell-a11y, the format check, security and trace, in that order, stopping at the first failure
+# documents, the .NET suite with coverage, the shell (lint, format, tests with coverage, build), the accessibility scan,
+# the format check, the security scans and their gate, the coverage floors (ADR-0055), and the matrix from what those
+# runs wrote. With the stack running it is the check before a push.
+verify: ## Run prd-check, test with coverage, shell-check, shell-a11y, the format check, security, coverage and trace, in that order, stopping at the first failure
 	$(MAKE) prd-check
-	$(MAKE) test
+	$(MAKE) test COVERAGE=1
 	$(MAKE) shell-check
 	$(MAKE) shell-a11y
 	$(MAKE) format-check
 	$(MAKE) security
+	$(MAKE) coverage
 	$(MAKE) trace
 
 # ---------------------------------------------------------------- security (TF-076, ADR-0055)
@@ -123,6 +131,26 @@ security: ## Scan the dependencies, their licences, the misconfigurations and th
 	$(SEMGREP) --test --metrics off --quiet security/rules
 	$(SEMGREP) scan --config security/rules --metrics off --json --quiet $(SEMGREP_EXCLUDES) src shell/src > $(SECURITY)/semgrep.json
 	python3 tools/security_gate.py --trivy $(SECURITY)/trivy-repository.json --semgrep $(SECURITY)/semgrep.json --summary $(SECURITY)/summary.json
+
+# The coverage floors (TF-077 AC4, ADR-0055): the product's .NET code from make test COVERAGE=1, the shell's from
+# npm run check (make shell-check); BASE_FLOORS, the floors of the branch a change goes into, also refuses a floor that
+# falls. Without AREA, both.
+AREA ?=
+BASE_FLOORS ?=
+COVERAGE_REPORTS_dotnet := $(RESULTS)/dotnet/coverage.cobertura.*.xml
+COVERAGE_REPORTS_shell := $(CURDIR)/artifacts/coverage/shell/cobertura-coverage.xml
+
+coverage: ## Check line coverage against its floor in security/coverage.yaml (TF-077 AC4, ADR-0055): make coverage [AREA=dotnet|shell] [BASE_FLOORS=file], after make test COVERAGE=1 and make shell-check
+	@status=0; for area in $(or $(AREA),dotnet shell); do \
+	  case $$area in dotnet) reports='$(COVERAGE_REPORTS_dotnet)';; shell) reports='$(COVERAGE_REPORTS_shell)';; *) echo "No area $$area: dotnet or shell"; exit 2;; esac; \
+	  python3 tools/coverage_check.py --area $$area --report "$$reports" $(if $(BASE_FLOORS),--base-floors $(BASE_FLOORS)) || status=1; \
+	done; exit $$status
+
+protect-main: ## Apply main's branch protection from .github/branch-protection.json and set merge commits only, then check it (TF-077 AC1, ADR-0055); needs gh as an administrator
+	python3 tools/branch_protection.py apply
+
+protection-check: ## Compare main's branch protection on GitHub with .github/branch-protection.json and name each difference (TF-077 AC1, ADR-0055)
+	python3 tools/branch_protection.py check
 
 image-scan: ## Scan one image and write its CycloneDX bill of materials into artifacts/sbom (TF-076 AC3, ADR-0055): make image-scan IMAGE=foundation/iron-api:dev NAME=iron-api
 	@mkdir -p $(SECURITY) $(SBOM) $(TRIVY_CACHE)

@@ -158,9 +158,11 @@ public class RefreshTests(EntitlementsFixture fixture)
         return report.Entries["entitlements"];
     }
 
+    // At most 30 seconds: the refresher runs on the thread pool, which a loaded runner starves well past the five
+    // seconds this waited before (the suite under coverage, S3 T10a). The test ends as soon as the condition holds.
     private static async Task Until(Func<bool> condition)
     {
-        for (var i = 0; i < 100 && !condition(); i++)
+        for (var i = 0; i < 600 && !condition(); i++)
         {
             await Task.Delay(50, TestContext.Current.CancellationToken);
         }

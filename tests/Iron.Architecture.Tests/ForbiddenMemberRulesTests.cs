@@ -49,10 +49,22 @@ public class ForbiddenMemberRulesTests
                 continue;
             }
 
-            violations.AddRange(ForbiddenMemberRules.Check(assemblyPath));
+            violations.AddRange(ForbiddenMemberRules.Check(Built(project) ?? assemblyPath));
         }
 
         ArchitectureAssert.NoViolations("Assemblies missing from the check", missing);
         ArchitectureAssert.NoViolations("System clock rule (ADR-0007)", violations);
+    }
+
+    /// <summary>
+    /// The project's own build output, the assembly that ships. A run with coverage (ADR-0055) instruments the copies
+    /// beside this test, and coverlet's tracker in each copy reads the system clock; the build output stays as compiled.
+    /// </summary>
+    private static string? Built(ProjectInfo project)
+    {
+        var configuration = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar)).Parent?.Name ?? "Release";
+        var folder = Path.GetDirectoryName(Path.Combine(Repository.Root, project.RelativePath))!;
+        var path = Path.Combine(folder, "bin", configuration, "net10.0", project.Name + ".dll");
+        return File.Exists(path) ? path : null;
     }
 }

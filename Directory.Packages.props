@@ -79,6 +79,10 @@
     <PackageVersion Include="Testcontainers.Azurite" Version="4.15.0" />
     <!-- FakeTimeProvider for tests (MIT). -->
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
+    <!-- Line coverage of the test run on Microsoft Testing Platform (MIT, coverlet-coverage/coverlet): the coverage floor,
+         TF-077 AC4, ADR-0055. 10.1.0 of 2026-09-27, the newest at least two weeks old. Microsoft's own coverage extension
+         is not open source, so it is not used. -->
+    <PackageVersion Include="coverlet.MTP" Version="10.1.0" />
   </ItemGroup>
 
 </Project>

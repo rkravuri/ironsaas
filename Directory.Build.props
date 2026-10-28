@@ -75,6 +75,8 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)tests/Iron.Testing.Analyzers/Iron.Testing.Analyzers.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
+    <!-- Every test project can measure line coverage when the run asks for it (make test COVERAGE=1, TF-077 AC4, ADR-0055). -->
+    <PackageReference Include="coverlet.MTP" />
   </ItemGroup>
 
   <!--
