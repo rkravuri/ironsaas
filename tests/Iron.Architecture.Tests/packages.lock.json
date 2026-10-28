@@ -707,6 +707,7 @@
           "Iron.Kernel.Identity": "[1.0.0, )",
           "Iron.Kernel.Keys": "[1.0.0, )",
           "Iron.Kernel.Monitoring": "[1.0.0, )",
+          "Iron.Kernel.Protection": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
           "Iron.Kernel.Telemetry": "[1.0.0, )"
