@@ -21,6 +21,7 @@ public sealed class KeySteps(Api api, SmokeOptions options, Func<CancellationTok
     private const byte ProtocolVersion = 70;
     private const byte HandshakeFailure = 40;
     private static readonly TimeSpan RotationWait = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan UnitWait = TimeSpan.FromMinutes(1);
 
     // TLS 1.2's suites the ingress offers: forward-secret AEAD only.
     private static readonly ushort[] ModernSuites = [0xC02B, 0xC02F, 0xC02C, 0xC030, 0xCCA9, 0xCCA8];
@@ -77,12 +78,8 @@ public sealed class KeySteps(Api api, SmokeOptions options, Func<CancellationTok
         var rotation = await RetiredAsync(token!, id!, cancellationToken).ConfigureAwait(false);
         var to = rotation.GetProperty("to_version").GetInt32();
 
-        var keys = (await TenantAsync(HttpMethod.Get, "/api/v1/keys", admin, null, cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "the unit's keys");
-        var index = keys.Body!.Value.GetProperty("keys").EnumerateArray().Single(k => k.GetProperty("key").GetString() == "index");
-        if (index.GetProperty("version").GetInt32() != to || index.GetProperty("minimum_version").GetInt32() != to)
-        {
-            throw new SmokeException($"the unit reads its index key at version {index.GetProperty("version").GetInt32()} from {index.GetProperty("minimum_version").GetInt32()}, not {to} alone");
-        }
+        // The unit hears of the retirement at its next poll of the control plane, every 15 seconds.
+        var heard = await UnitReadsOnlyAsync(admin, to, cancellationToken).ConfigureAwait(false);
 
         var found = await FindAsync(admin, value, cancellationToken).ConfigureAwait(false);
         if (found.Count != 1 || found[0].GetProperty("value").GetString() != value)
@@ -95,7 +92,30 @@ public sealed class KeySteps(Api api, SmokeOptions options, Func<CancellationTok
             throw new SmokeException("a part of the key check's value found it");
         }
 
-        return $"index key rotated from version {rotation.GetProperty("from_version").GetInt32()} to {to}, every hash made again ({rotation.GetProperty("done").GetInt64()} values) and the old version retired; the sample value found by its exact value, a part of it not";
+        return $"index key rotated from version {rotation.GetProperty("from_version").GetInt32()} to {to}, every hash made again ({rotation.GetProperty("done").GetInt64()} values) and the old version retired, which the unit read after {heard.TotalSeconds:0} s; the sample value found by its exact value, a part of it not";
+    }
+
+    private async Task<TimeSpan> UnitReadsOnlyAsync(string admin, int version, CancellationToken cancellationToken)
+    {
+        var started = TimeProvider.System.GetUtcNow();
+        var deadline = started + UnitWait;
+        while (true)
+        {
+            var keys = (await TenantAsync(HttpMethod.Get, "/api/v1/keys", admin, null, cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "the unit's keys");
+            var index = keys.Body!.Value.GetProperty("keys").EnumerateArray().Single(k => k.GetProperty("key").GetString() == "index");
+            var (latest, minimum) = (index.GetProperty("version").GetInt32(), index.GetProperty("minimum_version").GetInt32());
+            if (latest == version && minimum == version)
+            {
+                return TimeProvider.System.GetUtcNow() - started;
+            }
+
+            if (TimeProvider.System.GetUtcNow() >= deadline)
+            {
+                throw new SmokeException($"the unit reads its index key at version {latest} from {minimum} after {UnitWait.TotalSeconds:0} s, not {version} alone");
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private async Task<IReadOnlyList<JsonElement>> FindAsync(string admin, string value, CancellationToken cancellationToken)
