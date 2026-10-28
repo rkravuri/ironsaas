@@ -53,6 +53,8 @@ MFA_ROLE_CODE = "e2e-mfa"
 MFA_ROLES = ["tenant-administrator", MFA_ROLE_CODE]
 SECOND_ADMINISTRATOR_ROLE_CODE = "e2e-second-administrator"
 FOUR_EYES_AREAS = "changes.four_eyes.areas"
+# The exports limit asks up to an hour; a wait that long would outlast the release's integration stage.
+LONGEST_WAIT_SECONDS = 120
 
 
 def log(message):
@@ -64,12 +66,15 @@ CHALLENGE_CODES = ("identity.login.challenge_required", "identity.login.challeng
 
 def send(target, method, path, body=None, headers=None):
     """One request; the ingress picks the tenant by the Host header, as the smoke does. It stays within the rate limits
-    by waiting, never by raising them: a 429 waits its Retry-After and sends again. A sign-in the API asks to prove itself
+    by waiting, never by raising them: a 429 waits its Retry-After and sends again, unless the wait is longer than two
+    minutes, which means a limit was spent and the run would outlast its stage. A sign-in the API asks to prove itself
     first, after repeated failures, gets a challenge, solved here, and is sent again with the answer (TF-072, ADR-0053)."""
     for attempt in range(1, 8):
         status, data, cookie, retry_after = send_once(target, method, path, body, headers)
         if status == 429 and attempt < 7:
             seconds = int(retry_after or (data or {}).get("retry_after_seconds") or 5)
+            if seconds > LONGEST_WAIT_SECONDS:
+                raise SystemExit(f"the {(data or {}).get('limit', 'rate')} limit refused {method} {path} for {seconds} s, longer than this script waits ({LONGEST_WAIT_SECONDS} s): an earlier call spent it")
             log(f"waiting {seconds} s for the {(data or {}).get('limit', 'rate')} limit, as its Retry-After says")
             time.sleep(seconds + 1)
             continue

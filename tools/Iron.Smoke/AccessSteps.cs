@@ -105,8 +105,9 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
     /// <summary>
     /// A plan applied in the control plane reaches the unit's API: the plan without role transfer refuses role export, the
     /// plan the tenant had gives it back. A tenant without role transfer goes the other way: Enterprise, then its own plan.
-    /// The step waits on the session's entitlements and exports once to confirm, since exports have a limit of their own
-    /// (20 an hour per person, ADR-0053) that polling the export would spend.
+    /// The step waits on the session's entitlements, then on a dry-run import, which role transfer governs as it does the
+    /// export, and exports once at each end to confirm: exports have a limit of their own (20 an hour per person,
+    /// ADR-0053) that polling the export spends, which stopped the release's integration stage after T9a.
     /// </summary>
     public async Task<string> PlanChangeAsync(CancellationToken cancellationToken)
     {
@@ -117,16 +118,18 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
         var finished = false;
         try
         {
-            var hadTransfer = await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false);
+            var hadTransfer = await TransferAllowedAsync(admin, cancellationToken).ConfigureAwait(false);
             var other = hadTransfer ? "standard" : "enterprise";
             await ApplyPlanAsync(other, cancellationToken).ConfigureAwait(false);
             changed = true;
             var first = await WaitAsync(async () => await RoleTransferAsync(admin, cancellationToken).ConfigureAwait(false) != hadTransfer, $"role transfer to be {(hadTransfer ? "off" : "on")} on {other}", cancellationToken).ConfigureAwait(false);
-            await WaitAsync(async () => await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false) != hadTransfer, $"role export to {(hadTransfer ? "be refused" : "work")} on {other}", cancellationToken).ConfigureAwait(false);
+            await WaitAsync(async () => await TransferAllowedAsync(admin, cancellationToken).ConfigureAwait(false) != hadTransfer, $"a dry-run import to {(hadTransfer ? "be refused" : "work")} on {other}", cancellationToken).ConfigureAwait(false);
+            await ConfirmExportAsync(admin, !hadTransfer, other, cancellationToken).ConfigureAwait(false);
             await ApplyPlanAsync(before, cancellationToken).ConfigureAwait(false);
             changed = false;
             var second = await WaitAsync(async () => await RoleTransferAsync(admin, cancellationToken).ConfigureAwait(false) == hadTransfer, $"role transfer to be {(hadTransfer ? "on" : "off")} on {before} again", cancellationToken).ConfigureAwait(false);
-            await WaitAsync(async () => await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false) == hadTransfer, $"role export to {(hadTransfer ? "work" : "be refused")} on {before} again", cancellationToken).ConfigureAwait(false);
+            await WaitAsync(async () => await TransferAllowedAsync(admin, cancellationToken).ConfigureAwait(false) == hadTransfer, $"a dry-run import to {(hadTransfer ? "work" : "be refused")} on {before} again", cancellationToken).ConfigureAwait(false);
+            await ConfirmExportAsync(admin, hadTransfer, before, cancellationToken).ConfigureAwait(false);
             finished = true;
             return hadTransfer
                 ? $"{other} applied: role export answers {RoleTransferRefused} after {Seconds(first)}; {before} again: it works after {Seconds(second)}"
@@ -158,11 +161,11 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
         try
         {
             var lent = string.Empty;
-            if (!await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false))
+            if (!await TransferAllowedAsync(admin, cancellationToken).ConfigureAwait(false))
             {
                 planBefore = await PlanAsync(cancellationToken).ConfigureAwait(false);
                 await ApplyPlanAsync("enterprise", cancellationToken).ConfigureAwait(false);
-                var granted = await WaitAsync(() => ExportAllowedAsync(admin, cancellationToken), "role transfer on enterprise", cancellationToken).ConfigureAwait(false);
+                var granted = await WaitAsync(() => TransferAllowedAsync(admin, cancellationToken), "role transfer on enterprise", cancellationToken).ConfigureAwait(false);
                 lent = $" (role transfer lent by enterprise after {Seconds(granted)})";
             }
 
@@ -284,6 +287,35 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
         }
 
         throw new SmokeException($"role export answered {(int)answer.Status} {answer.Text("error_code")}; correlation {answer.CorrelationId ?? "none"}");
+    }
+
+    /// <summary>
+    /// Whether role transfer is on as the API enforces it, asked of a dry-run import, which the same feature governs and
+    /// which has no limit of its own; the kill switch must be off, as it is outside the kill-switch step's middle.
+    /// </summary>
+    private async Task<bool> TransferAllowedAsync(string admin, CancellationToken cancellationToken)
+    {
+        var answer = await ImportAsync(admin, cancellationToken).ConfigureAwait(false);
+        if (answer.Status == HttpStatusCode.OK)
+        {
+            return true;
+        }
+
+        if (answer.Status == HttpStatusCode.Forbidden && answer.Text("error_code") == RoleTransferRefused)
+        {
+            return false;
+        }
+
+        throw new SmokeException($"a dry-run import answered {(int)answer.Status} {answer.Text("error_code")}; correlation {answer.CorrelationId ?? "none"}");
+    }
+
+    /// <summary>One export, which the exports limit counts, to confirm what the dry-run import showed.</summary>
+    private async Task ConfirmExportAsync(string admin, bool allowed, string plan, CancellationToken cancellationToken)
+    {
+        if (await ExportAllowedAsync(admin, cancellationToken).ConfigureAwait(false) != allowed)
+        {
+            throw new SmokeException($"on {plan} a dry-run import {(allowed ? "works" : "is refused")}, but role export {(allowed ? "is refused" : "works")}");
+        }
     }
 
     private Task<Answer> ImportAsync(string admin, CancellationToken cancellationToken) =>
