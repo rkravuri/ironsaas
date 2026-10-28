@@ -1,0 +1,117 @@
+# The repository's own rules for C# (ADR-0055), run by the rule-based scanner over src/ in make security. Each covers a
+# risk the compiler, the .NET analyzers' security rules (CA5350 to CA5404, all on) and IRON0010 leave open. A finding
+# fails the build; a false positive is marked at its line with "nosemgrep: <rule>" and the reason beside it, which the
+# pull request's review reads like code. csharp.cs beside this file proves each rule (make security runs the test).
+rules:
+  - id: iron-tls-validation-disabled
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      This accepts any server certificate, so anyone between the host and the server can read and change the traffic.
+      Trust the platform's certificate store, or give the client the one certificate it must trust (TF-074, ADR-0054).
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+    pattern-either:
+      - pattern: HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+      - pattern: "$HANDLER.ServerCertificateCustomValidationCallback = ($A, $B, $C, $D) => true"
+      - pattern: "new $HANDLER { ..., ServerCertificateCustomValidationCallback = ($A, $B, $C, $D) => true, ... }"
+      - pattern: "$OPTIONS.RemoteCertificateValidationCallback = ($A, $B, $C, $D) => true"
+
+  - id: iron-secret-in-log
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      A value named as a secret goes into a log line, where every operator and log tool can read it. Log that it
+      happened, never the value; the scrubbing rule is the second line, not the first (TF-073 AC3, ADR-0054).
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+    patterns:
+      - pattern-either:
+          - pattern: $LOGGER.LogTrace(..., $VALUE, ...)
+          - pattern: $LOGGER.LogDebug(..., $VALUE, ...)
+          - pattern: $LOGGER.LogInformation(..., $VALUE, ...)
+          - pattern: $LOGGER.LogWarning(..., $VALUE, ...)
+          - pattern: $LOGGER.LogError(..., $VALUE, ...)
+          - pattern: $LOGGER.LogCritical(..., $VALUE, ...)
+      # The scanner anchors the regex at the value's start: the last name of the value ends with a secret's word
+      # (request.Password, accessToken), and a count or an id of one (tokenCount) is not a secret.
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: (?i)^(.*\.)?[a-z]*(password|secret|token|privatekey|apikey|connectionstring|recoverycode)$
+
+  - id: iron-process-arguments-as-text
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      A process's arguments given as one string are split again by the platform's quoting rules, so a value with a space
+      or a quote becomes another argument (command injection). Give each argument as an item of ArgumentList.
+    metadata:
+      category: security
+      cwe: "CWE-88: Improper Neutralization of Argument Delimiters in a Command"
+    pattern-either:
+      - pattern: new ProcessStartInfo($FILE, $ARGUMENTS)
+      - pattern: "new ProcessStartInfo { ..., Arguments = $ARGUMENTS, ... }"
+      - pattern: "new ProcessStartInfo($FILE) { ..., Arguments = $ARGUMENTS, ... }"
+      - pattern: Process.Start($FILE, $ARGUMENTS)
+
+  - id: iron-exception-text-in-answer
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      An exception's text can name paths, hosts, SQL and values, and this sends it to the caller. Answer with the error's
+      code and the correlation id, and log the exception for the operator (ADR-0009, ADR-0012).
+    metadata:
+      category: security
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              try { ... } catch ($TYPE $EXCEPTION) { ... }
+          - pattern-inside: |
+              try { ... } catch ($TYPE $EXCEPTION) when ($CONDITION) { ... }
+      - pattern-either:
+          - pattern: Results.$ANSWER(..., $EXCEPTION.Message, ...)
+          - pattern: Results.$ANSWER(..., $EXCEPTION.ToString(), ...)
+          - pattern: TypedResults.$ANSWER(..., $EXCEPTION.Message, ...)
+          - pattern: TypedResults.$ANSWER(..., $EXCEPTION.ToString(), ...)
+          - pattern: $RESPONSE.WriteAsync($EXCEPTION.Message, ...)
+          - pattern: $RESPONSE.WriteAsync($EXCEPTION.ToString(), ...)
+
+  - id: iron-cookie-without-protection
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      This cookie loses Secure, HttpOnly or SameSite=Strict, which the cookie policy gives every cookie (TF-070,
+      ADR-0053). The policy would put them back; code that asks for less is a design question for the review, not a
+      setting.
+    metadata:
+      category: security
+      cwe: "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag"
+    pattern-either:
+      - pattern: "new CookieOptions { ..., Secure = false, ... }"
+      - pattern: "new CookieOptions { ..., HttpOnly = false, ... }"
+      - pattern: "new CookieOptions { ..., SameSite = SameSiteMode.None, ... }"
+      - pattern: "new CookieOptions { ..., SameSite = SameSiteMode.Lax, ... }"
+
+  - id: iron-secret-store-outside-security
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      Only the Security library talks to the secret store and the key service. A module reads its configuration from
+      the unit secret through IConfiguration and its keys through IKeyService (ADR-0016, ADR-0054).
+    metadata:
+      category: security
+      cwe: "CWE-522: Insufficiently Protected Credentials"
+    paths:
+      exclude:
+        - "src/Kernel/Iron.Kernel.Security/**"
+    pattern-either:
+      - pattern: new OpenBaoSecretStore(...)
+      - pattern: new TransitKeyService(...)
+      - patterns:
+          - pattern: '"$PATH"'
+          - metavariable-regex:
+              metavariable: $PATH
+              regex: ^/?v1/(secret|transit|sys|auth)/.*$

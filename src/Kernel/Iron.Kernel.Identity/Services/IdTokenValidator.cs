@@ -103,9 +103,13 @@ public sealed class IdTokenValidator(TimeProvider time)
             RequireSignedTokens = true,
             ValidAlgorithms = Algorithms,
 
-            // Read below on the unit's clock, so a test's clock and the server's are the same thing.
+            // Read below on the unit's clock, so a test's clock and the server's are the same thing. CA5404 sees the
+            // library's lifetime check switched off; the check is the code after this call, which refuses a token
+            // without "exp", an expired one and one not valid yet (ADR-0007, ADR-0048).
+#pragma warning disable CA5404
             ValidateLifetime = false,
             RequireExpirationTime = false,
+#pragma warning restore CA5404
         }).ConfigureAwait(false);
         if (!result.IsValid)
         {

@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import security from "eslint-plugin-security";
 import tseslint from "typescript-eslint";
 import { ironPlugin } from "./lint/plugin.js";
 
@@ -183,6 +184,18 @@ const rawColour =
   "|(?<![A-Za-z0-9_-])(?:rgba?|hsla?)[(]" +
   `|(?<![A-Za-z0-9_.-])(?:${colourNames})(?:[.][0-9]{1,2})?(?![A-Za-z0-9_-])/i`;
 const colourPositions = "JSXAttribute[name.name=/^(?:style|styles|vars|gradient|c|bg|bd|color|fill|stroke)$/]";
+// The security rules (TF-076, ADR-0055): eslint-plugin-security's recommended set, as errors, over the code that ships;
+// tests build regular expressions and paths from their fixtures, as the .NET rules leave tests outside (ADR-0053).
+// detect-object-injection is off: it reports every object[variable] (52 places when measured, 34 in the shell's own
+// code), and the shell's objects come from the API through Zod schemas or from its own constants, never keyed by text
+// a person typed into a prototype.
+const securityRules = Object.fromEntries(
+  Object.keys(security.configs.recommended.rules).map((rule) => [
+    rule,
+    rule === "security/detect-object-injection" ? "off" : "error",
+  ]),
+);
+
 const colourRule = {
   selector: `${colourPositions} :matches(Literal[value=${rawColour}], TemplateElement[value.raw=${rawColour}])`,
   message:
@@ -239,6 +252,12 @@ export default tseslint.config(
     ignores: ["src/components/rich-text/RichTextView.tsx"],
     plugins: { iron: ironPlugin },
     rules: { "iron/inner-html": "error" },
+  },
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    plugins: { security },
+    rules: securityRules,
   },
   {
     // Everything under src, except where the values are defined and where they are mapped into the grid.

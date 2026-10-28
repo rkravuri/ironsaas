@@ -12,7 +12,24 @@ export interface Rgba {
 }
 
 const hexPattern = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/;
-const functionPattern = /^rgba?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/;
+// The function's arguments are matched as one run and split, not by one pattern with a repetition inside an optional
+// group, whose backtracking grows with the length of a run of spaces (detect-unsafe-regex, ADR-0055).
+const functionPattern = /^rgba?\(([^()]*)\)$/;
+const argumentSeparator = /[\s,/]+/;
+const channelPattern = /^[\d.]+$/;
+const alphaPattern = /^[\d.]+%?$/;
+
+function channels(text: string): [string, string, string, string | undefined] | undefined {
+  const parts = text.split(argumentSeparator).filter((part) => part !== "");
+  const [r, g, b, alpha] = parts;
+  if (parts.length < 3 || parts.length > 4 || r === undefined || g === undefined || b === undefined) {
+    return undefined;
+  }
+  if (![r, g, b].every((part) => channelPattern.test(part)) || (alpha !== undefined && !alphaPattern.test(alpha))) {
+    return undefined;
+  }
+  return [r, g, b, alpha];
+}
 
 /** Parses a hex (3, 4, 6 or 8 digits) or an rgb()/rgba() value; anything else is a mistake worth throwing for. */
 export function parseColour(value: string): Rgba {
@@ -24,11 +41,12 @@ export function parseColour(value: string): Rgba {
     return { r: byte(0), g: byte(2), b: byte(4), a: digits.length === 8 ? byte(6) / 255 : 1 };
   }
   const fn = functionPattern.exec(text);
-  if (fn?.[1] !== undefined && fn[2] !== undefined && fn[3] !== undefined) {
-    const alphaText = fn[4];
+  const parts = fn?.[1] === undefined ? undefined : channels(fn[1]);
+  if (parts !== undefined) {
+    const [r, g, b, alphaText] = parts;
     const alpha =
       alphaText === undefined ? 1 : alphaText.endsWith("%") ? Number(alphaText.slice(0, -1)) / 100 : Number(alphaText);
-    return { r: Number(fn[1]), g: Number(fn[2]), b: Number(fn[3]), a: alpha };
+    return { r: Number(r), g: Number(g), b: Number(b), a: alpha };
   }
   throw new Error(`Not a colour value: ${value}`);
 }

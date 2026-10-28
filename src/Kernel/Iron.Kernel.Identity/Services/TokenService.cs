@@ -106,7 +106,11 @@ public sealed class TokenService(SigningKeys keys, TokenOptions options, TenantC
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateIssuerSigningKey = true,
-            ValidateLifetime = false, // checked below on Foundation's clock, with zero skew
+            // Checked below on Foundation's clock, with zero skew; CA5404 sees only the library's check switched off
+            // (ADR-0007, ADR-0015). RequireExpirationTime stays on, so a token without "exp" never reaches the check.
+#pragma warning disable CA5404
+            ValidateLifetime = false,
+#pragma warning restore CA5404
         }).ConfigureAwait(false);
 
         if (!result.IsValid || result.SecurityToken is not JsonWebToken jwt)
