@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -104,7 +104,8 @@ clean: ## Remove build output (the .NET folders only; shell/node_modules has bin
 
 DEV_DATABASE = ConnectionStrings__Database="Host=localhost;Port=5432;Database=postgres;Username=$$POSTGRES_SUPERUSER;Password=$$POSTGRES_SUPERUSER_PASSWORD"
 DEV_STORAGE = Storage__ConnectionString="DefaultEndpointsProtocol=http;AccountName=$$BLOB_ACCOUNT_NAME;AccountKey=$$BLOB_ACCOUNT_KEY;BlobEndpoint=http://localhost:10000/$$BLOB_ACCOUNT_NAME;" Storage__Container=dev
-DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost Tokens__SigningKeyPath=$(COMPOSE_DIR)/.dev-signing-key.pem
+# Without a store the dev host's keys are its own, derived from a material kept beside the stack's files (ADR-0054).
+DEV_TENANT = Tenant__Id=dev Tenant__Hostnames__0=localhost Tenant__Hostnames__1=dev.localhost Keys__Local__MaterialPath=$(COMPOSE_DIR)/.dev-key-material
 DEV_SMOKE_SECRET = dev-smoke-client-secret-not-for-real-tenants
 DEV_OPERATOR_SECRET = dev-operator-secret-not-for-real-deployments
 DEV_SMOKE_READER_SECRET = dev-smoke-reader-secret-change-me
@@ -112,9 +113,16 @@ DEV_SMOKE_READER_SECRET = dev-smoke-reader-secret-change-me
 DEV_SECOND_OPERATOR_SECRET = dev-second-operator-secret-not-for-real-deployments
 CONTROL_URL ?= http://localhost:5200
 CONTROL_TENANT = Tenant__Id=control Tenant__Hostnames__0=localhost Tenant__Hostnames__1=control.localhost
-CONTROL_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=control
-# Migrations and seeds run as the control plane's owner role, whose connection only this secret holds (ADR-0053).
-CONTROL_MIGRATE_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=control-migrate
+# The control plane's API and the fleet each read their own secret with their own store token (ADR-0054), which
+# make secret-control puts into .env; prepare-control alone runs with the root token, as it makes the policies.
+CONTROL_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$CONTROL_API_STORE_TOKEN Secrets__Path=control
+FLEET_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$FLEET_STORE_TOKEN Secrets__Path=fleet
+PREPARE_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=fleet
+# Migrations and seeds run as the control plane's owner role, whose connection only this secret holds (ADR-0053), which
+# the fleet's token reads and the API's does not. The seed moves the authenticator secrets sealed under the retired
+# factor key, given once from the file that kept it (ADR-0054).
+CONTROL_MIGRATE_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$FLEET_STORE_TOKEN Secrets__Path=control-migrate
+LEGACY_CONTROL_FACTOR_KEY = $(shell cat $(COMPOSE_DIR)/.control-factor-key 2>/dev/null)
 FLEET_LAPTOP = Fleet__Units__Runtime=compose Fleet__Units__ComposeDirectory=$(CURDIR)/$(COMPOSE_DIR)/units Fleet__Units__IngressUrl=http://localhost Fleet__Units__ImageTag=$(TAG) \
 	Fleet__Database__UnitHost=postgres Fleet__Storage__UnitBlobEndpoint=http://blob:10000/$$BLOB_ACCOUNT_NAME Fleet__Secrets__UnitAddress=http://openbao:8200 Fleet__PollSeconds=3
 TAG ?= dev
@@ -159,9 +167,10 @@ seed: env ## Run the tenant API image command "seed" against the laptop database
 	Seed__ServiceAccounts__0__ClientId=smoke-client Seed__ServiceAccounts__0__Secret=$(DEV_SMOKE_SECRET) \
 	dotnet run --project src/Hosts/Iron.Host.Api -- seed
 
-secret-control: env ## Write the control plane's secrets to OpenBao and give it its own database roles and anchors container (ADR-0053)
+secret-control: env ## Write the fleet's bootstrap secret, give the control plane its own database roles, anchors, keys, secrets and store tokens (ADR-0053, ADR-0054)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-control-secret.sh
-	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(CONTROL_TENANT) $(CONTROL_SECRETS) dotnet run --project src/Hosts/Iron.Host.Fleet -- prepare-control
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(CONTROL_TENANT) $(PREPARE_SECRETS) dotnet run --project src/Hosts/Iron.Host.Fleet -- prepare-control
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-control-tokens.sh
 
 migrate-control: env ## Migrate the control plane database (created on first run); needs make secret-control
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
@@ -169,7 +178,7 @@ migrate-control: env ## Migrate the control plane database (created on first run
 
 seed-control: env ## Seed the control plane: system roles, the operator service account and a second operator for break-glass
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(CONTROL_TENANT) $(CONTROL_MIGRATE_SECRETS) \
+	$(CONTROL_TENANT) $(CONTROL_MIGRATE_SECRETS) Identity__LegacyFactorKey="$(LEGACY_CONTROL_FACTOR_KEY)" \
 	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
 	Seed__ServiceAccounts__1__ClientId=smoke-reader Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) Seed__ServiceAccounts__1__Role=service-default Seed__ServiceAccounts__1__DisplayName="Smoke reader (denial case)" \
 	Seed__ServiceAccounts__2__ClientId=operator-two Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) Seed__ServiceAccounts__2__Role=tenant-administrator Seed__ServiceAccounts__2__DisplayName="Second local operator" \
@@ -182,7 +191,7 @@ run-control: env ## Run the control plane API on the laptop (http://localhost:52
 
 run-fleet: env ## Run the fleet worker on the laptop with the Compose runtime (it drives docker on this machine)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	ASPNETCORE_URLS=http://localhost:5201 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(CONTROL_SECRETS) $(FLEET_LAPTOP) Heartbeat__Interval=00:01:00 \
+	ASPNETCORE_URLS=http://localhost:5201 ASPNETCORE_ENVIRONMENT=Development $(CONTROL_TENANT) $(FLEET_SECRETS) $(FLEET_LAPTOP) Heartbeat__Interval=00:01:00 \
 	dotnet run --project src/Hosts/Iron.Host.Fleet
 
 update-unit: ## Ask the fleet to re-render and re-apply an active tenant's unit (new images, new template): make update-unit TENANT=acme
@@ -240,6 +249,14 @@ audit-accept-restore: ## Accept the restore point a tenant's latest verification
 	@test -n "$(TENANT)" && test -n "$(TICKET)" && test -n "$(REASON)" || (echo 'usage: make audit-accept-restore TENANT=echo TICKET=INC-1 REASON="why, for both audit trails"' && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) TICKET="$(TICKET)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/audit-chain.sh accept $(TENANT)
 
+rotate-key: ## Rotate a tenant's data, index or signing key, or its database password, as the key officer with a reason and a fresh token (ADR-0054): make rotate-key TENANT=echo KEY=data|index|signing|database REASON="..."
+	@test -n "$(TENANT)" && test -n "$(KEY)" && test -n "$(REASON)" || (echo 'usage: make rotate-key TENANT=echo KEY=data|index|signing|database REASON="why, for both audit trails"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) KEY="$(KEY)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/keys.sh rotate $(TENANT)
+
+key-status: ## A tenant's keys and database password: versions, last and next rotation, and the latest rotations with their re-encryption (ADR-0054): make key-status TENANT=echo
+	@test -n "$(TENANT)" || (echo 'usage: make key-status TENANT=echo' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/keys.sh status $(TENANT)
+
 audit-chain: ## A tenant's latest audit chain verifications, accepted restores and anchors, as the control plane keeps them (ADR-0050): make audit-chain TENANT=echo
 	@test -n "$(TENANT)" || (echo 'usage: make audit-chain TENANT=echo' && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/audit-chain.sh show $(TENANT)
@@ -266,7 +283,7 @@ provision: ## Register a tenant in the control plane and request its provisionin
 	@test -n "$(TENANT)" || (echo "usage: make provision TENANT=acme [ADMIN=admin@acme.localhost]" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) $(or $(ADMIN),admin@$(TENANT).localhost)
 
-secret-dev: env ## Write the dev unit's secret to OpenBao (connection string, storage, signing key) as the fleet will per tenant
+secret-dev: env ## Write the dev unit's secret to OpenBao (connection string, storage, key family) and make its keys, as the fleet does per tenant
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-dev-secret.sh
 
 run-api-secrets: env ## Run the tenant API host with only the store address, the unit token and the tenant in its environment
@@ -347,11 +364,13 @@ up-ci: env ## Start the slim platform plus the collector and Tempo (what the pip
 
 up-control: env ## Run the control plane API and the fleet worker as containers from the images, migrated and seeded first (make images first; secret with container hosts)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob $(COMPOSE_DIR)/scripts/write-control-secret.sh
-	@# As the pipeline does: its own roles and anchors first (ADR-0053), then, as the owner, a new image's migrations and
-	@# permissions, which the API must not start without.
-	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps fleet prepare-control
-	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Path=control-migrate control-api migrate
-	IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Path=control-migrate \
+	@# As the pipeline does: its own roles, anchors, keys, secrets and tokens first (ADR-0053, ADR-0054), with the root
+	@# token; then, as the owner and with the fleet's token, a new image's migrations and permissions, which the API must
+	@# not start without.
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Token=$$OPENBAO_ROOT_TOKEN -e Secrets__Path=fleet fleet prepare-control
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-control-tokens.sh
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Token=$$FLEET_STORE_TOKEN -e Secrets__Path=control-migrate control-api migrate
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Token=$$FLEET_STORE_TOKEN -e Secrets__Path=control-migrate -e "Identity__LegacyFactorKey=$(LEGACY_CONTROL_FACTOR_KEY)" \
 	  -e Seed__ServiceAccounts__0__ClientId=operator -e Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) -e Seed__ServiceAccounts__0__Role=tenant-administrator -e "Seed__ServiceAccounts__0__DisplayName=Local operator" \
 	  -e Seed__ServiceAccounts__1__ClientId=smoke-reader -e Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) -e Seed__ServiceAccounts__1__Role=service-default -e "Seed__ServiceAccounts__1__DisplayName=Smoke reader (denial case)" \
 	  -e Seed__ServiceAccounts__2__ClientId=operator-two -e Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) -e Seed__ServiceAccounts__2__Role=tenant-administrator -e "Seed__ServiceAccounts__2__DisplayName=Second local operator" \

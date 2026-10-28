@@ -64,7 +64,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
     public async Task TheUnitSecretBecomesConfigurationAtStart()
     {
         using var store = new OpenBaoSecretStore(openBao.Options("tenants/bravo"));
-        await store.WriteAsync("tenants/bravo/unit", new Dictionary<string, string> { ["ConnectionStrings:Database"] = "Host=db;Database=bravo", ["Tokens__SigningKeyPem"] = "-----BEGIN EC PRIVATE KEY-----" }, TestContext.Current.CancellationToken);
+        await store.WriteAsync("tenants/bravo/unit", new Dictionary<string, string> { ["ConnectionStrings:Database"] = "Host=db;Database=bravo", ["Keys__Prefix"] = "tenant-bravo" }, TestContext.Current.CancellationToken);
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -79,7 +79,7 @@ public class SecretStoreTests(OpenBaoFixture openBao)
             .Build();
 
         Assert.Equal("Host=db;Database=bravo", configuration.GetConnectionString("Database"));
-        Assert.Equal("-----BEGIN EC PRIVATE KEY-----", configuration["Tokens:SigningKeyPem"]);
+        Assert.Equal("tenant-bravo", configuration["Keys:Prefix"]);
     }
 
     [Fact]

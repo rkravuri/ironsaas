@@ -9,7 +9,8 @@
 # A new store: initialised with one recovery share; the root token and the recovery key go into infra/compose/.env
 # (replacing a development placeholder) before anything else; KV version 2 is enabled at secret/.
 # An initialised store: it must be unsealed (the static seal does that at start) and the root token in .env must
-# open it. Nothing is written then, except KV version 2 at secret/ if an earlier first run stopped before enabling it.
+# open it. Nothing is written then, except KV version 2 at secret/ if an earlier first run stopped before enabling it,
+# and the transit engine at transit/, where the tenants' keys live (ADR-0054), on a store made before T9b.
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
@@ -205,6 +206,11 @@ if "secret/" not in (mounts.get("data") or mounts):
     if status not in (200, 204):
         sys.exit(f"Enabling KV version 2 at secret/ failed ({status}): {result}")
     print("Enabled KV version 2 at secret/.")
+if "transit/" not in (mounts.get("data") or mounts):
+    status, result = call("POST", "/v1/sys/mounts/transit", token=token, body={"type": "transit"})
+    if status not in (200, 204):
+        sys.exit(f"Enabling the transit engine at transit/ failed ({status}): {result}")
+    print("Enabled the transit engine at transit/, for the tenants' keys.")
 
 print(f"The store at {address} is initialised and unsealed, and the root token in infra/compose/.env opens it.")
 PY
