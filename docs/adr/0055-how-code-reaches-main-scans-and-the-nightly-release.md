@@ -80,7 +80,20 @@ CI measures line coverage of the product's .NET code (`make test COVERAGE=1`, th
 - **A change of documents only** (`docs/` and markdown files, the threat models excepted, which a test reads) skips the build, test and scan jobs; the requirement documents, the secret scan and the trace still run. The secret scan stays on every change, against the brief's list, because a document holds a secret as easily as code.
 - **A newer push cancels the older run** of the same workflow and pull request or branch; a release is never cancelled.
 - **Caches**: NuGet packages (by the lock files), npm (by its lock), the Playwright browsers (by the lock, the system libraries installed each time), Trivy's database (daily), and the images' layers (Buildx in Actions' cache).
-- **The minutes**, measured with gh from each job's start and end, each job rounded up to the minute as GitHub bills: ⟨MINUTES⟩
+- **The minutes**, measured with gh from each job's start and end, each job rounded up to the minute as GitHub bills.
+
+  Before, every run from the repository's first (2026-10-17) to 2026-10-28: 137 runs, 2,155 minutes in twelve days.
+
+  | Workflow and trigger | Runs | Minutes | Per run |
+  |---|---|---|---|
+  | Release, on every push to main | 43 | 856 | 19.9 |
+  | CI, on every push to main | 47 | 835 | 17.8 |
+  | CI, on Dependabot's pull requests | 19 | 235 | 12.4 |
+  | Dependabot's own update jobs | 27 | 226 | 8.4 |
+
+  After, on this task's pull request (run 40717829454, the caches cold): CI 30 minutes, ten of wall time: the .NET build and tests 10 (with coverage), the accessibility scan 9, the shell 4, the security scans 2, five jobs of one minute each; the merge build on main about 5; the release about 20, at most once a night.
+
+  For a month of 20 tasks at October's pace (about 3.6 pushes to main and 3.3 releases a task before): before, about 130 minutes a task, 2,600 for the tasks; after, about 3.5 full pull request runs a task (the first push, a round of fixes, the accepted status row) at 25 to 30 minutes and a merge build, about 100 a task, 2,000 for the tasks, plus at most 20 releases, 400. The release's share falls from about 66 minutes a task to about 20; CI's rises, since every push of a pull request runs in full and the full run now scans and measures coverage. Dependabot's own update jobs are unchanged. The saving is modest, and the free minutes no longer bind: a public repository's standard runners are not counted. Running the shell's jobs only when `shell/` changed, and the .NET ones only when .NET code did, would take another 10 to 15 minutes off a run; it is left for when minutes matter again.
 
 ### 11. The definition of done
 
