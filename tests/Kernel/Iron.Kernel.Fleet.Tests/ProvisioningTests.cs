@@ -63,7 +63,7 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-210 AC1", "TF-210 AC2", "ADR-0018", "ADR-0054")]
+    [Proves("TF-210 AC1", "TF-210 AC2", "TF-074 AC5", "ADR-0018", "ADR-0054")]
     public async Task TheUnitReachesOnlyItsOwnDatabaseStoragePathSecretAndKeys()
     {
         var runtime = new RecordingRuntime();

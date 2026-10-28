@@ -122,8 +122,8 @@ public class KeyRotationTests(FleetFixture fixture)
     }
 
     [Fact]
-    [Proves("ADR-0054")]
-    public async Task TheScheduleRotatesTheDatabasePasswordQuarterlyAndTheKeysYearly()
+    [Proves("TF-075 AC5", "ADR-0054")]
+    public async Task TheScheduleRotatesTheDatabasePasswordQuarterlyAndTheKeysYearlyAndAuditsEach()
     {
         var time = FleetFixture.Clock();
         var slug = await ProvisionAsync(time, "november");
@@ -139,6 +139,15 @@ public class KeyRotationTests(FleetFixture fixture)
         Assert.All(quarter, r => Assert.Equal((KeyRotationTriggers.Schedule, KeyRotationService.ScheduleName), (r.Trigger, r.RequestedBy)));
         Assert.Equal([TenantKeyNames.Data, TenantKeyNames.Index, TenantKeyNames.Signing], year.Where(r => r.Key != TenantKeyNames.Database).Select(r => r.Key).Order(StringComparer.Ordinal));
         Assert.All(year.Where(r => r.Key != TenantKeyNames.Database), r => Assert.Equal(KeyRotationStates.Rotated, r.State));
+        await using var provider = fixture.BuildServices(time, new RecordingRuntime());
+        await using var scope = provider.CreateAsyncScope();
+        var rotated = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking()
+            .Where(e => e.EventType == TenancyAuditEvents.KeyRotated && e.Target == slug)
+            .Select(e => e.Reason)
+            .ToListAsync(Cancel);
+        // The year's list holds the quarter's rotation too: every rotation the schedule asked for, each rotated and audited.
+        Assert.Equal(year.Count(r => r.State != KeyRotationStates.Requested), rotated.Count);
+        Assert.All(rotated, reason => Assert.StartsWith("Scheduled rotation, every", reason, StringComparison.Ordinal));
     }
 
     [Fact]

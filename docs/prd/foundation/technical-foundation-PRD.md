@@ -1497,8 +1497,12 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a database dump, When inspected, Then application-encrypted fields are unreadable.
 - AC2 Given a search by exact tax identifier, When run, Then the record is found through the keyed hash.
 - AC3 Given a TLS 1.0 client, When connecting, Then the connection is refused. (error case)
+- AC4 Given a search by a part of an encrypted field's value, When run, Then nothing is found: only the exact value finds the record. (error case)
+- AC5 Given a tenant's unit, When it uses another tenant's key, Then the key service refuses it. (error case)
 
 *Depends on:* TF-073
+
+**Notes:** AC4 and AC5 added on 2026-10-28 (S3 T9b, ADR-0054): the tests prove the requirement's text beyond its first three criteria, the search only by exact match and the tenant-specific keys.
 
 #### TF-075 Key management and rotation  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Security
@@ -1513,8 +1517,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC2 Given a signing key rotated, When old tokens arrive, Then they validate until expiry.
 - AC3 Given a key operation, When performed, Then it is audited with operator and reason.
 - AC4 Given a rotation attempted without the key officer permission, When requested, Then it is refused. (error case)
+- AC5 Given a key whose scheduled rotation is due, When the schedule runs, Then the key is rotated and the rotation audited as an operator's would be.
 
 *Depends on:* TF-074
+
+**Notes:** AC5 added on 2026-10-28 (S3 T9b, ADR-0054): the tests prove the requirement's text beyond its first four criteria, the rotation on a schedule.
 
 #### TF-076 Vulnerability and dependency management  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Security

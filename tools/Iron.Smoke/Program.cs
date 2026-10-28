@@ -484,7 +484,7 @@ await report.StepAsync("audit-trail", ["TF-064 AC1", "ADR-0050"], () => trail.Se
 // of the run found by its exact value and not by a part of it.
 var keys = new KeySteps(api, options, AdministratorAsync, run);
 await report.StepAsync("tls", ["TF-074 AC3", "ADR-0054"], () => keys.TlsAsync(ct));
-await report.StepAsync("key-rotation", ["TF-075 AC1", "TF-074 AC2", "ADR-0054"], () => keys.RotateIndexKeyAsync(ct));
+await report.StepAsync("key-rotation", ["TF-075 AC1", "TF-074 AC2", "TF-074 AC4", "ADR-0054"], () => keys.RotateIndexKeyAsync(ct));
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;

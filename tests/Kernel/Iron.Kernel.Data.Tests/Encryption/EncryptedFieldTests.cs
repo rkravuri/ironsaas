@@ -83,7 +83,7 @@ public class EncryptedFieldTests(PostgresFixture fixture, TransitFixture transit
     }
 
     [Fact]
-    [Proves("TF-074 AC2", "ADR-0054")]
+    [Proves("TF-074 AC2", "TF-074 AC4", "ADR-0054")]
     public async Task AnExactValueIsFoundThroughItsKeyedHashAndAPartOfItFindsNothing()
     {
         using var keys = await transit.NewTenantAsync();

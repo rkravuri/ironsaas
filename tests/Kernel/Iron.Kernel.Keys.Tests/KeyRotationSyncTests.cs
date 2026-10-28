@@ -164,7 +164,7 @@ public class KeyRotationSyncTests(KeysFixture fixture)
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
-    [Proves("TF-075 AC1", "TF-075 AC3", "TF-074 AC2", "ADR-0054")]
+    [Proves("TF-075 AC1", "TF-075 AC3", "TF-074 AC2", "TF-074 AC4", "ADR-0054")]
     public async Task ARotationIsRecordedWithWhoAskedAndWhyItsValuesMoveAndItsRetirementIsRecorded()
     {
         using var tenant = await fixture.NewTenantAsync();

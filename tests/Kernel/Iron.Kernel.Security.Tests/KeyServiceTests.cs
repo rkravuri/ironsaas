@@ -82,7 +82,7 @@ public class KeyServiceTests(OpenBaoFixture openBao)
     }
 
     [Fact]
-    [Proves("ADR-0054")]
+    [Proves("TF-074 AC5", "ADR-0054")]
     public async Task AUnitTokenUsesItsOwnTenantsKeysAndCannotRotateThemOrUseAnothers()
     {
         var own = NewPrefix();
