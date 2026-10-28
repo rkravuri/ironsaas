@@ -5,7 +5,7 @@ namespace Iron.Kernel.Security.Secrets;
 
 /// <summary>
 /// Loads the unit's secret into configuration at start (TF-073): the secret's keys are configuration keys
-/// (<c>ConnectionStrings:Database</c>, <c>Storage:ContainerSasUrl</c>, <c>Tokens:SigningKeyPem</c>, ...), so the rest of the
+/// (<c>ConnectionStrings:Database</c>, <c>Storage:ContainerSasUrl</c>, <c>Keys:Prefix</c>, ...), so the rest of the
 /// host reads configuration as before and the environment holds only the store address, the unit token and the path.
 /// It sits below the environment variables, so an explicit environment value still wins.
 /// A configured store that cannot be read stops the host with a clear message; a missing configuration means no store.

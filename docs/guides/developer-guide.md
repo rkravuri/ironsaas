@@ -167,6 +167,42 @@ The unit's worker seals each event into the tenant's chain a few seconds after i
 
 **Times are the server's** (TF-065, ADR-0050). `CreatedAt` and `UpdatedAt` are stamped from `TimeProvider` on save, whatever a caller set. A request body never carries a time the server records: take `starts_at` or `due_on` only for a period a person chooses, and add it to `ChosenTimes` in `tests/Iron.Host.Tests/HostTests.cs` with why; any other date in a request body fails that test.
 
+## An encrypted field, and one found by its exact value (TF-074, ADR-0054)
+
+A field whose value must not be readable in a dump, a backup or the database's own tools (a bank account, a tax identifier, a secret a person enrolled) is an `EncryptedValue`; one that must also be found by its exact value is marked `[Searchable]` and keeps its keyed hash beside it, named after it with `Hash`:
+
+```csharp
+public sealed class Supplier : BusinessRecord, ITrackedChanges
+{
+    [Searchable]
+    public EncryptedValue? TaxIdentifier { get; private set; }
+
+    public SearchHash? TaxIdentifierHash { get; private set; }
+
+    public EncryptedValue? BankAccount { get; private set; }
+
+    public void IdentifyForTax(SearchableValue taxIdentifier)
+    {
+        TaxIdentifier = taxIdentifier.Value;
+        TaxIdentifierHash = taxIdentifier.Hash;
+    }
+
+    public void PayTo(EncryptedValue bankAccount) => BankAccount = bankAccount;
+}
+```
+
+The service encrypts before it saves and opens only what it shows, through `IFieldEncryption`:
+
+```csharp
+supplier.IdentifyForTax(await encryption.SealSearchableAsync(request.TaxIdentifier, cancellationToken));
+supplier.PayTo(await encryption.EncryptAsync(request.BankAccount, cancellationToken));
+
+var hashes = await encryption.SearchHashesAsync(query.TaxIdentifier, cancellationToken);
+var found = await suppliers.Suppliers.Where(s => hashes.Contains(s.TaxIdentifierHash!)).ToListAsync(cancellationToken);
+```
+
+A convention stores each as text with its key version; give the hash an index in `ConfigureModule`, then `make ef-add`. The search hashes one value per live version of the index key, so it finds a record during a rotation too; the value is normalised first (no white space, hyphens, dots or slashes, in capitals), so `DE 123-456` finds `de123456`. That is the only search such a field has: not a part, a prefix, a range, a sort or `LIKE`. A field that needs one of those is not encrypted, or keeps a separate, less sensitive form beside it (the last four digits). Open many values at once with the list overload, which is one call to the key service. Nothing else is needed for rotation: the Keys module re-encrypts every `EncryptedValue` and re-hashes every `SearchHash` of every module context after a key's rotation, a batch at a time; a raw SQL write of one of these columns must write what `IFieldEncryption` made. The model check refuses a `[Searchable]` field without its hash; the record's history shows an encrypted field only as changed.
+
 ## A record type under retention (TF-066, ADR-0050)
 
 A module that owns records with a life puts each record type into a retention class and lets the platform delete them:
@@ -327,7 +363,7 @@ Tokens live 15 minutes, carry the unit's tenant, and are checked on every reques
 
 ## A unit's configuration (ADR-0016)
 
-A host reads its configuration from its unit secret in the store, loaded at start by `AddIronSecrets()` just below the environment variables. Inside a module, inject the bound options or `IConfiguration` as usual; never read the store directly. What a unit needs at runtime goes into the keys the fleet writes (`ConnectionStrings:Database`, `Database:AppRole`, `Storage:ContainerSasUrl`, `Tokens:SigningKeyPem`); a new runtime secret is a new key written by the fleet's secrets step and read through configuration, not a new way to fetch it.
+A host reads its configuration from its unit secret in the store, loaded at start by `AddIronSecrets()` just below the environment variables. Inside a module, inject the bound options or `IConfiguration` as usual; never read the store directly. What a unit needs at runtime goes into the keys the fleet writes (`ConnectionStrings:Database`, `Database:AppRole`, `Storage:ContainerSasUrl`, `Keys:Prefix`); a key is never one of them: it stays in the key service, used through `IKeyService` (ADR-0054); a new runtime secret is a new key written by the fleet's secrets step and read through configuration, not a new way to fetch it.
 
 Files go through `IObjectStorage` (Iron.Kernel.Files.Contracts): `PutAsync`, `GetAsync`, `DeleteAsync`, with the tenant's container behind it. The container's signature is all a unit holds; it cannot create containers or reach another tenant's.
 

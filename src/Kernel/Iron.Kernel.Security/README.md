@@ -21,3 +21,18 @@ One-time places (ADR-0046): `ISecretStore.WriteOnceAsync` writes a path only if 
 Headers (TF-070 AC1, ADR-0053): every answer carries the content security policy (no `unsafe-inline`; `report-uri /api/v1/csp-reports` and `report-to csp`, with `Reporting-Endpoints`), HSTS (sent even when the ingress speaks plain HTTP to the host), frame denial, `nosniff`, the referrer policy and the permissions policy. Cookies are Secure, HttpOnly and SameSite=Strict by policy, whatever the code that writes them asks. Cross-origin calls are the Protection module's: the operator's `Security:Cors:AllowedOrigins` and each tenant's own list.
 
 Rich text (TF-071 AC2, ADR-0053): `Iron.Kernel.Security.Text.RichText` holds HTML cleaned by HtmlSanitizer's allow-list as it is made; its JSON converter cleans a request's field as it binds and refuses more than 256 KB unread. The allow-list (`RichTextSanitizer`) keeps paragraphs, line breaks, emphasis, lists, quotes, code, headings from the second level, rules, tables, and links to `http`, `https` and `mailto` with `rel="noopener noreferrer nofollow"`; everything else goes, a script's or a style's text with it. A field of this type declares `RuleFor(x => x.Body).MaximumLength(n)`, which the request limit check reads.
+
+## Keys (TF-074, TF-075, ADR-0054)
+
+`Iron.Kernel.Security.Keys`: the key service the kernel vocabulary declares (`IKeyService`: encrypt, decrypt, re-wrap, hash, sign, versions; every value it makes carries its version, `<service>:v<n>:<base64>`) and what the fleet does with keys (`IKeyAdministration`: make, describe, rotate, retire).
+
+| Type | What it does |
+|---|---|
+| `TransitKeyService` | OpenBao's transit engine over its HTTP API (`Secrets:TransitMount`, `transit`), batch calls for lists; the keys stay in the store. A retired version's refusal is `KeyVersionRetiredException`, any other refusal `SecretStoreException` |
+| `LocalKeyService` | The same rules in the process, for the tests and a host run from source without a store: every key derived from one material (`Keys:Local:Material`, or the file at `Keys:Local:MaterialPath`, written on first start) by HKDF with its name and version, signing keys as a private scalar, so hosts that share a material agree. Never for a unit with a store |
+| `KeyOptions` | The `Keys` section: `Prefix`, the unit's key family (`tenant-<slug>`, `control`), and `Local` |
+| `AddIronKeys(configuration)` | Called by `AddIronSecretStore`: the transit engine with a store, the process's keys without one; a test or module that registered one first keeps it |
+
+The store's administration also writes a policy of any rules (`CreatePolicyAsync`, `StorePolicyRule`), grants a token the use of named keys (`KeyGrant`, `KeyUses`: encrypt, decrypt, re-wrap, hash, sign, read), makes a token role that allows only some policies (`EnsureTokenRoleAsync`), makes tokens through it when `Secrets:TokenRole` is set (the fleet's `tenant-units`), and says whether a token still opens the store (`IsTokenValidAsync`).
+
+The database password (TF-073 AC2): `StoreDatabaseCredentials` is the kernel's `IDatabaseCredentials` when a store is configured: the unit secret's password, read again after `Database:PasswordRefreshSeconds` (60) or at once after a refusal, for the login the process connects as only. The Data library's data source asks it at each new connection.
