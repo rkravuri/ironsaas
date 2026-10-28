@@ -187,6 +187,29 @@ public class HostTests
         Assert.Equal(health, Anonymous(fleet.Services));
     }
 
+    /// <summary>
+    /// Every anonymous endpoint of every host, an external interface anyone can reach, is named by a threat model record
+    /// in docs/security/threat-models, and a record names only endpoints a host serves anonymously (TF-077 AC2,
+    /// ADR-0055): a new anonymous endpoint fails here until its record exists.
+    /// </summary>
+    [Fact]
+    [Proves("TF-077 AC2", "ADR-0055")]
+    public async Task EveryAnonymousEndpointOfEveryHostIsNamedByAThreatModelRecord()
+    {
+        await using var api = Production<Iron.Host.Api.ApiHost>();
+        await using var controlPlane = Production<Iron.Host.ControlPlane.ControlPlaneHost>();
+        await using var worker = Production<Iron.Host.Worker.WorkerHost>();
+        await using var fleet = Production<Iron.Host.Fleet.FleetHost>();
+        var endpoints = Anonymous(api.Services).Concat(Anonymous(controlPlane.Services)).Concat(Anonymous(worker.Services)).Concat(Anonymous(fleet.Services))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var problems = ThreatModels.Coverage(ThreatModels.Read(ThreatModels.Folder()), "anonymous endpoint", endpoints, record => record.Endpoints);
+
+        Assert.True(endpoints.Count >= 20, $"Only {endpoints.Count} anonymous endpoints were found; the hosts did not start as in production.");
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+    }
+
     [Fact]
     [Proves("ADR-0009", "ADR-0012")]
     public async Task InDevelopmentOnlyTheApiBrowserJoinsTheAnonymousList()
