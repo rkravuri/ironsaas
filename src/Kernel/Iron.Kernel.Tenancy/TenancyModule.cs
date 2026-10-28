@@ -70,6 +70,12 @@ public sealed class TenancyModule : IModule
         services.AddScoped<IValidator<BreakGlassRequest>, BreakGlassRequestValidator>();
         services.AddScoped<IValidator<PlatformDocumentRequest>, PlatformDocumentRequestValidator>();
 
+        // The tenants' keys and database passwords, rotated by the fleet at a key officer's or the schedule's request (ADR-0054).
+        services.AddSingleton(configuration.GetSection(KeyRotationOptions.SectionName).Get<KeyRotationOptions>() ?? new KeyRotationOptions());
+        services.AddScoped<KeyRotationService>();
+        services.AddScoped<ITenantKeys>(provider => provider.GetRequiredService<KeyRotationService>());
+        services.AddScoped<IValidator<KeyRotationRequest>, KeyRotationRequestValidator>();
+
         var reconcile = new ReconcileOptions();
         configuration.GetSection(ReconcileOptions.SectionName).Bind(reconcile);
         services.AddSingleton(reconcile);
@@ -83,6 +89,7 @@ public sealed class TenancyModule : IModule
         FlagEndpoints.Map(endpoints);
         OperatorAccessEndpoints.Map(endpoints);
         AuditChainEndpoints.Map(endpoints);
+        KeyEndpoints.Map(endpoints);
     }
 }
 

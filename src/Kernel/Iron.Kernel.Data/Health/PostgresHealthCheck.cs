@@ -4,14 +4,19 @@ using Npgsql;
 
 namespace Iron.Kernel.Data.Health;
 
-/// <summary>Readiness check: the unit's database answers a trivial query.</summary>
-public sealed class PostgresHealthCheck(NpgsqlDataSource dataSource) : IHealthCheck
+/// <summary>
+/// Readiness check: the unit's database answers a trivial query, on a connection opened as requests open theirs, so a
+/// password being rotated does not mark the unit unready (ADR-0054).
+/// </summary>
+public sealed class PostgresHealthCheck(NpgsqlDataSource dataSource, IDatabaseCredentials credentials) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var command = dataSource.CreateCommand("select 1");
+            await using var connection = dataSource.CreateConnection();
+            await Transactions.DatabaseConnections.OpenAsync(connection, credentials, cancellationToken).ConfigureAwait(false);
+            await using var command = new NpgsqlCommand("select 1", connection);
             await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
             return HealthCheckResult.Healthy("PostgreSQL answers.");
         }

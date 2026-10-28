@@ -66,3 +66,5 @@ Entitlements (ADR-0034): a licensed module's endpoints and an endpoint with `Req
 Permissions on endpoints and the start-up check arrive with T8 (`RequirePermission`). A permission is checked tenant-wide unless the endpoint declares its scope (ADR-0030): `.ScopedToUnit("id")` checks at the organisation unit named by the route value, `.ScopedToRecord("order", lookup)` at the record named by the route value and the unit that owns it, which the lookup finds (`IServiceProvider`, record id, cancellation token to the owning unit id, or null). A record the lookup does not find is checked tenant-wide. The scope reaches the evaluator on `AccessRequest.Scope`.
 
 Tests: `tests/Kernel/Iron.Kernel.Api.Tests` (an in-memory ASP.NET Core server; no Docker).
+
+The unit's control-plane client (ADR-0050, ADR-0054): `Iron.Kernel.Api.ControlPlane` holds `ControlPlaneOptions` (`ControlPlane:Address`, `ClientId`, `ClientSecret`) and `ControlPlaneClient` (a client credentials token kept until a minute before it ends), one per process: the Audit module sends its anchors through it, the Keys module reads its rotations and reports its re-encryption.

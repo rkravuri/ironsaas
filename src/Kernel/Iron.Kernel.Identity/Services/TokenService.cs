@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using Iron.Kernel.Identity.Data;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -23,8 +25,9 @@ public sealed record TokenValidation(TokenClaims? Claims, string? Failure)
 
 /// <summary>
 /// Issues and validates access tokens (TF-020): JWT (RFC 9068, <c>at+jwt</c>), ES256, 15 minutes, with issuer, audience
-/// and the unit's tenant as claims. Validation checks signature, type, algorithm, issuer, audience and tenant through
-/// the library, and the lifetime with zero clock skew on Foundation's own clock.
+/// and the unit's tenant as claims. The key service signs with the latest version of the tenant's signing key, named in
+/// the header; validation accepts every live version (TF-075 AC2, ADR-0054) and checks signature, type, algorithm,
+/// issuer, audience and tenant through the library, and the lifetime with zero clock skew on Foundation's own clock.
 /// </summary>
 public sealed class TokenService(SigningKeys keys, TokenOptions options, TenantContext tenant, TimeProvider time)
 {
@@ -37,39 +40,44 @@ public sealed class TokenService(SigningKeys keys, TokenOptions options, TenantC
     public const string NotYetValidReason = "not_yet_valid";
     public const string TenantMismatchReason = "tenant_mismatch";
 
-    private readonly JsonWebTokenHandler _handler = new() { SetDefaultTimesOnTokenCreation = false };
+    private readonly JsonWebTokenHandler _handler = new();
 
     public string Issuer => string.IsNullOrWhiteSpace(options.Issuer) ? $"https://{tenant.PrimaryHostname}" : options.Issuer;
 
-    public IssuedToken Issue(Principal principal, string? scope)
+    public async Task<IssuedToken> IssueAsync(Principal principal, string? scope, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(principal);
         var now = time.GetUtcNow();
         var expiresAt = now + options.AccessTokenLifetime;
         var tokenId = Ids.New(time);
         var grantedScope = scope?.Trim() ?? string.Empty;
+        var signing = await keys.CurrentAsync(cancellationToken).ConfigureAwait(false);
 
-        var descriptor = new SecurityTokenDescriptor
+        var header = new Dictionary<string, object>(StringComparer.Ordinal)
         {
-            Issuer = Issuer,
-            Audience = options.Audience,
-            TokenType = TokenType,
-            IssuedAt = now.UtcDateTime,
-            NotBefore = now.UtcDateTime,
-            Expires = expiresAt.UtcDateTime,
-            SigningCredentials = keys.SigningCredentials,
-            Claims = new Dictionary<string, object>(StringComparer.Ordinal)
-            {
-                [JwtRegisteredClaimNames.Sub] = principal.Id.ToString("D"),
-                [JwtRegisteredClaimNames.Jti] = tokenId.ToString("D"),
-                [ClientIdClaim] = principal.LoginId,
-                [TenantClaim] = tenant.Id.Value,
-                [PrincipalTypeClaim] = principal.Type.ToString().ToLowerInvariant(),
-                [ScopeClaim] = grantedScope,
-            },
+            [JwtHeaderParameterNames.Alg] = SecurityAlgorithms.EcdsaSha256,
+            [JwtHeaderParameterNames.Kid] = signing.KeyId,
+            [JwtHeaderParameterNames.Typ] = TokenType,
+        };
+        var payload = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            [JwtRegisteredClaimNames.Iss] = Issuer,
+            [JwtRegisteredClaimNames.Aud] = options.Audience,
+            [JwtRegisteredClaimNames.Iat] = now.ToUnixTimeSeconds(),
+            [JwtRegisteredClaimNames.Nbf] = now.ToUnixTimeSeconds(),
+            [JwtRegisteredClaimNames.Exp] = expiresAt.ToUnixTimeSeconds(),
+            [JwtRegisteredClaimNames.Sub] = principal.Id.ToString("D"),
+            [JwtRegisteredClaimNames.Jti] = tokenId.ToString("D"),
+            [ClientIdClaim] = principal.LoginId,
+            [TenantClaim] = tenant.Id.Value,
+            [PrincipalTypeClaim] = principal.Type.ToString().ToLowerInvariant(),
+            [ScopeClaim] = grantedScope,
         };
 
-        return new IssuedToken(_handler.CreateToken(descriptor), tokenId, expiresAt, grantedScope);
+        // The signing input is the two encoded parts; the key service signs it, the signature is the third part (RFC 7515).
+        var signingInput = $"{Base64UrlEncoder.Encode(JsonSerializer.SerializeToUtf8Bytes(header))}.{Base64UrlEncoder.Encode(JsonSerializer.SerializeToUtf8Bytes(payload))}";
+        var signature = await keys.SignAsync(Encoding.ASCII.GetBytes(signingInput), signing.Version, cancellationToken).ConfigureAwait(false);
+        return new IssuedToken($"{signingInput}.{Base64UrlEncoder.Encode(signature)}", tokenId, DateTimeOffset.FromUnixTimeSeconds(expiresAt.ToUnixTimeSeconds()), grantedScope);
     }
 
     public async Task<TokenValidation> ValidateAsync(string token)
@@ -79,11 +87,17 @@ public sealed class TokenService(SigningKeys keys, TokenOptions options, TenantC
             return TokenValidation.Invalid("empty");
         }
 
+        string? keyId = null;
+        if (_handler.CanReadToken(token))
+        {
+            keyId = _handler.ReadJsonWebToken(token).Kid;
+        }
+
         var result = await _handler.ValidateTokenAsync(token, new TokenValidationParameters
         {
             ValidIssuer = Issuer,
             ValidAudience = options.Audience,
-            IssuerSigningKeys = keys.ValidationKeys,
+            IssuerSigningKeys = await keys.ValidationKeysAsync(keyId, CancellationToken.None).ConfigureAwait(false),
             CryptoProviderFactory = keys.CryptoProviderFactory,
             ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256],
             ValidTypes = [TokenType],

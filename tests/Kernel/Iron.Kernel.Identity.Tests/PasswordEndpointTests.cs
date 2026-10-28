@@ -115,7 +115,7 @@ public class PasswordEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         using var link = await JsonAsync(issued);
         var path = link.RootElement.GetProperty("recovery_link").GetString()!;
         var code = path[(path.IndexOf('#', StringComparison.Ordinal) + 1)..];
-        using var common = await _client.PostAsJsonAsync("/auth/recovery", new { token = code, password = "qwertyuiop123" }, TestContext.Current.CancellationToken);
+        using var common = await _client.PostAsJsonAsync("/auth/recovery", new { token = code, password = IdentityFixture.CommonPassword() }, TestContext.Current.CancellationToken);
         using var set = await _client.PostAsJsonAsync("/auth/recovery", new { token = code, password = NewPassword }, TestContext.Current.CancellationToken);
         using var again = await _client.PostAsJsonAsync("/auth/recovery", new { token = code, password = "another new passphrase" }, TestContext.Current.CancellationToken);
         using var signedIn = await _client.PostAsJsonAsync("/auth/login", new { login_id = person.LoginId, password = NewPassword }, TestContext.Current.CancellationToken);

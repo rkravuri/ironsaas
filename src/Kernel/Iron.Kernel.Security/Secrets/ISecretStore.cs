@@ -35,10 +35,29 @@ public interface ISecretStoreAdmin
 {
     /// <summary>
     /// Creates or replaces a policy that allows reading the given paths (relative to the mount), and reading, writing and
-    /// deleting the <paramref name="managedPaths"/>, and nothing else. A unit manages its single sign-on providers' client
-    /// secrets that way (ADR-0048); everything else it only reads.
+    /// deleting the <paramref name="managedPaths"/>, using the <paramref name="keys"/> as each grant says, and nothing else.
+    /// A unit manages its single sign-on providers' client secrets that way (ADR-0048), uses its own tenant's keys
+    /// (ADR-0054), and only reads everything else.
     /// </summary>
-    Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null);
+    Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null, IReadOnlyList<KeyGrant>? keys = null);
+
+    /// <summary>
+    /// Creates or replaces a policy of the given rules, each a path from the store's API root (<c>secret/data/control/unit</c>,
+    /// <c>transit/encrypt/control-data</c>) and its capabilities: the control plane's API and the fleet each get one (ADR-0054).
+    /// </summary>
+    Task CreatePolicyAsync(string policyName, IReadOnlyList<StorePolicyRule> rules, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This store writes no policies of its own rules.");
+
+    /// <summary>
+    /// Creates or replaces a token role that makes orphan tokens carrying only policies matching the patterns: the fleet
+    /// makes the units' tokens through it with a token of its own, not the store's root token (ADR-0054).
+    /// </summary>
+    Task EnsureTokenRoleAsync(string roleName, IReadOnlyList<string> allowedPolicyPatterns, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This store has no token roles.");
+
+    /// <summary>Whether a token still opens the store: it exists and has not expired.</summary>
+    Task<bool> IsTokenValidAsync(string token, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This store cannot look up tokens.");
 
     /// <summary>
     /// Creates or replaces a policy that allows writing new values at the paths matching a pattern (relative to the mount,
@@ -69,7 +88,35 @@ public sealed class SecretStoreOptions
     /// <summary>The unit's path under the mount: <c>tenants/acme</c>. Its <c>unit</c> secret holds the configuration keys.</summary>
     public string? Path { get; set; }
 
+    /// <summary>The transit engine's mount, where the keys live (ADR-0054): <c>transit</c> by default.</summary>
+    public string TransitMount { get; set; } = "transit";
+
+    /// <summary>
+    /// The token role the fleet makes units' tokens through (ADR-0054), when its own token is not the store's root token;
+    /// empty means tokens are made directly, as the tests' root token does.
+    /// </summary>
+    public string? TokenRole { get; set; }
+
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Address) && !string.IsNullOrWhiteSpace(Token);
 
     public string UnitSecretPath => $"{Path?.Trim('/')}/{UnitSecretName}";
 }
+
+/// <summary>What a store token may do with one key (ADR-0054); a unit's token gets these for its own tenant's keys only.</summary>
+[Flags]
+public enum KeyUses
+{
+    None = 0,
+    Encrypt = 1,
+    Decrypt = 2,
+    Rewrap = 4,
+    Hash = 8,
+    Sign = 16,
+    Read = 32,
+}
+
+/// <summary>A key a policy lets its tokens use, and how.</summary>
+public sealed record KeyGrant(string KeyName, KeyUses Uses);
+
+/// <summary>A path from the store's API root and the capabilities a policy gives on it (<c>read</c>, <c>create</c>, <c>update</c>, <c>delete</c>, <c>list</c>).</summary>
+public sealed record StorePolicyRule(string Path, IReadOnlyList<string> Capabilities);

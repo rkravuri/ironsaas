@@ -27,8 +27,27 @@ public static class ControlPlaneNames
     public const string AppRole = "control_app";
     public const string ReaderRole = "control_audit";
     public const string DatabaseSecretPath = "control/database";
+
+    /// <summary>The control plane's API's own secret (<c>Secrets__Path=control</c>): its app connection, its anchors and its key family.</summary>
     public const string UnitSecretPath = "control/unit";
+
+    /// <summary>The fleet's own secret (<c>Secrets__Path=fleet</c>, ADR-0054): the API's, with the administrative connection and the storage account's.</summary>
+    public const string FleetSecretPath = "fleet/unit";
+
     public const string MigrateSecretPath = "control-migrate/unit";
+
+    /// <summary>The two store tokens, where only the root token reads them: the operator's start hands each to its host.</summary>
+    public const string TokensSecretPath = "control-tokens/unit";
+
+    public const string ApiPolicy = "control-api";
+    public const string FleetPolicy = "fleet";
+
+    /// <summary>The token role the fleet makes the tenants' tokens through: it allows tenant policies only.</summary>
+    public const string TokenRole = "tenant-units";
+
+    /// <summary>The control plane's key family in the key service: <c>control-data</c>, <c>control-index</c>, <c>control-signing</c>.</summary>
+    public const string KeyPrefix = "control";
+
     public const string AnchorsContainer = "control-audit-anchors";
 }
 

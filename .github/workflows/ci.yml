@@ -226,10 +226,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The gitleaks version is pinned (ADR-0003), the same image tests/Iron.Architecture.Tests/SecretScanTests.cs runs
+      # on a fixture to prove a secret fails the scan naming its file and its type (TF-073 AC1, ADR-0054).
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.30.1"
 
   vulnerabilities:
     name: Dependency scan (Trivy)

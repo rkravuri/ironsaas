@@ -1,6 +1,9 @@
+using Iron.Kernel.Security.Keys;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Security.Secrets;
 
@@ -17,7 +20,11 @@ public sealed class SecretStoreHealthCheck(ISecretStore store, SecretStoreOption
 
 public static class SecretStoreServiceCollectionExtensions
 {
-    /// <summary>Registers the store and its readiness check when <c>Secrets:Address</c> and <c>Secrets:Token</c> are configured; otherwise nothing, so the laptop runs without a store.</summary>
+    /// <summary>
+    /// Registers the store and its readiness check when <c>Secrets:Address</c> and <c>Secrets:Token</c> are configured;
+    /// otherwise nothing, so the laptop runs without a store. The key service comes with it (ADR-0054): the store's transit
+    /// engine, or the process's own keys without a store.
+    /// </summary>
     public static IServiceCollection AddIronSecretStore(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -45,12 +52,51 @@ public static class SecretStoreServiceCollectionExtensions
             services.AddSingleton<ISecretStore>(provider => provider.GetRequiredService<OpenBaoSecretStore>());
             services.AddSingleton<ISecretStoreAdmin>(provider => provider.GetRequiredService<OpenBaoSecretStore>());
             services.AddHealthChecks().AddCheck<SecretStoreHealthCheck>("secret-store", tags: ["ready"]);
+
+            // The database password from the unit's secret, read again on a short schedule and after a refusal, so a
+            // password the fleet rotated is used without a restart (TF-073 AC2, ADR-0054).
+            var refresh = TimeSpan.FromSeconds(Math.Max(5, configuration.GetValue("Database:PasswordRefreshSeconds", 60)));
+            var connectionString = configuration.GetConnectionString("Database");
+            services.TryAddSingleton<IDatabaseCredentials>(provider => new StoreDatabaseCredentials(provider.GetRequiredService<ISecretStore>(), options, connectionString, provider.GetService<TimeProvider>() ?? TimeProvider.System, refresh));
         }
         else
         {
             // Code that needs the store (the fleet's steps) gets a clear message instead of a missing registration.
             services.AddSingleton<ISecretStore, UnconfiguredSecretStore>();
             services.AddSingleton<ISecretStoreAdmin, UnconfiguredSecretStore>();
+        }
+
+        return services.AddIronKeys(configuration, options);
+    }
+
+    /// <summary>
+    /// The key service (ADR-0054): OpenBao's transit engine with this unit's key family (<c>Keys:Prefix</c>) when a store
+    /// is configured, else the keys of this process. A test or a module that registered one first keeps it.
+    /// </summary>
+    public static IServiceCollection AddIronKeys(this IServiceCollection services, IConfiguration configuration, SecretStoreOptions? store = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+        if (store is null)
+        {
+            store = new SecretStoreOptions();
+            configuration.GetSection(SecretStoreOptions.SectionName).Bind(store);
+        }
+
+        var keys = new KeyOptions();
+        configuration.GetSection(KeyOptions.SectionName).Bind(keys);
+        services.TryAddSingleton(keys);
+        if (store.IsConfigured)
+        {
+            services.TryAddSingleton(_ => new TransitKeyService(store, keys));
+            services.TryAddSingleton<IKeyService>(provider => provider.GetRequiredService<TransitKeyService>());
+            services.TryAddSingleton<IKeyAdministration>(provider => provider.GetRequiredService<TransitKeyService>());
+        }
+        else
+        {
+            services.TryAddSingleton(provider => new LocalKeyService(keys, provider.GetService<ILogger<LocalKeyService>>()));
+            services.TryAddSingleton<IKeyService>(provider => provider.GetRequiredService<LocalKeyService>());
+            services.TryAddSingleton<IKeyAdministration>(provider => provider.GetRequiredService<LocalKeyService>());
         }
 
         return services;
@@ -68,7 +114,7 @@ public sealed class UnconfiguredSecretStore : ISecretStore, ISecretStoreAdmin
 
     public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(false);
 
-    public Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null) => throw new InvalidOperationException(Message);
+    public Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null, IReadOnlyList<KeyGrant>? keys = null) => throw new InvalidOperationException(Message);
 
     public Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken) => throw new InvalidOperationException(Message);
 

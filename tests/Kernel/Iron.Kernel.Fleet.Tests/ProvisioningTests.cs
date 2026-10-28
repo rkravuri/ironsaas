@@ -6,6 +6,7 @@ using Iron.Kernel.Fleet.Contracts;
 using Iron.Kernel.Fleet.Data;
 using Iron.Kernel.Fleet.Services;
 using Iron.Kernel.Fleet.Services.Steps;
+using Iron.Kernel.Security.Keys;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Tenancy.Contracts;
 using Iron.Kernel.Tenancy.Services;
@@ -62,8 +63,8 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-210 AC1", "TF-210 AC2", "ADR-0018")]
-    public async Task TheUnitReachesOnlyItsOwnDatabaseStoragePathAndSecret()
+    [Proves("TF-210 AC1", "TF-210 AC2", "TF-074 AC5", "ADR-0018", "ADR-0054")]
+    public async Task TheUnitReachesOnlyItsOwnDatabaseStoragePathSecretAndKeys()
     {
         var runtime = new RecordingRuntime();
         await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
@@ -79,7 +80,20 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.NotNull(acmeUnit);
         Assert.NotNull(acmeFleet);
         Assert.Equal($"{acme}_app", acmeUnit["Database:AppRole"]);
-        Assert.StartsWith("-----BEGIN EC PRIVATE KEY-----", acmeUnit["Tokens:SigningKeyPem"], StringComparison.Ordinal);
+
+        // The unit holds no key: its keys are the key service's, under its own family, which its token may use and no more (ADR-0054).
+        Assert.Equal($"tenant-{acme}", acmeUnit[SecretsStep.KeyPrefixKey]);
+        Assert.False(acmeUnit.ContainsKey("Tokens:SigningKeyPem"));
+        Assert.False(acmeUnit.ContainsKey(SecretsStep.FactorKeyKey));
+        using (var ownKeys = new TransitKeyService(fixture.StoreOptions(acmeFleet[SecretsStep.UnitTokenKey]), new KeyOptions { Prefix = $"tenant-{acme}" }))
+        using (var otherKeys = new TransitKeyService(fixture.StoreOptions(acmeFleet[SecretsStep.UnitTokenKey]), new KeyOptions { Prefix = $"tenant-{bravo}" }))
+        {
+            var sealedValue = await ownKeys.EncryptAsync(KeyPurpose.Data, "12-3456789"u8.ToArray(), TestContext.Current.CancellationToken);
+            Assert.Equal("12-3456789"u8.ToArray(), await ownKeys.DecryptAsync(KeyPurpose.Data, sealedValue, TestContext.Current.CancellationToken));
+            await ownKeys.SignAsync(KeyPurpose.Signing, [1, 2, 3], null, TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<SecretStoreException>(() => otherKeys.EncryptAsync(KeyPurpose.Data, "12-3456789"u8.ToArray(), TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<SecretStoreException>(() => ownKeys.RotateAsync($"tenant-{acme}-data", TestContext.Current.CancellationToken));
+        }
 
         // The app role connects to its own database and to nothing else (TF-005).
         await using (var own = new NpgsqlConnection(acmeUnit["ConnectionStrings:Database"]))
@@ -354,7 +368,7 @@ public class ProvisioningTests(FleetFixture fixture)
         var after = await root.ReadAsync($"tenants/{slug}/unit", ct);
         Assert.NotNull(after);
         Assert.NotEqual(before["ConnectionStrings:Database"], after["ConnectionStrings:Database"]);
-        Assert.StartsWith("-----BEGIN EC PRIVATE KEY-----", after["Tokens:SigningKeyPem"], StringComparison.Ordinal);
+        Assert.Equal($"tenant-{slug}", after[SecretsStep.KeyPrefixKey]);
         await using (var healed = new NpgsqlConnection(after["ConnectionStrings:Database"]))
         {
             await healed.OpenAsync(ct);
@@ -470,8 +484,8 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
-    [Proves("ADR-0047")]
-    public async Task TheUnitsFactorKeyIsMadeOnceAtProvisioningAndKeptByAnUpdate()
+    [Proves("ADR-0054", "ADR-0047")]
+    public async Task TheRetiredFactorKeyLeavesTheUnitSecretAndReachesTheSeedOnceToMoveTheSecrets()
     {
         var ct = TestContext.Current.CancellationToken;
         var runtime = new RecordingRuntime();
@@ -480,18 +494,25 @@ public class ProvisioningTests(FleetFixture fixture)
         var harness = new ProvisioningWorkerHarness(provider);
         Assert.True(await harness.RunNextAsync());
         using var root = new OpenBaoSecretStore(fixture.StoreOptions());
-        var first = (await root.ReadAsync($"tenants/{slug}/unit", ct))![SecretsStep.FactorKeyKey];
 
+        // A unit made before T9b: its secret holds the factor key of ADR-0047.
+        var retired = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        var unit = (await root.ReadAsync($"tenants/{slug}/unit", ct))!;
+        await root.WriteAsync($"tenants/{slug}/unit", new Dictionary<string, string>(unit, StringComparer.Ordinal) { [SecretsStep.FactorKeyKey] = retired }, ct);
         await using (var scope = provider.CreateAsyncScope())
         {
             Assert.True((await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestUpdateAsync(slug, ct)).IsSuccess);
         }
 
         Assert.True(await harness.RunNextAsync());
-        var after = (await root.ReadAsync($"tenants/{slug}/unit", ct))![SecretsStep.FactorKeyKey];
+        var seeds = runtime.Commands.Where(c => c.Command == "seed").Select(c => c.Unit.Environment).ToList();
+        var after = (await root.ReadAsync($"tenants/{slug}/unit", ct))!;
+        var fleet = (await root.ReadAsync($"tenants/{slug}/fleet", ct))!;
 
-        Assert.Equal(32, Convert.FromBase64String(first).Length);
-        Assert.Equal(first, after); // a new key would leave every authenticator app's secret unreadable
+        Assert.False(seeds[0].ContainsKey("Identity__LegacyFactorKey"));
+        Assert.Equal(retired, seeds[1]["Identity__LegacyFactorKey"]);
+        Assert.False(after.ContainsKey(SecretsStep.FactorKeyKey));
+        Assert.False(fleet.ContainsKey(SecretsStep.LegacyFactorKeyKey), "Once the seed moved the secrets, the key is gone from the fleet secret too.");
     }
 
     [Fact]
@@ -601,7 +622,7 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.Equal($"{acme}_audit", await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
     }
 
-    private static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix)
+    internal static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix)
     {
         var slug = $"{prefix}-{Ids.New():N}"[..20];
         await using var scope = provider.CreateAsyncScope();

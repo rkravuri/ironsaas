@@ -128,10 +128,24 @@ public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets,
         environment["Seed__ServiceAccounts__0__Role"] = "service-default";
         await UnitEnvironment.AddHandoverAsync(environment, context, secrets, admin, cancellationToken).ConfigureAwait(false);
 
+        // The retired factor key, once, to this seed only: it moves the secrets sealed under it onto the key service (ADR-0054).
+        var retiredFactorKey = fleet.GetValueOrDefault(SecretsStep.LegacyFactorKeyKey);
+        if (retiredFactorKey is not null)
+        {
+            environment["Identity__LegacyFactorKey"] = retiredFactorKey;
+        }
+
         var result = await runtime.RunCommandAsync(context.ToUnit(environment), ["seed"], cancellationToken).ConfigureAwait(false);
         if (!result.Succeeded)
         {
             throw new InvalidOperationException($"seed exited with {result.ExitCode}: {MigrateStep.Tail(result.Output)}");
+        }
+
+        // The seed moved every secret it could open, or stopped above: the key is not needed again.
+        if (retiredFactorKey is not null)
+        {
+            var kept = await secrets.ReadAsync(context.FleetSecretPath, cancellationToken).ConfigureAwait(false) ?? new Dictionary<string, string>(StringComparer.Ordinal);
+            await secrets.WriteAsync(context.FleetSecretPath, kept.Where(pair => pair.Key != SecretsStep.LegacyFactorKeyKey).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), cancellationToken).ConfigureAwait(false);
         }
 
         return HandedOver().IsMatch(result.Output)

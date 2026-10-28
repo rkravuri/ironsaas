@@ -8,7 +8,7 @@ using Npgsql;
 namespace Iron.Kernel.Data.Transactions;
 
 /// <summary>Scoped. Opens the shared connection, starts one transaction and enlists every registered module context in it.</summary>
-public sealed class UnitOfWork(SharedConnection shared, IEnumerable<RegisteredContext> contexts, IServiceProvider provider, ILogger<UnitOfWork> logger) : IUnitOfWork, IAsyncDisposable
+public sealed class UnitOfWork(SharedConnection shared, IEnumerable<RegisteredContext> contexts, IServiceProvider provider, IDatabaseCredentials credentials, ILogger<UnitOfWork> logger) : IUnitOfWork, IAsyncDisposable
 {
     private readonly List<DbContext> _enlisted = [];
     private NpgsqlTransaction? _transaction;
@@ -24,7 +24,7 @@ public sealed class UnitOfWork(SharedConnection shared, IEnumerable<RegisteredCo
             var connection = shared.Connection;
             if (connection.State != ConnectionState.Open)
             {
-                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                await DatabaseConnections.OpenAsync(connection, credentials, cancellationToken).ConfigureAwait(false);
             }
 
             _transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);

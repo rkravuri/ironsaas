@@ -17,6 +17,7 @@ using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Data.Encryption;
 using Iron.Kernel.Handover;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
@@ -483,17 +484,18 @@ public class SecondFactorTests(IdentityFixture fixture)
         using var setup = await host.SendAsync(HttpMethod.Post, "/auth/enrolment/authenticator-app", signIn);
         var text = (await JsonAsync(setup)).RootElement.GetProperty("secret").GetString()!;
         var secret = Totp.FromBase32(text);
-        var pending = await host.ReadBytesAsync("select pending_secret from kernel_identity.authentication_challenges where principal_id = @id", person.Id);
+        var pending = Assert.Single(await host.ReadTextsAsync("select held_secret from kernel_identity.authentication_challenges where principal_id = @id and held_secret is not null", person.Id));
         var code = host.Code(secret);
         using var enrolled = await host.SendAsync(HttpMethod.Post, "/auth/enrolment/authenticator-app/confirm", signIn, new { code });
         var codes = (await JsonAsync(enrolled)).RootElement.GetProperty("recovery_codes").EnumerateArray().Select(c => c.GetString()!).ToList();
-        var stored = await host.ReadBytesAsync("select secret_ciphertext from kernel_identity.factors where principal_id = @id", person.Id);
+        var stored = Assert.Single(await host.ReadTextsAsync("select secret from kernel_identity.factors where principal_id = @id", person.Id));
         var hashes = await host.ReadTextsAsync("select code_hash from kernel_identity.recovery_codes where principal_id = @id", person.Id);
-        var opened = host.App.Services.GetRequiredService<FactorProtector>().Open(stored, person.Id);
+        var opened = await host.App.Services.GetRequiredService<FactorSecrets>().OpenAsync(new EncryptedValue(stored), person.Id, TestContext.Current.CancellationToken);
 
-        Assert.Equal(-1, stored.AsSpan().IndexOf(secret));
-        Assert.Equal(-1, pending.AsSpan().IndexOf(secret));
-        Assert.DoesNotContain(text, Encoding.UTF8.GetString(stored), StringComparison.Ordinal);
+        Assert.StartsWith("local:v1:", stored, StringComparison.Ordinal);
+        Assert.StartsWith("local:v1:", pending, StringComparison.Ordinal);
+        Assert.DoesNotContain(text, stored, StringComparison.Ordinal);
+        Assert.DoesNotContain(Convert.ToBase64String(secret), stored, StringComparison.Ordinal);
         Assert.Equal(secret, opened);
         Assert.Equal(10, hashes.Count);
         Assert.All(codes, c => Assert.DoesNotContain(hashes, h => h.Contains(RecoveryCodes.Normalise(c), StringComparison.Ordinal)));
@@ -516,9 +518,9 @@ public class SecondFactorTests(IdentityFixture fixture)
             await using var scope = setup.CreateAsyncScope();
             var administrator = await IdentityFixture.CreateActiveUserAsync(scope.ServiceProvider, loginId, Password);
             Assert.True((await scope.ServiceProvider.GetRequiredService<IRoleAssignments>().AssignAsync(administrator.Id, SystemRoles.TenantAdministrator, ct)).IsSuccess);
-            var protector = scope.ServiceProvider.GetRequiredService<FactorProtector>();
+            var secrets = scope.ServiceProvider.GetRequiredService<FactorSecrets>();
             var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-            context.Factors.Add(Factor.AuthenticatorApp(administrator.Id, "Phone", protector.Seal(Totp.NewSecret(), administrator.Id), 1, new DateTimeOffset(2026, 10, 22, 9, 0, 0, TimeSpan.Zero)));
+            context.Factors.Add(Factor.AuthenticatorApp(administrator.Id, "Phone", await secrets.SealAsync(Totp.NewSecret(), administrator.Id, ct), 1, new DateTimeOffset(2026, 10, 22, 9, 0, 0, TimeSpan.Zero)));
             await context.SaveChangesAsync(ct);
         }
 

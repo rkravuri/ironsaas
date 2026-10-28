@@ -151,8 +151,9 @@ services:
 
   # ---------------------------------------------------------------- control plane (profile: control)
   # The control plane API and the fleet worker from the Foundation images (ADR-0022). On the laptop the two usually run
-  # from source (make run-control, make run-fleet); the pipeline runs them this way. Both read their configuration from
-  # the control unit's secret, written by scripts/write-control-secret.sh with CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob.
+  # from source (make run-control, make run-fleet); the pipeline runs them this way. Each reads its own secret with its
+  # own store token (ADR-0054): the API control/unit, the fleet fleet/unit, both written by the fleet's prepare-control,
+  # which make secret-control and make up-control run, and the tokens put into .env by scripts/write-control-tokens.sh.
   control-api:
     image: ${IMAGE_REPOSITORY:-foundation}/iron-control-plane:${IMAGE_TAG:-dev}
     profiles: [control]
@@ -162,7 +163,7 @@ services:
       # control-api is how units reach it on the platform network, for their audit anchors (ADR-0050).
       Tenant__HostnameList: control.localhost,localhost,control-api
       Secrets__Address: http://openbao:8200
-      Secrets__Token: ${OPENBAO_ROOT_TOKEN:-} # written into .env by scripts/init-store.sh on the first make up
+      Secrets__Token: ${CONTROL_API_STORE_TOKEN:-} # the API's own token, which reads no secret of the fleet's
       Secrets__Path: control
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports:
@@ -186,6 +187,8 @@ services:
     profiles: [control]
     environment:
       <<: *control-environment
+      Secrets__Token: ${FLEET_STORE_TOKEN:-} # the fleet's own token: the tenants' secrets, policies, tokens and keys
+      Secrets__Path: fleet
       Fleet__Units__Runtime: compose
       Fleet__Units__ComposeDirectory: /var/lib/foundation/units
       Fleet__Units__IngressUrl: http://traefik

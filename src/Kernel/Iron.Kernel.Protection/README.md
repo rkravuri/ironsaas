@@ -43,3 +43,7 @@ Configuration (`Protection:CspReports`): `PerMinute` (60), `Sample` (100), `LogP
 ## Cross-origin access (TF-070 AC2)
 
 `protection.cors.allowed_origins` (tenant, JSON list, at most 20, behind a recent sign-in) names the web origins whose pages may call the tenant's API from a browser: a scheme and a host with an optional port, https, or http for a host on this machine. The operator's `Security:Cors:AllowedOrigins` adds to every tenant's. A listed origin gets the CORS answer with credentials and `X-Correlation-Id` and `Retry-After` exposed; any other gets none, and the browser refuses the page the response.
+
+## The check's signature (ADR-0054)
+
+The login's challenge is signed with the HMAC of the tenant's signing key in the key service and checked with the version that signed it, so the check's key rotates with the signing key; a challenge of a retired version is refused. `Protection:Challenge:Key` is gone.

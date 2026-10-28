@@ -7,6 +7,7 @@ using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Services;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Fleet.Services;
+using Iron.Kernel.Security.Keys;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Tenancy.Contracts;
 using Microsoft.AspNetCore.Builder;
@@ -59,7 +60,8 @@ public sealed class ControlPlaneDatabaseFixture : IAsyncLifetime
         var options = new FleetOptions();
         options.Database.AdminConnectionString = Server;
         options.Storage.AccountConnectionString = Storage;
-        Assert.Equal(0, await new ControlPlaneDatabase(options, Secrets, TimeProvider.System).RunAsync([], Cancel));
+        using var keys = new LocalKeyService(new KeyOptions());
+        Assert.Equal(0, await new ControlPlaneDatabase(options, Secrets, keys, new SecretStoreOptions(), TimeProvider.System).RunAsync([], Cancel));
         await using (var owner = Build(await SecretAsync(ControlPlaneNames.MigrateSecretPath)))
         {
             Assert.Equal(0, await DatabaseCommands.RunAsync(owner.Services, [DatabaseCommands.Migrate], Cancel));

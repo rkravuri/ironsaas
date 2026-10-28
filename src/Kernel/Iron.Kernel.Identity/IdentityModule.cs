@@ -91,6 +91,9 @@ public sealed class IdentityModule : IModule
         services.AddSingleton<SigningKeys>();
         services.AddScoped<TokenService>();
 
+        // The key service is the host's, with its store (ADR-0054); a host or a test without one gets the process's keys.
+        services.AddIronKeys(configuration);
+
         services.AddHttpContextAccessor();
         services.AddIronDbContext<IdentityDbContext>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
@@ -123,7 +126,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordRequestValidator>();
 
         // Second factors and step-up (TF-013, TF-248, ADR-0047).
-        services.AddSingleton<FactorProtector>();
+        services.AddSingleton<FactorSecrets>();
+        services.AddSingleton<LegacyFactorKey>();
+        services.AddScoped<ISeeder, FactorSecretMove>();
         services.AddScoped<Passkeys>();
         services.AddScoped<RecoveryCodes>();
         services.AddScoped<MfaPolicy>();

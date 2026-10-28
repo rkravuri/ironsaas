@@ -89,5 +89,6 @@ internal static class ProtectionEndpoints
     private static Ok<CspReportsResponse> Latest(CspReports reports) =>
         TypedResults.Ok(new CspReportsResponse([.. reports.Latest.Select(v => new CspViolationResponse(v.ReceivedAt, v.Page, v.Directive, v.Blocked, v.Sample, v.Disposition))]));
 
-    private static Ok<LoginChallenge> Challenge(HttpContext http, ILoginChallenges challenges) => TypedResults.Ok(challenges.Issue(ClientAddress.Of(http)));
+    private static async Task<Ok<LoginChallenge>> Challenge(HttpContext http, ILoginChallenges challenges, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await challenges.IssueAsync(ClientAddress.Of(http), cancellationToken));
 }

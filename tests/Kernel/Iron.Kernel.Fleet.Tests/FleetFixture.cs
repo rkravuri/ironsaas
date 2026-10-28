@@ -40,7 +40,7 @@ public sealed class FleetFixture : IAsyncLifetime
     /// <summary>The fleet tests' own KV mount in the store.</summary>
     public string Mount => OpenBao.Mount;
 
-    public SecretStoreOptions StoreOptions(string? token = null, string path = "tenants") => new() { Address = OpenBaoAddress, Token = token ?? RootToken, Mount = OpenBao.Mount, Path = path };
+    public SecretStoreOptions StoreOptions(string? token = null, string path = "tenants") => new() { Address = OpenBaoAddress, Token = token ?? RootToken, Mount = OpenBao.Mount, Path = path, TransitMount = OpenBao.TransitMount };
 
     private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
@@ -100,6 +100,7 @@ public sealed class FleetFixture : IAsyncLifetime
             ["Secrets:Address"] = OpenBaoAddress,
             ["Secrets:Token"] = RootToken,
             ["Secrets:Mount"] = OpenBao.Mount,
+            ["Secrets:TransitMount"] = OpenBao.TransitMount,
             ["Secrets:Path"] = "control",
             ["Fleet:Database:AdminConnectionString"] = options.Database.AdminConnectionString,
             ["Fleet:Database:UnitHost"] = options.Database.UnitHost,

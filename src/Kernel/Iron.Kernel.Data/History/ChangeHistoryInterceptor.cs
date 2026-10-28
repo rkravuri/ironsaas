@@ -102,7 +102,7 @@ public sealed class ChangeHistoryInterceptor(IServiceProvider services) : SaveCh
             {
                 var metadata = property.Metadata;
                 var info = metadata.PropertyInfo;
-                if (info is null || Bookkeeping.Contains(metadata.Name) || info.IsDefined(typeof(NotTrackedAttribute)))
+                if (info is null || Bookkeeping.Contains(metadata.Name) || IsLeftOut(info))
                 {
                     continue;
                 }
@@ -142,7 +142,7 @@ public sealed class ChangeHistoryInterceptor(IServiceProvider services) : SaveCh
         {
             var metadata = property.Metadata;
             var info = metadata.PropertyInfo;
-            if (info is null || Bookkeeping.Contains(metadata.Name) || info.IsDefined(typeof(NotTrackedAttribute)) || info.IsDefined(typeof(SecretAttribute)))
+            if (info is null || Bookkeeping.Contains(metadata.Name) || IsLeftOut(info) || IsSecret(info))
             {
                 continue;
             }
@@ -201,9 +201,15 @@ public sealed class ChangeHistoryInterceptor(IServiceProvider services) : SaveCh
         return "****" + value[(value.Length - shown)..];
     }
 
+    /// <summary>A secret, or an encrypted value (ADR-0054): its history says only that it changed, never the value or its ciphertext.</summary>
+    private static bool IsSecret(PropertyInfo info) => info.IsDefined(typeof(SecretAttribute)) || info.PropertyType == typeof(Encryption.EncryptedValue);
+
+    /// <summary>Bookkeeping, or a search hash, which changes with its encrypted value and says nothing of its own.</summary>
+    private static bool IsLeftOut(PropertyInfo info) => info.IsDefined(typeof(NotTrackedAttribute)) || info.PropertyType == typeof(Encryption.SearchHash);
+
     private static FieldChange Treat(string field, string? oldText, string? newText, PropertyInfo info)
     {
-        if (info.IsDefined(typeof(SecretAttribute)))
+        if (IsSecret(info))
         {
             return new FieldChange(field, null, null, FieldTreatments.Secret);
         }

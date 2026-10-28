@@ -35,11 +35,18 @@ set -a
 . "$here/.env"
 set +a
 
-echo "== control plane secret, its own roles and anchors (ADR-0053), migrations and seed as its owner"
+echo "== the fleet's bootstrap secret; the control plane's own roles, anchors, keys, secrets and tokens (ADR-0053, ADR-0054)"
 CONTROL_DB_HOST=postgres CONTROL_BLOB_HOST=blob "$here/scripts/write-control-secret.sh"
-compose --profile control run --rm --no-deps fleet prepare-control
-compose --profile control run --rm --no-deps -e Secrets__Path=control-migrate control-api migrate
-compose --profile control run --rm --no-deps -e Secrets__Path=control-migrate \
+compose --profile control run --rm --no-deps -e "Secrets__Token=$OPENBAO_ROOT_TOKEN" -e Secrets__Path=fleet fleet prepare-control
+"$here/scripts/write-control-tokens.sh"
+set -a
+# shellcheck disable=SC1091
+. "$here/.env"
+set +a
+
+echo "== migrations and seed as the control plane's owner, with the fleet's token, which reads the migrate secret"
+compose --profile control run --rm --no-deps -e "Secrets__Token=$FLEET_STORE_TOKEN" -e Secrets__Path=control-migrate control-api migrate
+compose --profile control run --rm --no-deps -e "Secrets__Token=$FLEET_STORE_TOKEN" -e Secrets__Path=control-migrate \
   -e Seed__ServiceAccounts__0__ClientId=operator -e "Seed__ServiceAccounts__0__Secret=$operator_secret" -e Seed__ServiceAccounts__0__Role=tenant-administrator -e "Seed__ServiceAccounts__0__DisplayName=Pipeline operator" \
   -e Seed__ServiceAccounts__1__ClientId=smoke-reader -e "Seed__ServiceAccounts__1__Secret=$reader_secret" -e Seed__ServiceAccounts__1__Role=service-default -e "Seed__ServiceAccounts__1__DisplayName=Smoke reader" \
   -e Seed__ServiceAccounts__2__ClientId=operator-two -e "Seed__ServiceAccounts__2__Secret=$operator_secret-two" -e Seed__ServiceAccounts__2__Role=tenant-administrator -e "Seed__ServiceAccounts__2__DisplayName=Pipeline second operator" \

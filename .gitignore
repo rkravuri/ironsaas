@@ -38,6 +38,7 @@ Thumbs.db
 infra/compose/.dev-signing-key.pem
 infra/compose/.control-signing-key.pem
 infra/compose/.dev-factor-key
+infra/compose/.dev-key-material
 infra/compose/.control-factor-key
 
 # Windows mark-of-the-web streams, created when files are unzipped through Windows

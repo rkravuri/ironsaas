@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A unit's side of key rotation against a PostgreSQL container and OpenBao's transit engine (needs Docker): rotations recorded in the tenant's trail, values moved and reported, retirements, the policy, key checks. The control plane stands in. -->
+  <PropertyGroup>
+    <IronLayer>Test</IronLayer>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Iron.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Testing/Iron.Testing.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Authorization/Iron.Kernel.Authorization.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Keys/Iron.Kernel.Keys.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Keys/Contracts/Iron.Kernel.Keys.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

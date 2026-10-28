@@ -17,8 +17,8 @@ public class PasswordPolicyTests(IdentityFixture fixture)
 {
     private const string Password = "correct horse battery staple";
 
-    /// <summary>On the NCSC's list, and long enough that only the list refuses it.</summary>
-    private const string CommonPassword = "qwertyuiop123";
+    /// <summary>On the NCSC's list, and long enough that only the list refuses it; picked at run time (ADR-0054).</summary>
+    private static readonly string CommonPassword = IdentityFixture.CommonPassword();
 
     [Fact]
     [Proves("TF-012 AC4", "ADR-0036", "ADR-0046")]

@@ -97,7 +97,19 @@ public static class TenancyPermissions
     /// <summary>Accepting a tenant's restore point, so its chain continues as a new segment (ADR-0050): critical, with a ticket, a reason and a fresh token.</summary>
     public static readonly Permission AuditRestoresAccept = new("tenancy.audit_restores.accept", "Accept a tenant's audit chain restore point, so the chain continues from it", Risk.Critical);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept];
+    /// <summary>
+    /// The key officer's permission (TF-075 AC4, ADR-0054): rotating a tenant's keys or its database password, with a
+    /// reason and a fresh token. Without it a rotation is refused.
+    /// </summary>
+    public static readonly Permission KeysManage = new("tenancy.keys.manage", "Rotate a tenant's keys and database password, with a reason", Risk.Critical);
+
+    /// <summary>
+    /// A unit's own client reads its keys' rotations and reports its re-encryption's progress (ADR-0054): the unit-client
+    /// role's, for the calling unit's tenant only, whatever the request says.
+    /// </summary>
+    public static readonly Permission KeysReport = new("tenancy.keys.report", "Read the unit's own key rotations and report the re-encryption", Risk.Medium) { ForUnitClients = true };
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport];
 }
 
 public static class TenancyErrors
@@ -158,6 +170,20 @@ public static class TenancyErrors
 
     /// <summary>Accepting a restore needs a ticket and a reason.</summary>
     public const string AuditRestoreInvalid = "tenancy.audit_restore.invalid";
+
+    /// <summary>Not one of a tenant's keys: data, index, signing or database (ADR-0054).</summary>
+    public const string KeyUnknown = "tenancy.key.unknown";
+
+    /// <summary>A rotation needs a reason, which both audit trails keep (TF-075 AC3).</summary>
+    public const string KeyReasonRequired = "tenancy.key.reason_required";
+
+    /// <summary>The key is being rotated already: one rotation of a key at a time.</summary>
+    public const string KeyRotationInProgress = "tenancy.key_rotation.in_progress";
+
+    public const string KeyRotationNotFound = "tenancy.key_rotation.not_found";
+
+    /// <summary>The caller is no tenant's unit client, or the rotation is another tenant's.</summary>
+    public const string KeyRotationNotAUnit = "tenancy.key_rotation.not_a_unit";
 }
 
 public static class TenancyAuditEvents
@@ -211,6 +237,17 @@ public static class TenancyAuditEvents
     /// <summary>An operator accepted a restore point; the chain continues as a new segment (ADR-0050).</summary>
     public const string AuditRestoreAccepted = "tenancy.audit_restore_accepted";
 
+    /// <summary>A key officer, or the schedule, asked for a key or database password to be rotated, with the reason (TF-075 AC3).</summary>
+    public const string KeyRotationRequested = "tenancy.key_rotation_requested";
+
+    /// <summary>The fleet rotated a key in the key service, or a database password (ADR-0054).</summary>
+    public const string KeyRotated = "tenancy.key_rotated";
+
+    /// <summary>The old versions of a key were retired after every value moved, or every token expired (TF-075 AC1, AC2).</summary>
+    public const string KeyRetired = "tenancy.key_retired";
+
+    public const string KeyRotationFailed = "tenancy.key_rotation_failed";
+
     /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
     public static IReadOnlyList<AuditEventType> Types { get; } =
     [
@@ -237,6 +274,10 @@ public static class TenancyAuditEvents
         new(AuditChainRestored, "Audit chain found restored"),
         new(AuditAnchorConflict, "Conflicting audit anchor"),
         new(AuditRestoreAccepted, "Audit chain restore accepted"),
+        new(KeyRotationRequested, "Key rotation requested"),
+        new(KeyRotated, "Key rotated"),
+        new(KeyRetired, "Old key versions retired"),
+        new(KeyRotationFailed, "Key rotation failed"),
     ];
 }
 

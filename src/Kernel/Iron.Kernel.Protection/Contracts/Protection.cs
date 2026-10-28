@@ -179,13 +179,16 @@ public interface ILoginChallenges
     bool IsRequired(IPAddress? address, string loginId);
 
     /// <summary>
-    /// A new challenge, valid for a few minutes. Its work doubles with each failure from the address past the threshold,
-    /// up to sixteen times: the progressive delay of TF-072.
+    /// A new challenge, valid for a few minutes, signed with the tenant's signing key (ADR-0054). Its work doubles with
+    /// each failure from the address past the threshold, up to sixteen times: the progressive delay of TF-072.
     /// </summary>
-    LoginChallenge Issue(IPAddress? address);
+    Task<LoginChallenge> IssueAsync(IPAddress? address, CancellationToken cancellationToken);
 
-    /// <summary>True for a solution of a challenge this server issued, still valid and not used before; it is used up.</summary>
-    bool Verify(string? solution);
+    /// <summary>
+    /// True for a solution of a challenge this server issued, still valid and not used before; it is used up. A challenge
+    /// signed with a version of the signing key since retired is refused.
+    /// </summary>
+    Task<bool> VerifyAsync(string? solution, CancellationToken cancellationToken);
 
     /// <summary>Counts a failed sign-in for the address and the identifier.</summary>
     void Failed(IPAddress? address, string loginId);

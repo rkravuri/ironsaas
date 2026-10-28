@@ -37,6 +37,87 @@ public class LinkScrubberTests
     }
 
     [Fact]
+    [Proves("TF-073 AC3", "ADR-0054")]
+    public void TheRuleReplacesEverySecretItKnowsAndLeavesOtherTextAlone()
+    {
+        // Secret values of the shapes the rule knows, made at run time from one repeated character: the rule masks them by
+        // their names and forms, and the repository's own secret scan (TF-073 AC1) finds no secret in this source.
+        var secret = new string('x', 16);
+        var accountKey = new string('k', 86) + "==";
+        var storeToken = "s." + new string('t', 24);
+        var cases = new (string Text, string Expected)[]
+        {
+            ($"Host=postgres;Port=5432;Database=acme;Username=acme_app;Password={secret};", "Host=postgres;Port=5432;Database=acme;Username=acme_app;Password=[redacted];"),
+            ($"DefaultEndpointsProtocol=http;AccountName=dev;AccountKey={accountKey};BlobEndpoint=http://blob:10000/dev;", "DefaultEndpointsProtocol=http;AccountName=dev;AccountKey=[redacted];BlobEndpoint=http://blob:10000/dev;"),
+            ($"http://blob:10000/dev/acme?sv=2025-01-05&sr=c&sp=rl&sig={secret}&se=2027", "http://blob:10000/dev/acme?sv=2025-01-05&sr=c&sp=rl&sig=[redacted]&se=2027"),
+            ($"Authorization: Bearer {secret}{secret}", "Authorization: Bearer [redacted]"),
+            ("token eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJ4In0.c2lnbmF0dXJl rejected", "token [redacted] rejected"),
+            ("-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIBc0\n-----END EC PRIVATE KEY-----", "[redacted]"),
+            ($"X-Vault-Token: {storeToken}", "X-Vault-Token: [redacted]"),
+            ($"The store refused {storeToken} at 10:42", "The store refused [redacted] at 10:42"),
+            ($"{{\"client_secret\":\"{secret}\",\"id\":\"unit-acme\"}}", "{\"client_secret\":\"[redacted]\",\"id\":\"unit-acme\"}"),
+            ($"ControlPlane:ClientSecret={secret}", "ControlPlane:ClientSecret=[redacted]"),
+        };
+        var untouched = new[]
+        {
+            "Secrets:Path=tenants/acme",
+            "Token refused for unit-acme: wrong_secret",
+            "token_id=42",
+            "Moved the values of kernel_identity.factors.secret to version 2 of the data key.",
+        };
+
+        Assert.All(cases, c => Assert.Equal(c.Expected, LinkScrubber.Scrub(c.Text)));
+        Assert.All(untouched, text => Assert.Equal(text, LinkScrubber.Scrub(text)));
+    }
+
+    [Fact]
+    [Proves("TF-073 AC3", "ADR-0054")]
+    public async Task AnExceptionThatHoldsAConnectionStringIsLoggedWithTheSecretMasked()
+    {
+        var lines = new CapturingProvider();
+        var builder = WebApplication.CreateBuilder();
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(lines);
+        builder.AddIronTelemetry("scrub-test", options => options.ExportToCollector = false);
+        await using var app = builder.Build();
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Iron.Test");
+        var secret = new string('w', 16);
+        Exception thrown;
+        try
+        {
+            throw new InvalidOperationException($"Could not open Host=postgres;Database=acme;Username=acme_app;Password={secret}", new FormatException($"Password={secret} is not valid"));
+        }
+        catch (InvalidOperationException exception)
+        {
+            thrown = exception;
+        }
+
+        logger.LogError(thrown, "The database could not be reached");
+        logger.LogError(thrown, $"Gave up after {3} tries");
+
+        Assert.Equal(2, lines.Exceptions.Count);
+        Assert.All(lines.Exceptions, text => Assert.DoesNotContain(secret, text, StringComparison.Ordinal));
+        Assert.All(lines.Exceptions, text => Assert.Contains("Password=[redacted]", text, StringComparison.Ordinal));
+        Assert.All(lines.Exceptions, text => Assert.Contains("System.InvalidOperationException", text, StringComparison.Ordinal));
+        Assert.DoesNotContain(lines.Messages, text => text.Contains(secret, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Proves("TF-073 AC3", "ADR-0054")]
+    public void ASpansExceptionIsRecordedWithItsSecretMasked()
+    {
+        using var activity = new Activity("GET /api/v1/things");
+        var exception = new InvalidOperationException("The store refused X-Vault-Token: s." + new string('t', 24));
+
+        ScrubbingActivityProcessor.RecordException(activity, exception);
+
+        var recorded = Assert.Single(activity.Events);
+        var tags = recorded.Tags.ToDictionary(t => t.Key, t => t.Value as string);
+        Assert.Equal("The store refused X-Vault-Token: [redacted]", tags["exception.message"]);
+        Assert.DoesNotContain(new string('t', 24), tags["exception.stacktrace"] ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Fact]
     [Proves("ADR-0046")]
     public async Task AHostsLogLinesComeOutScrubbedInTheirMessageAndTheirValues()
     {
@@ -149,8 +230,12 @@ public class LinkScrubberTests
     {
         private readonly ConcurrentQueue<string> _messages = new();
         private readonly ConcurrentQueue<string> _values = new();
+        private readonly ConcurrentQueue<string> _exceptions = new();
 
         public IReadOnlyList<string> Messages => [.. _messages];
+
+        /// <summary>Each logged exception's whole text, as the console writes it.</summary>
+        public IReadOnlyList<string> Exceptions => [.. _exceptions];
 
         public IReadOnlyList<string> Values => [.. _values];
 
@@ -170,6 +255,11 @@ public class LinkScrubberTests
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
                 owner._messages.Enqueue(formatter(state, exception));
+                if (exception is not null)
+                {
+                    owner._exceptions.Enqueue(exception.ToString());
+                }
+
                 if (state is IReadOnlyList<KeyValuePair<string, object?>> values)
                 {
                     foreach (var pair in values.Where(pair => pair.Key != "{OriginalFormat}"))

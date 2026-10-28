@@ -37,7 +37,8 @@ public sealed record Answer(HttpStatusCode Status, JsonElement? Body, string? Co
 /// <summary>
 /// HTTP as the smoke needs it: a Host header for the tenant hostname through the ingress, bearer tokens, the session
 /// cookie carried by hand (so http on the laptop works despite the Secure flag), and the correlation id of every answer.
-/// It stays within the rate limits by waiting, never by raising them: a 429 waits its Retry-After and sends again. A
+/// It stays within the rate limits by waiting, never by raising them: a 429 waits its Retry-After and sends again, unless
+/// the wait is longer than two minutes, which means a limit was spent and the run would outlast its stage. A
 /// sign-in the API asks to prove itself first, after repeated failures, gets a challenge, solves it here, and is sent
 /// again with the answer (TF-072, ADR-0053).
 /// </summary>
@@ -60,6 +61,9 @@ public sealed class Api : IDisposable
 
     private const int Waits = 6;
 
+    /// <summary>The longest Retry-After the smoke waits: the exports limit asks up to an hour, longer than any stage runs.</summary>
+    private static readonly TimeSpan LongestWait = TimeSpan.FromMinutes(2);
+
     public async Task<Answer> SendAsync(HttpMethod method, Uri baseUrl, string path, string? host = null, string? bearer = null, string? cookie = null, object? json = null, (string ClientId, string Secret)? basic = null, string? form = null, CancellationToken cancellationToken = default)
     {
         string? challenge = null;
@@ -70,6 +74,11 @@ public sealed class Api : IDisposable
             if (answer.Status == HttpStatusCode.TooManyRequests && attempt <= Waits)
             {
                 var seconds = answer.RetryAfterSeconds ?? 5;
+                if (seconds > LongestWait.TotalSeconds)
+                {
+                    throw new SmokeException($"the {answer.Text("limit") ?? "rate"} limit refused {method} {path} for {seconds} s, longer than the smoke waits ({LongestWait.TotalSeconds:0} s): an earlier call spent it; correlation {answer.CorrelationId ?? "none"}");
+                }
+
                 Console.WriteLine($"  waiting {seconds} s for the {answer.Text("limit") ?? "rate"} limit, as its Retry-After says");
                 await Task.Delay(TimeSpan.FromSeconds(seconds + 1), cancellationToken).ConfigureAwait(false);
                 continue;

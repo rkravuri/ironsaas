@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Iron.Kernel.Protection.Contracts;
 using Iron.Kernel.Protection.Services;
+using Iron.Kernel.Security.Keys;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Protection.Tests;
@@ -94,39 +95,62 @@ public class WebSurfaceTests
         var challenge = JsonSerializer.Deserialize<LoginChallenge>(await answer.Content.ReadAsStringAsync(Cancel), new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower })!;
         var solved = LoginChallenges.Payload(challenge, LoginChallenges.Solve(challenge));
         var wrong = LoginChallenges.Payload(challenge, LoginChallenges.Solve(challenge) + 1);
-        var forged = LoginChallenges.Payload(challenge with { Signature = new string('0', 64) }, LoginChallenges.Solve(challenge));
+        var forged = LoginChallenges.Payload(challenge with { Signature = "local:v1:" + Convert.ToBase64String(new byte[32]) }, LoginChallenges.Solve(challenge));
         challenges.Failed(address, "nobody-6@acme.localhost");
         challenges.Failed(address, "nobody-7@acme.localhost");
-        var harder = challenges.Issue(address);
+        var harder = await challenges.IssueAsync(address, Cancel);
 
         Assert.False(beforeFifth);
         Assert.True(fromAddress);
         Assert.False(elsewhere);
         Assert.Equal(("SHA-256", 2000L), (challenge.Algorithm, challenge.MaxNumber));
         Assert.Equal(8000L, harder.MaxNumber); // two failures past the threshold: twice doubled, the progressive delay
-        Assert.False(challenges.Verify(wrong), "A wrong number is refused.");
-        Assert.False(challenges.Verify(forged), "A challenge the server did not sign is refused.");
-        Assert.False(challenges.Verify(null), "No answer is refused.");
-        Assert.True(challenges.Verify(solved));
-        Assert.False(challenges.Verify(solved), "An answer works once.");
+        Assert.False(await challenges.VerifyAsync(wrong, Cancel), "A wrong number is refused.");
+        Assert.False(await challenges.VerifyAsync(forged, Cancel), "A challenge the server did not sign is refused.");
+        Assert.False(await challenges.VerifyAsync(null, Cancel), "No answer is refused.");
+        Assert.True(await challenges.VerifyAsync(solved, Cancel));
+        Assert.False(await challenges.VerifyAsync(solved, Cancel), "An answer works once.");
+    }
+
+    [Fact]
+    [Proves("ADR-0054")]
+    public async Task TheCheckRotatesWithTheSigningKeyAndAChallengeOfARetiredVersionIsRefused()
+    {
+        var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.UtcNow);
+        using var keys = new LocalKeyService(new KeyOptions { Prefix = "tenant-check" });
+        var challenges = new LoginChallenges(new ProtectionOptions { Challenge = { MaxNumber = 300 } }, time, new ProtectionMetrics(), keys);
+        var before = await challenges.IssueAsync(IPAddress.Parse("198.51.100.20"), Cancel);
+        var heldBack = await challenges.IssueAsync(IPAddress.Parse("198.51.100.21"), Cancel);
+
+        await keys.RotateAsync(KeyPurposes.KeyName("tenant-check", KeyPurpose.Signing), Cancel);
+        var after = await challenges.IssueAsync(IPAddress.Parse("198.51.100.22"), Cancel);
+        var beforeStillChecked = await challenges.VerifyAsync(LoginChallenges.Payload(before, LoginChallenges.Solve(before)), Cancel);
+        await keys.RetireAsync(KeyPurposes.KeyName("tenant-check", KeyPurpose.Signing), 2, Cancel);
+        var retiredRefused = await challenges.VerifyAsync(LoginChallenges.Payload(heldBack, LoginChallenges.Solve(heldBack)), Cancel);
+
+        Assert.Equal((1, 2), (KeyText.VersionOf(before.Signature), KeyText.VersionOf(after.Signature)));
+        Assert.True(beforeStillChecked, "A challenge issued before the rotation is checked with the version that signed it.");
+        Assert.False(retiredRefused, "A challenge signed with a retired version is refused.");
+        Assert.True(await challenges.VerifyAsync(LoginChallenges.Payload(after, LoginChallenges.Solve(after)), Cancel));
     }
 
     [Fact]
     [Proves("TF-072 AC4", "ADR-0053")]
-    public void OneIdentifierFailingFiveTimesNeedsTheChallengeFromAnyAddressUntilItSucceedsAndAnExpiredChallengeIsRefused()
+    public async Task OneIdentifierFailingFiveTimesNeedsTheChallengeFromAnyAddressUntilItSucceedsAndAnExpiredChallengeIsRefused()
     {
         var time = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(DateTimeOffset.UtcNow);
-        var challenges = new LoginChallenges(new ProtectionOptions { Challenge = { MaxNumber = 500 } }, time, new ProtectionMetrics());
+        using var keys = new LocalKeyService(new KeyOptions());
+        var challenges = new LoginChallenges(new ProtectionOptions { Challenge = { MaxNumber = 500 } }, time, new ProtectionMetrics(), keys);
         for (var failure = 1; failure <= 5; failure++)
         {
             challenges.Failed(IPAddress.Parse($"203.0.113.{failure}"), "ada@acme.localhost");
         }
 
         var required = challenges.IsRequired(IPAddress.Parse("198.51.100.9"), "ada@acme.localhost");
-        var challenge = challenges.Issue(IPAddress.Parse("198.51.100.9"));
+        var challenge = await challenges.IssueAsync(IPAddress.Parse("198.51.100.9"), Cancel);
         var answer = LoginChallenges.Payload(challenge, LoginChallenges.Solve(challenge));
         time.Advance(TimeSpan.FromMinutes(6));
-        var expired = challenges.Verify(answer);
+        var expired = await challenges.VerifyAsync(answer, Cancel);
         challenges.Succeeded("ada@acme.localhost");
         var afterSuccess = challenges.IsRequired(IPAddress.Parse("198.51.100.9"), "ada@acme.localhost");
         time.Advance(TimeSpan.FromMinutes(16));

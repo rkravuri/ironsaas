@@ -6,7 +6,7 @@ Kernel module (ADR-0029). Schema `kernel_audit`. The audit trail (TF-060, ADR-00
 |---|---|
 | `Contracts/` | `AuditEvent`, `AuditOutcome`, `AuditSource`, `AuditSeverity`, `AuditPermissions`, `AuditEvents`, `AuditErrors`, `IAuditWriter`, `IAuditTrail` and `AuditTrailEntry`; the chain's `ChainedEvent`, `AuditCanonicalForm`, `ChainHead`, `AuditAnchor`; the verification's `AuditChainCheck`, `SealedEvent`, `ChainProblem`; the archive's `AuditArchiveFormat` |
 | `Data/` | `AuditDbContext`; `AuditEventRecord` (append-only, then sealed once); `AuditSeal`; `AuditArchiveBatch`, `AuditPrune`, `LegalHold`, `RetentionChoice`, `AuditExport`; the design-time factory, generated `Migrations/` with the chain's guards |
-| `Services/` | `AuditWriter`, `AuditTrail`; `AuditSealer` and its worker; `AuditAnchorSender` and `ControlPlaneClient`; `AuditArchiver`, `AuditPruner`, `AuditArchiveSearch`, `AuditExporter` and the daily `AuditRetentionWorker`; `RetentionPolicy`, `LegalHolds`, `BlobRecordArchive`, `RetentionAuditWriter` |
+| `Services/` | `AuditWriter`, `AuditTrail`; `AuditSealer` and its worker; `AuditAnchorSender`, through the Api library's `ControlPlaneClient`; `AuditArchiver`, `AuditPruner`, `AuditArchiveSearch`, `AuditExporter` and the daily `AuditRetentionWorker`; `RetentionPolicy`, `LegalHolds`, `BlobRecordArchive`, `RetentionAuditWriter` |
 | `Api/` | the trail's search, export, archive search and chain status; retention classes; legal holds |
 
 ## Permissions
