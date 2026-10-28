@@ -30,30 +30,30 @@ exceptions:
   - finding: CVE-2026-111943
     package: stdlib
     reason: The fleet's Docker CLI and Compose plugin build no TLS chain; they reach the daemon over a Unix socket.
-    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approver: The product owner, in the design session's review of S3 T10a
     approved: 2026-10-28
     expires: 2026-11-28
   - finding: CVE-2026-78667
     package: stdlib
     reason: An HTTP server's Range header handling; the fleet's Docker CLI and Compose plugin serve no HTTP.
-    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approver: The product owner, in the design session's review of S3 T10a
     approved: 2026-10-28
     expires: 2026-11-28
   - finding: CVE-2026-78669
     package: stdlib
     reason: An HTTP/2 server's SETTINGS handling; the fleet's Docker CLI and Compose plugin serve no HTTP/2.
-    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approver: The product owner, in the design session's review of S3 T10a
     approved: 2026-10-28
     expires: 2026-11-28
   - finding: CVE-2026-78669
     package: golang.org/x/net
     reason: The same HTTP/2 server finding in the Compose plugin's copy of x/net; the plugin serves no HTTP/2.
-    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approver: The product owner, in the design session's review of S3 T10a
     approved: 2026-10-28
     expires: 2026-11-28
   - finding: CVE-2026-97031
     package: stdlib
     reason: A TLS server's ECH handling; the fleet's Docker CLI and Compose plugin run no TLS server.
-    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approver: The product owner, in the design session's review of S3 T10a
     approved: 2026-10-28
     expires: 2026-11-28

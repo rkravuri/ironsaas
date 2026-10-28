@@ -1,8 +1,8 @@
 # ADR-0055: How code reaches main: pull requests with every check green, the review exception, one security gate with expiring exceptions, bills of materials, threat models, coverage floors and the nightly release
 
-**Status:** Proposed
+**Status:** Accepted at the design session's review (2026-10-28), with the five fleet-image exceptions and PE-1 approved
 **Date:** 2026-10-28
-**Decided by:** Product owner and architect, in the brief of S3 T10a; the owner chose, in the session, to make the repository public; the details here are the task's, for the design session's review
+**Decided by:** Product owner and architect, in the brief of S3 T10a; the owner chose, in the session, to make the repository public; the details here are the task's, accepted at the review
 
 ## Context
 
@@ -37,7 +37,7 @@ The team has one developer, and GitHub refuses an author's approval of their own
 | Containers | Trivy at critical and high on the laptop's five images: 8 findings, all with a fix somewhere | Trivy, as before, at critical and high through the gate |
 | Bills of materials | Trivy's `convert` of the same image report, CycloneDX 1.7 | Trivy, one tool for scan and bill |
 | Coverage, .NET | coverlet.MTP 10.1.0 (MIT) on Microsoft Testing Platform; Microsoft's own extension carries a proprietary licence | coverlet.MTP |
-| Coverage, shell | @vitest/coverage-v8 5.0.5 (MIT), the version Vitest 5.0.5 needs | V8 coverage |
+| Coverage, shell | @vitest/coverage-v8 5.0.5 (MIT), the version Vitest 5.0.5 needs | V8 coverage; accepted at the review one day short of ADR-0003's two weeks (published 2026-10-15), as the only version Vitest 5.0.5 accepts |
 
 - **Opengrep**, the fork of Semgrep's engine, was not measured: this session refused to download and run its binary. Its rules and ours are the same; the comparison stays open.
 - **Registry rules are not vendored.** Semgrep's registry carries the Semgrep Rules License, and the archived Opengrep fork of it the Commons Clause; neither is open source. Our rules each cover a risk the other checks leave open: certificate validation turned off, a secret's value in a log, a process's arguments as one string, an exception's text in an answer, a cookie that loses its protection, the store reached outside the Security library; code run from text, navigation to an unchecked address, a message to any origin, a secret in browser storage, a cookie written by script, a call outside `request()`.
@@ -49,7 +49,7 @@ The team has one developer, and GitHub refuses an author's approval of their own
 - **`security/exceptions.yaml`**: each exception has its finding, package, reason, approver, approval date and expiry, at most six months later. From its expiry, the finding fails again and so does the expired entry, until it is renewed with a new approval or removed. Trivy's own `expired_at` is not used: one register and one reading of it serve every scanner, and one test proves the expiry for all. DS-0002 moved in from `.trivyignore.yaml`, which is gone.
 - **A false positive in our own code is not an exception**: it is suppressed at its line with the reason beside it (a pragma for an analyzer, `nosemgrep` for our rules), and the review reads it like code. An exception is a true finding that may wait.
 - **NuGet's own audit at restore stays**, as before: with warnings as errors it fails a restore on any known advisory, earlier and stricter than the gate, though it cannot read the register. A NuGet advisory that must wait is suppressed there too (`NuGetAuditSuppress`), with the same reason.
-- **The first exceptions proposed here**: five Go findings in the fleet image's Docker CLI and Compose plugin (built with Go 1.26.8; no release fixes them yet, measured on 2026-10-28), which talk to the daemon over a Unix socket and run none of the server or chain-building code the findings are in; until 2026-11-28, approved by the design session's acceptance of this task.
+- **The first exceptions, approved at the review**: five Go findings in the fleet image's Docker CLI and Compose plugin (built with Go 1.26.8; no release fixes them yet, measured on 2026-10-28), which talk to the daemon over a Unix socket and run none of the server or chain-building code the findings are in; until 2026-11-28.
 
 ### 5. Licences
 

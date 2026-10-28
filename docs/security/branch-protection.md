@@ -52,6 +52,44 @@ main after: e3d98b1f4fd6a77310cac962dd390047af8a630d
 main is unchanged
 ```
 
+## Checked again before the first merge through a pull request
+
+At the design session's acceptance of S3 T10a, before pull request #16 merged. The repository was public, merging
+with merge commits only, and `make protection-check` found GitHub's settings as the file says. The account's plan is
+not readable with the session's token (GitHub shows it only with the `user` scope); a public repository's protection
+does not depend on it. The same push, and the same force push, of a commit made from main's tree:
+
+```
+date: 2026-10-28T16:18:20Z
+main before: e3d98b1f4fd6a77310cac962dd390047af8a630d
+the commit pushed: 5fb808bc6c7df3de1a2a9277cfb98e264a9bb016 (origin/main's tree, origin/main as its parent)
+
+$ git push origin 5fb808bc6c7df3de1a2a9277cfb98e264a9bb016:refs/heads/main
+remote: error: GH006: Protected branch update failed for refs/heads/main.
+remote:
+remote: - Changes must be made through a pull request.
+remote:
+remote: - 9 of 9 required status checks are expected.
+To https://github.com/rkravuri/ironsaas.git
+ ! [remote rejected] 5fb808bc6c7df3de1a2a9277cfb98e264a9bb016 -> main (protected branch hook declined)
+error: failed to push some refs to 'https://github.com/rkravuri/ironsaas.git'
+exit: 1
+
+$ git push --force origin 5fb808bc6c7df3de1a2a9277cfb98e264a9bb016:refs/heads/main
+remote: error: GH006: Protected branch update failed for refs/heads/main.
+remote:
+remote: - Changes must be made through a pull request.
+remote:
+remote: - 9 of 9 required status checks are expected.
+To https://github.com/rkravuri/ironsaas.git
+ ! [remote rejected] 5fb808bc6c7df3de1a2a9277cfb98e264a9bb016 -> main (protected branch hook declined)
+error: failed to push some refs to 'https://github.com/rkravuri/ironsaas.git'
+exit: 1
+
+main after: e3d98b1f4fd6a77310cac962dd390047af8a630d
+main is unchanged
+```
+
 ## Checking it again
 
 `make protection-check` compares GitHub's settings with the file at any time and names each difference. Run it after
