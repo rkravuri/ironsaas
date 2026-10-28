@@ -19,6 +19,15 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 
+    <!--
+      Every project's resolved packages, transitive ones included, are written to its packages.lock.json (ADR-0003,
+      ADR-0055): the dependency and licence scan reads them from the source alone, and a restore a month later resolves
+      the same graph. CI restores in locked mode, so a lock file that does not match its project fails the build; on the
+      laptop a restore after a change of packages rewrites the lock files, which are committed with the change.
+    -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Company>IronSaaS</Company>
     <Product>Foundation</Product>
