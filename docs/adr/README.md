@@ -60,7 +60,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0050](0050-audit-chain-time-retention-and-legal-holds.md) | The audit chain, its verification, archive and retention, legal holds, the time source and logs apart | Accepted |
 | [0051](0051-change-history-and-electronic-signatures.md) | Change history in the audit chain, electronic signatures bound to their version, and identifiers never reused | Accepted |
 | [0052](0052-evidence-four-eyes-and-the-validation-pack.md) | Evidence packs, four-eyes on sensitive configuration, release versions and the validation pack | Accepted |
-| [0053](0053-hardening-the-web-surface.md) | Hardening the web surface: headers without inline code, origins, declared limits, rich text, SQL, rate limits, the login's challenge and the control plane's own role and chain | Proposed |
+| [0053](0053-hardening-the-web-surface.md) | Hardening the web surface: headers without inline code, origins, declared limits, rich text, SQL, rate limits, the login's challenge and the control plane's own role and chain | Accepted |
 
 ## Reading order
 

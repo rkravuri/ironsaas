@@ -1,6 +1,6 @@
 # ADR-0053: Hardening the web surface: headers without inline code, origins, declared limits, rich text, SQL, rate limits, the login's challenge and the control plane's own role and chain
 
-**Status:** Proposed, for the design session's review
+**Status:** Accepted at the design session's review (2026-10-28), with two residuals moved into T9b
 **Date:** 2026-10-28
 **Decided by:** Product owner and architect, in the brief of S3 T9a; the details here are the task's
 
@@ -90,4 +90,4 @@ It rests on the security defaults of S1 (ADR-0010), the REST conventions and the
 - Every failed sign-in costs an attacker more work, without a third party; a person sees one box, only after repeated failures.
 - The shell's page cannot run injected script or style even if one got into a record; the reports say where a policy was hit.
 - The control plane can no longer change its own schema or sealed events, and its chain is checked daily by a role that can change nothing.
-- To revisit: S6 moves the rate counters, the challenge's failures and used answers to a shared store; T9b rotates the challenge's key with the others; the first Azure deployment puts an immutability policy on the control plane's anchors container, and gives the fleet a secret of its own, apart from the API's, which today still shares `control/unit` with the fleet's admin connections. The query's limits are one bound for every endpoint; an endpoint that needs more declares it when one does.
+- To revisit: S6 moves the rate counters, the challenge's failures and used answers to a shared store; T9b rotates the challenge's signing key with the other keys, and gives the control plane's API and the fleet separate secrets and store tokens, so the API never holds the fleet's administrative database connection (today both read `control/unit`); the first Azure deployment puts an immutability policy on the control plane's anchors container. The query's limits are one bound for every endpoint; an endpoint that needs more declares it when one does.
