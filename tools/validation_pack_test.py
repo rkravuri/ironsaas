@@ -86,8 +86,42 @@ class ValidationPackTest(unittest.TestCase):
         results = self.root / "artifacts/test-results/smoke/smoke-report.json"
         results.write_text(json.dumps({"steps": [{"name": "tenant", "status": "passed"}, {"name": "health", "status": "passed"}, {"name": "again", "status": "passed"}]}), encoding="utf-8")
 
-    def build(self, version: str = "2031.02.03.7") -> validation_pack.Pack:
-        return validation_pack.build(self.root, version, None, self.record)
+    def build(self, version: str = "2031.02.03.7", sboms: Path | None = None) -> validation_pack.Pack:
+        return validation_pack.build(self.root, version, None, self.record, sboms=sboms)
+
+    def boms(self, images: list[str] | None = None) -> Path:
+        """A folder with a small CycloneDX document per image, as the release's image scan writes them."""
+        folder = self.root / "sbom-in"
+        folder.mkdir(exist_ok=True)
+        for image in validation_pack.IMAGES if images is None else images:
+            document = {"bomFormat": "CycloneDX", "specVersion": "1.6", "metadata": {"component": {"name": f"ghcr.io/o/{image}"}}, "components": [{"type": "library", "name": "zlib", "version": "1.3.1"}]}
+            (folder / f"{image}.cdx.json").write_text(json.dumps(document), encoding="utf-8")
+        return folder
+
+    def test_a_release_carries_each_images_bill_of_materials_hashed_in_its_manifest(self) -> None:
+        """Each of the five images' CycloneDX bills of materials is in the pack under sbom/, listed on its index and hashed in its manifest. [TF-076 AC3, ADR-0055]"""
+        self.history()
+        pack = self.build(sboms=self.boms())
+        archive = validation_pack.write(pack, self.root / "out")
+        with zipfile.ZipFile(archive) as zipped:
+            manifest = json.loads(zipped.read("validation-pack-2031.02.03.7/manifest.json"))
+            listed = {entry["path"]: entry["sha256"] for entry in manifest["files"]}
+            for image in validation_pack.IMAGES:
+                path = f"sbom/{image}.cdx.json"
+                self.assertEqual(listed[path], hashlib.sha256(zipped.read(f"validation-pack-2031.02.03.7/{path}")).hexdigest())
+        self.assertFalse([p for p in pack.problems if "bill of materials" in p])
+        self.assertIn(b'<a href="sbom/iron-fleet.cdx.json">iron-fleet</a>', pack.files["index.html"])
+
+    def test_a_release_without_a_bill_of_materials_for_an_image_is_refused(self) -> None:
+        """A release missing an image's bill of materials, or holding one that is not CycloneDX, may not be published; the command asks for them. [TF-076 AC3, ADR-0055]"""
+        self.history()
+        folder = self.boms([image for image in validation_pack.IMAGES if image != "iron-shell"])
+        (folder / "iron-api.cdx.json").write_text(json.dumps({"spdxVersion": "SPDX-2.3"}), encoding="utf-8")
+        pack = self.build(sboms=folder)
+        self.assertIn("no bill of materials for the image iron-shell", pack.problems)
+        self.assertIn("the bill of materials iron-api.cdx.json is not a CycloneDX document with its components", pack.problems)
+        self.assertFalse(pack.passed)
+        self.assertEqual(validation_pack.main_for(self.root, ["--version", "2031.02.03.7", "--installation", str(self.record), "--output", str(self.root / "out")]), 2)
 
     def test_the_pack_lists_every_requirement_with_its_criteria_tests_and_results(self) -> None:
         """Every requirement of the documents is listed with each criterion, the tests that prove it and their results from the run. [TF-218 AC1]"""
@@ -113,7 +147,7 @@ class ValidationPackTest(unittest.TestCase):
         self.assertFalse(pack.passed)
         self.assertIn("a gap: TF-003 AC2 of a done slice has no test and no approved exception", pack.problems)
         self.assertIn(b"state-gap", pack.files["traceability.html"])
-        self.assertEqual(validation_pack.main_for(self.root, ["--version", "2031.02.03.7", "--installation", str(self.record), "--output", str(self.root / "out")]), 1)
+        self.assertEqual(validation_pack.main_for(self.root, ["--version", "2031.02.03.7", "--installation", str(self.record), "--output", str(self.root / "out"), "--sbom", str(self.boms())]), 1)
 
     def test_an_approved_exception_lets_the_gap_pass(self) -> None:
         """The same gap with an approved exception is listed as excepted and no longer stops the release. [TF-218 AC2]"""

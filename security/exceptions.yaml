@@ -19,3 +19,41 @@ exceptions:
     approver: Product owner and architect (ADR-0019, carried from .trivyignore.yaml in S3 T10a)
     approved: 2026-10-28
     expires: 2027-04-27
+
+  # The fleet image's Docker CLI (docker:29.8.1-cli) and its Compose plugin, built with Go 1.26.8, which these Go
+  # findings name. No release fixes them yet: docker:29.9.1-cli still bundles the same Compose plugin, its own CLI is on
+  # Go 1.26.9 (CVE-2026-111943 is fixed in 1.26.10), and docker/compose-bin's images are older still (measured
+  # 2026-10-28). Both binaries talk only to the laptop's or the runner's daemon over the mounted Unix socket: the HTTP/2
+  # and Range-header findings are in Go's HTTP server, the ECH finding in its TLS server, and the certificate-chain
+  # finding in TLS chain building, none of which a client on a Unix socket runs. The first docker CLI image two weeks
+  # old whose binaries are built with Go 1.26.10 or later replaces them, and these exceptions end.
+  - finding: CVE-2026-111943
+    package: stdlib
+    reason: The fleet's Docker CLI and Compose plugin build no TLS chain; they reach the daemon over a Unix socket.
+    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approved: 2026-10-28
+    expires: 2026-11-28
+  - finding: CVE-2026-78667
+    package: stdlib
+    reason: An HTTP server's Range header handling; the fleet's Docker CLI and Compose plugin serve no HTTP.
+    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approved: 2026-10-28
+    expires: 2026-11-28
+  - finding: CVE-2026-78669
+    package: stdlib
+    reason: An HTTP/2 server's SETTINGS handling; the fleet's Docker CLI and Compose plugin serve no HTTP/2.
+    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approved: 2026-10-28
+    expires: 2026-11-28
+  - finding: CVE-2026-78669
+    package: golang.org/x/net
+    reason: The same HTTP/2 server finding in the Compose plugin's copy of x/net; the plugin serves no HTTP/2.
+    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approved: 2026-10-28
+    expires: 2026-11-28
+  - finding: CVE-2026-97031
+    package: stdlib
+    reason: A TLS server's ECH handling; the fleet's Docker CLI and Compose plugin run no TLS server.
+    approver: The design session, by accepting S3 T10a's pull request, which proposes it
+    approved: 2026-10-28
+    expires: 2026-11-28

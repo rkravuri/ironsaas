@@ -15,6 +15,8 @@ The pack is a folder and a ZIP of it, `validation-pack-<version>.zip`, holding:
 - installation record: the images' digests, the migrations applied per module, the seeds' and the catalogue's hashes,
   the smoke's and the browser tests' results, and the checks that the installation matches the infrastructure code;
 - configuration: the hashes of the seeds and of the catalogue;
+- the bills of materials: each image's CycloneDX document under `sbom/`, as the release's image scan wrote it (TF-076
+  AC3, ADR-0055); a release without one for each of its five images is refused;
 - a manifest with every file's SHA-256, as an evidence pack has.
 
 Each document comes as JSON to read by machine and as one readable page (HTML); the traceability also as CSV. The pack is
@@ -50,6 +52,8 @@ DEVELOPMENT = "development"
 # A release's version: its UTC date and the release workflow's run number (ADR-0052).
 VERSION = re.compile(r"^\d{4}\.\d{2}\.\d{2}\.\d+$")
 RISKS = ["critical", "high", "normal"]
+# The release's images, each with its bill of materials (ADR-0055).
+IMAGES = ["iron-api", "iron-worker", "iron-control-plane", "iron-fleet", "iron-shell"]
 REQUIREMENT_ID = re.compile(r"\b([A-Z]{2,3})-(\d{3})\b")
 PRD_HEADING = re.compile(r"^#### ([A-Z]{2,3}-\d{3}) ")
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
@@ -334,7 +338,26 @@ class Pack:
         return not self.problems
 
 
-def build(root: Path = ROOT, version: str = DEVELOPMENT, results: Path | None = None, installation: Path | None = None, head: str = "HEAD", base: str | None = None, exceptions_path: Path | None = None) -> Pack:
+def bills_of_materials(folder: Path) -> tuple[dict[str, bytes], list[str]]:
+    """Each image's CycloneDX bill of materials in the folder (TF-076 AC3, ADR-0055), and what is missing or not one."""
+    files: dict[str, bytes] = {}
+    problems: list[str] = []
+    for path in sorted(folder.glob("*.cdx.json")) if folder.exists() else []:
+        data = path.read_bytes()
+        try:
+            document = json.loads(data)
+        except json.JSONDecodeError:
+            problems.append(f"the bill of materials {path.name} is not JSON")
+            continue
+        if not isinstance(document, dict) or document.get("bomFormat") != "CycloneDX" or not document.get("components"):
+            problems.append(f"the bill of materials {path.name} is not a CycloneDX document with its components")
+            continue
+        files[f"sbom/{path.name}"] = data
+    problems += [f"no bill of materials for the image {image}" for image in IMAGES if f"sbom/{image}.cdx.json" not in files]
+    return files, problems
+
+
+def build(root: Path = ROOT, version: str = DEVELOPMENT, results: Path | None = None, installation: Path | None = None, head: str = "HEAD", base: str | None = None, exceptions_path: Path | None = None, sboms: Path | None = None) -> Pack:
     result = trace.build(root, results, exceptions_path)
     classes = risk_classes(root / "docs" / "trace" / "risk.md")
     commit = git(root, "rev-parse", head).strip()
@@ -350,6 +373,8 @@ def build(root: Path = ROOT, version: str = DEVELOPMENT, results: Path | None = 
     problems += [f"a failed test proves {criterion}" for criterion in trace_document["failed"]]  # type: ignore[union-attr]
     problems += [f"the trace: {problem}" for problem in result.problems if "has no test and no exception" not in problem]
     problems += installation_problems(record)
+    boms, bom_problems = bills_of_materials(sboms) if sboms is not None else ({}, [])
+    problems += bom_problems
 
     built_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     notes = {
@@ -377,6 +402,7 @@ def build(root: Path = ROOT, version: str = DEVELOPMENT, results: Path | None = 
         pack.files[f"{name}.json"] = (json.dumps({**header, name.replace("-", "_"): document}, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
         pack.files[f"{name}.html"] = page(pack, name, document).encode("utf-8")
     pack.files["traceability.csv"] = traceability_csv(trace_document).encode("utf-8")
+    pack.files.update(boms)
     pack.files["index.html"] = index_page(pack).encode("utf-8")
     pack.files["manifest.json"] = manifest(pack)
     return pack
@@ -393,6 +419,7 @@ def write(pack: Pack, output: Path) -> Path:
     folder = output / pack.version
     folder.mkdir(parents=True, exist_ok=True)
     for name, data in pack.files.items():
+        (folder / name).parent.mkdir(parents=True, exist_ok=True)
         (folder / name).write_bytes(data)
     archive = output / f"validation-pack-{pack.version}.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipped:
@@ -443,7 +470,8 @@ def index_page(pack: Pack) -> str:
     links = "".join(f"<li><a href=\"{name}.html\">{e(title)}</a> (<a href=\"{name}.json\">JSON</a>)</li>" for name, title in TITLES.items())
     problems = "".join(f"<li>{e(p)}</li>" for p in pack.problems) or "<li>None.</li>"
     previous = f"since release {e(pack.previous)}" if pack.previous else "since the start of the history"
-    body = f"<p>The validation pack of this release, {previous} (TF-218, ADR-0052). <code>manifest.json</code> holds every file's SHA-256.</p><ul>{links}<li><a href=\"traceability.csv\">Traceability as CSV</a></li></ul><h2>Why the release may not be published</h2><ul>{problems}</ul>"
+    boms = "".join(f"<li><a href=\"{e(name)}\">{e(name.removeprefix('sbom/').removesuffix('.cdx.json'))}</a></li>" for name in sorted(pack.files) if name.startswith("sbom/")) or "<li>None in this pack.</li>"
+    body = f"<p>The validation pack of this release, {previous} (TF-218, ADR-0052). <code>manifest.json</code> holds every file's SHA-256.</p><ul>{links}<li><a href=\"traceability.csv\">Traceability as CSV</a></li></ul><h2>Bills of materials (CycloneDX), one per image</h2><ul>{boms}</ul><h2>Why the release may not be published</h2><ul>{problems}</ul>"
     return frame(pack, "Validation pack", body)
 
 
@@ -507,11 +535,15 @@ def main_for(root: Path, argv: list[str] | None = None) -> int:
     parser.add_argument("--installation", type=Path, default=None, help="the installation record the integration stage wrote")
     parser.add_argument("--output", type=Path, default=root / "artifacts" / "validation", help="where the pack goes (default artifacts/validation)")
     parser.add_argument("--base", default=None, help="the last release's tag (default: the newest v* tag the head holds)")
+    parser.add_argument("--sbom", type=Path, default=None, help="the folder of the images' CycloneDX bills of materials, <image>.cdx.json; a release needs one per image")
     arguments = parser.parse_args(argv)
     if arguments.version != DEVELOPMENT and not VERSION.match(arguments.version):
         print(f"'{arguments.version}' is not a release version (2026.10.23.57) nor {DEVELOPMENT}")
         return 2
-    pack = build(root, arguments.version, arguments.results, arguments.installation, base=arguments.base)
+    if arguments.version != DEVELOPMENT and arguments.sbom is None:
+        print("A release's pack carries each image's bill of materials: give --sbom with their folder (TF-076 AC3).")
+        return 2
+    pack = build(root, arguments.version, arguments.results, arguments.installation, base=arguments.base, sboms=arguments.sbom)
     archive = write(pack, arguments.output)
     summary = pack.documents["traceability"]["summary"]  # type: ignore[index]
     print(f"validation pack {pack.version} at {trace.shown(archive, root)}: {summary['requirements']} requirements, {summary['criteria']} criteria, {summary['passed']} passed, {summary['failed']} failed, {summary['excepted']} excepted, {summary['gap']} gaps")  # type: ignore[index]
