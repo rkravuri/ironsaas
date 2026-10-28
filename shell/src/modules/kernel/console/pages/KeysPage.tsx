@@ -88,7 +88,9 @@ function KeysTable({ keys }: { keys: TenantKey[] }) {
                 <KeyName code={item.key} />
               </Table.Th>
               <Table.Td>
-                <Text size="sm">{t("keys.version", { version: item.version })}</Text>
+                <Text size="sm" style={{ whiteSpace: "nowrap" }}>
+                  {t("keys.version", { version: item.version })}
+                </Text>
                 {item.minimum_version < item.version && (
                   <Text size="xs" c="dimmed">
                     {t("keys.olderStillRead", { minimum: item.minimum_version })}

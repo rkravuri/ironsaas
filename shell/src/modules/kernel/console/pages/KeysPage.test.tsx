@@ -95,7 +95,7 @@ afterEach(() => {
 });
 
 describe("the keys page (TF-075, ADR-0054)", () => {
-  it("shows each key's version, its last and next rotation, and the running re-encryption's progress in words [TF-075 AC1, ADR-0054, ADR-0024]", async () => {
+  it("shows each key's version, its last and next rotation, and the running re-encryption's progress in words [ADR-0054, ADR-0024]", async () => {
     open(keys);
 
     expect(await screen.findByRole("heading", { level: 2, name: "Keys" })).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe("the keys page (TF-075, ADR-0054)", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("lists the latest rotations with who asked and why, and where each stands [TF-075 AC3, ADR-0054]", async () => {
+  it("lists the latest rotations with who asked and why, and where each stands [ADR-0054]", async () => {
     open(keys);
 
     const rotations = await screen.findByRole("table", { name: "Latest rotations" });

@@ -16,7 +16,7 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the keys page in the ${scheme} scheme: each key's version, rotations and re-encryption in words, its contents by keyboard, and no WCAG 2.1 AA violation [TF-075 AC1, TF-075 AC3, ADR-0054, ADR-0024]`, async ({
+  test(`the keys page in the ${scheme} scheme: each key's version, rotations and re-encryption in words, its contents by keyboard, and no WCAG 2.1 AA violation [ADR-0054, ADR-0024]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
