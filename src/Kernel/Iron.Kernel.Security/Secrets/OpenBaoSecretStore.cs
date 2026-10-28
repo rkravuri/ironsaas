@@ -13,6 +13,8 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
 {
     private readonly HttpClient _http;
     private readonly string _mount;
+    private readonly string _transit;
+    private readonly string? _tokenRole;
 
     public OpenBaoSecretStore(SecretStoreOptions options)
         : this(options, new HttpClient { Timeout = TimeSpan.FromSeconds(10) })
@@ -33,6 +35,8 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
         _http.DefaultRequestHeaders.Remove("X-Vault-Token");
         _http.DefaultRequestHeaders.Add("X-Vault-Token", options.Token);
         _mount = options.Mount.Trim('/');
+        _transit = options.TransitMount.Trim('/');
+        _tokenRole = string.IsNullOrWhiteSpace(options.TokenRole) ? null : options.TokenRole.Trim();
     }
 
     public async Task<IReadOnlyDictionary<string, string>?> ReadAsync(string path, CancellationToken cancellationToken)
@@ -106,15 +110,41 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
         }
     }
 
-    public async Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null)
+    public async Task CreateReadPolicyAsync(string policyName, IReadOnlyList<string> paths, CancellationToken cancellationToken, IReadOnlyList<string>? managedPaths = null, IReadOnlyList<KeyGrant>? keys = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
         ArgumentNullException.ThrowIfNull(paths);
-        var read = paths.Select(path => $"path \"{_mount}/data/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}\npath \"{_mount}/metadata/{path.Trim('/')}\" {{ capabilities = [\"read\"] }}");
-        var managed = (managedPaths ?? []).Select(path => $"path \"{_mount}/data/{path.Trim('/')}\" {{ capabilities = [\"create\", \"read\", \"update\", \"delete\"] }}\npath \"{_mount}/metadata/{path.Trim('/')}\" {{ capabilities = [\"read\", \"delete\"] }}");
-        var rules = string.Join("\n", read.Concat(managed));
-        using var response = await _http.PutAsJsonAsync(new Uri($"v1/sys/policies/acl/{policyName}", UriKind.Relative), new PolicyEnvelope(rules), cancellationToken).ConfigureAwait(false);
+        var read = paths.SelectMany(path => new[] { new StorePolicyRule($"{_mount}/data/{path.Trim('/')}", ["read"]), new StorePolicyRule($"{_mount}/metadata/{path.Trim('/')}", ["read"]) });
+        var managed = (managedPaths ?? []).SelectMany(path => new[] { new StorePolicyRule($"{_mount}/data/{path.Trim('/')}", ["create", "read", "update", "delete"]), new StorePolicyRule($"{_mount}/metadata/{path.Trim('/')}", ["read", "delete"]) });
+        await CreatePolicyAsync(policyName, [.. read, .. managed, .. KeyRules(keys ?? [])], cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task CreatePolicyAsync(string policyName, IReadOnlyList<StorePolicyRule> rules, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(policyName);
+        ArgumentNullException.ThrowIfNull(rules);
+        var text = string.Join('\n', rules.Select(rule => $"path \"{rule.Path.Trim('/')}\" {{ capabilities = [{string.Join(", ", rule.Capabilities.Select(c => $"\"{c}\""))}] }}"));
+        using var response = await _http.PutAsJsonAsync(new Uri($"v1/sys/policies/acl/{policyName}", UriKind.Relative), new PolicyEnvelope(text), cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "write the policy for", policyName, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task EnsureTokenRoleAsync(string roleName, IReadOnlyList<string> allowedPolicyPatterns, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(roleName);
+        ArgumentNullException.ThrowIfNull(allowedPolicyPatterns);
+        var role = new TokenRoleEnvelope(allowedPolicyPatterns, Orphan: true, Renewable: true, DisallowedPolicies: ["root"]);
+        using var response = await _http.PostAsJsonAsync(new Uri($"v1/auth/token/roles/{roleName}", UriKind.Relative), role, cancellationToken).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, "write the token role", roleName, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> IsTokenValidAsync(string token, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("v1/auth/token/lookup-self", UriKind.Relative));
+        request.Headers.Remove("X-Vault-Token");
+        request.Headers.Add("X-Vault-Token", token);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        return response.IsSuccessStatusCode;
     }
 
     public async Task CreateDepositPolicyAsync(string policyName, string pathPattern, CancellationToken cancellationToken)
@@ -130,14 +160,36 @@ public sealed class OpenBaoSecretStore : ISecretStore, ISecretStoreAdmin, IDispo
     public async Task<string> CreateTokenAsync(IReadOnlyList<string> policies, string displayName, TimeSpan timeToLive, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(policies);
-        var request = new TokenRequest(policies, displayName, $"{(long)timeToLive.TotalSeconds}s", true, true);
-        using var response = await _http.PostAsJsonAsync(new Uri("v1/auth/token/create", UriKind.Relative), request, cancellationToken).ConfigureAwait(false);
+        // Through the fleet's token role when it has one: a token that is not the root token makes orphan tokens only so.
+        var request = new TokenRequest(policies, displayName, $"{(long)timeToLive.TotalSeconds}s", true, _tokenRole is null ? true : null);
+        var path = _tokenRole is null ? "v1/auth/token/create" : $"v1/auth/token/create/{_tokenRole}";
+        using var response = await _http.PostAsJsonAsync(new Uri(path, UriKind.Relative), request, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, "create a token for", displayName, cancellationToken).ConfigureAwait(false);
         var envelope = await response.Content.ReadFromJsonAsync<TokenEnvelope>(cancellationToken).ConfigureAwait(false);
         return envelope?.Auth?.ClientToken ?? throw new SecretStoreException("The store created a token but did not return it.");
     }
 
     public void Dispose() => _http.Dispose();
+
+    /// <summary>The transit paths a key grant opens: each use is one endpoint of the key, and reading is its versions.</summary>
+    private IEnumerable<StorePolicyRule> KeyRules(IReadOnlyList<KeyGrant> keys)
+    {
+        foreach (var grant in keys)
+        {
+            foreach (var (use, endpoint) in new[] { (KeyUses.Encrypt, "encrypt"), (KeyUses.Decrypt, "decrypt"), (KeyUses.Rewrap, "rewrap"), (KeyUses.Hash, "hmac"), (KeyUses.Sign, "sign") })
+            {
+                if (grant.Uses.HasFlag(use))
+                {
+                    yield return new StorePolicyRule($"{_transit}/{endpoint}/{grant.KeyName}", ["update"]);
+                }
+            }
+
+            if (grant.Uses.HasFlag(KeyUses.Read))
+            {
+                yield return new StorePolicyRule($"{_transit}/keys/{grant.KeyName}", ["read"]);
+            }
+        }
+    }
 
     private Uri DataUri(string path)
     {
@@ -185,7 +237,13 @@ internal sealed record TokenRequest(
     [property: JsonPropertyName("display_name")] string DisplayName,
     [property: JsonPropertyName("ttl")] string TimeToLive,
     [property: JsonPropertyName("renewable")] bool Renewable,
-    [property: JsonPropertyName("no_parent")] bool NoParent);
+    [property: JsonPropertyName("no_parent"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] bool? NoParent);
+
+internal sealed record TokenRoleEnvelope(
+    [property: JsonPropertyName("allowed_policies_glob")] IReadOnlyList<string> AllowedPolicies,
+    [property: JsonPropertyName("orphan")] bool Orphan,
+    [property: JsonPropertyName("renewable")] bool Renewable,
+    [property: JsonPropertyName("disallowed_policies")] IReadOnlyList<string> DisallowedPolicies);
 
 internal sealed record TokenEnvelope([property: JsonPropertyName("auth")] TokenAuth? Auth);
 

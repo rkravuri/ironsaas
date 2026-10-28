@@ -15,7 +15,9 @@ public sealed class OpenBaoFixture : IAsyncLifetime
 
     public string Mount => Store.Mount;
 
-    public SecretStoreOptions Options(string path = "tenants/acme") => new() { Address = Address, Token = RootToken, Mount = Store.Mount, Path = path };
+    public string TransitMount => Store.TransitMount;
+
+    public SecretStoreOptions Options(string path = "tenants/acme", string? token = null) => new() { Address = Address, Token = token ?? RootToken, Mount = Store.Mount, Path = path, TransitMount = Store.TransitMount };
 
     private TestOpenBao Store => _store ?? throw new InvalidOperationException("The fixture is not initialised.");
 

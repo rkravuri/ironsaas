@@ -37,6 +37,9 @@ public sealed class TestOpenBao : IAsyncDisposable
     /// <summary>The project's own KV version 2 mount, named after the project.</summary>
     public string Mount { get; }
 
+    /// <summary>The project's own transit engine, for its keys (ADR-0054): <c>&lt;project&gt;-transit</c>.</summary>
+    public string TransitMount => $"{Mount}-transit";
+
     public static async Task<TestOpenBao> StartAsync(string project, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(project);
@@ -84,6 +87,14 @@ public sealed class TestOpenBao : IAsyncDisposable
             if (!enabled.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException($"The store at {Address} did not enable the mount '{Mount}': {(int)enabled.StatusCode} {await enabled.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)}");
+            }
+        }
+
+        using (var transit = await http.PostAsJsonAsync(new Uri($"v1/sys/mounts/{TransitMount}", UriKind.Relative), new { type = "transit" }, cancellationToken).ConfigureAwait(false))
+        {
+            if (!transit.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"The store at {Address} did not enable the transit mount '{TransitMount}': {(int)transit.StatusCode} {await transit.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)}");
             }
         }
 
