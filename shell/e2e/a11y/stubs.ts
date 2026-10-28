@@ -625,6 +625,124 @@ export const subscription = {
 };
 
 /** The console stubs plus the subscription. */
+/** GET /api/v1/keys as a unit answers it while its data key's values move to a new version (ADR-0054). */
+export const keys = {
+  keys: [
+    {
+      key: "data",
+      version: 2,
+      minimum_version: 1,
+      rotated_at: "2026-10-28T09:00:00Z",
+      next_rotation_at: "2027-10-28T09:00:00Z",
+      rotation_days: 365,
+      reencryption: {
+        rotation_id: "01a1aaaa-0000-7000-8000-0000000000a1",
+        to_version: 2,
+        done: 1200,
+        total: 3000,
+        started_at: "2026-10-28T09:00:05Z",
+        finished_at: null,
+      },
+    },
+    {
+      key: "index",
+      version: 3,
+      minimum_version: 3,
+      rotated_at: "2026-10-27T09:00:00Z",
+      next_rotation_at: "2027-10-27T09:00:00Z",
+      rotation_days: 365,
+      reencryption: {
+        rotation_id: "01a1aaaa-0000-7000-8000-0000000000a2",
+        to_version: 3,
+        done: 3000,
+        total: 3000,
+        started_at: "2026-10-27T09:00:05Z",
+        finished_at: "2026-10-27T09:02:00Z",
+      },
+    },
+    {
+      key: "signing",
+      version: 1,
+      minimum_version: 1,
+      rotated_at: null,
+      next_rotation_at: "2027-10-20T09:00:00Z",
+      rotation_days: 365,
+      reencryption: null,
+    },
+    {
+      key: "database",
+      version: 2,
+      minimum_version: 2,
+      rotated_at: "2026-10-26T09:00:00Z",
+      next_rotation_at: "2027-01-24T09:00:00Z",
+      rotation_days: 90,
+      reencryption: null,
+    },
+  ],
+  rotations: [
+    {
+      id: "01a1aaaa-0000-7000-8000-0000000000a1",
+      key: "data",
+      trigger: "operator",
+      requested_by: "Olga Operator",
+      reason: "A contractor with access to the data left",
+      from_version: 1,
+      to_version: 2,
+      rotated_at: "2026-10-28T09:00:00Z",
+      done: 1200,
+      total: 3000,
+      finished_at: null,
+      retired_at: null,
+    },
+    {
+      id: "01a1aaaa-0000-7000-8000-0000000000a2",
+      key: "index",
+      trigger: "schedule",
+      requested_by: "schedule",
+      reason: "Scheduled rotation, every 365 days.",
+      from_version: 2,
+      to_version: 3,
+      rotated_at: "2026-10-27T09:00:00Z",
+      done: 3000,
+      total: 3000,
+      finished_at: "2026-10-27T09:02:00Z",
+      retired_at: "2026-10-27T09:02:30Z",
+    },
+    {
+      id: "01a1aaaa-0000-7000-8000-0000000000a3",
+      key: "database",
+      trigger: "schedule",
+      requested_by: "schedule",
+      reason: "Scheduled rotation, every 90 days.",
+      from_version: 1,
+      to_version: 2,
+      rotated_at: "2026-10-26T09:00:00Z",
+      done: 0,
+      total: 0,
+      finished_at: "2026-10-26T09:00:00Z",
+      retired_at: "2026-10-26T09:00:00Z",
+    },
+  ],
+  asked_at: "2026-10-28T09:01:00Z",
+};
+
+/** The console for an administrator who may read the keys, with the keys as given (ADR-0054). */
+export async function stubKeys(target: Page, body: unknown = keys): Promise<void> {
+  await stubConsole(target);
+  const permissions = [...administrator, "keys.keys.read"];
+  await target.route("**/api/v1/me", (route) =>
+    route.fulfill({
+      json: {
+        ...me,
+        permissions,
+        permissions_anywhere: permissions,
+        home_unit: { id: units[0].id, name: units[0].name, code: units[0].code },
+      },
+    }),
+  );
+  await target.route("**/api/v1/keys", (route) => route.fulfill({ json: body }));
+}
+
 export async function stubSubscription(target: Page, body: unknown = subscription): Promise<void> {
   await stubConsole(target);
   await target.route("**/api/v1/subscription", (route) => route.fulfill({ json: body }));

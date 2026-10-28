@@ -8,6 +8,7 @@ import {
   IconLogin2,
   IconReceipt,
   IconScale,
+  IconShieldLock,
   IconSitemap,
   IconSquarePlus,
   IconUserShare,
@@ -21,6 +22,7 @@ import { ConflictsPage } from "./pages/ConflictsPage";
 import { DelegationsPage } from "./pages/DelegationsPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
 import { ExplainPage } from "./pages/ExplainPage";
+import { KeysPage } from "./pages/KeysPage";
 import { ReviewRecordPage } from "./pages/ReviewRecordPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
 import { RoleEditorPage } from "./pages/RoleEditorPage";
@@ -40,7 +42,8 @@ import { UnitsPage } from "./pages/UnitsPage";
  * report (ADR-0039). Flag rules are the operator's, in the control plane (ADR-0035). S3 T4 brought the company logins
  * (TF-014, ADR-0048), for the holders of the critical identity.sso.manage. S3 T5 brought the sessions, with the summary and
  * the tenant-wide revocation (TF-022, TF-029), and the documents people accept (TF-028, ADR-0049). S3 T8 brought the
- * changes of sensitive configuration that wait for a second administrator (TF-068, ADR-0052).
+ * changes of sensitive configuration that wait for a second administrator (TF-068, ADR-0052). S3 T9b brought the keys, read only:
+ * their versions, rotations and re-encryption; rotating them is the operator's (TF-075, ADR-0054).
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -156,6 +159,12 @@ export const consoleManifest: ModuleManifest = {
       shortcuts: tabShortcuts,
     },
     {
+      path: "/console/keys",
+      permission: "keys.keys.read",
+      element: <KeysPage />,
+      titleKey: "modules.console.keys",
+    },
+    {
       path: "/console/sso/new",
       permission: "identity.sso.manage",
       element: <SsoProviderPage />,
@@ -240,6 +249,12 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/changes",
       permission: "changes.changes.read",
       icon: <IconUsersGroup size={16} />,
+    },
+    {
+      labelKey: "modules.console.keys",
+      path: "/console/keys",
+      permission: "keys.keys.read",
+      icon: <IconShieldLock size={16} />,
     },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },

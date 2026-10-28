@@ -154,7 +154,8 @@
       "sso": "Single sign-on",
       "sessions": "Sessions",
       "documents": "Documents",
-      "changes": "Pending changes"
+      "changes": "Pending changes",
+      "keys": "Keys"
     },
     "audit": {
       "title": "Audit",
@@ -1152,6 +1153,68 @@
       "keepWorking": "Back to my work"
     }
   },
+  "keys": {
+    "title": "Keys",
+    "description": "The keys that protect your organisation's data, and its database password. The platform operator rotates them, on a schedule and when asked; this page shows where each stands.",
+    "failed": "The keys could not be loaded",
+    "current": {
+      "title": "The keys",
+      "description": "Each key has versions. The latest encrypts, finds and signs; older versions still read until every value has moved to the new one, then they are retired."
+    },
+    "rotations": {
+      "title": "Latest rotations",
+      "description": "Who asked for each rotation and why, and how far it has come.",
+      "empty": "No rotation yet",
+      "emptyText": "Each key keeps its first version until its schedule comes or the platform operator rotates it."
+    },
+    "empty": "No keys to show yet",
+    "emptyText": "The keys' state arrives from the platform within a minute of the unit starting. If it does not, tell the platform operator.",
+    "names": {
+      "data": "Data key",
+      "index": "Index key",
+      "signing": "Signing key",
+      "database": "Database password"
+    },
+    "purposes": {
+      "data": "Encrypts chosen fields, such as tax identifiers and bank accounts.",
+      "index": "Finds an encrypted field by its exact value.",
+      "signing": "Signs access tokens and the sign-in check.",
+      "database": "Lets the services reach your organisation's database."
+    },
+    "columns": {
+      "key": "Key",
+      "version": "Version",
+      "rotated": "Last rotation",
+      "next": "Next rotation",
+      "reencryption": "Values",
+      "when": "Rotated",
+      "askedBy": "Asked by",
+      "reason": "Why",
+      "versions": "Versions",
+      "state": "Where it stands"
+    },
+    "version": "Version {{version}}",
+    "olderStillRead": "Versions from {{minimum}} still read",
+    "neverRotated": "Not rotated yet",
+    "every_one": "Every {{count}} day",
+    "every_other": "Every {{count}} days",
+    "fromTo": "{{from}} to {{to}}",
+    "schedule": "The schedule",
+    "asked": "Last heard from the platform at {{time}}.",
+    "reencryption": {
+      "notNeeded": "Nothing to move",
+      "none": "All on the latest version",
+      "done": "All moved to version {{version}}",
+      "progress": "{{done, number}} of {{total, number}} values moved to version {{version}}"
+    },
+    "states": {
+      "retired": "Old version retired",
+      "changed": "Changed",
+      "overlap": "New version signs; the old one still checks tokens",
+      "moved": "Every value moved; the old version is retired next",
+      "moving": "Moving values: {{done, number}} of {{total, number}}"
+    }
+  },
   "subscription": {
     "title": "Subscription",
     "description": "What your organisation's plan includes, until when, and how many seats are left.",
@@ -1248,7 +1311,8 @@
       "settings": "Preferences",
       "compliance": "Signing",
       "changes": "Four-eyes approval",
-      "protection": "Protection of the sign-in and the API"
+      "protection": "Protection of the sign-in and the API",
+      "keys": "Keys"
     },
     "names": {
       "identity_session_idle_minutes": "A session ends without activity after",
@@ -1270,7 +1334,8 @@
       "protection_limits_login_per_minute": "Sign-in attempts from one address",
       "protection_limits_recovery_per_hour": "Recovery links for one account",
       "protection_limits_api_per_minute": "Calls to the API by one person or client",
-      "protection_limits_exports_per_hour": "Exports by one person or client"
+      "protection_limits_exports_per_hour": "Exports by one person or client",
+      "keys_rotation_data_days": "The data and index keys rotate every"
     },
     "noAreas": "None: every change applies at once",
     "amounts": {
@@ -1289,7 +1354,9 @@
       "protection_limits_api_per_minute_one": "{{count}} call a minute",
       "protection_limits_api_per_minute_other": "{{count}} calls a minute",
       "protection_limits_exports_per_hour_one": "{{count}} export an hour",
-      "protection_limits_exports_per_hour_other": "{{count}} exports an hour"
+      "protection_limits_exports_per_hour_other": "{{count}} exports an hour",
+      "keys_rotation_data_days_one": "{{count}} day",
+      "keys_rotation_data_days_other": "{{count}} days"
     },
     "choices": {
       "shell_colour_scheme": {
