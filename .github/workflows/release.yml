@@ -1,33 +1,120 @@
 name: Release
 
-# A push to main (ADR-0022): the run gives the release its version (ADR-0052), builds the five images stamped with it,
-# pushes them to GitHub Container Registry tagged with the commit, scans them, and proves them on the runner: the
-# platform and the control plane start from those images, the fleet provisions a tenant, the smoke test and the browser
-# tests run against it, and the installation is recorded and checked against the code. Green runs tag the images
-# "integration". Then the traceability matrix of the commit (ADR-0044) and the release's validation pack (TF-218): every
-# requirement with its tests and results, the gaps, the release notes, the risk assessment, the installation record
-# and the configuration's hashes. A pack that passes tags the commit and the images with the version and is kept with a
-# GitHub release; a gap without an approved exception fails the release.
+# Once a night when main has changed since the last release, and on demand (ADR-0055; before T10a, on every push to
+# main, ADR-0022): the run gives the release its version (ADR-0052), builds the five images stamped with it, pushes them
+# to GitHub Container Registry tagged with the commit, scans each at critical and high through the security gate and
+# writes its CycloneDX bill of materials (TF-076 AC3), and proves them on the runner: the platform and the control plane
+# start from those images, the fleet provisions a tenant, the smoke test and the browser tests run against it, and the
+# installation is recorded and checked against the code. Green runs tag the images "integration". Then the
+# traceability matrix (ADR-0044) and the release's validation pack (TF-218), with CI's results for main's tree: every
+# requirement with its tests and results, the gaps, the release notes, the risk assessment, the installation record,
+# the configuration's hashes and the bills of materials. A pack that passes tags the commit and the images with the
+# version and is kept with a GitHub release, the bills of materials beside it; a gap without an approved exception fails
+# the release.
 
 on:
-  push:
-    branches: [main]
+  schedule:
+    # 02:23 UTC every night, off the hour that every schedule on GitHub asks for.
+    - cron: "23 2 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
+
+# One release at a time; a release in progress is never cancelled, since it tags and publishes.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 env:
   DOTNET_NOLOGO: "1"
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
 jobs:
+  # Whether main changed since the last release, and which CI run tested its tree. Main changes only through pull
+  # requests that are up to date with it, so the run of the pull request a merge came from tested the merge's tree; a
+  # change of documents only since then leaves those results standing. When no full run covers the tree (a run of
+  # documents only, or a history before T10a), the release asks CI to run in full on main and waits for it.
+  changed:
+    name: What the release covers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    outputs:
+      release: ${{ steps.changed.outputs.release }}
+      ci-run: ${{ steps.tested.outputs.run }}
+    steps:
+      - name: Check out with history and tags
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Has main changed since the last release
+        id: changed
+        run: |
+          last=$(git describe --tags --abbrev=0 --match 'v*' HEAD 2>/dev/null || true)
+          if [ "${{ github.ref }}" != refs/heads/main ]; then
+            echo "A release is made from main only, not from ${{ github.ref }}."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            echo "Asked for by hand: the release runs."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$last" ] && [ "$(git rev-parse "$last^{commit}")" = "$(git rev-parse HEAD)" ]; then
+            echo "Main has not changed since $last: no release tonight."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Main has changed since ${last:-the start}: the release runs."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The newest CI run, of a pull request's head or of main itself, that ran the .NET tests on a tree differing from
+      # main's in documents only.
+      - name: CI's full run for main's tree
+        id: tested
+        if: steps.changed.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          documents_only() { ! git diff --name-only "$1" HEAD | grep -vE '^docs/|\.md$' | grep -q . && ! git diff --name-only "$1" HEAD | grep -q '^docs/security/threat-models/'; }
+          full_run() {
+            for run in $(gh run list --workflow ci.yml --commit "$1" --status completed --json databaseId --jq '.[].databaseId'); do
+              ran=$(gh run view "$run" --json jobs --jq '.jobs[] | select(.name == ".NET build and tests") | .conclusion')
+              if [ "$ran" = success ] || [ "$ran" = failure ]; then echo "$run"; return 0; fi
+            done
+            return 1
+          }
+          found=""
+          for commit in $(git rev-list --first-parent --max-count 30 HEAD); do
+            documents_only "$commit" || [ "$commit" = "$(git rev-parse HEAD)" ] || break
+            for candidate in $(git rev-parse --verify --quiet "$commit^2") "$commit"; do
+              documents_only "$candidate" || continue
+              if run=$(full_run "$candidate"); then found=$run; break 2; fi
+            done
+          done
+          if [ -z "$found" ]; then
+            echo "No full CI run covers main's tree: asking for one."
+            gh workflow run ci.yml --ref main
+            for attempt in $(seq 1 30); do
+              sleep 10
+              found=$(gh run list --workflow ci.yml --event workflow_dispatch --commit "$GITHUB_SHA" --json databaseId --jq '.[0].databaseId // empty')
+              [ -n "$found" ] && break
+            done
+            test -n "$found" || { echo "CI's run on main did not start."; exit 1; }
+            gh run watch "$found" --interval 30 > /dev/null || true
+          fi
+          echo "CI's run for main's tree: $found"
+          echo "run=$found" >> "$GITHUB_OUTPUT"
+
   # The release's version (ADR-0052): the UTC date the run started and the workflow's run number, 2026.10.23.57. The run
   # number grows with every run, so versions always increase and never repeat; a run that fails keeps its number unused.
   # Re-running failed jobs keeps this job's answer, so the images and the tag carry the same version.
   version:
     name: Version
     runs-on: ubuntu-latest
+    needs: changed
+    if: needs.changed.outputs.release == 'true'
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -38,7 +125,7 @@ jobs:
   images:
     name: Image ${{ matrix.image.name }}
     runs-on: ubuntu-latest
-    needs: version
+    needs: [changed, version]
     strategy:
       fail-fast: false
       matrix:
@@ -67,6 +154,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # The version goes into each image as its label and, for the hosts, as Release__Version, which the unit reports.
+      # The layers are cached in GitHub Actions' cache, one scope per image.
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -75,21 +163,43 @@ jobs:
           push: true
           build-args: |
             IRON_VERSION=${{ needs.version.outputs.version }}
-          # The commit's tag always; "main" only from main, so a run from another branch never moves it.
           tags: |
             ${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:${{ github.sha }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/{1}:main', steps.repo.outputs.repository, matrix.image.name) || '' }}
+            ${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:main
           cache-from: type=gha,scope=${{ matrix.image.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
           provenance: false
 
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Date of the scanners' database
+        id: today
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy's database
+        uses: actions/cache@v6
         with:
-          image-ref: ${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:${{ github.sha }}
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+          path: ~/.cache/trivy
+          key: trivy-${{ steps.today.outputs.day }}
+          restore-keys: trivy-
+
+      # The image as the registry holds it, scanned as make image-scan scans it on the laptop, with its CycloneDX bill
+      # of materials from the same report; the gate fails on a critical or high finding no unexpired exception covers.
+      - name: Scan the image and write its bill of materials
+        run: |
+          image="${{ steps.repo.outputs.repository }}/${{ matrix.image.name }}:${{ github.sha }}"
+          docker pull --quiet "$image"
+          make image-scan IMAGE="$image" NAME=${{ matrix.image.name }}
+          python3 tools/security_gate.py --image ${{ matrix.image.name }}=artifacts/security/image-${{ matrix.image.name }}.json
+
+      - name: Keep the scan and the bill of materials
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-${{ matrix.image.name }}
+          path: |
+            artifacts/sbom/${{ matrix.image.name }}.cdx.json
+            artifacts/security/image-${{ matrix.image.name }}.json
+          if-no-files-found: ignore
+          retention-days: 90
 
   integration:
     name: Integration on the runner
@@ -105,6 +215,13 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-
 
       - name: Image repository
         id: repo
@@ -152,11 +269,22 @@ jobs:
           cache: npm
           cache-dependency-path: shell/package-lock.json
 
+      - name: Cache the Playwright browsers
+        id: browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('shell/package-lock.json') }}
+
       - name: Install the shell's packages and Chromium
         working-directory: shell
         run: |
           npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.browsers.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       # The browser tests against the tenant the stage provisioned, in a unit of their own, as make e2e runs them on the
       # laptop: the administrator's password is the one the smoke kept in the store. Their JUnit file joins the matrix.
@@ -222,9 +350,8 @@ jobs:
             docker compose --project-name "$project" logs --tail 200 || true
           done
 
-      # Only from main: "integration" names what passed on main.
+      # "integration" names what passed on main.
       - name: Tag the images integration
-        if: github.ref == 'refs/heads/main'
         run: |
           for image in iron-api iron-worker iron-control-plane iron-fleet iron-shell; do
             docker buildx imagetools create \
@@ -232,15 +359,16 @@ jobs:
               "${{ steps.repo.outputs.repository }}/$image:${{ github.sha }}"
           done
 
-  # The matrix of the commit the images were built from: CI's result files for the same commit, which this job waits
-  # for, and the smoke's report and the browser tests' results from the integration stage, kept for 90 days with this
+  # The matrix of the commit the images were built from: the results of CI's run for its tree (the "changed" job found
+  # it), and the smoke's report and the browser tests' results from the integration stage, kept for 90 days with this
   # run (TF-218, ADR-0044). Then the release's validation pack from the same results, the history since the last
-  # release, the risk classes and the installation record (ADR-0052). Both are kept whatever they found; a gap without
-  # an approved exception, a failed test or a failed installation check fails this job, and the release is not published.
+  # release, the risk classes, the installation record and the images' bills of materials (ADR-0052, ADR-0055). Both
+  # are kept whatever they found; a gap without an approved exception, a failed test, a failed installation check or a
+  # missing bill of materials fails this job, and the release is not published.
   trace:
     name: Traceability matrix and validation pack of the release
     runs-on: ubuntu-latest
-    needs: [version, integration]
+    needs: [changed, version, images, integration]
     if: always() && needs.version.result == 'success'
     timeout-minutes: 60
     permissions:
@@ -254,22 +382,15 @@ jobs:
           fetch-depth: 0
 
       # Each download is tried three times, as a connection lost on the way once failed CI's matrix (run 39912627606).
-      - name: CI's results for this commit
+      - name: CI's results for main's tree
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN: ${{ needs.changed.outputs.ci-run }}
         run: |
-          run=""
-          for attempt in $(seq 1 30); do
-            run=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --event push --json databaseId --jq '.[0].databaseId // empty' || true)
-            [ -n "$run" ] && break
-            sleep 10
-          done
-          test -n "$run" || { echo "No CI run for $GITHUB_SHA"; exit 1; }
-          # Waits for the run to end, whatever its result: a failing run's results belong in the matrix too.
-          gh run watch "$run" --interval 30 > /dev/null || true
+          test -n "$RUN" || { echo "No CI run was found for main's tree."; exit 1; }
           for attempt in 1 2 3; do
             rm -rf ci-results
-            gh run download "$run" --pattern 'test-results-*' --dir ci-results && break
+            gh run download "$RUN" --pattern 'test-results-*' --dir ci-results && break
             [ "$attempt" = 3 ] && { echo "CI's results could not be downloaded after three tries"; exit 1; }
             echo "The download failed; trying again in $((attempt * 20)) seconds."
             sleep $((attempt * 20))
@@ -298,6 +419,14 @@ jobs:
           path: installation
         continue-on-error: true
 
+      - name: The images' bills of materials
+        uses: ./.github/actions/download-artifacts
+        with:
+          pattern: sbom-*
+          merge-multiple: "true"
+          path: artifacts
+        continue-on-error: true
+
       - name: Build the matrix
         id: matrix
         continue-on-error: true
@@ -306,7 +435,7 @@ jobs:
       - name: Build the validation pack
         id: pack
         continue-on-error: true
-        run: python3 tools/validation_pack.py --version "${{ needs.version.outputs.version }}" --installation installation/installation-record.json --output artifacts/validation
+        run: python3 tools/validation_pack.py --version "${{ needs.version.outputs.version }}" --installation installation/installation-record.json --sbom artifacts/sbom --output artifacts/validation
 
       - name: Keep the matrix with the images
         if: always()
@@ -333,13 +462,14 @@ jobs:
           exit 1
 
   # A passing release (ADR-0052): the commit is tagged with the version, the images get the version as a tag, and a
-  # GitHub release keeps the validation pack for good. A deployment publishes the pack to the platform's releases
-  # container (the fleet's publish-validation-pack), from where each unit's next update places it.
+  # GitHub release keeps the validation pack and each image's bill of materials for good (TF-076 AC3). A deployment
+  # publishes the pack to the platform's releases container (the fleet's publish-validation-pack), from where each
+  # unit's next update places it.
   publish:
     name: Publish the release
     runs-on: ubuntu-latest
     needs: [version, integration, trace]
-    if: github.ref == 'refs/heads/main' && needs.integration.result == 'success' && needs.trace.result == 'success'
+    if: needs.integration.result == 'success' && needs.trace.result == 'success'
     permissions:
       contents: write
       packages: write
@@ -352,6 +482,13 @@ jobs:
         with:
           name: validation-pack-${{ needs.version.outputs.version }}
           path: artifacts/validation
+
+      - name: The images' bills of materials
+        uses: ./.github/actions/download-artifacts
+        with:
+          pattern: sbom-*
+          merge-multiple: "true"
+          path: artifacts
 
       - name: Image repository
         id: repo
@@ -372,7 +509,7 @@ jobs:
               "${{ steps.repo.outputs.repository }}/$image:${{ github.sha }}"
           done
 
-      - name: Tag the commit and keep the pack with a GitHub release
+      - name: Tag the commit and keep the pack and the bills of materials with a GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.version.outputs.version }}
@@ -382,6 +519,9 @@ jobs:
           {
             echo "Version $VERSION, commit $GITHUB_SHA."
             echo
-            echo "The validation pack is attached (TF-218): every requirement with its tests and results, the release notes, the risk assessment, the installation record and the configuration's hashes. Its manifest.json lists every file's SHA-256."
+            echo "The validation pack is attached (TF-218): every requirement with its tests and results, the release notes, the risk assessment, the installation record, the configuration's hashes and each image's bill of materials. Its manifest.json lists every file's SHA-256."
+            echo
+            echo "Each image's CycloneDX bill of materials is attached beside it (TF-076 AC3): iron-api, iron-worker, iron-control-plane, iron-fleet and iron-shell."
           } > release-notes.md
-          gh release create "v$VERSION" "artifacts/validation/validation-pack-$VERSION.zip" --title "Release $VERSION" --notes-file release-notes.md --target "$GITHUB_SHA"
+          gh release create "v$VERSION" "artifacts/validation/validation-pack-$VERSION.zip" artifacts/sbom/*.cdx.json \
+            --title "Release $VERSION" --notes-file release-notes.md --target "$GITHUB_SHA"

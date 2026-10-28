@@ -1,10 +1,11 @@
 # Definition of done
 
-What a change needs before it is merged to main. The pull request template summarises it; this page is the reference (TF-209).
+What a change needs before it is merged to main, which it reaches only through a pull request with every check green (ADR-0055). The pull request template summarises it; this page is the reference (TF-209).
 
 ## Every change
 
-- [ ] `make verify` is green locally (it runs `make prd-check`, `make test`, `make shell-check`, `make shell-a11y`, the format check and `make trace` in order), and CI is green; `make format` (`dotnet format` and Prettier, ADR-0040) makes no change.
+- [ ] `make verify` is green locally (it runs `make prd-check`, `make test` with coverage, `make shell-check`, `make shell-a11y`, the format check, `make security`, `make coverage` and `make trace` in order), and every check of the pull request is green; `make format` (`dotnet format` and Prettier, ADR-0040) makes no change.
+- [ ] The security checks pass (ADR-0055): the security gate (dependencies and their licences, the images, misconfigurations and the repository's rules), every .NET security rule and ESLint's security plugin, and the coverage floors; a critical or high finding is fixed, or has an exception, never ignored.
 - [ ] New or changed behaviour has tests at the level that proves it: a unit test for a rule, an integration test on the container fixtures for anything that touches the database, the store or storage, a shell test for a page or a mapping.
 - [ ] Every new test names the requirement criteria or the decision it proves (`[Proves("TF-033 AC2")]`, a title ending `[TF-033 AC2]`, ADR-0044), read against the criterion's text, and `make trace` passes: no unknown identifier, and no criterion of a done slice without a test or an approved exception.
 - [ ] No warning was suppressed without a comment that says why.
@@ -16,6 +17,8 @@ What a change needs before it is merged to main. The pull request template summa
 - [ ] A requirement was added or changed: `make prd-csv` wrote its CSV and `make prd-check` passes; a new requirement takes the next free identifier in its area's block, and its dependencies point down the layers and along the process order (ADR-0041, ADR-0042).
 - [ ] A decision was made (a library, a pattern, a boundary, a trade-off): its ADR is in `docs/adr/`, listed in the index, and named from the code or the guide that applies it.
 - [ ] A module was added: the placement test is answered in its README, its projects declare `<IronLayer>` and live in their layer's folder, and its schema carries the layer prefix (ADR-0029).
+- [ ] A module or an external interface was added (an anonymous endpoint, a public page, a host, a channel to another system): its threat model record is in `docs/security/threat-models/`, from the template, written and reviewed before it is built, and names it; the tests refuse a module or an anonymous endpoint without one (TF-077 AC2, ADR-0055).
+- [ ] An exception was added, a finding in `security/exceptions.yaml` or a process exception in `docs/security/exceptions.md`: it has its reason, who approved it and when, and its expiry or re-check date, at most six months on (TF-076 AC2, ADR-0055).
 - [ ] An entity changed: the migration is generated with `make ef-add`, read once, formatted with `make format`, committed with the entity, and the module's model test passes.
 - [ ] An endpoint was added: it declares `RequirePermission`, `RequireSignedIn` or `AllowAnonymous`, and each success it answers with `.Produces<T>(status)` (TF-100 AC3); a new anonymous endpoint is a reviewed addition to the fixed list in `Iron.Host.Tests`.
 - [ ] A permission was added: it is in the module's Contracts, in the module's `Permissions`, and seeded into the system roles that should carry it.

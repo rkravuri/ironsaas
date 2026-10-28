@@ -64,7 +64,7 @@ To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## How we work
 
-The platform is built in slices, each a thin increment that can be demonstrated end to end (the technical PRD's section 7). A design session writes each task as a prompt in `docs/prompts/`; Claude Code builds it on a branch of its own, commits the prompt before the work, and reports with the checks, the screenshots and the answers to the design brief's questions; the design session then merges it or answers with corrections (ADR-0023). Every decision with real alternatives is an ADR, every requirement has an identifier that its tests name, and the build refuses what the rules forbid.
+The platform is built in slices, each a thin increment that can be demonstrated end to end (the technical PRD's section 7). A design session writes each task as a prompt in `docs/prompts/`; Claude Code builds it on a branch of its own, commits the prompt before the work, opens a pull request and reports with the checks, the screenshots and the answers to the design brief's questions; the design session then accepts it, and it merges through the pull request with every check green, or answers with corrections (ADR-0023, ADR-0055). Main takes no direct push. Every decision with real alternatives is an ADR, every requirement has an identifier that its tests name, and the build refuses what the rules forbid.
 
 ## For developers
 
@@ -162,7 +162,8 @@ tests/                       Iron.Architecture.Tests (the build checks), Iron.Ho
                              project per kernel project, and Iron.Testing (the services the tests run on)
 tools/                       Iron.Smoke (the smoke test) and prd_check.py (the requirement documents' check)
 infra/compose/               the laptop platform: compose.yaml, configs, scripts, rendered units/
-.github/workflows/           ci.yml and release.yml
+.github/workflows/           ci.yml (every pull request), release.yml (nightly and on demand), security-report.yml (monthly)
+security/                    the security gate's exceptions, licence policy, coverage floors and the repository's own scan rules
 docs/                        prd/ (foundation/, suites/procurement/), adr/, guides/, slices/, prompts/
 ```
 

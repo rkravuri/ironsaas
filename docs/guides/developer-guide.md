@@ -17,7 +17,9 @@ The sections, in order:
 - Develop in WSL 2 (Ubuntu) or on Linux. Clone inside the Linux file system (for example `~/src/foundation`), not under `/mnt/c`; builds are many times faster there.
 - Install the .NET SDK 10.0. `dotnet --version` must print 10.0.x. `global.json` accepts any 10.0.1xx feature band.
 - Commands: `make build`, `make test`, `make check` for the .NET side; `make shell-install`, `make shell-check`, `make shell-a11y`, `make shell-dev` for the shell; `make format` for both (`dotnet format` and Prettier, ADR-0040). `make` alone lists them.
-- Before you push: `make test` and `make shell-check` are green and `make format` made no change; CI checks all three, both formatters included.
+- Before you push: `make verify` is green (or at least `make test`, `make shell-check`, `make security` and `make coverage`) and `make format` made no change; CI checks them all, both formatters included.
+- Main changes only through a pull request with every check green, up to date with main, merged with a merge commit (`gh pr merge --merge`); a push to main is refused, administrators included (ADR-0055, `docs/security/README.md`). A documents-only change still waits for the trace.
+- A package change rewrites the `packages.lock.json` of each project that uses it (`dotnet restore`); commit them with the change. CI restores in locked mode and refuses a lock file that does not match.
 - Every pull request follows `definition-of-done.md`, summarised in `.github/pull_request_template.md`.
 
 ## Layout
@@ -65,6 +67,10 @@ docs/                        prd/, adr/, guides/, slices/
 | Private namespaces (ADR-0001) | An assembly uses a type from another module's `Api`, `Services` or `Data` namespace | Expose what you need through the other module's `Contracts` project. |
 | What a test proves (ADR-0044) | A test method has neither `[Proves(...)]` nor `[Untraced("why")]` (`IRON0005`), names an identifier out of form (`IRON0006`), or is both (`IRON0007`); a Vitest or Playwright title does not end with the bracketed list (`iron/test-proves`) | Name the criteria or the decision the test proves; see Naming what a test proves. |
 | Layout | A project is not in a folder with its own name; a Contracts project is outside its module; a module has no Contracts project; a project under `src/` does not start with `Iron.`; `src/` holds something other than `Kernel/`, `Business/`, `Suites/` and `Hosts/`, or `src/Suites/` a folder that is not a suite with its README | Move or rename the project; add the missing Contracts project. |
+| Security rules (ADR-0055) | A .NET security rule (CA5350 to CA5404 and the others of AnalysisModeSecurity All) in the product's code; an eslint-plugin-security rule in the shell's code; one of the repository's rules in `security/rules/` (`make security`) | Fix the code. A false positive is suppressed at its line with the reason beside it: `#pragma warning disable CAxxxx` with a comment, or `// nosemgrep: <rule>` on the line before, with the reason above it. |
+| The security gate (ADR-0055) | A critical or high vulnerability in a dependency or an image, a misconfiguration, a licence `security/licences.yaml` does not allow, or an expired exception | Raise the package to its fixed version, or write an exception in `security/exceptions.yaml` with its expiry for the design session to approve; record a licence read by hand in `security/licences.yaml`. |
+| Coverage floors (ADR-0055) | Line coverage of the .NET code or the shell below its floor in `security/coverage.yaml`, or a floor lowered | Add the tests that cover what changed; raise the floor when the check says it may. |
+| Threat models (ADR-0055) | A module or an anonymous endpoint without a record in `docs/security/threat-models/`, or a record out of the template's form | Write the record from `0000-template.md` before building the module or the interface, naming it. |
 
 The messages name the project file or the assembly and the forbidden reference.
 
@@ -732,9 +738,10 @@ The home page, the search and the help panel read the manifests, so a module app
 | Browser | `make e2e` | login, home, the search, the grid, inviting a person, a child-unit administrator's view, delegation and reviews, settings, working across units, explaining access and conflict rules, and a plan and a kill switch reaching the shell within a minute, in a real browser, each run in a unit of its own |
 | Pipeline's stage | `make integration` | platform and control plane from images, then the smoke; in the release workflow the browser tests follow against the same tenant (ADR-0044) |
 | Traceability | `make trace` | each requirement criterion and decision with the tests that prove it and their last results, and the criteria of the done slices that nothing proves (ADR-0044) |
-| Every check in order | `make verify` | `make prd-check`, `make test`, `make shell-check`, `make shell-a11y`, `make format-check` and `make trace`, one after another; the check before a push, with the stack running or not |
+| Security | `make security`, `make coverage`, `make images-security` | the dependencies with their licences, the misconfigurations and the repository's rules through the gate; the coverage floors; the laptop's images and their bills of materials (ADR-0055) |
+| Every check in order | `make verify` | `make prd-check`, `make test` with coverage, `make shell-check`, `make shell-a11y`, `make format-check`, `make security`, `make coverage` and `make trace`, one after another; the check before a push, with the stack running or not |
 
-Every pull request runs the first two levels, both formatters and the matrix in CI; every merge to main builds the images, runs the pipeline's stage on the runner and keeps the matrix with them.
+Every pull request runs the first two levels, the security checks, both formatters and the matrix in CI; a merge to main then runs only its build. Each night when main has changed, and on demand, the release builds and scans the images, runs the pipeline's stage on the runner, and keeps the matrix, the validation pack and the bills of materials with them (ADR-0055).
 
 **The tests' platform services.** `make test` starts one PostgreSQL, one Azurite and one OpenBao for the whole run (`tests/test-services.sh`) and runs four test projects at a time; each project works in a database, blob containers and a store mount of its own. A fixture gets them from `tests/Iron.Testing`: `await TestPostgres.StartAsync("orders", ct)` answers a connection string to a new database (and `CreateDatabaseAsync` another, for a second tenant), `TestBlob.StartAsync` the account, `TestOpenBao.StartAsync("orders", ct)` the store with a mount named after the project. A project run alone (an IDE, `dotnet test` on one project) starts containers of its own the same way. Names that live in a whole server rather than a database (PostgreSQL roles, blob containers, store policies) must stay apart between projects: give them the project's name.
 
