@@ -734,12 +734,28 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
 
         public Task<HttpResponseMessage> LoginAsync(string loginId) => SendAsync(HttpMethod.Post, "/auth/login", body: new { login_id = loginId, password = Password });
 
-        /// <summary>A sign-in through the provider started: the sign-in cookie and the authorization address.</summary>
+        /// <summary>
+        /// A sign-in through the provider started: the sign-in cookie and the authorization address. The test provider is
+        /// one container for the whole run, which under make test's load can take longer than discovery's ten seconds;
+        /// the product rightly answers identity.sso.unavailable then, so the start is tried again while it says so, up
+        /// to five times, and any other answer fails at once.
+        /// </summary>
         public async Task<(string Cookie, Uri Url)> StartAsync(Guid providerId, string? returnTo = null)
         {
-            using var start = await SendAsync(HttpMethod.Post, "/auth/sso/start", body: new { provider_id = providerId, return_to = returnTo });
-            Assert.Equal(HttpStatusCode.OK, start.StatusCode);
-            return (Cookie(start, SignInCookie)!, new Uri((await JsonAsync(start)).RootElement.GetProperty("authorization_url").GetString()!));
+            for (var attempt = 1; ; attempt++)
+            {
+                using var start = await SendAsync(HttpMethod.Post, "/auth/sso/start", body: new { provider_id = providerId, return_to = returnTo });
+                if (start.StatusCode == HttpStatusCode.ServiceUnavailable && attempt < 5)
+                {
+                    using var problem = await JsonAsync(start);
+                    Assert.Equal(IdentityErrors.SsoUnavailable, problem.RootElement.GetProperty("error_code").GetString());
+                    await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+                    continue;
+                }
+
+                Assert.True(start.StatusCode == HttpStatusCode.OK, $"the start answered {(int)start.StatusCode}: {await start.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)}");
+                return (Cookie(start, SignInCookie)!, new Uri((await JsonAsync(start)).RootElement.GetProperty("authorization_url").GetString()!));
+            }
         }
 
         /// <summary>A whole sign-in through the provider, as the browser and the shell's callback page make it; the callback's answer.</summary>
