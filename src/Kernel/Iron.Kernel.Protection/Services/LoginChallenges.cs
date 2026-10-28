@@ -12,9 +12,12 @@ namespace Iron.Kernel.Protection.Services;
 /// <summary>
 /// The login's proof of work (TF-072, ADR-0053), ALTCHA's protocol (MIT) written here so nothing is loaded from another
 /// host and the content security policy stays strict. The server picks a secret number up to a maximum, sends the SHA-256
-/// of a salt and that number, signed with its key; the client finds the number by trying each in turn and sends it back
-/// with the challenge. The answer is checked once: the signature, the hash, the salt's expiry, and that it was not used
-/// before. Failures are counted per address and per identifier in this process; S6 moves them to a shared store.
+/// of a salt and that number, signed with the HMAC of the tenant's signing key in the key service (ADR-0054); the client
+/// finds the number by trying each in turn and sends it back with the challenge. The answer is checked once: the
+/// signature with the version that made it, the hash, the salt's expiry, and that it was not used before. So the check's
+/// key rotates with the signing key, and a challenge issued before a rotation is still checked until it expires, which is
+/// long before the old version is retired. Failures are counted per address and per identifier in this process; S6 moves
+/// them to a shared store.
 /// </summary>
 public sealed class LoginChallenges : ILoginChallenges
 {
@@ -26,17 +29,17 @@ public sealed class LoginChallenges : ILoginChallenges
     private readonly ProtectionOptions.ChallengeOptions _options;
     private readonly TimeProvider _time;
     private readonly ProtectionMetrics _metrics;
-    private readonly byte[] _key;
+    private readonly IKeyService _keys;
     private readonly ConcurrentDictionary<string, FailureWindow> _failures = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, DateTimeOffset> _used = new(StringComparer.Ordinal);
 
-    public LoginChallenges(ProtectionOptions options, TimeProvider time, ProtectionMetrics metrics)
+    public LoginChallenges(ProtectionOptions options, TimeProvider time, ProtectionMetrics metrics, IKeyService keys)
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Challenge;
         _time = time;
         _metrics = metrics;
-        _key = string.IsNullOrWhiteSpace(_options.Key) ? RandomNumberGenerator.GetBytes(32) : Convert.FromBase64String(_options.Key);
+        _keys = keys;
     }
 
     private TimeSpan Window => TimeSpan.FromMinutes(Math.Max(1, _options.WindowMinutes));
@@ -47,7 +50,7 @@ public sealed class LoginChallenges : ILoginChallenges
         return Count(AddressKey(address), now) >= _options.AfterFailures || Count(LoginKey(loginId), now) >= _options.AfterFailures;
     }
 
-    public LoginChallenge Issue(IPAddress? address)
+    public async Task<LoginChallenge> IssueAsync(IPAddress? address, CancellationToken cancellationToken)
     {
         var now = _time.GetUtcNow();
         var expires = now.AddMinutes(Math.Max(1, _options.LifetimeMinutes)).ToUnixTimeSeconds();
@@ -58,13 +61,14 @@ public sealed class LoginChallenges : ILoginChallenges
         var maxNumber = Math.Min(int.MaxValue - 1L, Math.Max(1, _options.MaxNumber) << beyond);
         var number = RandomNumberGenerator.GetInt32(0, (int)maxNumber + 1);
         var challenge = Hash(salt, number);
+        var signature = await _keys.HashAsync(KeyPurpose.Signing, Encoding.UTF8.GetBytes(challenge), null, cancellationToken).ConfigureAwait(false);
         _metrics.Challenge("issued");
-        return new LoginChallenge(Algorithm, challenge, maxNumber, salt, Sign(challenge));
+        return new LoginChallenge(Algorithm, challenge, maxNumber, salt, signature);
     }
 
-    public bool Verify(string? solution)
+    public async Task<bool> VerifyAsync(string? solution, CancellationToken cancellationToken)
     {
-        if (Read(solution) is not { } answer || !Valid(answer) || !_used.TryAdd(answer.Signature, ExpiryOf(answer.Salt)!.Value))
+        if (Read(solution) is not { } answer || !await ValidAsync(answer, cancellationToken).ConfigureAwait(false) || !_used.TryAdd(answer.Signature, ExpiryOf(answer.Salt)!.Value))
         {
             _metrics.Challenge("refused");
             return false;
@@ -111,17 +115,25 @@ public sealed class LoginChallenges : ILoginChallenges
         throw new InvalidOperationException("The challenge has no answer up to its maximum.");
     }
 
-    private string Sign(string challenge) => Convert.ToHexStringLower(HMACSHA256.HashData(_key, Encoding.UTF8.GetBytes(challenge)));
-
-    private bool Valid(Answer answer)
+    private async Task<bool> ValidAsync(Answer answer, CancellationToken cancellationToken)
     {
-        if (answer.Algorithm != Algorithm || ExpiryOf(answer.Salt) is not { } expires || expires <= _time.GetUtcNow() || answer.Number < 0)
+        if (answer.Algorithm != Algorithm || ExpiryOf(answer.Salt) is not { } expires || expires <= _time.GetUtcNow() || answer.Number < 0
+            || KeyText.VersionOf(answer.Signature) is not { } version)
         {
             return false;
         }
 
-        var signed = Encoding.ASCII.GetBytes(Sign(answer.Challenge));
-        return CryptographicOperations.FixedTimeEquals(signed, Encoding.ASCII.GetBytes(answer.Signature))
+        string signed;
+        try
+        {
+            signed = await _keys.HashAsync(KeyPurpose.Signing, Encoding.UTF8.GetBytes(answer.Challenge), version, cancellationToken).ConfigureAwait(false);
+        }
+        catch (KeyVersionRetiredException)
+        {
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(signed), Encoding.UTF8.GetBytes(answer.Signature))
             && string.Equals(Hash(answer.Salt, answer.Number), answer.Challenge, StringComparison.Ordinal);
     }
 

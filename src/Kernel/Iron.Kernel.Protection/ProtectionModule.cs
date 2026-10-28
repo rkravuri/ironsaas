@@ -1,3 +1,4 @@
+using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.History;
 using Iron.Kernel.Protection.Api;
@@ -45,6 +46,9 @@ public sealed class ProtectionModule : IModule
         services.AddSingleton<RateLimitGate>();
         services.AddSingleton<CspReports>();
         services.AddSingleton<ILoginChallenges, LoginChallenges>();
+
+        // The check is signed with the tenant's signing key; a host or a test without a store gets the process's keys.
+        services.AddIronKeys(configuration);
         services.AddCors();
         services.Replace(ServiceDescriptor.Singleton<ICorsPolicyProvider, TenantCorsPolicyProvider>());
     }

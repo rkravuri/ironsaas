@@ -31,10 +31,8 @@ public sealed class ProtectionOptions
         /// <summary>The largest number the solver may need: the work is half of it on average (100 000: about a second in a browser).</summary>
         public long MaxNumber { get; set; } = 100_000;
 
+        /// <summary>How long a challenge may be solved; far shorter than the signing key's overlap after a rotation (ADR-0054).</summary>
         public int LifetimeMinutes { get; set; } = 5;
-
-        /// <summary>The key that signs challenges, base64; without one each process makes its own at start, which suits one process a unit.</summary>
-        public string? Key { get; set; }
     }
 
     public sealed class CspReportOptions

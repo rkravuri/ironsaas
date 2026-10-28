@@ -189,7 +189,7 @@ internal static class AuthEndpoints
         var challenges = http.RequestServices.GetService<ILoginChallenges>();
         var address = ClientAddress.Of(http);
         var loginId = Principal.NormaliseLoginId(request.LoginId);
-        if (challenges is not null && challenges.IsRequired(address, loginId) && !challenges.Verify(request.Challenge))
+        if (challenges is not null && challenges.IsRequired(address, loginId) && !await challenges.VerifyAsync(request.Challenge, cancellationToken))
         {
             return ApiResults.Problem(
                 request.Challenge is null
