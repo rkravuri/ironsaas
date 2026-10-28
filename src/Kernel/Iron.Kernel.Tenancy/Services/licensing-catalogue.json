@@ -9,6 +9,7 @@
     "files",
     "flags",
     "identity",
+    "protection",
     "settings"
   ],
   "suites": [
@@ -489,6 +490,86 @@
           "choices": null,
           "minimum": 15,
           "maximum": 480,
+          "whole_number": true
+        },
+        {
+          "key": "protection.cors.allowed_origins",
+          "module": "protection",
+          "type": "json",
+          "description": "The web origins, such as https://portal.example.com, whose pages may call this organisation's API from a browser. Empty: only the organisation's own pages.",
+          "default": [],
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A list of at most 20 origins, each a scheme and a host with an optional port, like https://portal.example.com, without a path.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
+          "key": "protection.limits.api_per_minute",
+          "module": "protection",
+          "type": "number",
+          "description": "How many calls one person or client, or one address before sign-in, may make to the API in a minute.",
+          "default": 600,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number within the bounds your platform operator set, by default from 60 to 6000 a minute.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": true
+        },
+        {
+          "key": "protection.limits.exports_per_hour",
+          "module": "protection",
+          "type": "number",
+          "description": "How many exports one person or client may make in an hour.",
+          "default": 20,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number within the bounds your platform operator set, by default from 1 to 200 an hour.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": true
+        },
+        {
+          "key": "protection.limits.login_per_minute",
+          "module": "protection",
+          "type": "number",
+          "description": "How many sign-in attempts one address may make in a minute.",
+          "default": 10,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number within the bounds your platform operator set, by default from 3 to 60 a minute.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": true
+        },
+        {
+          "key": "protection.limits.recovery_per_hour",
+          "module": "protection",
+          "type": "number",
+          "description": "How many recovery links may be issued for one account, or used from one address, in an hour.",
+          "default": 5,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number within the bounds your platform operator set, by default from 1 to 20 an hour.",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
           "whole_number": true
         },
         {

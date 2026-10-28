@@ -35,8 +35,14 @@ public sealed class SavePlanRequestValidator : AbstractValidator<SavePlanRequest
     {
         RuleFor(r => r.Name).NotEmpty().MaximumLength(Plan.NameMaxLength);
         RuleFor(r => r.GraceDays).InclusiveBetween(0, 365);
-        RuleForEach(r => r.Modules).ChildRules(module => module.RuleFor(m => m.Code).NotEmpty());
-        RuleForEach(r => r.Features).NotEmpty();
+        RuleFor(r => r.Modules).MaximumCount(100);
+        RuleForEach(r => r.Modules).ChildRules(module =>
+        {
+            module.RuleFor(m => m.Code).NotEmpty().MaximumLength(Plan.CodeMaxLength);
+            module.RuleFor(m => m.UserLimit).GreaterThanOrEqualTo(0);
+        });
+        RuleFor(r => r.Features).MaximumCount(200);
+        RuleForEach(r => r.Features).NotEmpty().MaximumLength(100);
     }
 }
 

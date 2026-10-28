@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Iron.Kernel.Security: secure defaults for the web surface (TF-070, ADR-0010). Secrets and encryption follow in T12 and S3. -->
+  <!-- Iron.Kernel.Security: secure defaults for the web surface (TF-070, ADR-0010) and rich text cleaned by an allow-list (TF-071, ADR-0053). -->
   <PropertyGroup>
     <IronLayer>Kernel</IronLayer>
   </PropertyGroup>
@@ -11,6 +11,12 @@
 
   <ItemGroup>
     <ProjectReference Include="../Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Rich text (ADR-0053): the sanitiser, and the length rule the request limit check reads. -->
+    <PackageReference Include="HtmlSanitizer" />
+    <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
 </Project>

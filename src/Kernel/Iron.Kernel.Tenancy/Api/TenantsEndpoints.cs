@@ -1,4 +1,5 @@
 using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
@@ -30,14 +31,18 @@ public sealed record CreateTenantRequest(
 
 public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenantRequest>
 {
+    /// <summary>A slug is a DNS label: at most 63 characters.</summary>
+    public const int TenantSlugMaxLength = 63;
+
     public CreateTenantRequestValidator()
     {
-        RuleFor(r => r.Slug).NotEmpty().Must(slug => TenantId.TryParse(slug, out _)).WithMessage("Use lowercase letters, digits and hyphens, starting with a letter.");
+        RuleFor(r => r.Slug).NotEmpty().MaximumLength(TenantSlugMaxLength).Must(slug => TenantId.TryParse(slug, out _)).WithMessage("Use lowercase letters, digits and hyphens, starting with a letter.");
         RuleFor(r => r.DisplayName).NotEmpty().MaximumLength(Tenant.DisplayNameMaxLength);
         RuleFor(r => r.AdministratorLoginId).NotEmpty().MaximumLength(254).Must(login => login.Contains('@', StringComparison.Ordinal)).WithMessage("The first administrator is identified by an email address.");
         RuleFor(r => r.AdministratorDisplayName).MaximumLength(200);
         RuleFor(r => r.Region).MaximumLength(32);
         RuleFor(r => r.Plan).MaximumLength(64);
+        RuleFor(r => r.Hostnames).MaximumCount(10);
         RuleForEach(r => r.Hostnames).NotEmpty().MaximumLength(TenantHostname.MaxLength);
     }
 }
@@ -110,7 +115,7 @@ internal static class TenantsEndpoints
         tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
         tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
         tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
-        tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason, and to reset their second factors when asked; the link is handed over once, valid 15 minutes and once.");
+        tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).RateLimited(RateLimitPolicies.Recovery, "slug").Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason, and to reset their second factors when asked; the link is handed over once, valid 15 minutes and once.");
         tenants.MapGet("/{slug}/provisioning", ProvisioningAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<ProvisioningResponse>(StatusCodes.Status200OK).WithName("GetProvisioning").WithSummary("The latest job of the tenant; once it completed, the invitation or recovery link it handed over, given once to the operator who asked and then deleted.");
     }
 

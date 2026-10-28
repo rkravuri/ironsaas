@@ -1,3 +1,4 @@
+using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit.Api;
 using Iron.Kernel.Audit.Contracts;
@@ -36,6 +37,9 @@ public sealed class AuditModule : IModule
         services.AddIronDbContext<AuditDbContext>();
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuditTrail, AuditTrail>();
+        services.AddScoped<IValidator<RetentionChoiceRequest>, RetentionChoiceRequestValidator>();
+        services.AddScoped<IValidator<PlaceLegalHoldRequest>, PlaceLegalHoldRequestValidator>();
+        services.AddScoped<IValidator<ReleaseLegalHoldRequest>, ReleaseLegalHoldRequestValidator>();
 
         // Field-level history (TF-062, ADR-0051): every tracked record's save becomes an event of the trail.
         services.AddScoped<IChangeRecorder, AuditChangeRecorder>();
@@ -86,16 +90,37 @@ public sealed class AuditModule : IModule
     }
 }
 
+/// <summary>Where a host's chain is anchored (ADR-0050, ADR-0053).</summary>
+public enum AuditAnchoring
+{
+    /// <summary>A unit: its anchors go to the control plane, and its worker also archives and prunes the trail daily.</summary>
+    ControlPlane,
+
+    /// <summary>The control plane: its anchors go to its own anchor store; it keeps no archive.</summary>
+    OwnStore,
+}
+
 public static class AuditSealingHosting
 {
-    /// <summary>The audit chain's sealing and anchoring loop, and the daily retention pass, for the unit's worker alone (ADR-0050).</summary>
-    public static IServiceCollection AddAuditSealing(this IServiceCollection services, IConfiguration configuration)
+    /// <summary>
+    /// The audit chain's sealing and anchoring loop: a unit's worker, with the daily retention pass, anchors to the control
+    /// plane (ADR-0050); the control plane's API anchors to its own store (ADR-0053).
+    /// </summary>
+    public static IServiceCollection AddAuditSealing(this IServiceCollection services, IConfiguration configuration, AuditAnchoring anchoring = AuditAnchoring.ControlPlane)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         var options = configuration.GetSection(AuditSealingOptions.SectionName).Get<AuditSealingOptions>() ?? new AuditSealingOptions();
         services.AddSingleton(options);
         services.AddHostedService<AuditSealingWorker>();
+        if (anchoring == AuditAnchoring.OwnStore)
+        {
+            // The control plane (ADR-0053): anchors to its store, which the host registers; no archive, no pruning.
+            services.AddScoped<IAuditAnchorSink, AuditAnchorKeeper>();
+            return services;
+        }
+
+        services.AddScoped<IAuditAnchorSink>(provider => provider.GetRequiredService<AuditAnchorSender>());
 
         // The archive, the trail's pruning and the records' retention, once a day.
         var retention = configuration.GetSection(AuditRetentionOptions.SectionName).Get<AuditRetentionOptions>() ?? new AuditRetentionOptions();

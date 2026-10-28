@@ -26,6 +26,9 @@ public static class AuditSeverity
 {
     public const string Normal = "normal";
     public const string High = "high";
+
+    /// <summary>What is counted rather than looked at one by one: a request refused by a rate limit (ADR-0053).</summary>
+    public const string Low = "low";
 }
 
 /// <summary>One action of a principal as the audit trail recorded it, for a review of what they did (TF-026 AC3).</summary>

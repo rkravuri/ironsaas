@@ -26,18 +26,23 @@ public sealed record ConflictSideRequest(string Kind, string Value);
 
 public sealed record ConflictRuleRequest(string Name, ConflictSideRequest First, ConflictSideRequest Second, string Mode, string? Reason, Guid? OwnerId);
 
+public sealed class ConflictSideRequestValidator : AbstractValidator<ConflictSideRequest>
+{
+    public ConflictSideRequestValidator()
+    {
+        RuleFor(s => s.Kind).MaximumLength(20).Must(ConflictSides.IsKnown).WithMessage("Choose a permission or a role.");
+        RuleFor(s => s.Value).NotEmpty().MaximumLength(ConflictRule.ValueMaxLength);
+    }
+}
+
 public sealed class ConflictRuleRequestValidator : AbstractValidator<ConflictRuleRequest>
 {
     public ConflictRuleRequestValidator()
     {
         RuleFor(r => r.Name).NotEmpty().MaximumLength(ConflictRule.NameMaxLength);
-        RuleFor(r => r.First).NotNull();
-        RuleFor(r => r.Second).NotNull();
-        RuleFor(r => r.First.Kind).Must(ConflictSides.IsKnown).When(r => r.First is not null).WithMessage("Choose a permission or a role.");
-        RuleFor(r => r.Second.Kind).Must(ConflictSides.IsKnown).When(r => r.Second is not null).WithMessage("Choose a permission or a role.");
-        RuleFor(r => r.First.Value).NotEmpty().When(r => r.First is not null);
-        RuleFor(r => r.Second.Value).NotEmpty().When(r => r.Second is not null);
-        RuleFor(r => r.Mode).Must(ConflictModes.IsKnown).WithMessage("Choose block or warn.");
+        RuleFor(r => r.First).NotNull().SetValidator(new ConflictSideRequestValidator());
+        RuleFor(r => r.Second).NotNull().SetValidator(new ConflictSideRequestValidator());
+        RuleFor(r => r.Mode).MaximumLength(10).Must(ConflictModes.IsKnown).WithMessage("Choose block or warn.");
         RuleFor(r => r.Reason).MaximumLength(ConflictRule.ReasonMaxLength);
     }
 }

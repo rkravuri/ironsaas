@@ -33,8 +33,33 @@ public sealed class ReplaceFlagRulesRequestValidator : AbstractValidator<Replace
 {
     public ReplaceFlagRulesRequestValidator()
     {
-        RuleFor(r => r.Rules).NotNull();
+        RuleFor(r => r.Rules).NotNull().MaximumCount(RulesMaxCount);
         RuleFor(r => r.Reason).MaximumLength(FlagRule.ReasonMaxLength);
+        RuleForEach(r => r.Rules).SetValidator(new FlagRuleInputValidator());
+    }
+
+    /// <summary>The rules one flag may have: far more than a rollout needs.</summary>
+    public const int RulesMaxCount = 100;
+}
+
+public sealed class FlagRuleInputValidator : AbstractValidator<FlagRuleInput>
+{
+    /// <summary>A flag's value: a switch, a number or a short choice, never a document.</summary>
+    public const int ValueMaxBytes = 4096;
+
+    public FlagRuleInputValidator()
+    {
+        RuleFor(r => r.Region).MaximumLength(32);
+        RuleFor(r => r.Tenant).MaximumLength(CreateTenantRequestValidator.TenantSlugMaxLength);
+        RuleFor(r => r.Value).MaximumJsonSize(ValueMaxBytes);
+        RuleFor(r => r.Reason).MaximumLength(FlagRule.ReasonMaxLength);
+        RuleFor(r => r.Condition!).ChildRules(condition =>
+        {
+            condition.RuleFor(c => c.Percentage).InclusiveBetween(0, 100);
+            condition.RuleFor(c => c.Attribute).MaximumLength(50);
+            condition.RuleFor(c => c.Values).MaximumCount(100);
+            condition.RuleForEach(c => c.Values).MaximumLength(200);
+        });
     }
 }
 
@@ -45,6 +70,7 @@ public sealed class KillSwitchRequestValidator : AbstractValidator<KillSwitchReq
     public KillSwitchRequestValidator()
     {
         RuleFor(r => r.Reason).NotEmpty().WithMessage("Say why, in words the tenants' administrators will read.").MaximumLength(FlagRule.ReasonMaxLength);
+        RuleFor(r => r.Tenant).MaximumLength(CreateTenantRequestValidator.TenantSlugMaxLength);
     }
 }
 

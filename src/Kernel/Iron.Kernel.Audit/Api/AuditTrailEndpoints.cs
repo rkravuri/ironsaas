@@ -1,9 +1,12 @@
 using System.Net.Http.Json;
+using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
+using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Audit.Services;
@@ -80,6 +83,16 @@ public sealed record RetentionClassesResponse(IReadOnlyList<RetentionClassRespon
 
 public sealed record RetentionChoiceRequest(int Days, string? Reason);
 
+public sealed class RetentionChoiceRequestValidator : AbstractValidator<RetentionChoiceRequest>
+{
+    public RetentionChoiceRequestValidator()
+    {
+        // The operator's minimum is checked by the service; this is the outer bound of any choice: a century.
+        RuleFor(r => r.Days).InclusiveBetween(1, 36_525);
+        RuleFor(r => r.Reason).MaximumLength(AuditEventRecord.ReasonMaxLength);
+    }
+}
+
 public sealed record LegalHoldResponse(Guid Id, string Scope, string? RecordType, Guid? RecordId, string Reason, DateTimeOffset PlacedAt, Guid PlacedBy, DateTimeOffset? ReleasedAt, string? ReleaseReason)
 {
     /// <summary>The name of who placed it, when the directory knows them.</summary>
@@ -98,6 +111,24 @@ public sealed record PlaceLegalHoldRequest(string Scope, string? RecordType, Gui
 
 public sealed record ReleaseLegalHoldRequest(string Reason);
 
+public sealed class PlaceLegalHoldRequestValidator : AbstractValidator<PlaceLegalHoldRequest>
+{
+    public PlaceLegalHoldRequestValidator()
+    {
+        RuleFor(r => r.Scope).NotEmpty().MaximumLength(20);
+        RuleFor(r => r.RecordType).MaximumLength(LegalHold.RecordTypeMaxLength);
+        RuleFor(r => r.Reason).MaximumLength(LegalHold.ReasonMaxLength);
+    }
+}
+
+public sealed class ReleaseLegalHoldRequestValidator : AbstractValidator<ReleaseLegalHoldRequest>
+{
+    public ReleaseLegalHoldRequestValidator()
+    {
+        RuleFor(r => r.Reason).MaximumLength(LegalHold.ReasonMaxLength);
+    }
+}
+
 /// <summary>
 /// The audit trail beyond its list (ADR-0050): the export to CSV and its download (TF-064), the archive's search by date
 /// range (TF-064 AC2), the chain's state (TF-061), the retention classes (TF-066 AC3) and the legal holds (TF-066 AC2).
@@ -109,7 +140,7 @@ internal static class AuditTrailEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         var events = endpoints.MapApiGroup("audit-events");
-        events.MapPost("/exports", ExportAsync).RequirePermission(AuditPermissions.EventsRead).Produces<AuditExportResponse>(StatusCodes.Status201Created).WithName("ExportAuditEvents").WithSummary("Export a search of the audit trail to CSV, with its filters in the first lines; the export is itself audited.");
+        events.MapPost("/exports", ExportAsync).RequirePermission(AuditPermissions.EventsRead).RateLimited(RateLimitPolicies.Exports).Produces<AuditExportResponse>(StatusCodes.Status201Created).WithName("ExportAuditEvents").WithSummary("Export a search of the audit trail to CSV, with its filters in the first lines; the export is itself audited.");
         events.MapGet("/exports/{id:guid}/content", DownloadAsync).RequirePermission(AuditPermissions.EventsRead).Produces<string>(StatusCodes.Status200OK, "text/csv").WithName("DownloadAuditExport").WithSummary("Download an export of the audit trail.");
         events.MapGet("/archived", ArchivedAsync).RequirePermission(AuditPermissions.EventsRead).Produces<ArchivedEventsResponse>(StatusCodes.Status200OK).WithName("SearchArchivedAuditEvents").WithSummary("Search the archived audit trail by date range, actor, record, type and source, oldest first.");
 
@@ -118,12 +149,12 @@ internal static class AuditTrailEndpoints
 
         var retention = endpoints.MapApiGroup("retention");
         retention.MapGet("/", RetentionAsync).RequirePermission(AuditPermissions.EventsRead).Produces<RetentionClassesResponse>(StatusCodes.Status200OK).WithName("ListRetentionClasses").WithSummary("How long each kind of record is kept, within the operator's limits, and which record types are in each.");
-        retention.MapPut("/{code}", ChooseAsync).RequirePermission(AuditPermissions.RetentionManage).RequireRecentAuthentication().Produces<RetentionClassResponse>(StatusCodes.Status200OK).WithName("ChooseRetention").WithSummary("Choose how long a class keeps its records; below the operator's minimum is refused.");
+        retention.MapPut("/{code}", ChooseAsync).RequirePermission(AuditPermissions.RetentionManage).RequireRecentAuthentication().Validate<RetentionChoiceRequest>().Produces<RetentionClassResponse>(StatusCodes.Status200OK).WithName("ChooseRetention").WithSummary("Choose how long a class keeps its records; below the operator's minimum is refused.");
 
         var holds = endpoints.MapApiGroup("legal-holds");
         holds.MapGet("/", HoldsAsync).RequirePermission(AuditPermissions.EventsRead).Produces<LegalHoldsResponse>(StatusCodes.Status200OK).WithName("ListLegalHolds").WithSummary("Every legal hold, standing and released, newest first.");
-        holds.MapPost("/", PlaceAsync).RequirePermission(AuditPermissions.LegalHoldsManage).RequireRecentAuthentication().Produces<LegalHoldResponse>(StatusCodes.Status201Created).WithName("PlaceLegalHold").WithSummary("Place a legal hold on the whole tenant, a record, or every record of a master, with a reason.");
-        holds.MapPost("/{id:guid}/release", ReleaseAsync).RequirePermission(AuditPermissions.LegalHoldsManage).RequireRecentAuthentication().Produces<LegalHoldResponse>(StatusCodes.Status200OK).WithName("ReleaseLegalHold").WithSummary("Release a legal hold, with a reason; it stays as a record.");
+        holds.MapPost("/", PlaceAsync).RequirePermission(AuditPermissions.LegalHoldsManage).RequireRecentAuthentication().Validate<PlaceLegalHoldRequest>().Produces<LegalHoldResponse>(StatusCodes.Status201Created).WithName("PlaceLegalHold").WithSummary("Place a legal hold on the whole tenant, a record, or every record of a master, with a reason.");
+        holds.MapPost("/{id:guid}/release", ReleaseAsync).RequirePermission(AuditPermissions.LegalHoldsManage).RequireRecentAuthentication().Validate<ReleaseLegalHoldRequest>().Produces<LegalHoldResponse>(StatusCodes.Status200OK).WithName("ReleaseLegalHold").WithSummary("Release a legal hold, with a reason; it stays as a record.");
     }
 
     private static async Task<IResult> ExportAsync(HttpContext http, AuditDbContext context, CancellationToken cancellationToken)

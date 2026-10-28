@@ -1,8 +1,10 @@
 using System.Text.Json;
+using FluentValidation;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
+using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Changes.Contracts;
 using Iron.Kernel.Changes.Data;
 using Iron.Kernel.Changes.Services;
@@ -21,6 +23,27 @@ public sealed record ChangeSignatureRequest(string? LoginId, string? Password, s
 }
 
 public sealed record DecideChangeRequest(string? Reason, ChangeSignatureRequest? Signature);
+
+public sealed class ChangeSignatureRequestValidator : AbstractValidator<ChangeSignatureRequest>
+{
+    public ChangeSignatureRequestValidator()
+    {
+        RuleFor(r => r.LoginId).MaximumLength(FieldLimits.LoginId);
+        RuleFor(r => r.Password).MaximumLength(FieldLimits.Password);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
+    }
+}
+
+public sealed class DecideChangeRequestValidator : AbstractValidator<DecideChangeRequest>
+{
+    public DecideChangeRequestValidator()
+    {
+        RuleFor(r => r.Reason).MaximumLength(PendingChange.ReasonMaxLength);
+        RuleFor(r => r.Signature!).SetValidator(new ChangeSignatureRequestValidator());
+    }
+}
 
 /// <summary>
 /// A change of sensitive configuration (TF-068): what it changes, its state before and after side by side, who asked and
@@ -73,8 +96,8 @@ internal static class ChangesEndpoints
         var changes = endpoints.MapApiGroup("changes");
         changes.MapGet("/", ListAsync).RequireSignedIn().Produces<ListResponse<PendingChangeResponse>>(StatusCodes.Status200OK).WithName("ListConfigurationChanges").WithSummary("Changes of sensitive configuration, newest first: yours (view=mine), the ones you may decide (view=to_approve), or every one (view=all, with changes.changes.read).");
         changes.MapGet("/{id:guid}", GetAsync).RequireSignedIn().Produces<PendingChangeResponse>(StatusCodes.Status200OK).WithName("GetConfigurationChange").WithSummary("One change with its before and after.");
-        changes.MapPost("/{id:guid}/approve", ApproveAsync).RequireSignedIn().Produces<PendingChangeResponse>(StatusCodes.Status200OK).WithName("ApproveConfigurationChange").WithSummary("Approve a change someone else asked for: it applies at once, unless what it changes changed meanwhile.");
-        changes.MapPost("/{id:guid}/reject", RejectAsync).RequireSignedIn().Produces<PendingChangeResponse>(StatusCodes.Status200OK).WithName("RejectConfigurationChange").WithSummary("Reject a change someone else asked for, with a reason; nothing applies.");
+        changes.MapPost("/{id:guid}/approve", ApproveAsync).RequireSignedIn().Validate<DecideChangeRequest>().Produces<PendingChangeResponse>(StatusCodes.Status200OK).WithName("ApproveConfigurationChange").WithSummary("Approve a change someone else asked for: it applies at once, unless what it changes changed meanwhile.");
+        changes.MapPost("/{id:guid}/reject", RejectAsync).RequireSignedIn().Validate<DecideChangeRequest>().Produces<PendingChangeResponse>(StatusCodes.Status200OK).WithName("RejectConfigurationChange").WithSummary("Reject a change someone else asked for, with a reason; nothing applies.");
         changes.MapPost("/{id:guid}/withdraw", WithdrawAsync).RequireSignedIn().Produces<PendingChangeResponse>(StatusCodes.Status200OK).WithName("WithdrawConfigurationChange").WithSummary("Take back a change you asked for, before anyone decides it.");
     }
 

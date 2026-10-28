@@ -1,6 +1,7 @@
 using Iron.Kernel.Api.Json;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Problems;
+using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Telemetry.Correlation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -37,15 +38,17 @@ public static class IronApiExtensions
 
         services.AddExceptionHandler<UnexpectedExceptionHandler>();
         services.AddTransient<IStartupFilter, EndpointPermissionCheck>();
+        services.AddTransient<IStartupFilter, RequestLimitCheck>();
         return services;
     }
 
-    /// <summary>Exception handling and status code problems. Call before authentication and endpoints.</summary>
+    /// <summary>Exception handling, status code problems and the query's limits. Call before authentication and endpoints.</summary>
     public static IApplicationBuilder UseIronApi(this IApplicationBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);
         app.UseExceptionHandler();
         app.UseStatusCodePages();
+        app.UseMiddleware<QueryLimitMiddleware>();
         return app;
     }
 }

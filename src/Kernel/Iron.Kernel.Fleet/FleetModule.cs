@@ -1,4 +1,5 @@
 using Iron.Kernel.Api.Modules;
+using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Fleet.Contracts;
@@ -70,6 +71,15 @@ public sealed class FleetModule : IModule
         // The tenants' audit chains, verified by the fleet with each tenant's reader role (TF-061, ADR-0050).
         services.AddSingleton<ArchivedChainReader>();
         services.AddScoped<AuditChainVerifier>();
+
+        // The control plane's own chain (ADR-0053): its API anchors to this store, the fleet verifies against it.
+        var controlAudit = configuration.GetSection(ControlAuditOptions.SectionName).Get<ControlAuditOptions>() ?? new ControlAuditOptions();
+        services.AddSingleton(controlAudit);
+        if (controlAudit.IsConfigured)
+        {
+            services.AddSingleton<IAuditAnchorStore>(new BlobAuditAnchorStore(controlAudit));
+            services.AddScoped<ControlAuditVerifier>();
+        }
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -84,19 +94,26 @@ public static class FleetWorkerExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<ProvisioningWorker>();
-        // The fleet image publishes validation packs where every unit's update finds them (ADR-0052).
+        // The fleet image publishes validation packs where every unit's update finds them (ADR-0052), prepares the control
+        // plane's roles and anchors, and verifies its chain by hand (ADR-0053).
         services.AddScoped<IUnitCommand, ReleasePackCommand>();
+        services.AddScoped<IUnitCommand, ControlPlaneDatabase>();
+        services.AddScoped<IUnitCommand, VerifyControlAuditCommand>();
         return services;
     }
 }
 
 public static class AuditVerificationHosting
 {
-    /// <summary>The fleet host's verification loop for the tenants' audit chains (ADR-0050); the control plane's API only takes requests for it.</summary>
+    /// <summary>
+    /// The fleet host's verification loops: the tenants' audit chains (ADR-0050), and the control plane's own once a day
+    /// (ADR-0053). The control plane's API only takes requests for them.
+    /// </summary>
     public static IServiceCollection AddIronAuditVerification(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<AuditVerificationWorker>();
+        services.AddHostedService<ControlAuditVerificationWorker>();
         return services;
     }
 }

@@ -59,8 +59,41 @@ def log(message):
     print(message, file=sys.stderr)
 
 
+CHALLENGE_CODES = ("identity.login.challenge_required", "identity.login.challenge_invalid")
+
+
 def send(target, method, path, body=None, headers=None):
-    """One request; the ingress picks the tenant by the Host header, as the smoke does."""
+    """One request; the ingress picks the tenant by the Host header, as the smoke does. It stays within the rate limits
+    by waiting, never by raising them: a 429 waits its Retry-After and sends again. A sign-in the API asks to prove itself
+    first, after repeated failures, gets a challenge, solved here, and is sent again with the answer (TF-072, ADR-0053)."""
+    for attempt in range(1, 8):
+        status, data, cookie, retry_after = send_once(target, method, path, body, headers)
+        if status == 429 and attempt < 7:
+            seconds = int(retry_after or (data or {}).get("retry_after_seconds") or 5)
+            log(f"waiting {seconds} s for the {(data or {}).get('limit', 'rate')} limit, as its Retry-After says")
+            time.sleep(seconds + 1)
+            continue
+        if status == 403 and path == "/auth/login" and body is not None and (data or {}).get("error_code") in CHALLENGE_CODES and attempt < 7:
+            body = {**body, "challenge": solve_challenge(target, headers)}
+            continue
+        return status, data, cookie
+    return status, data, cookie
+
+
+def solve_challenge(target, headers):
+    """The login's challenge, solved as the shell solves it: each number until the salt's hash with it is the challenge."""
+    status, challenge, _, _ = send_once(target, "GET", "/auth/challenge", None, {"Host": (headers or {}).get("Host", HOST)})
+    if status != 200:
+        raise SystemExit(f"the login's challenge answered {status}: {challenge}")
+    for number in range(challenge["max_number"] + 1):
+        if hashlib.sha256(f"{challenge['salt']}{number}".encode()).hexdigest() == challenge["challenge"]:
+            answer = {key: challenge[key] for key in ("algorithm", "challenge", "salt", "signature")}
+            answer["number"] = number
+            return base64.b64encode(json.dumps(answer).encode()).decode()
+    raise SystemExit("the login's challenge has no answer up to its maximum")
+
+
+def send_once(target, method, path, body, headers):
     connection = http.client.HTTPConnection(target.hostname, target.port or 80, timeout=30)
     try:
         payload = None if body is None else json.dumps(body)
@@ -71,7 +104,7 @@ def send(target, method, path, body=None, headers=None):
         response = connection.getresponse()
         raw = response.read()
         data = json.loads(raw) if raw else None
-        return response.status, data, response.getheader("Set-Cookie")
+        return response.status, data, response.getheader("Set-Cookie"), response.getheader("Retry-After")
     finally:
         connection.close()
 

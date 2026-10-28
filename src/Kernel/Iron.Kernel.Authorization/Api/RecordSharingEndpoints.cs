@@ -36,7 +36,7 @@ public sealed class ChangeSharingRequestValidator : AbstractValidator<ChangeShar
     public ChangeSharingRequestValidator()
     {
         RuleFor(r => r.Mode).IsInEnum();
-        RuleFor(r => r.Units).Must(units => units is null || units.Count <= 200).WithMessage("List at most 200 units.");
+        RuleFor(r => r.Units).MaximumCount(200).WithMessage("List at most 200 units.");
     }
 }
 

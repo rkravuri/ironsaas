@@ -57,6 +57,16 @@
       "signOutThereText": "You signed in with {{name}}. Sign out there too, so this browser is not left signed in to it.",
       "signOutThere": "Sign out of {{name}}",
       "nothingThere": "There is nothing to sign out of at {{name}}."
+    },
+    "challenge": {
+      "label": "I am a person, not a program",
+      "description": "After several failed sign-ins, this browser does a short calculation before it signs in. It runs here and asks no other site.",
+      "checking": "Checking. This takes a few seconds.",
+      "checked": "Checked. Select Sign in.",
+      "required": "Several sign-ins failed from here or for this login. Tick the box below, then sign in.",
+      "mustTick": "Tick the box first, then sign in.",
+      "invalid": "The check expired or did not pass. Tick the box again, then sign in.",
+      "failed": "The check could not run in this browser. Reload the page and try again."
     }
   },
   "invitation": {
@@ -111,7 +121,13 @@
     "notFound": "There is no page at this address.",
     "sessionEnded": "Your session has ended. Sign in again.",
     "notEntitledTitle": "Not in your subscription",
-    "notEntitled": "Your organisation's subscription does not include this. Ask your administrator about the plan."
+    "notEntitled": "Your organisation's subscription does not include this. Ask your administrator about the plan.",
+    "rateLimited": {
+      "seconds_one": "Too many requests in a short time. Wait {{count}} second, then try again.",
+      "seconds_other": "Too many requests in a short time. Wait {{count}} seconds, then try again.",
+      "minutes_one": "Too many requests in a short time. Wait {{count}} minute, then try again.",
+      "minutes_other": "Too many requests in a short time. Wait {{count}} minutes, then try again."
+    }
   },
   "suites": {
     "foundation": "IronSaaS Foundation",
@@ -1231,7 +1247,8 @@
       "identity": "Sign-in and invitations",
       "settings": "Preferences",
       "compliance": "Signing",
-      "changes": "Four-eyes approval"
+      "changes": "Four-eyes approval",
+      "protection": "Protection of the sign-in and the API"
     },
     "names": {
       "identity_session_idle_minutes": "A session ends without activity after",
@@ -1248,7 +1265,12 @@
       "compliance_signing_later_second_factor": "Second factor at every signature",
       "changes_four_eyes_areas": "Changes that wait for a second administrator",
       "changes_four_eyes_signed_areas": "Approvals signed electronically",
-      "changes_four_eyes_expiry_days": "A change waits for approval for"
+      "changes_four_eyes_expiry_days": "A change waits for approval for",
+      "protection_cors_allowed_origins": "Other sites allowed to call the API from a browser",
+      "protection_limits_login_per_minute": "Sign-in attempts from one address",
+      "protection_limits_recovery_per_hour": "Recovery links for one account",
+      "protection_limits_api_per_minute": "Calls to the API by one person or client",
+      "protection_limits_exports_per_hour": "Exports by one person or client"
     },
     "noAreas": "None: every change applies at once",
     "amounts": {
@@ -1259,7 +1281,15 @@
       "identity_session_absolute_hours_one": "{{count}} hour",
       "identity_session_absolute_hours_other": "{{count}} hours",
       "identity_invitation_valid_days_one": "{{count}} day",
-      "identity_invitation_valid_days_other": "{{count}} days"
+      "identity_invitation_valid_days_other": "{{count}} days",
+      "protection_limits_login_per_minute_one": "{{count}} attempt a minute",
+      "protection_limits_login_per_minute_other": "{{count}} attempts a minute",
+      "protection_limits_recovery_per_hour_one": "{{count}} link an hour",
+      "protection_limits_recovery_per_hour_other": "{{count}} links an hour",
+      "protection_limits_api_per_minute_one": "{{count}} call a minute",
+      "protection_limits_api_per_minute_other": "{{count}} calls a minute",
+      "protection_limits_exports_per_hour_one": "{{count}} export an hour",
+      "protection_limits_exports_per_hour_other": "{{count}} exports an hour"
     },
     "choices": {
       "shell_colour_scheme": {
@@ -1320,7 +1350,9 @@
       "areasHint": {
         "changes_four_eyes_areas": "A change in these areas waits until a second administrator who may make it approves it. While any area is chosen, a change of these four-eyes settings waits too.",
         "changes_four_eyes_signed_areas": "In these areas, approving or rejecting a change is an electronic signature, with the password and the meaning approved or rejected. Elsewhere, the approver confirms it is them."
-      }
+      },
+      "origins": "Origins",
+      "originsHint": "Type an origin, such as https://portal.example.com, and press Enter. A scheme and a host with an optional port, without a path."
     },
     "history": {
       "open": "History",
@@ -1330,7 +1362,8 @@
       "changed": "Changed from {{before}} to {{after}}",
       "reset": "Reset; it was {{before}}",
       "failed": "The history could not be loaded. Try again later."
-    }
+    },
+    "noOrigins": "None: only this organisation's own pages may call the API"
   },
   "people": {
     "withUnit": "{{name}}, {{unit}}",

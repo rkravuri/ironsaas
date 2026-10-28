@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentValidation;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Validation;
@@ -83,8 +84,9 @@ public sealed class SecondFactorRequestValidator : AbstractValidator<SecondFacto
 {
     public SecondFactorRequestValidator()
     {
-        RuleFor(r => r.Code).MaximumLength(20);
-        RuleFor(r => r.RecoveryCode).MaximumLength(40);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
         RuleFor(r => r).Must(r => !r.Proof.IsEmpty).WithName("code").WithMessage("Type the code from your app or a recovery code, or use your passkey.");
     }
 }
@@ -103,7 +105,7 @@ public sealed class RegisterPasskeyRequestValidator : AbstractValidator<Register
     public RegisterPasskeyRequestValidator()
     {
         RuleFor(r => r.Name).MaximumLength(Factor.NameMaxLength);
-        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.");
+        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.").MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -119,9 +121,10 @@ public sealed class ReauthenticateRequestValidator : AbstractValidator<Reauthent
 {
     public ReauthenticateRequestValidator()
     {
-        RuleFor(r => r.Password).NotEmpty().MaximumLength(1024);
-        RuleFor(r => r.Code).MaximumLength(20);
-        RuleFor(r => r.RecoveryCode).MaximumLength(40);
+        RuleFor(r => r.Password).NotEmpty().MaximumLength(FieldLimits.Password);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -129,9 +132,10 @@ public sealed class SsoReauthenticationRequestValidator : AbstractValidator<SsoR
 {
     public SsoReauthenticationRequestValidator()
     {
-        RuleFor(r => r.ReturnTo).MaximumLength(500);
-        RuleFor(r => r.Code).MaximumLength(20);
-        RuleFor(r => r.RecoveryCode).MaximumLength(40);
+        RuleFor(r => r.ReturnTo).MaximumLength(FieldLimits.ReturnPath);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -139,7 +143,7 @@ public sealed class PasskeySignInRequestValidator : AbstractValidator<PasskeySig
 {
     public PasskeySignInRequestValidator()
     {
-        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.");
+        RuleFor(r => r.Credential).Must(c => c.ValueKind == JsonValueKind.Object).WithMessage("The passkey's answer is missing.").MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -158,7 +162,7 @@ internal static class FactorEndpoints
         auth.MapPost("/second-factor/passkey-options", SecondFactorPasskeyOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("SecondFactorPasskeyOptions").WithSummary("The options for your passkey at the second step of a sign-in.");
         auth.MapGet("/sign-in-options", SignInOptionsAsync).AllowAnonymous().Produces<SignInOptionsResponse>(StatusCodes.Status200OK).WithName("SignInOptions").WithSummary("Whether this tenant lets people sign in with a passkey alone, and its company logins.");
         auth.MapPost("/passkey/options", PasskeySignInOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("PasskeySignInOptions").WithSummary("The options for a sign-in with a passkey alone, where the tenant allows it.");
-        auth.MapPost("/passkey", PasskeySignInAsync).Validate<PasskeySignInRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("PasskeySignIn").WithSummary("Sign in with a passkey alone, where the tenant allows it.");
+        auth.MapPost("/passkey", PasskeySignInAsync).Validate<PasskeySignInRequest>().AllowAnonymous().RateLimited(RateLimitPolicies.Login).Produces<LoginResponse>(StatusCodes.Status200OK).WithName("PasskeySignIn").WithSummary("Sign in with a passkey alone, where the tenant allows it.");
         auth.MapPost("/enrolment/authenticator-app", EnrolmentAppAsync).AllowAnonymous().Produces<AuthenticatorAppSetupResponse>(StatusCodes.Status200OK).WithName("EnrolmentAuthenticatorApp").WithSummary("At sign-in, when you must have a second factor: start an authenticator app.");
         auth.MapPost("/enrolment/authenticator-app/confirm", EnrolmentAppConfirmAsync).Validate<ConfirmAuthenticatorAppRequest>().AllowAnonymous().Produces<LoginResponse>(StatusCodes.Status200OK).WithName("EnrolmentAuthenticatorAppConfirm").WithSummary("At sign-in: the app's first code saves it and signs you in; the answer shows your recovery codes once.");
         auth.MapPost("/enrolment/passkey/options", EnrolmentPasskeyOptionsAsync).AllowAnonymous().Produces<WebAuthnOptionsResponse>(StatusCodes.Status200OK).WithName("EnrolmentPasskeyOptions").WithSummary("At sign-in, when you must have a second factor: the options to create a passkey.");

@@ -20,10 +20,13 @@ public sealed record StartReviewRequest(string Name, DateOnly DueOn, IReadOnlyLi
 
 public sealed class StartReviewRequestValidator : AbstractValidator<StartReviewRequest>
 {
+    /// <summary>The units one campaign starts over; each may bring its children.</summary>
+    public const int UnitsMaxCount = 200;
+
     public StartReviewRequestValidator()
     {
         RuleFor(r => r.Name).NotEmpty().WithMessage("Name the campaign, so reviewers know what they are asked.").MaximumLength(AccessReview.NameMaxLength);
-        RuleFor(r => r.Units).NotEmpty().WithMessage("Choose the units to review.");
+        RuleFor(r => r.Units).NotEmpty().WithMessage("Choose the units to review.").MaximumCount(UnitsMaxCount);
         RuleForEach(r => r.Units).ChildRules(unit => unit.RuleFor(u => u.UnitId).NotEmpty());
     }
 }
@@ -43,6 +46,19 @@ public sealed class DecideItemRequestValidator : AbstractValidator<DecideItemReq
     {
         RuleFor(r => r.Decision).IsInEnum();
         RuleFor(r => r.Comment).MaximumLength(AccessReviewDecision.CommentMaxLength);
+        RuleFor(r => r.Signature!).SetValidator(new DecisionSignatureRequestValidator());
+    }
+}
+
+public sealed class DecisionSignatureRequestValidator : AbstractValidator<DecisionSignatureRequest>
+{
+    public DecisionSignatureRequestValidator()
+    {
+        RuleFor(r => r.LoginId).MaximumLength(FieldLimits.LoginId);
+        RuleFor(r => r.Password).MaximumLength(FieldLimits.Password);
+        RuleFor(r => r.Code).MaximumLength(FieldLimits.OneTimeCode);
+        RuleFor(r => r.RecoveryCode).MaximumLength(FieldLimits.RecoveryCode);
+        RuleFor(r => r.Passkey).MaximumJsonSize(FieldLimits.PasskeyBytes);
     }
 }
 
@@ -53,7 +69,7 @@ public sealed class ConfirmItemsRequestValidator : AbstractValidator<ConfirmItem
     public ConfirmItemsRequestValidator()
     {
         RuleFor(r => r.ItemIds).NotEmpty().WithMessage("Choose the items to confirm.")
-            .Must(ids => ids.Count <= ReviewService.ConfirmManyLimit).WithMessage($"Confirm at most {ReviewService.ConfirmManyLimit} items at once: a page of the list.");
+            .MaximumCount(ReviewService.ConfirmManyLimit).WithMessage($"Confirm at most {ReviewService.ConfirmManyLimit} items at once: a page of the list.");
         RuleFor(r => r.Comment).MaximumLength(AccessReviewDecision.CommentMaxLength);
     }
 }

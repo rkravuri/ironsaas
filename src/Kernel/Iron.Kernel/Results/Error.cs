@@ -62,5 +62,8 @@ public sealed class Error
     /// <summary>The change waits for approval (TF-068): the extensions carry the pending change's id.</summary>
     public static Error Held(string code, string message) => new(ErrorKind.Held, code, message);
 
+    /// <summary>Too many requests for a rate limit (TF-072): the extensions carry the seconds to wait.</summary>
+    public static Error TooManyRequests(string code, string message) => new(ErrorKind.TooManyRequests, code, message);
+
     public override string ToString() => $"{Kind} {Code}: {Message}";
 }

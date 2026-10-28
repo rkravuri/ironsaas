@@ -1,3 +1,4 @@
+using FluentValidation;
 using Iron.Kernel.Api.Context;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Authorization.Contracts;
@@ -43,6 +44,7 @@ public sealed class SettingsModule : IModule
         services.TryAddSingleton(TimeProvider.System);
         services.AddIronDbContext<SettingsDbContext>();
         services.AddSingleton<SettingsCache>();
+        services.AddScoped<IValidator<SaveSettingRequest>, SaveSettingRequestValidator>();
         services.AddSingleton<SecretCache>();
         services.AddSingleton<SettingsMetrics>();
         services.AddSingleton<SettingsRefresher>();

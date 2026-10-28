@@ -22,12 +22,21 @@ public sealed class CreateDelegationRequestValidator : AbstractValidator<CreateD
     public CreateDelegationRequestValidator()
     {
         RuleFor(r => r.DelegateId).NotEmpty().WithMessage("Choose who takes the duties.");
-        RuleFor(r => r.Duties).NotEmpty().WithMessage("Choose at least one duty.");
+        RuleFor(r => r.Duties).NotEmpty().WithMessage("Choose at least one duty.").MaximumCount(Delegation.DutiesMaxCount);
+        RuleForEach(r => r.Duties).NotEmpty().MaximumLength(Delegation.DutyMaxLength);
         RuleFor(r => r.Reason).NotEmpty().WithMessage("Say why, in words the delegate and the auditors will read.").MaximumLength(Delegation.ReasonMaxLength);
     }
 }
 
 public sealed record EndDelegationRequest(string? Reason);
+
+public sealed class EndDelegationRequestValidator : AbstractValidator<EndDelegationRequest>
+{
+    public EndDelegationRequestValidator()
+    {
+        RuleFor(r => r.Reason).MaximumLength(Delegation.ReasonMaxLength);
+    }
+}
 
 /// <summary>A duty a person may delegate, as the dialog offers it.</summary>
 public sealed record DutyResponse(string Code, string Module, string Name, string Description, IReadOnlyList<string> Permissions);
@@ -64,7 +73,7 @@ internal static class DelegationsEndpoints
         delegations.MapGet("/", ListAsync).RequireSignedIn().Produces<ListResponse<DelegationView>>(StatusCodes.Status200OK).WithName("ListDelegations").WithSummary("The delegations of the people whose home unit you hold authz.delegations.manage at; yours are under /mine.");
         delegations.MapGet("/mine", MineAsync).RequireSignedIn().Produces<MyDelegationsResponse>(StatusCodes.Status200OK).WithName("MyDelegations").WithSummary("The delegations you give and hold, newest first; no permission needed, since they are yours.");
         delegations.MapPost("/", CreateAsync).RequireSignedIn().Validate<CreateDelegationRequest>().Produces<DelegationView>(StatusCodes.Status201Created).WithName("CreateDelegation").WithSummary("Delegate duties for a period with a reason: your own, or someone else's with authz.delegations.manage at their home unit.");
-        delegations.MapPost("/{id:guid}/end", EndAsync).RequireSignedIn().Produces<DelegationView>(StatusCodes.Status200OK).WithName("EndDelegation").WithSummary("End a delegation now: its delegator, its delegate, or an administrator of the delegator.");
+        delegations.MapPost("/{id:guid}/end", EndAsync).RequireSignedIn().Validate<EndDelegationRequest>().Produces<DelegationView>(StatusCodes.Status200OK).WithName("EndDelegation").WithSummary("End a delegation now: its delegator, its delegate, or an administrator of the delegator.");
     }
 
     private static IResult Duties(DutyDeclarations duties) =>

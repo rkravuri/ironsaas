@@ -39,6 +39,8 @@
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Compliance/Iron.Kernel.Compliance.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Changes/Iron.Kernel.Changes.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Protection/Iron.Kernel.Protection.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Protection/Contracts/Iron.Kernel.Protection.Contracts.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Changes/Contracts/Iron.Kernel.Changes.Contracts.csproj" />
   </ItemGroup>
 

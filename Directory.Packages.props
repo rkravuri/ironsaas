@@ -26,6 +26,8 @@
   <ItemGroup Label="Api">
     <!-- Request validation with a fluent interface (Apache-2.0). -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <!-- HTML sanitiser for rich text by an allow-list (MIT, mganss/HtmlSanitizer, on AngleSharp, MIT): S3 T9a, ADR-0053. 9.2.1039 of 2026-08-28, the newest stable. -->
+    <PackageVersion Include="HtmlSanitizer" Version="9.2.1039" />
     <!-- Argon2id for password hashing (MIT, managed code). -->
     <PackageVersion Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
     <!-- JWT creation and validation (MIT). OpenIddict (7.7.2 today) joins when the authorization code flow arrives. -->

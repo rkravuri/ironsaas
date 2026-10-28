@@ -234,6 +234,13 @@ export default tseslint.config(
     rules: { "iron/test-proves": "error" },
   },
   {
+    // Where HTML reaches the page (TF-071 AC5, ADR-0053): only the rich-text component renders it.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/components/rich-text/RichTextView.tsx"],
+    plugins: { iron: ironPlugin },
+    rules: { "iron/inner-html": "error" },
+  },
+  {
     // Everything under src, except where the values are defined and where they are mapped into the grid.
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/design/**", "src/components/data-grid/theme.ts"],
@@ -242,6 +249,8 @@ export default tseslint.config(
   {
     files: [
       "eslint.config.js",
+      "lint/inner-html.js",
+      "lint/inner-html.d.ts",
       "lint/plugin.js",
       "lint/plugin.d.ts",
       "lint/suite-imports.js",

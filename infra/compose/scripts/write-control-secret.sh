@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Writes the control plane's unit secret (secret/control/unit) to OpenBao: the control database, the fleet's admin
-# connections and a signing key. The control API and the fleet worker read it at start, like any unit (ADR-0016).
+# connections and a signing key. The control API and the fleet worker read it at start, like any unit (ADR-0016). The
+# database connection here is the superuser's only until the fleet's prepare-control runs, which make secret-control and
+# make up-control do next: it gives the control plane its own roles and writes the app role's connection in its place,
+# and the owner's into secret/control-migrate/unit for migrate and seed (ADR-0053).
 set -euo pipefail
 
 address="${OPENBAO_ADDRESS:-http://localhost:8200}"

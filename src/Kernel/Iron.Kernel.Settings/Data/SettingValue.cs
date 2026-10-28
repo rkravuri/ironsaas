@@ -14,6 +14,9 @@ public sealed class SettingValue : AuditedEntity, ITenantWide, ITrackedChanges
 
     public const int KeyMaxLength = 100;
 
+    /// <summary>The largest value a request may set, written as JSON.</summary>
+    public const int ValueMaxBytes = 32 * 1024;
+
     private SettingValue()
     {
         Key = string.Empty;

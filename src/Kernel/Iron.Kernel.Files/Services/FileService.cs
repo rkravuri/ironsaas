@@ -49,7 +49,7 @@ public sealed class FileService(
             return Error.Validation(FilesErrors.FileEmpty, "The file is empty.");
         }
 
-        var file = new StoredFile(string.IsNullOrWhiteSpace(name) ? "file" : Path.GetFileName(name), contentType, hashing.BytesRead, hashing.HexHash(), key, recordType, recordId);
+        var file = new StoredFile(FileNames.Normalise(name), contentType, hashing.BytesRead, hashing.HexHash(), key, recordType, recordId);
         try
         {
             await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);

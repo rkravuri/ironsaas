@@ -1,4 +1,5 @@
 using FluentValidation;
+using Iron.Kernel.Api.Validation;
 
 namespace Iron.Kernel.Api.Tests.Sample;
 
@@ -12,7 +13,7 @@ public enum ThingStatus
 /// <summary>The response shape of the sample resource. Field names in ThingFields match these properties in snake_case.</summary>
 public sealed record Thing(Guid Id, string Name, ThingStatus Status, int Weight, DateTimeOffset CreatedAt);
 
-public sealed record CreateThing(string Name, int Weight);
+public sealed record CreateThing(string Name, int Weight, IReadOnlyList<string>? Tags = null);
 
 public sealed class CreateThingValidator : AbstractValidator<CreateThing>
 {
@@ -20,6 +21,8 @@ public sealed class CreateThingValidator : AbstractValidator<CreateThing>
     {
         RuleFor(t => t.Name).NotEmpty().MaximumLength(50);
         RuleFor(t => t.Weight).GreaterThan(0);
+        RuleFor(t => t.Tags).MaximumCount(3);
+        RuleForEach(t => t.Tags).MaximumLength(20);
     }
 }
 

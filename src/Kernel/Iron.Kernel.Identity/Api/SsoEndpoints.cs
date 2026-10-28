@@ -165,11 +165,18 @@ public sealed class SsoProviderRequestValidator : AbstractValidator<SsoProviderR
         RuleFor(r => r.DiscoveryUrl).NotEmpty().MaximumLength(SsoProvider.DiscoveryUrlMaxLength);
         RuleFor(r => r.ClientId).NotEmpty().MaximumLength(SsoProvider.ClientIdMaxLength);
         RuleFor(r => r.ClientSecret).MaximumLength(SsoProviderService.ClientSecretMaxLength);
-        RuleFor(r => r.AllowedDomains).NotNull();
+        RuleFor(r => r.AllowedDomains).NotNull().MaximumCount(SsoProvider.MaxDomains);
+        RuleForEach(r => r.AllowedDomains).MaximumLength(SsoProvider.DomainMaxLength);
         RuleFor(r => r.EmailClaim).MaximumLength(SsoProvider.ClaimMaxLength);
         RuleFor(r => r.NameClaim).MaximumLength(SsoProvider.ClaimMaxLength);
         RuleFor(r => r.GroupsClaim).MaximumLength(SsoProvider.ClaimMaxLength);
         RuleFor(r => r.DefaultRoleCode).MaximumLength(100);
+        RuleFor(r => r.RoleMappings).MaximumCount(SsoProvider.MaxMappings);
+        RuleForEach(r => r.RoleMappings).ChildRules(mapping =>
+        {
+            mapping.RuleFor(m => m.Group).MaximumLength(SsoProvider.GroupMaxLength);
+            mapping.RuleFor(m => m.RoleCode).MaximumLength(100);
+        });
     }
 }
 

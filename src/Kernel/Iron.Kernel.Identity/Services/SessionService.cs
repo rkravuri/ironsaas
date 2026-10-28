@@ -1,3 +1,4 @@
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Identity.Contracts;

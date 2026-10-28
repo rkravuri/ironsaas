@@ -1431,6 +1431,9 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given any response, When inspected, Then all headers are present with the configured values.
 - AC2 Given a request from an origin not configured, When made from a browser, Then it is blocked by CORS. (error case)
 - AC3 Given an inline script in a product UI, When the CSP applies, Then it is blocked and reported to the CSP report endpoint.
+- AC4 Given any cookie the platform sets, When inspected, Then it is Secure, HttpOnly and SameSite=Strict.
+
+**Notes:** AC4 added on 2026-10-27 (S3 T9a, ADR-0053): the tests prove the requirement's text beyond its first three criteria.
 
 #### TF-071 Input validation and output encoding  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Security
@@ -1444,10 +1447,12 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a request with a field over its length, When received, Then a validation problem names the field.
 - AC2 Given rich text with a script tag, When saved, Then the tag is removed and the rest kept.
 - AC3 Given a dynamic query built by string concatenation, When the code scan runs, Then it fails the build. (error case)
+- AC4 Given a file name with path parts, control characters or more than its length, When the file is stored, Then it is kept under a key the platform makes, and its name, cleaned and shortened, only as display text.
+- AC5 Given a page of the shell that sets HTML from a string, When the lint runs, Then it fails, unless it is the one component that shows sanitised rich text. (error case)
 
 *Depends on:* TF-100
 
-**Notes:** Carried: the current product blocks script tags with a middleware; now validation by schema.
+**Notes:** Carried: the current product blocks script tags with a middleware; now validation by schema. AC4 and AC5 added on 2026-10-27 (S3 T9a, ADR-0053): the tests prove the requirement's text beyond its first three criteria.
 
 #### TF-072 Rate limiting and anti-automation  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Security
@@ -1461,8 +1466,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given 11 login attempts in a minute from one IP, When the 11th arrives, Then it is refused with retry-after.
 - AC2 Given a principal at its API limit, When another call arrives, Then it is refused and the event counted. (error case)
 - AC3 Given limits changed for a tenant, When saved, Then they apply within one minute.
+- AC4 Given 5 failed sign-ins within 15 minutes from one address or for one login identifier, When the next sign-in is made, Then it needs a solved proof-of-work challenge that the platform serves itself and checks once, and each further failure from the address makes the next challenge's work larger. (error case)
 
 *Depends on:* TF-007
+
+**Notes:** AC4 added on 2026-10-27 (S3 T9a, ADR-0053): the tests prove the requirement's text beyond its first three criteria; the progressive delay is the challenge's work.
 
 #### TF-073 Secrets management  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Security

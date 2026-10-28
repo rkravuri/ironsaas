@@ -7,6 +7,7 @@ using Iron.Kernel.Entitlements;
 using Iron.Kernel.Files;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Identity;
+using Iron.Kernel.Protection;
 using Iron.Kernel.Settings;
 
 namespace Iron.Host.Api;
@@ -23,7 +24,7 @@ public static class UnitModules
 {
     public const string CatalogueCommand = "catalogue";
 
-    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()];
+    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule()];
 
     public static bool IsCatalogueCommand(string[] args)
     {

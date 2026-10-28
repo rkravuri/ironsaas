@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { expect, type CDPSession, type Page } from "@playwright/test";
+import { expect, test, type CDPSession, type Locator, type Page } from "@playwright/test";
 
 export const loginId = process.env.E2E_LOGIN_ID ?? "admin@smoke.localhost";
 export const password = process.env.E2E_PASSWORD ?? "";
@@ -30,13 +30,12 @@ export async function signIn(
   await page.goto("/login");
   await page.getByLabel(/login identifier/i).fill(account.loginId);
   await page.getByLabel(/^password/i).fill(account.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   // Exact: the home page's group of Foundation openers is headed "IronSaaS Foundation" (ADR-0043).
   const shell = page.getByRole("heading", { name: "IronSaaS", exact: true });
   const crash = page.getByRole("heading", { name: /something went wrong/i });
   const second = page.getByRole("heading", { name: "Confirm it is you" });
   const enrol = page.getByRole("heading", { name: "Set up a second factor" });
-  await expect(shell.or(crash).or(second).or(enrol)).toBeVisible();
+  await submitSignIn(page, shell.or(crash).or(second).or(enrol));
   if (await enrol.isVisible()) {
     throw new Error(
       `${account.loginId} must enrol a second factor first: run make smoke, which enrols the administrator's.`,
@@ -65,6 +64,39 @@ export async function signIn(
     } else {
       await addAdministratorPasskey(page, authenticator);
     }
+  }
+}
+
+/**
+ * Selects Sign in on the login form until the page shows one of the outcomes (TF-072, ADR-0053). The tests stay within
+ * the rate limits by waiting, never by raising them: a refusal that says how long to wait is waited out. After repeated
+ * failed sign-ins from this machine (the passwords and lockout tests make some), the form asks for the check first: it
+ * is ticked, solved in the browser, and the sign-in is sent again.
+ */
+export async function submitSignIn(page: Page, outcome: Locator): Promise<void> {
+  const reached = outcome.first();
+  const check = page.getByRole("checkbox", { name: /i am a person/i });
+  const limited = page.getByRole("alert").filter({ hasText: /Too many requests in a short time/ });
+  for (let attempt = 1; ; attempt++) {
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(outcome.or(limited).or(check).first()).toBeVisible();
+    if (attempt < 8 && (await limited.isVisible())) {
+      const [, count, unit] = /Wait (\d+) (second|minute)/.exec(await limited.innerText()) ?? ["", "30", "second"];
+      const wait = (Number(count) * (unit === "minute" ? 60 : 1) + 1) * 1000;
+      // The wait is the limit's, not the test's: the test gets that much more time.
+      test.info().setTimeout(test.info().timeout + wait);
+      await page.waitForTimeout(wait);
+      continue;
+    }
+    if (attempt < 8 && !(await reached.isVisible()) && (await check.isVisible()) && !(await check.isChecked())) {
+      // The work grows with the failures from this address: the test gets the time the browser counts for.
+      test.info().setTimeout(test.info().timeout + 120_000);
+      await check.check();
+      await expect(page.getByText("Checked. Select Sign in.")).toBeVisible({ timeout: 120_000 });
+      continue;
+    }
+    await expect(reached).toBeVisible();
+    return;
   }
 }
 

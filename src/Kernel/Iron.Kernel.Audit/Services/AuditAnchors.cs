@@ -128,7 +128,7 @@ public sealed class AnchorProgress
 /// plane stands: a restore an operator accepted is recorded in the tenant's trail, and when the chain has a new segment
 /// the unit sends its anchors again from the restore point, now in that segment (ADR-0050).
 /// </summary>
-public sealed class AuditAnchorSender(AuditDbContext context, ControlPlaneClient client, AnchorProgress progress, AuditRestoreRecorder restores, TimeProvider time, ILogger<AuditAnchorSender> logger)
+public sealed class AuditAnchorSender(AuditDbContext context, ControlPlaneClient client, AnchorProgress progress, AuditRestoreRecorder restores, TimeProvider time, ILogger<AuditAnchorSender> logger) : IAuditAnchorSink
 {
     private static readonly TimeSpan AskEvery = TimeSpan.FromMinutes(1);
 

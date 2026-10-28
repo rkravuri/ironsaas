@@ -157,11 +157,12 @@ public class HostTests
     /// <summary>
     /// TF-030 AC3: the anonymous list is health, login, invitation acceptance, the password policy and the recovery link
     /// (T2: both are for a person without a session), the token endpoint and the public keys, the sign-in's second step
-    /// (T3), the sign-in through a single sign-on provider (T4), the one-time link of the operator's path (T5), and nothing
-    /// else. Adding to it is a reviewed change.
+    /// (T3), the sign-in through a single sign-on provider (T4), the one-time link of the operator's path (T5), the
+    /// login's challenge and the reports of the content security policy, which browsers send without a session (T9a), and
+    /// nothing else. Adding to it is a reviewed change.
     /// </summary>
     [Fact]
-    [Proves("TF-030 AC3", "ADR-0014", "ADR-0048", "ADR-0049")]
+    [Proves("TF-030 AC3", "ADR-0014", "ADR-0048", "ADR-0049", "ADR-0053")]
     public async Task TheAnonymousAllowListIsFixedOutsideDevelopment()
     {
         await using var api = Production<Iron.Host.Api.ApiHost>();
@@ -174,8 +175,8 @@ public class HostTests
         // So does a sign-in through a provider, and the address to sign out there needs no session either (ADR-0048).
         string[] serving =
         [
-            "ANY /health/live", "ANY /health/ready", "GET /.well-known/jwks.json", "GET /auth/password-policy", "GET /auth/sign-in-options",
-            "GET /auth/sso/{id:guid}/sign-out", "POST /auth/enrolment/authenticator-app", "POST /auth/enrolment/authenticator-app/confirm", "POST /auth/enrolment/passkey", "POST /auth/enrolment/passkey/options",
+            "ANY /health/live", "ANY /health/ready", "GET /.well-known/jwks.json", "GET /auth/challenge", "GET /auth/password-policy", "GET /auth/sign-in-options",
+            "GET /auth/sso/{id:guid}/sign-out", "POST /api/v1/csp-reports", "POST /auth/enrolment/authenticator-app", "POST /auth/enrolment/authenticator-app/confirm", "POST /auth/enrolment/passkey", "POST /auth/enrolment/passkey/options",
             "POST /auth/invitations/accept", "POST /auth/login", "POST /auth/passkey", "POST /auth/passkey/options", "POST /auth/recovery",
             "POST /auth/second-factor", "POST /auth/second-factor/passkey-options", "POST /auth/sign-in-link", "POST /auth/sso/callback", "POST /auth/sso/discover",
             "POST /auth/sso/start", "POST /connect/token",
@@ -199,7 +200,7 @@ public class HostTests
         Assert.Contains("ANY /health/ready", anonymous);
         Assert.All(
             anonymous.Where(e => !e.Contains("/health/", StringComparison.Ordinal) && !e.Contains(" /auth/", StringComparison.Ordinal) && !e.Contains("/connect/", StringComparison.Ordinal) && !e.Contains("/.well-known/", StringComparison.Ordinal)),
-            e => Assert.True(e.Contains("/openapi", StringComparison.Ordinal) || e.Contains("/scalar", StringComparison.Ordinal), e));
+            e => Assert.True(e.Contains("/openapi", StringComparison.Ordinal) || e.Contains("/scalar", StringComparison.Ordinal) || e == "POST /api/v1/csp-reports", e));
     }
 
     [Fact]

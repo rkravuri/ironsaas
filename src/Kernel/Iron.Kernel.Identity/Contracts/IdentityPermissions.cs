@@ -155,6 +155,13 @@ public static class IdentityErrors
     /// <summary>A password sign-in of a person who signs in only through a provider (TF-014 AC2): "Use your company login".</summary>
     public const string UseCompanyLogin = "identity.login.use_company_login";
 
+    // The login's challenge after repeated failures (TF-072, ADR-0053).
+    /// <summary>A sign-in that needs a solved proof of work now, after repeated failures from its address or for its identifier.</summary>
+    public const string ChallengeRequired = "identity.login.challenge_required";
+
+    /// <summary>A sign-in whose solution did not pass: wrong, expired or used before.</summary>
+    public const string ChallengeInvalid = "identity.login.challenge_invalid";
+
     /// <summary>No provider with this id.</summary>
     public const string SsoProviderNotFound = "identity.sso.provider_not_found";
 

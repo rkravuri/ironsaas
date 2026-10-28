@@ -6,8 +6,8 @@ namespace Iron.Kernel.Security.Tests;
 public class SecurityHeadersTests(SecurityFixture fixture)
 {
     [Fact]
-    [Proves("TF-070 AC1", "ADR-0010")]
-    public async Task EveryResponseCarriesTheSecurityHeaders()
+    [Proves("TF-070 AC1", "ADR-0010", "ADR-0053")]
+    public async Task EveryResponseCarriesTheSecurityHeadersAndAPolicyThatReportsItsViolations()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/ok", UriKind.Relative), TestContext.Current.CancellationToken);
 
@@ -18,20 +18,23 @@ public class SecurityHeadersTests(SecurityFixture fixture)
         Assert.Contains("camera=()", Header(response, "Permissions-Policy"), StringComparison.Ordinal);
         Assert.Equal("same-origin", Header(response, "Cross-Origin-Opener-Policy"));
         Assert.Equal(SecurityHeadersMiddleware.HstsValue, Header(response, "Strict-Transport-Security"));
+        Assert.Equal("csp=\"/api/v1/csp-reports\"", Header(response, "Reporting-Endpoints"));
 
         var csp = Header(response, "Content-Security-Policy");
         Assert.Contains("default-src 'self'", csp, StringComparison.Ordinal);
         Assert.Contains("frame-ancestors 'none'", csp, StringComparison.Ordinal);
+        Assert.Contains("report-uri /api/v1/csp-reports", csp, StringComparison.Ordinal);
+        Assert.Contains("report-to csp", csp, StringComparison.Ordinal);
         Assert.DoesNotContain("unsafe-inline", csp, StringComparison.Ordinal);
     }
 
     [Fact]
-    [Proves("ADR-0010")]
-    public async Task HstsIsNotSentOverPlainHttp()
+    [Proves("TF-070 AC1", "ADR-0053")]
+    public async Task HstsIsSentEvenWhenTheIngressSpeaksHttpToTheHost()
     {
         using var response = await fixture.Client.GetAsync(new Uri("http://localhost/ok"), TestContext.Current.CancellationToken);
 
-        Assert.False(response.Headers.Contains("Strict-Transport-Security"));
+        Assert.Equal(SecurityHeadersMiddleware.HstsValue, Header(response, "Strict-Transport-Security"));
         Assert.Equal("DENY", Header(response, "X-Frame-Options"));
     }
 
@@ -55,33 +58,19 @@ public class SecurityHeadersTests(SecurityFixture fixture)
     }
 
     [Fact]
-    [Proves("ADR-0010")]
-    public async Task CookiesAreSecureHttpOnlyAndStrict()
+    [Proves("TF-070 AC4", "ADR-0010")]
+    public async Task EveryCookieIsSecureHttpOnlyAndStrictWhateverItsCodeAsks()
     {
         using var response = await fixture.Client.GetAsync(new Uri("/cookie", UriKind.Relative), TestContext.Current.CancellationToken);
 
-        var setCookie = Assert.Single(response.Headers.GetValues("Set-Cookie"));
-        Assert.Contains("secure", setCookie, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("samesite=strict", setCookie, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    [Proves("TF-070 AC2", "ADR-0010")]
-    public async Task AConfiguredOriginIsAllowedAndOthersAreNot()
-    {
-        using var allowed = new HttpRequestMessage(HttpMethod.Get, new Uri("/ok", UriKind.Relative));
-        allowed.Headers.Add("Origin", "https://allowed.example");
-        using var allowedResponse = await fixture.Client.SendAsync(allowed, TestContext.Current.CancellationToken);
-
-        Assert.Equal("https://allowed.example", Header(allowedResponse, "Access-Control-Allow-Origin"));
-        Assert.Contains("X-Correlation-Id", Header(allowedResponse, "Access-Control-Expose-Headers"), StringComparison.Ordinal);
-
-        using var other = new HttpRequestMessage(HttpMethod.Get, new Uri("/ok", UriKind.Relative));
-        other.Headers.Add("Origin", "https://evil.example");
-        using var otherResponse = await fixture.Client.SendAsync(other, TestContext.Current.CancellationToken);
-
-        Assert.False(otherResponse.Headers.Contains("Access-Control-Allow-Origin"));
+        var cookies = response.Headers.GetValues("Set-Cookie").ToList();
+        Assert.Equal(3, cookies.Count);
+        Assert.All(cookies, cookie =>
+        {
+            Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("samesite=strict", cookie, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     private static string Header(HttpResponseMessage response, string name)

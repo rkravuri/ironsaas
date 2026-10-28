@@ -1,6 +1,7 @@
 using FluentValidation;
 using Iron.Kernel.Api.Entitlements;
 using Iron.Kernel.Api.Flags;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Api.Lists;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
@@ -55,7 +56,8 @@ public sealed class CreateRoleRequestValidator : AbstractValidator<CreateRoleReq
         RuleFor(r => r.Code).NotEmpty().MaximumLength(Role.CodeMaxLength).Must(code => Role.IsValidCode(code?.Trim().ToLowerInvariant())).WithErrorCode("invalid").WithMessage("Use lowercase letters, digits and hyphens, starting with a letter.");
         RuleFor(r => r.Name).NotEmpty().MaximumLength(Role.NameMaxLength);
         RuleFor(r => r.Description).MaximumLength(Role.DescriptionMaxLength);
-        RuleFor(r => r.Permissions).NotNull();
+        RuleFor(r => r.Permissions).NotNull().MaximumCount(Role.PermissionsMaxCount);
+        RuleForEach(r => r.Permissions).NotEmpty().MaximumLength(FieldLimits.PermissionName);
     }
 }
 
@@ -65,7 +67,8 @@ public sealed class UpdateRoleRequestValidator : AbstractValidator<UpdateRoleReq
     {
         RuleFor(r => r.Name).NotEmpty().MaximumLength(Role.NameMaxLength);
         RuleFor(r => r.Description).MaximumLength(Role.DescriptionMaxLength);
-        RuleFor(r => r.Permissions).NotNull();
+        RuleFor(r => r.Permissions).NotNull().MaximumCount(Role.PermissionsMaxCount);
+        RuleForEach(r => r.Permissions).NotEmpty().MaximumLength(FieldLimits.PermissionName);
     }
 }
 
@@ -73,7 +76,31 @@ public sealed class ImportRolesRequestValidator : AbstractValidator<ImportRolesR
 {
     public ImportRolesRequestValidator()
     {
-        RuleFor(r => r.Document).NotNull();
+        RuleFor(r => r.Document).NotNull().SetValidator(new RoleExportValidator());
+    }
+}
+
+public sealed class RoleExportValidator : AbstractValidator<RoleExport>
+{
+    /// <summary>The roles one export may carry: far more than a tenant defines.</summary>
+    public const int RolesMaxCount = 500;
+
+    public RoleExportValidator()
+    {
+        RuleFor(e => e.Roles).NotNull().MaximumCount(RolesMaxCount);
+        RuleForEach(e => e.Roles).SetValidator(new RoleDocumentValidator());
+    }
+}
+
+public sealed class RoleDocumentValidator : AbstractValidator<RoleDocument>
+{
+    public RoleDocumentValidator()
+    {
+        RuleFor(r => r.Code).NotEmpty().MaximumLength(Role.CodeMaxLength);
+        RuleFor(r => r.Name).NotEmpty().MaximumLength(Role.NameMaxLength);
+        RuleFor(r => r.Description).MaximumLength(Role.DescriptionMaxLength);
+        RuleFor(r => r.Permissions).NotNull().MaximumCount(Role.PermissionsMaxCount);
+        RuleForEach(r => r.Permissions).NotEmpty().MaximumLength(FieldLimits.PermissionName);
     }
 }
 
@@ -102,7 +129,7 @@ internal static class RolesEndpoints
         var roles = endpoints.MapApiGroup("roles");
         roles.MapGet("/", ListAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().Produces<ListResponse<RoleResponse>>(StatusCodes.Status200OK).WithName("ListRoles").WithSummary("List the roles of this tenant.");
         // Export and import are an enterprise feature (ADR-0034): a tenant without it gets entitlements.feature_disabled.
-        roles.MapGet("/export", ExportAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().RequireFeature(AuthorizationFeatures.RoleTransfer.Code).Produces<RoleExport>(StatusCodes.Status200OK).WithName("ExportRoles").WithSummary("The tenant roles as a document another tenant can import.");
+        roles.MapGet("/export", ExportAsync).RequirePermission(AuthorizationPermissions.RolesRead).RateLimited(RateLimitPolicies.Exports).ScopedByRow().RequireFeature(AuthorizationFeatures.RoleTransfer.Code).Produces<RoleExport>(StatusCodes.Status200OK).WithName("ExportRoles").WithSummary("The tenant roles as a document another tenant can import.");
         // An import is a critical path: the kill switch kill.imports stops it (flags.killed, ADR-0035).
         roles.MapPost("/import", ImportAsync).RequirePermission(AuthorizationPermissions.RolesManage).RequireFeature(AuthorizationFeatures.RoleTransfer.Code).RequireFlagOff(KillSwitches.Imports.Key).Validate<ImportRolesRequest>().Produces<ImportDiff>(StatusCodes.Status200OK).WithName("ImportRoles").WithSummary("Compare a role export with this tenant's roles, and apply it unless it is a dry run.");
         roles.MapGet("/{id:guid}", GetAsync).RequirePermission(AuthorizationPermissions.RolesRead).ScopedByRow().Produces<RoleResponse>(StatusCodes.Status200OK).WithName("GetRole").WithSummary("One role.");
