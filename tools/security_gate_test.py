@@ -153,7 +153,7 @@ class SecurityGateTest(unittest.TestCase):
         self.assertIn("Unread 3.0.0", decision.failures[1])
 
     def test_a_rule_finding_fails_a_partial_parse_does_not_and_a_rule_error_does(self) -> None:
-        """A finding of the repository's rules fails with its file and line; a file parsed in part is tolerated; a rule the scanner could not run fails. [ADR-0055]"""
+        """A finding of the repository's rules fails with its file, line and rule; a file parsed in part is tolerated; a rule the scanner could not run fails. [TF-076 AC5, ADR-0055]"""
         semgrep = {
             "results": [{"check_id": "security.rules.iron-secret-in-log", "path": "src/A/B.cs", "start": {"line": 12}, "extra": {"severity": "ERROR", "message": "A value named as a secret goes into a log line."}}],
             "errors": [{"type": ["PartialParsing", []], "message": "Syntax error"}, {"type": "InvalidRuleSchemaError", "message": "bad rule"}],

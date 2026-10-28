@@ -1535,6 +1535,10 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC1 Given a dependency with a critical vulnerability, When the pipeline runs, Then it fails naming the package. (error case)
 - AC2 Given an approved exception, When it expires, Then the build fails again until renewed.
 - AC3 Given a release, When published, Then its bill of materials is attached.
+- AC4 Given a month's report, When the scheduled workflow runs, Then it lists the open findings per severity and the open exceptions with their expiry dates.
+- AC5 Given code that breaks a security rule of the static analysis, When the pipeline runs, Then it fails naming the file and the rule. (error case)
+
+**Notes:** AC4 and AC5 added on 2026-10-28 (S3 T10a, ADR-0055): the tests prove the requirement's text beyond its first three criteria, the monthly report and the static analysis.
 
 #### TF-077 Secure development lifecycle  
 *Priority:* **Must** · *Tag:* `[Core]` · *Area:* Security

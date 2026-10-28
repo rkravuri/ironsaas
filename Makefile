@@ -69,6 +69,7 @@ trace: ## Build the traceability matrix into artifacts/trace from the last resul
 	python3 tools/installation_record_test.py --junit $(RESULTS)/python/installation-record.xml
 	python3 tools/policy_yaml_test.py --junit $(RESULTS)/python/policy-yaml.xml
 	python3 tools/security_gate_test.py --junit $(RESULTS)/python/security-gate.xml
+	python3 tools/security_report_test.py --junit $(RESULTS)/python/security-report.xml
 	python3 tools/trace.py
 
 VALIDATION := $(CURDIR)/artifacts/validation
