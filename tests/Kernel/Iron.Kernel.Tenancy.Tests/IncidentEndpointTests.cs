@@ -82,10 +82,25 @@ public class IncidentEndpointTests(TenancyFixture fixture) : IAsyncLifetime
         var id = Guid.NewGuid();
         var copy = new
         {
-            revision = 2, rule = "permission_denials", title = "Many permission denials for one principal", kind = "threshold", severity = "high", state = "open",
-            group_kind = "principal", group_value = Guid.NewGuid().ToString(), count = 120L, threshold = 100, window_minutes = 10,
-            first_event_at = DateTimeOffset.UtcNow.AddMinutes(-9), last_event_at = DateTimeOffset.UtcNow, raised_at = DateTimeOffset.UtcNow,
-            acknowledged_at = (DateTimeOffset?)null, resolved_at = (DateTimeOffset?)null, reason = (string?)null, link = "/audit?event_type=authz.permission_denied", runbook = "docs/security/incident-response.md#permission-denials",
+            revision = 2,
+            rule = "permission_denials",
+            title = "Many permission denials for one principal",
+            kind = "threshold",
+            severity = "high",
+            state = "open",
+            group_kind = "principal",
+            group_value = Guid.NewGuid().ToString(),
+            count = 120L,
+            threshold = 100,
+            window_minutes = 10,
+            first_event_at = DateTimeOffset.UtcNow.AddMinutes(-9),
+            last_event_at = DateTimeOffset.UtcNow,
+            raised_at = DateTimeOffset.UtcNow,
+            acknowledged_at = (DateTimeOffset?)null,
+            resolved_at = (DateTimeOffset?)null,
+            reason = (string?)null,
+            link = "/audit?event_type=authz.permission_denied",
+            runbook = "docs/security/incident-response.md#permission-denials",
         };
 
         using var kept = await Send(HttpMethod.Put, $"/api/v1/alert-copies/{id}", unit, copy);
