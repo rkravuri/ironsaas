@@ -10,7 +10,8 @@ using Iron.Smoke;
 // since S3 T2: the operator's recovery of the administrator, which also sets the password a run did not know; two since
 // S3 T3: the administrator's second step with the key the smoke keeps (an enrolment after the operator's reset when it has
 // none, or the unit refuses it), and a person of the run who enrols an app, signs in with its codes and with a recovery
-// code (ADR-0047).
+// code (ADR-0047). Two since S3 T9b: the ingress's TLS policy, and the index key rotated with its sample value still found
+// by its exact value (ADR-0054).
 var options = SmokeOptions.FromEnvironment();
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -477,6 +478,13 @@ await report.StepAsync("revoke-person", ["TF-029 AC4", "ADR-0049"], () => sessio
 // order, sealed into the chain, and exported to CSV (ADR-0050). It reads only.
 var trail = new AuditSteps(api, options, AdministratorAsync, run);
 await report.StepAsync("audit-trail", ["TF-064 AC1", "ADR-0050"], () => trail.SearchTheTrailAsync(ct));
+
+// S3 T9b's steps (ADR-0054): ClientHellos written byte by byte to the ingress, TLS 1.0 and old suites refused; and the
+// tenant's index key rotated by the operator, every hash made again by the unit, the old version retired, and a key check
+// of the run found by its exact value and not by a part of it.
+var keys = new KeySteps(api, options, AdministratorAsync, run);
+await report.StepAsync("tls", ["TF-074 AC3", "ADR-0054"], () => keys.TlsAsync(ct));
+await report.StepAsync("key-rotation", ["TF-075 AC1", "TF-074 AC2", "ADR-0054"], () => keys.RotateIndexKeyAsync(ct));
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
