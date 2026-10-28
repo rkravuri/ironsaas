@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using Iron.Kernel.Data.Tests.Sample;
 using Iron.Kernel.Data.Transactions;
@@ -16,6 +17,9 @@ namespace Iron.Kernel.Data.Tests.Transactions;
 [Collection(PostgresCollection.Name)]
 public class PasswordRotationTests(PostgresFixture fixture)
 {
+    /// <summary>How long a wait for requests may take before the test reports what it saw.</summary>
+    private static readonly TimeSpan LongestWait = TimeSpan.FromSeconds(30);
+
     private static CancellationToken Cancel => TestContext.Current.CancellationToken;
 
     [Fact]
@@ -60,15 +64,17 @@ public class PasswordRotationTests(PostgresFixture fixture)
             }
         }
 
+        // The waits count requests, not seconds: on CI's runner the first requests took longer than a fixed second to build
+        // the model and fill the pool, and none had finished when the password changed.
         var serving = Enumerable.Range(0, 4).Select(_ => Task.Run(ServeAsync, Cancel)).ToList();
-        await Task.Delay(TimeSpan.FromSeconds(1), Cancel);
-        var beforeRotation = requests;
+        await UntilAsync(() => Volatile.Read(ref requests) >= 4);
+        var beforeRotation = Volatile.Read(ref requests);
 
         // The fleet's order: the store first, then the database; then every idle connection goes, so the next ones are new.
         store.Password = Second;
         await AdminAsync($"ALTER ROLE {role} PASSWORD '{Second}'");
         dataSource.Clear();
-        await Task.Delay(TimeSpan.FromSeconds(2), Cancel);
+        await UntilAsync(() => Volatile.Read(ref requests) >= beforeRotation + 8);
         await stop.CancelAsync();
         await Task.WhenAll(serving);
 
@@ -78,6 +84,15 @@ public class PasswordRotationTests(PostgresFixture fixture)
         await using var old = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(fixture.ConnectionString) { Username = role, Password = First, Pooling = false }.ConnectionString);
         var refused = await Assert.ThrowsAsync<PostgresException>(() => old.OpenAsync(Cancel));
         Assert.True(DatabaseConnections.IsRefusedPassword(refused));
+    }
+
+    private static async Task UntilAsync(Func<bool> condition)
+    {
+        var waited = Stopwatch.StartNew();
+        while (!condition() && waited.Elapsed < LongestWait)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(50), Cancel);
+        }
     }
 
     private ServiceProvider Build(string connectionString, IDatabaseCredentials credentials)
