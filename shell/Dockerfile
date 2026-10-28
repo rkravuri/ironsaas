@@ -11,6 +11,11 @@ RUN npm run build
 
 # NGINX's own unprivileged image: nginx runs as the user nginx and listens above 1024, as nginx.conf does on 8080.
 FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
+# Alpine's fixes for the base image's own packages, taken at each build: the base image is rebuilt later than Alpine
+# publishes a fix (curl and brotli waited in October 2026), and the image scan fails on a high finding that has one
+# (ADR-0055). The base image runs as nginx; this one step needs root.
+USER root
+RUN apk upgrade --no-cache
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html

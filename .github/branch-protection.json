@@ -1,0 +1,32 @@
+{
+  "_why": "Main's protection (TF-077 AC1, ADR-0055), applied with make protect-main and checked with make protection-check. A change reaches main only through a pull request, up to date with main, whose every check below is green; nobody, administrators included, pushes to main, forces it or deletes it. No approving review is required while the team has one developer: the process exception PE-1 in docs/security/exceptions.md, which ends by setting required_approving_review_count to 1. Each check is the name of a CI job, made by GitHub Actions (app 15368), so no other integration can report it. Keys that start with an underscore are notes, not sent.",
+  "required_status_checks": {
+    "strict": true,
+    "checks": [
+      { "context": "What changed", "app_id": 15368 },
+      { "context": ".NET build and tests", "app_id": 15368 },
+      { "context": "Shell lint, tests and build", "app_id": 15368 },
+      { "context": "Shell accessibility scan", "app_id": 15368 },
+      { "context": "Compose files", "app_id": 15368 },
+      { "context": "Requirement documents", "app_id": 15368 },
+      { "context": "Security scans", "app_id": 15368 },
+      { "context": "Secret scan (gitleaks)", "app_id": 15368 },
+      { "context": "Traceability matrix", "app_id": 15368 }
+    ]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0,
+    "require_last_push_approval": false
+  },
+  "restrictions": null,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "block_creations": false,
+  "required_conversation_resolution": true,
+  "lock_branch": false,
+  "allow_fork_syncing": false
+}

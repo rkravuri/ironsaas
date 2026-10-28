@@ -1,0 +1,12 @@
+# The coverage floors (TF-077 AC4, ADR-0055): line coverage, in per cent, below which a change is refused.
+#
+# dotnet: the product's code (Iron.Kernel*, Iron.Business*, Iron.Suites*, Iron.Host*; the generated migrations left out)
+# as make test COVERAGE=1 measures it, merged line by line across the test projects. shell: the shell's own code, its
+# tests left out, as npm run check measures it. tools/coverage_check.py compares; make coverage runs it.
+#
+# A floor is the measured value rounded down. It may rise, and should when the check says it may; it never falls,
+# except by an approved exception in security/exceptions.yaml (finding coverage-floor, package dotnet or shell).
+# Measured on 2026-10-28 (S3 T10a): dotnet 90.35% of 23,777 lines, shell 85.80% of 5,310 lines.
+floors:
+  dotnet: 90
+  shell: 85

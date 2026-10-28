@@ -1,0 +1,122 @@
+name: Security report
+
+# The monthly security report (TF-076 AC4, TF-077 AC3, ADR-0055): the repository and the latest release's images are
+# scanned as make security and make images-security scan them, and tools/security_report.py lists the open findings per
+# severity, the open exceptions with their expiry, the findings register and the location database's pin. The report is
+# kept as an artifact and opened as an issue; a critical or high finding of the register open for more than 30 days, and
+# a pinned location month DB-IP no longer publishes, each become an issue of their own, opened once.
+
+on:
+  schedule:
+    # 06:17 UTC on the first of each month, off the hour that every schedule on GitHub asks for.
+    - cron: "17 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  packages: read
+
+concurrency:
+  group: security-report
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  report:
+    name: Monthly security report
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK (the restore fills the NuGet cache Trivy reads licences from)
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-
+
+      # Trivy's vulnerability database, refreshed once a day.
+      - name: Date of the scanners' database
+        id: today
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy's database
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/trivy
+          key: trivy-${{ steps.today.outputs.day }}
+          restore-keys: trivy-
+
+      # The report lists what fails; a failing gate does not stop it.
+      - name: Scan the repository
+        continue-on-error: true
+        run: make security
+
+      - name: Image repository
+        id: repo
+        run: echo "repository=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The images the last passing release tagged "integration".
+      - name: Scan the latest release's images
+        continue-on-error: true
+        run: |
+          for image in iron-api iron-worker iron-control-plane iron-fleet iron-shell; do
+            docker pull --quiet "${{ steps.repo.outputs.repository }}/$image:integration"
+          done
+          make images-security IMAGE_REPOSITORY=${{ steps.repo.outputs.repository }} TAG=integration
+
+      - name: Write the report
+        id: report
+        run: |
+          month=$(date -u +%Y-%m)
+          echo "month=$month" >> "$GITHUB_OUTPUT"
+          python3 tools/security_report.py --summary artifacts/security/summary.json --summary artifacts/security/images-summary.json \
+            --check-location --output "artifacts/security/report-$month.md"
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-report-${{ steps.report.outputs.month }}
+          path: artifacts/security
+          if-no-files-found: ignore
+          retention-days: 400
+
+      # The report as an issue, then each escalation once: an issue whose title starts with the same words and is still
+      # open is not opened again.
+      - name: Open the report and its escalations as issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MONTH: ${{ steps.report.outputs.month }}
+        run: |
+          gh label create security --color B60205 --description "The security report and its escalations (ADR-0055)" --force
+          gh issue list --state open --label security --limit 500 --json title --jq '.[].title' > open-titles.txt
+          if ! grep -qxF "Security report $MONTH" open-titles.txt; then
+            gh issue create --title "Security report $MONTH" --body-file "artifacts/security/report-$MONTH.md" --label security
+          fi
+          jq -c '.[]' "artifacts/security/report-$MONTH.issues.json" | while read -r issue; do
+            key=$(jq -r .key <<< "$issue")
+            if grep -qF "$key" open-titles.txt; then
+              echo "Still open: $key"
+              continue
+            fi
+            gh issue create --title "$(jq -r .title <<< "$issue")" --body "$(jq -r .body <<< "$issue")" --label security
+          done

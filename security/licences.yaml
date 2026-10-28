@@ -1,0 +1,67 @@
+# The licences a dependency may carry (ADR-0003, ADR-0055), checked by tools/security_gate.py against every package the
+# scan reads from the lock files: the NuGet packages with their transitive ones, and the shell's packages, dev ones
+# included. A package whose licence is not allowed, or whose licence nobody could read, fails the build, named.
+#
+# allowed: permissive licences, for any package (SPDX identifiers as the scanner writes them).
+allowed:
+  - MIT
+  - MIT-0
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - ISC
+  - 0BSD
+  - BlueOak-1.0.0
+  - PostgreSQL
+  - Unlicense
+  - Zlib
+  - CC0-1.0
+
+# packages: a package allowed a licence outside that list (weak copyleft, a font's or data's licence), or one whose
+# licence the scanner cannot read and a person read from the package itself; with the reason. A version, when given,
+# must match, so a new version is read again. * matches any characters.
+packages:
+  - package: axe-core
+    licence: MPL-2.0
+    reason: >-
+      The accessibility scan's engine, a dev dependency that runs in the test browser and never ships. MPL-2.0 is
+      copyleft per file: only changes to its own files would have to be shared, and none are made.
+  - package: "@axe-core/playwright"
+    licence: MPL-2.0
+    reason: The scan's adapter to Playwright, a dev dependency like axe-core, unchanged.
+  - package: lightningcss*
+    licence: MPL-2.0
+    reason: >-
+      Vite's CSS transformer and its platform builds, dev dependencies that run at build time; the built CSS is the
+      shell's own. Copyleft per file, unchanged.
+  - package: "@fontsource-variable/fraunces"
+    licence: OFL-1.1
+    reason: The display font, under the SIL Open Font License, recorded in docs/licences.md (D1).
+  - package: "@fontsource-variable/source-sans-3"
+    licence: OFL-1.1
+    reason: The reading font, under the SIL Open Font License, recorded in docs/licences.md (D1).
+  - package: caniuse-lite
+    licence: CC-BY-4.0
+    reason: Browser support data the build tools read, a dev dependency; attribution travels in the package.
+  - package: Apache.Arrow
+    version: 22.1.0
+    licence: Apache-2.0
+    reason: >-
+      Read from the LICENSE.txt in the package, which its nuspec names as a file the scanner does not read. Azure's
+      blob client brings it.
+  - package: NETStandard.Library
+    version: 2.0.3
+    licence: MIT
+    reason: Read from its nuspec's licence URL (dotnet/standard's LICENSE.TXT, MIT); the analyzer projects target it.
+  - package: System.Security.Cryptography.ProtectedData
+    version: 4.5.0
+    licence: MIT
+    reason: Read from its nuspec's licence URL (dotnet/corefx's LICENSE.TXT, MIT); Azure's client brings it.
+  - package: Microsoft.NETCore.Platforms
+    version: 1.1.0
+    licence: LicenseRef-Microsoft-.NET-Library
+    reason: >-
+      The Microsoft .NET Library terms, free but not an open-source licence. The package holds only runtime.json (the
+      runtime identifier graph), no code; NETStandard.Library 2.0.3 pulls it into the two analyzer projects' build,
+      and nothing of it reaches an image. Recorded rather than allowed in general; it leaves when the analyzers
+      target a newer framework.

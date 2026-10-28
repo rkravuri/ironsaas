@@ -44,5 +44,14 @@ export default defineConfig({
     // Each test file's results for make trace (ADR-0044), beside the console's.
     reporters: ["default", "junit"],
     outputFile: { junit: "../artifacts/test-results/shell/vitest.xml" },
+    // Line coverage of the shell's own code when the run asks for it (npm run test:coverage, in npm run check), as
+    // Cobertura for its floor (TF-077 AC4, ADR-0055); the tests and their helpers are not what is measured.
+    coverage: {
+      provider: "v8",
+      reporter: ["cobertura", "text-summary"],
+      reportsDirectory: "../artifacts/coverage/shell",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/test/**", "src/**/*.d.ts"],
+    },
   },
 });

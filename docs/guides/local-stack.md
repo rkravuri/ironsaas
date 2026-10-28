@@ -263,6 +263,14 @@ For work on a module without a provisioned tenant: `make migrate`, `make seed` (
 - `make e2e [TENANT=x]`: the Playwright tests against `https://<tenant>.localhost` with that administrator, read from `secret/tenants/<tenant>/smoke` (browsers once with `cd shell && npm run e2e:install`; `E2E_BASE_URL` points them elsewhere). Run `make smoke` with the same `TENANT` first. Each run works in a unit of its own, `E2E run <run>` under the root, with its branches, people and assignments inside it (`infra/compose/scripts/e2e-data.py`), and at the end, whatever the result, deactivates the people homed in the browser tests' units (this run's, and earlier runs' still active) and then the run's units. A run never sees what an earlier one left, and leaves no active people behind.
 - `make integration [TENANT=x]`: the pipeline's stage on this machine: platform and control plane from images, the control database migrated and seeded through the control-plane image, then the smoke, its twenty-three steps (`TENANT=echo`, or `TENANT=smoke` on a laptop whose `acme` administrator has been accepted by hand).
 
+- `make security`: the dependencies (every `packages.lock.json` and the shell's lock, dev packages included), their licences and the misconfigurations through Trivy, the repository's rules through Semgrep (their test first), then the gate; about 75 seconds with the scanners' images and database cached in `~/.cache/trivy`. `make images-security` scans the five local images (`IMAGE_REPOSITORY=foundation TAG=dev`) and writes their CycloneDX bills of materials to `artifacts/sbom/`. `make coverage` checks the floors after `make test COVERAGE=1` (which adds about 80 seconds) and `make shell-check` (ADR-0055).
+
+### The pipeline from the laptop (ADR-0055)
+
+- **Main takes no push.** Push the branch and open a pull request (`gh pr create`); it merges with `gh pr merge --merge` once every check is green and the branch is up to date with main (`gh pr update-branch` when it is not). `make protection-check` compares main's protection on GitHub with `.github/branch-protection.json`; `make protect-main` applies it again, as an administrator.
+- **The release runs at 02:23 UTC** when main has changed since the last `v*` tag. To release now: `gh workflow run release.yml --ref main`. It takes CI's results from the pull request the merge came from; when none ran in full on main's tree (a documents-only merge on top of an older one), it asks for a full CI run on main and waits for it.
+- **The monthly security report** opens an issue on the first of each month; run it now with `gh workflow run security-report.yml`. It also says when DB-IP no longer publishes the pinned location month, before an image build fails on it.
+
 ## 9. Known limits of the laptop stack
 
 - A unit healed after a lost store has new credentials; its administrator's password is gone from the store until the smoke's next run or `make recover-admin` (section 5). Its factor key is new too: authenticator apps enrolled before the loss no longer verify, and their people need a reset of their factors (section 5), while passkeys keep working (ADR-0047).
@@ -328,6 +336,11 @@ For work on a module without a provisioned tenant: `make migrate`, `make seed` (
 | `make impersonate`'s job fails with `identity.impersonation.operator_refused` | The tenant turned `identity.impersonation.operator_allowed` off on its Settings page: only its administrators may turn it back on |
 | A break-glass access stays `ending` for more than two minutes | The fleet host is not running (`make logs SERVICE=fleet`), or its close job failed: the log says `The close of break-glass ... failed`, and it is asked again every minute. The unit refuses the account after its time whatever the fleet does |
 | `make shell-check` fails at `prettier --check` | A file is not formatted: `make format` (or `cd shell && npm run format`) and commit the result (ADR-0040) |
+| `make security` (or CI's Security scans, or a release's image job) prints `FAIL high CVE-... in <package> <version>` | A known vulnerability without an exception (ADR-0055): raise the package to the fixed version the line names (at least two weeks old), or, when no fix is published, write an exception in `security/exceptions.yaml` with its reason and expiry for the design session to approve. `FAIL licence of ...` names a package whose licence `security/licences.yaml` does not allow, or none was read: read it from the package and record it there with the reason |
+| `FAIL exception: ... expired on <date>` | An exception ran out (TF-076 AC2): renew it with a new approval and expiry, or remove it once the finding is gone |
+| CI's restore fails with `NU1004` (the lock file does not match the project) | A package changed without its lock files: `dotnet restore Foundation.slnx` on the laptop and commit every changed `packages.lock.json` |
+| `make coverage` prints `FAIL line coverage of dotnet is ...` | The change lowered coverage below its floor (TF-077 AC4): add the tests that cover what it changed. `the floor of ... falls` means `security/coverage.yaml` was lowered: a floor never falls without an exception |
+| A push to main answers `GH006: Protected branch update failed` | Main changes only through a pull request (ADR-0055): push a branch and open one |
 
 ## 11. Starting over
 

@@ -82,6 +82,9 @@ public sealed class ControlPlaneDatabase(FleetOptions options, ISecretStore secr
         // makes tenants' tokens only. A run without a store, as the database's own tests, leaves them alone.
         if (store.IsConfigured)
         {
+            // The fleet's preparation is the store's administrator here, by design (ADR-0054): it makes the control
+            // plane's policies and tokens with the root token the operator runs it with, which no module may hold.
+            // nosemgrep: iron-secret-store-outside-security
             using var root = new OpenBaoSecretStore(new SecretStoreOptions { Address = store.Address, Token = store.Token, Mount = store.Mount, TransitMount = store.TransitMount });
             await new ControlPlaneAccess(root, root, keys, store).PrepareAsync(cancellationToken).ConfigureAwait(false);
         }

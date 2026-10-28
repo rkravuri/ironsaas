@@ -30,3 +30,16 @@ NuGet packages carry their licence in a comment in `Directory.Packages.props` (A
 | `libsodium` (NuGet, NSec's dependency) | 1.0.20.1 | ISC | the native library under NSec |
 | `System.Formats.Cbor` (NuGet, Fido2's dependency) | 9.0.0 | MIT (.NET Foundation) | reading WebAuthn's CBOR for Fido2; the Identity tests' software authenticator writes it |
 | `MaxMind.Db` (NuGet, recorded here too) | 5.2.0 (2026-09-10) | Apache-2.0 (MaxMind) | reading the IP-to-city database in MMDB form for a session's place (S3 T5, ADR-0049); it reads DB-IP's file, not MaxMind's data |
+| `eslint-plugin-security` | 4.2.0 (2026-10-01) | Apache-2.0 (eslint-community) | the shell's security lint rules, a dev dependency (S3 T10a, ADR-0055) |
+| `@vitest/coverage-v8` | 5.0.5 (2026-10-15) | MIT (Vitest) | the shell's line coverage for its floor, a dev dependency; the one version Vitest 5.0.5 accepts, two weeks old on 2026-10-29 (S3 T10a, ADR-0055) |
+| `coverlet.MTP` (NuGet, recorded here too) | 10.1.0 (2026-09-27) | MIT (coverlet-coverage) | the .NET tests' line coverage for its floor, in every test project (S3 T10a, ADR-0055) |
+
+## Tools the pipeline runs
+
+Run from their official images or actions at a pinned version, the same on the laptop and in CI, never shipped in an image (S3 T10a, ADR-0055). The rules the rule-based scanner applies are the repository's own, in `security/rules/`.
+
+| Tool | Version | Licence | Used for |
+|---|---|---|---|
+| Trivy (`ghcr.io/aquasecurity/trivy`) | 0.76.0 (2026-10-14) | Apache-2.0 (Aqua Security) | the dependencies, their licences and the misconfigurations (`make security`), the images and their CycloneDX bills of materials (`make image-scan`); its vulnerability database is GitHub's advisories and the distributions' own, downloaded at each run |
+| Semgrep Community Edition (`semgrep/semgrep`) | 1.180.0 (2026-10-07) | LGPL-2.1 (Semgrep) | the repository's own rules for C# and TypeScript (`make security`); run with metrics off and no registry rule |
+| gitleaks (`ghcr.io/gitleaks/gitleaks`) | 8.30.1 | MIT | the secret scan of the history, and its test (S3 T9b); CI runs it through `gitleaks/gitleaks-action`, whose own terms are free for a personal account's repositories and ask an organisation for a licence key, to be read again if the repository moves to one |

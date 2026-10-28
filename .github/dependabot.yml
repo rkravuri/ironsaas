@@ -1,7 +1,9 @@
 # Version updates for everything the build pins (ADR-0003, ADR-0022): the actions, the .NET packages, the shell's
 # packages and the base images. One pull request per ecosystem per week; CI tells whether the bump is safe.
 # A version must be at least two weeks old before it is proposed (ADR-0003), and a major version comes on its own, out
-# of the groups, since it usually needs work of its own.
+# of the groups, since it usually needs work of its own. Its pull requests pass the same checks as a task's and merge the
+# same way; the fix times of a finding are the dependency policy's, in docs/security/README.md (ADR-0055). The NuGet
+# updates rewrite each project's packages.lock.json with the version.
 version: 2
 updates:
   - package-ecosystem: github-actions

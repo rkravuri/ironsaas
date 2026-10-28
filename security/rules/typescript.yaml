@@ -1,0 +1,115 @@
+# The repository's own rules for the shell's TypeScript (ADR-0055), run by the rule-based scanner over shell/src in make
+# security, tests excluded. Each covers a risk ESLint's rules, eslint-plugin-security, iron/inner-html and the content
+# security policy leave open. A finding fails the build; a false positive is marked at its line with
+# "nosemgrep: <rule>" and the reason beside it. typescript.tsx beside this file proves each rule.
+rules:
+  - id: iron-code-from-text
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      This runs text as code. The content security policy refuses it in the browser (ADR-0053), and code that needs it
+      fails there; build the behaviour from functions instead.
+    metadata:
+      category: security
+      cwe: "CWE-95: Eval Injection"
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern: Function(...)
+      - pattern: setTimeout("...", ...)
+      - pattern: setInterval("...", ...)
+
+  - id: iron-navigation-to-another-site
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      This sends the browser to an address the code did not write, which an attacker who controls it turns into an
+      open redirect. Leave the site only through leaveFor (src/auth/leave.ts), with an address the API gave, and move
+      inside the shell with the router.
+    metadata:
+      category: security
+      cwe: "CWE-601: URL Redirection to Untrusted Site"
+    paths:
+      exclude:
+        - "shell/src/auth/leave.ts"
+    patterns:
+      - pattern-either:
+          - pattern: window.location.assign($URL)
+          - pattern: window.location.replace($URL)
+          - pattern: window.location.href = $URL
+          - pattern: location.assign($URL)
+          - pattern: location.replace($URL)
+          - pattern: location.href = $URL
+          - pattern: window.open($URL, ...)
+      - pattern-not: window.location.assign("...")
+      - pattern-not: window.location.replace("...")
+      - pattern-not: window.location.href = "..."
+      - pattern-not: window.open("...", ...)
+
+  - id: iron-message-to-any-origin
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      A message posted to "*" reaches whatever page holds the window now, another site included. Name the origin that
+      may read it.
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+    pattern: $WINDOW.postMessage($MESSAGE, "*", ...)
+
+  - id: iron-secret-in-browser-storage
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      Browser storage is readable by every script of the origin and survives the session. Credentials live in the
+      server's HttpOnly cookies (ADR-0014); keep nothing named as a secret here.
+    metadata:
+      category: security
+      cwe: "CWE-922: Insecure Storage of Sensitive Information"
+    # The scanner anchors a metavariable's regex at its start, so each says the whole value.
+    pattern-either:
+      - patterns:
+          - pattern: $STORE.setItem($KEY, $VALUE)
+          - metavariable-regex:
+              metavariable: $STORE
+              regex: ^(.*\.)?(localStorage|sessionStorage)$
+          - metavariable-regex:
+              metavariable: $KEY
+              regex: (?i)^.*(token|secret|password|credential|recovery|totp).*$
+      - patterns:
+          - pattern: $STORE.setItem($KEY, $VALUE)
+          - metavariable-regex:
+              metavariable: $STORE
+              regex: ^(.*\.)?(localStorage|sessionStorage)$
+          - metavariable-regex:
+              metavariable: $VALUE
+              regex: (?i)^.*(token|secret|password|credential|recovery|totp).*$
+
+  - id: iron-cookie-from-script
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      The shell never writes cookies: the server sets them Secure, HttpOnly and SameSite=Strict (ADR-0053), and a
+      cookie written here is readable by every script of the origin.
+    metadata:
+      category: security
+      cwe: "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag"
+    pattern: document.cookie = $VALUE
+
+  - id: iron-request-outside-the-client
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      Every call goes through request() in src/api/client.ts (the frontend rules): it sends the session's cookie to the
+      same origin only, reads the correlation id and turns every problem into an ApiError the pages show.
+    metadata:
+      category: security
+      cwe: "CWE-201: Insertion of Sensitive Information Into Sent Data"
+    paths:
+      exclude:
+        - "shell/src/api/client.ts"
+    pattern-either:
+      - pattern: fetch(...)
+      - pattern: window.fetch(...)
+      - pattern: new XMLHttpRequest()
+      - pattern: navigator.sendBeacon(...)

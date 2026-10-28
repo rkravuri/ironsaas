@@ -1,0 +1,23 @@
+<Project>
+
+  <!--
+    Read after each project file, so a property here sees the project's own IronLayer, which Directory.Build.props
+    cannot (ADR-0029).
+
+    The code that ships (Kernel, Business, Suite and Host) compiles with every security rule of the .NET analyzers on
+    (TF-076, ADR-0055): with warnings as errors, each finding stops the build at its line. A false positive is suppressed
+    where it stands with its reason, and the review reads it like code. Tests and tools stay outside, as for IRON0010
+    (ADR-0053): their fixtures make random data, call laptop servers and compute codes the product checks.
+
+    CA2100 (SQL text from a variable) is off everywhere: IRON0010 is the same rule for the product's code, stricter (it
+    follows every raw SQL method, not only a command's text) and with a reviewed exemption, [SqlFromIdentifiers("why")],
+    for the definitions PostgreSQL takes no parameters for; two rules would ask for two marks on the same line.
+  -->
+  <PropertyGroup Condition="'$(IronLayer)' == 'Kernel' or '$(IronLayer)' == 'Business' or '$(IronLayer)' == 'Suite' or '$(IronLayer)' == 'Host'">
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
+  </PropertyGroup>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);CA2100</NoWarn>
+  </PropertyGroup>
+
+</Project>
