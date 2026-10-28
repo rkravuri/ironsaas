@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -63,10 +63,12 @@ format-check: shell-node ## Check the code style without changing a file, as CI 
 # The traceability matrix (TF-218, ADR-0044): every test's identifiers read from the sources, its result from the last
 # run's files under artifacts/test-results, the matrix written to artifacts/trace. It fails on an identifier no document
 # holds, and on a criterion of a done slice without a test that docs/trace/exceptions.md does not list.
-trace: ## Build the traceability matrix into artifacts/trace from the last results (ADR-0044); its own tests and the validation pack's first
+trace: ## Build the traceability matrix into artifacts/trace from the last results (ADR-0044); the tools' own tests first
 	python3 tools/trace_test.py --junit $(RESULTS)/python/trace.xml
 	python3 tools/validation_pack_test.py --junit $(RESULTS)/python/validation-pack.xml
 	python3 tools/installation_record_test.py --junit $(RESULTS)/python/installation-record.xml
+	python3 tools/policy_yaml_test.py --junit $(RESULTS)/python/policy-yaml.xml
+	python3 tools/security_gate_test.py --junit $(RESULTS)/python/security-gate.xml
 	python3 tools/trace.py
 
 VALIDATION := $(CURDIR)/artifacts/validation
@@ -82,15 +84,54 @@ validation-pack: env ## Build the development validation pack from the last runs
 	exit $$status
 
 # Every check in order, each on its own, so the shell's tests never run beside make test (ADR-0044): the requirement
-# documents, the .NET suite, the shell (lint, format, tests, build), the accessibility scan, the format check, and the
-# matrix from what those runs wrote. With the stack running it is the check before a push.
-verify: ## Run prd-check, test, shell-check, shell-a11y, the format check and trace, in that order, stopping at the first failure
+# documents, the .NET suite, the shell (lint, format, tests, build), the accessibility scan, the format check, the
+# security scans and their gate (ADR-0055), and the matrix from what those runs wrote. With the stack running it is the
+# check before a push.
+verify: ## Run prd-check, test, shell-check, shell-a11y, the format check, security and trace, in that order, stopping at the first failure
 	$(MAKE) prd-check
 	$(MAKE) test
 	$(MAKE) shell-check
 	$(MAKE) shell-a11y
 	$(MAKE) format-check
+	$(MAKE) security
 	$(MAKE) trace
+
+# ---------------------------------------------------------------- security (TF-076, ADR-0055)
+# The scanners run from pinned images, the same on the laptop and in CI, and write their JSON under artifacts/security;
+# tools/security_gate.py decides from those, with security/exceptions.yaml and security/licences.yaml. The NuGet cache
+# is mounted so Trivy reads each package's licence from its nuspec, and the restore fills it first.
+TRIVY_IMAGE := ghcr.io/aquasecurity/trivy:0.76.0
+SEMGREP_IMAGE := semgrep/semgrep:1.180.0
+SECURITY := $(CURDIR)/artifacts/security
+SBOM := $(CURDIR)/artifacts/sbom
+TRIVY_CACHE ?= $(HOME)/.cache/trivy
+NUGET_PACKAGES ?= $(HOME)/.nuget/packages
+IMAGES := iron-api iron-worker iron-control-plane iron-fleet iron-shell
+IMAGE_REPOSITORY ?= foundation
+SEMGREP := docker run --rm -e SEMGREP_ENABLE_VERSION_CHECK=0 -v "$(CURDIR):/src" -w /src $(SEMGREP_IMAGE) semgrep
+# The rules read the code that ships: not the shell's tests, nor generated migrations or build output.
+SEMGREP_EXCLUDES := --exclude '*.test.ts' --exclude '*.test.tsx' --exclude '**/bin/**' --exclude '**/obj/**' --exclude '**/Migrations/**'
+
+security: ## Scan the dependencies, their licences, the misconfigurations and the code, then apply the gate (TF-076, ADR-0055); the reports in artifacts/security
+	@mkdir -p $(SECURITY) $(TRIVY_CACHE)
+	dotnet restore Foundation.slnx --verbosity quiet
+	docker run --rm -v "$(CURDIR):/repo:ro" -v "$(NUGET_PACKAGES):/root/.nuget/packages:ro" -v "$(TRIVY_CACHE):/root/.cache/trivy" -w /repo $(TRIVY_IMAGE) \
+	  fs --quiet --scanners vuln,license,misconfig --license-full --list-all-pkgs --include-dev-deps \
+	  --skip-dirs shell/node_modules --skip-dirs '**/bin' --skip-dirs '**/obj' --skip-dirs artifacts \
+	  --format json --output /dev/stdout . > $(SECURITY)/trivy-repository.json
+	$(SEMGREP) --test --metrics off --quiet security/rules
+	$(SEMGREP) scan --config security/rules --metrics off --json --quiet $(SEMGREP_EXCLUDES) src shell/src > $(SECURITY)/semgrep.json
+	python3 tools/security_gate.py --trivy $(SECURITY)/trivy-repository.json --semgrep $(SECURITY)/semgrep.json --summary $(SECURITY)/summary.json
+
+image-scan: ## Scan one image and write its CycloneDX bill of materials into artifacts/sbom (TF-076 AC3, ADR-0055): make image-scan IMAGE=foundation/iron-api:dev NAME=iron-api
+	@mkdir -p $(SECURITY) $(SBOM) $(TRIVY_CACHE)
+	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$(TRIVY_CACHE):/root/.cache/trivy" $(TRIVY_IMAGE) \
+	  image --quiet --scanners vuln --list-all-pkgs --format json --output /dev/stdout $(IMAGE) > $(SECURITY)/image-$(NAME).json
+	docker run --rm -v "$(SECURITY):/reports:ro" $(TRIVY_IMAGE) convert --format cyclonedx --output /dev/stdout /reports/image-$(NAME).json > $(SBOM)/$(NAME).cdx.json
+
+images-security: ## Scan the five images, write their bills of materials and apply the gate (TF-076, ADR-0055): make images-security [IMAGE_REPOSITORY=foundation TAG=dev]
+	@for name in $(IMAGES); do $(MAKE) --no-print-directory image-scan IMAGE=$(IMAGE_REPOSITORY)/$$name:$(TAG) NAME=$$name || exit 1; done
+	python3 tools/security_gate.py $(foreach name,$(IMAGES),--image $(name)=$(SECURITY)/image-$(name).json) --summary $(SECURITY)/images-summary.json
 
 CATALOGUE_FILE := src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.json
 SETTING_KEYS_FILE := shell/src/api/setting-keys.ts
