@@ -118,10 +118,14 @@ jobs:
       - name: Test
         run: make test CONFIG=Release COVERAGE=1 TEST_ARGS=--no-build
 
-      # The floors of the branch this change goes into, so a floor that falls is refused too (ADR-0055).
+      # The floors of the branch this change goes into, so a floor that falls is refused too (ADR-0055); none when that
+      # branch has no floors yet.
       - name: The base branch's coverage floors
         if: github.event_name == 'pull_request'
-        run: git fetch --depth=1 origin "${{ github.base_ref }}" && git show "origin/${{ github.base_ref }}:security/coverage.yaml" > base-coverage.yaml || true
+        run: |
+          if ! { git fetch --depth=1 origin "${{ github.base_ref }}" && git show "origin/${{ github.base_ref }}:security/coverage.yaml" > base-coverage.yaml; }; then
+            rm -f base-coverage.yaml
+          fi
 
       - name: Coverage floor
         run: make coverage AREA=dotnet BASE_FLOORS=base-coverage.yaml
@@ -166,7 +170,10 @@ jobs:
       - name: The base branch's coverage floors
         if: github.event_name == 'pull_request'
         working-directory: .
-        run: git fetch --depth=1 origin "${{ github.base_ref }}" && git show "origin/${{ github.base_ref }}:security/coverage.yaml" > base-coverage.yaml || true
+        run: |
+          if ! { git fetch --depth=1 origin "${{ github.base_ref }}" && git show "origin/${{ github.base_ref }}:security/coverage.yaml" > base-coverage.yaml; }; then
+            rm -f base-coverage.yaml
+          fi
 
       - name: Coverage floor
         working-directory: .

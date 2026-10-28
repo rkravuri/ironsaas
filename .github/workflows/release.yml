@@ -96,7 +96,7 @@ jobs:
           if [ -z "$found" ]; then
             echo "No full CI run covers main's tree: asking for one."
             gh workflow run ci.yml --ref main
-            for attempt in $(seq 1 30); do
+            for _ in $(seq 1 30); do
               sleep 10
               found=$(gh run list --workflow ci.yml --event workflow_dispatch --commit "$GITHUB_SHA" --json databaseId --jq '.[0].databaseId // empty')
               [ -n "$found" ] && break

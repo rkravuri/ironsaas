@@ -70,6 +70,9 @@ class CoverageCheckTest(unittest.TestCase):
         """Coverage of 60% passes a floor of 60 and is refused by a floor of 61, naming the area, the coverage and the floor. [TF-077 AC4]"""
         self.assertEqual(self.run_check(self.floors("at.yaml", 60)), 0)
         self.assertEqual(self.run_check(self.floors("above.yaml", 61)), 1)
+        # A base branch that has no floors yet compares with nothing.
+        (self.root / "empty.yaml").write_text("", encoding="utf-8")
+        self.assertEqual(self.run_check(self.floors("at.yaml", 60), self.root / "empty.yaml"), 0)
         problems = coverage_check.check("dotnet", 60.0, {"dotnet": 61.0}, None, [])
         self.assertEqual(problems, ["line coverage of dotnet is 60.00%, below its floor of 61% (security/coverage.yaml): a change may not lower it; add the tests that cover what it changed (TF-077 AC4)"])
 

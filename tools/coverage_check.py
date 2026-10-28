@@ -105,7 +105,9 @@ def main(argv: list[str] | None = None) -> int:
     lines = merged_lines(reports)
     coverage = percent(lines)
     floors = read_floors(arguments.floors.read_text(encoding="utf-8"))
-    base = read_floors(arguments.base_floors.read_text(encoding="utf-8")) if arguments.base_floors and arguments.base_floors.exists() else None
+    # A base branch without floors yet (the change that brings them) has none to compare with.
+    base_text = arguments.base_floors.read_text(encoding="utf-8") if arguments.base_floors and arguments.base_floors.exists() else ""
+    base = read_floors(base_text) if base_text.strip() else None
     exceptions, _ = security_gate.load_exceptions(arguments.exceptions.read_text(encoding="utf-8"), arguments.today)
     problems = check(arguments.area, coverage, floors, base, exceptions)
 
