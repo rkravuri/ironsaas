@@ -1,3 +1,5 @@
+using System.Reflection;
+using Iron.Kernel.Data.Encryption;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Sharing;
 using Microsoft.EntityFrameworkCore;
@@ -36,6 +38,8 @@ public static class ModelCheck
                 continue;
             }
 
+            violations.AddRange(EncryptedFieldViolations(contextName, entityType));
+
             if (typeof(BusinessRecord).IsAssignableFrom(clrType) && typeof(IOwnAccessRule).IsAssignableFrom(clrType))
             {
                 var marker = typeof(ITenantWide).IsAssignableFrom(clrType) ? nameof(ITenantWide) : nameof(IOwnAccessRule);
@@ -61,5 +65,37 @@ public static class ModelCheck
         }
 
         return violations;
+    }
+
+    /// <summary>
+    /// A searchable encrypted field keeps its hash beside it, and a hash belongs to a searchable encrypted field (ADR-0054):
+    /// a hash of nothing, or a searchable field without its hash, would make a search that silently finds nothing.
+    /// </summary>
+    private static IEnumerable<string> EncryptedFieldViolations(string contextName, IEntityType entityType)
+    {
+        var clrType = entityType.ClrType;
+        foreach (var property in clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (property.IsDefined(typeof(SearchableAttribute)))
+            {
+                var hashName = SearchableAttribute.HashPropertyOf(property.Name);
+                if (property.PropertyType != typeof(EncryptedValue))
+                {
+                    yield return $"{contextName}: {clrType.Name}.{property.Name} is marked Searchable but is not an EncryptedValue (ADR-0054).";
+                }
+                else if (clrType.GetProperty(hashName)?.PropertyType != typeof(SearchHash))
+                {
+                    yield return $"{contextName}: {clrType.Name}.{property.Name} is searchable without its hash. Add a SearchHash property named {hashName} (ADR-0054).";
+                }
+            }
+            else if (property.PropertyType == typeof(SearchHash))
+            {
+                var source = property.Name.EndsWith("Hash", StringComparison.Ordinal) ? clrType.GetProperty(property.Name[..^4]) : null;
+                if (source is null || source.PropertyType != typeof(EncryptedValue) || !source.IsDefined(typeof(SearchableAttribute)))
+                {
+                    yield return $"{contextName}: {clrType.Name}.{property.Name} is a search hash of no searchable encrypted field. Name it after an EncryptedValue property marked Searchable, with Hash after it (ADR-0054).";
+                }
+            }
+        }
     }
 }

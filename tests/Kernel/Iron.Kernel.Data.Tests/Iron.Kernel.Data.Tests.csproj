@@ -26,6 +26,8 @@
     <ProjectReference Include="../../Iron.Testing/Iron.Testing.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <!-- The key service on OpenBao's transit engine, for the encrypted fields (ADR-0054). -->
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Security/Iron.Kernel.Security.csproj" />
   </ItemGroup>
 
 </Project>

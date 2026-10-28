@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Iron.Kernel.Data.Encryption;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Sharing;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,12 @@ public static class ModelConventions
             if (typeof(BusinessRecord).IsAssignableFrom(clrType))
             {
                 entity.HasIndex(nameof(BusinessRecord.OwningOrganisationId));
+            }
+
+            // A search by exact value compares the hash column (ADR-0054).
+            foreach (var hash in entityType.GetProperties().Where(p => p.ClrType == typeof(SearchHash)).ToList())
+            {
+                entity.HasIndex(hash.Name);
             }
 
             if (typeof(ISoftDeletable).IsAssignableFrom(clrType))

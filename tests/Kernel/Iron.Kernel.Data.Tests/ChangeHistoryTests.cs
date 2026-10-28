@@ -87,6 +87,33 @@ public class ChangeHistoryTests(PostgresFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0054", "ADR-0051")]
+    public async Task AnEncryptedFieldsHistorySaysOnlyThatItChangedAndItsHashSaysNothing()
+    {
+        var recorder = new CapturingRecorder();
+        using var keys = new Iron.Kernel.Security.Keys.LocalKeyService(new Iron.Kernel.Security.Keys.KeyOptions());
+        await using var provider = fixture.BuildServices(new FakeTimeProvider(DateTimeOffset.UtcNow), new FixedPrincipal(Ids.New()), services =>
+        {
+            services.AddScoped<IChangeRecorder>(p => recorder.In(p.GetRequiredService<IUnitOfWork>()));
+            services.AddSingleton<IKeyService>(keys);
+        });
+        var supplier = new SampleSupplier(Organisation, "History supplier");
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var encryption = scope.ServiceProvider.GetRequiredService<Iron.Kernel.Data.Encryption.IFieldEncryption>();
+            supplier.IdentifyForTax(await encryption.SealSearchableAsync("77-1234567", Cancel));
+            var context = scope.ServiceProvider.GetRequiredService<SampleDbContext>();
+            context.Suppliers.Add(supplier);
+            await context.SaveChangesAsync(Cancel);
+        }
+
+        var fields = Assert.Single(recorder.Saves[0]).Fields.ToDictionary(f => f.Field);
+        Assert.Equal(new FieldChange("tax_identifier", null, null, FieldTreatments.Secret), fields["tax_identifier"]);
+        Assert.False(fields.ContainsKey("tax_identifier_hash"));
+        Assert.DoesNotContain(recorder.Changes.SelectMany(c => c.Fields), f => f.New?.Contains("local:v", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
     [Proves("ADR-0051")]
     public async Task BookkeepingAloneRecordsNothingAndASoftDeleteRecordsTheDeletion()
     {

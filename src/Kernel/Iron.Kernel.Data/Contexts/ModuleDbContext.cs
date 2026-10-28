@@ -1,4 +1,5 @@
 using Iron.Kernel.Data.Conventions;
+using Iron.Kernel.Data.Encryption;
 using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Data.Contexts;
@@ -27,6 +28,14 @@ public abstract class ModuleDbContext : DbContext
         modelBuilder.HasDefaultSchema(Schema);
         ConfigureModule(modelBuilder);
         ModelConventions.Apply(modelBuilder);
+    }
+
+    /// <summary>Encrypted values and search hashes are stored as the key service's text (ADR-0054), whatever entity holds them.</summary>
+    protected sealed override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(configurationBuilder);
+        configurationBuilder.Properties<EncryptedValue>().HaveConversion<EncryptedValueConverter>();
+        configurationBuilder.Properties<SearchHash>().HaveConversion<SearchHashConverter>();
     }
 
     /// <summary>Map this module's entities here (keys, relations inside the module, indexes). Conventions run afterwards.</summary>

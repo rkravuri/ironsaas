@@ -1,6 +1,7 @@
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Conventions;
+using Iron.Kernel.Data.Encryption;
 using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Sharing;
@@ -59,6 +60,11 @@ public static class DataServiceCollectionExtensions
 
         // Lists and reads by id of business records go through their policies (ADR-0032); Authorization supplies IRecordAccess.
         services.TryAddScoped<IRecordPolicies, RecordPolicies>();
+
+        // Encrypted fields through the tenant's key service, which the host registers with its store (ADR-0054), and the
+        // re-encryption of every module's encrypted columns after a rotation.
+        services.TryAddSingleton<IFieldEncryption, FieldEncryption>();
+        services.TryAddSingleton<FieldReencryption>();
 
         // The kernel's record shares (ADR-0038): the data library's own small schema, migrated with the modules'.
         services.AddIronDbContext<DataDbContext>();
