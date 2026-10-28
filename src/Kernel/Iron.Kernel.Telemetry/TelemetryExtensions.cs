@@ -1,4 +1,5 @@
 using Iron.Kernel.Telemetry.Correlation;
+using Iron.Kernel.Telemetry.Export;
 using Iron.Kernel.Telemetry.Scrubbing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -16,7 +18,8 @@ namespace Iron.Kernel.Telemetry;
 /// <summary>
 /// Observable by default (P6, TF-130): one call gives a host traces, metrics and logs over OpenTelemetry, with the
 /// service name, the environment and the tenant on every signal, and the correlation id on every response. Every log line
-/// and every span passes the scrubbing rule for invitation and recovery links (ADR-0046).
+/// and every span passes the scrubbing rule for invitation and recovery links (ADR-0046). Spans leave through
+/// <see cref="CountedBatchExportProcessor"/>, which never holds a request up and counts every span it loses (TF-130 AC4).
 /// </summary>
 public static class TelemetryExtensions
 {
@@ -69,7 +72,12 @@ public static class TelemetryExtensions
 
         if (options.ExportToCollector)
         {
-            openTelemetry.UseOtlpExporter();
+            // One exporter per signal rather than UseOtlpExporter, which cannot be mixed with a processor of our own for
+            // traces (ADR-0056); metrics and logs keep the SDK's exporters, read from the same variables.
+            openTelemetry
+                .WithTracing(tracing => tracing.AddProcessor(_ => new CountedBatchExportProcessor(new OtlpTraceExporter(Otlp(options, new OtlpExporterOptions { TimeoutMilliseconds = options.Traces.ExportTimeoutMilliseconds })), options.Traces)))
+                .WithMetrics(metrics => metrics.AddOtlpExporter(otlp => Otlp(options, otlp)))
+                .WithLogging(logging => logging.AddOtlpExporter(otlp => Otlp(options, otlp)));
         }
 
         builder.Services.Configure<OpenTelemetryLoggerOptions>(logging =>
@@ -80,6 +88,17 @@ public static class TelemetryExtensions
 
         ScrubLogs(builder.Services);
         return builder;
+    }
+
+    private static OtlpExporterOptions Otlp(TelemetryOptions options, OtlpExporterOptions otlp)
+    {
+        if (!string.IsNullOrWhiteSpace(options.Endpoint))
+        {
+            otlp.Endpoint = new Uri(options.Endpoint);
+            otlp.Protocol = OtlpExportProtocol.Grpc;
+        }
+
+        return otlp;
     }
 
     /// <summary>

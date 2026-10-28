@@ -63,6 +63,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0053](0053-hardening-the-web-surface.md) | Hardening the web surface: headers without inline code, origins, declared limits, rich text, SQL, rate limits, the login's challenge and the control plane's own role and chain | Accepted |
 | [0054](0054-keys-encryption-and-secrets.md) | Keys, encryption and secrets: a key service with keys per tenant, encrypted and searchable fields, rotation without downtime, passwords read again, separate control plane secrets, and TLS 1.2 and up | Accepted |
 | [0055](0055-how-code-reaches-main-scans-and-the-nightly-release.md) | How code reaches main: pull requests with every check green, the review exception, one security gate with expiring exceptions, bills of materials, threat models, coverage floors and the nightly release | Accepted |
+| [0056](0056-security-monitoring-incidents-and-lost-spans.md) | Security monitoring over the audit trail, the operator's alerting, incidents with the 72-hour notice, and the lost spans | Proposed |
 
 ## Reading order
 
