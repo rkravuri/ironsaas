@@ -1,6 +1,6 @@
 # ADR-0054: Keys, encryption and secrets: a key service with keys per tenant, encrypted and searchable fields, rotation without downtime, passwords read again, separate control plane secrets, and TLS 1.2 and up
 
-**Status:** Proposed
+**Status:** Accepted at the design session's review (2026-10-28), with the two password fixtures in Identity's tests made run-time values before the merge
 **Date:** 2026-10-28
 **Decided by:** Product owner and architect, in the brief of S3 T9b; the details here are the task's
 
