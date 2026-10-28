@@ -13,6 +13,7 @@ public sealed record SmokeOptions(
     Uri StoreAddress,
     string StoreToken,
     Uri? TempoUrl,
+    Uri? AlertmanagerUrl,
     string ReportPath,
     TimeSpan ProvisionTimeout)
 {
@@ -26,6 +27,7 @@ public sealed record SmokeOptions(
         static string Require(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : throw new InvalidOperationException($"{name} is required.");
 
         var tempo = Get("SMOKE_TEMPO_URL", "http://localhost:3200");
+        var alertmanager = Get("SMOKE_ALERTMANAGER_URL", "http://localhost:9093");
         return new SmokeOptions(
             new Uri(Get("SMOKE_CONTROL_URL", "http://localhost:5200")),
             Get("SMOKE_OPERATOR_CLIENT_ID", "operator"),
@@ -38,6 +40,7 @@ public sealed record SmokeOptions(
             new Uri(Get("SMOKE_STORE_ADDRESS", "http://localhost:8200")),
             Require("SMOKE_STORE_TOKEN"),
             string.Equals(tempo, "skip", StringComparison.OrdinalIgnoreCase) ? null : new Uri(tempo),
+            string.Equals(alertmanager, "skip", StringComparison.OrdinalIgnoreCase) ? null : new Uri(alertmanager),
             Get("SMOKE_REPORT", "smoke-report.json"),
             TimeSpan.FromSeconds(int.Parse(Get("SMOKE_PROVISION_TIMEOUT_SECONDS", "900"), System.Globalization.CultureInfo.InvariantCulture)));
     }

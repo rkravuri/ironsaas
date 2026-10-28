@@ -27,8 +27,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | TF-173 AC3 | As AC1: with no branding setting there is only the default, which no test states as such. | 2026-10-21 |
 | TF-180 AC3 | The operator console has no screens yet; the fleet view is S6. | 2026-10-21 |
 | TF-190 AC1 | The scaffolding tool was planned after S1 and is not built; proposed for the first business slice, whose module would be its template. | 2026-10-21 |
-| TF-209 AC3 | No alert exists yet with a runbook of its own; alerting is S6 (TF-134) and S3 T10 writes the incident runbook. | 2026-10-21 |
-| TF-209 AC4 | As AC3. | 2026-10-21 |
 | TF-221 AC1 | Numbering sequences (TF-166) are not built yet; their organisation scope comes with them. | 2026-10-21 |
 
 ## Proven by hand or by the pipeline's design

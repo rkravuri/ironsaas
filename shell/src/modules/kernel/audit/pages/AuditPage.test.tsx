@@ -28,7 +28,7 @@ const emptyList = {
 const first = "GET /api/v1/audit-events?page_number=1&page_size=50&sort=-created_at";
 const filters = [
   "filter=event_type%3Aeq%3Aidentity.user.invited",
-  "filter=created_at%3Age%3A2026-10-21T18%3A30%3A00.000Z",
+  "filter=created_at%3Agte%3A2026-10-21T18%3A30%3A00.000Z",
   "filter=created_at%3Alt%3A2026-10-22T18%3A30%3A00.000Z",
 ].join("&");
 

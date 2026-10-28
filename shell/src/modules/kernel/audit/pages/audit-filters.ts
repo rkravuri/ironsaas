@@ -1,6 +1,7 @@
 import { startOfDay } from "@/i18n/dates";
 
 export interface Filters {
+  /** One event type, or several separated by commas, as a security alert's link names its rule's (ADR-0056). */
   eventType: string;
   actorId: string;
   /**
@@ -15,6 +16,14 @@ export interface Filters {
   from: string;
   /** A day, yyyy-mm-dd, to its end in the person's zone. */
   to: string;
+  /** The events' target, such as a login identifier: a security alert's group (ADR-0056). */
+  target: string;
+  /** The client's address the events recorded: a security alert's group. */
+  address: string;
+  /** A moment, as an alert's link gives it: its first event, included. */
+  since: string;
+  /** A moment: the alert's last event, included. */
+  until: string;
 }
 
 export const emptyFilters: Filters = {
@@ -26,7 +35,33 @@ export const emptyFilters: Filters = {
   source: "",
   from: "",
   to: "",
+  target: "",
+  address: "",
+  since: "",
+  until: "",
 };
+
+/**
+ * The filters a link opens the page with (ADR-0056): a security alert links to the events behind it by their types,
+ * its group (the actor, the target, the address or the record) and the moments of its first and last event.
+ */
+export function filtersFromLink(parameters: URLSearchParams): Filters {
+  const read = (name: string) => parameters.get(name)?.trim() ?? "";
+  return {
+    ...emptyFilters,
+    eventType: read("event_type"),
+    actorId: read("actor_id"),
+    recordId: read("record_id"),
+    target: read("target"),
+    address: read("address"),
+    since: read("since"),
+    until: read("until"),
+  };
+}
+
+/** Whether the filters hold what only a link gives: an alert's group or its moments. */
+export const fromAnAlert = (filters: Filters): boolean =>
+  filters.target !== "" || filters.address !== "" || filters.since !== "" || filters.until !== "";
 
 /** The filter's field and id from its "field:id" value; nothing when none is chosen. */
 export function signedInByTerm(value: string): { field: "impersonator_id" | "actor_id"; id: string } | undefined {
@@ -51,14 +86,24 @@ export function filterQuery(filters: Filters): string[] {
   const terms: string[] = [];
   const add = (field: string, operator: string, value: string) =>
     terms.push(`filter=${encodeURIComponent(`${field}:${operator}:${value}`)}`);
-  if (filters.eventType.trim() !== "") add("event_type", "eq", filters.eventType.trim());
+  const types = filters.eventType
+    .split(",")
+    .map((type) => type.trim())
+    .filter((type) => type !== "");
+  if (types.length === 1) add("event_type", "eq", types[0] ?? "");
+  if (types.length > 1) add("event_type", "in", types.join(","));
   if (filters.actorId !== "") add("actor_id", "eq", filters.actorId);
   const signedInBy = signedInByTerm(filters.signedInBy);
   if (signedInBy) add(signedInBy.field, "eq", signedInBy.id);
   if (filters.recordType.trim() !== "") add("record_type", "eq", filters.recordType.trim());
   if (filters.recordId.trim() !== "") add("record_id", "eq", filters.recordId.trim());
   if (filters.source !== "") add("source", "eq", filters.source);
-  if (filters.from !== "") add("created_at", "ge", startOfDay(filters.from).toISOString());
+  if (filters.target.trim() !== "") add("target", "eq", filters.target.trim());
+  if (filters.from !== "") add("created_at", "gte", startOfDay(filters.from).toISOString());
   if (filters.to !== "") add("created_at", "lt", endOfDay(filters.to).toISOString());
+  if (filters.since !== "") add("created_at", "gte", filters.since);
+  if (filters.until !== "") add("created_at", "lte", filters.until);
+  // The address is a detail of the events, which the search takes beside the list grammar.
+  if (filters.address.trim() !== "") terms.push(`address=${encodeURIComponent(filters.address.trim())}`);
   return terms;
 }
