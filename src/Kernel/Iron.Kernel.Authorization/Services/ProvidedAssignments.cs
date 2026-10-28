@@ -1,3 +1,4 @@
+using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
@@ -20,6 +21,7 @@ public sealed class ProvidedAssignments(
     IAuditWriter audit,
     ICurrentPrincipal actor,
     ConflictService segregation,
+    PermissionCatalogue catalogue,
     ILogger<ProvidedAssignments> logger) : IProvidedAssignments
 {
     public async Task<Result<IReadOnlyList<string>>> MissingToGrantAsync(Guid granterId, string roleCode, RoleScope scope, CancellationToken cancellationToken)
@@ -119,7 +121,7 @@ public sealed class ProvidedAssignments(
                 var assignment = new RoleAssignment(role.Id, principalId, scope, source);
                 context.RoleAssignments.Add(assignment);
                 await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                await WriteAsync(AuthorizationAuditEvents.RoleAssigned, role.Code, principalId, scope, source, assignment.Id, cancellationToken).ConfigureAwait(false);
+                await WriteAsync(AuthorizationAuditEvents.RoleAssigned, role, principalId, scope, source, assignment.Id, cancellationToken).ConfigureAwait(false);
                 added.Add($"{role.Code}@{scope}");
             }
 
@@ -136,7 +138,7 @@ public sealed class ProvidedAssignments(
 
                 context.RoleAssignments.Remove(assignment);
                 await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                await WriteAsync(AuthorizationAuditEvents.RoleUnassigned, role.Code, principalId, scope, source, assignment.Id, cancellationToken).ConfigureAwait(false);
+                await WriteAsync(AuthorizationAuditEvents.RoleUnassigned, role, principalId, scope, source, assignment.Id, cancellationToken).ConfigureAwait(false);
                 removed.Add($"{role.Code}@{scope}");
             }
 
@@ -176,7 +178,7 @@ public sealed class ProvidedAssignments(
 
                 context.RoleAssignments.Remove(assignment);
                 await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                await WriteAsync(AuthorizationAuditEvents.RoleUnassigned, role.Code, assignment.PrincipalId, assignment.ToScope(), source, assignment.Id, cancellationToken).ConfigureAwait(false);
+                await WriteAsync(AuthorizationAuditEvents.RoleUnassigned, role, assignment.PrincipalId, assignment.ToScope(), source, assignment.Id, cancellationToken).ConfigureAwait(false);
                 count++;
             }
 
@@ -205,8 +207,9 @@ public sealed class ProvidedAssignments(
         return !found.Values.Any(p => p.Status == PrincipalStatuses.Active);
     }
 
-    private Task WriteAsync(string action, string roleCode, Guid principalId, RoleScope scope, string source, Guid assignmentId, CancellationToken cancellationToken)
+    private Task WriteAsync(string action, Role role, Guid principalId, RoleScope scope, string source, Guid assignmentId, CancellationToken cancellationToken)
     {
+        var roleCode = role.Code;
         var details = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["role"] = roleCode,
@@ -214,6 +217,7 @@ public sealed class ProvidedAssignments(
             ["scope"] = scope.ToString(),
             ["source"] = source,
         };
+        CriticalAccess.Mark(details, catalogue, role.Permissions);
         return audit.WriteAsync(new AuditEvent(action, AuditOutcome.Success, actor.Id, roleCode, details, AssignmentService.RecordType, assignmentId), cancellationToken);
     }
 }

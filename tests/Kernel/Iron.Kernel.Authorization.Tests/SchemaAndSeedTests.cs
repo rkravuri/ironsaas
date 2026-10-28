@@ -1,3 +1,5 @@
+using Iron.Kernel.Api.Modules;
+using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Data.Commands;
@@ -40,6 +42,58 @@ public class SchemaAndSeedTests(AuthorizationFixture fixture)
         var readOnly = roles.Single(r => r.Code == SystemRoles.ReadOnly);
         Assert.Equal([AuthorizationPermissions.AssignmentsRead.Name, AuthorizationPermissions.RolesRead.Name, AuthorizationPermissions.SodRead.Name, AuthorizationPermissions.UnitsRead.Name, ProbeRecords.CratesRead.Name], readOnly.Permissions);
         Assert.Equal(PrincipalKind.Service, roles.Single(r => r.Code == SystemRoles.ServiceDefault).PrincipalType);
+    }
+
+    [Fact]
+    [Proves("ADR-0056", "ADR-0039")]
+    public async Task ASystemRoleTheSeedWidensIsAuditedAsACriticalChangeByTheSystemAndTheConflictsReportRunsAtOnce()
+    {
+        var cancel = TestContext.Current.CancellationToken;
+        var database = await fixture.CreateTenantDatabaseAsync($"authz_seed_{Guid.NewGuid():N}"[..30]);
+
+        // A new module with a critical permission joins the host: the next seed gives it to the tenant administrator.
+        var audit = new RecordingAuditWriter();
+        await using (var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), audit, database, more: [new CriticalProbeModule()]))
+        {
+            Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], cancel));
+            await using var scope = provider.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>();
+            Assert.Contains(context.ConflictReportRuns.AsNoTracking(), run => run.Trigger == ConflictReportTriggers.Seed);
+        }
+
+        var changed = Assert.Single(audit.Events, e => e.Action == AuthorizationAuditEvents.RoleChanged && e.Target == SystemRoles.TenantAdministrator);
+        Assert.Equal(SystemPrincipal.SystemId, changed.PrincipalId);
+        Assert.Equal("seed", changed.Reason);
+        Assert.Equal(CriticalProbeModule.Wire.Name, changed.Details!["granted"]);
+        Assert.Equal(AuditDetails.True, changed.Details[AuditDetails.Critical]);
+
+        // The read-only role gains nothing critical; a seed with nothing new writes nothing.
+        Assert.DoesNotContain(audit.Events, e => e.Action == AuthorizationAuditEvents.RoleChanged && e.Target == SystemRoles.ReadOnly);
+        var again = new RecordingAuditWriter();
+        await using (var provider = fixture.BuildServices(new FakeTimeProvider(), new FixedPrincipal(SystemPrincipal.SystemId), again, database, more: [new CriticalProbeModule()]))
+        {
+            Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], cancel));
+        }
+
+        Assert.DoesNotContain(again.Events, e => e.Action is AuthorizationAuditEvents.RoleChanged or AuthorizationAuditEvents.RoleCreated);
+    }
+
+    /// <summary>A module whose one permission is critical, as a new module's may be.</summary>
+    private sealed class CriticalProbeModule : IModule
+    {
+        public static readonly Permission Wire = new("payments.wires.release", "Release a wire transfer", Risk.Critical);
+
+        public string Name => "payments";
+
+        public IReadOnlyList<Permission> Permissions => [Wire];
+
+        public void AddServices(IServiceCollection services, Microsoft.Extensions.Configuration.IConfiguration configuration)
+        {
+        }
+
+        public void MapEndpoints(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints)
+        {
+        }
     }
 
     [Fact]

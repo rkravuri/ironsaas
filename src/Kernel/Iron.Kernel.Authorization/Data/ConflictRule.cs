@@ -102,6 +102,9 @@ public static class ConflictReportTriggers
 {
     public const string Daily = "daily";
     public const string OnDemand = "on_demand";
+
+    /// <summary>The seed changed a system role, as a new module's permissions joined it (ADR-0056).</summary>
+    public const string Seed = "seed";
 }
 
 /// <summary>One full run of the conflicts report (TF-036 AC3): when, why, and what it found.</summary>

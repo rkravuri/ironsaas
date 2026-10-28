@@ -18,7 +18,14 @@ public static class ProtectionAuditEvents
     /// <summary>A request refused by a rate limit: the first refusal of each subject in each window, at low severity.</summary>
     public const string RateLimited = "protection.rate_limited";
 
-    public static IReadOnlyList<AuditEventType> Types { get; } = [new AuditEventType(RateLimited, "Request refused by a rate limit")];
+    /// <summary>The reports of the content security policy one process received in a minute, at low severity (ADR-0056).</summary>
+    public const string CspReportsReceived = "protection.csp_reports_received";
+
+    public static IReadOnlyList<AuditEventType> Types { get; } =
+    [
+        new AuditEventType(RateLimited, "Request refused by a rate limit"),
+        new AuditEventType(CspReportsReceived, "Content security policy reports received"),
+    ];
 }
 
 public static class ProtectionErrors

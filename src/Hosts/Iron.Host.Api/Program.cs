@@ -60,6 +60,9 @@ builder.Services.AddIronDatabase(connectionString, builder.Configuration["Databa
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules);
 
+// The browsers report to the API: a summary of their reports once a minute, which an alert rule counts (ADR-0056).
+builder.Services.AddCspReportSummary();
+
 var app = builder.Build();
 
 // migrate, seed and schema-check run against the unit's database and exit.

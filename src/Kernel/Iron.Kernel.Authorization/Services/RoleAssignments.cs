@@ -1,3 +1,4 @@
+using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
@@ -14,7 +15,8 @@ public sealed class RoleAssignments(
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
     ICurrentPrincipal actor,
-    ConflictService segregation) : IRoleAssignments
+    ConflictService segregation,
+    PermissionCatalogue catalogue) : IRoleAssignments
 {
     public Task<Result> AssignAsync(Guid principalId, string roleCode, CancellationToken cancellationToken) =>
         AssignAsync(principalId, roleCode, RoleScope.Tenant, cancellationToken);
@@ -58,6 +60,7 @@ public sealed class RoleAssignments(
             context.RoleAssignments.Add(assignment);
             await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["role"] = role.Code, ["principal_id"] = principalId.ToString(), ["scope"] = scope.ToString() };
+            CriticalAccess.Mark(details, catalogue, role.Permissions);
             await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleAssigned, AuditOutcome.Success, actor.Id, role.Code, details, "role_assignment", assignment.Id), cancellationToken).ConfigureAwait(false);
             if (conflicts.Count > 0)
             {

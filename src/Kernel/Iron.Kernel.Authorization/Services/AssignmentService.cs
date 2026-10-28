@@ -420,6 +420,8 @@ public sealed class AssignmentService(
         {
             details["access_review_id"] = review.ToString("D");
         }
+
+        CriticalAccess.Mark(details, catalogue, role.Permissions);
         return audit.WriteAsync(new AuditEvent(action, outcome, actor.Id, role.Code, details, RecordType, assignmentId), cancellationToken);
     }
 

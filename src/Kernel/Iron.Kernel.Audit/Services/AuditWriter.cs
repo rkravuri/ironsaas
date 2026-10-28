@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Iron.Kernel.Api.Http;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Telemetry.Correlation;
@@ -10,7 +11,9 @@ namespace Iron.Kernel.Audit.Services;
 /// Writes one row per event on the scope's connection. The correlation id comes from the request, or from the current
 /// activity in a job; the source is <c>api</c> inside a request and <c>job</c> outside one (the shell marks <c>ui</c> in T15).
 /// A request made by someone signed in as another person names the impersonator on every event it writes, by id and, in
-/// the details, by name, without the module saying so (TF-025 AC2, ADR-0049).
+/// the details, by name, without the module saying so (TF-025 AC2, ADR-0049). A refusal, and any event written while
+/// nobody is signed in (a failed sign-in, a lockout), records the client's address in its details the same way, which the
+/// security alert rules count by (ADR-0056).
 /// </summary>
 public sealed class AuditWriter(AuditDbContext context, IHttpContextAccessor accessor, ICurrentPrincipal current) : IAuditWriter
 {
@@ -26,6 +29,14 @@ public sealed class AuditWriter(AuditDbContext context, IHttpContextAccessor acc
         if (impersonatorId is not null && current.ImpersonatorName is { } impersonator && values?.ContainsKey(ImpersonatorKey) != true)
         {
             values = new Dictionary<string, string>(values ?? new Dictionary<string, string>(), StringComparer.Ordinal) { [ImpersonatorKey] = impersonator };
+        }
+
+        if (http is not null
+            && (auditEvent.Outcome == AuditOutcome.Denied || current.IsAnonymous())
+            && values?.ContainsKey(AuditDetails.Address) != true
+            && ClientAddress.Of(http) is { } address)
+        {
+            values = new Dictionary<string, string>(values ?? new Dictionary<string, string>(), StringComparer.Ordinal) { [AuditDetails.Address] = address.ToString() };
         }
 
         var details = values is null ? null : JsonSerializer.Serialize(values);

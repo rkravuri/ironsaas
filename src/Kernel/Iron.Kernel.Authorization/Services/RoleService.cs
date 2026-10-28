@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Problems;
@@ -184,6 +185,7 @@ public sealed class RoleService(
         context.Roles.Remove(role);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["name"] = role.Name, ["permissions_before"] = string.Join(',', before), ["permissions_after"] = string.Empty };
+        CriticalAccess.Mark(details, catalogue, before);
         await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RoleDeleted, AuditOutcome.Success, actor.Id, role.Code, details, RecordType, role.Id), cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
@@ -193,6 +195,8 @@ public sealed class RoleService(
     public async Task<RoleExport> ExportAsync(CancellationToken cancellationToken)
     {
         var roles = await context.Roles.AsNoTracking().Where(r => !r.IsSystem).OrderBy(r => r.Code).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Rows] = roles.Count.ToString(CultureInfo.InvariantCulture) };
+        await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.RolesExported, AuditOutcome.Success, actor.Id, "roles", details), cancellationToken).ConfigureAwait(false);
         return new RoleExport(RoleExport.CurrentFormat, roles.Select(r => new RoleDocument(r.Code, r.Name, r.Description, r.PrincipalType, r.Permissions)).ToList());
     }
 
@@ -432,6 +436,7 @@ public sealed class RoleService(
             details["fields"] = string.Join(',', fields);
         }
 
+        CriticalAccess.Mark(details, catalogue, before, role.Permissions);
         return audit.WriteAsync(new AuditEvent(action, AuditOutcome.Success, actor.Id, role.Code, details, RecordType, role.Id, reason), cancellationToken);
     }
 
