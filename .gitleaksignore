@@ -1,0 +1,8 @@
+# Findings in commits already on main, which history keeps. Each fingerprint names its commit, so the same text added in
+# any other commit is still found (ADR-0054). None is a secret:
+# - a033406 and 18ea34c (S3 T2): a password from the public common list, which Identity's tests now pick at run time.
+# - ffe8a93 (S1 T12): a private key's opening line alone, a placeholder with no key after it.
+a033406ec61f3e8b9fd99212ed5da3ffec9e28b3:tests/Kernel/Iron.Kernel.Identity.Tests/PasswordPolicyTests.cs:generic-api-key:21
+a033406ec61f3e8b9fd99212ed5da3ffec9e28b3:tests/Kernel/Iron.Kernel.Identity.Tests/PasswordEndpointTests.cs:generic-api-key:116
+18ea34c560c1864e41c7c7b8601f83f54105eaad:tests/Kernel/Iron.Kernel.Identity.Tests/PasswordEndpointTests.cs:generic-api-key:117
+ffe8a93dd1c125df952da97b408b1b35f55541c5:tests/Iron.Security.Tests/SecretStoreTests.cs:private-key:64

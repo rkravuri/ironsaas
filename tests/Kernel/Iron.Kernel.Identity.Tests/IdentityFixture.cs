@@ -33,6 +33,9 @@ public sealed class IdentityFixture : IAsyncLifetime
     public const string SmokeClientId = "smoke-client";
     public const string SmokeClientSecret = "a smoke client secret of some length";
 
+    /// <summary>The password policy's default minimum length (TF-012, ADR-0046).</summary>
+    private const int DefaultMinimumLength = 12;
+
     private TestPostgres? _postgres;
 
     public string ConnectionString => Postgres.ConnectionString;
@@ -161,6 +164,28 @@ public sealed class IdentityFixture : IAsyncLifetime
         context.Principals.Add(user);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
         return user;
+    }
+
+    /// <summary>
+    /// A password on the module's common list, picked at run time so that no commit holds a password for the secret scan
+    /// to find (ADR-0054). Letters and digits only, and as long as the policy's default minimum, so the common rule is the
+    /// one that refuses it.
+    /// </summary>
+    public static string CommonPassword()
+    {
+        using var stream = typeof(CommonPasswords).Assembly.GetManifestResourceStream(CommonPasswords.ResourceName)
+            ?? throw new InvalidOperationException($"The resource {CommonPasswords.ResourceName} is missing from the Identity assembly.");
+        using var reader = new StreamReader(stream);
+        var candidates = new List<string>();
+        while (reader.ReadLine() is { } line)
+        {
+            if (line.Length >= DefaultMinimumLength && line.All(char.IsAsciiLetterOrDigit))
+            {
+                candidates.Add(line);
+            }
+        }
+
+        return candidates[RandomNumberGenerator.GetInt32(candidates.Count)];
     }
 }
 
