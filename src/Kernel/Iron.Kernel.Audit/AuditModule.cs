@@ -1,3 +1,4 @@
+using Iron.Kernel.Api.ControlPlane;
 using FluentValidation;
 using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit.Api;
@@ -50,8 +51,9 @@ public sealed class AuditModule : IModule
         // The chain (TF-061, ADR-0050): the worker seals and sends the anchors; the API reads the chain's state.
         services.AddScoped<AuditSealer>();
         var controlPlane = configuration.GetSection(ControlPlaneOptions.SectionName).Get<ControlPlaneOptions>() ?? new ControlPlaneOptions();
-        services.AddSingleton(controlPlane);
-        services.AddSingleton<ControlPlaneClient>();
+        // One client per process, which the Keys module shares (ADR-0054): whichever registers it first.
+        services.TryAddSingleton(controlPlane);
+        services.TryAddSingleton<ControlPlaneClient>();
         services.AddSingleton<AnchorProgress>();
         services.AddScoped<AuditRestoreRecorder>();
         services.AddScoped<AuditImpersonators>();

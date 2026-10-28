@@ -9,6 +9,7 @@
     "files",
     "flags",
     "identity",
+    "keys",
     "protection",
     "settings"
   ],
@@ -490,6 +491,22 @@
           "choices": null,
           "minimum": 15,
           "maximum": 480,
+          "whole_number": true
+        },
+        {
+          "key": "keys.rotation.data_days",
+          "module": "keys",
+          "type": "number",
+          "description": "How many days apart the tenant's data and index keys rotate on their schedule. The operator keeps it within their bounds.",
+          "default": 365,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 30 to 730.",
+          "choices": null,
+          "minimum": 30,
+          "maximum": 730,
           "whole_number": true
         },
         {
