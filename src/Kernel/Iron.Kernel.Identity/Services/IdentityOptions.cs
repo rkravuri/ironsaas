@@ -23,10 +23,10 @@ public sealed class IdentityOptions
     }
 
     /// <summary>
-    /// The key that encrypts the second factors' secrets at rest (TF-073, ADR-0047): 32 random bytes in base64, from the
-    /// unit's secret (<c>Identity:FactorKey</c>), which the fleet writes when it creates the unit. Never in a file or a log.
+    /// The retired factor key of T3 (ADR-0047), given only to the seed that moves the secrets sealed under it onto the key
+    /// service (ADR-0054): the fleet passes it once as <c>Identity:LegacyFactorKey</c>. No running unit holds it.
     /// </summary>
-    public string? FactorKey { get; set; }
+    public string? LegacyFactorKey { get; set; }
 
     public sealed class SessionOptions
     {

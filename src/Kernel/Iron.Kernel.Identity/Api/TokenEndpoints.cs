@@ -32,7 +32,7 @@ internal static class TokenEndpoints
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPost(TokenPath, TokenAsync).AllowAnonymous().RateLimited(RateLimitPolicies.Login).WithTags("oauth").Produces<TokenResponse>(StatusCodes.Status200OK).WithName("Token").WithSummary("Client credentials grant: an access token for a service account.");
-        endpoints.MapGet(JwksPath, (SigningKeys keys) => TypedResults.Ok(keys.JsonWebKeySet())).AllowAnonymous().WithTags("oauth").Produces<JsonWebKeySetResponse>(StatusCodes.Status200OK).WithName("JsonWebKeySet").WithSummary("The public keys that sign access tokens.");
+        endpoints.MapGet(JwksPath, async (SigningKeys keys, CancellationToken cancellationToken) => TypedResults.Ok(await keys.JsonWebKeySetAsync(cancellationToken))).AllowAnonymous().WithTags("oauth").Produces<JsonWebKeySetResponse>(StatusCodes.Status200OK).WithName("JsonWebKeySet").WithSummary("The public keys that sign access tokens.");
     }
 
     private static async Task<IResult> TokenAsync(HttpContext http, IdentityDbContext context, IPasswordHasher hasher, TokenService tokens, TokenOptions options, IAuditWriter audit, CancellationToken cancellationToken)
@@ -60,7 +60,7 @@ internal static class TokenEndpoints
             return Error(http, StatusCodes.Status401Unauthorized, "invalid_client", "The client credentials are not correct.");
         }
 
-        var issued = tokens.Issue(client, form["scope"].ToString());
+        var issued = await tokens.IssueAsync(client, form["scope"].ToString(), cancellationToken);
         await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.TokenIssued, AuditOutcome.Success, client.Id, client.LoginId, RecordType: "token", RecordId: issued.TokenId), cancellationToken);
         return TypedResults.Ok(new TokenResponse(issued.AccessToken, "Bearer", (int)options.AccessTokenLifetime.TotalSeconds, issued.Scope));
     }

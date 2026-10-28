@@ -1,3 +1,4 @@
+using Iron.Kernel.Data.Encryption;
 using Iron.Kernel.Data.Entities;
 
 namespace Iron.Kernel.Identity.Data;
@@ -16,7 +17,7 @@ public static class FactorKinds
 
 /// <summary>
 /// A second factor of a person's (TF-013, ADR-0047): an authenticator app or a passkey, saved only once it has been used
-/// to prove itself. An authenticator app's secret is kept encrypted with the unit's factor key (TF-073), never plain, and
+/// to prove itself. An authenticator app's secret is kept encrypted with the tenant's data key (TF-073, ADR-0054), never plain, and
 /// <see cref="LastUsedStep"/> keeps a code from being accepted twice. A passkey keeps its credential id, its public key and
 /// its signature counter; nothing of it is secret. Each person reads and changes only their own; an administrator may
 /// remove them all (a reset), never read them.
@@ -53,7 +54,13 @@ public sealed class Factor : AuditedEntity, IOwnAccessRule
     /// <summary>The name the person chose, so they can tell their passkeys apart.</summary>
     public string Name { get; private set; }
 
-    /// <summary>An authenticator app's secret, encrypted (<c>FactorProtector</c>); null for a passkey.</summary>
+    /// <summary>An authenticator app's secret, encrypted with the tenant's data key (<c>FactorSecrets</c>); null for a passkey.</summary>
+    public EncryptedValue? Secret { get; private set; }
+
+    /// <summary>
+    /// An authenticator app's secret sealed under the retired factor key of T3 (ADR-0047), until the seed moves it to
+    /// <see cref="Secret"/> (ADR-0054); null once moved and for every factor saved since.
+    /// </summary>
     public byte[]? SecretCiphertext { get; private set; }
 
     /// <summary>The time step of the last code accepted: a code of this step or an earlier one is refused (RFC 6238 section 5.2).</summary>
@@ -80,15 +87,23 @@ public sealed class Factor : AuditedEntity, IOwnAccessRule
 
     public bool IsAuthenticatorApp => Kind == FactorKinds.AuthenticatorApp;
 
-    public static Factor AuthenticatorApp(Guid principalId, string name, byte[] secretCiphertext, long confirmedStep, DateTimeOffset now)
+    public static Factor AuthenticatorApp(Guid principalId, string name, EncryptedValue secret, long confirmedStep, DateTimeOffset now)
     {
-        ArgumentNullException.ThrowIfNull(secretCiphertext);
+        ArgumentNullException.ThrowIfNull(secret);
         return new Factor(principalId, FactorKinds.AuthenticatorApp, name)
         {
-            SecretCiphertext = secretCiphertext,
+            Secret = secret,
             LastUsedStep = confirmedStep,
             LastUsedAt = now,
         };
+    }
+
+    /// <summary>The secret, sealed under the retired factor key, now encrypted with the data key (ADR-0054).</summary>
+    public void MoveSecret(EncryptedValue secret)
+    {
+        ArgumentNullException.ThrowIfNull(secret);
+        Secret = secret;
+        SecretCiphertext = null;
     }
 
     public static Factor Passkey(Guid principalId, string name, byte[] credentialId, byte[] publicKey, long signCount, byte[] userHandle, Guid? aaGuid)

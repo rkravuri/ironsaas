@@ -1,3 +1,4 @@
+using Iron.Kernel.Data.Encryption;
 using Iron.Kernel.Data.Entities;
 
 namespace Iron.Kernel.Identity.Data;
@@ -80,7 +81,7 @@ public sealed class AuthenticationChallenge : AuditedEntity
     public string? WebAuthnOptions { get; private set; }
 
     /// <summary>An authenticator app's secret waiting for its first code, encrypted.</summary>
-    public byte[]? PendingSecret { get; private set; }
+    public EncryptedValue? HeldSecret { get; private set; }
 
     /// <summary>
     /// The single sign-on provider of the sign-in (ADR-0048): while the provider's page is open, and through the second
@@ -107,7 +108,7 @@ public sealed class AuthenticationChallenge : AuditedEntity
 
     public void Expect(string webAuthnOptions) => WebAuthnOptions = webAuthnOptions;
 
-    public void Hold(byte[] pendingSecret) => PendingSecret = pendingSecret;
+    public void Hold(EncryptedValue secret) => HeldSecret = secret;
 
     /// <summary>A browser's challenge that belongs to a session too: a re-authentication through a provider.</summary>
     public void InSession(Guid sessionId) => SessionId = sessionId;

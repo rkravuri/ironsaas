@@ -137,7 +137,7 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
                 scope.ServiceProvider.GetRequiredService<TokenOptions>(),
                 new TenantContext(TenantId.Parse("bravo"), ["bravo.localhost"]),
                 _time);
-            token = bravo.Issue(client, null).AccessToken;
+            token = (await bravo.IssueAsync(client, null, TestContext.Current.CancellationToken)).AccessToken;
         }
 
         using var response = await Get("/api/v1/users", token);

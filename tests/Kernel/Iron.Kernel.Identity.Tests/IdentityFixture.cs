@@ -49,23 +49,16 @@ public sealed class IdentityFixture : IAsyncLifetime
         ["Seed:Administrator:DisplayName"] = AdministratorDisplayName,
         ["Seed:ServiceAccounts:0:ClientId"] = SmokeClientId,
         ["Seed:ServiceAccounts:0:Secret"] = SmokeClientSecret,
-        ["Tokens:SigningKeyPem"] = SigningKeyPem,
-        ["Identity:FactorKey"] = FactorKey,
+        ["Keys:Local:Material"] = KeyMaterial,
     };
 
-    /// <summary>One factor key for the whole run, as the unit's secret holds one (ADR-0047).</summary>
-    public static string FactorKey { get; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-
-    /// <summary>One key for the whole run, so tokens issued by one service provider validate in another.</summary>
-    public static string SigningKeyPem { get; } = CreateSigningKeyPem();
+    /// <summary>
+    /// One key material for the whole run (ADR-0054), as a tenant has one set of keys: tokens issued by one service
+    /// provider validate in another, and a factor secret sealed by one opens in another.
+    /// </summary>
+    public static string KeyMaterial { get; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
     public static readonly TenantContext Tenant = new(TenantId.Parse("acme"), ["acme.localhost"]);
-
-    private static string CreateSigningKeyPem()
-    {
-        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        return key.ExportECPrivateKeyPem();
-    }
 
     public async ValueTask InitializeAsync()
     {

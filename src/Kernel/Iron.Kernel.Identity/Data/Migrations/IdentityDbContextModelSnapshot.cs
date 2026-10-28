@@ -46,9 +46,9 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
-                    b.Property<byte[]>("PendingSecret")
-                        .HasColumnType("bytea")
-                        .HasColumnName("pending_secret");
+                    b.Property<string>("HeldSecret")
+                        .HasColumnType("text")
+                        .HasColumnName("held_secret");
 
                     b.Property<Guid?>("PrincipalId")
                         .HasColumnType("uuid")
@@ -215,6 +215,10 @@ namespace Iron.Kernel.Identity.Data.Migrations
                     b.Property<byte[]>("PublicKey")
                         .HasColumnType("bytea")
                         .HasColumnName("public_key");
+
+                    b.Property<string>("Secret")
+                        .HasColumnType("text")
+                        .HasColumnName("secret");
 
                     b.Property<byte[]>("SecretCiphertext")
                         .HasColumnType("bytea")

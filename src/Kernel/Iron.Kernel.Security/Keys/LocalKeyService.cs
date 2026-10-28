@@ -11,7 +11,7 @@ namespace Iron.Kernel.Security.Keys;
 /// It keeps the transit engine's rules: versions per key, the latest encrypts, hashes and signs, retired versions do
 /// nothing, and every value carries its version (<c>local:v&lt;n&gt;:...</c>). Encryption and hash keys are derived from
 /// one material by HKDF with the key's name and version, so a host run from source reads its values after a restart;
-/// signing keys are made in the process and last as long as it does, as access tokens last minutes.
+/// signing keys too, as a private scalar the public key is computed from, so hosts that share a material sign alike.
 /// Never for a unit with a store: there the keys live in the key service and nowhere else.
 /// </summary>
 public sealed class LocalKeyService : IKeyService, IKeyAdministration, IDisposable
@@ -79,7 +79,7 @@ public sealed class LocalKeyService : IKeyService, IKeyAdministration, IDisposab
 
     public Task EnsureAsync(string keyName, KeyKind kind, CancellationToken cancellationToken)
     {
-        _keys.GetOrAdd(keyName, name => new LocalKey(name));
+        _keys.GetOrAdd(keyName, NewKey);
         return Task.CompletedTask;
     }
 
@@ -88,14 +88,14 @@ public sealed class LocalKeyService : IKeyService, IKeyAdministration, IDisposab
 
     public Task<KeyVersions> RotateAsync(string keyName, CancellationToken cancellationToken)
     {
-        var key = _keys.GetOrAdd(keyName, name => new LocalKey(name));
+        var key = _keys.GetOrAdd(keyName, NewKey);
         key.Rotate();
         return Task.FromResult(Describe(key, key.HasSigners));
     }
 
     public Task<KeyVersions> RetireAsync(string keyName, int minimumVersion, CancellationToken cancellationToken)
     {
-        var key = _keys.GetOrAdd(keyName, name => new LocalKey(name));
+        var key = _keys.GetOrAdd(keyName, NewKey);
         key.Retire(minimumVersion);
         return Task.FromResult(Describe(key, key.HasSigners));
     }
@@ -108,7 +108,15 @@ public sealed class LocalKeyService : IKeyService, IKeyAdministration, IDisposab
         }
     }
 
-    private LocalKey Key(KeyPurpose purpose) => _keys.GetOrAdd(KeyPurposes.KeyName(_prefix, purpose), name => new LocalKey(name));
+    private LocalKey Key(KeyPurpose purpose) => _keys.GetOrAdd(KeyPurposes.KeyName(_prefix, purpose), NewKey);
+
+    private LocalKey NewKey(string name) => new(name, version =>
+    {
+        // A P-256 private scalar from the material: below 2^255, so below the curve's order; .NET computes the public key.
+        var scalar = KeyOf(name + "/ecdsa", version);
+        scalar[0] &= 0x7f;
+        return ECDsa.Create(new ECParameters { Curve = ECCurve.NamedCurves.nistP256, D = scalar });
+    });
 
     private static KeyVersions Describe(LocalKey key, bool signing) =>
         new(key.Latest, key.Minimum, signing ? key.Live().ToDictionary(v => v, v => key.Signer(v).ExportSubjectPublicKeyInfoPem()) : null);
@@ -166,7 +174,7 @@ public sealed class LocalKeyService : IKeyService, IKeyAdministration, IDisposab
         return RandomNumberGenerator.GetBytes(32);
     }
 
-    private sealed class LocalKey(string name) : IDisposable
+    private sealed class LocalKey(string name, Func<int, ECDsa> signerOf) : IDisposable
     {
         private readonly Lock _gate = new();
         private readonly Dictionary<int, ECDsa> _signers = [];
@@ -217,7 +225,7 @@ public sealed class LocalKeyService : IKeyService, IKeyAdministration, IDisposab
             {
                 if (!_signers.TryGetValue(version, out var signer))
                 {
-                    signer = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+                    signer = signerOf(version);
                     _signers[version] = signer;
                 }
 

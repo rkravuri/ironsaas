@@ -35,7 +35,7 @@ public sealed record FactorsOverview(IReadOnlyList<Factor> Factors, int Recovery
 /// </summary>
 public sealed class FactorService(
     IdentityDbContext context,
-    FactorProtector protector,
+    FactorSecrets secrets,
     Passkeys passkeys,
     RecoveryCodes recoveryCodes,
     MfaPolicy policy,
@@ -161,7 +161,7 @@ public sealed class FactorService(
         var secret = Totp.NewSecret();
         try
         {
-            challenge.Hold(protector.Seal(secret, principal.Id));
+            challenge.Hold(await secrets.SealAsync(secret, principal.Id, cancellationToken).ConfigureAwait(false));
             await challenges.SaveAsync(cancellationToken).ConfigureAwait(false);
             return new AuthenticatorAppSetup(Totp.Base32(secret), Totp.Uri(Issuer(), principal.LoginId, secret), challenge.ExpiresAt);
         }
@@ -176,7 +176,7 @@ public sealed class FactorService(
     {
         ArgumentNullException.ThrowIfNull(challenge);
         ArgumentNullException.ThrowIfNull(principal);
-        if (challenge.PendingSecret is not { } pending)
+        if (challenge.HeldSecret is not { } pending)
         {
             return Error.Conflict(IdentityErrors.FactorInvalid, "There is no authenticator app waiting for its first code. Start again.");
         }
@@ -188,7 +188,7 @@ public sealed class FactorService(
         }
 
         var now = time.GetUtcNow();
-        var secret = protector.Open(pending, principal.Id);
+        var secret = await secrets.OpenAsync(pending, principal.Id, cancellationToken).ConfigureAwait(false);
         long? step;
         try
         {
@@ -382,12 +382,18 @@ public sealed class FactorService(
         if (!string.IsNullOrWhiteSpace(proof.Code))
         {
             var app = await context.Factors.SingleOrDefaultAsync(f => f.PrincipalId == principal.Id && f.Kind == FactorKinds.AuthenticatorApp, cancellationToken).ConfigureAwait(false);
-            if (app is null)
+            if (app?.Secret is null)
             {
+                // An app whose secret is still sealed under the retired factor key cannot be checked until the seed moves it.
+                if (app is not null)
+                {
+                    logger.LogWarning("The authenticator app of principal {PrincipalId} is sealed under the retired factor key and cannot be checked.", principal.Id);
+                }
+
                 return null;
             }
 
-            var secret = protector.Open(app.SecretCiphertext!, principal.Id);
+            var secret = await secrets.OpenAsync(app.Secret, principal.Id, cancellationToken).ConfigureAwait(false);
             try
             {
                 if (Totp.Match(secret, proof.Code, now, app.LastUsedStep) is not { } step)

@@ -667,6 +667,9 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
         builder.Services.AddSingleton(IdentityFixture.Tenant);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(connectionString);
+
+        // The store holds the providers' client secrets; the keys stay the process's, as in the other Identity tests.
+        builder.Services.AddIronKeys(new ConfigurationBuilder().AddInMemoryCollection(IdentityFixture.Configuration).Build());
         builder.Services.AddIronSecretStore(builder.Configuration);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();

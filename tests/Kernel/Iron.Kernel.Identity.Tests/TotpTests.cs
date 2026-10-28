@@ -1,3 +1,5 @@
+using Iron.Kernel.Security.Keys;
+using Iron.Kernel.Data.Encryption;
 using System.Security.Cryptography;
 using System.Text;
 using Iron.Kernel.Identity.Data;
@@ -59,25 +61,47 @@ public class TotpTests
     }
 
     [Fact]
-    [Proves("TF-074 AC1", "ADR-0047")]
-    public void ASealedSecretOpensOnlyWithTheKeyAndForThePersonItWasSealedFor()
+    [Proves("TF-074 AC1", "ADR-0047", "ADR-0054")]
+    public async Task ASealedSecretOpensOnlyWithTheTenantsKeyAndForThePersonItWasSealedFor()
     {
-        var key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-        var protector = new FactorProtector(new IdentityOptions { FactorKey = key });
-        var other = new FactorProtector(new IdentityOptions { FactorKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) });
+        using var keys = new LocalKeyService(new KeyOptions { Local = new KeyOptions.LocalKeyOptions { Material = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) } });
+        using var otherKeys = new LocalKeyService(new KeyOptions { Local = new KeyOptions.LocalKeyOptions { Material = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) } });
+        var secrets = new FactorSecrets(new FieldEncryption(keys));
+        var other = new FactorSecrets(new FieldEncryption(otherKeys));
         var person = Guid.NewGuid();
         var secret = Totp.NewSecret();
+        var ct = TestContext.Current.CancellationToken;
 
-        var sealedSecret = protector.Seal(secret, person);
+        var sealedSecret = await secrets.SealAsync(secret, person, ct);
 
-        Assert.Equal(1 + 12 + 16 + secret.Length, sealedSecret.Length);
-        Assert.Equal(-1, sealedSecret.AsSpan().IndexOf(secret));
-        Assert.Equal(secret, protector.Open(sealedSecret, person));
-        Assert.NotEqual(sealedSecret, protector.Seal(secret, person)); // a new nonce every time
-        Assert.ThrowsAny<CryptographicException>(() => protector.Open(sealedSecret, Guid.NewGuid()));
-        Assert.ThrowsAny<CryptographicException>(() => other.Open(sealedSecret, person));
-        Assert.Throws<InvalidOperationException>(() => new FactorProtector(new IdentityOptions()).Seal(secret, person));
-        Assert.Throws<InvalidOperationException>(() => new FactorProtector(new IdentityOptions { FactorKey = Convert.ToBase64String(new byte[16]) }));
+        Assert.StartsWith("local:v1:", sealedSecret.Ciphertext, StringComparison.Ordinal);
+        Assert.DoesNotContain(Totp.Base32(secret), sealedSecret.Ciphertext, StringComparison.Ordinal);
+        Assert.Equal(secret, await secrets.OpenAsync(sealedSecret, person, ct));
+        Assert.NotEqual(sealedSecret, await secrets.SealAsync(secret, person, ct)); // a new nonce every time
+        await Assert.ThrowsAnyAsync<CryptographicException>(() => secrets.OpenAsync(sealedSecret, Guid.NewGuid(), ct));
+        await Assert.ThrowsAnyAsync<CryptographicException>(() => other.OpenAsync(sealedSecret, person, ct));
+    }
+
+    [Fact]
+    [Proves("ADR-0054", "ADR-0047")]
+    public void TheRetiredFactorKeyOpensWhatItSealedForThePersonItWasSealedFor()
+    {
+        var key = RandomNumberGenerator.GetBytes(32);
+        var legacy = new LegacyFactorKey(new IdentityOptions { LegacyFactorKey = Convert.ToBase64String(key) });
+        var person = Guid.NewGuid();
+        var secret = Totp.NewSecret();
+        var sealedSecret = new byte[1 + 12 + 16 + secret.Length];
+        sealedSecret[0] = 1;
+        RandomNumberGenerator.Fill(sealedSecret.AsSpan(1, 12));
+        using (var aes = new AesGcm(key, 16))
+        {
+            aes.Encrypt(sealedSecret.AsSpan(1, 12), secret, sealedSecret.AsSpan(29), sealedSecret.AsSpan(13, 16), person.ToByteArray());
+        }
+
+        Assert.Equal(secret, legacy.Open(sealedSecret, person));
+        Assert.ThrowsAny<CryptographicException>(() => legacy.Open(sealedSecret, Guid.NewGuid()));
+        Assert.False(new LegacyFactorKey(new IdentityOptions()).IsAvailable);
+        Assert.Throws<InvalidOperationException>(() => new LegacyFactorKey(new IdentityOptions { LegacyFactorKey = Convert.ToBase64String(new byte[16]) }));
     }
 
     [Fact]
