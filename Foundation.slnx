@@ -66,6 +66,10 @@
     <Project Path="src/Kernel/Iron.Kernel.Keys/Iron.Kernel.Keys.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Keys/Contracts/Iron.Kernel.Keys.Contracts.csproj" />
   </Folder>
+  <Folder Name="/src/Kernel/Iron.Kernel.Monitoring/">
+    <Project Path="src/Kernel/Iron.Kernel.Monitoring/Iron.Kernel.Monitoring.csproj" />
+    <Project Path="src/Kernel/Iron.Kernel.Monitoring/Contracts/Iron.Kernel.Monitoring.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/Hosts/">
     <Project Path="src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />
     <Project Path="src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj" />
@@ -98,6 +102,7 @@
     <Project Path="tests/Kernel/Iron.Kernel.Changes.Tests/Iron.Kernel.Changes.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Protection.Tests/Iron.Kernel.Protection.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Keys.Tests/Iron.Kernel.Keys.Tests.csproj" />
+    <Project Path="tests/Kernel/Iron.Kernel.Monitoring.Tests/Iron.Kernel.Monitoring.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Iron.Analyzers/Iron.Analyzers.csproj" />

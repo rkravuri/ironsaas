@@ -76,6 +76,16 @@ public sealed class TenancyModule : IModule
         services.AddScoped<ITenantKeys>(provider => provider.GetRequiredService<KeyRotationService>());
         services.AddScoped<IValidator<KeyRotationRequest>, KeyRotationRequestValidator>();
 
+        // The units' security alerts as they arrive, and incidents with their deadlines (TF-079, ADR-0056).
+        services.AddScoped<IValidator<AlertCopyRequest>, AlertCopyRequestValidator>();
+        services.AddScoped<IncidentService>();
+        services.AddScoped<IncidentEscalation>();
+        services.AddScoped<IValidator<DeclareIncidentRequest>, DeclareIncidentRequestValidator>();
+        services.AddScoped<IValidator<IncidentEntryRequest>, IncidentEntryRequestValidator>();
+        services.AddScoped<IValidator<AffectedTenantRequest>, AffectedTenantRequestValidator>();
+        services.AddScoped<IValidator<CloseIncidentRequest>, CloseIncidentRequestValidator>();
+        services.AddScoped<IValidator<IncidentReviewRequest>, IncidentReviewRequestValidator>();
+
         var reconcile = new ReconcileOptions();
         configuration.GetSection(ReconcileOptions.SectionName).Bind(reconcile);
         services.AddSingleton(reconcile);
@@ -90,11 +100,20 @@ public sealed class TenancyModule : IModule
         OperatorAccessEndpoints.Map(endpoints);
         AuditChainEndpoints.Map(endpoints);
         KeyEndpoints.Map(endpoints);
+        IncidentEndpoints.Map(endpoints);
     }
 }
 
 public static class TenancyWorkerExtensions
 {
+    /// <summary>The incidents' deadlines (ADR-0056): a review 10 days after the close, a notice 72 hours after a breach became known. The control plane calls it.</summary>
+    public static IServiceCollection AddIncidentEscalation(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddHostedService<IncidentEscalationWorker>();
+        return services;
+    }
+
     /// <summary>
     /// The fleet worker's reconcile of the tenants' entitlements (ADR-0034): every minute, a tenant whose store copy is
     /// behind is written again. Only the fleet host calls it.

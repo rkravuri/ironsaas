@@ -646,6 +646,7 @@
           "Iron.Kernel.Flags": "[1.0.0, )",
           "Iron.Kernel.Identity": "[1.0.0, )",
           "Iron.Kernel.Keys": "[1.0.0, )",
+          "Iron.Kernel.Monitoring": "[1.0.0, )",
           "Iron.Kernel.Protection": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
@@ -664,6 +665,7 @@
           "Iron.Kernel.Flags": "[1.0.0, )",
           "Iron.Kernel.Fleet": "[1.0.0, )",
           "Iron.Kernel.Identity": "[1.0.0, )",
+          "Iron.Kernel.Monitoring": "[1.0.0, )",
           "Iron.Kernel.Protection": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
@@ -704,6 +706,7 @@
           "Iron.Kernel.Flags": "[1.0.0, )",
           "Iron.Kernel.Identity": "[1.0.0, )",
           "Iron.Kernel.Keys": "[1.0.0, )",
+          "Iron.Kernel.Monitoring": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
           "Iron.Kernel.Telemetry": "[1.0.0, )"
@@ -930,6 +933,23 @@
           "Iron.Kernel": "[1.0.0, )"
         }
       },
+      "iron.kernel.monitoring": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Authorization.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Monitoring.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.monitoring.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
       "iron.kernel.protection": {
         "type": "Project",
         "dependencies": {
@@ -997,6 +1017,7 @@
           "Iron.Kernel.Flags.Contracts": "[1.0.0, )",
           "Iron.Kernel.Fleet.Contracts": "[1.0.0, )",
           "Iron.Kernel.Identity.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Monitoring.Contracts": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Tenancy.Contracts": "[1.0.0, )"
         }

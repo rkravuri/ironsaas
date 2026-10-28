@@ -42,8 +42,48 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
 
     public DbSet<KeyRotationRecord> KeyRotations => Set<KeyRotationRecord>();
 
+    public DbSet<Incident> Incidents => Set<Incident>();
+
+    public DbSet<IncidentTenant> IncidentTenants => Set<IncidentTenant>();
+
+    public DbSet<IncidentEntry> IncidentEntries => Set<IncidentEntry>();
+
     protected override void ConfigureModule(ModelBuilder modelBuilder)
     {
+        // Incidents (TF-079 AC2, ADR-0056): the incident, the tenants it affects with their notices, and its timeline, written once.
+        modelBuilder.Entity<Incident>(incident =>
+        {
+            incident.ToTable("incidents");
+            incident.Property(i => i.Summary).HasMaxLength(Incident.SummaryMaxLength);
+            incident.Property(i => i.Lead).HasMaxLength(Incident.NameMaxLength);
+            incident.Property(i => i.Communications).HasMaxLength(Incident.NameMaxLength);
+            incident.Property(i => i.Scribe).HasMaxLength(Incident.NameMaxLength);
+            incident.Property(i => i.Status).HasMaxLength(10);
+            incident.Property(i => i.CloseSummary).HasMaxLength(Incident.TextMaxLength);
+            incident.Property(i => i.WhatHappened).HasMaxLength(Incident.TextMaxLength);
+            incident.Property(i => i.Why).HasMaxLength(Incident.TextMaxLength);
+            incident.Property(i => i.WhatChanges).HasMaxLength(Incident.TextMaxLength);
+            incident.HasIndex(i => new { i.Status, i.ReviewDueAt });
+        });
+
+        modelBuilder.Entity<IncidentTenant>(tenant =>
+        {
+            tenant.ToTable("incident_tenants");
+            tenant.Property(t => t.TenantSlug).HasMaxLength(63);
+            tenant.Property(t => t.Notice).HasMaxLength(Incident.TextMaxLength);
+            tenant.HasIndex(t => new { t.IncidentId, t.TenantSlug }).IsUnique();
+        });
+
+        modelBuilder.Entity<IncidentEntry>(entry =>
+        {
+            entry.ToTable("incident_entries");
+            entry.Property(e => e.ByName).HasMaxLength(Incident.NameMaxLength);
+            entry.Property(e => e.Kind).HasMaxLength(20);
+            entry.Property(e => e.Text).HasMaxLength(Incident.TextMaxLength);
+            entry.Property(e => e.TenantSlug).HasMaxLength(63);
+            entry.HasIndex(e => new { e.IncidentId, e.At });
+        });
+
         // The tenants' audit chains (TF-061, ADR-0050): the anchors and the verifications are written once.
         modelBuilder.Entity<UnitClient>(client =>
         {

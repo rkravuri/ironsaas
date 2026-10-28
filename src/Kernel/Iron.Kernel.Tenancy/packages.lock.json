@@ -453,6 +453,12 @@
           "Iron.Kernel": "[1.0.0, )"
         }
       },
+      "iron.kernel.monitoring.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
       "iron.kernel.security": {
         "type": "Project",
         "dependencies": {
