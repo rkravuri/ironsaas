@@ -46,7 +46,9 @@ public static class TelemetryExtensions
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation(instrumentation =>
                 {
-                    instrumentation.RecordException = true;
+                    // Recorded as the scrubbed stand-in, since a span's events cannot be scrubbed after they are added (TF-073 AC3).
+                    instrumentation.RecordException = false;
+                    instrumentation.EnrichWithException = ScrubbingActivityProcessor.RecordException;
                     if (!options.TraceHealthEndpoints)
                     {
                         instrumentation.Filter = context => !context.Request.Path.StartsWithSegments("/health");
