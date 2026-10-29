@@ -6,6 +6,7 @@ using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Sharing;
 using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Data.Visibility;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -57,6 +58,11 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<ChangeHistoryInterceptor>();
         services.TryAddScoped<IChangeReason, ChangeReason>();
         services.AddScoped<OwningOrganisationInterceptor>();
+
+        // Visibility tags (ADR-0057): a new record takes its master's where its product declares it (rule 6); a record's
+        // tags change through the record's policy and rule 5. The Visibility module supplies IVisibilityTags.
+        services.AddScoped<MasterTagsInterceptor>();
+        services.TryAddScoped<IRecordTags, RecordTags>();
         services.AddScoped<MigrationRunner>();
         services.AddScoped<SeedRunner>();
         services.AddScoped<SchemaCheckRunner>();
@@ -97,8 +103,8 @@ public static class DataServiceCollectionExtensions
 
     /// <summary>
     /// Registers a module's DbContext against the unit's database, in the module's schema, with snake_case names,
-    /// its own migrations history table, the audit stamp interceptor, the owning organisation check and the field-level
-    /// history of tracked entities.
+    /// its own migrations history table, the master's tags for a new record that takes them, the audit stamp
+    /// interceptor, the owning organisation check and the field-level history of tracked entities.
     /// </summary>
     public static IServiceCollection AddIronDbContext<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder>? configure = null)
         where TContext : ModuleDbContext
@@ -110,7 +116,9 @@ public static class DataServiceCollectionExtensions
         services.AddDbContext<TContext>((provider, options) =>
         {
             DesignTime.Configure<TContext>(options, provider.GetRequiredService<SharedConnection>().Connection);
-            options.AddInterceptors(provider.GetRequiredService<OwningOrganisationInterceptor>(), provider.GetRequiredService<AuditStampInterceptor>(), provider.GetRequiredService<ChangeHistoryInterceptor>(), provider.GetRequiredService<CredentialRetryInterceptor>());
+
+            // The master's tags first, so the history's creation event carries them (ADR-0057).
+            options.AddInterceptors(provider.GetRequiredService<MasterTagsInterceptor>(), provider.GetRequiredService<OwningOrganisationInterceptor>(), provider.GetRequiredService<AuditStampInterceptor>(), provider.GetRequiredService<ChangeHistoryInterceptor>(), provider.GetRequiredService<CredentialRetryInterceptor>());
             configure?.Invoke(options);
         });
 

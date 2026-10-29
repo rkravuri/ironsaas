@@ -40,8 +40,21 @@ public abstract class BusinessRecord : AuditedEntity
 
     public SharingMode SharingMode { get; private set; } = SharingMode.Private;
 
+    /// <summary>
+    /// The codes of the visibility tags the record carries, in order (TF-241, ADR-0057): none, and everyone who passes
+    /// roles and units sees it; otherwise a reader who holds tags sees it when they share one. A column of the module's
+    /// own table, so a list's tag filter is a condition on the row, and the field history records every change.
+    /// </summary>
+    public IReadOnlyList<string> VisibilityTags { get; private set; } = [];
+
     /// <summary>Through <c>IRecordSharing</c> only, which asks the policy, keeps the listed units and audits the change.</summary>
     internal void ChangeSharing(SharingMode mode) => SharingMode = mode;
+
+    /// <summary>
+    /// Through <c>IRecordTags</c>, which asks the policy and holds rule 5, or from the record's master when it is created
+    /// (rule 6): a module never sets tags itself.
+    /// </summary>
+    internal void ChangeVisibilityTags(IEnumerable<string> codes) => VisibilityTags = codes.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
 
     private static Guid RequireOrganisation(Guid owningOrganisationId)
     {
