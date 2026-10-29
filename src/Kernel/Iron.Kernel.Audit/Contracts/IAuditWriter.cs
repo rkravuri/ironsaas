@@ -137,6 +137,9 @@ public static class AuditErrors
     public const string ArchiveRangeRequired = "audit.archive.range_required";
 
     public const string ExportNotFound = "audit.export.not_found";
+
+    /// <summary>The search's address filter was empty or too long (ADR-0056).</summary>
+    public const string AddressInvalid = "audit.events.address_invalid";
 }
 
 /// <summary>

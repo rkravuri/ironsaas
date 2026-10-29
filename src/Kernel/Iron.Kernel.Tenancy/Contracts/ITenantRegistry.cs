@@ -109,11 +109,32 @@ public static class TenancyPermissions
     /// </summary>
     public static readonly Permission KeysReport = new("tenancy.keys.report", "Read the unit's own key rotations and report the re-encryption", Risk.Medium) { ForUnitClients = true };
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport];
+    /// <summary>A unit's own client sends its security alerts here, after every change (ADR-0056): the calling unit's tenant's only.</summary>
+    public static readonly Permission AlertCopiesAppend = new("tenancy.alert_copies.append", "Send a unit's security alerts to the operator", Risk.Medium) { ForUnitClients = true };
+
+    /// <summary>Reading the incidents, their timelines, notices and reviews (TF-079 AC2).</summary>
+    public static readonly Permission IncidentsRead = new("tenancy.incidents.read", "Read the incidents, their timelines, notices and reviews", Risk.Low);
+
+    /// <summary>Running an incident: declaring it, noting its timeline, recording its notices, closing it and recording its review.</summary>
+    public static readonly Permission IncidentsManage = new("tenancy.incidents.manage", "Declare and run incidents: their timeline, notices to tenants, close and review", Risk.High);
+
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport, AlertCopiesAppend, IncidentsRead, IncidentsManage];
 }
 
 public static class TenancyErrors
 {
+    public const string AlertCopyNotAUnit = "tenancy.alert_copy.not_a_unit";
+    public const string IncidentNotFound = "tenancy.incident.not_found";
+    public const string IncidentInvalid = "tenancy.incident.invalid";
+    public const string IncidentClosed = "tenancy.incident.closed";
+    public const string IncidentOpen = "tenancy.incident.open";
+    public const string IncidentTenantNotAffected = "tenancy.incident.tenant_not_affected";
+
+    /// <summary>A tenant whose personal data was affected has not been told, so the incident cannot close yet.</summary>
+    public const string IncidentNoticeMissing = "tenancy.incident.notice_missing";
+
+    public const string IncidentReviewRecorded = "tenancy.incident.review_recorded";
+
     public const string TenantNotFound = "tenancy.tenant.not_found";
     public const string SlugTaken = "tenancy.tenant.slug_taken";
     public const string HostnameTaken = "tenancy.hostname.taken";
@@ -248,6 +269,29 @@ public static class TenancyAuditEvents
 
     public const string KeyRotationFailed = "tenancy.key_rotation_failed";
 
+    /// <summary>An operator declared an incident, with its severity, the tenants affected, its lead and a summary (TF-079 AC2).</summary>
+    public const string IncidentDeclared = "tenancy.incident_declared";
+
+    /// <summary>An entry of the incident's timeline or its communication log.</summary>
+    public const string IncidentNoted = "tenancy.incident_noted";
+
+    /// <summary>A tenant was found affected, or found to have its personal data affected, from when that became known.</summary>
+    public const string IncidentTenantAffected = "tenancy.incident_tenant_affected";
+
+    /// <summary>The notice of a personal data breach was sent to an affected tenant (the 72-hour duty).</summary>
+    public const string IncidentNoticeSent = "tenancy.incident_notice_sent";
+
+    public const string IncidentClosed = "tenancy.incident_closed";
+
+    /// <summary>The post-incident review: what happened, why, what changes (TF-079 AC2).</summary>
+    public const string IncidentReviewRecorded = "tenancy.incident_review_recorded";
+
+    /// <summary>Ten days after the close and still no review: the escalation, at high severity, which an alert rule raises.</summary>
+    public const string IncidentReviewOverdue = "tenancy.incident_review_overdue";
+
+    /// <summary>Seventy-two hours after a breach became known and a tenant not yet told.</summary>
+    public const string IncidentNoticeOverdue = "tenancy.incident_notice_overdue";
+
     /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
     public static IReadOnlyList<AuditEventType> Types { get; } =
     [
@@ -278,6 +322,14 @@ public static class TenancyAuditEvents
         new(KeyRotated, "Key rotated"),
         new(KeyRetired, "Old key versions retired"),
         new(KeyRotationFailed, "Key rotation failed"),
+        new(IncidentDeclared, "Incident declared"),
+        new(IncidentNoted, "Incident noted"),
+        new(IncidentTenantAffected, "Tenant affected by an incident"),
+        new(IncidentNoticeSent, "Breach notice sent to a tenant"),
+        new(IncidentClosed, "Incident closed"),
+        new(IncidentReviewRecorded, "Post-incident review recorded"),
+        new(IncidentReviewOverdue, "Post-incident review overdue"),
+        new(IncidentNoticeOverdue, "Breach notice overdue"),
     ];
 }
 

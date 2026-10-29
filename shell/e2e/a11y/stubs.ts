@@ -743,6 +743,160 @@ export async function stubKeys(target: Page, body: unknown = keys): Promise<void
   await target.route("**/api/v1/keys", (route) => route.fulfill({ json: body }));
 }
 
+const alertValues = (threshold: number, window: number, above: number | null = null) => ({
+  threshold,
+  window_minutes: window,
+  cooldown_minutes: 60,
+  above,
+  severity: "high",
+});
+
+const alertBounds = {
+  threshold_editable: true,
+  threshold_minimum: 1,
+  threshold_maximum: 100,
+  window_minimum: 10,
+  window_maximum: 1440,
+  above_editable: false,
+  above_minimum: null,
+  above_maximum: null,
+};
+
+/** The alert rules as a unit answers them (ADR-0056): one stricter than the operator's, one at once, one failing. */
+export const alertRules = {
+  data: [
+    {
+      name: "permission_denials",
+      title: "Many permission denials for one principal",
+      event_types: ["authz.permission_denied"],
+      group_by: "principal",
+      at_once: false,
+      runbook: "docs/security/incident-response.md#permission-denials",
+      operator: alertValues(100, 10),
+      tenant: { threshold: 50, window_minutes: null, above: null },
+      effective: alertValues(50, 10),
+      bounds: alertBounds,
+      state: "running",
+      reason: null,
+      last_run_at: "2026-10-29T10:09:00Z",
+      failing_since: null,
+    },
+    {
+      name: "impersonations",
+      title: "Someone signed in as another person",
+      event_types: ["identity.impersonation_started"],
+      group_by: "principal",
+      at_once: true,
+      runbook: "docs/security/incident-response.md#impersonation-break-glass-and-emergency-accounts",
+      operator: alertValues(1, 10),
+      tenant: { threshold: null, window_minutes: null, above: null },
+      effective: alertValues(1, 10),
+      bounds: { ...alertBounds, threshold_editable: false, threshold_maximum: 1 },
+      state: "running",
+      reason: null,
+      last_run_at: "2026-10-29T10:09:00Z",
+      failing_since: null,
+    },
+    {
+      name: "mass_exports",
+      title: "An export of more than 10,000 records",
+      event_types: ["audit.events_exported", "authz.roles_exported", "identity.acceptances_exported"],
+      group_by: "principal",
+      at_once: false,
+      runbook: "docs/security/incident-response.md#mass-exports",
+      operator: alertValues(1, 10, 10000),
+      tenant: { threshold: null, window_minutes: null, above: null },
+      effective: alertValues(1, 10, 10000),
+      bounds: {
+        ...alertBounds,
+        threshold_editable: false,
+        above_editable: true,
+        above_minimum: 1,
+        above_maximum: 10000,
+      },
+      state: "failing",
+      reason:
+        "Monitoring:Rules:mass_exports:Treshold is no value of a rule; the values are Threshold, WindowMinutes, CooldownMinutes, Above, Severity.",
+      last_run_at: "2026-10-29T10:09:00Z",
+      failing_since: "2026-10-29T10:01:00Z",
+    },
+  ],
+  evaluated_at: "2026-10-29T10:09:00Z",
+};
+
+/** An open alert of the denials' rule, as the console lists it (ADR-0056). */
+export const securityAlert = {
+  id: "0198f0c2-0000-7000-8000-0000000000a1",
+  tenant: "acme",
+  origin: "local",
+  rule: "permission_denials",
+  title: "Many permission denials for one principal",
+  kind: "threshold",
+  severity: "high",
+  state: "open",
+  group_kind: "principal",
+  group_value: "0198f0c2-0000-7000-8000-000000000001",
+  group_name: "Paul Probe",
+  count: 112,
+  threshold: 100,
+  window_minutes: 10,
+  first_event_at: "2026-10-29T10:00:00Z",
+  last_event_at: "2026-10-29T10:08:15Z",
+  raised_at: "2026-10-29T10:09:00Z",
+  reason: null,
+  link: "/audit?event_type=authz.permission_denied&actor_id=0198f0c2-0000-7000-8000-000000000001&since=2026-10-29T10%3A00%3A00.000000Z&until=2026-10-29T10%3A08%3A15.000000Z",
+  search: "/api/v1/audit-events?filter=event_type:eq:authz.permission_denied",
+  runbook: "docs/security/incident-response.md#permission-denials",
+  acknowledged_at: null,
+  acknowledged_by: null,
+  resolved_at: null,
+  resolved_by: null,
+  note: null,
+};
+
+/** The console for an administrator who manages the security alerts and their rules (ADR-0056). */
+export async function stubSecurityAlerts(target: Page): Promise<void> {
+  await stubConsole(target);
+  const permissions = [
+    ...administrator,
+    "monitoring.alerts.read",
+    "monitoring.alerts.manage",
+    "monitoring.rules.manage",
+  ];
+  await target.route("**/api/v1/me", (route) =>
+    route.fulfill({
+      json: {
+        ...me,
+        permissions,
+        permissions_anywhere: permissions,
+        home_unit: { id: units[0].id, name: units[0].name, code: units[0].code },
+      },
+    }),
+  );
+  await target.route("**/api/v1/alert-rules", (route) => route.fulfill({ json: alertRules }));
+  await target.route("**/api/v1/alerts?**", (route) =>
+    route.fulfill({
+      json: envelope(route.request().url(), [
+        securityAlert,
+        {
+          ...securityAlert,
+          id: "0198f0c2-0000-7000-8000-0000000000a2",
+          rule: "break_glass",
+          title: "A break-glass account opened or used",
+          severity: "critical",
+          group_kind: "all",
+          group_value: "all",
+          group_name: null,
+          count: 1,
+          threshold: 1,
+          raised_at: "2026-10-29T09:30:00Z",
+        },
+      ]),
+    }),
+  );
+  await target.route(`**/api/v1/alerts/${securityAlert.id}`, (route) => route.fulfill({ json: securityAlert }));
+}
+
 export async function stubSubscription(target: Page, body: unknown = subscription): Promise<void> {
   await stubConsole(target);
   await target.route("**/api/v1/subscription", (route) => route.fulfill({ json: body }));

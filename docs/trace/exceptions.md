@@ -19,7 +19,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | TF-056 AC1 | One flag provider exists, the in-house one behind OpenFeature (ADR-0035); a second provider arrives when one is needed. | 2026-10-21 |
 | TF-056 AC3 | As AC1: with one provider there is no primary to choose. | 2026-10-21 |
 | TF-130 AC3 | No job is started by a request yet (S4). | 2026-10-21 |
-| TF-130 AC4 | Requests complete while the collector is down (S1's demo), but the counter of lost spans was never built, although the S1 plan said so until T1's review corrected it; it is S3 T10's, with the security monitoring. | 2026-10-21 |
 | TF-160 AC2 | Uploads, downloads and their permission check are S4; S1 built the storage interface and its readiness. | 2026-10-21 |
 | TF-160 AC3 | File versions are S4. | 2026-10-21 |
 | TF-171 AC2 | Saved views of the grid are S5. | 2026-10-21 |
@@ -28,8 +27,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | TF-173 AC3 | As AC1: with no branding setting there is only the default, which no test states as such. | 2026-10-21 |
 | TF-180 AC3 | The operator console has no screens yet; the fleet view is S6. | 2026-10-21 |
 | TF-190 AC1 | The scaffolding tool was planned after S1 and is not built; proposed for the first business slice, whose module would be its template. | 2026-10-21 |
-| TF-209 AC3 | No alert exists yet with a runbook of its own; alerting is S6 (TF-134) and S3 T10 writes the incident runbook. | 2026-10-21 |
-| TF-209 AC4 | As AC3. | 2026-10-21 |
 | TF-221 AC1 | Numbering sequences (TF-166) are not built yet; their organisation scope comes with them. | 2026-10-21 |
 
 ## Proven by hand or by the pipeline's design

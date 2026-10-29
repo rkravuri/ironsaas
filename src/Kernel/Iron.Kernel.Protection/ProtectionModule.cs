@@ -62,6 +62,15 @@ public sealed class ProtectionModule : IModule
 
 public static class ProtectionHosting
 {
+    /// <summary>The minute's summary of the policy's reports, in the hosts that take them (ADR-0056).</summary>
+    public static IServiceCollection AddCspReportSummary(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddSingleton<CspReportSummary>();
+        services.AddHostedService(provider => provider.GetRequiredService<CspReportSummary>());
+        return services;
+    }
+
     /// <summary>
     /// Cross-origin rules and the rate limits, after the principal is known (UseIronIdentity) and before the endpoints, so
     /// a limit is per principal where there is one and per address before sign-in (ADR-0053).

@@ -14,6 +14,9 @@ using Iron.Kernel.Files;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Identity;
 using Iron.Kernel.Keys;
+using Iron.Kernel.Monitoring;
+using Iron.Kernel.Monitoring.Contracts;
+using Iron.Kernel.Protection;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Settings;
@@ -34,8 +37,9 @@ var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
-// The modules this worker runs, in order: the same list as the API host, without endpoints.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule(), new KeysModule()];
+// The modules this worker runs, in order: the same list as the API host, without endpoints. Protection is here for its
+// audit event types, which the alert rules count (ADR-0056); its limits apply to requests, which the worker serves none of.
+IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
 
 builder.AddIronTelemetry("iron-worker", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);
@@ -67,6 +71,9 @@ builder.Services.AddAuditSealing(builder.Configuration);
 
 // Key rotation's side in the unit (ADR-0054): rotations recorded in the tenant's trail, every encrypted value moved.
 builder.Services.AddKeyRotation();
+
+// The security alert rules every minute, and each alert copied to the control plane (TF-079, ADR-0056).
+builder.Services.AddMonitoring(MonitoringScope.Unit);
 
 var app = builder.Build();
 

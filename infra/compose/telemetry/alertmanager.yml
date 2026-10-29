@@ -1,0 +1,19 @@
+# The operator's alerting on the laptop (ADR-0056): the control plane posts every security alert here, its own and the
+# units', through Alertmanager's API, and Prometheus will send its rules' alerts the same way (TF-134, S6). The laptop
+# pages nobody: its one receiver has no integration, and the alerts are read at http://alertmanager.localhost or with
+# `make security-alerts`. In Azure the same file gains the on-call receiver and its fallback, and nothing else changes.
+route:
+  receiver: operator
+  group_by: [alertname, tenant]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+  routes:
+    # A critical alert (break-glass, a broken audit chain, a breach notice overdue) is not grouped away.
+    - matchers: ['severity="critical"']
+      receiver: operator
+      group_by: [alertname, tenant, alert_id]
+      repeat_interval: 1h
+
+receivers:
+  - name: operator

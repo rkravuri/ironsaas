@@ -257,6 +257,14 @@ public class HostTests
 
         // The period an evidence pack covers, as its requester chooses it (TF-067 AC1); the pack's own times are the server's.
         ["POST /api/v1/evidence-packs"] = ["from", "to"],
+
+        // A unit's alert as its own server clock stamped it, the copy's time the control plane's (ADR-0056), as an anchor's.
+        ["PUT /api/v1/alert-copies/{id}"] = ["first_event_at", "last_event_at", "raised_at", "acknowledged_at", "resolved_at"],
+
+        // When a breach became known, as the operator reports it: the 72-hour deadline runs from then, not from when it is
+        // recorded, which is the server's time beside it (ADR-0056).
+        ["POST /api/v1/incidents"] = ["tenants.known_at"],
+        ["POST /api/v1/incidents/{id}/tenants"] = ["known_at"],
     };
 
     [Fact]

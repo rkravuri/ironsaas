@@ -173,6 +173,12 @@ The unit's worker seals each event into the tenant's chain a few seconds after i
 
 **Times are the server's** (TF-065, ADR-0050). `CreatedAt` and `UpdatedAt` are stamped from `TimeProvider` on save, whatever a caller set. A request body never carries a time the server records: take `starts_at` or `due_on` only for a period a person chooses, and add it to `ChosenTimes` in `tests/Iron.Host.Tests/HostTests.cs` with why; any other date in a request body fails that test.
 
+**An event a security alert should count** (TF-079, ADR-0056). Declare its type in the module's `*AuditEvents.Types`;
+a type nobody declares makes every rule that counts it fail. An export writes its event with `AuditDetails.Rows`, and a
+change that touches a critical area marks itself with `AuditDetails.Critical` when the rule cannot tell from the type
+alone; the writer adds the client's address to a refusal by itself. A new rule goes into `AlertRules.All` in
+Iron.Kernel.Monitoring with a section of its own in `docs/security/incident-response.md`, which `RunbookTests` checks.
+
 ## An encrypted field, and one found by its exact value (TF-074, ADR-0054)
 
 A field whose value must not be readable in a dump, a backup or the database's own tools (a bank account, a tax identifier, a secret a person enrolled) is an `EncryptedValue`; one that must also be found by its exact value is marked `[Searchable]` and keeps its keyed hash beside it, named after it with `Hash`:

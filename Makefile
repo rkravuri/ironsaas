@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security coverage protect-main protection-check
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status incident-declare incident-note incident-close incident-review incident-show security-alerts security-alert-resolve up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security coverage protect-main protection-check
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -326,6 +326,33 @@ rotate-key: ## Rotate a tenant's data, index or signing key, or its database pas
 key-status: ## A tenant's keys and database password: versions, last and next rotation, and the latest rotations with their re-encryption (ADR-0054): make key-status TENANT=echo
 	@test -n "$(TENANT)" || (echo 'usage: make key-status TENANT=echo' && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/keys.sh status $(TENANT)
+
+# Incidents by the runbook (TF-079 AC2, ADR-0056, docs/security/incident-response.md), as the laptop's operator.
+incident-declare: ## Declare an incident: make incident-declare SEVERITY=1..4 SUMMARY="..." LEAD="..." [COMMS="..."] [SCRIBE="..."] [TENANTS=echo,acme] [PERSONAL_DATA=1] [KNOWN_AT=2026-10-29T08:00:00Z]
+	@test -n "$(SEVERITY)" && test -n "$(SUMMARY)" && test -n "$(LEAD)" || (echo 'usage: make incident-declare SEVERITY=1..4 SUMMARY="what happened" LEAD="who leads" [COMMS=...] [SCRIBE=...] [TENANTS=echo,acme] [PERSONAL_DATA=1] [KNOWN_AT=...]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SEVERITY="$(SEVERITY)" SUMMARY="$(SUMMARY)" LEAD="$(LEAD)" COMMS="$(COMMS)" SCRIBE="$(SCRIBE)" TENANTS="$(TENANTS)" PERSONAL_DATA="$(PERSONAL_DATA)" KNOWN_AT="$(KNOWN_AT)" $(COMPOSE_DIR)/scripts/incidents.sh declare
+
+incident-note: ## Add to an incident's timeline: make incident-note ID=<id> TEXT="..." [KIND=note|communication|notice] [TENANT=echo]; or name a tenant affected: make incident-note ID=<id> TENANT=echo [PERSONAL_DATA=1] [KNOWN_AT=...]
+	@test -n "$(ID)" && { test -n "$(TEXT)" || test -n "$(TENANT)"; } || (echo 'usage: make incident-note ID=<id> TEXT="..." [KIND=note|communication|notice] [TENANT=echo], or ID=<id> TENANT=echo [PERSONAL_DATA=1] [KNOWN_AT=...]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) TEXT="$(TEXT)" KIND="$(or $(KIND),note)" TENANT="$(TENANT)" PERSONAL_DATA="$(PERSONAL_DATA)" KNOWN_AT="$(KNOWN_AT)" $(COMPOSE_DIR)/scripts/incidents.sh note $(ID)
+
+incident-close: ## Close an incident once every tenant whose personal data was affected is told; its review is due within 10 days: make incident-close ID=<id> SUMMARY="..."
+	@test -n "$(ID)" && test -n "$(SUMMARY)" || (echo 'usage: make incident-close ID=<id> SUMMARY="how it ended"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SUMMARY="$(SUMMARY)" $(COMPOSE_DIR)/scripts/incidents.sh close $(ID)
+
+incident-review: ## Record the post-incident review: make incident-review ID=<id> WHAT="what happened" WHY="why" CHANGES="what changes"
+	@test -n "$(ID)" && test -n "$(WHAT)" && test -n "$(WHY)" && test -n "$(CHANGES)" || (echo 'usage: make incident-review ID=<id> WHAT="what happened" WHY="why" CHANGES="what changes"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) WHAT="$(WHAT)" WHY="$(WHY)" CHANGES="$(CHANGES)" $(COMPOSE_DIR)/scripts/incidents.sh review $(ID)
+
+incident-show: ## An incident with each tenant's 72-hour deadline and its timeline: make incident-show ID=<id>, or make incident-show for the list
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/incidents.sh $(if $(ID),show $(ID),list)
+
+security-alerts: ## The security alerts the control plane holds, its own and the units' (ADR-0056): make security-alerts [TENANT=echo] [STATE=open]
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) TENANT="$(TENANT)" STATE="$(STATE)" $(COMPOSE_DIR)/scripts/security-alerts.sh list
+
+security-alert-resolve: ## Resolve one of the control plane's own security alerts: make security-alert-resolve ID=<id> NOTE="..."
+	@test -n "$(ID)" && test -n "$(NOTE)" || (echo 'usage: make security-alert-resolve ID=<id> NOTE="what you found and did"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) NOTE="$(NOTE)" $(COMPOSE_DIR)/scripts/security-alerts.sh resolve $(ID)
 
 audit-chain: ## A tenant's latest audit chain verifications, accepted restores and anchors, as the control plane keeps them (ADR-0050): make audit-chain TENANT=echo
 	@test -n "$(TENANT)" || (echo 'usage: make audit-chain TENANT=echo' && exit 1)

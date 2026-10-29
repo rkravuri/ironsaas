@@ -155,7 +155,9 @@
       "sessions": "Sessions",
       "documents": "Documents",
       "changes": "Pending changes",
-      "keys": "Keys"
+      "keys": "Keys",
+      "securityAlerts": "Security alerts",
+      "alertRules": "Alert rules"
     },
     "audit": {
       "title": "Audit",
@@ -2514,7 +2516,10 @@
       "segment": "Segment",
       "firstSegment": "1, since the chain began",
       "laterSegment": "{{segment}}, since the last accepted restore"
-    }
+    },
+    "fromAlert": "The events behind a security alert, for {{who}}, from {{since}} to {{until}}.",
+    "fromAlertEveryone": "the whole organisation",
+    "fromAlertClear": "Show the whole trail"
   },
   "legalHolds": {
     "title": "Legal holds",
@@ -2985,5 +2990,124 @@
     "download": "Download the pack",
     "audited": "Each download is recorded in the audit trail with your name.",
     "failed": "The installed version could not be read."
+  },
+  "securityAlerts": {
+    "title": "Security alerts",
+    "description": "What the alert rules found in the audit trail: many denials or failed sign-ins, break-glass, large exports and changes in critical areas. Acknowledge an alert when you are on it, and resolve it with what you found.",
+    "gridLabel": "Security alerts",
+    "choose": "Choose an alert to see what it counted and the events behind it.",
+    "columns": {
+      "raised": "Raised",
+      "alert": "Alert",
+      "severity": "Severity",
+      "about": "About",
+      "count": "Counted",
+      "state": "State"
+    },
+    "severities": {
+      "critical": "Critical",
+      "high": "High",
+      "normal": "Normal"
+    },
+    "states": {
+      "open": "Open",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved"
+    },
+    "group": {
+      "principal": "{{value}}",
+      "address": "Address {{value}}",
+      "target": "{{value}}",
+      "record": "Record {{value}}",
+      "all": "The whole organisation",
+      "rule": "An alert rule"
+    },
+    "counted_one": "{{count, number}} counted, threshold {{threshold, number}}, within {{minutes}} minutes",
+    "counted_other": "{{count, number}} counted, threshold {{threshold, number}}, within {{minutes}} minutes",
+    "failingCount": "The rule could not run",
+    "detail": "{{counted}}, about {{about}}, from {{first}} to {{last}}.",
+    "openEvents": "Open the events in the audit trail",
+    "openRule": "Open the rule",
+    "runbook": "Runbook:",
+    "acknowledge": "Acknowledge",
+    "acknowledgeTitle": "Acknowledge the alert?",
+    "acknowledgeMessage": "Say that you are on \"{{title}}\": the platform operator's page for it stops. Resolve it when you know what happened.",
+    "resolve": "Resolve",
+    "resolveTitle": "Resolve the alert?",
+    "resolveMessage": "Say what you found and did about \"{{title}}\". The note stays with the alert and in the audit trail.",
+    "note": "Note",
+    "noteHint": "What you found and did, for the audit trail.",
+    "acknowledged": "You acknowledged \"{{title}}\".",
+    "resolved": "You resolved \"{{title}}\".",
+    "acknowledgedBy": "Acknowledged by {{name}} at {{at}}.",
+    "resolvedBy": "Resolved by {{name}} at {{at}}: {{note}}",
+    "someone": "someone",
+    "filters": {
+      "state": "State",
+      "anyState": "Any state",
+      "severity": "Severity",
+      "anySeverity": "Any severity",
+      "rule": "Rule",
+      "anyRule": "Any rule"
+    }
+  },
+  "alertRules": {
+    "title": "Alert rules",
+    "description": "The rules that watch the audit trail every minute, with the values your platform operator set. You can make a rule stricter, never looser. A rule that cannot run shows as failing and raises an alert of its own.",
+    "sectionTitle": "Rules",
+    "evaluatedAt": "The rules last ran at {{at}}.",
+    "neverEvaluated": "The rules have not run yet.",
+    "caption": "Each rule, what it runs with, the operator's values and its state",
+    "columns": {
+      "rule": "Rule",
+      "runs": "Runs with",
+      "operator": "Operator's values",
+      "state": "State",
+      "actions": "Actions"
+    },
+    "counts": "Counts by {{group}}.",
+    "groups": {
+      "principal": "person",
+      "address": "address",
+      "target": "login identifier or tenant",
+      "record": "record",
+      "all": "the whole organisation"
+    },
+    "atOnce": "Each event, at once",
+    "within_one": "{{count, number}} event within {{minutes}} minutes",
+    "within_other": "{{count, number}} events within {{minutes}} minutes",
+    "above_one": "An export of more than {{count, number}} record",
+    "above_other": "An export of more than {{count, number}} records",
+    "stricter": "stricter than the operator's",
+    "byOperator": "the operator's values",
+    "cannotRun": "Cannot run as it is set",
+    "states": {
+      "running": "Running",
+      "failing": "Failing"
+    },
+    "lastRun": "Last ran {{at}}",
+    "notRunYet": "Not run yet",
+    "change": "Change",
+    "changeNamed": "Change \"{{title}}\"",
+    "fixed": "Raises an alert for each event",
+    "pointedFailing": "The rule \"{{title}}\" is failing: {{reason}}",
+    "pointedRunning": "The rule \"{{title}}\" runs.",
+    "saved": "\"{{title}}\" now runs with: {{values}}.",
+    "form": {
+      "title": "Change \"{{title}}\"",
+      "message": "Your platform operator's values: {{values}}. You can make the rule stricter; leave a value empty to keep the operator's.",
+      "threshold": "Threshold",
+      "thresholdHint": "How many events raise an alert, from 1 to {{maximum}}.",
+      "window": "Window in minutes",
+      "windowHint": "How long the events are counted over: {{minimum}} minutes or more.",
+      "above": "Records",
+      "aboveHint": "An export of more than this many records raises an alert, up to {{maximum}}.",
+      "whole": "Give a whole number.",
+      "thresholdBounds": "Choose from {{minimum}} to {{maximum}}.",
+      "windowBounds": "Choose from {{minimum}} to {{maximum}} minutes.",
+      "aboveBounds": "Choose from {{minimum}} to {{maximum}} records.",
+      "save": "Save",
+      "reset": "Use the operator's values"
+    }
   }
 }

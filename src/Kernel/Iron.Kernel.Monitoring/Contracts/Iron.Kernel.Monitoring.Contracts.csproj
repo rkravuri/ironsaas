@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Kernel.Monitoring: its permissions, events, errors, and the copies of a unit's alerts the control plane keeps. References Iron.Kernel only. -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

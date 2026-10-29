@@ -1,5 +1,7 @@
 import {
   IconAdjustments,
+  IconAlertTriangle,
+  IconBellCog,
   IconClipboardCheck,
   IconDevices,
   IconFileCertificate,
@@ -16,6 +18,7 @@ import {
 } from "@tabler/icons-react";
 import { gridShortcuts, tabShortcuts, treeShortcuts } from "@/components/shortcuts";
 import type { ModuleManifest } from "@/modules/registry";
+import { AlertRulesPage } from "./pages/AlertRulesPage";
 import { ChangeRecordPage } from "./pages/ChangeRecordPage";
 import { ChangesPage } from "./pages/ChangesPage";
 import { ConflictsPage } from "./pages/ConflictsPage";
@@ -25,6 +28,7 @@ import { ExplainPage } from "./pages/ExplainPage";
 import { KeysPage } from "./pages/KeysPage";
 import { ReviewRecordPage } from "./pages/ReviewRecordPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
+import { SecurityAlertsPage } from "./pages/SecurityAlertsPage";
 import { RoleEditorPage } from "./pages/RoleEditorPage";
 import { RolesPage } from "./pages/RolesPage";
 import { SessionsPage } from "./pages/SessionsPage";
@@ -165,6 +169,19 @@ export const consoleManifest: ModuleManifest = {
       titleKey: "modules.console.keys",
     },
     {
+      path: "/console/security-alerts",
+      permission: "monitoring.alerts.read",
+      element: <SecurityAlertsPage />,
+      titleKey: "modules.console.securityAlerts",
+      shortcuts: gridShortcuts,
+    },
+    {
+      path: "/console/alert-rules",
+      permission: "monitoring.alerts.read",
+      element: <AlertRulesPage />,
+      titleKey: "modules.console.alertRules",
+    },
+    {
       path: "/console/sso/new",
       permission: "identity.sso.manage",
       element: <SsoProviderPage />,
@@ -255,6 +272,18 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/keys",
       permission: "keys.keys.read",
       icon: <IconShieldLock size={16} />,
+    },
+    {
+      labelKey: "modules.console.securityAlerts",
+      path: "/console/security-alerts",
+      permission: "monitoring.alerts.read",
+      icon: <IconAlertTriangle size={16} />,
+    },
+    {
+      labelKey: "modules.console.alertRules",
+      path: "/console/alert-rules",
+      permission: "monitoring.alerts.read",
+      icon: <IconBellCog size={16} />,
     },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },

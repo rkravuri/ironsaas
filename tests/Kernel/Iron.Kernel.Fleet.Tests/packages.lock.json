@@ -690,6 +690,12 @@
           "Iron.Kernel": "[1.0.0, )"
         }
       },
+      "iron.kernel.monitoring.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
       "iron.kernel.security": {
         "type": "Project",
         "dependencies": {
@@ -721,6 +727,7 @@
           "Iron.Kernel.Flags.Contracts": "[1.0.0, )",
           "Iron.Kernel.Fleet.Contracts": "[1.0.0, )",
           "Iron.Kernel.Identity.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Monitoring.Contracts": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Tenancy.Contracts": "[1.0.0, )"
         }

@@ -6,7 +6,7 @@ Everything Foundation needs runs on the developer laptop in containers (PRD sect
 
 - WSL 2 with Ubuntu, Docker (Engine inside WSL, or Docker Desktop with WSL integration), `docker compose version` 2.x.
 - .NET SDK 10 and Node.js 26, both inside WSL. `which npm` must not point under `/mnt/c`: the Windows npm runs through `cmd.exe`, which cannot work from a WSL path, and installs Windows binaries into `node_modules`.
-- Ports 80, 443, 5432, 8200, 10000, 3200, 4317 and 4318 free; 5100, 5101 and 5200 free when the hosts run from source.
+- Ports 80, 443, 5432, 8200, 10000, 3200, 4317, 4318 and 9093 free; 5100, 5101 and 5200 free when the hosts run from source.
 - Memory: about 2.5 GB for the platform with telemetry, about 0.5 GB per tenant unit, about 1 GB for the control plane as containers. The reference machine is a laptop with 16 GB of memory, with WSL limited to 12 GB and 8 GB of swap.
 - WSL's memory and swap, in `%UserProfile%\.wslconfig` on Windows, under `[wsl2]`, applied after `wsl --shutdown`: on the reference machine `memory=12GB` and `swap=8GB`; on a 32 GB machine `memory=20GB` and `swap=8GB`. `memory` must stay below the machine's own memory. Without the file WSL takes half the machine's memory and a quarter of that as swap, which is too little: measured on 2026-10-19 on the reference machine with those defaults (7.4 GB and 2 GB of swap), with the platform, telemetry, the control plane as containers and four units up, `make test`, `make shell-check`, `make shell-a11y` and `make format` passed, but memory use peaked at 6.9 GB and the swap was full. That is the pressure under which WSL restarted on 2026-10-18 and took the old in-memory store with it.
 - Optional: `mkcert` (`make certs`), Playwright browsers (`cd shell && npm run e2e:install`).
@@ -46,11 +46,12 @@ Everything Foundation needs runs on the developer laptop in containers (PRD sect
 | OpenBao | http://localhost:8200 and http://openbao.localhost, mount `secret` | `OPENBAO_ROOT_TOKEN` in `.env`, written by the first `make up`; `OPENBAO_UNSEAL_KEY` and `OPENBAO_RECOVERY_KEY` beside it |
 | Grafana | http://grafana.localhost | viewer without login; `admin` with `GRAFANA_ADMIN_PASSWORD` |
 | Prometheus, Tempo, Loki | http://prometheus.localhost, http://tempo.localhost (`localhost:3200`), `localhost:3100` | none |
+| Alertmanager, the operator's alerting | http://alertmanager.localhost (`localhost:9093`) | none |
 | OTLP for hosts on the laptop | `localhost:4317` (gRPC), `localhost:4318` (HTTP) | none |
 | Control plane API | http://localhost:5200 (from source or as container), http://control.localhost (container) | operator client credentials, `DEV_OPERATOR_SECRET` in the Makefile |
 | A tenant unit | `http(s)://<slug>.localhost`: `/api`, `/auth`, `/connect`, `/health`, `/.well-known` to its API, everything else to its shell | the tenant's accounts |
 
-Inside the Docker network `foundation` the services are `postgres:5432`, `blob:10000`, `openbao:8200`, `otel-collector:4317`, `tempo:3200`, `loki:3100`, `prometheus:9090`, `traefik:80`. Tenant units are separate Compose projects `tenant-<slug>` that join this network; `docker compose ls` lists them.
+Inside the Docker network `foundation` the services are `postgres:5432`, `blob:10000`, `openbao:8200`, `otel-collector:4317`, `tempo:3200`, `loki:3100`, `prometheus:9090`, `alertmanager:9093`, `traefik:80`. Tenant units are separate Compose projects `tenant-<slug>` that join this network; `docker compose ls` lists them.
 
 Hostnames: browsers resolve every `*.localhost` name to the laptop by themselves. Command line tools in WSL do not; run `make hosts` once and add the line to `/etc/hosts`, or call `http://localhost` with a `Host:` header, as the scripts do.
 
@@ -249,6 +250,31 @@ A run that does not pass writes `ALERT: the audit chain of tenant control ...` t
 From source, for daily work: `make secret-control && make migrate-control && make seed-control` once, then `make run-control` (API on :5200) and `make run-fleet` (the fleet worker with the Compose runtime, driving this machine's Docker) in two terminals. The seed creates the `operator` account (tenant-administrator), `operator-two` (tenant-administrator, the second operator break-glass needs) and the `smoke-reader` account (service-default, for the smoke's denial case); re-run `make seed-control` after pulling a change that adds accounts.
 
 As containers, as the pipeline runs it: `make up-control` writes the control secret with container hosts, migrates and seeds the control plane's database with the image (so a new image's migrations and permissions are in place before it serves), and starts `control-api` and `fleet` from the images. The two cannot run beside the source processes: stop `make run-control` and `make run-fleet` first (port 5200), and run `make secret-control` again before going back to source.
+
+### Security alerts and incidents (ADR-0056)
+
+Each unit's worker runs the security alert rules every minute over the tenant's audit trail; the console's Security
+alerts and Alert rules pages show what they raised and how they run. Each alert is copied to the control plane, which
+runs the same rules over its own trail and posts every alert to Alertmanager, in the `telemetry` and `ci` profiles,
+limited to 64 MB, paging nobody on the laptop:
+
+```
+make security-alerts [TENANT=echo] [STATE=open]     # the control plane's alerts, its own and the units'
+make security-alert-resolve ID=<id> NOTE="..."       # one of the control plane's own; a unit's is resolved in the unit
+```
+
+The operator's values of the rules are `Monitoring:Rules:<rule>:*` in the unit secret; a value the rule cannot run with
+shows as a failing rule on the Alert rules page, with an alert of its own. Incidents follow
+`docs/security/incident-response.md`:
+
+```
+make incident-declare SEVERITY=2 SUMMARY="..." LEAD="..." [COMMS=...] [SCRIBE=...] [TENANTS=echo] [PERSONAL_DATA=1] [KNOWN_AT=...]
+make incident-note ID=<id> TEXT="..." [KIND=note|communication|notice] [TENANT=echo]
+make incident-note ID=<id> TENANT=acme PERSONAL_DATA=1      # a tenant found affected
+make incident-close ID=<id> SUMMARY="..."                   # once every tenant whose personal data was affected is told
+make incident-review ID=<id> WHAT="..." WHY="..." CHANGES="..."
+make incident-show [ID=<id>]
+```
 
 ## 7. The dev tenant from source
 

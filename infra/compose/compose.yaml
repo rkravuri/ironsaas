@@ -19,6 +19,7 @@ volumes:
   fleet-units:
   tempo-data:
   grafana-data:
+  alertmanager-data:
 
 x-logging: &default-logging
   driver: json-file
@@ -166,6 +167,8 @@ services:
       Secrets__Token: ${CONTROL_API_STORE_TOKEN:-} # the API's own token, which reads no secret of the fleet's
       Secrets__Path: control
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      # The operator's alerting, which the control plane sends every security alert to (ADR-0056).
+      Monitoring__Alertmanager__Address: ${ALERTMANAGER_ADDRESS:-http://alertmanager:9093}
     ports:
       - "5200:8080" # the operator's address, the same as make run-control
     networks: [foundation]
@@ -310,6 +313,37 @@ services:
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    logging: *default-logging
+
+  # The operator's alerting (ADR-0056): the control plane posts every security alert to it; it pages nobody on the laptop.
+  alertmanager:
+    image: prom/alertmanager:v0.34.1 # Apache-2.0
+    profiles: [telemetry, ci]
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.external-url=http://alertmanager.localhost
+    volumes:
+      - ./telemetry/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "9093:9093" # Alertmanager API, also read by the smoke test's security-alerts step
+    networks: [foundation]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.localhost`)"
+      - "traefik.http.routers.alertmanager.entrypoints=web,websecure"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
+    deploy:
+      resources:
+        limits:
+          memory: 64M # the budget of ADR-0056; measured at about 20 MB holding the laptop's alerts
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9093/-/ready"]
       interval: 5s
       timeout: 3s
       retries: 12

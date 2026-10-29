@@ -188,3 +188,15 @@ Edit the entity, then `make ef-add MODULE=Audit NAME=<WhatChanged>` and commit `
 ## The control plane's chain (ADR-0053)
 
 The control plane seals its own trail with the same `AuditSealer`, in its API: `AddAuditSealing(configuration, AuditAnchoring.OwnStore)`. Its anchors go through `IAuditAnchorSink` to `AuditAnchorKeeper`, which hands each new seal to the host's `IAuditAnchorStore` (Audit's contracts; the fleet's `BlobAuditAnchorStore`), outside its database; a unit's still go to the control plane through `AuditAnchorSender`. The control plane keeps no archive and prunes nothing.
+
+## What the alert rules count (ADR-0056)
+
+`IAuditCounts` (`AuditCounter`) counts the online trail's events for the Monitoring module's rules: those of the given
+types, with an outcome, a detail or a target prefix when a rule asks, written after one moment and up to another,
+grouped by the actor (never the anonymous one), the client's address, the target, the record or the whole trail; with
+a quantity key, only the events whose detail holds a whole number above a limit; with a sum key, the detail added up.
+One query per type, through the indexes on `created_at` and `event_type`; the grouping and the keys are parameters.
+
+The writer adds the client's address to the details of every refusal (outcome `denied`) and of every event written while
+nobody is signed in, such as a failed sign-in or a lockout; the search finds the events of one address with
+`?address=` beside the list grammar, and filters by `target`. The details keys a rule reads are in `AuditDetails`.

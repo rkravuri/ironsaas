@@ -713,6 +713,255 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.Incident", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CloseSummary")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("close_summary");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<string>("Communications")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("communications");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset>("DeclaredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("declared_at");
+
+                    b.Property<Guid>("DeclaredById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("declared_by_id");
+
+                    b.Property<string>("Lead")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("lead");
+
+                    b.Property<DateTimeOffset?>("ReviewDueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("review_due_at");
+
+                    b.Property<DateTimeOffset?>("ReviewEscalatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("review_escalated_at");
+
+                    b.Property<DateTimeOffset?>("ReviewRecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("review_recorded_at");
+
+                    b.Property<Guid?>("ReviewRecordedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("review_recorded_by_id");
+
+                    b.Property<string>("Scribe")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("scribe");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer")
+                        .HasColumnName("severity");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("summary");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<string>("WhatChanges")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("what_changes");
+
+                    b.Property<string>("WhatHappened")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("what_happened");
+
+                    b.Property<string>("Why")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("why");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incidents");
+
+                    b.HasIndex("Status", "ReviewDueAt")
+                        .HasDatabaseName("ix_incidents_status_review_due_at");
+
+                    b.ToTable("incidents", "kernel_tenancy");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.IncidentEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid>("ById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("by_id");
+
+                    b.Property<string>("ByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("by_name");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("TenantSlug")
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incident_entries");
+
+                    b.HasIndex("IncidentId", "At")
+                        .HasDatabaseName("ix_incident_entries_incident_id_at");
+
+                    b.ToTable("incident_entries", "kernel_tenancy", t =>
+                        {
+                            t.HasComment("append-only");
+                        });
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.IncidentTenant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("IncidentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("incident_id");
+
+                    b.Property<DateTimeOffset?>("KnownAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("known_at");
+
+                    b.Property<string>("Notice")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("notice");
+
+                    b.Property<DateTimeOffset?>("NoticeEscalatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("notice_escalated_at");
+
+                    b.Property<DateTimeOffset?>("NotifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("notified_at");
+
+                    b.Property<Guid?>("NotifiedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("notified_by_id");
+
+                    b.Property<bool>("PersonalData")
+                        .HasColumnType("boolean")
+                        .HasColumnName("personal_data");
+
+                    b.Property<string>("TenantSlug")
+                        .IsRequired()
+                        .HasMaxLength(63)
+                        .HasColumnType("character varying(63)")
+                        .HasColumnName("tenant_slug");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_incident_tenants");
+
+                    b.HasIndex("IncidentId", "TenantSlug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_incident_tenants_incident_id_tenant_slug");
+
+                    b.ToTable("incident_tenants", "kernel_tenancy");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Tenancy.Data.KeyRotationRecord", b =>
                 {
                     b.Property<Guid>("Id")

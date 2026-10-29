@@ -18,11 +18,15 @@ public sealed class CspReports(ProtectionOptions options, ProtectionMetrics metr
     private const int MaxText = 300;
 
     private readonly ConcurrentQueue<CspViolation> _sample = new();
+    private ConcurrentDictionary<string, int> _pending = new(StringComparer.Ordinal);
     private readonly Lock _logLock = new();
     private DateTimeOffset _logMinute = DateTimeOffset.MinValue;
     private int _loggedThisMinute;
 
     public IReadOnlyList<CspViolation> Latest => [.. _sample.Reverse()];
+
+    /// <summary>The reports since the last call, by directive, for the minute's summary event (ADR-0056).</summary>
+    public IReadOnlyDictionary<string, int> TakePending() => Interlocked.Exchange(ref _pending, new ConcurrentDictionary<string, int>(StringComparer.Ordinal));
 
     /// <summary>Reads a report's body; false when it is no report of either form.</summary>
     public bool Accept(JsonDocument document)
@@ -37,6 +41,7 @@ public sealed class CspReports(ProtectionOptions options, ProtectionMetrics metr
         foreach (var violation in violations)
         {
             metrics.CspReport(violation.Directive);
+            _pending.AddOrUpdate(violation.Directive, 1, (_, count) => count + 1);
             _sample.Enqueue(violation);
             while (_sample.Count > Math.Max(1, options.CspReports.Sample) && _sample.TryDequeue(out _))
             {

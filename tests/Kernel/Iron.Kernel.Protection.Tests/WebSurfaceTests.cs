@@ -35,6 +35,29 @@ public class WebSurfaceTests
     }
 
     [Fact]
+    [Proves("ADR-0056")]
+    public async Task TheReportsOfAMinuteBecomeOneSummaryEventThatAnAlertRuleCountsAndAQuietMinuteWritesNone()
+    {
+        await using var host = await ProtectionHost.StartAsync();
+        const string Script = """{"csp-report":{"document-uri":"https://echo.localhost/audit","effective-directive":"script-src-elem","blocked-uri":"inline"}}""";
+        const string Style = """{"csp-report":{"document-uri":"https://echo.localhost/audit","effective-directive":"style-src-elem","blocked-uri":"inline"}}""";
+        using (await PostAsync(host, Script, "application/csp-report"))
+        using (await PostAsync(host, Script, "application/csp-report"))
+        using (await PostAsync(host, Style, "application/csp-report"))
+        {
+        }
+
+        var summary = ActivatorUtilities.CreateInstance<CspReportSummary>(host.Services);
+        Assert.Equal(3, await summary.SummariseAsync(Cancel));
+        Assert.Equal(0, await summary.SummariseAsync(Cancel));
+
+        var written = Assert.Single(host.Audit.Events, e => e.Action == ProtectionAuditEvents.CspReportsReceived);
+        Assert.Equal("3", written.Details![Iron.Kernel.Audit.Contracts.AuditDetails.Reports]);
+        Assert.Equal("script-src-elem=2,style-src-elem=1", written.Details["directives"]);
+        Assert.Equal(Iron.Kernel.Audit.Contracts.AuditSeverity.Low, written.Severity);
+    }
+
+    [Fact]
     [Proves("TF-070 AC2", "ADR-0053")]
     public async Task OnlyTheOriginsATenantListsMayCallItsApiFromABrowser()
     {

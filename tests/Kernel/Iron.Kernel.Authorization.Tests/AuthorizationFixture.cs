@@ -101,7 +101,7 @@ public sealed class AuthorizationFixture : IAsyncLifetime
     }
 
     /// <summary>The services a host would have for this module, with a controllable clock, principal and audit writer.</summary>
-    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null, ILoggerProvider? logs = null, RecordingChangeRecorder? history = null)
+    public ServiceProvider BuildServices(FakeTimeProvider time, ICurrentPrincipal principal, RecordingAuditWriter audit, string? connectionString = null, ILoggerProvider? logs = null, RecordingChangeRecorder? history = null, IReadOnlyList<IModule>? more = null)
     {
         var services = new ServiceCollection();
         if (history is not null)
@@ -121,7 +121,7 @@ public sealed class AuthorizationFixture : IAsyncLifetime
             }
         });
         services.AddIronDatabase(connectionString ?? ConnectionString);
-        services.AddModules(new ConfigurationBuilder().Build(), [new AuthorizationModule(), new DutyProbeModule()]);
+        services.AddModules(new ConfigurationBuilder().Build(), [new AuthorizationModule(), new DutyProbeModule(), .. more ?? []]);
         return services.BuildServiceProvider();
     }
 }

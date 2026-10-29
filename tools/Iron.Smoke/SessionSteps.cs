@@ -87,7 +87,7 @@ public sealed class SessionSteps(Api api, SmokeOptions options, SignIn signIn, F
     }
 
     /// <summary>A person of the run in the root unit, with no role, who signs in with a password made here.</summary>
-    private async Task<(string Id, string LoginId, string Password)> PersonAsync(string admin, string prefix, CancellationToken cancellationToken)
+    internal async Task<(string Id, string LoginId, string Password)> PersonAsync(string admin, string prefix, CancellationToken cancellationToken)
     {
         var loginId = $"{prefix}-{run}@{options.Hostname}";
         var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
@@ -106,7 +106,7 @@ public sealed class SessionSteps(Api api, SmokeOptions options, SignIn signIn, F
     /// Deactivates the person with the step's sign-in of the administrator, or a fresh one when the step had none, then
     /// signs the administrator out; a failure to restore fails a step that passed.
     /// </summary>
-    private async Task DeactivateAsync(string? admin, string? personId, bool finished, CancellationToken cancellationToken)
+    internal async Task DeactivateAsync(string? admin, string? personId, bool finished, CancellationToken cancellationToken)
     {
         try
         {

@@ -38,6 +38,9 @@ public sealed class AuditModule : IModule
         services.AddIronDbContext<AuditDbContext>();
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<IAuditTrail, AuditTrail>();
+
+        // What the security alert rules count (TF-079, ADR-0056).
+        services.AddScoped<IAuditCounts, AuditCounter>();
         services.AddScoped<IValidator<RetentionChoiceRequest>, RetentionChoiceRequestValidator>();
         services.AddScoped<IValidator<PlaceLegalHoldRequest>, PlaceLegalHoldRequestValidator>();
         services.AddScoped<IValidator<ReleaseLegalHoldRequest>, ReleaseLegalHoldRequestValidator>();

@@ -126,6 +126,11 @@ public sealed record FieldChangeResponse(string Field, string? Old, string? New,
 
 internal static class AuditEventsEndpoints
 {
+    /// <summary>The query parameter that finds the events of one client's address, beside the list grammar's filters.</summary>
+    public const string AddressKey = "address";
+
+    public const int MaximumAddressLength = 64;
+
     /// <summary>The whitelist of the list grammar (TF-064: search by time, actor, record and type).</summary>
     public static readonly ListFields<AuditEventRecord> Fields = new ListFields<AuditEventRecord>()
         .Add("id", e => e.Id, FieldUse.Select | FieldUse.Filter)
@@ -136,7 +141,7 @@ internal static class AuditEventsEndpoints
         .Add("impersonator_id", e => e.ImpersonatorId, FieldUse.Select | FieldUse.Filter)
         .Add("severity", e => e.Severity, FieldUse.Select | FieldUse.Filter)
         .Add("source", e => e.Source, FieldUse.Select | FieldUse.Filter)
-        .Add("target", e => e.Target, FieldUse.Select)
+        .Add("target", e => e.Target, FieldUse.Select | FieldUse.Filter)
         .Add("record_type", e => e.RecordType, FieldUse.Select | FieldUse.Filter)
         .Add("record_id", e => e.RecordId, FieldUse.Select | FieldUse.Filter)
         .Add("reason", e => e.Reason, FieldUse.Select)
@@ -173,7 +178,21 @@ internal static class AuditEventsEndpoints
         }
 
         var query = parsed.Value;
-        var page = await context.Events.AsNoTracking().ApplyListQuery(query, Fields).ToPageAsync(query.Page, cancellationToken);
+        var events = context.Events.AsNoTracking();
+
+        // The client's address is a detail, not a column: a security alert grouped by address links to its events by it (ADR-0056).
+        if (http.Request.Query[AddressKey] is [{ } address])
+        {
+            if (address.Length is 0 or > MaximumAddressLength)
+            {
+                return ApiResults.Problem(Error.Validation(AuditErrors.AddressInvalid, $"The address filter takes an address of 1 to {MaximumAddressLength} characters.", new FieldError(AddressKey, "invalid", $"Give an address of at most {MaximumAddressLength} characters.")), http);
+            }
+
+            var contained = JsonSerializer.Serialize(new Dictionary<string, string> { [AuditDetails.Address] = address });
+            events = events.Where(e => e.Details != null && EF.Functions.JsonContains(e.Details, contained));
+        }
+
+        var page = await events.ApplyListQuery(query, Fields).ToPageAsync(query.Page, cancellationToken);
 
         // Every person by name, the actor, the one acted for (TF-037 AC3) and the impersonator (TF-025 AC2), so a reader
         // does not look the ids up. A host without Identity, such as the audit tests' own, answers the ids alone.

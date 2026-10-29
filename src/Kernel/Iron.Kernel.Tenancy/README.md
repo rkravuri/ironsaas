@@ -99,3 +99,26 @@ The control plane runs with `control_app`, which its migrations, run as `control
 ## Keys and their rotation (TF-073, TF-075, ADR-0054)
 
 `KeyRotationService` (`ITenantKeys` for the fleet) keeps each tenant's keys and database password (`tenant_keys`: versions, last rotation, days between, from which the next rotation follows) and every rotation (`key_rotations`: who asked, why, the versions, the unit's progress, finished and retired). `POST /api/v1/tenants/{slug}/keys/{key}/rotations` (`tenancy.keys.manage`, critical, the key officer's; a fresh token; a reason) asks for one, one per key at a time; `GET /api/v1/tenants/{slug}/keys` and `/keys/rotations/{id}` read them. A unit's own client (`tenancy.keys.report`, for its own tenant only) reads its keys and rotations (`GET /api/v1/key-rotations`), reports its re-encryption (`POST /api/v1/key-rotations/{id}/progress`) and sets its policy for its data and index keys (`PUT /api/v1/key-rotations/policy`), kept within the operator's bounds (`Keys:Rotation`: `DataDaysMinimum` 30, `DataDaysMaximum` 730, `DataDaysDefault` 365, `SigningDays` 365, `DatabaseDays` 90, `SigningOverlapMinutes` 30). Audit events: `tenancy.key_rotation_requested`, `key_rotated`, `key_retired`, `key_rotation_failed`, each with who asked and the reason.
+
+## The units' security alerts and incidents (TF-079, ADR-0056)
+
+A unit sends each of its security alerts after every change to `PUT /api/v1/alert-copies/{id}`
+(`tenancy.alert_copies.append`, the unit-client role's); the tenant is the client's binding, and the copy goes to the
+Monitoring module's store (`IAlertCopies`), from which the control plane's alerting forwards it.
+
+Incidents (`incidents`, `incident_tenants`, `incident_entries`, the last written once), by the runbook
+`docs/security/incident-response.md`:
+
+| Operation | Endpoint | Permission | Refused when |
+|---|---|---|---|
+| Declare | `POST /api/v1/incidents` | `tenancy.incidents.manage` | no summary or lead, a severity outside 1 to 4, a tenant that does not exist, a breach known in the future or more than 30 days ago |
+| Note, communication, notice | `POST /api/v1/incidents/{id}/entries` | `tenancy.incidents.manage` | a notice to a tenant whose personal data is not affected, or that the incident does not name |
+| A tenant affected | `POST /api/v1/incidents/{id}/tenants` | `tenancy.incidents.manage` | as for declaring |
+| Close | `POST /api/v1/incidents/{id}/close` | `tenancy.incidents.manage` | a tenant whose personal data was affected is not told |
+| Review | `POST /api/v1/incidents/{id}/review` | `tenancy.incidents.manage` | the incident is open, or its review is recorded |
+| Read | `GET /api/v1/incidents`, `GET /api/v1/incidents/{id}` | `tenancy.incidents.read` | |
+
+Each tenant whose personal data is affected has a notice due 72 hours after it became known; the review is due 10 days
+after the close. `IncidentEscalation`, every five minutes in the control plane (`AddIncidentEscalation`), escalates each
+once when it is due and missing: `tenancy.incident_notice_overdue` and `tenancy.incident_review_overdue` at high
+severity, which the control plane's rules raise to the operator's alerting.

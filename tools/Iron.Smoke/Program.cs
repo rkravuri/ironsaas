@@ -486,6 +486,11 @@ var keys = new KeySteps(api, options, AdministratorAsync, run);
 await report.StepAsync("tls", ["TF-074 AC3", "ADR-0054"], () => keys.TlsAsync(ct));
 await report.StepAsync("key-rotation", ["TF-075 AC1", "TF-074 AC2", "TF-074 AC4", "ADR-0054"], () => keys.RotateIndexKeyAsync(ct));
 
+// S3 T10b's step (ADR-0056): a person of the run refused 100 times raises a security alert within the rules' minutes; its
+// link finds the denials, the control plane holds its copy and Alertmanager has it; resolved, the person deactivated.
+var monitoring = new MonitoringSteps(api, options, signIn, sessions, AdministratorAsync, operatorToken, run);
+await report.StepAsync("security-alert", ["TF-079 AC1", "ADR-0056"], () => monitoring.DenialsRaiseAnAlertAsync(ct));
+
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
 

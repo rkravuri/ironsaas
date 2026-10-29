@@ -1,3 +1,5 @@
+using Iron.Kernel.Telemetry.Export;
+
 namespace Iron.Kernel.Telemetry;
 
 /// <summary>Settings of the telemetry pipeline. Bound from the <c>Telemetry</c> configuration section; hosts override in code.</summary>
@@ -16,6 +18,15 @@ public sealed class TelemetryOptions
     /// (default localhost:4317, which is the laptop collector). Tests switch this off.
     /// </summary>
     public bool ExportToCollector { get; set; } = true;
+
+    /// <summary>
+    /// The collector's OTLP gRPC address for every signal, such as <c>http://otel-collector:4317</c>. Empty, the standard
+    /// OTEL_EXPORTER_OTLP_* variables decide, as before; a test that starts its own collector sets it.
+    /// </summary>
+    public string? Endpoint { get; set; }
+
+    /// <summary>The trace exporter's queue and batches (TF-130 AC4, ADR-0056), from <c>Telemetry:Traces</c>.</summary>
+    public TraceExportOptions Traces { get; set; } = new();
 
     /// <summary>Whether requests to /health/* produce traces. On during S1; probes are filtered when the fleet runs many units (S6).</summary>
     public bool TraceHealthEndpoints { get; set; } = true;

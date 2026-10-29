@@ -6,6 +6,7 @@ using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Api.Responses;
 using Iron.Kernel.Api.Routing;
 using Iron.Kernel.Api.Validation;
+using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Identity.Contracts;
@@ -207,7 +208,7 @@ internal static class TermsEndpoints
     }
 
     /// <summary>The acceptances as CSV (TF-028 AC2): the list's filters and sort apply; one row per acceptance.</summary>
-    private static async Task<IResult> ExportAsync(HttpContext http, IdentityDbContext context, CancellationToken cancellationToken)
+    private static async Task<IResult> ExportAsync(HttpContext http, IdentityDbContext context, IAuditWriter audit, ICurrentPrincipal current, CancellationToken cancellationToken)
     {
         var parsed = ListQueryParser.Parse(http.Request.Query, Fields);
         if (parsed.IsFailure)
@@ -223,6 +224,9 @@ internal static class TermsEndpoints
                 .Append(row.Version.ToString(CultureInfo.InvariantCulture)).Append(',').Append(row.AcceptedAt.ToString("O", CultureInfo.InvariantCulture)).Append("\r\n");
         }
 
+        // An export is on the record with its size, which the mass-export alert reads (TF-060, ADR-0056).
+        var details = new Dictionary<string, string>(StringComparer.Ordinal) { [AuditDetails.Rows] = rows.Count.ToString(CultureInfo.InvariantCulture) };
+        await audit.WriteAsync(new AuditEvent(IdentityAuditEvents.AcceptancesExported, AuditOutcome.Success, current.Id, "document acceptances", details), cancellationToken);
         return TypedResults.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", "acceptances.csv");
     }
 

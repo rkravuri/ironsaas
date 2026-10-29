@@ -382,6 +382,9 @@ public static class IdentityAuditEvents
     /// <summary>An administrator retired a tenant document: nobody is asked to accept it any more.</summary>
     public const string DocumentRetired = "identity.document_retired";
 
+    /// <summary>The acceptances were exported as CSV, with how many rows (TF-060, the mass-export alert of ADR-0056).</summary>
+    public const string AcceptancesExported = "identity.acceptances_exported";
+
     /// <summary>Every event type above with the words it reads as in the audit trail, the History tab and the exports (ADR-0051).</summary>
     public static IReadOnlyList<AuditEventType> Types { get; } =
     [
@@ -422,6 +425,7 @@ public static class IdentityAuditEvents
         new(TermsDeclined, "Document declined"),
         new AuditEventType(DocumentPublished, "Document published").AsAdministrative(),
         new AuditEventType(DocumentRetired, "Document retired").AsAdministrative(),
+        new AuditEventType(AcceptancesExported, "Document acceptances exported").AsAdministrative(),
         new AuditEventType(SecurityEventKinds.AuditEventOf(SecurityEventKinds.FactorsReset), "Second factors reset").AsAdministrative(),
         new AuditEventType(SecurityEventKinds.AuditEventOf(SecurityEventKinds.SsoOnlySet), "Company login only, set").AsAdministrative(),
         new AuditEventType(SecurityEventKinds.AuditEventOf(SecurityEventKinds.SsoOnlyCleared), "Password sign-in allowed again").AsAdministrative(),
@@ -430,6 +434,15 @@ public static class IdentityAuditEvents
         new AuditEventType(SecurityEventKinds.AuditEventOf(SecurityEventKinds.ImpersonationEnded), "Signing in as someone ended").AsAdministrative(),
         new AuditEventType(SecurityEventKinds.AuditEventOf(SecurityEventKinds.EmergencySet), "Emergency account marked").AsAdministrative(),
         new AuditEventType(SecurityEventKinds.AuditEventOf(SecurityEventKinds.EmergencyCleared), "Emergency mark removed").AsAdministrative(),
+
+        // Written as audit events since S3 T2 to T5 but never declared, so the trail showed their codes; the alert rules
+        // refuse to count a type no module declares (ADR-0056).
+        new(SecurityEventKinds.AuditEventOf(SecurityEventKinds.FactorEnrolled), "Second factor added"),
+        new(SecurityEventKinds.AuditEventOf(SecurityEventKinds.FactorRemoved), "Second factor removed"),
+        new(SecurityEventKinds.AuditEventOf(SecurityEventKinds.RecoveryCodeUsed), "Recovery code used"),
+        new(SecurityEventKinds.AuditEventOf(SecurityEventKinds.RecoveryCodesRegenerated), "Recovery codes made again"),
+        new(SecurityEventKinds.AuditEventOf(SecurityEventKinds.SsoLinked), "Company login linked"),
+        new(SecurityEventKinds.AuditEventOf(SecurityEventKinds.EmergencySignIn), "Signed in with an emergency account"),
     ];
 }
 

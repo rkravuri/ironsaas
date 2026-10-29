@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router";
 import { Alert, Badge, Box, Button, Group, Select, Stack, Table, Tabs, Text, TextInput } from "@mantine/core";
 import { IconArchive, IconFileExport } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
@@ -16,7 +17,7 @@ import { EmptyState } from "@/components/panels";
 import { ListPage } from "@/components/templates";
 import { formatDateTime, startOfDay } from "@/i18n/dates";
 import { PersonPicker } from "@/modules/kernel/console/pages/PersonPicker";
-import { emptyFilters as empty, endOfDay, filterQuery, signedInByTerm, type Filters } from "./audit-filters";
+import { endOfDay, filterQuery, filtersFromLink, fromAnAlert, signedInByTerm, type Filters } from "./audit-filters";
 import { actorWords, outcomeWords, severityWords } from "./audit-words";
 import { SignedInByPicker } from "./SignedInByPicker";
 
@@ -28,13 +29,15 @@ const sources = ["ui", "api", "job"] as const;
  * the events in the database, newest first, any of whose rows the grid's own filters narrow further; its export to CSV,
  * the search as applied, with the filters in the file's first lines, handed over as a download; and, on a tab of its own,
  * a search of the archive by date range, for the events older than the online period. Every time is in the person's
- * zone, with its name.
+ * zone, with its name. A link opens the page with its filters: a security alert's names its events' types, its group
+ * and the moments of its first and last event (ADR-0056), which the page says until the person clears them.
  */
 export function AuditPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"search" | "archive">("search");
-  const [filters, setFilters] = useState<Filters>(empty);
-  const [applied, setApplied] = useState<Filters>(empty);
+  const [parameters, setParameters] = useSearchParams();
+  const [filters, setFilters] = useState<Filters>(() => filtersFromLink(parameters));
+  const [applied, setApplied] = useState<Filters>(() => filtersFromLink(parameters));
   const [refreshKey, setRefreshKey] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | undefined>();
@@ -155,6 +158,15 @@ export function AuditPage() {
 
   const set = (key: keyof Filters) => (value: string) => setFilters((current) => ({ ...current, [key]: value }));
 
+  // The alert's group and moments are the link's, not the form's: clearing them shows the whole trail again.
+  const clearAlert = () => {
+    const cleared = { ...filters, target: "", address: "", since: "", until: "" };
+    setFilters(cleared);
+    setApplied(cleared);
+    setParameters({}, { replace: true });
+    setRefreshKey((key) => key + 1);
+  };
+
   return (
     <ListPage
       title={t("audit.title")}
@@ -252,6 +264,28 @@ export function AuditPage() {
         {message && (
           <Alert color={message.ok ? "success" : "danger"} role={message.ok ? "status" : "alert"} mt="md">
             {message.text}
+          </Alert>
+        )}
+        {tab === "search" && fromAnAlert(applied) && (
+          <Alert color="info" role="status" mt="md" data-alert-search>
+            <Group justify="space-between" wrap="wrap" gap="sm">
+              <Text size="sm">
+                {t("audit.fromAlert", {
+                  types: applied.eventType.split(",").filter((type) => type.trim() !== "").length,
+                  who:
+                    applied.target ||
+                    applied.address ||
+                    applied.actorId ||
+                    applied.recordId ||
+                    t("audit.fromAlertEveryone"),
+                  since: applied.since ? formatDateTime(applied.since) : "",
+                  until: applied.until ? formatDateTime(applied.until) : "",
+                })}
+              </Text>
+              <Button variant="default" size="compact-sm" onClick={clearAlert}>
+                {t("audit.fromAlertClear")}
+              </Button>
+            </Group>
           </Alert>
         )}
         <Tabs.Panel value="search" pt="md">

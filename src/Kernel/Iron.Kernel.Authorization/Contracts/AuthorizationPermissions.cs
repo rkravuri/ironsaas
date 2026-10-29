@@ -143,6 +143,9 @@ public static class AuthorizationAuditEvents
     public const string RoleCreated = "authz.role_created";
     public const string RoleChanged = "authz.role_changed";
     public const string RoleDeleted = "authz.role_deleted";
+
+    /// <summary>The tenant roles were exported as a document, with how many (TF-060, the mass-export alert of ADR-0056).</summary>
+    public const string RolesExported = "authz.roles_exported";
     public const string UnitCreated = "authz.unit_created";
     public const string UnitRenamed = "authz.unit_renamed";
     public const string UnitMoved = "authz.unit_moved";
@@ -173,6 +176,7 @@ public static class AuthorizationAuditEvents
         new AuditEventType(RoleCreated, "Role created").AsAdministrative(),
         new AuditEventType(RoleChanged, "Role changed").AsAdministrative(),
         new AuditEventType(RoleDeleted, "Role deleted").AsAdministrative(),
+        new AuditEventType(RolesExported, "Roles exported").AsAdministrative(),
         new AuditEventType(UnitCreated, "Unit created").AsAdministrative(),
         new AuditEventType(UnitRenamed, "Unit renamed").AsAdministrative(),
         new AuditEventType(UnitMoved, "Unit moved").AsAdministrative(),

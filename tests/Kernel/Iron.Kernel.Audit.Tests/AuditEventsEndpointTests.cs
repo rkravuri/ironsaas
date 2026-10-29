@@ -99,6 +99,41 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
+    [Proves("ADR-0056")]
+    public async Task ARefusalRecordsTheClientsAddressAndTheSearchFindsTheEventsOfOneAddress()
+    {
+        var alice = Ids.New();
+        var bob = Ids.New();
+        await using (var scope = _app!.Services.CreateAsyncScope())
+        {
+            var assignments = scope.ServiceProvider.GetRequiredService<IRoleAssignments>();
+            Assert.True((await assignments.AssignAsync(alice, SystemRoles.TenantAdministrator, TestContext.Current.CancellationToken)).IsSuccess);
+        }
+
+        // The ingress names the client in X-Forwarded-For; the test server's peer is no public address, so it is believed.
+        var address = $"203.0.113.{Random.Shared.Next(1, 255)}";
+        using (var denied = await Send(bob, "/api/v1/audit-events", forwardedFor: address))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        }
+
+        using var found = await Send(alice, $"/api/v1/audit-events?address={address}&filter=actor_id:eq:{bob}");
+        Assert.Equal(HttpStatusCode.OK, found.StatusCode);
+        using var body = JsonDocument.Parse(await found.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var row = Assert.Single(body.RootElement.GetProperty("data").EnumerateArray());
+        Assert.Equal("authz.permission_denied", row.GetProperty("event_type").GetString());
+        Assert.Equal(address, row.GetProperty("details").GetProperty(AuditDetails.Address).GetString());
+
+        // A signed-in person's success records no address: only refusals and what happens before sign-in do.
+        using var mine = await Send(alice, $"/api/v1/audit-events?address={address}&filter=actor_id:eq:{alice}");
+        using var none = JsonDocument.Parse(await mine.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(none.RootElement.GetProperty("data").EnumerateArray());
+
+        using var tooLong = await Send(alice, $"/api/v1/audit-events?address={new string('1', 65)}");
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+    }
+
+    [Fact]
     [Proves("TF-025 AC2", "ADR-0049", "ADR-0050")]
     public async Task TheSignedInAsFilterOffersTheOperatorBreakGlassAccountsAndPeopleByName()
     {
@@ -224,9 +259,14 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
         return (reader, recordId);
     }
 
-    private async Task<HttpResponseMessage> Send(Guid? principal, string path, HttpMethod? method = null, object? body = null)
+    private async Task<HttpResponseMessage> Send(Guid? principal, string path, HttpMethod? method = null, object? body = null, string? forwardedFor = null)
     {
         using var request = new HttpRequestMessage(method ?? HttpMethod.Get, new Uri(path, UriKind.Relative));
+        if (forwardedFor is not null)
+        {
+            request.Headers.Add("X-Forwarded-For", forwardedFor);
+        }
+
         if (body is not null)
         {
             request.Content = System.Net.Http.Json.JsonContent.Create(body, options: new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower });
