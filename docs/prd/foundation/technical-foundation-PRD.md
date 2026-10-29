@@ -554,10 +554,11 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 - AC7 Given an existing person whose email the provider has verified, When they first sign in through it, Then they are linked to it, the link is in their security activity and the audit trail, and later sign-ins find them by the provider's subject.
 - AC8 Given an email the provider has not marked verified, When processed, Then it matches and creates nobody, and the sign-in is refused and audited. (error case)
 - AC9 Given a deactivated person, When they sign in through a provider, Then the sign-in is refused and audited, and they are neither re-created nor reactivated. (error case)
+- AC10 Given a provider that cannot be reached, When a person starts a sign-in through it or comes back from it, Then the sign-in page says in words that the company login cannot be reached now and what to do, and no session starts. (error case)
 
 *Depends on:* TF-010
 
-**Notes:** AC4 to AC9 added on 2026-10-22 (S3 T4, ADR-0048): the tests prove the requirement's text beyond its first three criteria.
+**Notes:** AC4 to AC9 added on 2026-10-22 (S3 T4, ADR-0048): the tests prove the requirement's text beyond its first three criteria. AC10 added on 2026-10-29 (S3-close, from T10b's review): what a person sees when the provider answers 503.
 
 #### TF-015 Single sign-on with SAML 2.0  
 *Priority:* **Should** · *Tag:* `[Extended]` · *Area:* Identity and authentication
