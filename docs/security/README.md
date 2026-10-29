@@ -43,6 +43,9 @@ thing for the same reason, naming the package and the finding.
 - `exceptions.md`: the process exceptions, which no scanner reports, with their re-check dates.
 - `findings.md`: the findings of penetration tests and reviews, with the yearly independent penetration test.
 - `threat-models/`: a record per module and external interface, from `0000-template.md`.
+- `incident-response.md`: the incident runbook (TF-079, ADR-0056): severities, roles, communication, the 72-hour
+  notice, the evidence to keep, the post-incident review, and a section for every security alert rule, which a test
+  checks.
 
 ## The dependency policy and its fix times
 

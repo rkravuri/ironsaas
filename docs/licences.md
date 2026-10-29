@@ -1,6 +1,6 @@
 # Licences of fonts, images and data
 
-Everything that is not code and not written here by us, with its source and licence (ADR-0003, ADR-0024). Every addition is a line here in the same pull request.
+Everything that is not code and not written here by us, with its source and licence (ADR-0003, ADR-0024). Every addition is a line here in the same pull request. A NuGet package carries its licence beside its version in `Directory.Packages.props`, and an image of the laptop stack beside its tag in `infra/compose/compose.yaml`; the ones a task asked to record are below as well.
 
 | Material | Source | Licence | Used for |
 |---|---|---|---|
@@ -33,6 +33,15 @@ NuGet packages carry their licence in a comment in `Directory.Packages.props` (A
 | `eslint-plugin-security` | 4.2.0 (2026-10-01) | Apache-2.0 (eslint-community) | the shell's security lint rules, a dev dependency (S3 T10a, ADR-0055) |
 | `@vitest/coverage-v8` | 5.0.5 (2026-10-15) | MIT (Vitest) | the shell's line coverage for its floor, a dev dependency; the one version Vitest 5.0.5 accepts, two weeks old on 2026-10-29 (S3 T10a, ADR-0055) |
 | `coverlet.MTP` (NuGet, recorded here too) | 10.1.0 (2026-09-27) | MIT (coverlet-coverage) | the .NET tests' line coverage for its floor, in every test project (S3 T10a, ADR-0055) |
+
+## Images S3 added to the laptop stack
+
+Each pinned in `infra/compose/compose.yaml` with its licence beside it, run on the laptop and in the pipeline's integration stage, never in a tenant's unit.
+
+| Image | Version | Licence | Used for |
+|---|---|---|---|
+| `ghcr.io/navikt/mock-oauth2-server` | 6.0.4 | MIT (NAV) | the single sign-on test provider at `idp.localhost`, profile `sso`, for the smoke and the browser tests (S3 T4, ADR-0048) |
+| `prom/alertmanager` | v0.34.1 | Apache-2.0 (Prometheus) | the operator's alerting on the laptop, profiles `telemetry` and `ci`, paging nobody (S3 T10b, ADR-0056) |
 
 ## Tools the pipeline runs
 

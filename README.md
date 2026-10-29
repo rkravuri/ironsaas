@@ -8,7 +8,7 @@ The first suite is the **eProcurement Suite**: source to pay, from supplier mana
 
 | Part | What it is | Status | Requirements | Slices |
 |---|---|---|---|---|
-| Kernel | The technical mechanisms: tenancy and the fleet, identity, authorization and organisations, audit, entitlements, flags, settings, files, telemetry, the shell | Built in part: S1 and S2 are done, S3 is next | [Technical Foundation PRD](docs/prd/foundation/technical-foundation-PRD.md) | [S1](docs/slices/S1-walking-skeleton.md), [S2](docs/slices/S2-access-control-organisations-and-design.md), [S3](docs/slices/S3-trust-and-compliance.md); S4 to S9 in the PRD's section 7.1 |
+| Kernel | The technical mechanisms: tenancy and the fleet, identity, authorization and organisations, audit, entitlements, flags, settings, files, telemetry, the shell | Built in part: S1, S2 and S3 are done, V is next | [Technical Foundation PRD](docs/prd/foundation/technical-foundation-PRD.md) | [S1](docs/slices/S1-walking-skeleton.md), [S2](docs/slices/S2-access-control-organisations-and-design.md), [S3](docs/slices/S3-trust-and-compliance.md), [V](docs/slices/V-visibility-and-suites.md) and [S4](docs/slices/S4-platform-services.md) as skeletons; S5 to S9 in the PRD's section 7.1 |
 | Business masters | Organisations and legal entities, people, items, finance and budgets, locations, the supplier master, lookups, approvals and the delegation of authority, numbering and templates | Specified | [Business Foundation PRD](docs/prd/foundation/business-foundation-PRD.md) | B1 to B4 in the technical PRD's section 7.2 |
 | eProcurement Suite: products | Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing | Specified | one PRD each in [`docs/prd/suites/procurement/`](docs/prd/suites/procurement/) | PR1 to PR7 in the technical PRD's section 7.2 |
 | eProcurement Suite: supplier portal | One portal for all the suppliers of all customers, on the kernel's Supplier Network | Specified | [Supplier portal PRD](docs/prd/suites/procurement/supplier-portal-PRD.md) | PR8, after the kernel's S8 |
@@ -23,17 +23,19 @@ A customer is a tenant with a unit of its own: its own database, storage contain
 
 ## Compliance
 
-Five frameworks are in scope for every tenant (the technical PRD's section 5a): SOC 2 Type II, ISO 27001, GDPR, India's DPDP Act, and 21 CFR Part 11 with EU Annex 11. No certification is claimed; the order of certification is an open operational decision.
+Five frameworks are in scope for every tenant (the technical PRD's section 5a): SOC 2 Type II, ISO 27001, GDPR, India's DPDP Act, and 21 CFR Part 11 with EU Annex 11. No certification is claimed; the order of certification is an open operational decision. The requirements also follow GAMP 5 (Second Edition) for risk-based validation, with IronSaaS normally assessed as category 4, and ALCOA+ for the integrity of records; section 5a maps each principle to the requirements that implement it.
 
 Built today:
 
 - Every endpoint declares its permission, and access is denied by default. Roles are granted at the tenant, a unit or a record; record policies, sharing across units, delegation with both names on record, access reviews, conflict rules for duties one person must not hold together, and an explanation of every decision.
-- An append-only audit trail of sign-ins, permission denials, provisioning steps and every state change, written in the same transaction as the change; reads across units are audited.
-- Each tenant isolated in its own database, database roles, storage container and secrets path; secrets in the store, never in configuration files.
-- A correlation id on every request, traced end to end and shown on every error.
-- A secret scan (gitleaks) and a dependency scan (Trivy) on every change.
-
-S3 adds, as the technical PRD's section 7.1 plans it: multi-factor authentication, single sign-on, the sessions console, password policy and lockout, the audit log's hash chain, field-level change history, electronic signatures and their manifestation, audit search and retention, security headers, rate limits and the vulnerability pipeline.
+- Sign-in under a password policy with lockout, a second factor (an authenticator app or a passkey) required by the tenant's policy, single sign-on through OpenID Connect, a recent sign-in before every risky action, server-side sessions a person or an administrator ends, and revocation within a minute.
+- Impersonation that names both people on every event and is shown to the person; break-glass only with a ticket and a second operator, reviewed afterwards; terms accepted per version.
+- An audit trail of sign-ins, denials, provisioning steps and every state change, written in the same transaction as the change, with each changed field; sealed into a chain per tenant, anchored outside the unit and verified daily; searched, exported, archived after 13 months and kept by retention classes and legal holds. Every time is the server's.
+- Electronic signatures bound to the version they sign, with their manifestation, and signed reviews of the audit trail (21 CFR Part 11); evidence packs per period; a second administrator's approval of sensitive configuration; a validation pack per release, with the matrix of what each test proves and a bill of materials per image.
+- Each tenant isolated in its own database, database roles, storage container, secrets path and keys; chosen fields encrypted with the tenant's key and still found by their exact value; keys and passwords rotated without a restart; TLS 1.2 and up.
+- Security headers with no inline code, a declared limit on every request field, rich text cleaned, SQL from strings refused by the build, rate limits and a proof of work after failed sign-ins.
+- Security alert rules over the audit trail every minute, sent to the operator's alerting, and incidents run by the runbook to the 72-hour notice and the review (`docs/security/incident-response.md`).
+- Code reaches main only through a pull request with every check green; dependencies, licences, images, misconfigurations and our own rules are scanned through one gate with expiring exceptions; coverage may not fall; every module has its threat model (ADR-0055).
 
 ## What works today
 
@@ -48,13 +50,27 @@ S3 adds, as the technical PRD's section 7.1 plans it: multi-factor authenticatio
 - A tenant administrator shapes who may do what: the organisation tree, roles and their scopes, record policies, shared records, delegation, access reviews, the unit a person works for, units created, moved, merged and deactivated, conflict rules, and why a person can or cannot do something.
 - The tenant's settings resolve from a person through the units to the tenant.
 
+**Sign-in and sessions** (S3)
+
+- A person signs in with a password, then a second factor when the tenant's policy requires one (an authenticator app or a passkey, with ten recovery codes), or through the tenant's company login; risky actions ask for a recent sign-in again.
+- A person sees and ends their own sessions and their security activity in My profile; an administrator ends any session with a reason, unlocks a login, issues a one-time recovery link, resets a lost device's factors, or revokes everything of a person or the tenant.
+- The operator recovers a tenant's administrator, signs in as a person where the tenant allows it, or opens break-glass access with a second operator, each with a reason both audit trails keep.
+
+**Records and evidence** (S3)
+
+- The audit trail's search, export, chain status, archive, retention and legal holds; each record's History; signatures with their block on screen and in print; signed reviews of the trail; evidence packs; pending changes with before and after; the installed version and its validation pack.
+
+**Security operations** (S3)
+
+- The console's Keys, Security alerts and Alert rules pages; the operator's key rotations, audit verifications, alerts and incidents from the make targets in the runbook.
+
 **The shell**
 
 - One React build for every tenant, in the design language of ADR-0024: a home page that opens each module, grouped by suite with the Foundation's first; search with Ctrl+K; help; the session warning; the console's pages; light and dark schemes and two densities; a mark of its own per tenant; keyboard operation; WCAG 2.1 AA on every page of the gallery.
 
 **Checks**
 
-- The architecture tests hold the layers, the suites and the module boundaries; the requirement documents are checked on every change; the tests run on real PostgreSQL, Azurite and OpenBao; a smoke test and browser tests run against the live stack; the pipeline builds the images and proves them.
+- The architecture tests hold the layers, the suites and the module boundaries; the requirement documents are checked on every change; the tests run on real PostgreSQL, Azurite and OpenBao, and each names the criteria or the decisions it proves, which the traceability matrix checks (ADR-0044); a smoke test and browser tests run against the live stack; every pull request runs the checks and the scans, and the nightly release builds the images, proves them and publishes their validation pack.
 
 ## Licence
 
@@ -84,10 +100,10 @@ Timings are from the reference machine, a laptop with 16 GB of memory and WSL 2 
 | 8 | `make provision TENANT=acme` | the provisioning steps, then the invitation link; the tenant starts on the `standard` plan | 1 min |
 | 9 | `curl.exe -i http://acme.localhost/health/ready` (from Windows) or the browser | 200 with `X-Correlation-Id` | |
 | 10 | Open `http://grafana.localhost`, Explore, Tempo, paste that correlation id as the trace id | the request's spans | 1 min |
-| 11 | Open the invitation link, set a password, sign in | the home page: under IronSaaS Foundation, an opener for Identity and one for the console, each with its pages; Ctrl+K searches them | 2 min |
+| 11 | Open the invitation link, set a password, sign in, and set up a second factor: the MFA policy requires one of a tenant administrator, so "Set up a second factor" comes before any page. Choose an authenticator app (scan the code, type its six digits) or a passkey, then keep the ten recovery codes | the home page: under IronSaaS Foundation, openers for Identity, Audit, Compliance and the console, each with its pages; Ctrl+K searches them | 4 min |
 | 12 | Open Users from the Identity opener | the grid lists the administrator and the smoke client | 1 min |
 
-`make smoke TENANT=acme` then proves the whole path from the outside in about three minutes, the role scoped to a unit, the plan change and the kill switch included; `make apply-plan TENANT=acme PLAN=Enterprise` gives the tenant role export and import. The runbook `docs/guides/local-stack.md` has every command, the map of the stack and the troubleshooting table.
+`make smoke` then proves the whole path from the outside in a few minutes, on a tenant of its own called `smoke`, which it provisions on its first run: it sets its administrator's password and second factor itself, so point it with `TENANT=` only at a tenant whose administrator nobody uses by hand. `make apply-plan TENANT=acme PLAN=Enterprise` gives the tenant role export and import. The runbook `docs/guides/local-stack.md` has every command, the operator's included, the map of the stack and the troubleshooting table.
 
 ### Prerequisites
 
@@ -131,6 +147,8 @@ make kill-switch PATH=imports ON=true REASON="..."       # a kill switch, for th
 make catalogue                                           # what the units can license, switch and set, grouped by suite
 make prd-csv / make prd-check                            # the requirement documents' CSVs, and their check
 make smoke / make e2e [TENANT=x] / make integration      # the smoke test, the browser tests, the pipeline's stage
+make trace / make security / make coverage               # the traceability matrix, the security gate, the coverage floors (ADR-0044, ADR-0055)
+make verify                                              # every check in order, as before a pull request
 make ef-add MODULE=Identity NAME=AddColumn               # a migration for a module context (the last segment of its name)
 ```
 
@@ -148,6 +166,7 @@ src/
     Iron.Kernel.Data/  .Api/  .Telemetry/  .Security/                 kernel libraries
     Iron.Kernel.Identity/  .Authorization/  .Audit/  .Files/          tenant modules
     Iron.Kernel.Entitlements/  .Flags/  .Settings/                    tenant modules (S2)
+    Iron.Kernel.Compliance/  .Changes/  .Protection/  .Keys/  .Monitoring/   tenant modules (S3)
     Iron.Kernel.Tenancy/  .Fleet/                                     control plane modules
       Api/  Services/  Data/  Contracts/  README.md                   inside every module
   Business/                  shared business masters (empty until the first business slice; README)
@@ -160,11 +179,12 @@ shell/                       the React shell: one build for every tenant (+ Dock
                              modules in src/modules/kernel, business and suites/<suite>
 tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, Kernel/ with a test
                              project per kernel project, and Iron.Testing (the services the tests run on)
-tools/                       Iron.Smoke (the smoke test) and prd_check.py (the requirement documents' check)
+tools/                       Iron.Smoke (the smoke test), Iron.Analyzers (the build's own rules), Iron.ProcessMaps,
+                             and the Python checks: prd_check.py, trace.py, security_gate.py, coverage_check.py and others
 infra/compose/               the laptop platform: compose.yaml, configs, scripts, rendered units/
 .github/workflows/           ci.yml (every pull request), release.yml (nightly and on demand), security-report.yml (monthly)
 security/                    the security gate's exceptions, licence policy, coverage floors and the repository's own scan rules
-docs/                        prd/ (foundation/, suites/procurement/), adr/, guides/, slices/, prompts/
+docs/                        prd/ (foundation/, suites/procurement/), adr/, guides/, slices/, prompts/, security/, trace/, risk/
 ```
 
 ### What the build enforces
@@ -177,7 +197,10 @@ docs/                        prd/ (foundation/, suites/procurement/), adr/, guid
 - Every module DbContext passes the model rules, its schema carries its layer's prefix or its suite's short name, and its migrations match its model; the schema check runs over the migrated schema.
 - Every endpoint declares a permission, `RequireSignedIn` or `AllowAnonymous`; a host does not start otherwise, and the anonymous list is fixed by a test.
 - The requirement documents: every identifier once, every old identifier in the map, criteria in the Given, When, Then form with an error case, each CSV equal to its markdown, and dependencies down the layers, along the process order between a suite's products, and never from one suite to another (`make prd-check`, ADR-0041 to ADR-0043).
-- In the shell, nothing imports `ag-grid-*` outside the DataGrid wrapper, a module imports from its own layer or a lower one only and never from another suite, every route declares its permission, no colour is given by value, and Prettier's check passes (ADR-0040).
+- In the shell, nothing imports `ag-grid-*` outside the DataGrid wrapper, a module imports from its own layer or a lower one only and never from another suite, every route declares its permission, no colour is given by value, HTML is rendered in one component, and Prettier's check passes (ADR-0040, ADR-0053).
+- Every test names the criteria or the decisions it proves, and the matrix fails a done slice's criterion without a test or an approved exception (ADR-0044).
+- Every request field has a declared limit, and SQL is never made from strings (IRON0010, IRON0011); every .NET security rule and ESLint's security plugin are errors in the product's code (ADR-0053, ADR-0055).
+- A critical or high finding of a dependency, a licence, an image, a misconfiguration or our own rules fails the build unless an unexpired exception covers it; line coverage may not fall below its floor; a module or an anonymous endpoint without its threat model fails the tests (ADR-0055).
 
 ### Documentation
 
@@ -187,6 +210,8 @@ docs/                        prd/ (foundation/, suites/procurement/), adr/, guid
 - `docs/guides/developer-guide.md` how to work on the repository: add a module, an entity, an endpoint with a permission and its checks, a licence, a flag, a setting, a shell page, a provisioning step
 - `docs/guides/local-stack.md` the runbook of the laptop platform
 - `docs/guides/definition-of-done.md` what a change needs before it is merged
+- `docs/security/` the security policy, the threat models, the process exceptions, the findings register, main's protection and the incident runbook
+- `docs/trace/` the exceptions to the traceability matrix and the risk classes; `docs/risk/` each task's risk section, which the validation pack quotes
 - `docs/design/design-language.md` the brief every page is judged against
 - `docs/prompts/` the instruction files Claude Code builds from, one per task
 - `docs/STATUS.md` where the work stands, with its open questions and later items

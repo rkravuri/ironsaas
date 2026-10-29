@@ -169,6 +169,60 @@ describe("the login page with company logins", () => {
     expect(screen.getByLabelText(/login identifier/i)).toBeInTheDocument();
   });
 
+  it("says a company login that cannot be reached in the API's words, keeps the person on the sign-in page and leaves nowhere [TF-014 AC10, ADR-0048]", async () => {
+    stubFetch({
+      "GET /api/v1/me": signedOut,
+      "GET /auth/sign-in-options": () => json({ passkey_sign_in: false, providers: [contoso] }),
+      "POST /auth/sso/start": () =>
+        problem(
+          503,
+          {
+            title: "Service Unavailable",
+            detail: "Contoso Entra ID cannot be reached now. Try again in a moment, or sign in another way.",
+            error_code: "identity.sso.unavailable",
+          },
+          "corr-start",
+        ),
+    });
+    page("/login");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Continue with Contoso Entra ID" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "Contoso Entra ID cannot be reached now. Try again in a moment, or sign in another way.",
+    );
+    expect(alert).toHaveTextContent("corr-start");
+    expect(leaveFor).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/login identifier/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue with Contoso Entra ID" })).toBeEnabled();
+  });
+
+  it("takes a callback the company login cannot finish back to the sign-in page with its words, and no session [TF-014 AC10, ADR-0048]", async () => {
+    const { calls } = stubFetch({
+      "GET /api/v1/me": signedOut,
+      "POST /auth/sso/callback": () =>
+        problem(
+          503,
+          {
+            title: "Service Unavailable",
+            detail: "Contoso Entra ID cannot be reached now. Try again in a moment.",
+            error_code: "identity.sso.unavailable",
+          },
+          "corr-callback",
+        ),
+    });
+    page("/sso/callback?code=c&state=s");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Contoso Entra ID cannot be reached now. Try again in a moment.");
+    expect(alert).toHaveTextContent("corr-callback");
+    expect(screen.getByLabelText(/login identifier/i)).toBeInTheDocument();
+    expect(screen.queryByText("home")).not.toBeInTheDocument();
+    expect(calls.filter((c) => c.key === "POST /auth/sso/callback")).toHaveLength(1);
+  });
+
   it("goes on to this product's second factor when the company login is not trusted for it [TF-014 AC5, ADR-0048]", async () => {
     stubFetch({
       "GET /api/v1/me": signedOut,

@@ -1,12 +1,13 @@
 # Developer guide
 
-How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission and its checks, an audit event, a licence, a flag, a setting, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
+How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission, its limits and its checks, an audit event, an encrypted or tracked field, a signature, a save that waits for a second administrator, a licence, a flag, a setting, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
 
 The sections, in order:
 
-- The repository: Working on the repository, Layout, Rules the build enforces, Write an ADR.
-- A module and its code: Add a module, Add a business module or a product, Hosts and unit commands, Writing code: the kernel vocabulary's conventions, Writing an entity and a module context, A table and its migration, A change and its audit event in one transaction, Writing an endpoint, An endpoint with a permission, Who is acting, An API client, A unit's configuration, Observability and security in a host.
+- The repository: Working on the repository, Layout, Rules the build enforces, Write an ADR, Requirements.
+- A module and its code: Add a module, Add a business module or a suite's module, Hosts and unit commands, Writing code: the kernel vocabulary's conventions, Writing an entity and a module context, A table and its migration, A change and its audit event in one transaction, Writing an endpoint, An endpoint with a permission, Limits on what an endpoint takes, Who is acting, An API client, A unit's configuration, Observability and security in a host.
 - Who may do what: Where things are checked, Scoping an endpoint to a record, Record policies, Granting access, Delegating and reviewing access, Working across units, Explaining access and conflicts.
+- Records under regulation: An encrypted field, and one found by its exact value; A record type under retention; A record's history; Signing a record; A save that waits for a second administrator; Contributing to an evidence pack.
 - What a tenant has: Licensing a module or feature, Feature flags and kill switches, Declaring a setting.
 - The control plane: The control plane and a provisioning step.
 - The shell: A shell page, Styling a page, A module on the home page and in the header.
@@ -34,7 +35,7 @@ src/
   Kernel/                    technical mechanisms with no business meaning (ADR-0029)
     Iron.Kernel/             the vocabulary, one namespace (no schema)
     Iron.Kernel.Data/  .Api/  .Telemetry/  .Security/                kernel libraries (no schema)
-    Iron.Kernel.<Module>/    one folder per kernel module, schema kernel_<module>
+    Iron.Kernel.<Module>/    one folder per kernel module, schema kernel_<module> (Protection has none)
       Api/                   endpoints (thin)
       Services/              business logic (plain classes)
       Data/                  entities, repositories, migrations for this module's schema
@@ -50,10 +51,13 @@ shell/                       the React shell: src/api, src/auth, src/modules/<la
 tests/                       Iron.Architecture.Tests (the build checks), Iron.Host.Tests, <Layer>/<Project>.Tests,
                              Iron.Testing (the platform services the tests run on, and [Proves]) with test-services.sh,
                              and Iron.Testing.Analyzers (a test names what it proves)
-tools/Iron.Smoke/            the smoke test; scaffolding tools come after S1
+tools/                       Iron.Smoke (the smoke test), Iron.Analyzers (the build's own rules, IRON0010 and IRON0011
+                             among them), Iron.ProcessMaps, and the Python checks (prd_check, trace, the security gate,
+                             coverage, the validation pack), each with its tests; scaffolding tools are not built yet
 infra/compose/               the laptop platform and the unit template's rendered output
-.github/workflows/           ci.yml and release.yml
-docs/                        prd/, adr/, guides/, slices/
+security/                    the security gate's exceptions, licence policy, coverage floors and the repository's rules
+.github/workflows/           ci.yml (every pull request), release.yml (nightly), security-report.yml (monthly)
+docs/                        prd/, adr/, guides/, slices/, prompts/, security/, trace/, risk/
 ```
 
 ## Rules the build enforces
@@ -173,154 +177,7 @@ The unit's worker seals each event into the tenant's chain a few seconds after i
 
 **Times are the server's** (TF-065, ADR-0050). `CreatedAt` and `UpdatedAt` are stamped from `TimeProvider` on save, whatever a caller set. A request body never carries a time the server records: take `starts_at` or `due_on` only for a period a person chooses, and add it to `ChosenTimes` in `tests/Iron.Host.Tests/HostTests.cs` with why; any other date in a request body fails that test.
 
-**An event a security alert should count** (TF-079, ADR-0056). Declare its type in the module's `*AuditEvents.Types`;
-a type nobody declares makes every rule that counts it fail. An export writes its event with `AuditDetails.Rows`, and a
-change that touches a critical area marks itself with `AuditDetails.Critical` when the rule cannot tell from the type
-alone; the writer adds the client's address to a refusal by itself. A new rule goes into `AlertRules.All` in
-Iron.Kernel.Monitoring with a section of its own in `docs/security/incident-response.md`, which `RunbookTests` checks.
-
-## An encrypted field, and one found by its exact value (TF-074, ADR-0054)
-
-A field whose value must not be readable in a dump, a backup or the database's own tools (a bank account, a tax identifier, a secret a person enrolled) is an `EncryptedValue`; one that must also be found by its exact value is marked `[Searchable]` and keeps its keyed hash beside it, named after it with `Hash`:
-
-```csharp
-public sealed class Supplier : BusinessRecord, ITrackedChanges
-{
-    [Searchable]
-    public EncryptedValue? TaxIdentifier { get; private set; }
-
-    public SearchHash? TaxIdentifierHash { get; private set; }
-
-    public EncryptedValue? BankAccount { get; private set; }
-
-    public void IdentifyForTax(SearchableValue taxIdentifier)
-    {
-        TaxIdentifier = taxIdentifier.Value;
-        TaxIdentifierHash = taxIdentifier.Hash;
-    }
-
-    public void PayTo(EncryptedValue bankAccount) => BankAccount = bankAccount;
-}
-```
-
-The service encrypts before it saves and opens only what it shows, through `IFieldEncryption`:
-
-```csharp
-supplier.IdentifyForTax(await encryption.SealSearchableAsync(request.TaxIdentifier, cancellationToken));
-supplier.PayTo(await encryption.EncryptAsync(request.BankAccount, cancellationToken));
-
-var hashes = await encryption.SearchHashesAsync(query.TaxIdentifier, cancellationToken);
-var found = await suppliers.Suppliers.Where(s => hashes.Contains(s.TaxIdentifierHash!)).ToListAsync(cancellationToken);
-```
-
-A convention stores each as text with its key version; give the hash an index in `ConfigureModule`, then `make ef-add`. The search hashes one value per live version of the index key, so it finds a record during a rotation too; the value is normalised first (no white space, hyphens, dots or slashes, in capitals), so `DE 123-456` finds `de123456`. That is the only search such a field has: not a part, a prefix, a range, a sort or `LIKE`. A field that needs one of those is not encrypted, or keeps a separate, less sensitive form beside it (the last four digits). Open many values at once with the list overload, which is one call to the key service. Nothing else is needed for rotation: the Keys module re-encrypts every `EncryptedValue` and re-hashes every `SearchHash` of every module context after a key's rotation, a batch at a time; a raw SQL write of one of these columns must write what `IFieldEncryption` made. The model check refuses a `[Searchable]` field without its hash; the record's history shows an encrypted field only as changed.
-
-## A record type under retention (TF-066, ADR-0050)
-
-A module that owns records with a life puts each record type into a retention class and lets the platform delete them:
-
-```csharp
-public sealed class OrderRetention(OrdersDbContext orders) : IRetainedRecords
-{
-    public string RecordType => "order";
-    public RetentionClass Class => RetentionClasses.BusinessDocument;
-
-    public async Task<IReadOnlyList<RetainedRecord>> ExpiredAsync(DateTimeOffset cutoff, int max, CancellationToken cancellationToken) =>
-        await orders.Orders.Where(o => o.ClosedAt < cutoff).OrderBy(o => o.ClosedAt).Take(max)
-            .Select(o => new RetainedRecord(o.Id, o.ClosedAt!.Value, "supplier", o.SupplierId, JsonSerializer.Serialize(o)))
-            .ToListAsync(cancellationToken);
-
-    public Task DeleteAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken) => ...;
-}
-
-services.AddRetainedRecords<OrderRetention>();
-```
-
-The retention job archives each expired record's `Content` to the tenant's container, skips any a legal hold keeps (the record, its master such as the supplier, or the whole tenant), calls `DeleteAsync` with the rest, and writes `audit.record_expired` for each. The data tests' `SampleOrderRetention` and Identity's `SessionRetention` are the references. A new class is a decision: an ADR, then `RetentionClasses`.
-
-## A record's history (TF-062, ADR-0051)
-
-Every business record is tracked: mark the entity `ITrackedChanges`, or the model check fails naming it. Mark a field `[Sensitive]` to keep only its last four characters in the history (a bank account), `[Secret]` to keep only that it changed (a key's hash), and `[NotTracked]` for what changes by itself and other events already tell (a counter, a last-seen time). Nothing else is needed: each save writes one `record.changed` event per record with its fields, old and new, in the save's own transaction, and the record's History tab shows it. A public `const string RecordType` on the entity names it in the history, the same name its own events use, so its History shows both; where a property already has that name, `[TrackedAs("legal_hold")]` on the class names it; otherwise its table's name does. To give the change a reason, set `IChangeReason.Reason` before the save. A page with the record template has the History tab (`history` from `useHistoryOf`); a list page gives each record `RecordHistoryButton`, which opens the same History in a dialog.
-
-## Signing a record (TF-063, TF-219, ADR-0051)
-
-A module lets people sign a document type by declaring it and writing its snapshot:
-
-```csharp
-public sealed class OrderSignatures(OrdersDbContext orders, IOrderAccess access) : ISignableRecords
-{
-    public static SignableType Type { get; } = new("order", "Purchase order",
-        [SignatureMeanings.Approved, SignatureMeanings.Rejected],
-        new SigningPolicy(Required: true, [SignatureMeanings.Approved, SignatureMeanings.Rejected], Reauthenticate: true));
-
-    public IReadOnlyList<SignableType> Types => [Type];
-
-    public static RecordSnapshot Snapshot(Order order) =>
-        RecordSnapshot.Of("order", order.Id, order.Version, order.Number, new { order.Number, order.SupplierId, order.Total, Lines = order.Lines.Select(l => new { l.Item, l.Quantity, l.Price }) });
-
-    public async Task<RecordSnapshot?> CurrentAsync(string recordType, Guid id, CancellationToken cancellationToken) =>
-        await orders.Orders.AsNoTracking().Include(o => o.Lines).SingleOrDefaultAsync(o => o.Id == id, cancellationToken) is { } order ? Snapshot(order) : null;
-
-    public Task<bool> MayReadAsync(string recordType, Guid id, CancellationToken cancellationToken) => access.MayReadAsync(id, cancellationToken);
-}
-
-services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignableRecords, OrderSignatures>());
-```
-
-The snapshot is every field a person decided on, at the record's version; never a time the database rounds, nor a name that can change elsewhere. Then the module signs inside its own action, the signer proved before the transaction so a wrong password counts whatever happens next:
-
-```csharp
-var policy = await signatures.PolicyAsync("order", cancellationToken);
-SignerProof? proof = null;
-if (policy.Required)
-{
-    var proved = await signatures.AuthenticateAsync("order", request.Signature?.ToCredentials() ?? SigningCredentials.None, cancellationToken);
-    if (proved.IsFailure) return proved.Error;
-    proof = proved.Value;
-}
-
-await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
-order.Approve();
-await orders.SaveChangesAsync(cancellationToken);
-if (proof is not null)
-{
-    var signed = await signatures.RecordAsync(proof, OrderSignatures.Snapshot(order), SignatureMeanings.Approved, request.Comment, cancellationToken);
-    if (signed.IsFailure) return signed.Error;
-}
-
-await transaction.CommitAsync(cancellationToken);
-```
-
-Identity decides what the credentials must be (the first signature of a session asks for the login identifier, the password and the second factor; later ones for the password), and refuses impersonation, acting for someone, tokens and service accounts; the module never reads a credential. The shell's `SigningDialog` asks for what `GET /api/v1/signatures/challenge?record_type=` says, and the record template's `SignatureBlock` shows a record's signatures, on screen and in print. Give the dialog `context`, the page's own description of what is signed as plain data: a company-login person leaves for the provider's fresh sign-in, and when they come back, `useResumedSigning(recordType)` hands the page that context with the meaning and the comment, so it reopens the dialog ready to confirm. Access review decisions (`AccessReviewSignatures`) and audit-trail reviews (`AuditTrailReviews`) are the references; the Compliance tests' sample document is a business record signed and changed.
-
-## A save that waits for a second administrator (TF-068, ADR-0052)
-
-A save of sensitive configuration asks the kernel's `IFourEyes` after its own checks and before it writes. The retention choice is the pattern:
-
-```csharp
-// After validation, escalation, conflict rules and step-up, exactly as a direct save checks them.
-if (fourEyes is not null && await fourEyes.AppliesAsync(ConfigurationAreas.Retention, cancellationToken))
-{
-    var proposal = new ChangeProposal(
-        ConfigurationAreas.Retention,
-        ChooseKind,                                      // "audit.retention.choose": the applier's key
-        $"retention:{code}",                             // the subject: one pending change per subject
-        $"Keep {retention.Description.ToLowerInvariant()} for {days} days",
-        await StateAsync(code, cancellationToken),       // before, as people read it
-        ChangeJson.Of(new { Class = code, Days = days, Chosen = true }),   // after, the same shape
-        ChangeJson.Of(new RetentionChangePayload(code, days)),            // what ApplyAsync needs
-        AuditPermissions.RetentionManage.Name,           // what the approver must hold
-        AccessScope.Tenant,                              // and where
-        reason);
-    return await fourEyes.HoldAsync(proposal, cancellationToken);   // an Error of kind Held: the API answers 202
-}
-```
-
-Then an `IConfigurationChangeApplier` (registered with `TryAddEnumerable`) answers for the module's kinds: `Handles(kind)`, `CurrentAsync` (the subject's state now, the same shape as the before, which Changes compares before applying), `ApplyAsync` (the same service method a direct save calls; inside it `AppliesAsync` answers false, so it writes), `DiscardAsync` when the module keeps something aside (a single sign-on secret staged in the store), and `AppliedAsync` after the approval's transaction committed, for a module that reads what it wrote back into a cache (the settings do). Take `IFourEyes?` with a null default, so a host without the Changes module still builds the service. A setting joins an area where it is declared: `.GovernedBy(ConfigurationAreas.MfaAndPasswordPolicies)`. The shell needs nothing: `request()` throws the held answer as an `ApiError` with `isHeld`, the form says it waits, and the frame links to the change.
-
-## Contributing to an evidence pack (TF-067, ADR-0052)
-
-A module adds its tables to a pack's documents with an `IEvidenceSource` (Compliance's contracts), registered with `TryAddEnumerable`: `TablesAsync(period)` answers its `EvidenceTable`s, each naming its document (an `EvidenceDocuments` code), a name for the CSV, a title, the columns, the rows as text, and a note when something is not covered. A state "at the period's end" is rebuilt from the field history: `TrackedFields.Of(context, entities)` gives the records' tracked fields now, and `IRecordHistory.AsOfAsync(recordType, current, period.To)` undoes every save after it (`RecordStates.Rewind`). Never a secret: a client secret, a key or a password hash is not evidence. A new event type an administrator causes is marked `.AsAdministrative()` beside its constant, and the administrative actions list it.
+**An event a security alert should count** (TF-079, ADR-0056). Declare its type in the module's `*AuditEvents.Types`; a type nobody declares makes every rule that counts it fail. An export writes its event with `AuditDetails.Rows`, and a change that touches a critical area marks itself with `AuditDetails.Critical` when the rule cannot tell from the type alone; the writer adds the client's address to a refusal by itself. A new rule goes into `AlertRules.All` in Iron.Kernel.Monitoring with a section of its own in `docs/security/incident-response.md`, which `RunbookTests` checks.
 
 ## Writing an endpoint (ADR-0009)
 
@@ -340,6 +197,14 @@ A module adds its tables to a pack's documents with an `IEvidenceSource` (Compli
 4. The filter runs before the handler: 401 for nobody, 403 `authz.permission_denied` (with the permission named) for a principal without it, and a denial audit event. OpenAPI shows "Requires permission" on the operation.
 
 Anonymous endpoints are the short list of TF-030: health, login, recovery, invitation acceptance, public branding. `Iron.Host.Tests` keeps the list fixed; adding to it is a reviewed change.
+
+## Limits on what an endpoint takes (TF-071, TF-072, ADR-0053)
+
+- **Every field has a limit.** A string has its `MaximumLength`, a collection its `MaximumCount` (and its items their own limits), a free JSON value a maximum size, and an object a validator of its own; numbers, dates, identifiers and enumerations are limited by their type. Declare them in the endpoint's validator (`.Validate<T>()`); a body of only typed fields needs none, and a body the handler reads itself declares a request size limit. `RequestLimitCheck` stops a host that takes a field without one, so the host tests fail the build. The query string is limited for every endpoint: 50 parameters of 2,000 characters.
+- **Rich text** is a `RichText` (`Iron.Kernel.Security.Text`), made with `RichText.From(html)`, which keeps the formatting the allow-list names and drops the rest, scripts included; its rule is `.MaximumLength(n)`. The shell renders HTML only in `RichTextView`; lint refuses it anywhere else.
+- **A file name** a person gives is display text only: the Files module stores the bytes under a random key and keeps the name normalised (`FileNames` in its services), so a module never builds a path from it.
+- **SQL is never made from strings.** Write the query with Entity Framework, or a constant command with typed parameters; the analyzers refuse SQL built from text (IRON0010, IRON0011). A helper that takes its SQL as a parameter carries `[SqlFromIdentifiers("why")]`.
+- **A rate limit** is a marker on the endpoint: `.RateLimited(RateLimitPolicies.Exports)` for an export. Every path under `/api`, `/auth` and `/connect` is under the API's limit already, and sign-in and recovery have theirs; the limits, their defaults and who sets them are in the Protection README. A refusal is 429 `protection.rate_limited` with `Retry-After`, which `request()` turns into words.
 
 ## Who is acting (ADR-0014)
 
@@ -389,17 +254,22 @@ Files go through `IObjectStorage` (Iron.Kernel.Files.Contracts): `PutAsync`, `Ge
 
 ## Where things are checked
 
-A request meets the checks in this order; **Explain access** in the console (`/console/explain`) shows the first four for a person and an action, from the same decisions (ADR-0039).
+A request meets the checks in this order; **Explain access** in the console (`/console/explain`) shows the entitlements, the flags, the permission and the record policy for a person and an action, from the same decisions (ADR-0039).
 
 | Check | A module declares | Checked | Refused with | Section |
 |---|---|---|---|---|
-| Entitlements | its licence in `IModule`, its features in Contracts; `.RequireFeature(code)` on an endpoint | after authentication, before everything else; `IEntitlements` in code | 403 `entitlements.module_disabled`, `entitlements.read_only`, `entitlements.seat_required` or `entitlements.feature_disabled` | Licensing a module or feature |
+| Rate limits | `.RateLimited(policy)` for a limit of its own; every path has the API's | after authentication, before the endpoint (`UseIronProtection`) | 429 `protection.rate_limited` with `Retry-After` | Limits on what an endpoint takes |
+| Entitlements | its licence in `IModule`, its features in Contracts; `.RequireFeature(code)` on an endpoint | after the rate limits, before the endpoint's other checks; `IEntitlements` in code | 403 `entitlements.module_disabled`, `entitlements.read_only`, `entitlements.seat_required` or `entitlements.feature_disabled` | Licensing a module or feature |
 | Flags and kill switches | its flags in Contracts; `.RequireFlag(key)`, `.RequireFlagOff(KillSwitches.Imports.Key)` | after the entitlements, before the permission; `IFlagClients` in code | 404 `flags.disabled`, 503 `flags.killed` | Feature flags and kill switches |
 | Permission at a scope | its permissions in Contracts; `.RequirePermission(p)` with `.ScopedToUnit`, `.ScopedToRecord` or `.ScopedByRow` | the endpoint filter, after the flags, with the delegator's duties while acting | 401 `auth.not_authenticated`, 403 `authz.permission_denied` | An endpoint with a permission; Scoping an endpoint to a record |
 | Record policy | `services.AddRecordPolicy(...)` for each business record | in the query: `IRecordPolicies.ApplyAsync` for a list, `FindAsync` for one record | 404 `data.record.not_found`, 403 `data.record.forbidden` | Record policies |
+| Request limits | each field's limit in the endpoint's validator | at the host's start (`RequestLimitCheck`), then on every body (`.Validate<T>()`) | the host does not start; 400 with the field's error | Limits on what an endpoint takes |
+| Recent authentication | `.RequireRecentAuthentication()` after the permission, or `IRecentAuthentication` in the service | after the permission; in a service, last | 403 `auth.reauthentication_required`, which the shell's dialog answers | Who is acting |
 | Conflict rules | nothing: the tenant's administrators write the rules | when a role is granted, a duty delegated or a role's permissions changed, in the service | 409 `authz.sod.conflict` for a rule that blocks; a rule that warns lists the conflict in the report | Explaining access and conflicts |
+| Signatures | its signable types (`ISignableRecords`) and the snapshot; the tenant sets the policy per type | in the service, the signer proved before the transaction | 403 with the reason, such as `compliance.signature.required` or `compliance.signature.impersonation` | Signing a record |
+| Four-eyes | the area of its sensitive saves; `IFourEyes` after its own checks | in the service, last, before it writes, for the areas the tenant chose | 202 with the held change, applied when a second administrator approves | A save that waits for a second administrator |
 
-A check a handler makes on its own (a move's new parent, the no-escalation rule of a grant) comes after these and is not explained; its error says why.
+A check a handler makes on its own (a move's new parent, the no-escalation rule of a grant) comes after these and is not explained; its error says why. Some rules are checked before any request: the build refuses SQL made from strings (IRON0010, IRON0011), a test that names nothing (IRON0005 to IRON0007), the layers (IRON0001 to IRON0004) and the .NET security rules, and a host does not start with an endpoint without its permission or a request field without its limit (see Rules the build enforces).
 
 ## Scoping an endpoint to a record (ADR-0030)
 
@@ -586,6 +456,149 @@ Then add its check to `AccessExplainer` in its place in the order. A check a han
 
 Tests: `tests/Kernel/Iron.Kernel.Authorization.Tests/ExplainAccessTests.cs` holds the matrix that compares each explanation with the real call (licensed module, feature, kill switch, scope, acting, record policy), and the audit; `ConflictDetectorTests.cs` covers the overlap rule alone; `ConflictTests.cs` covers each mode on assignments and delegations, unrelated units, the report on a fake clock after a rule's change, and the review marker; `tests/Kernel/Iron.Kernel.Identity.Tests/ScopedUsersTests.cs` shows that a person of another tenant cannot be explained.
 
+## An encrypted field, and one found by its exact value (TF-074, ADR-0054)
+
+A field whose value must not be readable in a dump, a backup or the database's own tools (a bank account, a tax identifier, a secret a person enrolled) is an `EncryptedValue`; one that must also be found by its exact value is marked `[Searchable]` and keeps its keyed hash beside it, named after it with `Hash`:
+
+```csharp
+public sealed class Supplier : BusinessRecord, ITrackedChanges
+{
+    [Searchable]
+    public EncryptedValue? TaxIdentifier { get; private set; }
+
+    public SearchHash? TaxIdentifierHash { get; private set; }
+
+    public EncryptedValue? BankAccount { get; private set; }
+
+    public void IdentifyForTax(SearchableValue taxIdentifier)
+    {
+        TaxIdentifier = taxIdentifier.Value;
+        TaxIdentifierHash = taxIdentifier.Hash;
+    }
+
+    public void PayTo(EncryptedValue bankAccount) => BankAccount = bankAccount;
+}
+```
+
+The service encrypts before it saves and opens only what it shows, through `IFieldEncryption`:
+
+```csharp
+supplier.IdentifyForTax(await encryption.SealSearchableAsync(request.TaxIdentifier, cancellationToken));
+supplier.PayTo(await encryption.EncryptAsync(request.BankAccount, cancellationToken));
+
+var hashes = await encryption.SearchHashesAsync(query.TaxIdentifier, cancellationToken);
+var found = await suppliers.Suppliers.Where(s => hashes.Contains(s.TaxIdentifierHash!)).ToListAsync(cancellationToken);
+```
+
+A convention stores each as text with its key version; give the hash an index in `ConfigureModule`, then `make ef-add`. The search hashes one value per live version of the index key, so it finds a record during a rotation too; the value is normalised first (no white space, hyphens, dots or slashes, in capitals), so `DE 123-456` finds `de123456`. That is the only search such a field has: not a part, a prefix, a range, a sort or `LIKE`. A field that needs one of those is not encrypted, or keeps a separate, less sensitive form beside it (the last four digits). Open many values at once with the list overload, which is one call to the key service. Nothing else is needed for rotation: the Keys module re-encrypts every `EncryptedValue` and re-hashes every `SearchHash` of every module context after a key's rotation, a batch at a time; a raw SQL write of one of these columns must write what `IFieldEncryption` made. The model check refuses a `[Searchable]` field without its hash; the record's history shows an encrypted field only as changed.
+
+## A record type under retention (TF-066, ADR-0050)
+
+A module that owns records with a life puts each record type into a retention class and lets the platform delete them:
+
+```csharp
+public sealed class OrderRetention(OrdersDbContext orders) : IRetainedRecords
+{
+    public string RecordType => "order";
+    public RetentionClass Class => RetentionClasses.BusinessDocument;
+
+    public async Task<IReadOnlyList<RetainedRecord>> ExpiredAsync(DateTimeOffset cutoff, int max, CancellationToken cancellationToken) =>
+        await orders.Orders.Where(o => o.ClosedAt < cutoff).OrderBy(o => o.ClosedAt).Take(max)
+            .Select(o => new RetainedRecord(o.Id, o.ClosedAt!.Value, "supplier", o.SupplierId, JsonSerializer.Serialize(o)))
+            .ToListAsync(cancellationToken);
+
+    public Task DeleteAsync(IReadOnlyList<Guid> ids, CancellationToken cancellationToken) => ...;
+}
+
+services.AddRetainedRecords<OrderRetention>();
+```
+
+The retention job archives each expired record's `Content` to the tenant's container, skips any a legal hold keeps (the record, its master such as the supplier, or the whole tenant), calls `DeleteAsync` with the rest, and writes `audit.record_expired` for each. The data tests' `SampleOrderRetention` and Identity's `SessionRetention` are the references. A new class is a decision: an ADR, then `RetentionClasses`.
+
+## A record's history (TF-062, ADR-0051)
+
+Every business record is tracked: mark the entity `ITrackedChanges`, or the model check fails naming it. Mark a field `[Sensitive]` to keep only its last four characters in the history (a bank account), `[Secret]` to keep only that it changed (a key's hash), and `[NotTracked]` for what changes by itself and other events already tell (a counter, a last-seen time). Nothing else is needed: each save writes one `record.changed` event per record with its fields, old and new, in the save's own transaction, and the record's History tab shows it. A public `const string RecordType` on the entity names it in the history, the same name its own events use, so its History shows both; where a property already has that name, `[TrackedAs("legal_hold")]` on the class names it; otherwise its table's name does. To give the change a reason, set `IChangeReason.Reason` before the save. A page with the record template has the History tab (`history` from `useHistoryOf`); a list page gives each record `RecordHistoryButton`, which opens the same History in a dialog.
+
+## Signing a record (TF-063, TF-219, ADR-0051)
+
+A module lets people sign a document type by declaring it and writing its snapshot:
+
+```csharp
+public sealed class OrderSignatures(OrdersDbContext orders, IOrderAccess access) : ISignableRecords
+{
+    public static SignableType Type { get; } = new("order", "Purchase order",
+        [SignatureMeanings.Approved, SignatureMeanings.Rejected],
+        new SigningPolicy(Required: true, [SignatureMeanings.Approved, SignatureMeanings.Rejected], Reauthenticate: true));
+
+    public IReadOnlyList<SignableType> Types => [Type];
+
+    public static RecordSnapshot Snapshot(Order order) =>
+        RecordSnapshot.Of("order", order.Id, order.Version, order.Number, new { order.Number, order.SupplierId, order.Total, Lines = order.Lines.Select(l => new { l.Item, l.Quantity, l.Price }) });
+
+    public async Task<RecordSnapshot?> CurrentAsync(string recordType, Guid id, CancellationToken cancellationToken) =>
+        await orders.Orders.AsNoTracking().Include(o => o.Lines).SingleOrDefaultAsync(o => o.Id == id, cancellationToken) is { } order ? Snapshot(order) : null;
+
+    public Task<bool> MayReadAsync(string recordType, Guid id, CancellationToken cancellationToken) => access.MayReadAsync(id, cancellationToken);
+}
+
+services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignableRecords, OrderSignatures>());
+```
+
+The snapshot is every field a person decided on, at the record's version; never a time the database rounds, nor a name that can change elsewhere. Then the module signs inside its own action, the signer proved before the transaction so a wrong password counts whatever happens next:
+
+```csharp
+var policy = await signatures.PolicyAsync("order", cancellationToken);
+SignerProof? proof = null;
+if (policy.Required)
+{
+    var proved = await signatures.AuthenticateAsync("order", request.Signature?.ToCredentials() ?? SigningCredentials.None, cancellationToken);
+    if (proved.IsFailure) return proved.Error;
+    proof = proved.Value;
+}
+
+await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
+order.Approve();
+await orders.SaveChangesAsync(cancellationToken);
+if (proof is not null)
+{
+    var signed = await signatures.RecordAsync(proof, OrderSignatures.Snapshot(order), SignatureMeanings.Approved, request.Comment, cancellationToken);
+    if (signed.IsFailure) return signed.Error;
+}
+
+await transaction.CommitAsync(cancellationToken);
+```
+
+Identity decides what the credentials must be (the first signature of a session asks for the login identifier, the password and the second factor; later ones for the password), and refuses impersonation, acting for someone, tokens and service accounts; the module never reads a credential. The shell's `SigningDialog` asks for what `GET /api/v1/signatures/challenge?record_type=` says, and the record template's `SignatureBlock` shows a record's signatures, on screen and in print. Give the dialog `context`, the page's own description of what is signed as plain data: a company-login person leaves for the provider's fresh sign-in, and when they come back, `useResumedSigning(recordType)` hands the page that context with the meaning and the comment, so it reopens the dialog ready to confirm. Access review decisions (`AccessReviewSignatures`) and audit-trail reviews (`AuditTrailReviews`) are the references; the Compliance tests' sample document is a business record signed and changed.
+
+## A save that waits for a second administrator (TF-068, ADR-0052)
+
+A save of sensitive configuration asks the kernel's `IFourEyes` after its own checks and before it writes. The retention choice is the pattern:
+
+```csharp
+// After validation, escalation, conflict rules and step-up, exactly as a direct save checks them.
+if (fourEyes is not null && await fourEyes.AppliesAsync(ConfigurationAreas.Retention, cancellationToken))
+{
+    var proposal = new ChangeProposal(
+        ConfigurationAreas.Retention,
+        ChooseKind,                                      // "audit.retention.choose": the applier's key
+        $"retention:{code}",                             // the subject: one pending change per subject
+        $"Keep {retention.Description.ToLowerInvariant()} for {days} days",
+        await StateAsync(code, cancellationToken),       // before, as people read it
+        ChangeJson.Of(new { Class = code, Days = days, Chosen = true }),   // after, the same shape
+        ChangeJson.Of(new RetentionChangePayload(code, days)),            // what ApplyAsync needs
+        AuditPermissions.RetentionManage.Name,           // what the approver must hold
+        AccessScope.Tenant,                              // and where
+        reason);
+    return await fourEyes.HoldAsync(proposal, cancellationToken);   // an Error of kind Held: the API answers 202
+}
+```
+
+Then an `IConfigurationChangeApplier` (registered with `TryAddEnumerable`) answers for the module's kinds: `Handles(kind)`, `CurrentAsync` (the subject's state now, the same shape as the before, which Changes compares before applying), `ApplyAsync` (the same service method a direct save calls; inside it `AppliesAsync` answers false, so it writes), `DiscardAsync` when the module keeps something aside (a single sign-on secret staged in the store), and `AppliedAsync` after the approval's transaction committed, for a module that reads what it wrote back into a cache (the settings do). Take `IFourEyes?` with a null default, so a host without the Changes module still builds the service. A setting joins an area where it is declared: `.GovernedBy(ConfigurationAreas.MfaAndPasswordPolicies)`. The shell needs nothing: `request()` throws the held answer as an `ApiError` with `isHeld`, the form says it waits, and the frame links to the change.
+
+## Contributing to an evidence pack (TF-067, ADR-0052)
+
+A module adds its tables to a pack's documents with an `IEvidenceSource` (Compliance's contracts), registered with `TryAddEnumerable`: `TablesAsync(period)` answers its `EvidenceTable`s, each naming its document (an `EvidenceDocuments` code), a name for the CSV, a title, the columns, the rows as text, and a note when something is not covered. A state "at the period's end" is rebuilt from the field history: `TrackedFields.Of(context, entities)` gives the records' tracked fields now, and `IRecordHistory.AsOfAsync(recordType, current, period.To)` undoes every save after it (`RecordStates.Rewind`). Never a secret: a client secret, a key or a password hash is not evidence. A new event type an administrator causes is marked `.AsAdministrative()` beside its constant, and the administrative actions list it.
+
 ## Licensing a module or feature (ADR-0034)
 
 Kernel modules are the platform: always on, never in a plan, and they declare no licence (the architecture test `LicensingRules` refuses one). A Business or suite module must declare one. Features may be licensed in any layer.
@@ -740,8 +753,8 @@ The home page, the search and the help panel read the manifests, so a module app
 |---|---|---|
 | Unit and integration tests | `make test`, `make shell-check` | the code, on real platform services in containers |
 | Accessibility | `make shell-a11y` | the gallery against WCAG 2.1 AA with axe in a real browser; no stack needed |
-| Smoke | `make smoke` | the live stack from the outside: provisioning, tokens, cookies, denials, the trace, then a role scoped to a unit, a plan change and a kill switch reaching the API, each restored |
-| Browser | `make e2e` | login, home, the search, the grid, inviting a person, a child-unit administrator's view, delegation and reviews, settings, working across units, explaining access and conflict rules, and a plan and a kill switch reaching the shell within a minute, in a real browser, each run in a unit of its own |
+| Smoke | `make smoke` | the live stack from the outside in 24 steps: provisioning, tokens, cookies, denials, the trace, a role scoped to a unit, a plan change and a kill switch, the operator's recovery, the second factor, single sign-on through the test provider, sessions and revocation, the audit trail, TLS, a key's rotation and a security alert in the tenant, the control plane and Alertmanager |
+| Browser | `make e2e` | the user paths against the stack: sign-in with a password, a passkey and the company login, home and the search, the grid, inviting a person, scoped administration, delegation and reviews, settings, working across units, explaining access, a plan and a kill switch reaching the shell, passwords, terms, impersonation, signatures, pending changes and evidence, the protection of the sign-in, keys, and security alerts |
 | Pipeline's stage | `make integration` | platform and control plane from images, then the smoke; in the release workflow the browser tests follow against the same tenant (ADR-0044) |
 | Traceability | `make trace` | each requirement criterion and decision with the tests that prove it and their last results, and the criteria of the done slices that nothing proves (ADR-0044) |
 | Security | `make security`, `make coverage`, `make images-security` | the dependencies with their licences, the misconfigurations and the repository's rules through the gate; the coverage floors; the laptop's images and their bills of materials (ADR-0055) |

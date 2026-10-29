@@ -95,7 +95,7 @@ public class TokenTests(IdentityFixture fixture)
     }
 
     [Fact]
-    [Proves("TF-075 AC2", "ADR-0054")]
+    [Proves("TF-075 AC2", "TF-020 AC3", "ADR-0054")]
     public async Task ATokenSignedBeforeARotationStaysValidUntilItExpiresAndTheNewVersionSignsNewOnes()
     {
         var time = new FakeTimeProvider();

@@ -177,6 +177,38 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
     }
 
     [Fact]
+    [Proves("TF-014 AC10", "ADR-0048")]
+    public async Task AProviderThatCannotBeReachedIsSaidInWordsAtTheStartAndAtTheCallbackAndNoSessionStarts()
+    {
+        await using var host = await StartAsync();
+        var admin = await host.AdministratorSessionAsync();
+        var provider = await host.ProviderAsync(admin);
+        var person = await host.PersonAsync($"ada@{Domain}");
+
+        // The sign-in starts while the provider answers; then it goes away: nothing listens on the discard port.
+        var (cookie, url) = await host.StartAsync(provider.Id);
+        var back = await TestOidcProvider.SignInAsync(url, "ada", Claims(person.LoginId), TestContext.Current.CancellationToken);
+        var query = QueryHelpers.ParseQuery(back.Query);
+        using var moved = await host.SendAsync(HttpMethod.Put, $"/api/v1/sso/providers/{provider.Id}", admin, host.ProviderBody(body => body["discovery_url"] = "http://127.0.0.1:9/.well-known/openid-configuration", provider.Issuer));
+        using var callback = await host.SendAsync(HttpMethod.Post, "/auth/sso/callback", cookie, new { code = query["code"].ToString(), state = query["state"].ToString() });
+        var callbackProblem = (await JsonAsync(callback)).RootElement;
+        using var start = await host.SendAsync(HttpMethod.Post, "/auth/sso/start", body: new { provider_id = provider.Id, return_to = "/" });
+        var startProblem = (await JsonAsync(start)).RootElement;
+
+        Assert.Equal(HttpStatusCode.OK, moved.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, callback.StatusCode);
+        Assert.Equal(IdentityErrors.SsoUnavailable, callbackProblem.GetProperty("error_code").GetString());
+        Assert.EndsWith("cannot be reached now. Try again in a moment.", callbackProblem.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        Assert.Null(Cookie(callback, SessionCookie));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, start.StatusCode);
+        Assert.Equal(IdentityErrors.SsoUnavailable, startProblem.GetProperty("error_code").GetString());
+        Assert.EndsWith("cannot be reached now. Try again in a moment, or sign in another way.", startProblem.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        Assert.Null(Cookie(start, SignInCookie));
+        Assert.Equal(0, await host.SessionCountAsync(person.Id));
+        Assert.Empty(await host.LinksAsync(person.Id));
+    }
+
+    [Fact]
     [Proves("TF-014 AC8", "ADR-0048")]
     public async Task AnEmailTheProviderDoesNotMarkVerifiedMatchesNobodyAndCreatesNobody()
     {
@@ -941,6 +973,12 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
             await using var scope = app.Services.CreateAsyncScope();
             var normalised = Principal.NormaliseLoginId(loginId);
             return await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Principals.CountAsync(p => p.LoginId == normalised || p.Email == normalised, TestContext.Current.CancellationToken);
+        }
+
+        public async Task<int> SessionCountAsync(Guid principalId)
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Sessions.CountAsync(s => s.PrincipalId == principalId, TestContext.Current.CancellationToken);
         }
 
         public async Task<IReadOnlyList<SsoLink>> LinksAsync(Guid principalId)
