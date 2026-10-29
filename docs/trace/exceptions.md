@@ -2,7 +2,7 @@
 
 The criteria of a done slice's requirements that no test proves, each with its reason and the date the design session approved it (ADR-0044). `make trace` fails on any other criterion of a done slice without a test, on a row here that a test now proves (remove the row in the same change as the test), and on a row outside a done slice. A row names one criterion, `TF-001 AC3`, or a whole requirement when none of its criteria has a test.
 
-The first list was written by S3 T1 from the backfill of S1's and S2's tests and approved at T1's review on 2026-10-21, which turned the six gaps it found into tests rather than exceptions. What each slice built and where each requirement continues is in the coverage table of its plan, section 2 of `docs/slices/S1-walking-skeleton.md` and of `docs/slices/S2-access-control-organisations-and-design.md`.
+The first list was written by S3 T1 from the backfill of S1's and S2's tests and approved at T1's review on 2026-10-21, which turned the six gaps it found into tests rather than exceptions. S3-close added S3's rows and moved TF-020 AC1's home; a row dated 2026-10-29 is proposed on that date and takes the date of the design session's approval. What each slice built and where each requirement continues is in the coverage table of its plan, section 2 of `docs/slices/S1-walking-skeleton.md` and of `docs/slices/S2-access-control-organisations-and-design.md`, section 3 of `docs/slices/S3-trust-and-compliance.md`.
 
 ## Not built yet
 
@@ -10,8 +10,13 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 |---|---|---|
 | TF-001 AC3 | A unit does not refuse its users while its tenant is Suspended: S1 built the registry's statuses, and the lifecycle operations are TF-004's, in S6. | 2026-10-21 |
 | TF-003 AC2 | No job runs in a tenant's worker yet; the jobs engine is S4. The worker's heartbeat span carries the tenant (`HeartbeatTests`, ADR-0011). | 2026-10-21 |
-| TF-020 AC1 | No refresh token exists yet: S1 issues access tokens by the client credentials grant only (ADR-0015); the authorization code flow with refresh rotation comes with S3 T4. | 2026-10-21 |
-| TF-020 AC3 | The signing key is read from the store and not rotated yet; key rotation is S3 T9 (TF-075). | 2026-10-21 |
+| TF-020 AC1 | No refresh token exists yet: people sign in to a server-side session, through a password or a company login (ADR-0048), and API clients take 15-minute tokens by the client credentials grant (ADR-0015). Refresh tokens, their rotation and the family's revocation come with the partner API surfaces and their SDKs in S7; the notice to the person with S4's notifications. | 2026-10-29 |
+| TF-018 AC3 | An invitation is not resent: its link is given once, to the administrator who made the person or to the operator in the provisioning report (ADR-0046), and a person still Invited gets a new one only by reactivation or the seed. The invitation by email with its resend, the earlier link refused, comes with S4's notifications. | 2026-10-29 |
+| TF-019 AC1 | The security events are recorded, audited and shown in My profile's Security tab (S3 T2, T5); the email of a new device's sign-in is S4's notifications. | 2026-10-29 |
+| TF-019 AC2 | As AC1: the email's link waits for the email. The page it opens exists: My profile's Sessions tab lists the person's live sessions with their end actions (TF-022 AC4). | 2026-10-29 |
+| TF-019 AC3 | As AC1: with no email there is no send to fail. Every event the email would carry is audited already. | 2026-10-29 |
+| TF-023 AC2 | A service account has no address allow-list yet; it comes with the partner API surfaces in S7, beside API keys (TF-024), which need the same check. | 2026-10-29 |
+| TF-023 AC3 | A service account's secret is replaced, not rotated with an overlap; the overlap comes with S7, as AC2. | 2026-10-29 |
 | TF-037 AC1 | No workflow exists yet; a workflow assigns the delegate in S5 (ADR-0037). | 2026-10-21 |
 | TF-038 AC3 | A review seven days late is escalated, recorded and audited (`ReviewTests`, ADR-0037); notifying the reviewer's manager waits for S4's notifications. | 2026-10-21 |
 | TF-051 AC1 | The email kill switch is declared and wired when S4 builds email; only the imports switch is wired today (ADR-0035). | 2026-10-21 |
@@ -28,6 +33,18 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | TF-180 AC3 | The operator console has no screens yet; the fleet view is S6. | 2026-10-21 |
 | TF-190 AC1 | The scaffolding tool was planned after S1 and is not built; proposed for the first business slice, whose module would be its template. | 2026-10-21 |
 | TF-221 AC1 | Numbering sequences (TF-166) are not built yet; their organisation scope comes with them. | 2026-10-21 |
+
+## Parts that wait, inside criteria a test proves
+
+The trace counts a criterion, so these parts of S3's requirements need no row: each criterion has its test, and the part named here is S4's notifications or S4's document templates. They are listed for the design session's approval with S3's rows, and S4's plan names each.
+
+- TF-012 AC2: the lockout is refused and recorded (T2's tests); its email is S4's.
+- TF-013: the requirement's fallback by one-time codes by email or SMS is S4's (ADR-0047); the emails for a new factor, a removal and a reset join TF-019's.
+- TF-017: a person's own recovery link to their verified email is S4's; the link an administrator or the operator issues is built (T2).
+- TF-018: the invitation by email is S4's; the link is given once to whoever asked (T2).
+- TF-025: the email to the person impersonated is S4's; they see it in their security activity (AC6, T5).
+- TF-068: a pending change's notices to its approvers and to its requester when it is decided or expires are S4's; the console and My profile show them (T8).
+- TF-067: the evidence pack's PDF is S4's document templates; each document is a readable page and a CSV (T8).
 
 ## Proven by hand or by the pipeline's design
 
