@@ -607,7 +607,8 @@
           "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
           "Iron.Kernel.Authorization.Contracts": "[1.0.0, )",
           "Iron.Kernel.Compliance.Contracts": "[1.0.0, )",
-          "Iron.Kernel.Data": "[1.0.0, )"
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Visibility.Contracts": "[1.0.0, )"
         }
       },
       "iron.kernel.authorization.contracts": {
@@ -733,6 +734,12 @@
         }
       },
       "iron.kernel.tenancy.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.visibility.contracts": {
         "type": "Project",
         "dependencies": {
           "Iron.Kernel": "[1.0.0, )"

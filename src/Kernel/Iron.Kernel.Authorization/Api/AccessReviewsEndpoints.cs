@@ -16,7 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Authorization.Api;
 
-public sealed record StartReviewRequest(string Name, DateOnly DueOn, IReadOnlyList<ReviewUnitInput> Units);
+public sealed record StartReviewRequest(string Name, DateOnly DueOn, IReadOnlyList<ReviewUnitInput> Units, ReviewSubject? Subject = null);
 
 public sealed class StartReviewRequestValidator : AbstractValidator<StartReviewRequest>
 {
@@ -28,6 +28,7 @@ public sealed class StartReviewRequestValidator : AbstractValidator<StartReviewR
         RuleFor(r => r.Name).NotEmpty().WithMessage("Name the campaign, so reviewers know what they are asked.").MaximumLength(AccessReview.NameMaxLength);
         RuleFor(r => r.Units).NotEmpty().WithMessage("Choose the units to review.").MaximumCount(UnitsMaxCount);
         RuleForEach(r => r.Units).ChildRules(unit => unit.RuleFor(u => u.UnitId).NotEmpty());
+        RuleFor(r => r.Subject).IsInEnum();
     }
 }
 
@@ -74,8 +75,8 @@ public sealed class ConfirmItemsRequestValidator : AbstractValidator<ConfirmItem
     }
 }
 
-/// <summary>A campaign in the list, with the progress of what the reader may see.</summary>
-public sealed record ReviewSummaryResponse(Guid Id, string Name, DateOnly DueOn, ReviewStatus Status, bool Overdue, DateTimeOffset StartedAt, ReviewProgress Progress);
+/// <summary>A campaign in the list, with what it reviews and the progress of what the reader may see.</summary>
+public sealed record ReviewSummaryResponse(Guid Id, string Name, DateOnly DueOn, ReviewStatus Status, bool Overdue, DateTimeOffset StartedAt, ReviewProgress Progress, ReviewSubject Subject);
 
 /// <summary>
 /// Access reviews (TF-038, ADR-0037). Starting and closing need <c>authz.reviews.manage</c> tenant-wide. A reviewer holds
@@ -100,6 +101,7 @@ internal static class AccessReviewsEndpoints
         .Add("principal_name", i => i.PrincipalName)
         .Add("role_code", i => i.RoleCode)
         .Add("role_name", i => i.RoleName)
+        .Add("tag_code", i => i.TagCode)
         .Add("unit_id", i => i.UnitId, FieldUse.Select | FieldUse.Filter)
         .Add("unit_name", i => i.UnitName)
         .SortByDefault("unit_name");
@@ -108,7 +110,7 @@ internal static class AccessReviewsEndpoints
     {
         var reviews = endpoints.MapApiGroup("access-reviews");
         reviews.MapGet("/", ListAsync).RequireSignedIn().Produces<ListResponse<ReviewSummaryResponse>>(StatusCodes.Status200OK).WithName("ListAccessReviews").WithSummary("The campaigns you manage (authz.reviews.manage) or review (authz.reviews.decide at one of their units), with progress.");
-        reviews.MapPost("/", StartAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).Validate<StartReviewRequest>().Produces<ReviewView>(StatusCodes.Status201Created).WithName("StartAccessReview").WithSummary("Start a campaign over units, with or without their children: the assignments there are taken as its items now.");
+        reviews.MapPost("/", StartAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).Validate<StartReviewRequest>().Produces<ReviewView>(StatusCodes.Status201Created).WithName("StartAccessReview").WithSummary("Start a campaign over units, with or without their children: the assignments there, or the visibility tags their people hold, are taken as its items now.");
         reviews.MapGet("/{id:guid}", GetAsync).RequireSignedIn().Produces<ReviewView>(StatusCodes.Status200OK).WithName("GetAccessReview").WithSummary("One campaign with the progress of what you may see, per unit, and its escalations.");
         reviews.MapPost("/{id:guid}/close", CloseAsync).RequirePermission(AuthorizationPermissions.ReviewsManage).Produces<ReviewView>(StatusCodes.Status200OK).WithName("CloseAccessReview").WithSummary("Close a campaign: no more decisions.");
         reviews.MapGet("/{id:guid}/items", ItemsAsync).RequireSignedIn().Produces<ListResponse<ReviewItemView>>(StatusCodes.Status200OK).WithName("ListAccessReviewItems").WithSummary("The items you decide: at the units where you hold authz.reviews.decide, and as the campaign's owner those nobody else may review; state=open or decided narrows them.");
@@ -117,7 +119,7 @@ internal static class AccessReviewsEndpoints
             .Validate<DecideItemRequest>()
             .Produces<ReviewItemView>(StatusCodes.Status200OK)
             .WithName("DecideAccessReviewItem")
-            .WithSummary("Confirm an assignment, or revoke it, which removes it at once; the last tenant administrator stays, and nobody decides their own access.");
+            .WithSummary("Confirm an assignment or a visibility tag a person holds, or revoke it, which removes it at once; the last tenant administrator stays, and nobody decides their own access.");
         reviews.MapPost("/{id:guid}/confirm", ConfirmAsync).RequireSignedIn().Validate<ConfirmItemsRequest>().Produces<ConfirmManyView>(StatusCodes.Status200OK).WithName("ConfirmAccessReviewItems").WithSummary("Confirm a page of items at once; items decided meanwhile are left as they are, and none may be about your own access.");
     }
 
@@ -138,12 +140,12 @@ internal static class AccessReviewsEndpoints
         var query = parsed.Value;
         var page = await visible.ApplyListQuery(query, Fields).ToPageAsync(query.Page, cancellationToken);
         var progress = await reviews.ProgressAsync(page.Items, cancellationToken);
-        return ApiResults.List(page.Map(r => new ReviewSummaryResponse(r.Id, r.Name, r.DueOn, r.Status, progress[r.Id].Overdue > 0, r.CreatedAt, progress[r.Id])), http, query);
+        return ApiResults.List(page.Map(r => new ReviewSummaryResponse(r.Id, r.Name, r.DueOn, r.Status, progress[r.Id].Overdue > 0, r.CreatedAt, progress[r.Id], r.Subject)), http, query);
     }
 
     private static async Task<IResult> StartAsync(StartReviewRequest request, HttpContext http, ReviewService reviews, CancellationToken cancellationToken) =>
         ApiResults.From(
-            await reviews.StartAsync(new StartReviewInput(request.Name, request.DueOn, request.Units), cancellationToken),
+            await reviews.StartAsync(new StartReviewInput(request.Name, request.DueOn, request.Units, request.Subject ?? ReviewSubject.Roles), cancellationToken),
             http,
             view => TypedResults.Created($"{ApiRouting.Prefix}/access-reviews/{view.Id}", view));
 

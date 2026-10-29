@@ -146,6 +146,12 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
             item.Property(i => i.RoleCode).HasMaxLength(Role.CodeMaxLength);
             item.Property(i => i.RoleName).HasMaxLength(Role.NameMaxLength);
             item.Property(i => i.ScopeKind).HasMaxLength(20);
+            item.Property(i => i.TagCode).HasMaxLength(32);
+            item.Property(i => i.TagName).HasMaxLength(100);
+
+            // Items taken before visibility tags (V1) list none.
+            item.Property(i => i.HeldTagCodes).HasDefaultValueSql("'{}'");
+            item.Property(i => i.HeldTagNames).HasDefaultValueSql("'{}'");
             item.Property(i => i.UnitName).HasMaxLength(OrganisationUnit.NameMaxLength);
             item.HasIndex(i => new { i.ReviewId, i.AssignmentId }).IsUnique();
             item.HasIndex(i => new { i.ReviewId, i.UnitId });

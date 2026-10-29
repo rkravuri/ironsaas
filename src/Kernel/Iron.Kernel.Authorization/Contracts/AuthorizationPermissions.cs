@@ -117,6 +117,9 @@ public static class AuthorizationErrors
     public const string ReviewNotFound = "authz.review.not_found";
     public const string ReviewClosed = "authz.review.closed";
     public const string ReviewUnitsRequired = "authz.review.units_required";
+
+    /// <summary>A review of visibility tag holders in a host that keeps no tags (ADR-0057).</summary>
+    public const string ReviewSubjectUnavailable = "authz.review.subject_unavailable";
     public const string ReviewItemNotFound = "authz.review.item_not_found";
     public const string ReviewItemDecided = "authz.review.item_decided";
     public const string ReviewDuePassed = "authz.review.due_passed";

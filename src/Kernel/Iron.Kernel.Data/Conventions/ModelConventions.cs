@@ -52,6 +52,9 @@ public static class ModelConventions
             if (typeof(BusinessRecord).IsAssignableFrom(clrType))
             {
                 entity.HasIndex(nameof(BusinessRecord.OwningOrganisationId));
+
+                // A table that had records before it carried tags (ADR-0057) gives them none.
+                entity.Property(nameof(BusinessRecord.VisibilityTags)).HasDefaultValueSql("'{}'");
             }
 
             // A search by exact value compares the hash column (ADR-0054).

@@ -520,7 +520,8 @@
           "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
           "Iron.Kernel.Authorization.Contracts": "[1.0.0, )",
           "Iron.Kernel.Compliance.Contracts": "[1.0.0, )",
-          "Iron.Kernel.Data": "[1.0.0, )"
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Visibility.Contracts": "[1.0.0, )"
         }
       },
       "iron.kernel.authorization.contracts": {
@@ -626,6 +627,12 @@
           "OpenTelemetry.Extensions.Hosting": "[1.19.1, )",
           "OpenTelemetry.Instrumentation.AspNetCore": "[1.19.0, )",
           "OpenTelemetry.Instrumentation.Http": "[1.19.0, )"
+        }
+      },
+      "iron.kernel.visibility.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
         }
       },
       "iron.testing": {
