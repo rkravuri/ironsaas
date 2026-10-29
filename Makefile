@@ -403,10 +403,10 @@ shell-node:
 # provision, update-unit and deprovision still refuse to run without a TENANT.
 TEST_TENANT = $(or $(TENANT),smoke)
 
-smoke: env test-provider ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions or reuses tenant smoke, or TENANT=x
+smoke: env test-provider ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions tenant smoke marked for sample records, or reuses it, or TENANT=x
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
-	SMOKE_TENANT=$(TEST_TENANT) SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
+	SMOKE_TENANT=$(TEST_TENANT) SMOKE_SAMPLE_RECORDS=1 SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
 
 e2e: shell-node env test-provider ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate its people and units whatever the result (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
