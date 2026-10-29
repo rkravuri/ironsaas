@@ -32,7 +32,7 @@ services:
 
   # ---------------------------------------------------------------- ingress
   traefik:
-    image: traefik:v3.7.12@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf # MIT
+    image: traefik:v3.7.14@sha256:575fa15b135078fe5e50aa847987d96dbddd7b093c172429618404df73f3fa7c # MIT
     command: ["--configFile=/etc/traefik/traefik.yaml"]
     ports:
       - "80:80"
