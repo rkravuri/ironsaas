@@ -1,6 +1,6 @@
 # ADR-0056: Security monitoring over the audit trail, the operator's alerting, incidents with the 72-hour notice, and the lost spans
 
-**Status:** Proposed
+**Status:** Accepted at the design session's review (2026-10-29), without change
 **Date:** 2026-10-29
 **Decided by:** Product owner and architect, in the brief of S3 T10b (rules over the audit trail, a failing rule as an alert); the details here are the task's, for the review
 
