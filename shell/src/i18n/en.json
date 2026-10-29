@@ -1533,7 +1533,9 @@
       "audit": "Audit trail",
       "entitlements": "Subscription",
       "flags": "Flags",
-      "files": "Files"
+      "files": "Files",
+      "visibility": "Content visibility",
+      "samples": "Sample records"
     },
     "outcome": {
       "allowed": "{{name}} can: {{action}}",
@@ -1792,7 +1794,7 @@
   },
   "reviews": {
     "title": "Access reviews",
-    "description": "Check, unit by unit, that people still need the roles they hold. A reviewer decides the units where they may review.",
+    "description": "Check, unit by unit, that people still need the roles or the visibility tags they hold. A reviewer decides the units where they may review.",
     "columns": {
       "name": "Name",
       "due": "Due",
@@ -1829,7 +1831,7 @@
       "unit": "Unit",
       "unitRequired": "Choose the unit to review.",
       "includeChildren": "Include the units below it",
-      "includeChildrenHint": "The roles held at every unit below the chosen one are reviewed too.",
+      "includeChildrenHint": "What is held at every unit below the chosen one is reviewed too.",
       "subject": "What to review",
       "rolesHint": "The roles people hold at the unit: confirm keeps a role, revoke ends it.",
       "tagsHint": "The visibility tags the people homed at the unit hold: confirm keeps a tag, revoke takes it away.",
@@ -1852,7 +1854,8 @@
     },
     "items": {
       "label": "Items of this review",
-      "intro": "Each row is a role someone held when the review started. Confirm keeps it; revoke ends it at once.",
+      "intro": "Each row is a role someone held when the review started. Confirm keeps it; revoke ends it at once. Someone who holds no visibility tags sees every record their roles allow.",
+      "introTags": "Each row is a visibility tag someone held when the review started. Confirm keeps it; revoke takes it away at once.",
       "which": "Which items",
       "states": {
         "open": "To decide",
@@ -1895,10 +1898,11 @@
       "confirmedManyWithDecided_other": "Confirmed {{count}} items. {{decided}} had been decided by someone else meanwhile and were left as they were.",
       "revoked": "Revoked: {{name}} no longer holds {{role}}.",
       "revokeTitle": "Revoke this role",
+      "revokeTagTitle": "Revoke this tag",
       "revokeMessage": "{{name}} loses {{role}} at {{unit}} at once. Undo it by granting the role again.",
       "revokeTagMessage": "{{name}} loses {{role}} at once, and with it the records only that tag let them see. Undo it by giving the tag again.",
       "tagWords": "the tag {{name}} ({{code}})",
-      "noTags": "None: they see every record their roles allow",
+      "noTags": "None",
       "revokeConfirm": "Revoke now",
       "comment": "Comment",
       "commentHint": "Optional. Kept with your decision.",

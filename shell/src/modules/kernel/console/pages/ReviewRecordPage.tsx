@@ -366,7 +366,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         </Group>
       </Group>
       <Text size="sm" c="dimmed">
-        {t("reviews.items.intro")}
+        {t(tagsReview ? "reviews.items.introTags" : "reviews.items.intro")}
       </Text>
       {signed && open && (
         <Text size="sm" data-signed-decisions>
@@ -413,7 +413,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
       </div>
       <FormDialog
         opened={revoking !== undefined}
-        title={t("reviews.items.revokeTitle")}
+        title={t(revoking?.tag ? "reviews.items.revokeTagTitle" : "reviews.items.revokeTitle")}
         onClose={() => setRevoking(undefined)}
       >
         {revoking && (

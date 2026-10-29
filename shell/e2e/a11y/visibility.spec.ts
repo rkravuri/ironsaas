@@ -84,6 +84,20 @@ async function stubVisibility(page: Page): Promise<void> {
   await page.route(`**/api/v1/users/${record.id}/visibility-tags`, (route) =>
     route.fulfill({ json: { principal_id: record.id, ...held } }),
   );
+  await page.route("**/api/v1/sample-records?**", (route) =>
+    route.fulfill({
+      json: envelope(route.request().url(), [
+        sample,
+        { ...sample, id: "01a19100-0000-7000-8000-000000000003", name: "South sample", visibility_tags: [] },
+        {
+          ...sample,
+          id: "01a19100-0000-7000-8000-000000000004",
+          name: "Shared sample",
+          visibility_tags: ["APAC", "EMEA"],
+        },
+      ]),
+    }),
+  );
   await page.route(`**/api/v1/sample-records/${sample.id}`, (route) => route.fulfill({ json: sample }));
   await page.route(`**/api/v1/record-tags/sample_record/${sample.id}`, (route) =>
     route.fulfill({
@@ -111,7 +125,7 @@ async function stubVisibility(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`content visibility in the ${scheme} scheme: the tags and who holds them, a person's tags and a record's, each dialog by keyboard, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0057]`, async ({
+  test(`content visibility in the ${scheme} scheme: the tags and who holds them, a person's tags, the sample records and a record's tags, each dialog by keyboard, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024, ADR-0057]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -152,6 +166,14 @@ for (const scheme of schemes) {
     await page.screenshot({ path: `test-results/a11y/visibility-user-dialog-${scheme}.png` });
     await expectNoViolation(page);
     await page.keyboard.press("Escape");
+
+    // The sample records, each with its tags in words, none said so.
+    await page.goto("/samples");
+    const list = page.getByRole("region", { name: "Sample records" }).getByRole("grid");
+    await expect(list.getByRole("gridcell", { name: "APAC, EMEA" })).toBeVisible();
+    await expect(list.getByRole("gridcell", { name: "None" })).toBeVisible();
+    await page.screenshot({ path: `test-results/a11y/visibility-samples-${scheme}.png`, fullPage: true });
+    await expectNoViolation(page);
 
     // A record's tags under its header, a retired one said so, and their change.
     await page.goto(`/samples/${sample.id}`);

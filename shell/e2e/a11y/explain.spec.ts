@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { grace, north, stubExplainAndConflicts } from "./stubs-access-explain";
+import { grace, north, sampleRecordId, stubExplainAndConflicts } from "./stubs-access-explain";
 
 const schemes = ["light", "dark"] as const;
 const wcag21aa = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -26,7 +26,7 @@ async function choose(page: Page, field: ReturnType<Page["getByRole"]>, typed: s
 }
 
 for (const scheme of schemes) {
-  test(`the explanation of access in the ${scheme} scheme: the person, the action and the unit by keyboard, a denial with its first failing check, an allowance with its role, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0024]`, async ({
+  test(`the explanation of access in the ${scheme} scheme: the person, the action and the unit by keyboard, a denial with its first failing check, an allowance with its role, a record outside the person's tags, and no WCAG 2.1 AA violation [TF-172 AC1, TF-241 AC2, ADR-0024, ADR-0057]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -57,11 +57,12 @@ for (const scheme of schemes) {
     ).toBeVisible();
     await expect(page.getByText("The first check that refuses it: The permission.")).toBeVisible();
     const checks = page.getByRole("list", { name: "The checks, in order" });
-    await expect(checks.getByRole("listitem")).toHaveCount(5);
+    await expect(checks.getByRole("listitem")).toHaveCount(6);
     await expect(checks).toContainText(
       `${grace.name} does not hold the permission "Create, change and delete tenant roles" for the whole organisation.`,
     );
     await expect(checks).toContainText("The record's policy: not reached");
+    await expect(checks).toContainText("The visibility tags: not reached");
     await page.screenshot({
       path: `test-results/a11y/explain-denial-${scheme}.png`,
       fullPage: true,
@@ -93,6 +94,31 @@ for (const scheme of schemes) {
     );
     await page.screenshot({
       path: `test-results/a11y/explain-allowance-${scheme}.png`,
+      fullPage: true,
+    });
+    await expectNoViolation(page);
+
+    // A record outside the person's tags: the tag check refuses, with both lists of tags, and the answer is not found.
+    await choose(
+      page,
+      page.getByRole("combobox", { name: "Action" }),
+      "sample record",
+      "One sample record you may see.",
+    );
+    await page.getByRole("textbox", { name: "Record id (sample_record)" }).fill(sampleRecordId);
+    await page.getByRole("button", { name: "Explain" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("heading", {
+        name: `${grace.name} cannot: One sample record you may see. The system answers 404.`,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText("The first check that refuses it: The visibility tags.")).toBeVisible();
+    await expect(checks).toContainText(
+      `The record carries LATAM; ${grace.name} holds APAC. They share no tag, so the system answers as if the record did not exist.`,
+    );
+    await page.screenshot({
+      path: `test-results/a11y/explain-tags-${scheme}.png`,
       fullPage: true,
     });
     await expectNoViolation(page);

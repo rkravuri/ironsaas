@@ -105,7 +105,7 @@ for (const scheme of schemes) {
     await expect(band).toBeHidden();
   });
 
-  test(`the access review pages in the ${scheme} scheme: the campaigns with their progress, a campaign's items to decide, the revoke dialog, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0037]`, async ({
+  test(`the access review pages in the ${scheme} scheme: the campaigns with what each reviews and their progress, a new campaign's choice of roles or visibility tags, a campaign's items with the tags each person holds, the revoke dialog, and no WCAG 2.1 AA violation [TF-172 AC1, ADR-0037, ADR-0057]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -116,12 +116,29 @@ for (const scheme of schemes) {
     await expect(page.getByRole("heading", { level: 2, name: "Access reviews" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "Finance year end" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "10 of 14 decided. 4 are overdue." })).toBeVisible();
+    await expect(page.getByRole("gridcell", { name: "Visibility tags" })).toBeVisible();
     await page.screenshot({ path: `test-results/a11y/reviews-${scheme}.png`, fullPage: true });
     await expectNoViolation(page);
+
+    // A new campaign reviews roles unless the manager chooses visibility tags, by keyboard.
+    await page.getByRole("button", { name: "Start a review" }).focus();
+    await page.keyboard.press("Enter");
+    const start = page.getByRole("dialog", { name: "Start an access review" });
+    await expect(start.getByRole("textbox", { name: "Name" })).toBeFocused();
+    await page.keyboard.type("Regional tags, North");
+    await expect(start.getByRole("radio", { name: "Roles" })).toBeChecked();
+    await start.getByRole("radio", { name: "Roles" }).focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(start.getByRole("radio", { name: "Visibility tags" })).toBeChecked();
+    await page.screenshot({ path: `test-results/a11y/review-start-${scheme}.png` });
+    await expectNoViolation(page);
+    await page.keyboard.press("Escape");
+    await expect(start).toBeHidden();
 
     await page.goto(`/console/access-reviews/${reviewId}`);
     await expect(page.getByRole("heading", { name: "Quarterly review, Operations" })).toBeVisible();
     await expect(page.getByRole("gridcell", { name: "Marie Curie" })).toBeVisible();
+    await expect(page.getByRole("gridcell", { name: "APAC, EMEA" })).toBeVisible();
     // The viewer's own row says who decides it, and the page's confirmation leaves it out.
     await expect(
       page.getByRole("gridcell", { name: "About your own access: another reviewer decides it." }),
