@@ -348,6 +348,10 @@ export const ReviewProgressSchema = z.object({
 });
 export type ReviewProgress = z.infer<typeof ReviewProgressSchema>;
 
+/** What a campaign reviews: role assignments, or who holds which visibility tag (TF-241 AC7, ADR-0057). */
+export const ReviewSubjectSchema = z.enum(["roles", "visibility_tags"]);
+export type ReviewSubject = z.infer<typeof ReviewSubjectSchema>;
+
 export const ReviewSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -356,6 +360,7 @@ export const ReviewSummarySchema = z.object({
   overdue: z.boolean(),
   started_at: z.string(),
   progress: ReviewProgressSchema,
+  subject: ReviewSubjectSchema.default("roles"),
 });
 export type ReviewSummary = z.infer<typeof ReviewSummarySchema>;
 export const ReviewListSchema = listSchema(ReviewSummarySchema);
@@ -390,20 +395,32 @@ export const ReviewSchema = z.object({
     }),
   ),
   can_manage: z.boolean(),
+  subject: ReviewSubjectSchema.default("roles"),
 });
 export type Review = z.infer<typeof ReviewSchema>;
 
-/** One assignment to decide, as it stood when the campaign started, with its decision once there is one. */
+/** A visibility tag as a review names it. */
+export const ReviewTagSchema = z.object({ code: z.string(), name: z.string() });
+export type ReviewTag = z.infer<typeof ReviewTagSchema>;
+
+/**
+ * One assignment, or one visibility tag a person holds, to decide, as it stood when the campaign started, with its
+ * decision once there is one; with the tags its person held then (TF-241 AC7).
+ */
 export const ReviewItemSchema = z.object({
   id: z.string(),
   review_id: z.string(),
   assignment_id: z.string(),
   principal_id: z.string(),
   principal_name: z.string(),
-  role_id: z.string(),
-  role_code: z.string(),
-  role_name: z.string(),
-  scope_kind: ScopeKindSchema,
+  role_id: z.string().nullable(),
+  role_code: z.string().nullable(),
+  role_name: z.string().nullable(),
+  scope_kind: ScopeKindSchema.nullable(),
+  /** The tag of a holding's item; null for a role assignment's (ADR-0057). */
+  tag: ReviewTagSchema.nullable().default(null),
+  /** The tags the person held when the campaign started, in code order. */
+  held_tags: z.array(ReviewTagSchema).default([]),
   unit_id: z.string(),
   unit_name: z.string(),
   unit_path: z.array(z.object({ id: z.string(), name: z.string() })),
@@ -460,6 +477,7 @@ export interface NewReview {
   name: string;
   due_on: string;
   units: { unit_id: string; include_children: boolean }[];
+  subject?: ReviewSubject;
 }
 
 export const startReview = (body: NewReview) => request(reviews, { method: "POST", body, schema: ReviewSchema });
@@ -536,7 +554,7 @@ export type ExplainResult = z.infer<typeof ExplainResultSchema>;
 
 /** One check, explained: its result, its reason code, the status a failure answers, and the facts behind it. */
 export const ExplainedCheckSchema = z.object({
-  check: z.enum(["principal", "entitlement", "flags", "permission", "record_policy"]),
+  check: z.enum(["principal", "entitlement", "flags", "permission", "record_policy", "visibility_tags"]),
   result: ExplainResultSchema,
   reason: z.string(),
   status: z.number().nullable(),

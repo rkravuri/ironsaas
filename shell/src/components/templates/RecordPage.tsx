@@ -5,6 +5,7 @@ import { IconPrinter } from "@tabler/icons-react";
 import { RecordHeader, type RecordHeaderProps } from "../panels/RecordHeader";
 import { RecordHistory } from "../panels/RecordHistory";
 import { RecordSignatures } from "../panels/SignatureBlock";
+import { RecordTagsControl } from "../visibility";
 
 export interface RecordTab {
   value: string;
@@ -26,14 +27,20 @@ export interface RecordPageProps {
    * and in print, and the page offers to print. Without it the record has no block.
    */
   signatures?: { recordType: string; recordId: string } | undefined;
+  /**
+   * The record as its visibility tags name it (TF-241, ADR-0057): every business record type carries tags, and the tags
+   * control shows under the header, changing them for a reader the record's policy and rule 5 allow. Without it the
+   * page shows no tags.
+   */
+  tags?: { recordType: string; recordId: string } | undefined;
 }
 
 /**
- * A record: the header with its status and actions, its signatures when it has any, then the panels behind tabs, the
- * History last (TF-171). Printed, the frame and the tab list are left out (the global print style): the header, the
- * signature block and the open tab are the record on paper.
+ * A record: the header with its status and actions, its signatures when it has any, its visibility tags when it carries
+ * them, then the panels behind tabs, the History last (TF-171). Printed, the frame and the tab list are left out (the
+ * global print style): the header, the signature block, the tags and the open tab are the record on paper.
  */
-export function RecordPage({ header, tabs, defaultTab, history, signatures }: RecordPageProps) {
+export function RecordPage({ header, tabs, defaultTab, history, signatures, tags }: RecordPageProps) {
   const { t } = useTranslation();
   const all =
     history === undefined
@@ -65,6 +72,7 @@ export function RecordPage({ header, tabs, defaultTab, history, signatures }: Re
           <RecordSignatures recordType={signatures.recordType} recordId={signatures.recordId} />
         </>
       )}
+      {tags !== undefined && <RecordTagsControl recordType={tags.recordType} recordId={tags.recordId} />}
       <Tabs defaultValue={initial} keepMounted={false}>
         <Tabs.List data-print="hide">
           {all.map((tab) => (

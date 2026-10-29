@@ -13,6 +13,7 @@ import {
   IconShieldLock,
   IconSitemap,
   IconSquarePlus,
+  IconTags,
   IconUserShare,
   IconUsersGroup,
 } from "@tabler/icons-react";
@@ -37,6 +38,7 @@ import { SsoProviderPage } from "./pages/SsoProviderPage";
 import { SsoProvidersPage } from "./pages/SsoProvidersPage";
 import { SubscriptionPage } from "./pages/SubscriptionPage";
 import { UnitsPage } from "./pages/UnitsPage";
+import { VisibilityPage } from "./pages/VisibilityPage";
 
 /**
  * The tenant console (kernel layer, ADR-0029): the administration of the kernel's mechanisms. A1 brought the
@@ -47,7 +49,8 @@ import { UnitsPage } from "./pages/UnitsPage";
  * (TF-014, ADR-0048), for the holders of the critical identity.sso.manage. S3 T5 brought the sessions, with the summary and
  * the tenant-wide revocation (TF-022, TF-029), and the documents people accept (TF-028, ADR-0049). S3 T8 brought the
  * changes of sensitive configuration that wait for a second administrator (TF-068, ADR-0052). S3 T9b brought the keys, read only:
- * their versions, rotations and re-encryption; rotating them is the operator's (TF-075, ADR-0054).
+ * their versions, rotations and re-encryption; rotating them is the operator's (TF-075, ADR-0054). V1 brought content
+ * visibility: the tenant's visibility tags and who holds them (TF-241, ADR-0057); people get theirs on their record.
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -117,6 +120,12 @@ export const consoleManifest: ModuleManifest = {
       permission: "authz.access.explain",
       element: <ExplainPage />,
       titleKey: "modules.console.explain",
+    },
+    {
+      path: "/console/visibility",
+      permission: "visibility.tags.read",
+      element: <VisibilityPage />,
+      titleKey: "modules.console.visibility",
     },
     {
       path: "/console/conflicts",
@@ -236,6 +245,12 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/explain",
       permission: "authz.access.explain",
       icon: <IconHelpCircle size={16} />,
+    },
+    {
+      labelKey: "modules.console.visibility",
+      path: "/console/visibility",
+      permission: "visibility.tags.read",
+      icon: <IconTags size={16} />,
     },
     {
       labelKey: "modules.console.conflicts",

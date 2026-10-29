@@ -53,5 +53,9 @@ export function checkWords(t: TFunction, check: ExplainedCheck, explanation: Acc
     operatorReason: facts.reason ? t("explain.operatorReason", { reason: facts.reason }) : "",
     action: facts.action ?? "",
     delegator: explanation.acting_for?.name ?? "",
+    // The tag check compares the record's tags with the person's (TF-241 AC2): the API lists each by its codes.
+    recordTags: facts.record_tags ?? "",
+    heldTags: facts.held_tags ?? "",
+    sharedTags: facts.shared_tags ?? "",
   });
 }
