@@ -223,7 +223,7 @@ services:
   # the integration stage, never by make up. Reached at http://idp.localhost through the ingress; the issuer is
   # http://idp.localhost/<issuer id>, any first path segment being an issuer of its own.
   idp:
-    image: ghcr.io/navikt/mock-oauth2-server:6.0.4@sha256:47374fe063995d9b6d39ebb6ea21eb5f765025bf0aa08b61b08b439eb91adaf0 # MIT
+    image: ghcr.io/navikt/mock-oauth2-server:6.1.4@sha256:647dd8c78a54f0e6fcd58d79c884e612f8f998a0662276f3e1db22e464a50192 # MIT
     profiles: [sso]
     environment:
       JSON_CONFIG: '{"interactiveLogin": true}'
