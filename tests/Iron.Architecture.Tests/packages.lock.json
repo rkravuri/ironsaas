@@ -648,6 +648,7 @@
           "Iron.Kernel.Keys": "[1.0.0, )",
           "Iron.Kernel.Monitoring": "[1.0.0, )",
           "Iron.Kernel.Protection": "[1.0.0, )",
+          "Iron.Kernel.Samples": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
           "Iron.Kernel.Telemetry": "[1.0.0, )",
@@ -966,6 +967,21 @@
         }
       },
       "iron.kernel.protection.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.samples": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Samples.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.samples.contracts": {
         "type": "Project",
         "dependencies": {
           "Iron.Kernel": "[1.0.0, )"

@@ -40,6 +40,7 @@ CATALOGUE = Path("src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.js
 # An attribute at the start of its line: the attribute's own documentation shows an example in a comment.
 SCHEMA = re.compile(r'^\s*\[Schema\((?:"([a-z_]+)"|([A-Za-z_][\w.]*))\)\]', re.MULTILINE)
 MIGRATION = re.compile(r"^(\d{14}_\w+)\.cs$")
+SAMPLES_SCHEMA = "kernel_samples"
 
 
 def sha256(data: bytes) -> str:
@@ -105,8 +106,11 @@ def checks(version: str, said_version: str | None, configuration: dict[str, obje
     found.append({"name": "version", "passed": said_version == version, "detail": f"the API image says {said_version}, the release is {version}"})
     image_catalogue = configuration.get("catalogue_sha256")
     found.append({"name": "catalogue", "passed": image_catalogue is not None and image_catalogue == repository_catalogue, "detail": f"image {image_catalogue}, repository {repository_catalogue}"})
-    image_seeds = configuration.get("seeds_sha256")
-    found.append({"name": "seeds", "passed": image_seeds is not None and image_seeds == database_seeds, "detail": f"the code seeds {image_seeds}, the tenant's database holds {database_seeds}"})
+    # A tenant marked for testing runs the sample module, whose permissions its seeds hold too (ADR-0057); its schema says so.
+    sampled = SAMPLES_SCHEMA in applied
+    image_seeds = configuration.get("sample_seeds_sha256" if sampled else "seeds_sha256")
+    seeded = "the code seeds, with the sample module," if sampled else "the code seeds"
+    found.append({"name": "seeds", "passed": image_seeds is not None and image_seeds == database_seeds, "detail": f"{seeded} {image_seeds}, the tenant's database holds {database_seeds}"})
     for schema in sorted(applied):
         wanted = expected.get(schema)
         if wanted is None:

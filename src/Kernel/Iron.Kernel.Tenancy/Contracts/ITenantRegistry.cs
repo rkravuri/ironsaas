@@ -35,7 +35,8 @@ public sealed record TenantRecord(
     string DatabaseName,
     string StorageContainer,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? ActivatedAt);
+    DateTimeOffset? ActivatedAt,
+    bool SampleRecords = false);
 
 /// <summary>The registry (TF-001) as other modules use it: the fleet reads a tenant and moves its status.</summary>
 public interface ITenantRegistry
@@ -213,6 +214,9 @@ public static class TenancyAuditEvents
     public const string ProvisioningRequested = "tenancy.provisioning_requested";
     public const string DeprovisioningRequested = "tenancy.deprovisioning_requested";
     public const string UpdateRequested = "tenancy.update_requested";
+
+    /// <summary>The operator marked a tenant's unit to run the sample module, or unmarked it (ADR-0057).</summary>
+    public const string SampleRecordsChanged = "tenancy.sample_records_changed";
     public const string StatusChanged = "tenancy.tenant.status_changed";
     public const string PlanSaved = "tenancy.plan_saved";
     public const string PlanApplied = "tenancy.plan_applied";
@@ -299,6 +303,7 @@ public static class TenancyAuditEvents
         new(ProvisioningRequested, "Provisioning requested"),
         new(DeprovisioningRequested, "Deprovisioning requested"),
         new(UpdateRequested, "Update requested"),
+        new(SampleRecordsChanged, "Sample records switched on or off for a tenant"),
         new(StatusChanged, "Tenant status changed"),
         new(PlanSaved, "Plan saved"),
         new(PlanApplied, "Plan applied"),

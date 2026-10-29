@@ -75,6 +75,14 @@ public sealed class Tenant : AuditedEntity, ITenantWide
     /// <summary>The revision the store holds; behind <see cref="EntitlementsRevision"/> until the fleet reconciles (ADR-0034).</summary>
     public int PublishedRevision { get; private set; }
 
+    /// <summary>
+    /// The operator marked the tenant for testing (ADR-0057): its unit runs the sample module, whose records the smoke and
+    /// the browser tests use. The fleet writes it into the unit secret at the next provisioning or update.
+    /// </summary>
+    public bool SampleRecords { get; private set; }
+
+    public void MarkForSampleRecords(bool enabled) => SampleRecords = enabled;
+
     /// <summary>A plan applied: its code and grace days, and the next revision, which the caller writes into the history.</summary>
     public int ApplyPlan(string plan, int graceDays)
     {

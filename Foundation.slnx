@@ -54,6 +54,10 @@
     <Project Path="src/Kernel/Iron.Kernel.Visibility/Iron.Kernel.Visibility.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Visibility/Contracts/Iron.Kernel.Visibility.Contracts.csproj" />
   </Folder>
+  <Folder Name="/src/Kernel/Iron.Kernel.Samples/">
+    <Project Path="src/Kernel/Iron.Kernel.Samples/Iron.Kernel.Samples.csproj" />
+    <Project Path="src/Kernel/Iron.Kernel.Samples/Contracts/Iron.Kernel.Samples.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/Kernel/Iron.Kernel.Compliance/">
     <Project Path="src/Kernel/Iron.Kernel.Compliance/Iron.Kernel.Compliance.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />

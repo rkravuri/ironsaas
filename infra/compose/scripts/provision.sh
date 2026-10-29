@@ -2,7 +2,9 @@
 # Registers a tenant in the control plane and asks the fleet to provision it (ACTION=deprovision takes the unit down, ACTION=update re-applies it,
 # ACTION=administrator-recovery asks for a recovery link for the tenant's administrator with REASON, ADR-0046, and
 # RESET_FACTORS=1 also resets their second factors, ADR-0047; ACTION=impersonation asks for a one-time link to sign in
-# as the person named second, with REASON and MINUTES, ADR-0049),
+# as the person named second, with REASON and MINUTES, ADR-0049; ACTION=sample-records marks the tenant's unit to run the
+# sample module for testing when SAMPLE_RECORDS=1, or unmarks it when SAMPLE_RECORDS=0, ADR-0057; a provisioning with
+# SAMPLE_RECORDS=1 registers the tenant marked),
 # as an operator (client credentials), then follows the job until it ends and prints every step with its duration.
 # A link the job handed over (the first administrator's invitation, a recovery link) is printed once: the control plane
 # gives it once, to the operator who asked, and deletes it; it is never in the job's output (ADR-0046).
@@ -19,11 +21,12 @@ timeout="${PROVISION_TIMEOUT_SECONDS:-900}"
 reason="${REASON:-}"
 reset_factors="${RESET_FACTORS:-0}"
 minutes="${MINUTES:-}"
+sample_records="${SAMPLE_RECORDS:-}"
 
-python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" <<'PY'
+python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" "$sample_records" <<'PY'
 import base64, json, sys, time, urllib.error, urllib.request
 
-control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes = sys.argv[1:]
+control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes, sample_records = sys.argv[1:]
 timeout = int(timeout)
 
 def call(method, path, body=None, token=None, form=None):
@@ -55,7 +58,8 @@ access = token["access_token"]
 if action == "provision":
     status, existing = call("GET", f"/api/v1/tenants/{tenant}", token=access)
     if status == 404:
-        status, created = call("POST", "/api/v1/tenants", body={"slug": tenant, "display_name": tenant.capitalize(), "administrator_login_id": administrator}, token=access)
+        body = {"slug": tenant, "display_name": tenant.capitalize(), "administrator_login_id": administrator, "sample_records": sample_records == "1"}
+        status, created = call("POST", "/api/v1/tenants", body=body, token=access)
         if status != 201:
             sys.exit(f"Creating the tenant failed ({status}): {created}")
         print(f"Registered tenant {tenant} with hostnames {', '.join(created['hostnames'])} and administrator {administrator}.")
@@ -63,6 +67,15 @@ if action == "provision":
         print(f"Tenant {tenant} exists (status {existing['status']}).")
     else:
         sys.exit(f"Reading the tenant failed ({status}): {existing}")
+
+if action == "sample-records":
+    # The unit follows at its next provisioning or update, when the fleet writes its secret.
+    status, record = call("PUT", f"/api/v1/tenants/{tenant}/sample-records", body={"enabled": sample_records == "1"}, token=access)
+    if status != 200:
+        sys.exit(f"Marking the tenant failed ({status}): {record}")
+    runs = "runs" if record["sample_records"] else "does not run"
+    print(f"Tenant {tenant}'s unit {runs} the sample module from its next update: make update-unit TENANT={tenant}.")
+    sys.exit(0)
 
 if action == "administrator-recovery":
     # The reason goes to both audit trails; an empty administrator means the tenant's first one.

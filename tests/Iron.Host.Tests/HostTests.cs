@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -127,6 +128,23 @@ public class HostTests
         var seeds = root.GetProperty("seeds").EnumerateArray().Select(s => s.GetString()!).ToList();
         Assert.Contains(seeds, s => s.StartsWith("tenant-administrator:", StringComparison.Ordinal) && s.Contains("compliance.evidence.export", StringComparison.Ordinal));
         Assert.Equal(Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Concat(seeds.Select(s => s + "\n"))))), root.GetProperty("seeds_sha256").GetString());
+        Assert.DoesNotContain(seeds, s => s.Contains("samples.", StringComparison.Ordinal));
+        Assert.NotEqual(root.GetProperty("seeds_sha256").GetString(), root.GetProperty("sample_seeds_sha256").GetString());
+    }
+
+    [Fact]
+    [Proves("ADR-0057")]
+    public void AUnitRunsTheSampleModuleOnlyWhereItsConfigurationSwitchesItOnAndTheCatalogueNeverHoldsIt()
+    {
+        static IConfiguration With(string? value) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [Iron.Kernel.Samples.Contracts.SamplesConfiguration.EnabledKey] = value }).Build();
+
+        Assert.DoesNotContain(Iron.Host.Api.UnitModules.ForUnit(With(null)), m => m.Name == "samples");
+        Assert.DoesNotContain(Iron.Host.Api.UnitModules.ForUnit(With("no")), m => m.Name == "samples");
+        Assert.Contains(Iron.Host.Api.UnitModules.ForUnit(With("true")), m => m.Name == "samples");
+        Assert.DoesNotContain(Iron.Host.Api.UnitModules.All(), m => m.Name == "samples");
+
+        // The fleet writes the switch the module reads, by its own name, since it references no unit module (ADR-0057).
+        Assert.Equal(Iron.Kernel.Samples.Contracts.SamplesConfiguration.EnabledKey, Iron.Kernel.Fleet.Services.Steps.SecretsStep.SampleRecordsKey);
     }
 
     [Fact]

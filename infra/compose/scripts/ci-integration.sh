@@ -63,6 +63,7 @@ sh "$here/scripts/wait-ready.sh" idp
 
 echo "== smoke against tenant $tenant"
 cd "$root"
+# The stage's tenant runs the sample module (ADR-0057), so the smoke's and the browser tests' record steps have records.
 SMOKE_CONTROL_URL=http://localhost:5200 SMOKE_OPERATOR_SECRET="$operator_secret" SMOKE_READER_SECRET="$reader_secret" \
-  SMOKE_TENANT="$tenant" SMOKE_STORE_TOKEN="$OPENBAO_ROOT_TOKEN" SMOKE_REPORT="${SMOKE_REPORT:-smoke-report.json}" \
+  SMOKE_TENANT="$tenant" SMOKE_STORE_TOKEN="$OPENBAO_ROOT_TOKEN" SMOKE_REPORT="${SMOKE_REPORT:-smoke-report.json}" SMOKE_SAMPLE_RECORDS=1 \
   dotnet run --project tools/Iron.Smoke --configuration Release

@@ -419,6 +419,21 @@
           "Iron.Kernel": "[1.0.0, )"
         }
       },
+      "iron.kernel.samples": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Samples.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.samples.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
       "iron.kernel.security": {
         "type": "Project",
         "dependencies": {

@@ -201,6 +201,124 @@ public sealed class AccessSteps(Api api, SmokeOptions options, string operatorTo
         }
     }
 
+    /// <summary>
+    /// Visibility tags (TF-241, ADR-0057), on the sample records of a unit the operator marked for testing: a reader of the
+    /// run's own unit who holds SMOKE-A lists a record tagged SMOKE-A and SMOKE-B and an untagged one, and not one tagged
+    /// SMOKE-B only, which by id answers not found. The two tags are the smoke's, made once and kept; the reader and the
+    /// run's unit are deactivated at the end, whatever the result.
+    /// </summary>
+    public async Task<string> VisibilityTagsAsync(CancellationToken cancellationToken)
+    {
+        var admin = await signInAdministrator(cancellationToken).ConfigureAwait(false);
+        string? unitId = null;
+        string? reader = null;
+        string? personId = null;
+        var restore = new Restore();
+        var finished = false;
+        try
+        {
+            var probe = await TenantAsync(HttpMethod.Get, "/api/v1/sample-records?page_size=1", admin, cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (probe.Status == HttpStatusCode.NotFound)
+            {
+                throw new SmokeException($"{options.Tenant}'s unit does not run the sample module: make sample-records TENANT={options.Tenant}, then make update-unit TENANT={options.Tenant} (ADR-0057)");
+            }
+
+            probe.Expect(HttpStatusCode.OK, "the sample records");
+            await EnsureTagAsync(admin, "SMOKE-A", cancellationToken).ConfigureAwait(false);
+            await EnsureTagAsync(admin, "SMOKE-B", cancellationToken).ConfigureAwait(false);
+
+            var tree = (await TenantAsync(HttpMethod.Get, "/api/v1/organisation-units", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "the tree");
+            var root = Items(tree).First(unit => unit.GetProperty("parent_id").ValueKind == JsonValueKind.Null).GetProperty("id").GetString();
+            var unitName = $"Smoke tags {run}";
+            unitId = (await TenantAsync(HttpMethod.Post, $"/api/v1/organisation-units/{root}/children", admin, new { name = unitName, code = $"smoke-tags-{run}", kind = "unit" }, cancellationToken).ConfigureAwait(false))
+                .Expect(HttpStatusCode.Created, "the run's unit").Text("id");
+
+            var loginId = $"smoke-reader-{run}-tags@{options.Hostname}";
+            var created = (await TenantAsync(HttpMethod.Post, "/api/v1/users", admin, new { login_id = loginId, display_name = $"Smoke tag reader {run}", home_unit_id = unitId }, cancellationToken).ConfigureAwait(false))
+                .Expect(HttpStatusCode.Created, "invite the reader");
+            var link = created.Body!.Value.GetProperty("invitation_link").GetString() ?? throw new SmokeException("the invitation answer has no link");
+            personId = created.Body!.Value.GetProperty("user").GetProperty("id").GetString();
+            var password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
+            var token = link[(link.IndexOf('#', StringComparison.Ordinal) + 1)..];
+            (await api.SendAsync(HttpMethod.Post, options.IngressUrl, "/auth/invitations/accept", host: options.Hostname, json: new { token, password, display_name = $"Smoke tag reader {run}" }, cancellationToken: cancellationToken).ConfigureAwait(false))
+                .Expect(HttpStatusCode.OK, "accept the invitation");
+            var roles = (await TenantAsync(HttpMethod.Get, "/api/v1/roles?filter=code:eq:read-only", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "the read-only role");
+            (await TenantAsync(HttpMethod.Post, "/api/v1/role-assignments", admin, new { principal_id = personId, role_id = Items(roles).Single().GetProperty("id").GetString(), scope_kind = "unit_with_children", unit_id = unitId }, cancellationToken).ConfigureAwait(false))
+                .Expect(HttpStatusCode.Created, "grant the role at the unit");
+            (await TenantAsync(HttpMethod.Put, $"/api/v1/users/{personId}/visibility-tags", admin, new { codes = new[] { "SMOKE-A" } }, cancellationToken).ConfigureAwait(false))
+                .Expect(HttpStatusCode.OK, "give the reader SMOKE-A");
+
+            var both = await SampleRecordAsync(admin, unitId!, $"Smoke {run}: SMOKE-A and SMOKE-B", ["SMOKE-A", "SMOKE-B"], cancellationToken).ConfigureAwait(false);
+            var untagged = await SampleRecordAsync(admin, unitId!, $"Smoke {run}: no tags", [], cancellationToken).ConfigureAwait(false);
+            var other = await SampleRecordAsync(admin, unitId!, $"Smoke {run}: SMOKE-B only", ["SMOKE-B"], cancellationToken).ConfigureAwait(false);
+
+            reader = await SignInAsync(loginId, password, cancellationToken).ConfigureAwait(false);
+            var listed = (await TenantAsync(HttpMethod.Get, "/api/v1/sample-records?page_size=50", reader, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "the reader's sample records");
+            var seen = Items(listed).Select(r => r.GetProperty("id").GetString()).ToHashSet();
+            var total = listed.Body!.Value.GetProperty("meta").GetProperty("total_count").GetInt32();
+            if (!seen.SetEquals([both, untagged]) || total != 2)
+            {
+                throw new SmokeException($"the reader holding SMOKE-A lists {seen.Count} sample record(s) of a total of {total}; expected the one tagged SMOKE-A and SMOKE-B and the untagged one");
+            }
+
+            var hidden = (await TenantAsync(HttpMethod.Get, $"/api/v1/sample-records/{other}", reader, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.NotFound, "the record tagged SMOKE-B only, by id");
+            finished = true;
+            return $"a reader of {unitName} holding SMOKE-A lists 2 of its 3 sample records, one tagged SMOKE-A and SMOKE-B and one untagged; the one tagged SMOKE-B only answers 404 {hidden.Text("error_code")}";
+        }
+        finally
+        {
+            if (reader is not null)
+            {
+                await restore.Async("sign the reader out", () => SignOutAsync(reader, cancellationToken)).ConfigureAwait(false);
+            }
+
+            if (personId is not null)
+            {
+                await restore.Async("deactivate the reader", async () =>
+                    (await TenantAsync(HttpMethod.Post, $"/api/v1/users/{personId}/deactivate", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "deactivate the reader")).ConfigureAwait(false);
+            }
+
+            if (unitId is not null)
+            {
+                await restore.Async("deactivate the run's unit", async () =>
+                    (await TenantAsync(HttpMethod.Post, $"/api/v1/organisation-units/{unitId}/deactivate", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, "deactivate the unit")).ConfigureAwait(false);
+            }
+
+            await restore.Async("sign the administrator out", () => SignOutAsync(admin, cancellationToken)).ConfigureAwait(false);
+            restore.Finish(finished);
+        }
+    }
+
+    /// <summary>One of the smoke's two tags, made the first time and made active again if someone retired it.</summary>
+    private async Task EnsureTagAsync(string admin, string code, CancellationToken cancellationToken)
+    {
+        var found = (await TenantAsync(HttpMethod.Get, $"/api/v1/visibility-tags?filter={Uri.EscapeDataString($"code:eq:{code}")}", admin, cancellationToken: cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, $"the tag {code}");
+        var tag = Items(found).FirstOrDefault();
+        if (tag.ValueKind == JsonValueKind.Undefined)
+        {
+            (await TenantAsync(HttpMethod.Post, "/api/v1/visibility-tags", admin, new { code, name = $"Smoke {code[^1]}", description = "The smoke's tag; kept for its next run." }, cancellationToken).ConfigureAwait(false))
+                .Expect(HttpStatusCode.Created, $"make the tag {code}");
+        }
+        else if (tag.GetProperty("status").GetString() == "retired")
+        {
+            (await TenantAsync(HttpMethod.Post, $"/api/v1/visibility-tags/{tag.GetProperty("id").GetString()}/reactivate", admin, cancellationToken: cancellationToken).ConfigureAwait(false))
+                .Expect(HttpStatusCode.OK, $"reactivate the tag {code}");
+        }
+    }
+
+    /// <summary>A sample record of the unit with these tags, as an administrator who holds none may put any (rule 5).</summary>
+    private async Task<string> SampleRecordAsync(string admin, string unitId, string name, string[] codes, CancellationToken cancellationToken)
+    {
+        var id = (await TenantAsync(HttpMethod.Post, "/api/v1/sample-records", admin, new { name, unit_id = unitId }, cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.Created, $"the record {name}").Text("id")
+            ?? throw new SmokeException($"the record {name} came back without an id");
+        if (codes.Length > 0)
+        {
+            (await TenantAsync(HttpMethod.Put, $"/api/v1/record-tags/sample_record/{id}", admin, new { codes }, cancellationToken).ConfigureAwait(false)).Expect(HttpStatusCode.OK, $"tag the record {name}");
+        }
+
+        return id;
+    }
+
     private static IEnumerable<JsonElement> Items(Answer answer) => answer.Body!.Value.GetProperty("data").EnumerateArray();
 
     private static string Seconds(TimeSpan waited) => $"{waited.TotalSeconds.ToString("0", CultureInfo.InvariantCulture)} s";

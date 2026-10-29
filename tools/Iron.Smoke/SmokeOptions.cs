@@ -15,7 +15,8 @@ public sealed record SmokeOptions(
     Uri? TempoUrl,
     Uri? AlertmanagerUrl,
     string ReportPath,
-    TimeSpan ProvisionTimeout)
+    TimeSpan ProvisionTimeout,
+    bool SampleRecords = false)
 {
     public string Hostname => $"{Tenant}.{BaseDomain}";
 
@@ -42,6 +43,9 @@ public sealed record SmokeOptions(
             string.Equals(tempo, "skip", StringComparison.OrdinalIgnoreCase) ? null : new Uri(tempo),
             string.Equals(alertmanager, "skip", StringComparison.OrdinalIgnoreCase) ? null : new Uri(alertmanager),
             Get("SMOKE_REPORT", "smoke-report.json"),
-            TimeSpan.FromSeconds(int.Parse(Get("SMOKE_PROVISION_TIMEOUT_SECONDS", "900"), System.Globalization.CultureInfo.InvariantCulture)));
+            TimeSpan.FromSeconds(int.Parse(Get("SMOKE_PROVISION_TIMEOUT_SECONDS", "900"), System.Globalization.CultureInfo.InvariantCulture)),
+
+            // A tenant the smoke registers runs the sample module when this says so, as the release's does (ADR-0057).
+            Get("SMOKE_SAMPLE_RECORDS", "0") == "1");
     }
 }
