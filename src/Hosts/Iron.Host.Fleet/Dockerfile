@@ -5,7 +5,7 @@
 # The Docker CLI and its Compose plugin, a stage of its own so Dependabot sees the image. An exact CLI release, at least
 # two weeks old (ADR-0003): docker:28-cli carried a Go library and a gRPC with critical vulnerabilities. Its Go findings
 # wait in security/exceptions.yaml: 29.9.2 fixes four once it is two weeks old, and no Compose release the fifth yet.
-FROM docker:29.8.1-cli@sha256:018edbc908e08fcc9dbf029c812c34251e9b4719e6f71ca0e5eae2a987d014ca AS docker-cli
+FROM docker:29.9.0-cli@sha256:1a4c7cb63513f349bdad01fcc6e0f3f2f67d37b9da86f14dc0d4a0942eecda00 AS docker-cli
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b AS build
 WORKDIR /src
