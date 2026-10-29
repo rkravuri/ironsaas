@@ -11,24 +11,25 @@ using Iron.Kernel.Keys;
 using Iron.Kernel.Monitoring;
 using Iron.Kernel.Protection;
 using Iron.Kernel.Settings;
+using Iron.Kernel.Visibility;
 
 namespace Iron.Host.Api;
 
 /// <summary>
 /// The modules a tenant unit runs, in order: Audit first (the others write events through its contract), then
 /// Authorization, then Identity (it replaces the default principal), then Files, Entitlements, Flags and Settings, then
-/// Compliance, which signs the records of the modules before it, then Changes, which holds the sensitive changes of
-/// the modules before it for a second administrator (ADR-0052), then Protection, then Keys, which moves every module's
-/// encrypted values on a rotation (ADR-0054), then Monitoring, whose rules count every module's audit events (ADR-0056).
-/// The same list is
-/// the source of the licensing catalogue the control plane carries (ADR-0034), so a module added here is licensable
-/// there once <c>make catalogue</c> has written the file; a host test fails until it has.
+/// Visibility, whose tags narrow what every record policy shows (ADR-0057), then Compliance, which signs the records of
+/// the modules before it, then Changes, which holds the sensitive changes of the modules before it for a second
+/// administrator (ADR-0052), then Protection, then Keys, which moves every module's encrypted values on a rotation
+/// (ADR-0054), then Monitoring, whose rules count every module's audit events (ADR-0056). The same list is the source of
+/// the licensing catalogue the control plane carries (ADR-0034), so a module added here is licensable there once
+/// <c>make catalogue</c> has written the file; a host test fails until it has.
 /// </summary>
 public static class UnitModules
 {
     public const string CatalogueCommand = "catalogue";
 
-    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
 
     public static bool IsCatalogueCommand(string[] args)
     {

@@ -20,6 +20,7 @@ using Iron.Kernel.Protection;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Settings;
+using Iron.Kernel.Visibility;
 using Iron.Kernel.Telemetry;
 using Iron.Kernel.Telemetry.Clock;
 using Iron.Kernel.Telemetry.Health;
@@ -39,7 +40,7 @@ var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this worker runs, in order: the same list as the API host, without endpoints. Protection is here for its
 // audit event types, which the alert rules count (ADR-0056); its limits apply to requests, which the worker serves none of.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
 
 builder.AddIronTelemetry("iron-worker", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);

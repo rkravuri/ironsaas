@@ -779,7 +779,8 @@
           "Iron.Kernel.Protection": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
-          "Iron.Kernel.Telemetry": "[1.0.0, )"
+          "Iron.Kernel.Telemetry": "[1.0.0, )",
+          "Iron.Kernel.Visibility": "[1.0.0, )"
         }
       },
       "iron.host.controlplane": {
@@ -839,7 +840,8 @@
           "Iron.Kernel.Protection": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
-          "Iron.Kernel.Telemetry": "[1.0.0, )"
+          "Iron.Kernel.Telemetry": "[1.0.0, )",
+          "Iron.Kernel.Visibility": "[1.0.0, )"
         }
       },
       "iron.kernel": {
@@ -1153,6 +1155,24 @@
         }
       },
       "iron.kernel.tenancy.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.visibility": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Authorization.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Identity.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Visibility.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.visibility.contracts": {
         "type": "Project",
         "dependencies": {
           "Iron.Kernel": "[1.0.0, )"

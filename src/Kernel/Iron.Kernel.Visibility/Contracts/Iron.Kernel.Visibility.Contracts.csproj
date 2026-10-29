@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Kernel.Visibility: its permissions, error codes and audit events, and who holds which tag for an access review. References Iron.Kernel only. -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

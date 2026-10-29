@@ -136,9 +136,9 @@ public class VisibilityTagsTests(PostgresFixture fixture)
         var takenOff = await tags.ChangeAsync(SamplePolicies.WidgetType, widget.Id, ["APAC"], Cancel);
         var view = await tags.GetAsync(SamplePolicies.WidgetType, widget.Id, Cancel);
 
-        Assert.Equal(VisibilityErrors.TagNotHeld, put.Error.Code);
+        Assert.Equal(RecordTagErrors.TagNotHeld, put.Error.Code);
         Assert.Contains("LATAM", put.Error.Message, StringComparison.Ordinal);
-        Assert.Equal(VisibilityErrors.TagNotHeld, takenOff.Error.Code);
+        Assert.Equal(RecordTagErrors.TagNotHeld, takenOff.Error.Code);
         Assert.Contains("EMEA", takenOff.Error.Message, StringComparison.Ordinal);
         Assert.Equal(["APAC", "EMEA"], view.Value.Tags.Select(t => t.Code));
         Assert.Equal(["APAC"], view.Value.Choices.Select(t => t.Code));
@@ -173,9 +173,9 @@ public class VisibilityTagsTests(PostgresFixture fixture)
         Assert.Equal(RecordErrors.Forbidden, refused.Error.Code);
         Assert.False(view.Value.MayChange);
         Assert.Empty(view.Value.Choices);
-        Assert.Equal(VisibilityErrors.TagUnknown, unknown.Error.Code);
+        Assert.Equal(RecordTagErrors.TagUnknown, unknown.Error.Code);
         Assert.Contains("NOWHERE", unknown.Error.Message, StringComparison.Ordinal);
-        Assert.Equal(VisibilityErrors.RecordTypeUnknown, noType.Error.Code);
+        Assert.Equal(RecordTagErrors.RecordTypeUnknown, noType.Error.Code);
     }
 
     [Fact]
@@ -285,7 +285,7 @@ public class VisibilityTagsTests(PostgresFixture fixture)
         var put = await tags.ChangeAsync(SamplePolicies.WidgetType, other.Id, ["OLD"], Cancel);
         var takenOff = await tags.ChangeAsync(SamplePolicies.WidgetType, retired.Id, [], Cancel);
 
-        Assert.Equal(VisibilityErrors.TagRetired, put.Error.Code);
+        Assert.Equal(RecordTagErrors.TagRetired, put.Error.Code);
         Assert.Contains("OLD", put.Error.Message, StringComparison.Ordinal);
         Assert.True(takenOff.IsSuccess);
         Assert.Empty(takenOff.Value.Tags);

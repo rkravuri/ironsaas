@@ -27,3 +27,13 @@ public interface IDelegations
     /// <summary>Every active delegation the person gives or holds, one per pair of people.</summary>
     Task<IReadOnlyList<ActiveDelegation>> ActiveOfAsync(Guid principalId, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// Whose rights a principal uses in this request (ADR-0037): the delegator's while the principal acts for them, in a
+/// session that chose to or in an explanation that assumes it (ADR-0039); null otherwise. The visibility tags follow it,
+/// as the grants do (ADR-0057). Authorization implements it.
+/// </summary>
+public interface IActingFor
+{
+    Task<Guid?> DelegatorOfAsync(Guid principalId, CancellationToken cancellationToken);
+}

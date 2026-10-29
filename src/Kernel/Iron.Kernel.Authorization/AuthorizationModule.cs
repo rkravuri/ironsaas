@@ -53,6 +53,7 @@ public sealed class AuthorizationModule : IModule
         services.TryAddSingleton<IOrganisationKinds, DefaultOrganisationKinds>();
 
         services.AddScoped<ActingScope>();
+        services.AddScoped<IActingFor, ActingFor>();
         services.AddScoped<AccessGrants>();
         services.AddScoped<IPermissionEvaluator, PermissionEvaluator>();
         services.AddScoped<IRoleAssignments, RoleAssignments>();

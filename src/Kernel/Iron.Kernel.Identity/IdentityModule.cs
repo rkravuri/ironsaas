@@ -101,6 +101,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<PasswordPolicy>();
         services.AddScoped<LoginThrottles>();
         services.AddScoped<SecurityEventLog>();
+
+        // Another module's change to a person's access, in their security activity (ADR-0057: their visibility tags).
+        services.AddScoped<ISecurityActivity, SecurityActivity>();
         services.AddScoped<PasswordService>();
         services.AddScoped<SessionService>();
         services.AddScoped<SessionConsole>();

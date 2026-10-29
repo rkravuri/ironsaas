@@ -13,7 +13,7 @@ namespace Iron.Kernel.Data.Visibility;
 public sealed record RecordTagsView(string RecordType, Guid RecordId, IReadOnlyList<VisibilityTagInfo> Tags, bool MayChange, IReadOnlyList<VisibilityTagInfo> Choices);
 
 /// <summary>The error codes of changing a record's visibility tags (TF-241, ADR-0057).</summary>
-public static class VisibilityErrors
+public static class RecordTagErrors
 {
     public const string RecordTypeUnknown = "data.visibility.record_type_unknown";
 
@@ -111,18 +111,18 @@ public sealed class RecordTags(
 
         if (tags is null)
         {
-            return Error.Validation(VisibilityErrors.TagUnknown, $"There is no visibility tag {added.FirstOrDefault() ?? removed[0]}.", new FieldError("tags", "unknown", "Choose tags this tenant defined."));
+            return Error.Validation(RecordTagErrors.TagUnknown, $"There is no visibility tag {added.FirstOrDefault() ?? removed[0]}.", new FieldError("tags", "unknown", "Choose tags this tenant defined."));
         }
 
         var known = await tags.FindAsync(added, cancellationToken).ConfigureAwait(false);
         if (added.FirstOrDefault(c => !known.ContainsKey(c)) is { } unknown)
         {
-            return Error.Validation(VisibilityErrors.TagUnknown, $"There is no visibility tag {unknown}.", new FieldError("tags", "unknown", $"{unknown} is not a tag of this tenant."));
+            return Error.Validation(RecordTagErrors.TagUnknown, $"There is no visibility tag {unknown}.", new FieldError("tags", "unknown", $"{unknown} is not a tag of this tenant."));
         }
 
         if (added.FirstOrDefault(c => !known[c].Active) is { } retired)
         {
-            return Error.Validation(VisibilityErrors.TagRetired, $"The tag {retired} is retired, so it can no longer be put on a record.", new FieldError("tags", "retired", $"{retired} is retired."));
+            return Error.Validation(RecordTagErrors.TagRetired, $"The tag {retired} is retired, so it can no longer be put on a record.", new FieldError("tags", "retired", $"{retired} is retired."));
         }
 
         // Rule 5: whoever holds tags changes only those; whoever holds none may put any active tag.
@@ -131,12 +131,12 @@ public sealed class RecordTags(
         {
             if (added.FirstOrDefault(c => !held.Contains(c)) is { } notHeld)
             {
-                return Error.Forbidden(VisibilityErrors.TagNotHeld, $"You do not hold the tag {notHeld}, so you cannot put it on a record.");
+                return Error.Forbidden(RecordTagErrors.TagNotHeld, $"You do not hold the tag {notHeld}, so you cannot put it on a record.");
             }
 
             if (removed.FirstOrDefault(c => !held.Contains(c)) is { } notYours)
             {
-                return Error.Forbidden(VisibilityErrors.TagNotHeld, $"You do not hold the tag {notYours}, so you cannot take it off a record.");
+                return Error.Forbidden(RecordTagErrors.TagNotHeld, $"You do not hold the tag {notYours}, so you cannot take it off a record.");
             }
         }
 
@@ -166,5 +166,5 @@ public sealed class RecordTags(
 
     private RecordPolicyRegistration? Registration(string recordType) => registrations.FirstOrDefault(r => string.Equals(r.Name, recordType, StringComparison.Ordinal));
 
-    private static Error UnknownType(string recordType) => Error.NotFound(VisibilityErrors.RecordTypeUnknown, $"'{recordType}' is not a record type that carries visibility tags.");
+    private static Error UnknownType(string recordType) => Error.NotFound(RecordTagErrors.RecordTypeUnknown, $"'{recordType}' is not a record type that carries visibility tags.");
 }

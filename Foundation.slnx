@@ -50,6 +50,10 @@
     <Project Path="src/Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
   </Folder>
+  <Folder Name="/src/Kernel/Iron.Kernel.Visibility/">
+    <Project Path="src/Kernel/Iron.Kernel.Visibility/Iron.Kernel.Visibility.csproj" />
+    <Project Path="src/Kernel/Iron.Kernel.Visibility/Contracts/Iron.Kernel.Visibility.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/Kernel/Iron.Kernel.Compliance/">
     <Project Path="src/Kernel/Iron.Kernel.Compliance/Iron.Kernel.Compliance.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
@@ -98,6 +102,7 @@
     <Project Path="tests/Kernel/Iron.Kernel.Entitlements.Tests/Iron.Kernel.Entitlements.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Flags.Tests/Iron.Kernel.Flags.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Settings.Tests/Iron.Kernel.Settings.Tests.csproj" />
+    <Project Path="tests/Kernel/Iron.Kernel.Visibility.Tests/Iron.Kernel.Visibility.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Compliance.Tests/Iron.Kernel.Compliance.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Changes.Tests/Iron.Kernel.Changes.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Protection.Tests/Iron.Kernel.Protection.Tests.csproj" />

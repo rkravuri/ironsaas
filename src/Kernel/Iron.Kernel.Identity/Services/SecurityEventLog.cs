@@ -1,6 +1,7 @@
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Identity.Services;
 
@@ -21,5 +22,21 @@ public sealed class SecurityEventLog(IdentityDbContext context, IAuditWriter aud
         await audit.WriteAsync(
             new AuditEvent(SecurityEventKinds.AuditEventOf(kind), AuditOutcome.Success, actorId ?? current.Id, principal.LoginId, details, UserService.RecordType, principal.Id, reason, Severity: severity),
             cancellationToken).ConfigureAwait(false);
+    }
+}
+
+/// <summary>
+/// Another module's change to a person's access in the person's security activity (ADR-0057): the row only, since the
+/// module audits its own change. The actor is the request's principal, named when it is someone else: an administrator.
+/// </summary>
+public sealed class SecurityActivity(IdentityDbContext context, ICurrentPrincipal current, TimeProvider time) : ISecurityActivity
+{
+    public async Task NoteAsync(Guid principalId, string kind, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+        var self = principalId == current.Id;
+        var actorName = self ? null : await context.Principals.AsNoTracking().Where(p => p.Id == current.Id).Select(p => p.DisplayName).SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        context.SecurityEvents.Add(new SecurityEvent(principalId, kind, time.GetUtcNow(), self ? SecurityEventActors.Self : SecurityEventActors.Administrator, actorName, null));
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 }
