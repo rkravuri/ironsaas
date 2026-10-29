@@ -17,13 +17,19 @@ To be written in the design session.
 
 From STATUS, the items whose home S3-close made V:
 
-- The fleet image's Docker CLI and Compose plugin carry five Go findings excepted until 2026-11-28 (ADR-0055): take the first `docker:<version>-cli` built with Go 1.26.10 or later once it is two weeks old, and remove the exceptions, before V's first task.
-- The old column of factor secrets (`factors.secret_ciphertext`) is dropped by a migration, every unit carrying T9b (ADR-0054).
+- The fleet image's Docker CLI and Compose plugin carry five Go findings excepted until 2026-11-28 (ADR-0055): take the first `docker:<version>-cli` built with Go 1.26.10 or later once it is two weeks old, and remove the exceptions, before V's first task. In V0: `docker:29.9.2-cli` fixes four, taken on 2026-11-04; the fifth, in the Compose plugin's x/net, waits for a Compose release, its exception renewed with a corrected reason.
+- The old column of factor secrets (`factors.secret_ciphertext`) is dropped by a migration, every unit carrying T9b (ADR-0054). In V0, with the migration and the fleet refusing a unit not yet moved.
 
 ## 4. Task breakdown
 
+The tasks of `docs/prompts/V.md`, one section each.
+
 | Task | What it builds | Requirements | State |
 |---|---|---|---|
+| V0 | Chores: the fleet image's five findings before their exceptions run out on 2026-11-28; dropping the old factor-secret column | | in review (slice/v0-chores) |
+| V1 | Content visibility: visibility tags on people and records | TF-241 | outline |
+| V2 | Suites per tenant: a customer gets the suites it buys | TF-244 | outline |
+| V-close | Documentation, exceptions and closing notes | | outline |
 
 ## 5. How we build
 
