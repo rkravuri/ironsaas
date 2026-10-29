@@ -189,10 +189,8 @@ CONTROL_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$CONTRO
 FLEET_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$FLEET_STORE_TOKEN Secrets__Path=fleet
 PREPARE_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$OPENBAO_ROOT_TOKEN Secrets__Path=fleet
 # Migrations and seeds run as the control plane's owner role, whose connection only this secret holds (ADR-0053), which
-# the fleet's token reads and the API's does not. The seed moves the authenticator secrets sealed under the retired
-# factor key, given once from the file that kept it (ADR-0054).
+# the fleet's token reads and the API's does not.
 CONTROL_MIGRATE_SECRETS = Secrets__Address=http://localhost:8200 Secrets__Token=$$FLEET_STORE_TOKEN Secrets__Path=control-migrate
-LEGACY_CONTROL_FACTOR_KEY = $(shell cat $(COMPOSE_DIR)/.control-factor-key 2>/dev/null)
 FLEET_LAPTOP = Fleet__Units__Runtime=compose Fleet__Units__ComposeDirectory=$(CURDIR)/$(COMPOSE_DIR)/units Fleet__Units__IngressUrl=http://localhost Fleet__Units__ImageTag=$(TAG) \
 	Fleet__Database__UnitHost=postgres Fleet__Storage__UnitBlobEndpoint=http://blob:10000/$$BLOB_ACCOUNT_NAME Fleet__Secrets__UnitAddress=http://openbao:8200 Fleet__PollSeconds=3
 TAG ?= dev
@@ -248,7 +246,7 @@ migrate-control: env ## Migrate the control plane database (created on first run
 
 seed-control: env ## Seed the control plane: system roles, the operator service account and a second operator for break-glass
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
-	$(CONTROL_TENANT) $(CONTROL_MIGRATE_SECRETS) Identity__LegacyFactorKey="$(LEGACY_CONTROL_FACTOR_KEY)" \
+	$(CONTROL_TENANT) $(CONTROL_MIGRATE_SECRETS) \
 	Seed__ServiceAccounts__0__ClientId=operator Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) Seed__ServiceAccounts__0__Role=tenant-administrator Seed__ServiceAccounts__0__DisplayName="Local operator" \
 	Seed__ServiceAccounts__1__ClientId=smoke-reader Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) Seed__ServiceAccounts__1__Role=service-default Seed__ServiceAccounts__1__DisplayName="Smoke reader (denial case)" \
 	Seed__ServiceAccounts__2__ClientId=operator-two Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) Seed__ServiceAccounts__2__Role=tenant-administrator Seed__ServiceAccounts__2__DisplayName="Second local operator" \
@@ -467,7 +465,7 @@ up-control: env ## Run the control plane API and the fleet worker as containers 
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Token=$$OPENBAO_ROOT_TOKEN -e Secrets__Path=fleet fleet prepare-control
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-control-tokens.sh
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Token=$$FLEET_STORE_TOKEN -e Secrets__Path=control-migrate control-api migrate
-	@set -a; . $(COMPOSE_DIR)/.env; set +a; IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Token=$$FLEET_STORE_TOKEN -e Secrets__Path=control-migrate -e "Identity__LegacyFactorKey=$(LEGACY_CONTROL_FACTOR_KEY)" \
+	@set -a; . $(COMPOSE_DIR)/.env; set +a; IMAGE_TAG=$(TAG) $(COMPOSE) --profile control run --rm --no-deps -e Secrets__Token=$$FLEET_STORE_TOKEN -e Secrets__Path=control-migrate \
 	  -e Seed__ServiceAccounts__0__ClientId=operator -e Seed__ServiceAccounts__0__Secret=$(DEV_OPERATOR_SECRET) -e Seed__ServiceAccounts__0__Role=tenant-administrator -e "Seed__ServiceAccounts__0__DisplayName=Local operator" \
 	  -e Seed__ServiceAccounts__1__ClientId=smoke-reader -e Seed__ServiceAccounts__1__Secret=$(DEV_SMOKE_READER_SECRET) -e Seed__ServiceAccounts__1__Role=service-default -e "Seed__ServiceAccounts__1__DisplayName=Smoke reader (denial case)" \
 	  -e Seed__ServiceAccounts__2__ClientId=operator-two -e Seed__ServiceAccounts__2__Secret=$(DEV_SECOND_OPERATOR_SECRET) -e Seed__ServiceAccounts__2__Role=tenant-administrator -e "Seed__ServiceAccounts__2__DisplayName=Second local operator" \

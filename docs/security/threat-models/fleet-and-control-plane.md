@@ -33,6 +33,7 @@ and verifications; the fleet worker, which has no API but health; anyone who rea
 ## What remains
 
 - The Docker socket until Kubernetes in S6, and the fleet image's Go findings in its Docker CLI and Compose plugin
-  until a fixed release is two weeks old: both in `security/exceptions.yaml`.
+  until a fixed release is two weeks old: both in `security/exceptions.yaml`. The CLI and the plugin start without
+  the fleet's telemetry settings, so their one peer is the daemon on the socket (V0).
 - The control plane's own keys and database password are made but not rotated yet (S6).
 - Pages for verifications and anchors wait for the operator console (S6).

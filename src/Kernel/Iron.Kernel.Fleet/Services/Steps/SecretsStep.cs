@@ -13,8 +13,8 @@ namespace Iron.Kernel.Fleet.Services.Steps;
 /// Step 4: the tenant's keys in the key service (<c>tenant-&lt;slug&gt;-data</c>, <c>-index</c>, <c>-signing</c>, ADR-0054),
 /// made once and recorded in the control plane with the database password's version; then the unit's secret
 /// (<c>tenants/&lt;slug&gt;/unit</c>): the app connection string, the app role, the signed container URL and the unit's key
-/// family, and no key: the factor key of ADR-0047 left a unit secret made before T9b for the fleet secret, which hands it
-/// once to the seed that moves the secrets sealed under it. Then a policy that uses the tenant's keys and nothing more
+/// family, and no key; a unit that still holds the retired factor key of ADR-0047 is refused before anything changes
+/// (ADR-0054, V0). Then a policy that uses the tenant's keys and nothing more
 /// (encrypt, decrypt and re-wrap with the data key, hash with the index key, sign and hash with the signing key, read
 /// their versions), reads that path and the tenant's entitlements
 /// (<c>tenants/&lt;slug&gt;/entitlements</c>, ADR-0034) and its flag rules (<c>tenants/&lt;slug&gt;/flags</c> and the shared
@@ -42,12 +42,12 @@ public sealed class SecretsStep(
     /// <summary>The unit's control-plane client secret, kept in the fleet secret so an update keeps it (ADR-0050).</summary>
     public const string ControlClientSecretKey = "control_client_secret";
 
-    /// <summary>The configuration key of the second factors' key of ADR-0047, retired by ADR-0054: no unit secret carries it now.</summary>
+    /// <summary>The configuration key of the second factors' key of ADR-0047, retired by ADR-0054: no unit secret may carry it.</summary>
     public const string FactorKeyKey = "Identity:FactorKey";
 
     /// <summary>
-    /// The retired factor key, kept in the fleet secret, which the unit's token cannot read, until the seed has moved the
-    /// secrets sealed under it onto the key service (ADR-0054).
+    /// Where the update after T9b kept the retired factor key, in the fleet secret, until its seed had moved the secrets
+    /// sealed under it onto the key service (ADR-0054): still there, the move did not finish.
     /// </summary>
     public const string LegacyFactorKeyKey = "legacy_factor_key";
 
@@ -66,9 +66,9 @@ public sealed class SecretsStep(
         var database = await secrets.ReadAsync(context.DatabaseSecretPath, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("The database step has not run: no database secret.");
         var storage = await secrets.ReadAsync(context.StorageSecretPath, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("The storage step has not run: no storage secret.");
         var current = await secrets.ReadAsync(context.UnitSecretPath, cancellationToken).ConfigureAwait(false);
+        await RefuseRetiredFactorKeyAsync(context, current, cancellationToken).ConfigureAwait(false);
         var prefix = KeyPurposes.TenantPrefix(context.Slug);
         var keysMade = await KeysAsync(context, prefix, database, cancellationToken).ConfigureAwait(false);
-        await KeepRetiredFactorKeyAsync(context, current, cancellationToken).ConfigureAwait(false);
 
         var unit = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -152,25 +152,20 @@ public sealed class SecretsStep(
     }
 
     /// <summary>
-    /// A unit secret made before T9b holds the factor key of ADR-0047: it moves to the fleet secret, which the unit cannot
-    /// read, until the seed moves the secrets sealed under it (ADR-0054); the unit secret written next leaves it out.
+    /// A unit secret made before T9b holds the factor key of ADR-0047, and the fleet secret still holds it when the update
+    /// after T9b did not finish moving the secrets sealed under it (ADR-0054). This release cannot move them, and its
+    /// migration drops their old column, so the update stops here before anything changes, rather than write the unit
+    /// secret without the key and lose what it opens; the operator runs an earlier release's update first (V0).
     /// </summary>
-    private async Task KeepRetiredFactorKeyAsync(ProvisioningContext context, IReadOnlyDictionary<string, string>? current, CancellationToken cancellationToken)
+    private async Task RefuseRetiredFactorKeyAsync(ProvisioningContext context, IReadOnlyDictionary<string, string>? current, CancellationToken cancellationToken)
     {
-        if (current?.GetValueOrDefault(FactorKeyKey) is not { Length: > 0 } retired)
-        {
-            return;
-        }
-
         var fleet = await secrets.ReadAsync(context.FleetSecretPath, cancellationToken).ConfigureAwait(false);
-        if (fleet?.ContainsKey(LegacyFactorKeyKey) == true)
+        if (current?.ContainsKey(FactorKeyKey) == true || fleet?.ContainsKey(LegacyFactorKeyKey) == true)
         {
-            return;
+            throw new InvalidOperationException(
+                $"The unit of {context.Slug} still holds the retired factor key of ADR-0047, so its authenticator app secrets may still be sealed under it. "
+                + "Update it first with a release from v2026.10.28.43 up to the last before this one, whose seed moves them onto the key service (ADR-0054); this release cannot, and it drops their old column.");
         }
-
-        var updated = fleet is null ? new Dictionary<string, string>(StringComparer.Ordinal) : new Dictionary<string, string>(fleet, StringComparer.Ordinal);
-        updated[LegacyFactorKeyKey] = retired;
-        await secrets.WriteAsync(context.FleetSecretPath, updated, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

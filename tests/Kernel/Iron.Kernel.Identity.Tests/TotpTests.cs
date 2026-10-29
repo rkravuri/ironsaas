@@ -83,28 +83,6 @@ public class TotpTests
     }
 
     [Fact]
-    [Proves("ADR-0054", "ADR-0047")]
-    public void TheRetiredFactorKeyOpensWhatItSealedForThePersonItWasSealedFor()
-    {
-        var key = RandomNumberGenerator.GetBytes(32);
-        var legacy = new LegacyFactorKey(new IdentityOptions { LegacyFactorKey = Convert.ToBase64String(key) });
-        var person = Guid.NewGuid();
-        var secret = Totp.NewSecret();
-        var sealedSecret = new byte[1 + 12 + 16 + secret.Length];
-        sealedSecret[0] = 1;
-        RandomNumberGenerator.Fill(sealedSecret.AsSpan(1, 12));
-        using (var aes = new AesGcm(key, 16))
-        {
-            aes.Encrypt(sealedSecret.AsSpan(1, 12), secret, sealedSecret.AsSpan(29), sealedSecret.AsSpan(13, 16), person.ToByteArray());
-        }
-
-        Assert.Equal(secret, legacy.Open(sealedSecret, person));
-        Assert.ThrowsAny<CryptographicException>(() => legacy.Open(sealedSecret, Guid.NewGuid()));
-        Assert.False(new LegacyFactorKey(new IdentityOptions()).IsAvailable);
-        Assert.Throws<InvalidOperationException>(() => new LegacyFactorKey(new IdentityOptions { LegacyFactorKey = Convert.ToBase64String(new byte[16]) }));
-    }
-
-    [Fact]
     [Proves("TF-013 AC2", "ADR-0047")]
     public void EveryThirdWrongCodeCoolsSixtySecondsDoublingAndTheTenthLocks()
     {
