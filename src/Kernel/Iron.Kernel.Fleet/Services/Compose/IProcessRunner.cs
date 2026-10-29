@@ -13,6 +13,17 @@ public interface IProcessRunner
 
 public sealed class ProcessRunner : IProcessRunner
 {
+    /// <summary>
+    /// The telemetry settings are the fleet's own and no child process gets them (ADR-0055, V0): the Docker CLI and its
+    /// Compose plugin read <c>OTEL_EXPORTER_OTLP_*</c> and <c>DOCKER_CLI_OTEL_*</c> and would export over gRPC, an
+    /// HTTP/2 client of the collector, which the x/net exception of the fleet image rests on their never being.
+    /// </summary>
+    public static bool IsTelemetrySetting(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        return name.StartsWith("OTEL_", StringComparison.OrdinalIgnoreCase) || name.StartsWith("DOCKER_CLI_OTEL_", StringComparison.OrdinalIgnoreCase);
+    }
+
     public async Task<ProcessResult> RunAsync(string fileName, IReadOnlyList<string> arguments, string? workingDirectory, TimeSpan timeout, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
@@ -28,6 +39,12 @@ public sealed class ProcessRunner : IProcessRunner
         foreach (var argument in arguments)
         {
             start.ArgumentList.Add(argument);
+        }
+
+        // The child inherits the fleet's environment, filled in by the first read of Environment.
+        foreach (var name in start.Environment.Keys.Where(IsTelemetrySetting).ToList())
+        {
+            start.Environment.Remove(name);
         }
 
         using var process = new Process { StartInfo = start };

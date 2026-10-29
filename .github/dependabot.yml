@@ -1,5 +1,5 @@
 # Version updates for everything the build pins (ADR-0003, ADR-0022): the actions, the .NET packages, the shell's
-# packages and the base images. One pull request per ecosystem per week; CI tells whether the bump is safe.
+# packages, the base images and the laptop stack's images, the images by version and digest (ADR-0055). One pull request per ecosystem per week; CI tells whether the bump is safe.
 # A version must be at least two weeks old before it is proposed (ADR-0003), and a major version comes on its own, out
 # of the groups, since it usually needs work of its own. Its pull requests pass the same checks as a task's and merge the
 # same way; the fix times of a finding are the dependency policy's, in docs/security/README.md (ADR-0055). The NuGet
@@ -49,6 +49,14 @@ updates:
       - /src/Hosts/Iron.Host.ControlPlane
       - /src/Hosts/Iron.Host.Fleet
       - /shell
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+  # The laptop stack's third-party images. Like the Dockerfiles' images, each is pinned by its version and its digest,
+  # and an update moves both, or the digest alone when the version's tag was rebuilt (ADR-0055).
+  - package-ecosystem: docker-compose
+    directory: /infra/compose
     schedule:
       interval: weekly
     cooldown:

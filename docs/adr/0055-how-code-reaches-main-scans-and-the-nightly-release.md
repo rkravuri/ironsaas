@@ -50,6 +50,7 @@ The team has one developer, and GitHub refuses an author's approval of their own
 - **A false positive in our own code is not an exception**: it is suppressed at its line with the reason beside it (a pragma for an analyzer, `nosemgrep` for our rules), and the review reads it like code. An exception is a true finding that may wait.
 - **NuGet's own audit at restore stays**, as before: with warnings as errors it fails a restore on any known advisory, earlier and stricter than the gate, though it cannot read the register. A NuGet advisory that must wait is suppressed there too (`NuGetAuditSuppress`), with the same reason.
 - **The first exceptions, approved at the review**: five Go findings in the fleet image's Docker CLI and Compose plugin (built with Go 1.26.8; no release fixes them yet, measured on 2026-10-28), which talk to the daemon over a Unix socket and run none of the server or chain-building code the findings are in; until 2026-11-28.
+- **Changed in V0 (2026-10-29), at the design session's word.** `docker:29.9.2-cli` fixes four of the five (Go 1.26.10); the fleet takes it on 2026-11-04, when it is two weeks old, and those four end. The fifth, CVE-2026-78669 in the Compose plugin's `golang.org/x/net`, is in every Compose release so far; its exception is renewed until 2027-01-28 with a corrected reason. The first reason said the plugin served no HTTP/2, but the finding reaches a client too, and the plugin carries OpenTelemetry's gRPC exporter and read `OTEL_EXPORTER_OTLP_ENDPOINT`, which the fleet's container sets. **The fleet's child processes get none of its telemetry settings** (`OTEL_*`, `DOCKER_CLI_OTEL_*`, removed by `ProcessRunner`), so the plugin's one peer is the daemon on the Unix socket, in HTTP/1.1. The exception ends when a Compose release with x/net v0.60.0 or later is two weeks old.
 
 ### 5. Licences
 
@@ -58,6 +59,8 @@ The team has one developer, and GitHub refuses an author's approval of their own
 ### 6. Images and their bills of materials (TF-076 AC3)
 
 Each image the release pushes is pulled, scanned through the gate at critical and high, and its CycloneDX bill of materials written from the same report (`make image-scan`). The bills go with the run, into the validation pack under `sbom/` with their SHA-256 in its manifest (a release without one per image is refused), and beside the pack on the GitHub release.
+
+**Since V0 (2026-10-29), every image an image is built from and every third-party image of the laptop's stack is pinned by its digest beside its version** (`name:version@sha256:...`, the multi-platform index's digest): each Dockerfile's `FROM`, the fleet's Docker CLI as a stage of its own, and every `image:` of `infra/compose/compose.yaml` that is not ours. An official image's version tag is rebuilt under the same name (a base image's fixes, a bundled plugin's update), so the tag alone does not say what was scanned. Dependabot keeps the digests current, its `docker` entry for the Dockerfiles and its `docker-compose` entry for the stack, with the same two-week cooldown; an architecture test fails on an image without both.
 
 ### 7. Threat models (TF-077 AC2)
 
@@ -117,4 +120,4 @@ Three lines join it: the security checks pass; a new module or external interfac
 - Every release carries a bill of materials per image, in its pack and on its GitHub release.
 - A new module or anonymous endpoint fails the tests until its threat model exists.
 - Harder: every task ends in a pull request and waits for its checks; a package change commits its lock files; a document-only change still waits for the trace; the coverage floors make a change without tests visible.
-- Revisit: PE-1 on 2027-04-24 or when a second developer joins; the fleet's Go exceptions by 2026-11-28; Opengrep when it can be measured; the floors as they rise; the release's walk-back once main's history is all pull requests.
+- Revisit: PE-1 on 2027-04-24 or when a second developer joins; the fleet's Go exceptions by 2026-11-28 (since V0: four on 2026-11-04, the Compose plugin's x/net when its fix is two weeks old, by 2027-01-28); Opengrep when it can be measured; the floors as they rise; the release's walk-back once main's history is all pull requests.

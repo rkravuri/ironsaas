@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
 # Build from the shell directory: docker build -t foundation/iron-shell:dev shell/
 # One build serves every tenant hostname (ADR-0020): nothing in it is tenant-specific.
+# Every image here by its version and its digest, which Dependabot keeps current (ADR-0055).
 
-FROM node:26-alpine AS build
+FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -10,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # NGINX's own unprivileged image: nginx runs as the user nginx and listens above 1024, as nginx.conf does on 8080.
-FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS runtime
 # Alpine's fixes for the base image's own packages, taken at each build: the base image is rebuilt later than Alpine
 # publishes a fix (curl and brotli waited in October 2026), and the image scan fails on a high finding that has one
 # (ADR-0055). The base image runs as nginx; this one step needs root.
