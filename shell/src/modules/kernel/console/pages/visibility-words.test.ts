@@ -53,7 +53,7 @@ describe("visibility tags in words", () => {
     expect(reviewedWords(roleItem, t)).toBe("Buyer");
     expect(heldTagsWords(roleItem, t)).toBe("APAC, EMEA");
     expect(reviewedWords(tagItem, t)).toBe("the tag Latin America (LATAM)");
-    expect(heldTagsWords(tagItem, t)).toBe("None: they see every record their roles allow");
+    expect(heldTagsWords(tagItem, t)).toBe("None");
   });
 
   it("reads a list the history keeps as its JSON as words, an empty list as none, and leaves other values as they are [ADR-0057]", () => {
