@@ -1,0 +1,23 @@
+# Risk: V1, content visibility and visibility tags
+
+The task touched these requirements (classes from `docs/trace/risk.md`):
+
+| Requirement | Class | How it was touched |
+|---|---|---|
+| TF-241 Content visibility and visibility tags | critical (Visibility and access) | Built: the tags, people's and records' tags, the filter in the record policy's query, rules 5 and 6, the explanation's check, reviews of tags |
+| TF-035 Record-level policies | critical (Authorization) | The policy engine gains the tag filter after the scope rule and the module's policy, for lists and reads by id, and the action `tag` |
+| TF-038 Access reviews | critical (Authorization) | Items list the tags each person holds; a campaign can review tag holders, a revoke taking the tag away |
+| TF-039 Effective access explanation | critical (Authorization) | The explanation gains its sixth check, the visibility tags |
+| TF-062 Change history (field level) | critical (Audit and compliance) | A record's tags are a field of its history; a person's tags change on their record's history |
+| TF-210 Per-tenant deployment units | critical (Tenancy and control plane) | A unit secret may carry `Samples:Enabled` for a tenant marked for testing, and the API host loads the sample module only then |
+| TF-218 Validation support for regulated tenants | critical (Regulated-industry controls) | The installation record checks a marked unit's seeds against the image's seeds with the sample module |
+
+The change is classed **critical**.
+
+**What could go wrong.** A record could be shown to someone outside its tags: in a list, in a list's total, by id, through a share or the working unit, or because a tag was retired. A person could see more than their roles allow because the filter widened something. A person could put a tag they do not hold on a record, or take one off, to move it into their own sight or out of others'; an administrator could give someone a tag they do not hold. A person acting for someone could be filtered by the wrong person's tags. A tag change could go unaudited. The explanation could disagree with the real call. The sample module could reach a customer's unit, or its permissions a customer's roles. The storage chosen could make every list slow.
+
+**What proves it does not.** The filter is one more condition joined with AND after the scope rule and the policy, in the same query (`PolicyEvaluation.ReadableAsync`); the data tests prove, on PostgreSQL, that a reader of one tag lists a record of that tag and an untagged one and not one of another tag (TF-241 AC1, AC3), that a record of another tag by id is not found and the explanation compares the tags (AC2), that a reader of no tags sees all (AC4), that of 100 records the total and the pages count the 40 the reader sees (AC6), that a share and the working unit are narrowed and never widened, and that a retired tag still filters, can be taken off and not put on (`VisibilityTagsTests`). Rule 5 refuses, naming the tag, a tag the person does not hold, put on or taken off (AC5); the escalation rule does the same for people's tags, a retired tag is given to nobody, and a person acting for someone is filtered by the delegator's tags (`VisibilityTagTests`). A tag change on a record is in its field history and on a person in their record's history, with before and after, and in their security activity (AC7, `VisibilityTagsTests`, `VisibilityTagTests`, `SecurityActivityTests`); the next review lists the person's tags, and a review of tag holders revokes a holding at once (`TagReviewTests`). An order takes its supplier's tags when created and keeps them (AC8). The explanation's status equals the real call's over a matrix with crates of another tag and of a shared one (`ExplainAccessTests`). The sample module is loaded only where the unit secret switches it on, never named by the catalogue, and the fleet writes the switch only for a marked tenant (`HostTests`, `ProvisioningTests`); the installation record checks a marked unit against the seeds with its permissions and every other against those without (`installation_record_test.py`). The measurement chose the column over a kernel table: a list page of 50 in 0.14 to 0.38 ms against 19 to 47 ms, its total in 15 to 22 ms against 40 to 72 ms (ADR-0057).
+
+**Results.** RESULTS
+
+**What is left.** Approvals, tasks and notifications that respect the tags are TF-243, for the workflow and notification slices. A product that needs records found by a tag adds a GIN index on its column then. A person who holds no tags sees every record their roles allow, by the owner's rule 3; the reviews list each person's tags so a reviewer sees it.

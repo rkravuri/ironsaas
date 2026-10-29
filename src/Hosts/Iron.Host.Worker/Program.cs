@@ -20,11 +20,11 @@ using Iron.Kernel.Protection;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Settings;
-using Iron.Kernel.Visibility;
 using Iron.Kernel.Telemetry;
 using Iron.Kernel.Telemetry.Clock;
 using Iron.Kernel.Telemetry.Health;
 using Iron.Kernel.Telemetry.Heartbeat;
+using Iron.Kernel.Visibility;
 
 if (HealthProbe.IsCommand(args))
 {
