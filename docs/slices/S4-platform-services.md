@@ -33,7 +33,6 @@ To be written in the design session.
 | TF-131 | Metrics and SLIs | Must | OpenTelemetry metrics to Prometheus (S1); the lost spans' counters (S3 T10b) | |
 | TF-132 | Structured logs with scrubbing | Must | Logs to Loki with personal data and secrets masked (S3 T6, T9b) | |
 | TF-133 | Health checks | Must | Readiness with each module's checks (S1) | |
-| TF-134 | Dashboards and alerting | Must | Alertmanager in the stack, Prometheus pointed at it (S3 T10b, ADR-0056) | The PRD's section 7.1 lists it here; ADR-0056 and T10b's notes name S6, with the operator console. The design session settles where |
 | TF-135 | Client-side telemetry | Should | | |
 | TF-136 | Usage analytics for product teams | Could | | |
 | TF-140 | Externalised UI strings and translation workflow | Must | Every shell string in the catalogue (S2, ADR-0024) | |

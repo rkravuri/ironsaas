@@ -2,7 +2,7 @@
 
 The criteria of a done slice's requirements that no test proves, each with its reason and the date the design session approved it (ADR-0044). `make trace` fails on any other criterion of a done slice without a test, on a row here that a test now proves (remove the row in the same change as the test), and on a row outside a done slice. A row names one criterion, `TF-001 AC3`, or a whole requirement when none of its criteria has a test.
 
-The first list was written by S3 T1 from the backfill of S1's and S2's tests and approved at T1's review on 2026-10-21, which turned the six gaps it found into tests rather than exceptions. S3-close added S3's rows and moved TF-020 AC1's home; a row dated 2026-10-29 is proposed on that date and takes the date of the design session's approval. What each slice built and where each requirement continues is in the coverage table of its plan, section 2 of `docs/slices/S1-walking-skeleton.md` and of `docs/slices/S2-access-control-organisations-and-design.md`, section 3 of `docs/slices/S3-trust-and-compliance.md`.
+The first list was written by S3 T1 from the backfill of S1's and S2's tests and approved at T1's review on 2026-10-21, which turned the six gaps it found into tests rather than exceptions. S3-close added S3's rows and moved TF-020 AC1's home; the design session approved every row and the parts listed beside them at S3-close's review, 2026-10-29. What each slice built and where each requirement continues is in the coverage table of its plan, section 2 of `docs/slices/S1-walking-skeleton.md` and of `docs/slices/S2-access-control-organisations-and-design.md`, section 3 of `docs/slices/S3-trust-and-compliance.md`.
 
 ## Not built yet
 
@@ -36,7 +36,7 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 
 ## Parts that wait, inside criteria a test proves
 
-The trace counts a criterion, so these parts of S3's requirements need no row: each criterion has its test, and the part named here is S4's notifications or S4's document templates. They are listed for the design session's approval with S3's rows, and S4's plan names each.
+The trace counts a criterion, so these parts of S3's requirements need no row: each criterion has its test, and the part named here is S4's notifications or S4's document templates. They were approved with S3's rows on 2026-10-29, and S4's plan names each.
 
 - TF-012 AC2: the lockout is refused and recorded (T2's tests); its email is S4's.
 - TF-013: the requirement's fallback by one-time codes by email or SMS is S4's (ADR-0047); the emails for a new factor, a removal and a reset join TF-019's.

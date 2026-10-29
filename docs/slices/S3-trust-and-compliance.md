@@ -65,7 +65,7 @@ What S3 built for each requirement, and where it continues. The criteria S3 adde
 
 Continuing into S3 from earlier slices, each in its own plan's table: TF-020 (token signing keys rotate since T9b, so AC3 is proven; refresh tokens wait for S7), TF-021 AC2 (the concurrent session limit, T5), TF-060 (the control plane's own trail, T9a), TF-070 (the policy's reports, T9a), TF-130 AC4 (the lost spans counted, T10b) and TF-209 AC3 and AC4 (every rule's runbook section, T10b).
 
-Outside S3, as the technical PRD's section 7 now says: SAML (TF-015), SCIM (TF-016) and API keys (TF-024) in S7; anti-tampering of uploads (TF-078) in S4 with the files and their virus scan; device and login risk signals (TF-027, Could) in no slice yet.
+Outside S3, as the technical PRD's section 7 now says: SAML (TF-015), SCIM (TF-016) and API keys (TF-024) in S7; anti-tampering of uploads (TF-078) in S4 with the files and their virus scan; device and login risk signals (TF-027, Could) in S7 with them, at S3-close's review; dashboards and alerting (TF-134) in S6, as ADR-0056 says.
 
 ## 4. Task breakdown
 
