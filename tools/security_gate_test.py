@@ -5,6 +5,7 @@ it proves. Standard library only; `make trace` runs it first, with `--junit`."""
 
 from __future__ import annotations
 
+import re
 import sys
 import unittest
 from datetime import date
@@ -167,8 +168,10 @@ class SecurityGateTest(unittest.TestCase):
         """security/exceptions.yaml and security/licences.yaml are in the form the gate reads, every exception with all its fields. [ADR-0055]"""
         root = Path(__file__).resolve().parent.parent
         register = (root / "security" / "exceptions.yaml").read_text(encoding="utf-8")
-        # On the day the register was written, so the test reads its form; the gate in make security reads its dates.
-        known, problems = security_gate.load_exceptions(register, date(2026, 10, 28))
+        # On the day the register was last written, its latest approval, so the test reads its form whatever day it runs
+        # and a new approval does not read as after today (V0); the gate in make security reads its dates against today.
+        written = max(date.fromisoformat(day) for day in re.findall(r"^\s+approved: (\d{4}-\d{2}-\d{2})\s*$", register, re.MULTILINE))
+        known, problems = security_gate.load_exceptions(register, written)
         self.assertEqual(problems, [])
         self.assertTrue(known)
         allowed, allowances, licence_problems = security_gate.load_licence_policy((root / "security" / "licences.yaml").read_text(encoding="utf-8"))

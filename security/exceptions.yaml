@@ -21,12 +21,11 @@ exceptions:
     expires: 2027-04-27
 
   # The fleet image's Docker CLI (docker:29.8.1-cli) and its Compose plugin, built with Go 1.26.8, which these Go
-  # findings name. No release fixes them yet: docker:29.9.1-cli still bundles the same Compose plugin, its own CLI is on
-  # Go 1.26.9 (CVE-2026-111943 is fixed in 1.26.10), and docker/compose-bin's images are older still (measured
-  # 2026-10-28). Both binaries talk only to the laptop's or the runner's daemon over the mounted Unix socket: the HTTP/2
-  # and Range-header findings are in Go's HTTP server, the ECH finding in its TLS server, and the certificate-chain
-  # finding in TLS chain building, none of which a client on a Unix socket runs. The first docker CLI image two weeks
-  # old whose binaries are built with Go 1.26.10 or later replaces them, and these exceptions end.
+  # findings name. Measured again on 2026-10-29 (V0): docker:29.9.2-cli, built 2026-10-21, has both binaries on Go
+  # 1.26.10, which fixes the four stdlib findings below; it is two weeks old on 2026-11-04 (ADR-0003), when the fleet
+  # moves to it, pinned by digest, and these four end. Both binaries talk only to the laptop's or the runner's daemon
+  # over the mounted Unix socket: the Range-header finding is in Go's HTTP server, the ECH finding in its TLS server, and
+  # the certificate-chain finding in TLS chain building, none of which a client on a Unix socket runs.
   - finding: CVE-2026-111943
     package: stdlib
     reason: The fleet's Docker CLI and Compose plugin build no TLS chain; they reach the daemon over a Unix socket.
@@ -41,16 +40,31 @@ exceptions:
     expires: 2026-11-28
   - finding: CVE-2026-78669
     package: stdlib
-    reason: An HTTP/2 server's SETTINGS handling; the fleet's Docker CLI and Compose plugin serve no HTTP/2.
+    reason: >-
+      An HTTP/2 peer's SETTINGS frames, against a client or a server; the fleet's Docker CLI and Compose plugin serve
+      nothing and, started without telemetry settings, reach only the daemon over a Unix socket in HTTP/1.1. Its wording
+      corrected in V0, as the x/net entry's below.
     approver: The product owner, in the design session's review of S3 T10a
     approved: 2026-10-28
     expires: 2026-11-28
+  # Renewed in V0. No Compose release fixes it: v5.6.1 (2026-10-21), the newest, the one docker:29.9.2-cli bundles and
+  # docker/compose-bin's newest, still carries x/net v0.58.0, and the fix is in v0.60.0 (2026-10-08), which Compose's
+  # main branch already takes. The reason approved in T10a was wrong: the advisory names "the client or server", not the
+  # server alone, and the plugin is an HTTP/2 client too, since it carries OpenTelemetry's gRPC exporter and reads
+  # OTEL_EXPORTER_OTLP_ENDPOINT, which the fleet's container sets to the collector and every child process inherited.
+  # The fleet now starts the CLI and the plugin without any telemetry setting (ProcessRunner, ADR-0055), so the plugin's
+  # one peer is the daemon on the Unix socket, which speaks HTTP/1.1. It ends when the first Compose release with x/net
+  # v0.60.0 or later is two weeks old and the fleet takes it from docker/compose-bin, pinned by digest.
   - finding: CVE-2026-78669
     package: golang.org/x/net
-    reason: The same HTTP/2 server finding in the Compose plugin's copy of x/net; the plugin serves no HTTP/2.
-    approver: The product owner, in the design session's review of S3 T10a
-    approved: 2026-10-28
-    expires: 2026-11-28
+    reason: >-
+      An HTTP/2 peer's SETTINGS frames exhaust the CPU of a client or a server. The fleet's Compose plugin serves nothing
+      and, started without telemetry settings, talks only to the Docker daemon over the mounted Unix socket in HTTP/1.1,
+      so no HTTP/2 peer reaches it. Corrected in V0: the reason approved in T10a said the plugin served no HTTP/2, which
+      was true but missed the client and the plugin's gRPC exporter.
+    approver: The product owner, in the design session's answer to V0
+    approved: 2026-10-29
+    expires: 2027-01-28
   - finding: CVE-2026-97031
     package: stdlib
     reason: A TLS server's ECH handling; the fleet's Docker CLI and Compose plugin run no TLS server.

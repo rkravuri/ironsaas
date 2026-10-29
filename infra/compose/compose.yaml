@@ -1,7 +1,8 @@
 # Foundation laptop platform (ADR-0005).
 # Start with `make up` (everything) or `make up-slim` (no telemetry stack); stop with `make down`.
 # Credentials come from infra/compose/.env, created once by `make env`. No secret lives in this file.
-# Image versions are exact (ADR-0003); the licence of each image is noted on its service.
+# Image versions are exact (ADR-0003), each beside its digest, which Dependabot keeps current (ADR-0055); the licence
+# of each image is noted on its service.
 
 name: foundation
 
@@ -31,7 +32,7 @@ services:
 
   # ---------------------------------------------------------------- ingress
   traefik:
-    image: traefik:v3.7.12 # MIT
+    image: traefik:v3.7.12@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf # MIT
     command: ["--configFile=/etc/traefik/traefik.yaml"]
     ports:
       - "80:80"
@@ -62,7 +63,7 @@ services:
   # ---------------------------------------------------------------- database
   postgres:
     # PostgreSQL licence. 19 is a release candidate until the GA planned for 2026-11-19; change the tag to 19.0 then.
-    image: postgres:19rc1
+    image: postgres:19rc1@sha256:b3cb7405059fd06f9ebae4aad4780b3788dfdd2acef1ac248ad9d56ced8abb06
     environment:
       POSTGRES_USER: ${POSTGRES_SUPERUSER}
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
@@ -94,7 +95,7 @@ services:
   # ---------------------------------------------------------------- object storage
   blob:
     # MIT. Azurite, the local stand-in for Azure Blob Storage (ADR-0006). Blob service only.
-    image: mcr.microsoft.com/azure-storage/azurite:3.37.0
+    image: mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5
     command:
       - azurite-blob
       - --blobHost
@@ -124,7 +125,7 @@ services:
   openbao:
     # MPL-2.0. Server mode with integrated storage on a named volume, unsealed at every start by the static seal
     # (ADR-0028). `make up` initialises it once (scripts/init-store.sh) and keeps the root token in .env.
-    image: openbao/openbao:2.7.1
+    image: openbao/openbao:2.7.1@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf
     command: ["server"] # the image's entrypoint adds -config=/openbao/config
     environment:
       BAO_ADDR: http://127.0.0.1:8200
@@ -222,7 +223,7 @@ services:
   # the integration stage, never by make up. Reached at http://idp.localhost through the ingress; the issuer is
   # http://idp.localhost/<issuer id>, any first path segment being an issuer of its own.
   idp:
-    image: ghcr.io/navikt/mock-oauth2-server:6.0.4 # MIT
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.4@sha256:47374fe063995d9b6d39ebb6ea21eb5f765025bf0aa08b61b08b439eb91adaf0 # MIT
     profiles: [sso]
     environment:
       JSON_CONFIG: '{"interactiveLogin": true}'
@@ -247,7 +248,7 @@ services:
 
   # ---------------------------------------------------------------- telemetry (profile: telemetry; collector and tempo also: ci)
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.162.0 # Apache-2.0
+    image: otel/opentelemetry-collector-contrib:0.162.0@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6 # Apache-2.0
     profiles: [telemetry, ci]
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
@@ -260,7 +261,7 @@ services:
     logging: *default-logging
 
   tempo:
-    image: grafana/tempo:3.1.0 # AGPL-3.0
+    image: grafana/tempo:3.1.0@sha256:3076b8dcdfb32fd6bc5ccef85e7b7313e6199b9cb84366257fc17ecb696db5fd # AGPL-3.0
     profiles: [telemetry, ci]
     command: ["-target=all", "-config.file=/etc/tempo.yaml"]
     volumes:
@@ -279,7 +280,7 @@ services:
     logging: *default-logging
 
   loki:
-    image: grafana/loki:3.7.8 # AGPL-3.0
+    image: grafana/loki:3.7.8@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193 # AGPL-3.0
     profiles: [telemetry]
     command: ["-config.file=/etc/loki/loki.yaml"]
     volumes:
@@ -293,7 +294,7 @@ services:
     logging: *default-logging
 
   prometheus:
-    image: prom/prometheus:v3.15.0 # Apache-2.0
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e # Apache-2.0
     profiles: [telemetry]
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -321,7 +322,7 @@ services:
 
   # The operator's alerting (ADR-0056): the control plane posts every security alert to it; it pages nobody on the laptop.
   alertmanager:
-    image: prom/alertmanager:v0.34.1 # Apache-2.0
+    image: prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a # Apache-2.0
     profiles: [telemetry, ci]
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
@@ -351,7 +352,7 @@ services:
     logging: *default-logging
 
   grafana:
-    image: grafana/grafana:13.2.3 # AGPL-3.0
+    image: grafana/grafana:13.2.3@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572 # AGPL-3.0
     profiles: [telemetry]
     environment:
       GF_SECURITY_ADMIN_USER: admin

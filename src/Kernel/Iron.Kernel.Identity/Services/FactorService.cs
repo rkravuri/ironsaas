@@ -384,12 +384,6 @@ public sealed class FactorService(
             var app = await context.Factors.SingleOrDefaultAsync(f => f.PrincipalId == principal.Id && f.Kind == FactorKinds.AuthenticatorApp, cancellationToken).ConfigureAwait(false);
             if (app?.Secret is null)
             {
-                // An app whose secret is still sealed under the retired factor key cannot be checked until the seed moves it.
-                if (app is not null)
-                {
-                    logger.LogWarning("The authenticator app of principal {PrincipalId} is sealed under the retired factor key and cannot be checked.", principal.Id);
-                }
-
                 return null;
             }
 

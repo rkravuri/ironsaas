@@ -127,8 +127,6 @@ public sealed class IdentityModule : IModule
 
         // Second factors and step-up (TF-013, TF-248, ADR-0047).
         services.AddSingleton<FactorSecrets>();
-        services.AddSingleton<LegacyFactorKey>();
-        services.AddScoped<ISeeder, FactorSecretMove>();
         services.AddScoped<Passkeys>();
         services.AddScoped<RecoveryCodes>();
         services.AddScoped<MfaPolicy>();

@@ -483,36 +483,47 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.Equal(["false", "true"], audit.Select(details => JsonDocument.Parse(details).RootElement.GetProperty("reset_factors").GetString()).Order(StringComparer.Ordinal));
     }
 
-    [Fact]
+    [Theory]
     [Proves("ADR-0054", "ADR-0047")]
-    public async Task TheRetiredFactorKeyLeavesTheUnitSecretAndReachesTheSeedOnceToMoveTheSecrets()
+    [InlineData("unit")]
+    [InlineData("fleet")]
+    public async Task AUnitThatStillHoldsTheRetiredFactorKeyIsRefusedAtTheSecretsStepWithNothingChanged(string kept)
     {
         var ct = TestContext.Current.CancellationToken;
         var runtime = new RecordingRuntime();
         await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
-        var slug = await RegisterAndRequestAsync(provider, "india");
+        var slug = await RegisterAndRequestAsync(provider, $"india-{kept}");
         var harness = new ProvisioningWorkerHarness(provider);
         Assert.True(await harness.RunNextAsync());
         using var root = new OpenBaoSecretStore(fixture.StoreOptions());
 
-        // A unit made before T9b: its secret holds the factor key of ADR-0047.
+        // A unit made before T9b holds the factor key of ADR-0047 in its own secret; one whose update after T9b did not
+        // finish moving its authenticator secrets holds it in the fleet secret. Either way this release cannot move them.
         var retired = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
-        var unit = (await root.ReadAsync($"tenants/{slug}/unit", ct))!;
-        await root.WriteAsync($"tenants/{slug}/unit", new Dictionary<string, string>(unit, StringComparer.Ordinal) { [SecretsStep.FactorKeyKey] = retired }, ct);
+        var path = kept == "unit" ? $"tenants/{slug}/unit" : $"tenants/{slug}/fleet";
+        var secret = (await root.ReadAsync(path, ct))!;
+        await root.WriteAsync(path, new Dictionary<string, string>(secret, StringComparer.Ordinal) { [kept == "unit" ? SecretsStep.FactorKeyKey : SecretsStep.LegacyFactorKeyKey] = retired }, ct);
+        var unitBefore = (await root.ReadAsync($"tenants/{slug}/unit", ct))!;
+        var fleetBefore = (await root.ReadAsync($"tenants/{slug}/fleet", ct))!;
         await using (var scope = provider.CreateAsyncScope())
         {
             Assert.True((await scope.ServiceProvider.GetRequiredService<TenantRegistry>().RequestUpdateAsync(slug, ct)).IsSuccess);
         }
 
         Assert.True(await harness.RunNextAsync());
-        var seeds = runtime.Commands.Where(c => c.Command == "seed").Select(c => c.Unit.Environment).ToList();
-        var after = (await root.ReadAsync($"tenants/{slug}/unit", ct))!;
-        var fleet = (await root.ReadAsync($"tenants/{slug}/fleet", ct))!;
 
-        Assert.False(seeds[0].ContainsKey("Identity__LegacyFactorKey"));
-        Assert.Equal(retired, seeds[1]["Identity__LegacyFactorKey"]);
-        Assert.False(after.ContainsKey(SecretsStep.FactorKeyKey));
-        Assert.False(fleet.ContainsKey(SecretsStep.LegacyFactorKeyKey), "Once the seed moved the secrets, the key is gone from the fleet secret too.");
+        await using var check = provider.CreateAsyncScope();
+        var job = (await check.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(slug, ct))!;
+        Assert.Equal(ProvisioningStatus.Failed, job.Status);
+        var failed = Assert.Single(job.Steps, step => step.Status == "failed");
+        Assert.Equal(StepNames.Secrets, failed.Name);
+        Assert.Contains("still holds the retired factor key", failed.Error, StringComparison.Ordinal);
+        Assert.Equal(unitBefore, await root.ReadAsync($"tenants/{slug}/unit", ct));
+        Assert.Equal(fleetBefore, await root.ReadAsync($"tenants/{slug}/fleet", ct));
+
+        // Nothing of the update ran in the unit: the commands are the provisioning's alone, and its containers were applied once.
+        Assert.Equal(["migrate", "seed", "version"], runtime.Commands.Select(c => c.Command));
+        Assert.Single(runtime.Applied);
     }
 
     [Fact]

@@ -220,10 +220,6 @@ namespace Iron.Kernel.Identity.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("secret");
 
-                    b.Property<byte[]>("SecretCiphertext")
-                        .HasColumnType("bytea")
-                        .HasColumnName("secret_ciphertext");
-
                     b.Property<long>("SignCount")
                         .HasColumnType("bigint")
                         .HasColumnName("sign_count");

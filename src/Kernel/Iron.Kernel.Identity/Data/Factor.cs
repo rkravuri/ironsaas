@@ -57,12 +57,6 @@ public sealed class Factor : AuditedEntity, IOwnAccessRule
     /// <summary>An authenticator app's secret, encrypted with the tenant's data key (<c>FactorSecrets</c>); null for a passkey.</summary>
     public EncryptedValue? Secret { get; private set; }
 
-    /// <summary>
-    /// An authenticator app's secret sealed under the retired factor key of T3 (ADR-0047), until the seed moves it to
-    /// <see cref="Secret"/> (ADR-0054); null once moved and for every factor saved since.
-    /// </summary>
-    public byte[]? SecretCiphertext { get; private set; }
-
     /// <summary>The time step of the last code accepted: a code of this step or an earlier one is refused (RFC 6238 section 5.2).</summary>
     public long? LastUsedStep { get; private set; }
 
@@ -96,14 +90,6 @@ public sealed class Factor : AuditedEntity, IOwnAccessRule
             LastUsedStep = confirmedStep,
             LastUsedAt = now,
         };
-    }
-
-    /// <summary>The secret, sealed under the retired factor key, now encrypted with the data key (ADR-0054).</summary>
-    public void MoveSecret(EncryptedValue secret)
-    {
-        ArgumentNullException.ThrowIfNull(secret);
-        Secret = secret;
-        SecretCiphertext = null;
     }
 
     public static Factor Passkey(Guid principalId, string name, byte[] credentialId, byte[] publicKey, long signCount, byte[] userHandle, Guid? aaGuid)

@@ -22,12 +22,6 @@ public sealed class IdentityOptions
         public string? DatabasePath { get; set; } = "/app/locations/dbip-city-lite.mmdb";
     }
 
-    /// <summary>
-    /// The retired factor key of T3 (ADR-0047), given only to the seed that moves the secrets sealed under it onto the key
-    /// service (ADR-0054): the fleet passes it once as <c>Identity:LegacyFactorKey</c>. No running unit holds it.
-    /// </summary>
-    public string? LegacyFactorKey { get; set; }
-
     public sealed class SessionOptions
     {
         /// <summary>The cookie that holds the session token.</summary>
