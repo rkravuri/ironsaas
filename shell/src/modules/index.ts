@@ -4,6 +4,7 @@ import { complianceManifest } from "./kernel/compliance/manifest";
 import { consoleManifest } from "./kernel/console/manifest";
 import { identityManifest } from "./kernel/identity/manifest";
 import { samplesManifest } from "./kernel/samples/manifest";
+import { purchasingManifest } from "./suites/procurement/purchasing/manifest";
 
 /**
  * Every module the shell knows, in one list, whatever its layer: modules live in kernel/, business/ or
@@ -16,4 +17,5 @@ export const manifests: ModuleManifest[] = [
   auditManifest,
   complianceManifest,
   samplesManifest,
+  purchasingManifest,
 ];

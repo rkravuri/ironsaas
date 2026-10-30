@@ -205,16 +205,36 @@ describe("a licensed module in the manifests (ADR-0034)", () => {
       ["pupils", "school"],
     ]);
     expect(
-      openersBySuite(openings).map((group) => [group.suite, group.openings.map((opening) => opening.module)]),
+      openersBySuite(openings, everything).map((group) => [
+        group.suite,
+        group.openings.map((opening) => opening.module),
+      ]),
     ).toEqual([
       [foundationSuite, ["identity", "sourcing"]],
       ["procurement", ["orders"]],
       ["school", ["pupils"]],
     ]);
     // A suite with nothing the person may open has no group, and neither has the Foundation then.
-    expect(openersBySuite(openings.filter((opening) => opening.suite === "school")).map((g) => g.suite)).toEqual([
-      "school",
+    expect(
+      openersBySuite(
+        openings.filter((opening) => opening.suite === "school"),
+        everything,
+      ).map((g) => g.suite),
+    ).toEqual(["school"]);
+  });
+
+  it("leaves out the group of a suite the tenant's unit does not run, and keeps the Foundation's whatever the suites [TF-244 AC2, ADR-0059]", () => {
+    const openings = [
+      { module: "identity", suite: foundationSuite, titleKey: "x", opener: undefined, entries: [] },
+      { module: "orders", suite: "procurement", titleKey: "x", opener: undefined, entries: [] },
+      { module: "pupils", suite: "school", titleKey: "x", opener: undefined, entries: [] },
+    ];
+
+    expect(openersBySuite(openings, (suite) => suite === "procurement").map((g) => g.suite)).toEqual([
+      foundationSuite,
+      "procurement",
     ]);
+    expect(openersBySuite(openings).map((g) => g.suite)).toEqual([foundationSuite]);
   });
 
   it("carries the licence on its routes, so the route guard can check it on a link typed by hand [ADR-0020, ADR-0034]", () => {

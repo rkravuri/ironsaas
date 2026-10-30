@@ -220,17 +220,24 @@ export interface SuiteOpenings {
   openings: ModuleOpening[];
 }
 
+/** Whether the tenant's unit runs a suite (TF-244): the session's answer from /me/context. */
+export type Installed = (suite: string) => boolean;
+
+/** No suite is installed: what a caller that does not say gets, so a forgotten argument hides rather than shows. */
+export const nothingInstalled: Installed = () => false;
+
 /**
  * The openers grouped by suite (ADR-0043): the Foundation's first, then each suite in the order its first module is
- * listed, each keeping the order of the list. A group with no opener the principal may open is not there.
+ * listed, each keeping the order of the list. A group with no opener the principal may open is not there, and neither
+ * is the group of a suite the tenant's unit does not run (TF-244, ADR-0059).
  */
-export function openersBySuite(openings: ModuleOpening[]): SuiteOpenings[] {
+export function openersBySuite(openings: ModuleOpening[], installed: Installed = nothingInstalled): SuiteOpenings[] {
   const groups = new Map<string, ModuleOpening[]>([[foundationSuite, []]]);
   for (const opening of openings) {
     groups.set(opening.suite, [...(groups.get(opening.suite) ?? []), opening]);
   }
   return [...groups]
-    .filter(([, members]) => members.length > 0)
+    .filter(([suite, members]) => members.length > 0 && (suite === foundationSuite || installed(suite)))
     .map(([suite, members]) => ({ suite, openings: members }));
 }
 

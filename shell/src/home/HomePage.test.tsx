@@ -70,6 +70,37 @@ describe("the home page", () => {
     );
   });
 
+  it("shows the suite's group after the Foundation's where the unit runs the suite and the person is entitled to its module [TF-244 AC1, ADR-0059]", async () => {
+    stubFetch({
+      "GET /api/v1/me": () => json({ ...me([...administrator, "purchasing.suite.read"]), home_unit: root }),
+      [`GET /api/v1/me/access?unit=${root.id}`]: () => json({ scope: "unit", permissions: administrator }),
+      "GET /api/v1/me/context": () =>
+        json({
+          entitlements: {
+            revision: 3,
+            plan: "standard",
+            confirmed_at: "2026-10-30T09:00:00Z",
+            stale: false,
+            modules: [{ code: "purchasing", status: "enabled", reason: "licensed" }],
+            features: [],
+            suites: [{ code: "procurement", name: "eProcurement Suite", plan: "procurement-essentials" }],
+          },
+        }),
+    });
+    renderWithProviders(<HomePage />);
+
+    const suite = await screen.findByRole("region", { name: "eProcurement Suite" });
+    const purchasing = within(suite).getByRole("article", { name: "Purchasing" });
+    expect(within(purchasing).getByRole("link", { name: "About this suite" })).toHaveAttribute(
+      "href",
+      "/procurement/about",
+    );
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "IronSaaS Foundation",
+      "eProcurement Suite",
+    ]);
+  });
+
   it("shows a child-unit administrator only the openers it may open, and no quick action it cannot perform [ADR-0033]", async () => {
     const { calls } = signIn({ anywhere: ["identity.users.read"], atHome: ["identity.users.read"], unit: branch });
     renderWithProviders(<HomePage />);

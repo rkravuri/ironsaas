@@ -15,10 +15,15 @@ export type Release = z.infer<typeof ReleaseSchema>;
 export const ContextEntrySchema = z.object({ code: z.string(), status: EntitlementStatusSchema, reason: z.string() });
 export type ContextEntry = z.infer<typeof ContextEntrySchema>;
 
+/** A suite the unit runs for its tenant (TF-244, ADR-0059): its short name, its name, and the plan the tenant holds for it. */
+export const ContextSuiteSchema = z.object({ code: z.string(), name: z.string(), plan: z.string().nullable() });
+export type ContextSuite = z.infer<typeof ContextSuiteSchema>;
+
 /**
  * GET /api/v1/me/context (ADR-0034): what the shell reads with the session and every 30 seconds, in one call: the
- * entitlements, the flags (ADR-0035) and the settings the shell may see (ADR-0036). A flags or settings part that is
- * missing or does not parse leaves those on their defaults and the entitlements as they came (TF-054 AC3).
+ * entitlements with the suites the unit runs (ADR-0059), the flags (ADR-0035) and the settings the shell may see
+ * (ADR-0036). A flags or settings part that is missing or does not parse leaves those on their defaults and the
+ * entitlements as they came (TF-054 AC3); a unit from before suites per tenant names none.
  */
 export const ContextSchema = z.object({
   entitlements: z.object({
@@ -28,6 +33,7 @@ export const ContextSchema = z.object({
     stale: z.boolean(),
     modules: z.array(ContextEntrySchema),
     features: z.array(ContextEntrySchema),
+    suites: z.array(ContextSuiteSchema).optional(),
   }),
   flags: FlagsContextSchema.optional().catch(undefined),
   settings: ContextSettingsSchema.optional().catch(undefined),
