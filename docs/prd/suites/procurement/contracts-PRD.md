@@ -7,14 +7,14 @@
 | Document title | Contracts: the contract repository, pricing and consumption, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `CON-`, in blocks of twenty per area (ADR-0041); the table is `contracts-requirements.csv` |
-| Version | 1.3 (SUP-gaps, 2026-10-21: quality agreements) |
-| Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. |
+| Version | 1.4 (EPS-modules, 2026-10-30: the authoring tier as a wave-2 feature) |
+| Date | 2026-10-30 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. The changes of 1.4 (EPS-modules) wait for the design session's review. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Suppliers and items are the Business PRD's; orders are the Orders product's; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): CON-007 holds quality agreements linked to the regulated qualifications of supplier, site and material (gap G3), and Contracts calls Supplier management to check them; no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): CON-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.4, 2026-10-30: EPS-modules, the owner's module list of 2026-10-29 (ADR-0058): CON-101 marks authoring, the clause library and negotiation as a wave-2 feature tier of Contracts, `contract_management.authoring`; sections 2.2, 9, 13 and 15 follow; no requirement retired. 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): CON-007 holds quality agreements linked to the regulated qualifications of supplier, site and material (gap G3), and Contracts calls Supplier management to check them; no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): CON-081 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Contracts moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -35,7 +35,7 @@ The contract repository with approval and publishing, contract items and pricing
 
 ### 2.2 Out of scope in version 1 (`[Later]`)
 
-Contract authoring and negotiation are later scope.
+Contract authoring, the clause library and negotiation are a feature tier of Contracts, `contract_management.authoring`, built in wave 2 (CON-101, ADR-0058).
 
 ## 3. Personas
 
@@ -266,6 +266,26 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was BF-164, the keys and starter templates of Contracts. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
+### 6.5 Authoring tier (CON-101 to CON-120)
+
+Authoring, the clause library and negotiation are a feature tier of Contracts, built in wave 2 (the owner's decision of 2026-10-29, ADR-0058). This area holds the requirement that marks the tier; its own requirements follow it here when the tier's process reference pack is made (PM-001). The area was added after the supplier views, so its block follows the notifications'.
+
+#### CON-101 Authoring, the clause library and negotiation as a feature tier
+*Priority:* **Could** · *Tag:* `[New]` `[Later]` · *Area:* Authoring tier
+
+**Requirement:** Contract authoring, the clause library and negotiation shall be a feature tier of Contracts, `contract_management.authoring` (TF-046), built in wave 2: drafting a contract from templates and approved clauses, negotiating its text with the supplier in rounds with every version kept, and signing the agreed text. Without the feature, Contracts is the repository wave 1 builds (CON-001 to CON-007, CON-021, CON-022): signed copies are attached (CON-004) and no contract is drafted or negotiated in the suite.
+
+**Why:** The leading suites sell authoring and negotiation as the upper tier of contract management, and most customers start with the repository, compliance, consumption and renewals; a tier lets a tenant buy the upper part when it needs it.
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant without `contract_management.authoring`, When a person with the contract permissions opens Contracts, Then the repository, consumption and renewals are offered, and neither drafting nor negotiation is.
+- AC2 Given a tenant without the feature, When a draft from a clause template is asked for through the API, Then it is refused with the not-entitled code naming the feature. (error case)
+
+*Depends on:* CON-001, CON-004, TF-046
+
+**Notes:** New 2026-10-30 (EPS-modules), the owner's decision of 2026-10-29 (ADR-0058): authoring, the clause library and negotiation are a wave-2 feature tier of Contracts. It replaces the "later scope" of section 2.2, and signing the contract itself, which section 9 left to that later scope, comes with it.
+
 ## 7. Supplier views
 
 The archived PRD gave suppliers no contract view: its portal requirements cover orders, shipment notices, receipts, invoices, catalogues, company data, questionnaires and tasks. Decided 2026-10-20: a supplier sees the published contracts it is party to, read-only (CON-061). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
@@ -307,7 +327,7 @@ Records approved, acknowledged or signed carry an electronic signature (TF-063) 
 |---|---|---|
 | Contract approval and publishing (CON-003) | Each approval decision, new and change | Yes: changes to published contracts |
 | Renewal (CON-022) | A new version, approved as a change | No |
-| Signed copies (CON-004) | An attachment; signing the contract itself is later scope, with authoring and negotiation | No |
+| Signed copies (CON-004) | An attachment; signing the contract itself comes with the authoring tier (CON-101), in wave 2 | No |
 | Quality agreements (CON-007) | Each approval decision, the quality unit's among them, with re-authentication where the tenant asks | Yes: which combinations each agreement covered, and when |
 
 Retention: this product's records are business documents and follow TF-066's default, 7 years after closure, which a tenant may change within the operator's limits; legal holds stop their deletion.
@@ -361,7 +381,7 @@ Second (ADR-0042): it calls Supplier management only, to check a quality agreeme
 
 ## 13. Layer, module, schema and permissions
 
-The module is `Iron.Suites.Procurement.ContractManagement` (schema `procurement_contract_management`), accepted at the checkpoint, since `Iron.Suites.Procurement.Contracts` would have the public project `Iron.Suites.Procurement.Contracts.Contracts`; the product keeps the name Contracts. Its shell module is `shell/src/modules/suites/procurement/contract-management/`, licensed as a module (ADR-0034).
+The module is `Iron.Suites.Procurement.ContractManagement` (schema `procurement_contract_management`), accepted at the checkpoint, since `Iron.Suites.Procurement.Contracts` would have the public project `Iron.Suites.Procurement.Contracts.Contracts`; the product keeps the name Contracts. Its shell module is `shell/src/modules/suites/procurement/contract-management/`, licensed as a module (ADR-0034), with the authoring tier as the feature `contract_management.authoring` (CON-101, ADR-0058).
 
 Permissions, decided 2026-10-20: `contract_management.contracts.{read,create,update,approve,publish}`, `contract_management.reports.read`. They replace the archived PRD's `contracts.contract.{read,create,update,publish}`.
 
@@ -378,7 +398,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 | P2 | Suppliers and orders | CON-006 |
 | P5 | Catalogue, contracts, change orders | CON-001, CON-002, CON-003, CON-004, CON-005, CON-021, CON-022, CON-041 |
 
-CON-007 is new with SUP-gaps (2026-10-21) and was never in the archived plan; the technical PRD's section 7.2 places it with Contracts (PR6).
+CON-007 is new with SUP-gaps (2026-10-21) and was never in the archived plan; the technical PRD's section 7.2 places it with Contracts (PR6). CON-101 is new with EPS-modules (2026-10-30); section 7.2 places it in wave 2, as Contracts' authoring tier (PR11).
 
 ## 16. Decisions and open points
 
@@ -389,6 +409,8 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 | ID | Decision | Where applied |
 |---|---|---|
 | F-07 | Contract consumption in version 1 (slice P5) | CON-021, ORD-008 |
+
+Decided by the owner on 2026-10-29 (ADR-0058): authoring, the clause library and negotiation are a wave-2 feature tier of Contracts (CON-101).
 
 ### 16.2 Open points
 

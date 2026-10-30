@@ -7,14 +7,14 @@
 | Document title | Invoicing: invoices, matching, approval for payment and credit notes, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `INV-`, in blocks of twenty per area (ADR-0041); the table is `invoicing-requirements.csv` |
-| Version | 1.3 (SUP-gaps, 2026-10-21: the bank account check at payment release and India's MSME terms and reports) |
-| Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. INV-011's and INV-087's readings of India's MSME rules stay open, to be confirmed by a practitioner in India. |
+| Version | 1.4 (EPS-modules, 2026-10-30: country e-invoicing compliance as licensed features) |
+| Date | 2026-10-30 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. INV-011's and INV-087's readings of India's MSME rules stay open, to be confirmed by a practitioner in India. The changes of 1.4 (EPS-modules) wait for the design session's review. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`; its module was called Payables), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Finance masters, budgets, tax codes, payment terms and suppliers are the Business PRD's; orders and receipts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): INV-046 asks Supplier management at payment release whether a bank account may be paid (gap G5); INV-011 caps a micro or small supplier's payment terms, INV-086 ages what is owed to them by 15 and 45 days, and INV-087 produces the data of MSME Form 1 (gap G7); no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): INV-121 names the invoice acknowledgement template (from BF-162), and INV-122 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
+Change log: 1.4, 2026-10-30: EPS-modules, the owner's module list of 2026-10-29 (ADR-0058): e-invoicing compliance per country is a licensed feature of Invoicing (INV-141), reading and writing the families of formats the regimes use (INV-142) through access points, platforms and partners on the kernel's connectors (INV-143); each country's own requirements are written when its feature is built; section 2.2 no longer leaves e-invoicing connections out; no requirement retired. 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): INV-046 asks Supplier management at payment release whether a bank account may be paid (gap G5); INV-011 caps a micro or small supplier's payment terms, INV-086 ages what is owed to them by 15 and 45 days, and INV-087 produces the data of MSME Form 1 (gap G7); no requirement retired. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): INV-121 names the invoice acknowledgement template (from BF-162), and INV-122 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). The Payables area of the Functional Foundation PRD 1.2 moved here as Invoicing, its words unchanged except for names that changed. The payment terms master went to the Business PRD; the due-date rules stayed here (INV-008).
 
 ## 1. Vision and goals
 
@@ -36,11 +36,11 @@ Keep, from the archived PRD's list: tolerances by value or percentage; invoice t
 
 ### 2.1 In scope
 
-Invoices of all types with lines, taxes, charges, discounts and withholding, account coding, due dates and discounts, capture suggestions and e-invoicing fields; matching (capacity, variances and holds, duplicate check, stale match levels, budget for non-order invoices, the holds console, the nightly reconciliation); approval and disputes, cancellation, payment release and status, credit notes; the matching configuration; lists, the accrual report, open-order views and the invoicing reports.
+Invoices of all types with lines, taxes, charges, discounts and withholding, account coding, due dates and discounts, capture suggestions and e-invoicing fields; matching (capacity, variances and holds, duplicate check, stale match levels, budget for non-order invoices, the holds console, the nightly reconciliation); approval and disputes, cancellation, payment release and status, credit notes; the matching configuration; lists, the accrual report, open-order views and the invoicing reports; and e-invoicing compliance per country or regime, as licensed features (section 6.7).
 
 ### 2.2 Out of scope in version 1 (`[Later]`)
 
-From the archived PRD's list: e-invoicing network connections (fields are prepared; Indian GST comes as an accelerator pack); 4-way match with inspection quantities beyond the inspection result flag. Payment execution is the ERP's (the Business PRD's section 2.3).
+From the archived PRD's list: 4-way match with inspection quantities beyond the inspection result flag. Payment execution is the ERP's (the Business PRD's section 2.3), or the Payments module's in wave 3 (`payments-scope.md`). The archived list's e-invoicing network connections are in scope since 2026-10-30, as licensed features per country (section 6.7, ADR-0058).
 
 ## 3. Personas
 
@@ -696,6 +696,64 @@ Each requirement has an identifier, a priority (Must, Should, Could), a tag, the
 
 **Notes:** Was BF-164, the keys and starter templates of Invoicing. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism.
 
+### 6.7 Country e-invoicing compliance (INV-141 to INV-160)
+
+E-invoicing compliance per country is a licensed feature of Invoicing, one per country or regime (the owner's decision of 2026-10-29, ADR-0058). These requirements are the frame every country's feature fills: the licence, the families of formats, and the connection. Each country's own requirements (its formats and their versions, its clearance or reporting steps, its time limits, its codes) are written in this area when its feature is built, from its tax authority's texts. This area was added after the supplier views, so its block follows the templates and notifications'.
+
+#### INV-141 E-invoicing compliance as a licensed feature per country or regime
+*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Country e-invoicing compliance
+
+**Requirement:** E-invoicing compliance shall be a feature of Invoicing per country or regime (TF-046), coded `invoicing.e_invoicing_` followed by the country's ISO 3166-1 alpha-2 code in lowercase (`invoicing.e_invoicing_pl`), or by the regime's name where one regime serves several countries (`invoicing.e_invoicing_peppol`). Where the tenant holds a feature, a legal entity of its country, or on its regime, turns it on with the date its obligation starts; from that date the legal entity's e-invoices are received, validated and, where the regime asks, cleared or reported through the feature (INV-142, INV-143), and the fields of INV-010 are filled from the e-invoice rather than typed. Where the tenant does not hold it, Invoicing works as before, with INV-010's fields and rules. A feature is offered only once its country's own requirements are written in this area and proven.
+
+**Why:** From 2026 to 2030 one country after another requires invoices between businesses to travel as structured e-invoices, many through a state platform that clears each invoice before it is valid. A tenant buys compliance for the countries it trades in, and one feature per country keeps that work, and its cost, where it belongs.
+
+**Acceptance criteria:**
+
+- AC1 Given a tenant holding `invoicing.e_invoicing_pl` and a Polish legal entity with the feature on from 1 February 2026, When an e-invoice to that legal entity dated 2 February 2026 is received, Then it is handled through Poland's feature, and the invoice's INV-010 fields come from the e-invoice.
+- AC2 Given a tenant without the feature for a country, When an invoice of a legal entity in that country is submitted, Then it follows INV-010 alone and no exchange is attempted.
+- AC3 Given a tenant without `invoicing.e_invoicing_pl`, When an administrator turns e-invoicing on for a Polish legal entity, Then it is refused with the not-entitled code naming the feature. (error case)
+- AC4 Given a legal entity in Germany, When an administrator turns the feature `invoicing.e_invoicing_pl` on for it, Then it is refused naming the country the feature serves. (error case)
+
+*Depends on:* INV-010, BF-001, BF-204, TF-046
+
+**Notes:** New 2026-10-30 (EPS-modules), the owner's decision of 2026-10-29 (ADR-0058). Decision, proposed default: the code is `invoicing.e_invoicing_` and the country's ISO 3166-1 alpha-2 code or the regime's name, since a feature code is `area.feature` (TF-046); a legal entity turns its feature on with a start date, so it can be set up before its obligation starts. The country packs (BF-204) keep the reference data and field rules; the exchange is the feature's.
+
+#### INV-142 The families of e-invoice formats
+*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Country e-invoicing compliance
+
+**Requirement:** Invoicing shall hold every invoice in one model mapped to the semantic model of EN 16931, and the e-invoicing features shall read it from, and where a regime asks write it to, the families of formats the regimes use: Peppol BIS Billing 3.0, on EN 16931 in UBL 2.1; Factur-X, a PDF carrying UN/CEFACT Cross Industry Invoice (CII) data, and CII alone; and the national clearance platforms' own formats and models, such as Poland's KSeF, Saudi Arabia's FATOORA, India's invoice reference number (IRN) and Malaysia's MyInvois. An e-invoice received is validated against its format's rules before it becomes an invoice; one that fails is refused with each failed rule's identifier and message, answered to the sender in the regime's way where it has one. The platform's identifiers, such as the clearance number or the IRN, are kept with the invoice and shown on it, and the original e-invoice is kept beside it.
+
+**Why:** EN 16931 is the European standard's semantic model, and the EU's VAT in the Digital Age builds on it; the other regimes map to it closely. One model inside, and one mapping per format, keeps matching and approval (sections 6.2 and 6.3) the same whatever the country.
+
+**Acceptance criteria:**
+
+- AC1 Given a valid Peppol BIS Billing 3.0 invoice to a legal entity with the Peppol feature on, When it is received, Then a draft invoice exists with its supplier, lines, taxes and totals mapped from it, and the e-invoice is kept beside it.
+- AC2 Given a Factur-X invoice to a legal entity with the French feature on, When it is received, Then the invoice is made from its CII data, not from the PDF's printed text, and the PDF is kept as its readable copy.
+- AC3 Given a Peppol invoice whose line totals do not add up to its total, When it is received, Then it is refused naming the failed EN 16931 rule's identifier and message, and no invoice is made. (error case)
+- AC4 Given an e-invoice cleared by Poland's KSeF, When it becomes an invoice, Then its KSeF number is kept with it and shown on it.
+
+*Depends on:* INV-141, INV-001, INV-006
+
+**Notes:** New 2026-10-30 (EPS-modules), the families the owner named on 2026-10-29 (ADR-0058). Decision, proposed default: one model inside, mapped to EN 16931's semantic model, and one mapping per format. Each country's versions (for example Peppol's releases, or KSeF's schema) are written with its feature.
+
+#### INV-143 Access points, platforms and partners through the kernel's connectors
+*Priority:* **Must** · *Tag:* `[New]` · *Area:* Country e-invoicing compliance
+
+**Requirement:** An e-invoicing feature shall exchange documents through the kernel's connectors (TF-206, TF-114): a Peppol access point for Peppol's network; the platform's own interface where a country runs one (KSeF, FATOORA, India's invoice registration portal, MyInvois); and a partner where a country requires one, such as a platform certified by France's tax administration. Credentials and certificates stay in the secrets store (TF-073); every exchange is recorded with the access point's, platform's or partner's reference and time; a failed or refused exchange goes to the connector's error queue, the invoice shows accounts payable that it waits and why, and the exchange is retried or resolved by a person, never lost and never made twice (TF-103).
+
+**Why:** Peppol needs a certified access point, some countries a certified partner, and the clearance platforms their own interfaces; the kernel's connectors keep each of them a configuration, with its credentials, run history and error queue, rather than code in the product.
+
+**Acceptance criteria:**
+
+- AC1 Given a Peppol access point configured for the tenant, When a supplier sends an invoice to the legal entity's Peppol identifier, Then it arrives through the connector and the exchange is recorded with the access point's reference.
+- AC2 Given Poland's platform configured for a legal entity, When its invoices are fetched twice in a row, Then each new invoice arrives once, with its KSeF number.
+- AC3 Given the platform unreachable, When an exchange fails, Then it lands in the error queue with the reason, the invoice shows that it waits, and the next attempt makes the exchange once. (error case)
+- AC4 Given a country that requires a certified partner and none configured, When an administrator turns the feature on for a legal entity there, Then it is refused naming the missing partner. (error case)
+
+*Depends on:* INV-141, TF-073, TF-103, TF-114, TF-206
+
+**Notes:** New 2026-10-30 (EPS-modules), the owner's decision of 2026-10-29 (ADR-0058). The connectors are the kernel's S7; until then no country's feature can be offered (the technical PRD's section 7.2).
+
 ## 7. Supplier views
 
 In the portal the supplier creates order-based, receipt-based and proforma invoices and credit notes for its orders, uploads its invoice document, sees the validations before it submits, and follows status, holds, disputes and payment (INV-101). Every view obeys the portal's ownership rule (SPX-006): a supplier user sees and acts only on its own supplier's records.
@@ -796,6 +854,8 @@ From the archived PRD's section 8.1: invoice lines follow the kernel's partition
 | Outbound | Approved invoices and credit notes | Events | Webhooks, outbound connectors (TF-105, TF-114) |
 | Inbound | Payment status per invoice (paid, partially paid, date, reference) | Push | API, connector |
 | Inbound | Invoice capture suggestions from the AI service (fields and lines from a PDF or image) | Upload | AI service contract (TF-208) |
+| Inbound | E-invoices of a country or regime whose feature a legal entity has on, with the platform's identifiers (INV-141 to INV-143) | Arrival at the access point or platform, or its fetch | Connectors (TF-206, TF-114) |
+| Outbound | Answers a regime asks of the buyer, such as a refusal of an e-invoice with its rules (INV-142) | Validation | Connectors (TF-206, TF-114) |
 
 ### 11.3 Reports
 
@@ -817,7 +877,7 @@ Last (ADR-0042): it calls Orders, Receiving and Requests, and no product depends
 
 ### 12.2 What it uses
 
-- Kernel, cited by its requirements: TF-035 and TF-234 (for its supplier views), TF-057 (settings), TF-084 (row locks), TF-090 (approvals), TF-105 (webhooks), TF-120 and TF-123 (jobs), TF-171 (the grid), TF-203 (saved views and exports), TF-208 (the AI service). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
+- Kernel, cited by its requirements: TF-035 and TF-234 (for its supplier views), TF-046 (its e-invoicing features), TF-057 (settings), TF-073 (secrets for its connections), TF-084 (row locks), TF-090 (approvals), TF-103 (idempotent writes), TF-105 (webhooks), TF-114 and TF-206 (connectors to access points, platforms and partners), TF-120 and TF-123 (jobs), TF-171 (the grid), TF-203 (saved views and exports), TF-208 (the AI service). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
 - Business: BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (the supplier and, with the Indian pack, its MSME classification), BF-204 (country packs, the MSME rules among them); and through their use, BF-074 (HSN and SAC codes), BF-083 (bill-to), BF-105 (bank accounts for payment), BF-143 (approvers), BF-163 (number series).
 - Earlier products: Supplier management (INV-046 on SUP-164, whether a bank account may be paid on a date, and by whom); Orders (INV-001, INV-022 and INV-024 on ORD-005, the stamped match levels and tolerances); Receiving (the approved receipts and the buckets, which it updates for the invoiced quantities: INV-001 to INV-003, INV-021, INV-027, INV-042, INV-044, INV-082 and INV-083; and the day of acceptance, INV-011, INV-086 on RCV-029); Requests (INV-004 and INV-007 on REQ-003, the split rules).
 
@@ -832,13 +892,15 @@ Last (ADR-0042): it calls Orders, Receiving and Requests, and no product depends
 
 ## 13. Layer, module, schema and permissions
 
-The module is `Iron.Suites.Procurement.Invoicing` (schema `procurement_invoicing`), its shell module `shell/src/modules/suites/procurement/invoicing/`, licensed as a module (ADR-0034).
+The module is `Iron.Suites.Procurement.Invoicing` (schema `procurement_invoicing`), its shell module `shell/src/modules/suites/procurement/invoicing/`, licensed as a module (ADR-0034), with a feature per country or regime for e-invoicing compliance, `invoicing.e_invoicing_<code>` (INV-141, ADR-0058).
+
+Proposed with EPS-modules, decided when the area is built: `invoicing.e_invoicing.manage`, turning a country's feature on for a legal entity and setting its start date and connection.
 
 Permissions, decided 2026-10-20: `invoicing.invoices.{read,read_all,create,update,submit,approve,dispute,cancel,release_payment}`, `invoicing.holds.release`, `invoicing.credit_notes.{read,create,approve}`, `invoicing.splits.override`, `invoicing.configuration.manage`, `invoicing.accruals.read`, `invoicing.reports.read`. They replace the archived PRD's `payables.invoice.*` and `payables.credit_note.*`, named after the module then called Payables.
 
 ## 14. Configuration
 
-From the archived PRD's section 8.5: match levels by default (product 3-way, service 2-way); tolerances per type with block or hold; strict invoice-once (default off); single chart of account per invoice; non-order invoice policy at tenant and supplier level.
+From the archived PRD's section 8.5: match levels by default (product 3-way, service 2-way); tolerances per type with block or hold; strict invoice-once (default off); single chart of account per invoice; non-order invoice policy at tenant and supplier level. Since 2026-10-30: per legal entity, the e-invoicing feature of its country or regime, its start date and its connection (INV-141, INV-143).
 
 ## 15. Slices
 
@@ -850,7 +912,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 | P4 | Invoicing and matching | INV-001, INV-002, INV-003, INV-004, INV-005, INV-006, INV-007, INV-008, INV-021, INV-022, INV-023, INV-024, INV-025, INV-026, INV-027, INV-041, INV-042, INV-043, INV-061, INV-062, INV-081, INV-082, INV-083, INV-084, INV-085, INV-101 |
 | P6 | Completeness | INV-009, INV-010, INV-044 |
 
-INV-011, INV-046, INV-086 and INV-087 are new with SUP-gaps (2026-10-21) and were never in the archived plan; the technical PRD's section 7.2 places them with Invoicing (PR5).
+INV-011, INV-046, INV-086 and INV-087 are new with SUP-gaps (2026-10-21) and were never in the archived plan; the technical PRD's section 7.2 places them with Invoicing (PR5). INV-141 to INV-143 are new with EPS-modules (2026-10-30); section 7.2 places them with Invoicing (PR5), their connections with the kernel's connectors (S7), and each country's feature when its own requirements are written.
 
 ## 16. Decisions and open points
 
@@ -866,6 +928,8 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 | F-06 | Non-order invoices allowed; approval configuration routes them; policy configurable at tenant and supplier level | INV-004, INV-061 |
 | F-08 | Tax codes with components; place-of-supply rule as a setting; e-invoice fields prepared; Indian GST as an accelerator pack | INV-010, BF-071, BF-204 |
 | F-10 | AI invoice capture in version 1 (slice P6) as suggestions only | INV-009 |
+
+Decided by the owner on 2026-10-29 (ADR-0058): e-invoicing compliance per country is a licensed feature of Invoicing, one per country or regime, in the families of formats INV-142 names, through the kernel's connectors; each country's own requirements are written when its feature is built (INV-141 to INV-143). The `[Decision]` defaults of INV-141 and INV-142 (the feature's code and start date, one model mapped to EN 16931) wait for the design session.
 
 ### 16.2 Open points
 

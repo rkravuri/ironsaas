@@ -7,14 +7,14 @@
 | Document title | Purchase orders: compliant ordering from approved suppliers, Product Requirements Document |
 | Layer | Suite (ADR-0043): a product of the eProcurement Suite, on IronSaaS Foundation; the module is proposed in section 13 |
 | Identifier prefix | `ORD-`, in blocks of twenty per area (ADR-0041); the table is `orders-requirements.csv` |
-| Version | 1.3 (SUP-gaps, 2026-10-21: the approved combination at submission, and open orders taking a supplier change) |
-| Date | 2026-10-21 |
-| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. |
+| Version | 1.4 (EPS-modules, 2026-10-30: consolidated and automatic orders, and identical items as one line) |
+| Date | 2026-10-30 |
+| Status | Accepted at the design session's review of 2026-10-20, its decisions written into the requirements and marked "decided 2026-10-20" in their notes. The changes of 1.3 (SUP-gaps) were accepted at the design session's review of 2026-10-21, their decisions marked "decided 2026-10-21" in their notes. The changes of 1.4 (EPS-modules) wait for the design session's review. |
 | Inputs | The Functional Foundation PRD for procure-to-pay, version 1.2 (archived as `../../archive/functional-foundation-p2p-PRD-v1.md`), the map (`../../requirements-map.md`), ADR-0029 and ADR-0041. |
 | Dependency | Legal entities, finance masters, budgets, terms and suppliers are the Business PRD's; requests, receipts, invoices and contracts are their products'; every mechanism is a kernel capability cited by its TF identifier. |
 | Tags | `[Carried]` behaviour from the current product that stays. `[Improved]` carried but changed to close a defect or gap. `[New]` not in the current product, standard practice. `[Decision]` needs the owner's confirmation; the question is in its notes. `[Later]` recorded, not in version 1. A requirement moved from the archived PRD says what it was at the start of its notes. |
 
-Change log: 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): ORD-010 lets a line for a quality-relevant item be ordered only from an approved supplier, site and material, checked at submission (gap G3); ORD-011 lets open orders take a supplier change the reviewer chose them to take (its section 8.2, rule 7); the domain model draws the line's manufacturing site; no requirement retired. At SUP-gaps' review the same day, ORD-009 came to depend on ORD-142 rather than the reverse, and ORD-142's AC2 took a key of its own slice (order acknowledged), so that no requirement depends on one of a later slice, which `make prd-check` now refuses. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): ORD-005 takes its match levels from the purchasing master, ORD-022 holds the acknowledgement reminder days (from BF-161), ORD-141 names the order and change order templates (from BF-162), and ORD-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
+Change log: 1.4, 2026-10-30: EPS-modules, the owner's decisions of 2026-10-29 for Requests and Intake (ADR-0058), on this product's side: ORD-161 orders a buyer's selection of lines from many requests, a call into Requests; ORD-162 and ORD-163 make automatic orders and the orders of an automatic consolidation from Requests' events; ORD-164 merges identical items into one order line, keeping each requester's share; ORD-142 declares the key "automatic order returned to the queue"; sections 2, 4, 5, 8, 12, 14 and 15 follow; no requirement retired. 1.3, 2026-10-21: SUP-gaps, from the supplier management pack (`process-reference/supplier-management.md`): ORD-010 lets a line for a quality-relevant item be ordered only from an approved supplier, site and material, checked at submission (gap G3); ORD-011 lets open orders take a supplier change the reviewer chose them to take (its section 8.2, rule 7); the domain model draws the line's manufacturing site; no requirement retired. At SUP-gaps' review the same day, ORD-009 came to depend on ORD-142 rather than the reverse, and ORD-142's AC2 took a key of its own slice (order acknowledged), so that no requirement depends on one of a later slice, which `make prd-check` now refuses. 1.2, 2026-10-20: the review of L2 (ADR-0043, decision 8): ORD-005 takes its match levels from the purchasing master, ORD-022 holds the acknowledgement reminder days (from BF-161), ORD-141 names the order and change order templates (from BF-162), and ORD-142 declares the product's notification keys (from BF-164); no other requirement changed. 1.1, 2026-10-20: moved to `docs/prd/suites/procurement/` as a product of the eProcurement Suite on IronSaaS Foundation (ADR-0043); its module's names follow the Suite layer; no requirement changed. 1.0, 2026-10-20: accepted at the review; its decisions are written into the requirements, and the proposals of the split's sections stand. 0.2 DRAFT, 2026-10-20: the design session's answers at the checkpoint and the split's sections (supplier views, records and signatures, visibility tags, search and exports, dependencies by ADR-0042, module and permissions). 0.1 SKELETON, 2026-10-20: the split (ADR-0041). Purchase orders moved here from the Functional Foundation PRD 1.2, their words unchanged except for names that changed.
 
 ## 1. Vision and goals
 
@@ -37,7 +37,7 @@ Keep, from the archived PRD's list: configurable match levels per supplier and c
 
 ### 2.1 In scope
 
-Orders from requests or direct, lines and totals, splits and budget, submission and approval, match level and tolerance stamping, issue by channel, taxes and documents, contract references, requester notifications, acknowledgement and reminders, change orders with versions, hold, close and cancel, line closure flags, lists, and the orders' reports.
+Orders from requests or direct, lines and totals, splits and budget, submission and approval, match level and tolerance stamping, issue by channel, taxes and documents, contract references, requester notifications, acknowledgement and reminders, change orders with versions, hold, close and cancel, line closure flags, lists, and the orders' reports. Since 2026-10-30: orders consolidated from many requests by a buyer, automatic orders and the orders of an automatic consolidation, and identical items as one order line with each requester's share (section 6.8).
 
 ### 2.2 Out of scope in version 1 (`[Later]`)
 
@@ -62,7 +62,11 @@ erDiagram
   PURCHASE_ORDER ||--o{ ORDER_VERSION : "changed as"
   ORDER_LINE }o--o| CONTRACT_ITEM : "consumes"
   ORDER_LINE }o--o| SUPPLIER_SITE : "made at (quality-relevant item)"
+  ORDER_LINE ||--o{ ORDER_LINE_SHARE : "shared by (identical items)"
+  ORDER_LINE_SHARE }o--|| REQUEST_LINE : "for"
 ```
+
+Since 2026-10-30 an order line made from identical request lines holds a share per request line, with its quantity, account split and requester (ORD-164); `REQUEST_LINE` is the Requests and Intake product's, drawn for context.
 
 `ORGANISATION` is the kernel's unit; `SUPPLIER` and `SUPPLIER_SITE` the Business masters; `CONTRACT_ITEM` the Contracts product's. They are drawn for context. An order copies the supplier's address and terms when it is issued and keeps them; it takes a supplier's later change only by a change order (ORD-011, the supplier management pack's section 8.5).
 
@@ -71,6 +75,10 @@ erDiagram
 ### 5.1 Request to order (the order's part)
 
 From the archived PRD's section 5.2, after the request's part (the Purchase requests product's section 5): an order converted from a request, or a direct order → order approval (when configured) → match level and tolerances stamped → issue by channel → supplier acknowledges (accept, decline, or propose changes) → buyer accepts proposal as a change order (new version) or rejects.
+
+### 5.2 Orders from requests (since 2026-10-30)
+
+The owner's decisions of 2026-10-29 (ADR-0058), on this product's side: a buyer selects approved lines of many requests in the work queue and orders them on this product's screen, one order per supplier, legal entity, currency and payment terms (ORD-161); a catalogue or contract line within the automatic order rules arrives as Requests' event and becomes an order without a buyer (ORD-162), or, where a consolidation window is set, a window's group arrives and becomes one order (ORD-163); identical items may become one order line with each requester's share (ORD-164). From there each order follows section 5.1: approval when configured, stamping, issue and acknowledgement.
 
 ## 6. Requirements
 
@@ -492,7 +500,7 @@ The received and invoiced quantities Orders keeps on its order lines from Receiv
 #### ORD-142 Notification keys of Orders
 *Priority:* **Should** · *Tag:* `[New]` · *Area:* Templates and notifications
 
-**Requirement:** Orders shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: line ordered, issued, acknowledged and received (the requester, ORD-009), order acknowledged (the buyer owner, ORD-021), acknowledgement reminder (the supplier's primary contact, ORD-022) and acknowledgement overdue (the buyer owner, ORD-022).
+**Requirement:** Orders shall declare its notification keys on the business layer's notification templates (BF-164), each with the event that raises it, the placeholders it offers, its default audience and an English starter template: line ordered, issued, acknowledged and received (the requester, ORD-009), order acknowledged (the buyer owner, ORD-021), acknowledgement reminder (the supplier's primary contact, ORD-022), acknowledgement overdue (the buyer owner, ORD-022) and automatic order returned to the queue, with the reason (the line's buyer, ORD-162).
 
 **Why:** The product knows what happens to its documents; the tenant decides, in its own words, who hears of it (BF-164). A suite's keys and starter templates are the suite's content (ADR-0043).
 
@@ -504,7 +512,80 @@ The received and invoiced quantities Orders keeps on its order lines from Receiv
 
 *Depends on:* BF-164, ORD-021, ORD-022
 
-**Notes:** Was BF-164, the keys and starter templates of Orders. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism. Changed 2026-10-21 at SUP-gaps' review: the requirements that raise its keys in a later slice (ORD-009, with Receiving; AC2 now takes a key of this slice, order acknowledged, instead of ORD-009's) depend on this declaration, not the reverse, so no requirement depends on one of a later slice (`make prd-check`).
+**Notes:** Was BF-164, the keys and starter templates of Orders. Moved at the review of L2, 2026-10-20 (ADR-0043): each product declares its keys and starter templates; BF-164 keeps the mechanism. Changed 2026-10-21 at SUP-gaps' review: the requirements that raise its keys in a later slice (ORD-009, with Receiving; AC2 now takes a key of this slice, order acknowledged, instead of ORD-009's) depend on this declaration, not the reverse, so no requirement depends on one of a later slice (`make prd-check`). Changed 2026-10-30 (EPS-modules): the key "automatic order returned to the queue" (ORD-162).
+
+### 6.8 Orders from requests (ORD-161 to ORD-180)
+
+Orders makes the orders that Requests and Intake's buying model calls for (the owner's decision of 2026-10-29, ADR-0058): a buyer's consolidation of many requests on this product's screen, which calls Requests; and automatic orders and automatic consolidation, which no person starts, from Requests' events (ADR-0042, decision 4). This area was added after the templates and notifications, so its block follows theirs.
+
+#### ORD-161 Consolidated orders from a buyer's selection
+*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Orders from requests
+
+**Requirement:** On this product's screen a buyer shall order approved lines selected from many requests in their work queue (REQ-161): the screen reads the lines through Requests' Contracts, makes one draft order per supplier, legal entity, currency and payment terms, copies each line's price, account split, ship-to and need-by date onto an order line of its own linked to its request line (ORD-001, ORD-003), and marks every line converted in Requests in the same step, so that either all of the selection is ordered or none of it is. A line flagged "source first" (REQ-141) is ordered only with the buyer's reason for not sourcing it, which its order line keeps and shows.
+
+**Why:** One order per supplier from a week's requests is what consolidation at the buying desk means; doing it in one step, all or nothing, leaves no request half converted.
+
+**Acceptance criteria:**
+
+- AC1 Given seven selected lines of four requests, five for supplier S and two for supplier T, all of legal entity L in one currency and on one set of terms, When the buyer orders them, Then two draft orders exist, to S with five lines and to T with two, each line linked to its request line.
+- AC2 Given a selected line flagged "source first", When the buyer orders it with a reason, Then its order line keeps the reason and shows it.
+- AC3 Given a selected line flagged "source first" and no reason given, When the buyer orders the selection, Then it is refused naming the line and the limit, and nothing is ordered. (error case)
+
+*Depends on:* ORD-001, ORD-003, REQ-141, REQ-161
+
+**Notes:** New 2026-10-30 (EPS-modules), the owner's decision of 2026-10-29 (ADR-0058): a buyer's consolidated conversion on Orders' screen is a call into Requests, immediate (ADR-0042, decision 4); the orders are then approved and issued as any other (ORD-004, ORD-006). Decision, proposed default: until Sourcing exists, a "source first" line is ordered only with a reason, so the exception shows in the order and its reports.
+
+#### ORD-162 Automatic orders
+*Priority:* **Must** · *Tag:* `[New]` `[Decision]` · *Area:* Orders from requests
+
+**Requirement:** When Requests publishes a line as ready for an automatic order (REQ-142), this product shall make the order without a buyer: one order for the line, to its supplier, at its catalogue or contract price with its contract reference (ORD-008), with its account split, ship-to and need-by date; submit it, so that the order approval configuration applies (ORD-004); and issue it by the supplier's channel once approved (ORD-006). It marks the line converted through Requests' Contracts. The order's owner, who answers the supplier's questions and hears its acknowledgement, is a buyer of the line's purchasing group, else of its legal entity's buying group (PUR-001). When the order cannot be made or submitted (the supplier put on hold since the approval, a contract's ceiling reached, a template missing), the line is not ordered: it goes to its buyer's queue with the reason, and the buyer is told (ORD-142). The event is handled once, however often it arrives (TF-111).
+
+**Why:** Desktop buying's speed comes from ordering agreed items without a buyer; the checks an order passes are still the order's, so an automatic order is held to them like any other and falls back to a person when it fails one.
+
+**Acceptance criteria:**
+
+- AC1 Given a line published for an automatic order, a catalogue item of 300 from supplier S whose channel is the portal, and no order approval configuration that applies, When the event is handled, Then an order to S is made, approved and issued in the portal without a buyer, and the line is marked converted in Requests.
+- AC2 Given a published line from a contract item, When the order is made, Then it carries the contract's price and reference, and the release is recorded on the contract (ORD-008).
+- AC3 Given the same event delivered twice, When it is handled, Then one order exists. (error case)
+- AC4 Given a published line whose supplier was put on hold after the request's approval, When the event is handled, Then no order is made, the line goes to its buyer's queue naming the hold, and the buyer is told. (error case)
+
+*Depends on:* REQ-142, ORD-004, ORD-006, ORD-008, ORD-142, PUR-001, TF-111
+
+**Notes:** New 2026-10-30 (EPS-modules), the owner's decision of 2026-10-29 (ADR-0058): an automatic conversion is an event from Requests, which this product handles; it calls Requests back only to mark the line converted (ADR-0042, decision 4). Decision, proposed defaults: a buyer of the line's purchasing group owns the automatic order, though none made it; an automatic order is submitted at once and issued once approved, with nobody pressing a button; a line whose order fails goes back to a person rather than waiting for a retry.
+
+#### ORD-163 Orders from an automatic consolidation
+*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Orders from requests
+
+**Requirement:** When Requests publishes a group of lines at the close of a consolidation window (REQ-162), this product shall make one order for the group as it makes an automatic order (ORD-162), with one order line per request line, or per set of identical lines where the legal entity merges them (ORD-164), each linked to its request line; and submit and issue it in the same way. A line of the group that cannot be ordered (its supplier on hold, its contract's ceiling reached) goes to its buyer's queue with the reason, and the rest of the group is ordered without it.
+
+**Why:** A window's group is one supplier's day of agreed items; one order for it is the point of the window.
+
+**Acceptance criteria:**
+
+- AC1 Given a group of three lines from three requests for supplier S, When it is handled, Then one order to S with three lines exists, each linked to its request line, and each request is Ordered.
+- AC2 Given a group in which one line's contract ceiling is reached, When it is handled, Then the order holds the other lines, and that line goes to its buyer's queue naming the contract and its ceiling. (error case)
+
+*Depends on:* REQ-162, ORD-162, ORD-164
+
+**Notes:** New 2026-10-30 (EPS-modules), the owner's decision of 2026-10-29 (ADR-0058): automatic consolidation, an event from Requests. Decision, proposed default: a line that cannot be ordered leaves the group and the rest is ordered, since nobody is there to choose, while a buyer's selection is all or nothing (ORD-161), since the buyer is.
+
+#### ORD-164 Identical items as one order line, each requester's share kept
+*Priority:* **Should** · *Tag:* `[New]` `[Decision]` · *Area:* Orders from requests
+
+**Requirement:** As an option a legal entity turns on, lines of one order that are identical, the same item or supplier item from the same supplier, in the same unit, at the same price, to the same ship-to, shall become one order line with the total quantity and the earliest need-by date, keeping each request line as a share with its own quantity, account split and requester, which this product writes to the request line (REQ-163). Budget is reserved and consumed per share (ORD-003); the quantity received on the order line, which this product keeps from Receiving's events (ORD-121), is shared out to its shares by need-by date, earliest first, unless the receiver names a share; and each requester is told of their own share (ORD-009).
+
+**Why:** A supplier asked for 30 of one item gives one line, one price break and one delivery; the requesters behind the 30 still need their own quantity, budget and news.
+
+**Acceptance criteria:**
+
+- AC1 Given the option on, and requests from A for 10 and from B for 20 of item 4711 from supplier S at 5.00 to the same ship-to, When they are ordered together, Then one order line of 30 has two shares, A's 10 and B's 20, each with its own account split.
+- AC2 Given that order line, A's share needed first, and a receipt of 12, When the receipt is approved, Then A's share shows 10 received and B's 2.
+- AC3 Given the option off, When the same lines are ordered together, Then they stay two order lines.
+- AC4 Given that order line with A's share fully received, When a change order cancels A's share, Then it is refused naming A's share and its received quantity. (error case)
+
+*Depends on:* ORD-161, ORD-003, ORD-009, ORD-023, ORD-121, RCV-081 (event)
+
+**Notes:** New 2026-10-30 (EPS-modules), the owner's decision of 2026-10-29 (ADR-0058): as an option, identical items become one order line with the total quantity, keeping each requester's share. Decision, proposed defaults: identical means the same item or supplier item, supplier, unit, price and ship-to; the line's need-by date is its earliest share's; a receipt is shared out earliest need-by first unless the receiver names a share; the option is off until a legal entity turns it on. Orders hears of receipts from Receiving's events (ADR-0042), as ORD-043 and ORD-061 do.
 
 ## 7. Supplier views
 
@@ -540,6 +621,9 @@ From the archived PRD's section 7.1:
 | Match level stamp | Resolved once at order approval: supplier value for the line type, else chart of account value, else system default; never changed afterwards. |
 | Closure | A line closed for receiving accepts no receipts; closed for invoicing accepts no invoices; close-short sets both and releases remaining budget reservation. |
 | Approved combination | With regulated qualification, a line for a quality-relevant item names its manufacturing site, and the order is submitted only when the supplier, site and material are an approved combination (ORD-010, SUP-183). |
+| One group, one order | Lines of many requests ordered together make one order per supplier, legal entity, currency and payment terms (ORD-161, ORD-163). |
+| An automatic order is still an order | It is submitted, approved where a configuration applies, and issued as any other; when it fails a check, its line goes back to a buyer (ORD-162). |
+| Shares of a merged line | A merged line keeps each request line as a share; budget is per share, and receipts are shared out earliest need-by first unless the receiver names a share (ORD-164). |
 
 ### 8.2 State machines
 
@@ -621,15 +705,15 @@ Fifth (ADR-0042): it calls Supplier management, Contracts and Requests, and hear
 
 ### 12.2 What it uses
 
-- Kernel, cited by its requirements: TF-035 and TF-234 (record policies and delegated access, for its supplier view), TF-090 (approvals), TF-120 and TF-123 (jobs), TF-150 (notifications), TF-162 (rendering), TF-171 (the grid), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
+- Kernel, cited by its requirements: TF-035 and TF-234 (record policies and delegated access, for its supplier view), TF-090 (approvals), TF-111 (event subscriptions, for automatic orders), TF-120 and TF-123 (jobs), TF-150 (notifications), TF-162 (rendering), TF-171 (the grid), TF-203 (saved views and exports). Through its sections: TF-063 and TF-219, TF-166, TF-241, TF-243.
 - Business: BF-001 (legal entities), BF-061 (charts), BF-065 and BF-066 (budget), BF-071 (tax codes), BF-072 (terms), BF-101 (suppliers); and through their use, BF-074 (HSN and SAC codes on lines), BF-083 (bill-to), BF-108 (enablement), BF-143 (approvers), BF-162 and BF-163 (templates, number series).
-- The suite's purchasing master (ADR-0043): PUR-001 (spend by purchasing group), PUR-021, PUR-023 and PUR-025 (the match levels it stamps), PUR-022 (supplier suggestions).
-- Earlier products: Supplier management (ORD-004 on SUP-041, documents that block orders, and the supplier's status and risk flags; ORD-010 on SUP-182 and SUP-183, the approved combinations of supplier, site and material; ORD-011 on SUP-208, the supplier change applied); Contracts (ORD-008 on CON-021, the release recorded at issue and returned on cancellation); Requests (ORD-001 and ORD-003 on REQ-003, the converted lines and their splits): a buyer converts an approved request on this product's screen, which reads its lines and marks them converted at once (REQ-021).
+- The suite's purchasing master (ADR-0043): PUR-001 (spend by purchasing group, and the owner of an automatic order), PUR-021, PUR-023 and PUR-025 (the match levels it stamps), PUR-022 (supplier suggestions).
+- Earlier products: Supplier management (ORD-004 on SUP-041, documents that block orders, and the supplier's status and risk flags; ORD-010 on SUP-182 and SUP-183, the approved combinations of supplier, site and material; ORD-011 on SUP-208, the supplier change applied); Contracts (ORD-008 on CON-021, the release recorded at issue and returned on cancellation); Requests (ORD-001 and ORD-003 on REQ-003, the converted lines and their splits): a buyer converts an approved request on this product's screen, which reads its lines and marks them converted at once (REQ-021); since 2026-10-30, lines of many requests too (ORD-161 on REQ-161, with the routing flags of REQ-141), and the lines Requests publishes for automatic orders and automatic consolidation (ORD-162 on REQ-142, ORD-163 on REQ-162), each marked converted with its order line or share written back (REQ-163).
 
 ### 12.3 Events
 
 - Publishes: order issued, changed, acknowledged, declined, held, released, closed and cancelled (Supplier management's indicators and warnings; the ERP, section 11.2).
-- Subscribes: from Receiving, the bucket changes, received and invoiced (ORD-043, ORD-061, ORD-121, `RCV-081 (event)`), and goods received for the requester's notifications (ORD-009, `RCV-021 (event)`); from Supplier management, supplier change applied, with the reviewer's choice for open orders (ORD-011, SUP-208).
+- Subscribes: from Receiving, the bucket changes, received and invoiced (ORD-043, ORD-061, ORD-121, `RCV-081 (event)`), and goods received for the requester's notifications (ORD-009, `RCV-021 (event)`); from Supplier management, supplier change applied, with the reviewer's choice for open orders (ORD-011, SUP-208); from Requests and Intake, since 2026-10-30, line ready for an automatic order (ORD-162, REQ-142) and consolidation group closed (ORD-163, REQ-162), the automatic conversions of ADR-0042's decision 4.
 
 ### 12.4 Extension points it implements
 
@@ -643,7 +727,7 @@ Permissions, decided 2026-10-20: `orders.orders.{read,read_all,create,create_dir
 
 ## 14. Configuration
 
-From the archived PRD's section 8.5: acknowledgement reminder days; auto-close rules.
+From the archived PRD's section 8.5: acknowledgement reminder days; auto-close rules. Since 2026-10-30: per legal entity, whether identical items become one order line (ORD-164), off by default. The automatic order rules and the consolidation window are Requests and Intake's (REQ-142, REQ-162).
 
 ## 15. Slices
 
@@ -655,7 +739,7 @@ Where the moved requirements sat in the archived PRD's build plan (its section 9
 | P4 | Invoicing and matching | ORD-081, ORD-082, ORD-121 |
 | P5 | Catalogue, contracts, change orders | ORD-007, ORD-008, ORD-009, ORD-023, ORD-041, ORD-042, ORD-043, ORD-062 |
 
-ORD-010 and ORD-011 are new with SUP-gaps (2026-10-21) and were never in the archived plan; the technical PRD's section 7.2 places them with Orders (PR3).
+ORD-010 and ORD-011 are new with SUP-gaps (2026-10-21) and were never in the archived plan; the technical PRD's section 7.2 places them with Orders (PR3). ORD-161 to ORD-164 are new with EPS-modules (2026-10-30); section 7.2 places ORD-161 with Orders (PR3), ORD-164 with Receiving (PR4), since its shares hear of receipts, and ORD-162 and ORD-163 with Contracts and catalogue (PR6), since only catalogue and contract lines are ordered automatically.
 
 ## 16. Decisions and open points
 
@@ -666,6 +750,8 @@ Confirmed on 2026-10-17, from the archived PRD's section 10.1:
 | ID | Decision | Where applied |
 |---|---|---|
 | F-07 | Contract consumption in version 1 (slice P5) | ORD-008, CON-021 |
+
+Decided by the owner on 2026-10-29 (ADR-0058), for Requests and Intake, with Orders making the orders on its side: automatic orders and automatic consolidation are events from Requests; a buyer's conversion of many requests is a call into Requests from this product's screen; identical items may become one order line, keeping each requester's share (ORD-161 to ORD-164). Their `[Decision]` defaults wait for the design session.
 
 ### 16.2 Open points
 
