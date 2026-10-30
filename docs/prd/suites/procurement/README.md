@@ -48,7 +48,7 @@ A wave is an order of building. Each module's slice is a row of the technical PR
 
 | Wave | Modules | In section 7.2 |
 |---|---|---|
-| 1 | Purchasing, Supplier Management, Requests and Intake, Catalogue, Orders, Receiving, Invoicing, Contracts | PR0 to PR8; Purchasing's module skeleton comes first, in V2, so that suites per tenant (TF-244) have a module to install |
+| 1 | Purchasing, Supplier Management, Requests and Intake, Catalogue, Orders, Receiving, Invoicing, Contracts | PR0 to PR8; the suite's skeleton, the Purchasing module with its About page, comes first, in V2 (V's slice plan), so that suites per tenant (TF-244) have a module to install |
 | 2 | Spend Analytics and Savings, Sourcing, Category and Savings Projects, Supplier Risk and Sustainability; Contracts' authoring tier | PR9 to PR13, after PR7 |
 | 3 | Payments, Services and Contingent Workforce, Expenses | PR14 to PR16 |
 
@@ -82,7 +82,7 @@ Neither has a scope page or a prefix yet. Each gets both when a customer asks fo
 
 ## 7. Requests and Intake's buying model
 
-The owner decided on 2026-10-29 that Requests and Intake supports desktop buying, central buying and the mix between them, as configuration per legal entity, unit and category; the default is desktop buying with consolidation at the buying desk. The requirements are in `requests-PRD.md`: intake (REQ-101, REQ-102), the buying model and central buying (REQ-121 to REQ-123), routing and automatic orders (REQ-141, REQ-142), and consolidation (REQ-161 to REQ-163); Orders makes the orders (ORD-161 to ORD-164).
+The owner decided on 2026-10-29 that Requests and Intake supports desktop buying, central buying and the mix between them, as configuration per legal entity, unit and category; the default is desktop buying with consolidation at the buying desk. At the review of 2026-10-30: the unit decides who may request; the category and the value decide how a line is fulfilled; when two settings disagree about fulfilment, the more controlled one wins, central over desktop and the buyer's queue over an automatic order. The requirements are in `requests-PRD.md`: intake (REQ-101, REQ-102), the buying model and central buying (REQ-121 to REQ-123), routing and automatic orders (REQ-141, REQ-142), and consolidation (REQ-161 to REQ-163); Orders makes the orders (ORD-161 to ORD-164).
 
 ## 8. Research log
 

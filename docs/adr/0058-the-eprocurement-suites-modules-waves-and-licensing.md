@@ -1,8 +1,8 @@
 # ADR-0058: The eProcurement Suite's modules, their waves and their licensing
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-30
-**Decided by:** Product owner and architect (the module list and the buying model on 2026-10-29, in the design session)
+**Decided by:** Product owner and architect (the module list and the buying model on 2026-10-29, in the design session; accepted at the review of EPS-modules, 2026-10-30)
 
 ## Context
 
@@ -16,11 +16,11 @@ The PRD split (ADR-0041) left the eProcurement Suite with seven products, a shar
    - `contract_management.authoring`: authoring, the clause library and negotiation, a wave-2 tier of Contracts (CON-101).
    - `invoicing.e_invoicing_<country or regime>`: e-invoicing compliance, one feature per country or regime (INV-141).
    - `supplier_management.gxp_qualification`, as SUP-gaps named it.
-3. **Three waves.** Wave 1 is the slices PR0 to PR8 of the technical PRD's section 7.2, with Purchasing's module skeleton in V2 so that suites per tenant have a module to install. Wave 2 is Spend Analytics and Savings, Sourcing, Category and Savings Projects, Supplier Risk and Sustainability, and Contracts' authoring tier. Wave 3 is Payments, Services and Contingent Workforce, and Expenses. Section 7.2 places them after PR7.
+3. **Three waves.** Wave 1 is the slices PR0 to PR8 of the technical PRD's section 7.2, with the eProcurement Suite's skeleton, the Purchasing module with its About page, in V2 so that suites per tenant have a module to install. Wave 2 is Spend Analytics and Savings, Sourcing, Category and Savings Projects, Supplier Risk and Sustainability, and Contracts' authoring tier. Wave 3 is Payments, Services and Contingent Workforce, and Expenses. Section 7.2 places them after PR7.
 4. **Deferred, not dropped:** inventory and stockrooms, and direct materials with bill-of-materials sourcing. Both serve manufacturing-heavy customers and overlap with ERP systems.
 5. **Not modules.** The supplier portal is a surface of the suite (ADR-0029, ADR-0042 decision 5). Surveys leave the suite: the forms engine (TF-242, S4) runs surveys for every suite, and procurement uses them through supplier information collection and sourcing evaluations.
 6. **Prefixes.** `ANL-`, `RSK-`, `PAY-` and `SVC-` are reserved for the four new modules. `AUC-` stays reserved and is never used: auctions' requirements take `SRC-`. `PRJ-` stays with the reframed Category and Savings Projects. `SRV-` is retired, never given to another document. `SRC-` and `EXP-` are unchanged. This replaces the last row of ADR-0041's decision 1.
-7. **Requests and Intake's buying model is configuration,** per legal entity, unit and category: desktop buying, central buying, or the mix. The default is desktop buying with consolidation at the buying desk. Conversions follow ADR-0042: an automatic order or an automatic consolidation is an event from Requests that Orders handles; a buyer's conversion on Orders' screen is a call into Requests.
+7. **Requests and Intake's buying model is configuration,** per legal entity, unit and category: desktop buying, central buying, or the mix. The default is desktop buying with consolidation at the buying desk. At the review (2026-10-30): the unit decides who may request; the category and the value decide how a line is fulfilled; when two settings disagree about fulfilment, the more controlled one wins, central over desktop and the buyer's queue over an automatic order (REQ-121, REQ-122). Conversions follow ADR-0042: an automatic order or an automatic consolidation is an event from Requests that Orders handles; a buyer's conversion on Orders' screen is a call into Requests.
 8. **Places in the process order** (ADR-0042, decision 8), proposed by each scope and fixed when its PRD is written: Supplier Risk and Sustainability after Supplier management; Sourcing between Requests and Orders, as decided on 2026-10-20; Services and Contingent Workforce between Receiving and Invoicing; Payments after Invoicing; Spend Analytics and Savings after Payments; Category and Savings Projects last; Expenses apart, since it calls no procure-to-pay product.
 
 ## Options considered
