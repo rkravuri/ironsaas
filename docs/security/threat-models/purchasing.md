@@ -16,7 +16,8 @@ bought it (TF-244, ADR-0059).
 
 Only units whose configuration names the suite (`Suites:Installed`), which the fleet writes from the control plane's
 record of the tenant's suites, changed by an operator with `tenancy.suites.manage` and a reason, audited. In such a unit,
-signed-in people with `purchasing.suite.read` (the tenant administrators and the read-only roles, by the seeds), and only
+signed-in people and service accounts with `purchasing.suite.read` (the tenant administrator, read-only and service
+default roles, by the seeds, which give every read permission to the last two), and only
 while the tenant's plan for the suite licenses the module; the endpoint is behind the entitlement check like every
 licensed module's (ADR-0034).
 
@@ -34,6 +35,7 @@ licensed module's (ADR-0034).
 ## What remains
 
 - A tenant role that named the suite's permission keeps the name after the suite is removed; it grants nothing while the
-  unit does not run the suite, and works again when the suite is added back.
+  unit does not run the suite, and works again when the suite is added back. Saving that role meanwhile is refused for a
+  permission the tenant does not know, until the administrator takes it out (ADR-0059).
 - The About endpoint is behind the module's entitlement, so a tenant whose plan for the suite expired sees the suite's
   state on the console's Subscription page instead.
