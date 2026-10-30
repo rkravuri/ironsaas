@@ -41,8 +41,10 @@ var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
-// The modules this host runs (UnitModules): Audit first, then Authorization, Identity, Files and Entitlements; and the
+// The modules this host runs (UnitModules): the Foundation's, Audit first, then Authorization, Identity, Files and
+// Entitlements; the modules of the suites the unit's configuration names (TF-244), and nothing of the others; and the
 // sample module where the unit's configuration switches it on (ADR-0057).
+var suites = UnitModules.InstalledFor(builder.Configuration);
 var modules = UnitModules.ForUnit(builder.Configuration);
 
 builder.AddIronTelemetry("iron-api", telemetry => telemetry.TenantId = tenant.Id.Value);
@@ -59,7 +61,7 @@ var connectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException("ConnectionStrings:Database is required. Set ConnectionStrings__Database for this unit.");
 builder.Services.AddIronDatabase(connectionString, builder.Configuration["Database:AppRole"], builder.Configuration["Database:AuditReaderRole"]);
 builder.Services.AddIronDatabaseHealthCheck();
-builder.Services.AddModules(builder.Configuration, modules);
+builder.Services.AddModules(builder.Configuration, modules, suites);
 
 // The browsers report to the API: a summary of their reports once a minute, which an alert rule counts (ADR-0056).
 builder.Services.AddCspReportSummary();

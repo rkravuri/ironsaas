@@ -88,6 +88,18 @@ public sealed record SettingEntry(
     }
 }
 
+/// <summary>
+/// A plan a suite brings to start from (TF-244, ADR-0043 decision 8, ADR-0059): its code, name, grace days and the codes
+/// of its modules and features, every one of them the suite's. The control plane seeds it once; then it is the
+/// operator's. The suite declares it beside its modules, so the Foundation names no suite's plan.
+/// </summary>
+public sealed record StarterPlanEntry(string Code, string Name, int GraceDays, IReadOnlyList<string> Modules, IReadOnlyList<string> Features)
+{
+    /// <summary>The suite that brings it; the file says it once, as the group the entry sits in.</summary>
+    [JsonIgnore]
+    public string Suite { get; init; } = SuiteName.Foundation;
+}
+
 /// <summary>A duty as the catalogue lists it (ADR-0037): its code, the module that declares it, its name, what it is, and the permissions it covers.</summary>
 public sealed record DutyEntry(string Code, string Module, string Name, string Description, IReadOnlyList<string> Permissions)
 {
@@ -127,7 +139,7 @@ public sealed class LicensingCatalogue
     private readonly Dictionary<string, FeatureEntry> _features;
     private readonly Dictionary<string, FlagEntry> _flags;
 
-    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null, IEnumerable<DutyEntry>? duties = null)
+    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null, IEnumerable<DutyEntry>? duties = null, IEnumerable<StarterPlanEntry>? plans = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
         ArgumentNullException.ThrowIfNull(features);
@@ -182,10 +194,21 @@ public sealed class LicensingCatalogue
         }
 
         Duties = [.. (duties ?? []).OrderBy(d => d.Code, StringComparer.Ordinal)];
+        var planCodes = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var plan in plans ?? [])
+        {
+            if (!planCodes.Add(plan.Code))
+            {
+                throw new InvalidOperationException($"The starter plan '{plan.Code}' is declared twice.");
+            }
+        }
+
+        Plans = [.. (plans ?? []).OrderBy(p => p.Code, StringComparer.Ordinal)];
         Suites = [.. Modules.Select(m => m.Suite)
             .Concat(Features.Select(f => f.Suite))
             .Concat(Flags.Select(f => f.Suite))
             .Concat(Settings.Select(s => s.Suite))
+            .Concat(Plans.Select(p => p.Suite))
             .Where(suite => suite != SuiteName.Foundation)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -212,6 +235,9 @@ public sealed class LicensingCatalogue
     /// <summary>Duties by code, the kernel's <c>all</c> among them.</summary>
     public IReadOnlyList<DutyEntry> Duties { get; }
 
+    /// <summary>The plans the suites bring to start from (TF-244), by code; the Foundation's plans are the control plane's own.</summary>
+    public IReadOnlyList<StarterPlanEntry> Plans { get; }
+
     /// <summary>The groups of the file: <c>foundation</c> first, then every suite with an entry, by short name (ADR-0043).</summary>
     public IReadOnlyList<string> Suites { get; }
 
@@ -225,10 +251,14 @@ public sealed class LicensingCatalogue
     /// <summary>A flag the code declares now: a rule may name it and an evaluation may ask for it.</summary>
     public FlagEntry? FindActiveFlag(string key) => _flags.GetValueOrDefault(key) is { Status: FlagStatus.Active } flag ? flag : null;
 
-    /// <summary>The catalogue of a host's modules, with the kernel's kill switches, in the order nothing depends on: by code.</summary>
-    public static LicensingCatalogue From(IEnumerable<IModule> modules)
+    /// <summary>
+    /// The catalogue of a host's modules, with the kernel's kill switches, in the order nothing depends on: by code; and
+    /// the starter plans of <paramref name="suites"/>, which <c>make catalogue</c> passes for every suite the image carries.
+    /// </summary>
+    public static LicensingCatalogue From(IEnumerable<IModule> modules, IEnumerable<SuiteDefinition>? suites = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
+        var plans = (suites ?? []).SelectMany(suite => suite.StarterPlans.Select(plan => plan with { Suite = suite.ShortName })).ToList();
         var licensed = new List<LicensedModuleEntry>();
         var features = new List<FeatureEntry>();
         var platform = new List<string>();
@@ -271,7 +301,19 @@ public sealed class LicensingCatalogue
             duties.AddRange(module.Duties.Select(duty => DutyEntry.From(duty, module.Name)));
         }
 
-        return new LicensingCatalogue(licensed, features, platform, flags, settings, duties);
+        // A starter plan names only its own suite's modules and features (TF-244 AC7): refused here, at make catalogue.
+        foreach (var plan in plans)
+        {
+            var stray = plan.Modules.Where(code => !licensed.Any(m => m.Code == code && m.Suite == plan.Suite))
+                .Concat(plan.Features.Where(code => !features.Any(f => f.Code == code && f.Suite == plan.Suite)))
+                .ToList();
+            if (stray.Count > 0)
+            {
+                throw new InvalidOperationException($"The starter plan '{plan.Code}' of the suite '{plan.Suite}' names {string.Join(", ", stray)}, which is no module or feature of that suite (TF-244).");
+            }
+        }
+
+        return new LicensingCatalogue(licensed, features, platform, flags, settings, duties, plans);
     }
 
     /// <summary>
@@ -282,7 +324,7 @@ public sealed class LicensingCatalogue
     {
         ArgumentNullException.ThrowIfNull(file);
         var retired = file.Flags.Where(f => f.Status == FlagStatus.Retired && FindFlag(f.Key) is null);
-        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings, Duties);
+        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings, Duties, Plans);
     }
 
     /// <summary>
@@ -321,7 +363,8 @@ public sealed class LicensingCatalogue
             [.. Modules.Where(m => m.Suite == suite)],
             [.. Features.Where(f => f.Suite == suite)],
             [.. Flags.Where(f => f.Suite == suite)],
-            [.. Settings.Where(s => s.Suite == suite)]));
+            [.. Settings.Where(s => s.Suite == suite)],
+            [.. Plans.Where(p => p.Suite == suite)]));
         return JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, [.. groups], Duties), Json) + "\n";
     }
 
@@ -355,11 +398,12 @@ public sealed class LicensingCatalogue
             document.Platform,
             groups.SelectMany(g => (g.Flags ?? []).Select(f => f with { Suite = g.Suite })),
             groups.SelectMany(g => (g.Settings ?? []).Select(s => s with { Suite = g.Suite })),
-            document.Duties);
+            document.Duties,
+            groups.SelectMany(g => (g.Plans ?? []).Select(p => p with { Suite = g.Suite })));
     }
 
     private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<SuiteGroup>? Suites, IReadOnlyList<DutyEntry>? Duties);
 
-    /// <summary>One suite's part of the file, or the Foundation's.</summary>
-    private sealed record SuiteGroup(string Suite, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings);
+    /// <summary>One suite's part of the file, or the Foundation's: what it licenses, switches and sets, and the plans it brings (TF-244).</summary>
+    private sealed record SuiteGroup(string Suite, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings, IReadOnlyList<StarterPlanEntry>? Plans = null);
 }

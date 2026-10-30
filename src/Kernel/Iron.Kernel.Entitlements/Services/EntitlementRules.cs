@@ -34,6 +34,16 @@ public static class EntitlementRules
     /// <summary>The last day of the grace period after an end date.</summary>
     public static DateOnly GraceEnds(DateOnly endsOn, int graceDays) => endsOn.AddDays(Math.Max(0, graceDays));
 
+    /// <summary>
+    /// The grace days after an entry's end date: its own plan's (TF-244, a suite's plan has its own, ADR-0059), or the
+    /// document's for an entry written before plans per suite.
+    /// </summary>
+    public static int GraceDaysOf(EntitlementsDocument document, int? entryGraceDays)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return entryGraceDays ?? document.GraceDays;
+    }
+
     /// <summary>A licensed module from the document: not in it is not licensed.</summary>
     public static Entitlement Module(EntitlementsDocument document, string licence, DateOnly today)
     {
@@ -41,7 +51,7 @@ public static class EntitlementRules
         var entry = document.FindModule(licence);
         return entry is null
             ? new Entitlement(EntitlementStatus.Disabled, EntitlementReasons.NotLicensed)
-            : Evaluate(entry.Status, entry.StartsOn, entry.EndsOn, document.GraceDays, today);
+            : Evaluate(entry.Status, entry.StartsOn, entry.EndsOn, GraceDaysOf(document, entry.GraceDays), today);
     }
 
     /// <summary>
@@ -59,7 +69,7 @@ public static class EntitlementRules
         var entry = document.FindFeature(feature);
         var own = entry is null
             ? new Entitlement(EntitlementStatus.Disabled, EntitlementReasons.NotLicensed)
-            : Evaluate(entry.Status, entry.StartsOn, entry.EndsOn, document.GraceDays, today);
+            : Evaluate(entry.Status, entry.StartsOn, entry.EndsOn, GraceDaysOf(document, entry.GraceDays), today);
         return module is { Status: EntitlementStatus.ReadOnly } && own.Status == EntitlementStatus.Enabled
             ? new Entitlement(EntitlementStatus.ReadOnly, own.Reason)
             : own;

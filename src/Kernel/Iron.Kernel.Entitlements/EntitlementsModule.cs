@@ -62,6 +62,7 @@ public sealed class EntitlementsModule : IModule
         services.AddScoped<EntitlementEvaluator>();
         services.AddScoped<IEntitlements>(provider => provider.GetRequiredService<EntitlementEvaluator>());
         services.AddScoped<IEntitlementGate>(provider => provider.GetRequiredService<EntitlementEvaluator>());
+        services.AddScoped<ISuiteSubscriptions, SuiteSubscriptions>();
         services.AddScoped<IValidator<AssignSeatRequest>, AssignSeatRequestValidator>();
         services.AddContextPart<EntitlementsContextPart>(EntitlementsContextPart.PartName);
         services.AddHealthChecks().AddCheck<EntitlementsHealthCheck>("entitlements", HealthStatus.Degraded, ["ready"]);

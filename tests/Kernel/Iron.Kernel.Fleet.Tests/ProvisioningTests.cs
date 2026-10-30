@@ -661,12 +661,67 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.False((await root.ReadAsync($"tenants/{marked}/unit", TestContext.Current.CancellationToken))!.ContainsKey(SecretsStep.SampleRecordsKey));
     }
 
-    internal static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix, bool sampleRecords = false)
+    [Fact]
+    [Proves("TF-244 AC1", "TF-244 AC2", "TF-244 AC3", "TF-244 AC4", "ADR-0059")]
+    public async Task EveryCommandAndTheUnitOfATenantGetItsSuitesAndAddingOrRemovingOneIsAnUpdateThatRecreatesTheUnit()
+    {
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var with = await RegisterAndRequestAsync(provider, "suited", suites: ["procurement"]);
+        var without = await RegisterAndRequestAsync(provider, "bare");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        Assert.True(await harness.RunNextAsync());
+
+        // Provisioning: migrate, seed and the unit run with the tenant's suites, and only its own.
+        Assert.All(UnitsOf(runtime, with), unit => Assert.Equal("procurement", unit.Environment[UnitEnvironment.SuitesVariable]));
+        Assert.All(UnitsOf(runtime, without), unit => Assert.Equal(string.Empty, unit.Environment[UnitEnvironment.SuitesVariable]));
+        var seed = runtime.Commands.Single(c => c.Command == "seed" && c.Unit.Tenant.Slug == with).Unit;
+        Guid provisioning;
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            provisioning = (await scope.ServiceProvider.GetRequiredService<IProvisioningJobs>().LatestAsync(with, TestContext.Current.CancellationToken))!.Id;
+        }
+
+        Assert.Equal(provisioning.ToString("D"), seed.Environment["Seed__JobId"]);
+
+        // Added to an active tenant: an update job migrates, seeds and recreates the unit with the suite.
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var added = await scope.ServiceProvider.GetRequiredService<SuiteService>().AddAsync(without, new SuiteAddition("procurement", "procurement-essentials", null, null, "Bought the suite"), TestContext.Current.CancellationToken);
+            Assert.True(added.IsSuccess, added.IsFailure ? added.Error.Message : null);
+            Assert.Equal(JobKind.Update, added.Value.Job.Kind);
+        }
+
+        var before = runtime.Commands.Count;
+        Assert.True(await harness.RunNextAsync());
+        var update = runtime.Commands.Skip(before).Where(c => c.Unit.Tenant.Slug == without).ToList();
+        Assert.Equal(["migrate", "seed"], update.Select(c => c.Command).Where(c => c is "migrate" or "seed"));
+        Assert.All(update, c => Assert.Equal("procurement", c.Unit.Environment[UnitEnvironment.SuitesVariable]));
+        Assert.Equal("procurement", runtime.Applied.Last(u => u.Tenant.Slug == without).Environment[UnitEnvironment.SuitesVariable]);
+
+        // Removed: the next update recreates the unit without it; nothing removes a schema.
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var removed = await scope.ServiceProvider.GetRequiredService<SuiteService>().RemoveAsync(without, "procurement", "The contract ended", TestContext.Current.CancellationToken);
+            Assert.True(removed.IsSuccess, removed.IsFailure ? removed.Error.Message : null);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        Assert.Equal(string.Empty, runtime.Applied.Last(u => u.Tenant.Slug == without).Environment[UnitEnvironment.SuitesVariable]);
+        Assert.DoesNotContain(runtime.Removed, u => u.Tenant.Slug == without);
+    }
+
+    /// <summary>The units the fleet ran for a tenant: its image commands and its unit.</summary>
+    private static IEnumerable<UnitDefinition> UnitsOf(RecordingRuntime runtime, string slug) =>
+        runtime.Commands.Where(c => c.Unit.Tenant.Slug == slug && c.Command is "migrate" or "seed").Select(c => c.Unit).Concat(runtime.Applied.Where(u => u.Tenant.Slug == slug));
+
+    internal static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix, bool sampleRecords = false, IReadOnlyList<string>? suites = null)
     {
         var slug = $"{prefix}-{Ids.New():N}"[..20];
         await using var scope = provider.CreateAsyncScope();
         var registry = scope.ServiceProvider.GetRequiredService<TenantRegistry>();
-        var created = await registry.CreateAsync(new NewTenant(slug, prefix, [], $"admin@{prefix}.test", "Admin", SizeClass.Small, null, null, sampleRecords), TestContext.Current.CancellationToken);
+        var created = await registry.CreateAsync(new NewTenant(slug, prefix, [], $"admin@{prefix}.test", "Admin", SizeClass.Small, null, null, sampleRecords, suites?.Select(s => new SuiteChoice(s, "procurement-essentials")).ToList()), TestContext.Current.CancellationToken);
         Assert.True(created.IsSuccess, created.IsFailure ? created.Error.Message : null);
         var requested = await registry.RequestProvisioningAsync(slug, TestContext.Current.CancellationToken);
         Assert.True(requested.IsSuccess, requested.IsFailure ? requested.Error.Message : null);

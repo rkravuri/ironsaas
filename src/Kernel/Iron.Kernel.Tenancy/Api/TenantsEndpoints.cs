@@ -28,7 +28,11 @@ public sealed record CreateTenantRequest(
     SizeClass? SizeClass,
     string? Region,
     string? Plan,
-    bool? SampleRecords = null);
+    bool? SampleRecords = null,
+    IReadOnlyList<SuiteChoiceRequest>? Suites = null);
+
+/// <summary>A suite a new tenant starts with (TF-244), and its plan: the suite's only plan when none is named.</summary>
+public sealed record SuiteChoiceRequest(string Suite, string? Plan);
 
 /// <summary>Whether the tenant's unit runs the sample module, for testing (ADR-0057).</summary>
 public sealed record SampleRecordsRequest(bool Enabled);
@@ -48,6 +52,12 @@ public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenan
         RuleFor(r => r.Plan).MaximumLength(64);
         RuleFor(r => r.Hostnames).MaximumCount(10);
         RuleForEach(r => r.Hostnames).NotEmpty().MaximumLength(TenantHostname.MaxLength);
+        RuleFor(r => r.Suites).MaximumCount(10);
+        RuleForEach(r => r.Suites).ChildRules(suite =>
+        {
+            suite.RuleFor(s => s.Suite).NotEmpty().MaximumLength(Plan.SuiteMaxLength);
+            suite.RuleFor(s => s.Plan).MaximumLength(64);
+        });
     }
 }
 
@@ -140,7 +150,12 @@ internal static class TenantsEndpoints
             .Select(h => new { h.TenantId, h.Hostname })
             .ToListAsync(cancellationToken);
         var hostnames = rows.GroupBy(h => h.TenantId).ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(h => h.Hostname).Order(StringComparer.Ordinal).ToList());
-        return ApiResults.List(page.Map(tenant => TenantRegistry.ToRecord(tenant, hostnames.GetValueOrDefault(tenant.Id, []))), http, query);
+        var suiteRows = await context.Suites.AsNoTracking()
+            .Where(s => ids.Contains(s.TenantId))
+            .Select(s => new { s.TenantId, s.Suite })
+            .ToListAsync(cancellationToken);
+        var suites = suiteRows.GroupBy(s => s.TenantId).ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(s => s.Suite).Order(StringComparer.Ordinal).ToList());
+        return ApiResults.List(page.Map(tenant => TenantRegistry.ToRecord(tenant, hostnames.GetValueOrDefault(tenant.Id, []), suites.GetValueOrDefault(tenant.Id, []))), http, query);
     }
 
     private static async Task<IResult> GetAsync(string slug, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
@@ -152,7 +167,7 @@ internal static class TenantsEndpoints
     private static async Task<IResult> CreateAsync(CreateTenantRequest request, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
     {
         var result = await registry.CreateAsync(
-            new NewTenant(request.Slug, request.DisplayName, request.Hostnames ?? [], request.AdministratorLoginId, request.AdministratorDisplayName, request.SizeClass ?? SizeClass.Small, request.Region, request.Plan, request.SampleRecords ?? false),
+            new NewTenant(request.Slug, request.DisplayName, request.Hostnames ?? [], request.AdministratorLoginId, request.AdministratorDisplayName, request.SizeClass ?? SizeClass.Small, request.Region, request.Plan, request.SampleRecords ?? false, request.Suites?.Select(s => new SuiteChoice(s.Suite, s.Plan)).ToList()),
             cancellationToken);
         return ApiResults.From(result, http, tenant => TypedResults.Created($"{ApiRouting.Prefix}/tenants/{tenant.Slug}", tenant));
     }

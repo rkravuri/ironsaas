@@ -646,6 +646,32 @@
           "maximum": null,
           "whole_number": false
         }
+      ],
+      "plans": []
+    },
+    {
+      "suite": "procurement",
+      "modules": [
+        {
+          "code": "purchasing",
+          "module": "purchasing",
+          "subscription_type": "platform",
+          "features": []
+        }
+      ],
+      "features": [],
+      "flags": [],
+      "settings": [],
+      "plans": [
+        {
+          "code": "procurement-essentials",
+          "name": "eProcurement Essentials",
+          "grace_days": 30,
+          "modules": [
+            "purchasing"
+          ],
+          "features": []
+        }
       ]
     }
   ],

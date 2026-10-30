@@ -78,6 +78,10 @@
     <Project Path="src/Kernel/Iron.Kernel.Monitoring/Iron.Kernel.Monitoring.csproj" />
     <Project Path="src/Kernel/Iron.Kernel.Monitoring/Contracts/Iron.Kernel.Monitoring.Contracts.csproj" />
   </Folder>
+  <Folder Name="/src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/">
+    <Project Path="src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Iron.Suites.Procurement.Purchasing.csproj" />
+    <Project Path="src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Contracts/Iron.Suites.Procurement.Purchasing.Contracts.csproj" />
+  </Folder>
   <Folder Name="/src/Hosts/">
     <Project Path="src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />
     <Project Path="src/Hosts/Iron.Host.Worker/Iron.Host.Worker.csproj" />
@@ -112,6 +116,9 @@
     <Project Path="tests/Kernel/Iron.Kernel.Protection.Tests/Iron.Kernel.Protection.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Keys.Tests/Iron.Kernel.Keys.Tests.csproj" />
     <Project Path="tests/Kernel/Iron.Kernel.Monitoring.Tests/Iron.Kernel.Monitoring.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Suites/Procurement/">
+    <Project Path="tests/Suites/Procurement/Iron.Suites.Procurement.Purchasing.Tests/Iron.Suites.Procurement.Purchasing.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Iron.Analyzers/Iron.Analyzers.csproj" />

@@ -5,9 +5,19 @@ using Iron.Kernel.Security.Secrets;
 
 namespace Iron.Kernel.Fleet.Services.Steps;
 
-/// <summary>The environment the image commands and the unit get: the store address, the unit token and the path (TF-073). Nothing else.</summary>
+/// <summary>
+/// The environment the image commands and the unit get: the store address, the unit token and the path (TF-073), and
+/// the tenant's suites (TF-244, ADR-0059). Nothing else.
+/// </summary>
 public static class UnitEnvironment
 {
+    /// <summary>
+    /// The variable that names the tenant's suites, which the hosts read as <c>Suites:Installed</c> (ADR-0059). It is in
+    /// the unit's environment, not its secret, so a change of the tenant's suites changes the unit's containers and the
+    /// update recreates them: a unit runs exactly the suites the control plane records.
+    /// </summary>
+    public const string SuitesVariable = "Suites__Installed";
+
     /// <summary>How long a command's handover token lives: long enough for the command, too short to matter afterwards.</summary>
     public static readonly TimeSpan HandoverTokenLifetime = TimeSpan.FromMinutes(10);
 
@@ -42,6 +52,7 @@ public static class UnitEnvironment
             ["Secrets__Mount"] = fleetStore.Mount,
             ["Secrets__Path"] = $"tenants/{context.Slug}",
             ["OTEL_EXPORTER_OTLP_ENDPOINT"] = context.Options.Units.OtlpEndpoint,
+            [SuitesVariable] = string.Join(',', context.Tenant.InstalledSuites),
         };
     }
 
@@ -126,6 +137,9 @@ public sealed partial class SeedStep(IUnitRuntime runtime, ISecretStore secrets,
         environment["Seed__ServiceAccounts__0__ClientId"] = SmokeClientId;
         environment["Seed__ServiceAccounts__0__Secret"] = smokeSecret;
         environment["Seed__ServiceAccounts__0__Role"] = "service-default";
+
+        // The job that seeds, which a suite's seed records with its installation (TF-244, ADR-0059).
+        environment["Seed__JobId"] = context.JobId.ToString("D");
         await UnitEnvironment.AddHandoverAsync(environment, context, secrets, admin, cancellationToken).ConfigureAwait(false);
 
         var result = await runtime.RunCommandAsync(context.ToUnit(environment), ["seed"], cancellationToken).ConfigureAwait(false);
