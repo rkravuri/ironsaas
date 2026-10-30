@@ -49,6 +49,9 @@ record goes through `IRecordPolicies`; the data library references no module and
    (a page and its total) is three to four times faster with the column. So `BusinessRecord.VisibilityTags` is a
    `text[]` of codes on every business record's table, empty by default, so a table that had records before it
    carried tags migrates without a step. No index serves the filter, which is a condition on the row; none is made.
+   The model check refuses a business record whose table has no `text[]` column `visibility_tags`, renamed, converted
+   or mapped to no table, as it refuses one without its history (ADR-0051), so the build fails before such a module
+   runs.
 4. **A retired tag stays where it is** and still filters: records and people keep it, so a retirement never makes a
    record visible to someone who could not see it. It is put on nothing new and given to nobody; it can be taken off.
 5. **Rule 5, and the escalation rule for people.** Changing a record's tags is the policy action `tag`, which the

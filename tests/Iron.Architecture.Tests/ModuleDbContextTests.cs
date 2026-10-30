@@ -14,7 +14,7 @@ namespace Iron.Architecture.Tests;
 public class ModuleDbContextTests
 {
     [Fact]
-    [Proves("TF-062 AC2", "ADR-0008", "ADR-0029", "ADR-0043", "ADR-0051")]
+    [Proves("TF-062 AC2", "ADR-0008", "ADR-0029", "ADR-0043", "ADR-0051", "ADR-0057")]
     public void EveryModuleDbContextPassesTheModelCheck()
     {
         var projects = ProjectCatalog.Load(Repository.Root)
@@ -92,14 +92,16 @@ public class ModuleDbContextTests
         return assembly.GetTypes().Where(t => t is { IsAbstract: false, IsClass: true } && typeof(ModuleDbContext).IsAssignableFrom(t));
     }
 
-    /// <summary>Builds the context with its generic options, as a host would, but against a connection string that is never opened.</summary>
+    /// <summary>
+    /// Builds the context with the provider options a host and its migrations give it (<see cref="DesignTime"/>: Npgsql and
+    /// snake_case names), against a connection string that is never opened, so the check reads the table's real columns.
+    /// </summary>
     private static IReadOnlyList<string> CheckContext(Type contextType, bool isBusinessModule)
     {
-        var builderType = typeof(DbContextOptionsBuilder<>).MakeGenericType(contextType);
-        var builder = (DbContextOptionsBuilder)Activator.CreateInstance(builderType)!;
-        builder.UseNpgsql("Host=localhost;Database=model_check;Username=model;Password=check");
+        var optionsFor = typeof(DesignTime).GetMethod(nameof(DesignTime.OptionsFor))!.MakeGenericMethod(contextType);
+        var options = (DbContextOptions)optionsFor.Invoke(null, null)!;
 
-        using var context = (ModuleDbContext)Activator.CreateInstance(contextType, builder.Options)!;
+        using var context = (ModuleDbContext)Activator.CreateInstance(contextType, options)!;
         return ModelCheck.Check(context.Model, contextType.Name, isBusinessModule);
     }
 }

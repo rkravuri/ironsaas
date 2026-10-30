@@ -163,8 +163,7 @@ public class EncryptedFieldTests(PostgresFixture fixture, TransitFixture transit
     [Proves("ADR-0054")]
     public void TheModelCheckNamesASearchableFieldWithoutItsHashAndAHashOfNothing()
     {
-        var options = new DbContextOptionsBuilder<ContextWithBrokenEncryption>().UseNpgsql(fixture.ConnectionString).Options;
-        using var context = new ContextWithBrokenEncryption(options);
+        using var context = new ContextWithBrokenEncryption(DesignTime.OptionsFor<ContextWithBrokenEncryption>());
 
         var violations = ModelCheck.Check(context.Model, nameof(ContextWithBrokenEncryption), isBusinessModule: false);
 

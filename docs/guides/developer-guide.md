@@ -326,7 +326,7 @@ The page and its total count are counted under the policy. `PolicyQuery<T>` narr
 
 ## Visibility tags on a record type (TF-241, ADR-0057)
 
-Every business record carries visibility tags with no code of its own: `BusinessRecord.VisibilityTags`, a `text[]` of tag codes in the record's own table, empty by default. The policy engine filters every list and read by id by the reader's tags, after the scope rule and the module's policy, in the same query: a reader who holds tags sees a record without tags or one that shares a tag with them; one who holds none sees every record their roles allow. The field history records the tags as any other field. What a module does:
+Every business record carries visibility tags with no code of its own: `BusinessRecord.VisibilityTags`, a `text[]` of tag codes in the record's own table, empty by default. The policy engine filters every list and read by id by the reader's tags, after the scope rule and the module's policy, in the same query: a reader who holds tags sees a record without tags or one that shares a tag with them; one who holds none sees every record their roles allow. The field history records the tags as any other field. Leave the property as the conventions map it: the model check fails, naming the entity, for a business record whose table has no `text[]` column `visibility_tags` (renamed, converted or mapped to no table), as it does for one without its history. What a module does:
 
 **Let people change the tags.** The action `tag` belongs to the policy, like `share`; give it a permission, usually the module's manage permission:
 

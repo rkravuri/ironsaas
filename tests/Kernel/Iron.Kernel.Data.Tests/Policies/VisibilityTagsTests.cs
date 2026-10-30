@@ -1,3 +1,5 @@
+using Iron.Kernel.Data.Checks;
+using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Lists;
@@ -44,7 +46,8 @@ public sealed class TestVisibilityTags : IVisibilityTags
 /// Visibility tags in the record policy's query against PostgreSQL (TF-241, ADR-0057), on the sample module: the filter
 /// after the scope rule and the policy, in lists and by id, with the paging totals; the explanation's tag check; rule 5
 /// when tags are put on a record or taken off; a retired tag; the filter beside a share and the working unit; the field
-/// history of a change; and an order that takes its supplier's tags (rule 6).
+/// history of a change; an order that takes its supplier's tags (rule 6); and the model check's refusal of a record type
+/// whose table has no column for them.
 /// </summary>
 [Collection(PostgresCollection.Name)]
 public class VisibilityTagsTests(PostgresFixture fixture)
@@ -328,6 +331,19 @@ public class VisibilityTagsTests(PostgresFixture fixture)
             Tags().Hold(_manager, [.. holds]),
             recorder: recorder);
 
+    [Fact]
+    [Proves("ADR-0057")]
+    public void TheModelCheckFailsNamingABusinessRecordWhoseTableHasNoVisibilityTagsColumn()
+    {
+        using var context = new ContextWithUntaggedRecords(DesignTime.OptionsFor<ContextWithUntaggedRecords>());
+
+        var violations = ModelCheck.Check(context.Model, nameof(ContextWithUntaggedRecords), isBusinessModule: true);
+
+        Assert.Equal(2, violations.Count);
+        Assert.Contains(violations, v => v.StartsWith("ContextWithUntaggedRecords: Parcel is a business record whose table has no visibility_tags column.", StringComparison.Ordinal));
+        Assert.Contains(violations, v => v.StartsWith("ContextWithUntaggedRecords: Pallet is a business record whose table has no visibility_tags column.", StringComparison.Ordinal));
+    }
+
     private static TestVisibilityTags Tags() => new TestVisibilityTags().Define("APAC").Define("EMEA").Define("LATAM").Define("NA").Define("OLD", active: false);
 
     private ServiceProvider Services(Guid principal, TestRecordAccess access, TestVisibilityTags tags, IUnitReach? units = null, KeptChanges? recorder = null) =>
@@ -400,5 +416,41 @@ public class VisibilityTagsTests(PostgresFixture fixture)
             Changes.AddRange(changes);
             return Task.CompletedTask;
         }
+    }
+}
+
+/// <summary>A business record whose module renamed its tags' column, for the model check's refusal (ADR-0057).</summary>
+public sealed class Parcel : BusinessRecord, ITrackedChanges
+{
+    private Parcel()
+    {
+    }
+
+    public string Label { get; private set; } = string.Empty;
+}
+
+/// <summary>A business record whose module stored its tags as one text, for the model check's refusal (ADR-0057).</summary>
+public sealed class Pallet : BusinessRecord, ITrackedChanges
+{
+    private Pallet()
+    {
+    }
+
+    public string Label { get; private set; } = string.Empty;
+}
+
+[Schema("kernel_untagged")]
+public sealed class ContextWithUntaggedRecords(DbContextOptions<ContextWithUntaggedRecords> options) : ModuleDbContext(options)
+{
+    public DbSet<Parcel> Parcels => Set<Parcel>();
+
+    public DbSet<Pallet> Pallets => Set<Pallet>();
+
+    protected override void ConfigureModule(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Parcel>().Property(p => p.VisibilityTags).HasColumnName("tags");
+        modelBuilder.Entity<Pallet>().Property(p => p.VisibilityTags).HasConversion(
+            tags => string.Join(',', tags),
+            text => text.Split(',', StringSplitOptions.RemoveEmptyEntries));
     }
 }
