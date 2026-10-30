@@ -1,8 +1,8 @@
 # ADR-0059: Suites per tenant: the eProcurement Suite's skeleton, a plan per suite, and what a unit loads
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-30
-**Decided by:** Product owner and architect; the owner chose Option B on 2026-10-29, in the brief of V2
+**Decided by:** Product owner and architect; the owner chose Option B on 2026-10-29, in the brief of V2; accepted at the design session's review of V2 (2026-10-31)
 
 ## Context
 
