@@ -248,6 +248,12 @@ class PrdCheckTest(unittest.TestCase):
         self.files["business-foundation-PRD.md"] = self.files["foundation/business-foundation-PRD.md"].replace("BF-001", "BF-002")
         self.assert_refused("business-foundation-PRD.md: a document the check does not know")
 
+    def test_a_suites_readme_is_not_a_requirements_document(self) -> None:
+        """A suite's README holds its module list, not requirements, and the check passes it by. [ADR-0058]"""
+        self.files["suites/procurement/README.md"] = "# The eProcurement Suite's modules\n\n| # | Module | Document |\n|---|---|---|\n| 3 | Requests and Intake | REQ-001 |\n"
+        status, output = self.run_check()
+        self.assertEqual(status, 0, output)
+
     def retire_the_request(self, notes: str, orders_depend_on: str = "REQ-002, BF-001") -> None:
         """REQ-001 retired, REQ-002 beside it as its successor, and Orders depending on what it is given (ADR-0041)."""
         retired = block("REQ-001", "Requests", "Requests", GOOD, "BF-001", notes).replace("`[Carried]`", "`[Retired]`")

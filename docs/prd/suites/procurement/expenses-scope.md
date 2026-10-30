@@ -2,11 +2,11 @@
 
 | Item | Value |
 |---|---|
-| Document | One-page scope of a later product (ADR-0041). Its full PRD starts from its own process reference pack (PM-001), reviewed by an external practitioner (PM-002). |
-| Layer | Suite (ADR-0043): a later product of the eProcurement Suite, on IronSaaS Foundation |
+| Document | One-page scope of a later module (ADR-0041, ADR-0058). Its full PRD starts from its own process reference pack (PM-001), reviewed by an external practitioner (PM-002). |
+| Layer | Suite (ADR-0043): a wave-3 module of the eProcurement Suite, on IronSaaS Foundation |
 | Identifier prefix | `EXP-`, reserved; no requirements yet |
-| Version | 1.1 (accepted at the review of 2026-10-20; moved to `docs/prd/suites/procurement/` by ADR-0043) |
-| Date | 2026-10-20 |
+| Version | 1.2 (EPS-modules, 2026-10-30: a wave-3 module of the owner's module list; its scope unchanged) |
+| Date | 2026-10-30 |
 
 ## Purpose
 

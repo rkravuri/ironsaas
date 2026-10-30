@@ -277,3 +277,12 @@ At the review of L2 on 2026-10-20 the design session decided that the Foundation
 | BF-202 | Go-live checklist and data readiness | split | BF-202, PUR-081 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The view stays; the suite's items, its suppliers and items among them, move. |
 | BF-203 | Organisation readiness checklist | split | BF-203, PUR-081 | `foundation/business-foundation-PRD.md`, `suites/procurement/purchasing-PRD.md` |  |  |  | The checklist stays; its enabled suppliers are the suite's item. |
 | SUP-005 | Supplier onboarding configuration | split | SUP-005, SPX-007 | `suites/procurement/supplier-management-PRD.md`, `suites/procurement/supplier-portal-PRD.md` |  |  |  | Its portal channels to the supplier portal, beside BF-106's. |
+
+## Scopes changed after the split
+
+On 2026-10-29 the owner decided the eProcurement Suite's module list (`suites/procurement/README.md`, ADR-0058). The scope pages hold no requirements, so no row of the map moved; the scopes the split wrote changed on 2026-10-30 (EPS-modules):
+
+- **Surveys** left the suite. `suites/procurement/surveys-scope.md` is removed: the forms engine (TF-242, S4) runs surveys, sent to people inside or outside the tenant, for any suite, and procurement uses them through supplier information collection (SUP-221 to SUP-231) and Sourcing's evaluations. Its prefix `SRV-` is retired and never given to another document.
+- **Auctions** merged into Sourcing as a licensed feature, `sourcing.auctions`. `suites/procurement/auctions-scope.md` is removed and its content is in `suites/procurement/sourcing-scope.md`; its prefix `AUC-` stays reserved and unused, and auctions' requirements will take `SRC-`.
+- **Projects and tasks** became **Category and Savings Projects**, `suites/procurement/category-and-savings-projects-scope.md`, keeping `PRJ-`. A project as a cost object stays the Business PRD's (BF-075).
+- Four modules are new, each with a scope page and a reserved prefix: Spend Analytics and Savings (`ANL-`), Supplier Risk and Sustainability (`RSK-`), Payments (`PAY-`), Services and Contingent Workforce (`SVC-`).

@@ -28,4 +28,4 @@ A later product may use an earlier one's Contracts; an earlier one hears from a 
 
 The supplier portal is a surface above the products, not a product: each product contributes its supplier views, which obey the portal's rules, such as supplier ownership (`docs/prd/suites/procurement/supplier-portal-PRD.md`, SPX-006).
 
-Later products, each a one-page scope until its full PRD is written: sourcing, auctions, expenses, projects and tasks, surveys (`docs/prd/suites/procurement/*-scope.md`).
+The suite's fifteen modules, with their licensing and waves, are listed in `docs/prd/suites/procurement/README.md` (ADR-0058). The later ones are each a one-page scope until their full PRD is written: Spend Analytics and Savings, Sourcing with auctions as a feature, Category and Savings Projects, Supplier Risk and Sustainability, Payments, Services and Contingent Workforce, and Expenses (`docs/prd/suites/procurement/*-scope.md`).

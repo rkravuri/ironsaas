@@ -30,7 +30,7 @@ and the identifier of every problem:
   slice, except through an event or as a known case listed in KNOWN_LATER with its reason.
 
 The Foundation's documents sit in foundation/, each suite's in suites/<suite>/; the product method, the map and the
-archive stay at the top of docs/prd. A pack's BPMN maps are checked against the BPMN 2.0 schema by
+archive stay at the top of docs/prd. A README is no requirements document, a suite's module list among them (ADR-0058). A pack's BPMN maps are checked against the BPMN 2.0 schema by
 tools/Iron.ProcessMaps, which `make prd-check` runs after this check (ADR-0045).
 
 Standard library only, so CI needs nothing but Python 3. Exit status 1 when anything is wrong.
@@ -69,6 +69,8 @@ DOCUMENTS = {
     "suites/procurement/purchasing-PRD.md": "PUR",
 }
 NOT_REQUIREMENT_DOCUMENTS = {"README.md", "requirements-map.md"}
+# A README is never a requirements document, wherever it stands: a suite's README holds its module list (ADR-0058).
+README = "README.md"
 # Process reference packs (PM-001) live in a folder of this name beside their suite's documents, with their BPMN maps.
 PACK_FOLDER = "process-reference"
 # The sections every product PRD of a suite has; a later suite states its own when its first PRD is written.
@@ -286,7 +288,7 @@ def documents() -> tuple[list[Document], list[str]]:
     problems = []
     found = {path.relative_to(PRD).as_posix() for path in PRD.rglob("*.md") if not path.relative_to(PRD).as_posix().startswith("archive/")}
     found -= NOT_REQUIREMENT_DOCUMENTS
-    found = {name for name in found if not name.endswith("-scope.md") and f"/{PACK_FOLDER}/" not in f"/{name}"}
+    found = {name for name in found if not name.endswith(("-scope.md", f"/{README}")) and f"/{PACK_FOLDER}/" not in f"/{name}"}
     for name in sorted(found - DOCUMENTS.keys()):
         problems.append(f"{name}: a document the check does not know; add it with its prefix to DOCUMENTS in tools/prd_check.py")
     for name in sorted(DOCUMENTS.keys() - found):
