@@ -2,7 +2,11 @@
 
 The first suite on IronSaaS Foundation (ADR-0043): source to pay for regulated industries. Short name `procurement`: projects `Iron.Suites.Procurement.<Module>`, schemas `procurement_<module>`, shell modules in `shell/src/modules/suites/procurement/`, requirements in `docs/prd/suites/procurement/`.
 
-No projects yet. The requirements are specified, and the technical PRD's section 7 proposes the slices (PR1 to PR8, after the business slices B1 to B4); TF-244 (suites per tenant) comes before the first of them.
+The requirements are specified, and the technical PRD's section 7 proposes the slices (PR1 to PR8, after the business slices B1 to B4). TF-244 (suites per tenant) came first, in V2 (ADR-0059): the suite is declared in code with its first module, Purchasing, as a skeleton. A tenant has the suite only when it bought it; its plans are the suite's own, starting with eProcurement Essentials (`procurement-essentials`, 30 days of grace, Purchasing), and later modules join them as they arrive.
+
+| Project | What it holds today |
+|---|---|
+| `Iron.Suites.Procurement.Purchasing` | The suite's definition, its installation record and its About page (`Iron.Suites.Procurement.Purchasing/README.md`); PR0 fills it with the masters below |
 
 ## Shared masters
 

@@ -19,8 +19,14 @@ namespace Iron.Kernel.Entitlements.Api;
 /// <summary>One module or feature as the shell needs it: what applies to the signed-in person now, and why.</summary>
 public sealed record ContextEntry(string Code, EntitlementStatus Status, string Reason);
 
-/// <summary>The entitlements part of <c>/me/context</c>: the answer's revision and age, and every licensed module and feature of this build.</summary>
-public sealed record ContextEntitlements(int Revision, string? Plan, DateTimeOffset? ConfirmedAt, bool Stale, IReadOnlyList<ContextEntry> Modules, IReadOnlyList<ContextEntry> Features);
+/// <summary>A suite this unit runs, as the shell names and groups it (TF-244): its short name, its name, and the plan the tenant holds for it.</summary>
+public sealed record ContextSuite(string Code, string Name, string? Plan);
+
+/// <summary>
+/// The entitlements part of <c>/me/context</c>: the answer's revision and age, every licensed module and feature this unit
+/// loaded, and the suites it runs (TF-244), so the shell groups and shows only those.
+/// </summary>
+public sealed record ContextEntitlements(int Revision, string? Plan, DateTimeOffset? ConfirmedAt, bool Stale, IReadOnlyList<ContextEntry> Modules, IReadOnlyList<ContextEntry> Features, IReadOnlyList<ContextSuite> Suites);
 
 
 public sealed record SeatsResponse(int? Limit, int Assigned, int? Remaining);
@@ -32,8 +38,11 @@ public sealed record SubscriptionModule(string Code, string Module, Subscription
 
 public sealed record SubscriptionFeature(string Code, string Description, string Module, string? Licence, EntitlementStatus Status, string Reason, DateOnly? StartsOn, DateOnly? EndsOn, DateOnly? GraceEndsOn);
 
-/// <summary>The tenant's subscription for its administrators (the console's Subscription page): read only, plans are the operator's.</summary>
-public sealed record SubscriptionResponse(string? Plan, int Revision, DateTimeOffset? ConfirmedAt, bool Stale, int GraceDays, IReadOnlyList<SubscriptionModule> Modules, IReadOnlyList<SubscriptionFeature> Features);
+/// <summary>
+/// The tenant's subscription for its administrators (the console's Subscription page): read only, plans are the
+/// operator's. The plan and grace days are the Foundation plan's; each suite the tenant has names its own (TF-244).
+/// </summary>
+public sealed record SubscriptionResponse(string? Plan, int Revision, DateTimeOffset? ConfirmedAt, bool Stale, int GraceDays, IReadOnlyList<SubscriptionModule> Modules, IReadOnlyList<SubscriptionFeature> Features, IReadOnlyList<SuitePlan> Suites);
 
 public sealed record SeatResponse(Guid Id, string Module, Guid PrincipalId, DateTimeOffset CreatedAt)
 {
@@ -99,7 +108,7 @@ internal static class EntitlementsEndpoints
                 entitlement.Reason,
                 StartsOn(entry?.StartsOn),
                 entry?.EndsOn,
-                entry?.EndsOn is { } end ? EntitlementRules.GraceEnds(end, graceDays) : null,
+                document is not null && entry?.EndsOn is { } end ? EntitlementRules.GraceEnds(end, EntitlementRules.GraceDaysOf(document, entry.GraceDays)) : null,
                 seat is null ? null : new SeatsResponse(seat.Limit, seat.Assigned, seat.Remaining));
         }).ToList();
 
@@ -107,10 +116,10 @@ internal static class EntitlementsEndpoints
         {
             var entry = document?.FindFeature(feature.Code);
             var entitlement = entitlements.Feature(feature.Code);
-            return new SubscriptionFeature(feature.Code, feature.Description, feature.Module, feature.Licence, entitlement.Status, entitlement.Reason, StartsOn(entry?.StartsOn), entry?.EndsOn, entry?.EndsOn is { } end ? EntitlementRules.GraceEnds(end, graceDays) : null);
+            return new SubscriptionFeature(feature.Code, feature.Description, feature.Module, feature.Licence, entitlement.Status, entitlement.Reason, StartsOn(entry?.StartsOn), entry?.EndsOn, document is not null && entry?.EndsOn is { } end ? EntitlementRules.GraceEnds(end, EntitlementRules.GraceDaysOf(document, entry.GraceDays)) : null);
         }).ToList();
 
-        return TypedResults.Ok(new SubscriptionResponse(document?.Plan, document?.Revision ?? 0, current?.ConfirmedAt, entitlements.Snapshot is null, graceDays, modules, features));
+        return TypedResults.Ok(new SubscriptionResponse(document?.Plan, document?.Revision ?? 0, current?.ConfirmedAt, entitlements.Snapshot is null, graceDays, modules, features, document?.Suites ?? []));
     }
 
     private static async Task<IResult> ListSeatsAsync(HttpContext http, EntitlementsDbContext context, CancellationToken cancellationToken)

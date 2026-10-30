@@ -58,6 +58,11 @@ public sealed class TenancyModule : IModule
         services.AddScoped<IValidator<SavePlanRequest>, SavePlanRequestValidator>();
         services.AddScoped<IValidator<ApplyPlanRequest>, ApplyPlanRequestValidator>();
 
+        // A tenant's suites, added and removed by the operator and installed by the fleet (TF-244, ADR-0059).
+        services.AddScoped<SuiteService>();
+        services.AddScoped<IValidator<AddSuiteRequest>, AddSuiteRequestValidator>();
+        services.AddScoped<IValidator<RemoveSuiteRequest>, RemoveSuiteRequestValidator>();
+
         // The operator's support and emergency access, and the platform's documents (TF-025, TF-026, TF-028, ADR-0049).
         services.AddScoped<OperatorNames>();
         services.AddScoped<OperatorImpersonation>();
@@ -96,6 +101,7 @@ public sealed class TenancyModule : IModule
         ArgumentNullException.ThrowIfNull(endpoints);
         TenantsEndpoints.Map(endpoints);
         EntitlementEndpoints.Map(endpoints);
+        SuiteEndpoints.Map(endpoints);
         FlagEndpoints.Map(endpoints);
         OperatorAccessEndpoints.Map(endpoints);
         AuditChainEndpoints.Map(endpoints);

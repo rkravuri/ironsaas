@@ -996,3 +996,65 @@ export async function stubSettings(target: Page): Promise<void> {
     return route.fulfill({ json: url.searchParams.get("scope") === "unit" ? northSettings : tenantSettings });
   });
 }
+
+/** GET /api/v1/suites/procurement/about as a unit with the eProcurement Suite answers it (TF-244, ADR-0059). */
+export const procurementAbout = {
+  suite: "procurement",
+  name: "eProcurement Suite",
+  description:
+    "Source to pay for regulated industries: supplier management, requests and intake, catalogues, orders, receiving, invoicing and contracts, with one portal for suppliers.",
+  version: "2026.10.30.7",
+  installation: {
+    installed_at: "2026-10-30T09:00:00Z",
+    installed_by_job: "01a1aaaa-0000-7000-8000-0000000000b1",
+    installed_version: "2026.10.30.7",
+    seeded_at: "2026-10-30T09:00:00Z",
+    seeded_by_job: "01a1aaaa-0000-7000-8000-0000000000b1",
+    seeded_version: "2026.10.30.7",
+  },
+  plan: "procurement-essentials",
+  grace_days: 30,
+  stale: false,
+  modules: [
+    {
+      code: "purchasing",
+      module: "purchasing",
+      description: null,
+      status: "enabled",
+      reason: "licensed",
+      starts_on: "2026-10-30",
+      ends_on: null,
+      grace_ends_on: null,
+    },
+  ],
+  features: [] as unknown[],
+};
+
+/** The console stubs for a tenant whose unit runs the eProcurement Suite: the context names it, and its About page answers. */
+export async function stubProcurementSuite(target: Page, body: unknown = procurementAbout): Promise<void> {
+  await stubConsole(target);
+  const permissions = [...administrator, "purchasing.suite.read"];
+  await target.route("**/api/v1/me", (route) =>
+    route.fulfill({
+      json: {
+        ...me,
+        permissions,
+        permissions_anywhere: permissions,
+        home_unit: { id: units[0].id, name: units[0].name, code: units[0].code },
+      },
+    }),
+  );
+  await target.route("**/api/v1/me/context", (route) =>
+    route.fulfill({
+      json: {
+        ...context,
+        entitlements: {
+          ...context.entitlements,
+          modules: [{ code: "purchasing", status: "enabled", reason: "licensed" }],
+          suites: [{ code: "procurement", name: "eProcurement Suite", plan: "procurement-essentials" }],
+        },
+      },
+    }),
+  );
+  await target.route("**/api/v1/suites/procurement/about", (route) => route.fulfill({ json: body }));
+}

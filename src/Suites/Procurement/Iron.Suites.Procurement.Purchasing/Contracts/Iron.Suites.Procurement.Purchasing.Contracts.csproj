@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The public surface of Iron.Suites.Procurement.Purchasing: the suite's name, the module's licence, permissions and audit events. References Iron.Kernel only. -->
+  <PropertyGroup>
+    <IronLayer>Suite</IronLayer>
+    <IronSuite>Procurement</IronSuite>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../../Kernel/Iron.Kernel/Iron.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

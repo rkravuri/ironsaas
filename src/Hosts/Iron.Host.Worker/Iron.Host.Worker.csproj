@@ -23,6 +23,8 @@
     <ProjectReference Include="../../Kernel/Iron.Kernel.Monitoring/Iron.Kernel.Monitoring.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Protection/Iron.Kernel.Protection.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Files/Iron.Kernel.Files.csproj" />
+    <!-- The suites this image carries (ADR-0043, ADR-0059): a unit loads those its configuration names. -->
+    <ProjectReference Include="../../Suites/Procurement/Iron.Suites.Procurement.Purchasing/Iron.Suites.Procurement.Purchasing.csproj" />
   </ItemGroup>
 
 </Project>

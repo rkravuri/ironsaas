@@ -16,8 +16,12 @@ public sealed record SmokeOptions(
     Uri? AlertmanagerUrl,
     string ReportPath,
     TimeSpan ProvisionTimeout,
-    bool SampleRecords = false)
+    bool SampleRecords = false,
+    IReadOnlyList<string>? Suites = null)
 {
+    /// <summary>The suites a tenant the smoke registers starts with (TF-244), each under its only plan; none unless SMOKE_SUITES names them.</summary>
+    public IReadOnlyList<string> NewTenantSuites => Suites ?? [];
+
     public string Hostname => $"{Tenant}.{BaseDomain}";
 
     public string AdministratorLoginId => $"admin@{Hostname}";
@@ -46,6 +50,9 @@ public sealed record SmokeOptions(
             TimeSpan.FromSeconds(int.Parse(Get("SMOKE_PROVISION_TIMEOUT_SECONDS", "900"), System.Globalization.CultureInfo.InvariantCulture)),
 
             // A tenant the smoke registers runs the sample module when this says so, as the release's does (ADR-0057).
-            Get("SMOKE_SAMPLE_RECORDS", "0") == "1");
+            Get("SMOKE_SAMPLE_RECORDS", "0") == "1",
+
+            // And the suites this names, as the release's tenant has the eProcurement Suite (ADR-0059).
+            [.. Get("SMOKE_SUITES", string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)]);
     }
 }

@@ -32,6 +32,21 @@ What a tenant may use is decided here and nowhere else. Kernel modules are the p
 - **To the unit.** After every committed change the effective entitlements go to the store at `tenants/<slug>/entitlements` (key `document`, Iron.Kernel.Entitlements' `EntitlementsDocument`), and the tenant's `published_revision` follows. When the store refuses, the fleet worker's `EntitlementReconciler` writes every tenant whose copy is behind, every minute (`Tenancy:Reconcile:Seconds`). The fleet's secrets step writes them again on every provisioning and update, so a store that lost them heals with the unit.
 - `make apply-plan TENANT=echo PLAN=Enterprise` shows the preview and applies it (`DRY_RUN=1` previews only; `STARTS` and `ENDS` set the dates); the seeded plans are `standard` (no `authorization.role_transfer`, 14 grace days) and `enterprise` (with it, 30 grace days).
 
+## Suites per tenant and plans per suite (TF-244, ADR-0059)
+
+- **A plan belongs to a group**: the Foundation (`suite: "foundation"`, the default) or one suite (its short name, `suite` on `PUT /api/v1/plans/{code}` when the plan is created; a plan keeps its group, `tenancy.plan.suite_fixed`). It names only its own group's modules and features, as the catalogue groups them: another group's is refused when the plan is saved and again when it is applied (`tenancy.plan.other_group`, each problem naming the code and its group); a group this build does not carry is `tenancy.plan.suite_unknown`. Standard and Enterprise are Foundation plans; the seed also creates each suite's starter plans from the catalogue (`procurement-essentials`), once.
+- **A tenant's suites** are rows of `kernel_tenancy.tenant_suites`: the suite, the plan the tenant holds for it and that plan's grace days. Every entitlement row carries its group (`suite`). Applying a plan changes only its own group's rows; a suite's plan needs the tenant to have the suite (`tenancy.suite.not_installed`). One revision counts every change of any group.
+- **The document** for the store is the union of the tenant's rows, each module and feature with its group and its own plan's grace days, and `suites` with each suite's plan; so a Foundation feature applies whatever suites the tenant has.
+
+| Operation | Endpoint | Permission | Refused when |
+|---|---|---|---|
+| A tenant's suites | `GET /api/v1/tenants/{slug}/suites` (suite, plan, grace days, added at); also `suites` on the tenant's record | `tenancy.tenants.read` | |
+| Register a tenant with suites | `POST /api/v1/tenants` with `suites` (`suite`, optional `plan`) and an optional `reason` | `tenancy.tenants.manage` | a suite this build does not carry (`tenancy.suite.unknown`); a plan of another group (`tenancy.plan.other_group`); a suite with several plans and none named (`tenancy.suite.plan_required`) |
+| Add a suite | `POST /api/v1/tenants/{slug}/suites` with `suite`, optional `plan`, `starts_on`, `ends_on`, and `reason`: 202 with the entitlements' change and the update job | `tenancy.suites.manage` (critical) | no reason (`tenancy.suite.reason_required`); a tenant that is not active; the suite already there (`tenancy.suite.installed`); another job of the tenant open (`fleet.job.in_progress`) |
+| Remove a suite | `POST /api/v1/tenants/{slug}/suites/{suite}/remove` with `reason`: 202 with the entitlements removed and the update job | `tenancy.suites.manage` | no reason; a tenant that is not active; a suite it does not have (`tenancy.suite.not_installed`); another job open |
+
+Adding a suite applies its plan, writes the history and `tenancy.suite_added` (high severity, the operator's name, the suite, the plan, the job, the reason) and asks the fleet for an update job, in one transaction; removing one deletes the suite's row and its entitlements with one history row each and `tenancy.suite_removed`, and asks for an update job, in one transaction. The store's copy follows each commit. The fleet's update job then installs the suite in the unit or recreates the unit without it; nothing deletes the suite's data (`Iron.Kernel.Fleet`'s README).
+
 
 ## A tenant administrator's recovery (TF-017, ADR-0046)
 

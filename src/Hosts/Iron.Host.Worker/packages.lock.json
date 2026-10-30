@@ -474,6 +474,23 @@
           "Iron.Kernel": "[1.0.0, )"
         }
       },
+      "iron.suites.procurement.purchasing": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Entitlements.Contracts": "[1.0.0, )",
+          "Iron.Suites.Procurement.Purchasing.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.suites.procurement.purchasing.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
       "Azure.Storage.Blobs": {
         "type": "CentralTransitive",
         "requested": "[12.30.1, )",

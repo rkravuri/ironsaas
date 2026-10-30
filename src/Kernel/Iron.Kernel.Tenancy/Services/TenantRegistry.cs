@@ -8,12 +8,16 @@ using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Tenancy.Services;
 
-public sealed record NewTenant(string Slug, string DisplayName, IReadOnlyList<string> Hostnames, string AdministratorLoginId, string? AdministratorDisplayName, SizeClass SizeClass, string? Region, string? Plan, bool SampleRecords = false);
+/// <summary>A suite a new tenant starts with, and its plan: the suite's only plan when none is named (TF-244).</summary>
+public sealed record SuiteChoice(string Suite, string? Plan = null);
+
+/// <summary>A tenant to register; <see cref="Reason"/> is the operator's, which the audit trail and the entitlements' history keep.</summary>
+public sealed record NewTenant(string Slug, string DisplayName, IReadOnlyList<string> Hostnames, string AdministratorLoginId, string? AdministratorDisplayName, SizeClass SizeClass, string? Region, string? Plan, bool SampleRecords = false, IReadOnlyList<SuiteChoice>? Suites = null, string? Reason = null);
 
 /// <summary>
 /// The tenant registry (TF-001): create with unique slug and hostnames, read, change status, and ask the fleet to
-/// provision (TF-002). A tenant, its hostnames and its plan's entitlements are written with the audit events in one
-/// transaction; the entitlements go to the store after the commit (ADR-0034).
+/// provision (TF-002). A tenant, its hostnames, its suites and its plans' entitlements are written with the audit events
+/// in one transaction; the entitlements go to the store after the commit (ADR-0034, ADR-0059).
 /// </summary>
 public sealed class TenantRegistry(
     TenancyDbContext context,
@@ -58,16 +62,45 @@ public sealed class TenantRegistry(
         }
 
         var plan = (request.Plan ?? options.DefaultPlan).Trim().ToLowerInvariant();
+        var suites = new List<(string Suite, string Plan)>();
+        foreach (var choice in request.Suites ?? [])
+        {
+            var suite = choice.Suite.Trim().ToLowerInvariant();
+            if (suites.Any(s => s.Suite == suite))
+            {
+                continue;
+            }
+
+            var suitePlan = await entitlements.SuitePlanAsync(suite, choice.Plan, cancellationToken).ConfigureAwait(false);
+            if (suitePlan.IsFailure)
+            {
+                return suitePlan.Error;
+            }
+
+            suites.Add((suite, suitePlan.Value));
+        }
+
         var tenant = new Tenant(tenantId, request.DisplayName, request.Region ?? options.DefaultRegion, plan, request.SizeClass, request.AdministratorLoginId, request.AdministratorDisplayName);
         tenant.MarkForSampleRecords(request.SampleRecords);
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         context.Tenants.Add(tenant);
         context.Hostnames.AddRange(hostnames.Select(h => new TenantHostname(tenant.Id, h)));
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.TenantCreated, AuditOutcome.Success, tenant.CreatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["hostnames"] = string.Join(",", hostnames), ["size_class"] = tenant.SizeClass.ToString().ToLowerInvariant(), ["plan"] = plan, ["sample_records"] = tenant.SampleRecords ? "true" : "false" }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
+        await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.TenantCreated, AuditOutcome.Success, tenant.CreatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["hostnames"] = string.Join(",", hostnames), ["size_class"] = tenant.SizeClass.ToString().ToLowerInvariant(), ["plan"] = plan, ["suites"] = string.Join(",", suites.Select(s => $"{s.Suite}:{s.Plan}")), ["sample_records"] = tenant.SampleRecords ? "true" : "false" }, "tenant", tenant.Id, Reason(request.Reason)), cancellationToken).ConfigureAwait(false);
 
         // A tenant starts with its plan's entitlements (TF-042), in the same transaction; an unknown plan refuses the tenant.
-        var applied = await entitlements.ApplyWithinAsync(tenant, new PlanApplication(plan, null, null, $"Tenant created with the plan {plan}"), cancellationToken).ConfigureAwait(false);
+        // So do its suites with theirs (TF-244): the provisioning job then installs them in its unit.
+        var applied = await entitlements.ApplyWithinAsync(tenant, new PlanApplication(plan, null, null, Reason(request.Reason) ?? $"Tenant created with the plan {plan}"), cancellationToken).ConfigureAwait(false);
+        foreach (var (suite, suitePlan) in suites)
+        {
+            if (applied.IsFailure)
+            {
+                break;
+            }
+
+            applied = await entitlements.AddSuiteWithinAsync(tenant, suite, new PlanApplication(suitePlan, null, null, Reason(request.Reason) ?? $"Tenant created with the suite {suite} and its plan {suitePlan}"), cancellationToken).ConfigureAwait(false);
+        }
+
         if (applied.IsFailure)
         {
             return applied.Error.Code == TenancyErrors.PlanNotFound
@@ -79,8 +112,8 @@ public sealed class TenantRegistry(
         await publisher.PublishAsync(tenant.Slug, cancellationToken).ConfigureAwait(false);
         await flags.PublishAsync(tenant.Slug, cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("Tenant {Slug} created with {Count} hostname(s) and the plan {Plan}.", tenant.Slug, hostnames.Count, plan);
-        return ToRecord(tenant, hostnames);
+        logger.LogInformation("Tenant {Slug} created with {Count} hostname(s), the plan {Plan} and {Suites} suite(s).", tenant.Slug, hostnames.Count, plan, suites.Count);
+        return ToRecord(tenant, hostnames, [.. suites.Select(s => s.Suite).Order(StringComparer.Ordinal)]);
     }
 
     public async Task<TenantRecord?> FindAsync(string slug, CancellationToken cancellationToken)
@@ -91,11 +124,15 @@ public sealed class TenantRegistry(
         }
 
         var tenant = await context.Tenants.AsNoTracking().SingleOrDefaultAsync(t => t.Slug == tenantId.Value, cancellationToken).ConfigureAwait(false);
-        return tenant is null ? null : ToRecord(tenant, await HostnamesOfAsync(tenant.Id, cancellationToken).ConfigureAwait(false));
+        return tenant is null ? null : ToRecord(tenant, await HostnamesOfAsync(tenant.Id, cancellationToken).ConfigureAwait(false), await SuitesOfAsync(tenant.Id, cancellationToken).ConfigureAwait(false));
     }
 
     public async Task<IReadOnlyList<string>> HostnamesOfAsync(Guid tenantRowId, CancellationToken cancellationToken) =>
         await context.Hostnames.AsNoTracking().Where(h => h.TenantId == tenantRowId).OrderBy(h => h.CreatedAt).ThenBy(h => h.Hostname).Select(h => h.Hostname).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+    /// <summary>The suites the tenant has, by short name in order (TF-244): what the fleet installs in its unit.</summary>
+    public async Task<IReadOnlyList<string>> SuitesOfAsync(Guid tenantRowId, CancellationToken cancellationToken) =>
+        await context.Suites.AsNoTracking().Where(s => s.TenantId == tenantRowId).OrderBy(s => s.Suite).Select(s => s.Suite).ToListAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task<Result> SetStatusAsync(string slug, TenantStatus status, CancellationToken cancellationToken)
     {
@@ -135,7 +172,7 @@ public sealed class TenantRegistry(
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        return ToRecord(tenant, await HostnamesOfAsync(tenant.Id, cancellationToken).ConfigureAwait(false));
+        return ToRecord(tenant, await HostnamesOfAsync(tenant.Id, cancellationToken).ConfigureAwait(false), await SuitesOfAsync(tenant.Id, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>TF-002: a job for a tenant in Provisioning (or Failed earlier); an Active tenant is refused, so is any other status.</summary>
@@ -244,9 +281,13 @@ public sealed class TenantRegistry(
         return job.Value;
     }
 
-    public static TenantRecord ToRecord(Tenant tenant, IReadOnlyList<string> hostnames)
+    /// <summary>The operator's reason as the trails keep it: trimmed, at most the length a suite's reason may have, or none.</summary>
+    private static string? Reason(string? reason) =>
+        reason?.Trim() is { Length: > 0 } why ? why[..Math.Min(why.Length, SuiteService.ReasonMaxLength)] : null;
+
+    public static TenantRecord ToRecord(Tenant tenant, IReadOnlyList<string> hostnames, IReadOnlyList<string> suites)
     {
         ArgumentNullException.ThrowIfNull(tenant);
-        return new TenantRecord(tenant.Id, tenant.Slug, tenant.DisplayName, hostnames, tenant.Region, tenant.Plan, tenant.SizeClass, tenant.Status, tenant.AdministratorLoginId, tenant.AdministratorDisplayName, tenant.DatabaseName, tenant.StorageContainer, tenant.CreatedAt, tenant.ActivatedAt, tenant.SampleRecords);
+        return new TenantRecord(tenant.Id, tenant.Slug, tenant.DisplayName, hostnames, tenant.Region, tenant.Plan, tenant.SizeClass, tenant.Status, tenant.AdministratorLoginId, tenant.AdministratorDisplayName, tenant.DatabaseName, tenant.StorageContainer, tenant.CreatedAt, tenant.ActivatedAt, tenant.SampleRecords, suites);
     }
 }

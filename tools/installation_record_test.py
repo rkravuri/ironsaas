@@ -48,12 +48,13 @@ class InstallationRecordTest(unittest.TestCase):
             "database_seeds": self.seeds,
             "smoke": [{"name": "health", "status": "passed"}],
             "browser": {"passed": 32, "failed": 0, "skipped": 0},
+            "suites": [],
         }
         values.update(changes)
         return installation_record.build(
             "acme", "2031.02.03.7", "abc123", [{"name": "iron-api", "reference": "ghcr.io/o/iron-api:abc", "digest": "sha256:" + "1" * 64}],
             values["said_version"], values["configuration"], values["repository_catalogue"], values["applied"],  # type: ignore[arg-type]
-            installation_record.expected_migrations(self.root), values["database_seeds"], values["smoke"], values["browser"],  # type: ignore[arg-type]
+            installation_record.expected_migrations(self.root), values["database_seeds"], values["smoke"], values["browser"], values["suites"],  # type: ignore[arg-type]
         )
 
     def test_the_migrations_of_the_code_are_found_per_schema(self) -> None:
@@ -113,9 +114,42 @@ class InstallationRecordTest(unittest.TestCase):
         unsampled = self.record(configuration=configuration, database_seeds="s" * 64)
 
         self.assertTrue(all(check["passed"] for check in sampled["checks"]), sampled["checks"])  # type: ignore[union-attr, index]
-        self.assertIn("with the sample module", next(c["detail"] for c in sampled["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
+        self.assertIn("for foundation+samples", next(c["detail"] for c in sampled["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
         self.assertFalse(next(c["passed"] for c in product_seeds["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
         self.assertFalse(next(c["passed"] for c in unsampled["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
+
+    def test_a_unit_with_a_suite_names_it_and_is_checked_against_the_seeds_of_its_composition(self) -> None:
+        """The record names the suites the unit runs and checks its seeds against the image's seeds for the Foundation with those suites; a removed suite's schema is kept as it was and checked against nothing. [TF-244 AC1, TF-244 AC4, ADR-0059]"""
+        suite = self.root / "src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Data"
+        (suite / "Migrations").mkdir(parents=True)
+        (suite / "PurchasingDbContext.cs").write_text('[Schema("procurement_purchasing")]\npublic sealed class PurchasingDbContext { }\n', encoding="utf-8")
+        (suite / "Migrations/20310505000000_Initial.cs").write_text("// a migration", encoding="utf-8")
+        (suite / "Migrations/20310606000000_Groups.cs").write_text("// a later one", encoding="utf-8")
+        by_composition = {"foundation": self.seeds, "foundation+samples": "s" * 64, "procurement": "q" * 64, "procurement+samples": "r" * 64}
+        configuration = {"catalogue_sha256": "c" * 64, "seeds_sha256": self.seeds, "permissions_sha256": "p" * 64, "seeds_by_composition": by_composition}
+        applied = {"kernel_probe": ["20310101000000_Initial", "20310202000000_Things"], "procurement_purchasing": ["20310505000000_Initial", "20310606000000_Groups"]}
+
+        running = self.record(configuration=configuration, applied=applied, database_seeds="q" * 64, suites=["procurement"])
+        foundation_seeds = self.record(configuration=configuration, applied=applied, database_seeds=self.seeds, suites=["procurement"])
+        removed = self.record(configuration=configuration, applied=applied | {"procurement_purchasing": ["20310505000000_Initial"]}, database_seeds=self.seeds, suites=[])
+        behind = self.record(configuration=configuration, applied=applied | {"procurement_purchasing": ["20310505000000_Initial"]}, database_seeds="q" * 64, suites=["procurement"])
+
+        self.assertEqual(running["suites"], ["procurement"])
+        self.assertTrue(all(check["passed"] for check in running["checks"]), running["checks"])  # type: ignore[union-attr, index]
+        self.assertIn("for procurement", next(c["detail"] for c in running["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
+        self.assertFalse(next(c["passed"] for c in foundation_seeds["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
+        self.assertEqual(removed["suites"], [])
+        self.assertTrue(all(check["passed"] for check in removed["checks"]), removed["checks"])  # type: ignore[union-attr, index]
+        self.assertIn("kept from the suite 'procurement'", next(c["detail"] for c in removed["checks"] if c["name"] == "migrations procurement_purchasing"))  # type: ignore[union-attr, index]
+        self.assertFalse(next(c["passed"] for c in behind["checks"] if c["name"] == "migrations procurement_purchasing"))  # type: ignore[union-attr, index]
+
+    def test_an_image_from_before_suites_cannot_vouch_for_a_unit_with_a_suite(self) -> None:
+        """An image whose configuration states no seeds per composition checks a Foundation unit as before and fails a unit with a suite, whose seeds it cannot state. [ADR-0059]"""
+        foundation = self.record(suites=[])
+        suited = self.record(suites=["procurement"])
+
+        self.assertTrue(all(check["passed"] for check in foundation["checks"]), foundation["checks"])  # type: ignore[union-attr, index]
+        self.assertFalse(next(c["passed"] for c in suited["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
 
     def test_the_seeds_text_is_the_images(self) -> None:
         """The seeds' canonical text: one line per system role by code, its permissions in order, as the API image writes it. [ADR-0052]"""

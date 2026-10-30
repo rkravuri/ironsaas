@@ -20,7 +20,10 @@ public enum SizeClass
     Large,
 }
 
-/// <summary>A tenant as other modules see it. The fleet provisions from this (T14).</summary>
+/// <summary>
+/// A tenant as other modules see it. The fleet provisions from this (T14). <see cref="Plan"/> is the Foundation plan's
+/// code; <see cref="Suites"/> are the suites the tenant has (TF-244), which the fleet installs in its unit.
+/// </summary>
 public sealed record TenantRecord(
     Guid Id,
     string Slug,
@@ -36,7 +39,12 @@ public sealed record TenantRecord(
     string StorageContainer,
     DateTimeOffset CreatedAt,
     DateTimeOffset? ActivatedAt,
-    bool SampleRecords = false);
+    bool SampleRecords = false,
+    IReadOnlyList<string>? Suites = null)
+{
+    /// <summary>The suites the tenant has, by short name in order; none for a record made before suites per tenant.</summary>
+    public IReadOnlyList<string> InstalledSuites => Suites ?? [];
+}
 
 /// <summary>The registry (TF-001) as other modules use it: the fleet reads a tenant and moves its status.</summary>
 public interface ITenantRegistry
@@ -57,6 +65,12 @@ public static class TenancyPermissions
     public static readonly Permission EntitlementsRead = new("tenancy.entitlements.read", "View plans, tenants' entitlements and their history", Risk.Low);
 
     public static readonly Permission EntitlementsManage = new("tenancy.entitlements.manage", "Define plans and apply them to tenants", Risk.High);
+
+    /// <summary>
+    /// Adding a suite to a tenant or removing it (TF-244 AC3, AC4): the fleet installs it or switches it off in the
+    /// tenant's unit by an update job, so it is critical, as provisioning is, with a reason both planes keep.
+    /// </summary>
+    public static readonly Permission SuitesManage = new("tenancy.suites.manage", "Add a suite to a tenant or remove it, with a reason; the fleet installs it or switches it off", Risk.Critical);
 
     public static readonly Permission FlagsRead = new("tenancy.flags.read", "View feature flags, their rules, their history and the flag report", Risk.Low);
 
@@ -119,7 +133,7 @@ public static class TenancyPermissions
     /// <summary>Running an incident: declaring it, noting its timeline, recording its notices, closing it and recording its review.</summary>
     public static readonly Permission IncidentsManage = new("tenancy.incidents.manage", "Declare and run incidents: their timeline, notices to tenants, close and review", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport, AlertCopiesAppend, IncidentsRead, IncidentsManage];
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, SuitesManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport, AlertCopiesAppend, IncidentsRead, IncidentsManage];
 }
 
 public static class TenancyErrors
@@ -146,6 +160,30 @@ public static class TenancyErrors
     public const string PlanCodeInvalid = "tenancy.plan.code_invalid";
     public const string PlanUnknownEntitlements = "tenancy.plan.unknown_entitlements";
     public const string PlanDatesInvalid = "tenancy.plan.dates_invalid";
+
+    /// <summary>A plan names a module or feature of another group than its own, the Foundation's or another suite's (TF-244 AC7).</summary>
+    public const string PlanOtherGroup = "tenancy.plan.other_group";
+
+    /// <summary>A plan's group is neither the Foundation nor a suite this build carries.</summary>
+    public const string PlanSuiteUnknown = "tenancy.plan.suite_unknown";
+
+    /// <summary>A plan stays in its group: a plan for another group is a new plan.</summary>
+    public const string PlanSuiteFixed = "tenancy.plan.suite_fixed";
+
+    /// <summary>Not a suite this build carries.</summary>
+    public const string SuiteUnknown = "tenancy.suite.unknown";
+
+    /// <summary>The tenant has the suite already.</summary>
+    public const string SuiteInstalled = "tenancy.suite.installed";
+
+    /// <summary>The tenant does not have the suite: add it before applying its plan, or removing it.</summary>
+    public const string SuiteNotInstalled = "tenancy.suite.not_installed";
+
+    /// <summary>No plan of the suite was named, and the suite has none or several: name one.</summary>
+    public const string SuitePlanRequired = "tenancy.suite.plan_required";
+
+    /// <summary>Adding or removing a suite needs a reason, which the audit trail keeps.</summary>
+    public const string SuiteReasonRequired = "tenancy.suite.reason_required";
     public const string HistoryReadOnly = "tenancy.entitlement_history.read_only";
     public const string FlagUnknown = "tenancy.flag.unknown";
     public const string FlagRuleInvalid = "tenancy.flag.rule_invalid";
@@ -220,6 +258,12 @@ public static class TenancyAuditEvents
     public const string StatusChanged = "tenancy.tenant.status_changed";
     public const string PlanSaved = "tenancy.plan_saved";
     public const string PlanApplied = "tenancy.plan_applied";
+
+    /// <summary>An operator added a suite to a tenant with its plan and a reason; the fleet's update job installs it (TF-244 AC3).</summary>
+    public const string SuiteAdded = "tenancy.suite_added";
+
+    /// <summary>An operator removed a suite from a tenant with a reason; its modules are switched off and its data kept (TF-244 AC4).</summary>
+    public const string SuiteRemoved = "tenancy.suite_removed";
     public const string FlagRulesChanged = "tenancy.flag_rules_changed";
     public const string KillSwitchFlipped = "tenancy.kill_switch_flipped";
 
@@ -307,6 +351,8 @@ public static class TenancyAuditEvents
         new(StatusChanged, "Tenant status changed"),
         new(PlanSaved, "Plan saved"),
         new(PlanApplied, "Plan applied"),
+        new(SuiteAdded, "Suite added to a tenant"),
+        new(SuiteRemoved, "Suite removed from a tenant"),
         new(FlagRulesChanged, "Feature flag rules changed"),
         new(KillSwitchFlipped, "Kill switch changed"),
         new(AdministratorRecoveryRequested, "Administrator recovery requested"),

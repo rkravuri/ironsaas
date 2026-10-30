@@ -25,6 +25,8 @@ export interface Entitlements {
   stale: boolean;
   /** A licensed module the person may open: enabled or read only, with a seat if it needs one. */
   entitled: (licence: string) => boolean;
+  /** A suite the tenant's unit runs (TF-244): the home page shows a suite's group only where it is installed. */
+  installed: (suite: string) => boolean;
   module: (licence: string) => Access;
   feature: (code: string) => Access;
 }
@@ -46,10 +48,12 @@ export function entitlementsFrom(context: Context | undefined, pending: boolean)
   const features = new Map(
     (context?.entitlements.features ?? []).map((entry) => [entry.code, access(entry.status, entry.reason)]),
   );
+  const suites = new Set((context?.entitlements.suites ?? []).map((suite) => suite.code));
   return {
     pending,
     stale: context?.entitlements.stale ?? false,
     entitled: (licence) => modules.get(licence)?.available ?? false,
+    installed: (suite) => suites.has(suite),
     module: (licence) => modules.get(licence) ?? unknown,
     feature: (code) => features.get(code) ?? unknown,
   };

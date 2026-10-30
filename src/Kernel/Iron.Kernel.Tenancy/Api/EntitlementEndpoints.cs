@@ -18,22 +18,25 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Tenancy.Api;
 
-public sealed record PlanResponse(Guid Id, string Code, string Name, int GraceDays, IReadOnlyList<PlanModule> Modules, IReadOnlyList<string> Features, DateTimeOffset UpdatedAt, int Version)
+/// <summary>A plan with its group (TF-244): <c>foundation</c> for a Foundation plan, or the suite's short name.</summary>
+public sealed record PlanResponse(Guid Id, string Code, string Name, int GraceDays, IReadOnlyList<PlanModule> Modules, IReadOnlyList<string> Features, DateTimeOffset UpdatedAt, int Version, string Suite)
 {
     public static PlanResponse From(Plan plan)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        return new PlanResponse(plan.Id, plan.Code, plan.Name, plan.GraceDays, plan.Modules, plan.Features, plan.UpdatedAt, plan.Version);
+        return new PlanResponse(plan.Id, plan.Code, plan.Name, plan.GraceDays, plan.Modules, plan.Features, plan.UpdatedAt, plan.Version, plan.Suite);
     }
 }
 
-public sealed record SavePlanRequest(string Name, int GraceDays, IReadOnlyList<PlanModuleInput>? Modules, IReadOnlyList<string>? Features);
+/// <summary>A plan to save; <see cref="Suite"/> names its group when it is created (the Foundation unless named) and cannot change afterwards.</summary>
+public sealed record SavePlanRequest(string Name, int GraceDays, IReadOnlyList<PlanModuleInput>? Modules, IReadOnlyList<string>? Features, string? Suite = null);
 
 public sealed class SavePlanRequestValidator : AbstractValidator<SavePlanRequest>
 {
     public SavePlanRequestValidator()
     {
         RuleFor(r => r.Name).NotEmpty().MaximumLength(Plan.NameMaxLength);
+        RuleFor(r => r.Suite).MaximumLength(Plan.SuiteMaxLength);
         RuleFor(r => r.GraceDays).InclusiveBetween(0, 365);
         RuleFor(r => r.Modules).MaximumCount(100);
         RuleForEach(r => r.Modules).ChildRules(module =>
@@ -56,9 +59,13 @@ public sealed class ApplyPlanRequestValidator : AbstractValidator<ApplyPlanReque
     }
 }
 
-public sealed record EntitlementResponse(string Kind, string Code, EntitlementStatus Status, SubscriptionType? SubscriptionType, int? UserLimit, DateOnly StartsOn, DateOnly? EndsOn);
+public sealed record EntitlementResponse(string Kind, string Code, EntitlementStatus Status, SubscriptionType? SubscriptionType, int? UserLimit, DateOnly StartsOn, DateOnly? EndsOn, string Suite);
 
-public sealed record TenantEntitlementsResponse(string Tenant, string Plan, int GraceDays, int Revision, int PublishedRevision, IReadOnlyList<EntitlementResponse> Entitlements);
+/// <summary>A suite the tenant has, with the plan it holds for it and that plan's grace days (TF-244).</summary>
+public sealed record TenantSuiteResponse(string Suite, string Plan, int GraceDays, DateTimeOffset AddedAt);
+
+/// <summary>The tenant's Foundation plan and grace days, its suites with theirs, and every entitlement with its group.</summary>
+public sealed record TenantEntitlementsResponse(string Tenant, string Plan, int GraceDays, int Revision, int PublishedRevision, IReadOnlyList<EntitlementResponse> Entitlements, IReadOnlyList<TenantSuiteResponse> Suites);
 
 public sealed record EntitlementChangeResponse(Guid Id, int Revision, string Kind, string Code, JsonElement? Before, JsonElement? After, string Reason, Guid OperatorId, string? OperatorName, DateTimeOffset ChangedAt);
 
@@ -73,6 +80,7 @@ internal static class EntitlementEndpoints
         .Add("code", p => p.Code)
         .Add("name", p => p.Name)
         .Add("grace_days", p => p.GraceDays, FieldUse.Select | FieldUse.Sort)
+        .Add("suite", p => p.Suite, FieldUse.Select | FieldUse.Filter | FieldUse.Sort)
         .Add("updated_at", p => p.UpdatedAt, FieldUse.Select | FieldUse.Sort)
         .SortByDefault("code");
 
@@ -120,7 +128,7 @@ internal static class EntitlementEndpoints
 
     private static async Task<IResult> SavePlanAsync(string code, SavePlanRequest request, HttpContext http, PlanService plans, CancellationToken cancellationToken)
     {
-        var result = await plans.SaveAsync(code, new PlanInput(request.Name, request.GraceDays, request.Modules ?? [], request.Features ?? []), cancellationToken);
+        var result = await plans.SaveAsync(code, new PlanInput(request.Name, request.GraceDays, request.Modules ?? [], request.Features ?? [], request.Suite), cancellationToken);
         return ApiResults.From(result, http, plan => TypedResults.Ok(PlanResponse.From(plan)));
     }
 
@@ -133,8 +141,9 @@ internal static class EntitlementEndpoints
         }
 
         var rows = await entitlements.RowsAsync(tenant.Id, asTracking: false, cancellationToken);
-        var items = rows.Select(r => new EntitlementResponse(EntitlementService.KindName(r.Kind), r.Code, r.Status, r.SubscriptionType, r.UserLimit, r.StartsOn, r.EndsOn)).ToList();
-        return TypedResults.Ok(new TenantEntitlementsResponse(tenant.Slug, tenant.Plan, tenant.GraceDays, tenant.EntitlementsRevision, tenant.PublishedRevision, items));
+        var items = rows.Select(r => new EntitlementResponse(EntitlementService.KindName(r.Kind), r.Code, r.Status, r.SubscriptionType, r.UserLimit, r.StartsOn, r.EndsOn, r.Suite)).ToList();
+        var suites = await entitlements.SuitesAsync(tenant.Id, cancellationToken);
+        return TypedResults.Ok(new TenantEntitlementsResponse(tenant.Slug, tenant.Plan, tenant.GraceDays, tenant.EntitlementsRevision, tenant.PublishedRevision, items, [.. suites.Select(SuiteEndpoints.ToResponse)]));
     }
 
     private static async Task<IResult> ApplyAsync(string slug, ApplyPlanRequest request, HttpContext http, EntitlementService entitlements, ITenantEntitlements publisher, ITenantFlags flags, CancellationToken cancellationToken)

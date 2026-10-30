@@ -19,6 +19,22 @@ public interface IEntitlements
     Entitlement Feature(string feature);
 }
 
+/// <summary>One licensed module or feature of a suite as the unit holds it: what applies now, why, and the subscription's dates.</summary>
+public sealed record SubscribedEntitlement(string Code, string Module, string? Description, EntitlementStatus Status, string Reason, DateOnly? StartsOn, DateOnly? EndsOn, DateOnly? GraceEndsOn);
+
+/// <summary>
+/// A suite's subscription in this unit (TF-244, ADR-0059): the plan the tenant holds for it and its grace days, and each
+/// of the suite's licensed modules and features this unit loaded, with what applies now. Stale when the unit could not
+/// confirm its entitlements, as the context says.
+/// </summary>
+public sealed record SuiteSubscription(string Suite, string? Plan, int GraceDays, bool Stale, IReadOnlyList<SubscribedEntitlement> Modules, IReadOnlyList<SubscribedEntitlement> Features);
+
+/// <summary>A suite's subscription for the suite's own pages, such as its About page (TF-244); Entitlements implements it.</summary>
+public interface ISuiteSubscriptions
+{
+    SuiteSubscription Of(string suite);
+}
+
 public static class EntitlementsPermissions
 {
     public static readonly Permission SubscriptionRead = new("entitlements.subscription.read", "View the tenant's subscription: modules, features and seats", Risk.Low);

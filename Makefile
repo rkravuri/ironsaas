@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status incident-declare incident-note incident-close incident-review incident-show security-alerts security-alert-resolve up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security coverage protect-main protection-check
+.PHONY: help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision suite-add suite-remove update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status incident-declare incident-note incident-close incident-review incident-show security-alerts security-alert-resolve up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security coverage protect-main protection-check
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -374,9 +374,18 @@ deprovision: ## Ask the fleet to take a tenant's unit down (data is kept): make 
 	@test -n "$(TENANT)" || (echo "usage: make deprovision TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=deprovision $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
-provision: ## Register a tenant in the control plane and request its provisioning, SAMPLES=1 for a unit that runs the sample module (ADR-0057): make provision TENANT=acme [ADMIN=admin@acme.localhost] [SAMPLES=1]
-	@test -n "$(TENANT)" || (echo "usage: make provision TENANT=acme [ADMIN=admin@acme.localhost] [SAMPLES=1]" && exit 1)
-	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SAMPLE_RECORDS=$(SAMPLES) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) $(or $(ADMIN),admin@$(TENANT).localhost)
+provision: ## Register a tenant in the control plane and request its provisioning, SAMPLES=1 for a unit that runs the sample module (ADR-0057), SUITES=procurement with a REASON for the suites it bought (ADR-0059): make provision TENANT=acme [ADMIN=admin@acme.localhost] [SAMPLES=1] [SUITES=procurement REASON="..."]
+	@test -n "$(TENANT)" || (echo 'usage: make provision TENANT=acme [ADMIN=admin@acme.localhost] [SAMPLES=1] [SUITES=procurement REASON="why, for the audit trail"]' && exit 1)
+	@test -z "$(SUITES)" || test -n "$(REASON)" || (echo 'A tenant with suites needs a REASON, which the audit trail keeps: make provision TENANT=$(TENANT) SUITES=$(SUITES) REASON="..."' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SAMPLE_RECORDS=$(SAMPLES) SUITES="$(SUITES)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) $(or $(ADMIN),admin@$(TENANT).localhost)
+
+suite-add: ## Add a suite to an active tenant under PLAN, or the suite's only plan, with a reason the audit trail keeps; the fleet's update job migrates, seeds and restarts the unit with it (TF-244, ADR-0059): make suite-add TENANT=acme SUITE=procurement REASON="..." [PLAN=procurement-essentials]
+	@test -n "$(TENANT)" && test -n "$(SUITE)" && test -n "$(REASON)" || (echo 'usage: make suite-add TENANT=acme SUITE=procurement REASON="why, for the audit trail" [PLAN=procurement-essentials]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=suite-add SUITE=$(SUITE) PLAN=$(PLAN) REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
+
+suite-remove: ## Remove a suite from an active tenant with a reason the audit trail keeps; its modules switch off, the fleet's update job restarts the unit without it, and its data stays (TF-244, ADR-0059): make suite-remove TENANT=acme SUITE=procurement REASON="..."
+	@test -n "$(TENANT)" && test -n "$(SUITE)" && test -n "$(REASON)" || (echo 'usage: make suite-remove TENANT=acme SUITE=procurement REASON="why, for the audit trail"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=suite-remove SUITE=$(SUITE) REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
 sample-records: ## Mark a tenant's unit to run the sample module, whose records the smoke and the browser tests use (ADR-0057), or ON=0 to unmark it; then make update-unit: make sample-records TENANT=echo [ON=0]
 	@test -n "$(TENANT)" || (echo "usage: make sample-records TENANT=echo [ON=0]" && exit 1)
@@ -403,10 +412,10 @@ shell-node:
 # provision, update-unit and deprovision still refuse to run without a TENANT.
 TEST_TENANT = $(or $(TENANT),smoke)
 
-smoke: env test-provider ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions tenant smoke marked for sample records, or reuses it, or TENANT=x
+smoke: env test-provider ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions tenant smoke marked for sample records, with SUITES=procurement when asked, or reuses it, or TENANT=x
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
-	SMOKE_TENANT=$(TEST_TENANT) SMOKE_SAMPLE_RECORDS=1 SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
+	SMOKE_TENANT=$(TEST_TENANT) SMOKE_SAMPLE_RECORDS=1 SMOKE_SUITES=$(SUITES) SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
 
 e2e: shell-node env test-provider ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate its people and units whatever the result (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \

@@ -61,6 +61,8 @@
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Visibility/Contracts/Iron.Kernel.Visibility.Contracts.csproj" />
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Samples/Iron.Kernel.Samples.csproj" />
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Samples/Contracts/Iron.Kernel.Samples.Contracts.csproj" />
+    <ProjectReference Include="../../src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Iron.Suites.Procurement.Purchasing.csproj" />
+    <ProjectReference Include="../../src/Suites/Procurement/Iron.Suites.Procurement.Purchasing/Contracts/Iron.Suites.Procurement.Purchasing.Contracts.csproj" />
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Compliance/Iron.Kernel.Compliance.csproj" />
     <ProjectReference Include="../../src/Kernel/Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
     <ProjectReference Include="../../src/Hosts/Iron.Host.Api/Iron.Host.Api.csproj" />

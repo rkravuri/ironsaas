@@ -1,6 +1,7 @@
 using System.Net;
 using Iron.Kernel.Fleet.Services;
 using Iron.Kernel.Fleet.Services.Compose;
+using Iron.Kernel.Fleet.Services.Steps;
 using Iron.Kernel.Tenancy.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -121,6 +122,22 @@ public sealed class ComposeUnitRuntimeTests : IDisposable
         await runtime.RemoveAsync(Unit(), TestContext.Current.CancellationToken);
 
         Assert.Contains("down", Assert.Single(_processes.Calls).Arguments);
+    }
+
+    [Fact]
+    [Proves("TF-244 AC1", "TF-244 AC2", "ADR-0059")]
+    public void TheTenantsSuitesReachBothContainersOfItsUnitAsAnEnvironmentVariable()
+    {
+        var template = ComposeUnitRuntime.Template();
+        var with = Unit() with { Environment = new Dictionary<string, string>(Unit().Environment) { [UnitEnvironment.SuitesVariable] = "procurement" } };
+
+        Assert.Equal("procurement", Runtime(HttpStatusCode.OK).Variables(with)["SUITES"]);
+        Assert.Equal(string.Empty, Runtime(HttpStatusCode.OK).Variables(Unit())["SUITES"]);
+
+        // In the environment the api and the worker share, so a change of suites changes both containers and the update recreates them.
+        Assert.Contains("Suites__Installed: ${SUITES}", template, StringComparison.Ordinal);
+        Assert.Contains("environment: &unit-environment", template, StringComparison.Ordinal);
+        Assert.Contains("environment: *unit-environment", template, StringComparison.Ordinal);
     }
 
     [Fact]

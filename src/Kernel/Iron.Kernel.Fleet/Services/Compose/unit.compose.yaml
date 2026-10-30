@@ -16,6 +16,8 @@ services:
       Secrets__Mount: ${SECRETS_MOUNT}
       Secrets__Path: ${SECRETS_PATH}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTLP_ENDPOINT}
+      # The tenant's suites (TF-244, ADR-0059): the unit loads the Foundation and these, and nothing of another suite.
+      Suites__Installed: ${SUITES}
     networks: [platform, unit]
     deploy:
       resources:

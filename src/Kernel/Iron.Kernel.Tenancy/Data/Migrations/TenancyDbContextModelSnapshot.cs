@@ -1114,6 +1114,14 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("Suite")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("foundation")
+                        .HasColumnName("suite");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -1133,6 +1141,9 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique()
                         .HasDatabaseName("ix_plans_code");
+
+                    b.HasIndex("Suite")
+                        .HasDatabaseName("ix_plans_suite");
 
                     b.ToTable("plans", "kernel_tenancy");
                 });
@@ -1364,6 +1375,14 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("subscription_type");
 
+                    b.Property<string>("Suite")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("foundation")
+                        .HasColumnName("suite");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -1510,6 +1529,63 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                     b.ToTable("tenant_keys", "kernel_tenancy");
                 });
 
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.TenantSuite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("GraceDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("grace_days");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("plan");
+
+                    b.Property<string>("Suite")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("suite");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_suites");
+
+                    b.HasIndex("TenantId", "Suite")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_suites_tenant_id_suite");
+
+                    b.ToTable("tenant_suites", "kernel_tenancy");
+                });
+
             modelBuilder.Entity("Iron.Kernel.Tenancy.Data.UnitClient", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1579,6 +1655,16 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_hostnames_tenants_tenant_id");
+                });
+
+            modelBuilder.Entity("Iron.Kernel.Tenancy.Data.TenantSuite", b =>
+                {
+                    b.HasOne("Iron.Kernel.Tenancy.Data.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_tenant_suites_tenants_tenant_id");
                 });
 #pragma warning restore 612, 618
         }

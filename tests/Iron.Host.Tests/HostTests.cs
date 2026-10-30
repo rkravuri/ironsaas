@@ -91,7 +91,7 @@ public class HostTests
         // ADR-0034: one source. The control plane checks plans and flag rules against the file make catalogue writes from
         // these modules; the file keeps the flags it marks retired (ADR-0035).
         var file = Iron.Kernel.Tenancy.Services.UnitCatalogue.Load().Catalogue;
-        var code = Iron.Kernel.Api.Modules.LicensingCatalogue.From(Iron.Host.Api.UnitModules.All());
+        var code = Iron.Host.Api.UnitModules.Catalogue();
         Assert.Empty(Iron.Kernel.Api.Modules.LicensingCatalogue.FlagLifecycleProblems(file, code));
         var expected = code.WithRetiredFrom(file).ToJson();
         var carried = file.ToJson();
@@ -145,6 +145,78 @@ public class HostTests
 
         // The fleet writes the switch the module reads, by its own name, since it references no unit module (ADR-0057).
         Assert.Equal(Iron.Kernel.Samples.Contracts.SamplesConfiguration.EnabledKey, Iron.Kernel.Fleet.Services.Steps.SecretsStep.SampleRecordsKey);
+    }
+
+    [Fact]
+    [Proves("TF-244 AC1", "TF-244 AC2", "ADR-0059")]
+    public void AUnitRunsASuitesModulesOnlyWhereItsConfigurationNamesTheSuiteAndTheCatalogueHoldsEverySuite()
+    {
+        static IConfiguration With(string? value) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [Iron.Kernel.Api.Modules.InstalledSuites.ConfigurationKey] = value }).Build();
+
+        Assert.DoesNotContain(Iron.Host.Api.UnitModules.ForUnit(With(null)), m => m.Name == "purchasing");
+        Assert.DoesNotContain(Iron.Host.Api.UnitModules.ForUnit(With("")), m => m.Name == "purchasing");
+        Assert.Contains(Iron.Host.Api.UnitModules.ForUnit(With("procurement")), m => m.Name == "purchasing" && m.Suite == "procurement");
+        Assert.Equal(["procurement"], Iron.Host.Api.UnitModules.InstalledFor(With("procurement")).Select(s => s.ShortName));
+        Assert.Contains("school", Assert.Throws<InvalidOperationException>(() => Iron.Host.Api.UnitModules.ForUnit(With("school"))).Message, StringComparison.Ordinal);
+
+        // One image carries every suite, so the catalogue the control plane checks plans against holds them all (ADR-0043).
+        Assert.Contains(Iron.Host.Api.UnitModules.All(), m => m.Name == "purchasing");
+        var catalogue = Iron.Host.Api.UnitModules.Catalogue();
+        Assert.Equal(["foundation", "procurement"], catalogue.Suites);
+
+        // The suite brings its starter plan, which names only its own module (TF-244 AC7); the control plane seeds it.
+        var essentials = Assert.Single(catalogue.Plans);
+        Assert.Equal(("procurement-essentials", "procurement"), (essentials.Code, essentials.Suite));
+        Assert.Equal(["purchasing"], essentials.Modules);
+
+        // The fleet writes the unit's suites into its environment under the name the hosts read (ADR-0059).
+        Assert.Equal("Suites__Installed", Iron.Kernel.Fleet.Services.Steps.UnitEnvironment.SuitesVariable);
+        Assert.Equal(Iron.Kernel.Api.Modules.InstalledSuites.ConfigurationKey, Iron.Kernel.Fleet.Services.Steps.UnitEnvironment.SuitesVariable.Replace("__", ":", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Proves("TF-244 AC1", "TF-244 AC2", "ADR-0059")]
+    public async Task TheSuitesEndpointAnswersNotFoundInAUnitWithoutTheSuiteAndAsksForASignInWhereItRuns()
+    {
+        await using var without = Production<Iron.Host.Api.ApiHost>();
+        await using var with = new WebApplicationFactory<Iron.Host.Api.ApiHost>().WithWebHostBuilder(host => host.UseEnvironment(Environments.Production).UseSetting(Iron.Kernel.Api.Modules.InstalledSuites.ConfigurationKey, "procurement"));
+        using var withoutClient = without.CreateClient();
+        using var withClient = with.CreateClient();
+
+        using var missing = await Send(withoutClient, "/api/v1/suites/procurement/about", "acme.localhost");
+        using var present = await Send(withClient, "/api/v1/suites/procurement/about", "acme.localhost");
+
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, present.StatusCode);
+        Assert.Empty(without.Services.GetRequiredService<Iron.Kernel.Api.Modules.UnitSuites>().Installed);
+        Assert.Equal(["procurement"], with.Services.GetRequiredService<Iron.Kernel.Api.Modules.UnitSuites>().Installed.Select(s => s.ShortName));
+    }
+
+    [Fact]
+    [Proves("TF-244 AC1", "ADR-0052", "ADR-0059")]
+    public async Task TheApiImageStatesTheSeedsOfEveryCompositionAUnitCanRun()
+    {
+        var writer = new StringWriter();
+        var original = Console.Out;
+        Console.SetOut(writer);
+        try
+        {
+            Assert.Equal(0, await Iron.Host.Api.UnitModules.WriteReleaseAsync(["configuration"]));
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        using var configuration = JsonDocument.Parse(writer.ToString());
+        var root = configuration.RootElement;
+        var compositions = root.GetProperty("seeds_by_composition").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString());
+
+        Assert.Equal(["foundation", "foundation+samples", "procurement", "procurement+samples"], compositions.Keys.Order(StringComparer.Ordinal));
+        Assert.Equal(root.GetProperty("seeds_sha256").GetString(), compositions["foundation"]);
+        Assert.Equal(root.GetProperty("sample_seeds_sha256").GetString(), compositions["foundation+samples"]);
+        Assert.NotEqual(compositions["foundation"], compositions["procurement"]);
+        Assert.DoesNotContain(root.GetProperty("seeds").EnumerateArray(), s => s.GetString()!.Contains("purchasing.", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -268,6 +340,7 @@ public class HostTests
         ["POST /api/v1/delegations"] = ["starts_at", "ends_at"],
         ["POST /api/v1/access-reviews"] = ["due_on"],
         ["POST /api/v1/tenants/{slug}/plan"] = ["starts_on", "ends_on"],
+        ["POST /api/v1/tenants/{slug}/suites"] = ["starts_on", "ends_on"],
         ["POST /api/v1/audit-anchors"] = ["at"],
 
         // The period of the audit trail a reviewer chooses to review (TF-219 AC3); the review and its signature carry the server's time.

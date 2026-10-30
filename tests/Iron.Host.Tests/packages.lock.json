@@ -781,7 +781,8 @@
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
           "Iron.Kernel.Telemetry": "[1.0.0, )",
-          "Iron.Kernel.Visibility": "[1.0.0, )"
+          "Iron.Kernel.Visibility": "[1.0.0, )",
+          "Iron.Suites.Procurement.Purchasing": "[1.0.0, )"
         }
       },
       "iron.host.controlplane": {
@@ -842,7 +843,8 @@
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
           "Iron.Kernel.Telemetry": "[1.0.0, )",
-          "Iron.Kernel.Visibility": "[1.0.0, )"
+          "Iron.Kernel.Visibility": "[1.0.0, )",
+          "Iron.Suites.Procurement.Purchasing": "[1.0.0, )"
         }
       },
       "iron.kernel": {
@@ -1190,6 +1192,23 @@
         }
       },
       "iron.kernel.visibility.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
+      "iron.suites.procurement.purchasing": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Entitlements.Contracts": "[1.0.0, )",
+          "Iron.Suites.Procurement.Purchasing.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.suites.procurement.purchasing.contracts": {
         "type": "Project",
         "dependencies": {
           "Iron.Kernel": "[1.0.0, )"

@@ -13,6 +13,7 @@ using Iron.Kernel.Protection;
 using Iron.Kernel.Samples;
 using Iron.Kernel.Settings;
 using Iron.Kernel.Visibility;
+using Iron.Suites.Procurement.Purchasing;
 
 namespace Iron.Host.Api;
 
@@ -22,23 +23,42 @@ namespace Iron.Host.Api;
 /// Visibility, whose tags narrow what every record policy shows (ADR-0057), then Compliance, which signs the records of
 /// the modules before it, then Changes, which holds the sensitive changes of the modules before it for a second
 /// administrator (ADR-0052), then Protection, then Keys, which moves every module's encrypted values on a rotation
-/// (ADR-0054), then Monitoring, whose rules count every module's audit events (ADR-0056). The same list is the source of
-/// the licensing catalogue the control plane carries (ADR-0034), so a module added here is licensable there once
-/// <c>make catalogue</c> has written the file; a host test fails until it has.
+/// (ADR-0054), then Monitoring, whose rules count every module's audit events (ADR-0056); then the modules of the
+/// tenant's suites (TF-244, ADR-0059). Every module of the Foundation and of every suite is the source of the licensing
+/// catalogue the control plane carries (ADR-0034), so a module added here is licensable there once <c>make catalogue</c>
+/// has written the file; a host test fails until it has.
 /// </summary>
 public static class UnitModules
 {
     public const string CatalogueCommand = "catalogue";
 
-    public static IReadOnlyList<IModule> All() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+    /// <summary>The Foundation's modules: what every tenant's unit runs.</summary>
+    public static IReadOnlyList<IModule> Foundation() => [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+
+    /// <summary>The suites this image carries (ADR-0043): one image for the Foundation and every suite.</summary>
+    public static IReadOnlyList<SuiteDefinition> Suites() => [PurchasingModule.Suite()];
+
+    /// <summary>Every module of the build, the Foundation's and every suite's: the catalogue and the configuration are made from it.</summary>
+    public static IReadOnlyList<IModule> All() => InstalledSuites.Compose(Foundation(), Suites());
+
+    /// <summary>What this build can license, switch and set, with the plans its suites bring (ADR-0034, TF-244): the file the control plane carries.</summary>
+    public static LicensingCatalogue Catalogue() => LicensingCatalogue.From(All(), Suites());
+
+    /// <summary>The suites this unit runs: those of <see cref="Suites"/> its configuration names in <c>Suites:Installed</c> (TF-244).</summary>
+    public static IReadOnlyList<SuiteDefinition> InstalledFor(Microsoft.Extensions.Configuration.IConfiguration configuration) =>
+        InstalledSuites.From(configuration, Suites());
 
     /// <summary>
-    /// The modules this unit runs: <see cref="All"/>, and the sample module where the unit's configuration switches it on,
-    /// which the fleet does for a tenant the operator marks for testing (ADR-0057). It is never licensable, so the
-    /// catalogue is made from <see cref="All"/> alone.
+    /// The modules this unit runs: the Foundation's, its suites' (TF-244: a suite it does not have migrates, seeds and
+    /// maps nothing), and the sample module where the unit's configuration switches it on, which the fleet does for a
+    /// tenant the operator marks for testing (ADR-0057). The sample module is never licensable, so the catalogue is made
+    /// from <see cref="All"/> alone.
     /// </summary>
-    public static IReadOnlyList<IModule> ForUnit(Microsoft.Extensions.Configuration.IConfiguration configuration) =>
-        SamplesModule.IsEnabled(configuration) ? [.. All(), new SamplesModule()] : All();
+    public static IReadOnlyList<IModule> ForUnit(Microsoft.Extensions.Configuration.IConfiguration configuration)
+    {
+        var modules = InstalledSuites.Compose(Foundation(), InstalledFor(configuration));
+        return SamplesModule.IsEnabled(configuration) ? [.. modules, new SamplesModule()] : modules;
+    }
 
     public static bool IsCatalogueCommand(string[] args)
     {
@@ -65,8 +85,10 @@ public static class UnitModules
     /// <summary>
     /// The controlled configuration of this build (TF-218, ADR-0052): the licensing catalogue's hash (the bytes <c>make
     /// catalogue</c> writes), the seeds' (the system roles and their permissions, in the canonical text the installation
-    /// record also reads from a tenant's database), and the permission catalogue's. The seeds of a unit that runs the
-    /// sample module hold its permissions too, so they are stated beside (ADR-0057). Builds no host and needs no store.
+    /// record also reads from a tenant's database), and the permission catalogue's. A unit's seeds hold the permissions of
+    /// the modules it runs, so they are stated for every composition a unit can run (ADR-0057, ADR-0059):
+    /// <c>seeds_sha256</c> for the Foundation alone, <c>sample_seeds_sha256</c> with the sample module, and
+    /// <c>seeds_by_composition</c> for each set of the carried suites. Builds no host and needs no store.
     /// </summary>
     public static async Task<int> WriteReleaseAsync(string[] args)
     {
@@ -77,12 +99,10 @@ public static class UnitModules
             return 0;
         }
 
-        var modules = All();
-        var catalogue = LicensingCatalogue.From(modules).ToJson();
-        var permissions = new Iron.Kernel.Api.Permissions.PermissionCatalogue(modules.SelectMany(m => m.Permissions));
-        var seeds = SeedsText(permissions.All);
-        var sampleSeeds = SeedsText(new Iron.Kernel.Api.Permissions.PermissionCatalogue(modules.Append(new SamplesModule()).SelectMany(m => m.Permissions)).All);
-        var permissionText = string.Concat(permissions.All.OrderBy(p => p.Name, StringComparer.Ordinal).Select(p => $"{p.Name}:{p.Risk.ToString().ToLowerInvariant()}\n"));
+        var catalogue = Catalogue().ToJson();
+        var permissions = PermissionsOf(All());
+        var seeds = SeedsText(PermissionsOf(Foundation()));
+        var permissionText = string.Concat(permissions.OrderBy(p => p.Name, StringComparer.Ordinal).Select(p => $"{p.Name}:{p.Risk.ToString().ToLowerInvariant()}\n"));
         var description = new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["version"] = ReleaseVersion(),
@@ -90,11 +110,37 @@ public static class UnitModules
             ["seeds_sha256"] = Sha256(seeds),
             ["permissions_sha256"] = Sha256(permissionText),
             ["seeds"] = seeds.Split('\n', StringSplitOptions.RemoveEmptyEntries),
-            ["sample_seeds_sha256"] = Sha256(sampleSeeds),
+            ["sample_seeds_sha256"] = Sha256(SeedsText(PermissionsOf([.. Foundation(), new SamplesModule()]))),
+            ["seeds_by_composition"] = SeedsByComposition(),
         };
         await Console.Out.WriteLineAsync(System.Text.Json.JsonSerializer.Serialize(description, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })).ConfigureAwait(false);
         return 0;
     }
+
+    /// <summary>
+    /// The seeds' hash of every composition a unit can run (TF-244, ADR-0059): the Foundation alone or with any set of the
+    /// carried suites, each without and with the sample module. The key names the suites in order, joined by <c>+</c>, or
+    /// <c>foundation</c> for none, then <c>+samples</c> where the sample module runs; the installation record reads the
+    /// tenant's suites from its schemas and checks its seeds against the matching key.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> SeedsByComposition()
+    {
+        var suites = Suites();
+        var hashes = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        for (var mask = 0; mask < 1 << suites.Count; mask++)
+        {
+            var chosen = suites.Where((_, index) => (mask & (1 << index)) != 0).ToList();
+            var key = chosen.Count == 0 ? Iron.Kernel.SuiteName.Foundation : string.Join('+', chosen.Select(s => s.ShortName).Order(StringComparer.Ordinal));
+            var modules = InstalledSuites.Compose(Foundation(), chosen);
+            hashes[key] = Sha256(SeedsText(PermissionsOf(modules)));
+            hashes[key + "+samples"] = Sha256(SeedsText(PermissionsOf([.. modules, new SamplesModule()])));
+        }
+
+        return hashes;
+    }
+
+    private static IReadOnlyList<Iron.Kernel.Permission> PermissionsOf(IEnumerable<IModule> modules) =>
+        new Iron.Kernel.Api.Permissions.PermissionCatalogue(modules.SelectMany(m => m.Permissions)).All;
 
     private static string SeedsText(IReadOnlyList<Iron.Kernel.Permission> permissions) =>
         Iron.Kernel.Authorization.Contracts.SystemRoleSeeds.Text(
@@ -110,7 +156,7 @@ public static class UnitModules
     public static async Task<int> WriteCatalogueAsync(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        var catalogue = LicensingCatalogue.From(All());
+        var catalogue = Catalogue();
         if (args.Length > 1 && File.Exists(args[1]))
         {
             var file = LicensingCatalogue.Parse(await File.ReadAllTextAsync(args[1]).ConfigureAwait(false));

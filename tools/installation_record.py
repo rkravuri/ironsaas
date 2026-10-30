@@ -5,14 +5,16 @@ and its checks against the infrastructure code the release was built from.
 - the five images, each with its digest (the registry's, or the local image id on a laptop);
 - the version the API image says it is (its `version` command) and the controlled configuration it carries (its
   `configuration` command: the catalogue's, the seeds' and the permissions' hashes);
+- the suites the tenant's unit runs, from its API container's environment, where the fleet puts them (ADR-0059);
 - the migrations applied in the tenant's database, per module's schema;
 - the seeds as the tenant's database holds them (its system roles and their permissions), hashed the same way;
 - the smoke's and the browser tests' results.
 
 The checks: the API image's version is the release's; the catalogue in the image is the repository's; every schema of
-the tenant's database holds exactly the migrations the repository has for it; the seeds in the database are the ones
-the image's code makes; the smoke and the browser tests passed. tools/validation_pack.py puts the record into the pack
-and refuses to publish a release whose checks did not pass.
+the tenant's database holds exactly the migrations the repository has for it, except a removed suite's, which stays as
+it was; the seeds in the database are the ones the image's code makes for the unit's composition (the Foundation, its
+suites, and the sample module where it runs); the smoke and the browser tests passed. tools/validation_pack.py puts the
+record into the pack and refuses to publish a release whose checks did not pass.
 
 Usage: python3 tools/installation_record.py --tenant acme --repository ghcr.io/owner --tag <sha> --version 2026.10.23.57 \
   --smoke-report smoke-report.json --e2e-junit artifacts/test-results/e2e/junit.xml --output artifacts/validation/installation-record.json
@@ -41,6 +43,9 @@ CATALOGUE = Path("src/Kernel/Iron.Kernel.Tenancy/Services/licensing-catalogue.js
 SCHEMA = re.compile(r'^\s*\[Schema\((?:"([a-z_]+)"|([A-Za-z_][\w.]*))\)\]', re.MULTILINE)
 MIGRATION = re.compile(r"^(\d{14}_\w+)\.cs$")
 SAMPLES_SCHEMA = "kernel_samples"
+# The Foundation's schema prefixes (ADR-0029); any other prefix is a suite's short name (ADR-0043).
+FOUNDATION_PREFIXES = ("kernel", "business")
+SUITES_VARIABLE = "Suites__Installed"
 
 
 def sha256(data: bytes) -> str:
@@ -100,18 +105,41 @@ def junit_counts(path: Path | None) -> dict[str, int]:
     return counts
 
 
-def checks(version: str, said_version: str | None, configuration: dict[str, object], repository_catalogue: str | None, applied: dict[str, list[str]], expected: dict[str, list[str]], database_seeds: str | None, smoke: list[dict[str, str]], browser: dict[str, int]) -> list[dict[str, object]]:
+def suite_of(schema: str) -> str | None:
+    """The suite a schema belongs to, by its prefix: `procurement_purchasing` is the suite `procurement`'s; None for the Foundation's."""
+    prefix = schema.split("_", 1)[0]
+    return None if prefix in FOUNDATION_PREFIXES else prefix
+
+
+def composition(suites: list[str], sampled: bool) -> str:
+    """The key of the image's `seeds_by_composition` for a unit: its suites in order joined by `+`, or `foundation`, then `+samples`."""
+    return ("+".join(sorted(suites)) or "foundation") + ("+samples" if sampled else "")
+
+
+def checks(version: str, said_version: str | None, configuration: dict[str, object], repository_catalogue: str | None, applied: dict[str, list[str]], expected: dict[str, list[str]], database_seeds: str | None, smoke: list[dict[str, str]], browser: dict[str, int], suites: list[str] | None = None) -> list[dict[str, object]]:
     """Each check of the installation against the infrastructure code, with what it found."""
     found = []
     found.append({"name": "version", "passed": said_version == version, "detail": f"the API image says {said_version}, the release is {version}"})
     image_catalogue = configuration.get("catalogue_sha256")
     found.append({"name": "catalogue", "passed": image_catalogue is not None and image_catalogue == repository_catalogue, "detail": f"image {image_catalogue}, repository {repository_catalogue}"})
     # A tenant marked for testing runs the sample module, whose permissions its seeds hold too (ADR-0057); its schema says so.
+    # A unit's suites add theirs (ADR-0059): the image states the seeds of every composition, and the unit's is checked.
     sampled = SAMPLES_SCHEMA in applied
-    image_seeds = configuration.get("sample_seeds_sha256" if sampled else "seeds_sha256")
-    seeded = "the code seeds, with the sample module," if sampled else "the code seeds"
+    running = sorted(suites or [])
+    key = composition(running, sampled)
+    by_composition = configuration.get("seeds_by_composition")
+    if isinstance(by_composition, dict):
+        image_seeds = by_composition.get(key)
+    else:  # an image built before suites per tenant states the Foundation's seeds alone
+        image_seeds = configuration.get("sample_seeds_sha256" if sampled else "seeds_sha256") if not running else None
+    seeded = f"the code seeds for {key}"
     found.append({"name": "seeds", "passed": image_seeds is not None and image_seeds == database_seeds, "detail": f"{seeded} {image_seeds}, the tenant's database holds {database_seeds}"})
     for schema in sorted(applied):
+        suite = suite_of(schema)
+        if suite is not None and suite not in running:
+            # A removed suite's schema and rows stay for when it is added again (TF-244 AC4); no migration of it runs meanwhile.
+            found.append({"name": f"migrations {schema}", "passed": True, "detail": f"{len(applied[schema])} applied; kept from the suite '{suite}', which this unit does not run"})
+            continue
         wanted = expected.get(schema)
         if wanted is None:
             found.append({"name": f"migrations {schema}", "passed": False, "detail": "the repository has no migrations for this schema"})
@@ -128,7 +156,7 @@ def checks(version: str, said_version: str | None, configuration: dict[str, obje
     return found
 
 
-def build(tenant: str, version: str, commit: str, images: list[dict[str, str]], said_version: str | None, configuration: dict[str, object], repository_catalogue: str | None, applied: dict[str, list[str]], expected: dict[str, list[str]], database_seeds: str | None, smoke: list[dict[str, str]], browser: dict[str, int]) -> dict[str, object]:
+def build(tenant: str, version: str, commit: str, images: list[dict[str, str]], said_version: str | None, configuration: dict[str, object], repository_catalogue: str | None, applied: dict[str, list[str]], expected: dict[str, list[str]], database_seeds: str | None, smoke: list[dict[str, str]], browser: dict[str, int], suites: list[str] | None = None) -> dict[str, object]:
     return {
         "format": FORMAT,
         "tenant": tenant,
@@ -136,11 +164,12 @@ def build(tenant: str, version: str, commit: str, images: list[dict[str, str]], 
         "commit": commit,
         "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "images": images,
+        "suites": sorted(suites or []),
         "migrations": applied,
         "configuration": {k: v for k, v in configuration.items() if k.endswith("_sha256")} | {"database_seeds_sha256": database_seeds},
         "smoke": {"steps": smoke},
         "browser_tests": browser,
-        "checks": checks(version, said_version, configuration, repository_catalogue, applied, expected, database_seeds, smoke, browser),
+        "checks": checks(version, said_version, configuration, repository_catalogue, applied, expected, database_seeds, smoke, browser, suites),
     }
 
 
@@ -171,6 +200,15 @@ def psql(root: Path, database: str, sql: str) -> list[list[str]]:
     return [line.split("\t") for line in output.splitlines() if line.strip()]
 
 
+def unit_suites(tenant: str) -> list[str]:
+    """The suites the tenant's unit runs (ADR-0059): the fleet sets them in its containers' environment, which is what the unit read at start."""
+    output = run("docker", "inspect", "--format", "{{range .Config.Env}}{{println .}}{{end}}", f"tenant-{tenant}-api-1")
+    for line in output.splitlines():
+        if line.startswith(f"{SUITES_VARIABLE}="):
+            return sorted(suite for suite in line.split("=", 1)[1].split(",") if suite)
+    return []
+
+
 def image_digest(reference: str) -> str:
     digests = json.loads(run("docker", "image", "inspect", reference, "--format", "{{json .RepoDigests}}") or "[]")
     return digests[0].split("@", 1)[1] if digests else run("docker", "image", "inspect", reference, "--format", "{{.Id}}").strip()
@@ -199,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
     commit = run("git", "-C", str(ROOT), "rev-parse", "HEAD").strip()
     record = build(
         arguments.tenant, arguments.version, commit, images, said, configuration, sha256(catalogue.read_bytes()) if catalogue.exists() else None,
-        applied, expected_migrations(ROOT), seeds, smoke_steps(arguments.smoke_report), junit_counts(arguments.e2e_junit),
+        applied, expected_migrations(ROOT), seeds, smoke_steps(arguments.smoke_report), junit_counts(arguments.e2e_junit), unit_suites(arguments.tenant),
     )
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")

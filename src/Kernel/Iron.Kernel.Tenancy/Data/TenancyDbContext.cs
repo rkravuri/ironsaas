@@ -16,6 +16,9 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
 
     public DbSet<TenantEntitlement> Entitlements => Set<TenantEntitlement>();
 
+    /// <summary>The suites each tenant has, with the plan it holds for each (TF-244).</summary>
+    public DbSet<TenantSuite> Suites => Set<TenantSuite>();
+
     public DbSet<EntitlementChange> EntitlementHistory => Set<EntitlementChange>();
 
     public DbSet<FlagRule> FlagRules => Set<FlagRule>();
@@ -199,6 +202,19 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
             plan.Property(p => p.Name).HasMaxLength(Plan.NameMaxLength);
             plan.Property(p => p.ModulesJson).HasColumnName("modules").HasColumnType("jsonb");
             plan.Ignore(p => p.Modules);
+
+            // The plans before suites per tenant (Standard, Enterprise) are the Foundation's (TF-244).
+            plan.Property(p => p.Suite).HasMaxLength(Plan.SuiteMaxLength).HasDefaultValue(SuiteName.Foundation);
+            plan.HasIndex(p => p.Suite);
+        });
+
+        modelBuilder.Entity<TenantSuite>(suite =>
+        {
+            suite.ToTable("tenant_suites");
+            suite.HasOne<Tenant>().WithMany().HasForeignKey(s => s.TenantId).OnDelete(DeleteBehavior.Cascade);
+            suite.Property(s => s.Suite).HasMaxLength(Plan.SuiteMaxLength);
+            suite.Property(s => s.Plan).HasMaxLength(Plan.CodeMaxLength);
+            suite.HasIndex(s => new { s.TenantId, s.Suite }).IsUnique();
         });
 
         modelBuilder.Entity<TenantEntitlement>(entitlement =>
@@ -210,6 +226,7 @@ public sealed class TenancyDbContext(DbContextOptions<TenancyDbContext> options)
             entitlement.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
             entitlement.Property(e => e.SubscriptionType).HasConversion<string>().HasMaxLength(20);
             entitlement.HasIndex(e => new { e.TenantId, e.Kind, e.Code }).IsUnique();
+            entitlement.Property(e => e.Suite).HasMaxLength(Plan.SuiteMaxLength).HasDefaultValue(SuiteName.Foundation);
             entitlement.Ignore(e => e.Value);
         });
 

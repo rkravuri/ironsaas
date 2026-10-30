@@ -11,7 +11,8 @@ using Iron.Smoke;
 // S3 T3: the administrator's second step with the key the smoke keeps (an enrolment after the operator's reset when it has
 // none, or the unit refuses it), and a person of the run who enrols an app, signs in with its codes and with a recovery
 // code (ADR-0047). Two since S3 T9b: the ingress's TLS policy, and the index key rotated with its sample value still found
-// by its exact value (ADR-0054).
+// by its exact value (ADR-0054). One since V2: the tenant's suites, the About page where it has the eProcurement Suite and
+// not found where it does not (ADR-0059).
 var options = SmokeOptions.FromEnvironment();
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -47,7 +48,8 @@ await report.StepAsync("tenant", ["TF-180 AC2"], async () =>
     var existing = await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}", bearer: operatorToken, cancellationToken: ct);
     if (existing.Status == HttpStatusCode.NotFound)
     {
-        (await api.SendAsync(HttpMethod.Post, options.ControlUrl, "/api/v1/tenants", bearer: operatorToken, json: new { slug = options.Tenant, display_name = "Smoke", administrator_login_id = options.AdministratorLoginId, sample_records = options.SampleRecords }, cancellationToken: ct)).Expect(HttpStatusCode.Created, "create the tenant");
+        var suites = options.NewTenantSuites.Select(suite => new { suite, plan = (string?)null }).ToList();
+        (await api.SendAsync(HttpMethod.Post, options.ControlUrl, "/api/v1/tenants", bearer: operatorToken, json: new { slug = options.Tenant, display_name = "Smoke", administrator_login_id = options.AdministratorLoginId, sample_records = options.SampleRecords, suites, reason = "The smoke test's tenant" }, cancellationToken: ct)).Expect(HttpStatusCode.Created, "create the tenant");
         existing = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "read the tenant");
     }
     else
@@ -491,6 +493,11 @@ await report.StepAsync("key-rotation", ["TF-075 AC1", "TF-074 AC2", "TF-074 AC4"
 // link finds the denials, the control plane holds its copy and Alertmanager has it; resolved, the person deactivated.
 var monitoring = new MonitoringSteps(api, options, signIn, sessions, AdministratorAsync, operatorToken, run);
 await report.StepAsync("security-alert", ["TF-079 AC1", "ADR-0056"], () => monitoring.DenialsRaiseAnAlertAsync(ct));
+
+// V2's step (ADR-0059): the tenant's suites as the control plane records them, and the unit's answer for each: the suite's
+// About page with its installation and plan where the tenant has it, not found where it does not. It reads only.
+var suiteSteps = new SuiteSteps(api, options, AdministratorAsync, operatorToken ?? string.Empty);
+await report.StepAsync("suites", ["TF-244 AC1", "TF-244 AC2", "ADR-0059"], () => suiteSteps.AboutAsync(ct));
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;

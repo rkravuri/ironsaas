@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { expect, test, type CDPSession, type Locator, type Page } from "@playwright/test";
+import { expect, request as playwrightRequest, test, type CDPSession, type Locator, type Page } from "@playwright/test";
 
 export const loginId = process.env.E2E_LOGIN_ID ?? "admin@smoke.localhost";
 export const password = process.env.E2E_PASSWORD ?? "";
@@ -302,4 +302,33 @@ export async function call<T>(page: Page, method: string, path: string, body?: u
     },
     { method, path, body },
   );
+}
+
+/**
+ * The suites the tenant under test has, as the control plane records them (TF-244, ADR-0059): what its unit runs, and so
+ * what its pages show. The control plane is reached as make e2e passes it (E2E_CONTROL_URL, E2E_OPERATOR_SECRET).
+ */
+export async function suitesOfTenant(tenant: string): Promise<string[]> {
+  const operatorSecret = process.env.E2E_OPERATOR_SECRET ?? "";
+  if (!operatorSecret) {
+    throw new Error("E2E_OPERATOR_SECRET is required: the control plane's operator secret, which make e2e passes.");
+  }
+  const control = await playwrightRequest.newContext({
+    baseURL: process.env.E2E_CONTROL_URL ?? "http://localhost:5200",
+  });
+  try {
+    const token = await control.post("/connect/token", {
+      form: { grant_type: "client_credentials" },
+      headers: { Authorization: `Basic ${Buffer.from(`operator:${operatorSecret}`).toString("base64")}` },
+    });
+    expect(token.ok(), await token.text()).toBe(true);
+    const { access_token: accessToken } = (await token.json()) as { access_token: string };
+    const suites = await control.get(`/api/v1/tenants/${tenant}/suites`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    expect(suites.ok(), await suites.text()).toBe(true);
+    return ((await suites.json()) as { suite: string }[]).map((suite) => suite.suite);
+  } finally {
+    await control.dispose();
+  }
 }

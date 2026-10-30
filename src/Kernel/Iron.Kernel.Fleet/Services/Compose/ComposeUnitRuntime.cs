@@ -123,6 +123,9 @@ public sealed class ComposeUnitRuntime(IProcessRunner processes, HttpClient http
             ["SECRETS_MOUNT"] = unit.Environment.GetValueOrDefault("Secrets__Mount", "secret"),
             ["SECRETS_PATH"] = unit.Environment.GetValueOrDefault("Secrets__Path", string.Empty),
             ["OTLP_ENDPOINT"] = unit.Environment.GetValueOrDefault("OTEL_EXPORTER_OTLP_ENDPOINT", units.OtlpEndpoint),
+
+            // The tenant's suites (TF-244, ADR-0059): a change of them changes the containers, so the update recreates them.
+            ["SUITES"] = unit.Environment.GetValueOrDefault(Steps.UnitEnvironment.SuitesVariable, string.Empty),
         };
         return variables;
     }

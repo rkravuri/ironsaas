@@ -11,16 +11,18 @@ public enum EntitlementKind
 
 /// <summary>
 /// One module or feature a tenant has (TF-040): its status (Enabled, Disabled, ReadOnly), how it is sold and its seats
-/// for a module, and the subscription's dates. Expired is never stored: the unit works it out from the end date.
+/// for a module, and the subscription's dates. Expired is never stored: the unit works it out from the end date. It
+/// came from the plan of one group, the Foundation's or a suite's (TF-244), and only that group's plan changes it.
 /// </summary>
 public sealed class TenantEntitlement : AuditedEntity, ITenantWide
 {
     private TenantEntitlement()
     {
         Code = string.Empty;
+        Suite = SuiteName.Foundation;
     }
 
-    public TenantEntitlement(Guid tenantId, EntitlementKind kind, string code, EntitlementValue value)
+    public TenantEntitlement(Guid tenantId, EntitlementKind kind, string code, EntitlementValue value, string suite = SuiteName.Foundation)
         : this()
     {
         if (tenantId == Guid.Empty)
@@ -29,11 +31,16 @@ public sealed class TenantEntitlement : AuditedEntity, ITenantWide
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(suite);
         TenantId = tenantId;
         Kind = kind;
         Code = code;
+        Suite = suite;
         Set(value);
     }
+
+    /// <summary>The group whose plan it came from: <c>foundation</c> or a suite's short name.</summary>
+    public string Suite { get; private set; }
 
     /// <summary>The row id of the tenant (not the slug).</summary>
     public Guid TenantId { get; private set; }

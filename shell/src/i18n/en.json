@@ -180,6 +180,11 @@
       "title": "Samples",
       "records": "Sample records",
       "line": "Records for testing this unit: their visibility tags, sharing and history, as every product's records will have them."
+    },
+    "purchasing": {
+      "title": "Purchasing",
+      "about": "About this suite",
+      "line": "What of the eProcurement Suite your organisation has: the release, when it was installed, and the plan."
     }
   },
   "users": {
@@ -1241,7 +1246,8 @@
     "plans": {
       "standard": "Standard",
       "enterprise": "Enterprise",
-      "configuration": "Set in this host's configuration"
+      "configuration": "Set in this host's configuration",
+      "procurement-essentials": "eProcurement Essentials"
     },
     "stale": {
       "title": "The subscription cannot be confirmed",
@@ -1294,7 +1300,9 @@
       "usage": "{{assigned}} of {{limit}} used, {{remaining}} left",
       "notCounted": "Not counted"
     },
-    "moduleNames": {}
+    "moduleNames": {
+      "purchasing": "Purchasing"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -3250,6 +3258,39 @@
       "aboveBounds": "Choose from {{minimum}} to {{maximum}} records.",
       "save": "Save",
       "reset": "Use the operator's values"
+    }
+  },
+  "suiteAbout": {
+    "title": "About the {{suite}}",
+    "description": "What of the suite your organisation has and under which plan. The platform operator adds and changes suites and plans; ask them for a change.",
+    "failed": "The suite's details could not be loaded",
+    "suite": {
+      "title": "The suite",
+      "description": "The release your organisation runs, when the suite was installed, and when an update last brought it up to date.",
+      "release": "Release",
+      "development": "A development build",
+      "installed": "Installed",
+      "seeded": "Last updated",
+      "when": "{{time}}, release {{version}}",
+      "job": "By the platform's job {{id}}",
+      "noJob": "Not by a platform job",
+      "notRecorded": "Not recorded yet: the next update of your organisation's unit records it."
+    },
+    "plan": {
+      "title": "Your plan for the suite",
+      "description": "The plan decides which of the suite's modules and features your organisation has, and for how long after it ends they keep working.",
+      "none": "Your organisation has no plan for the suite in force. Ask the platform operator to apply one.",
+      "stale": "The suite's modules are switched off until the subscription can be confirmed again."
+    },
+    "modules": {
+      "title": "The suite's modules",
+      "description": "Each module of the suite with what applies now and why.",
+      "empty": "The suite has no licensed modules yet"
+    },
+    "features": {
+      "title": "The suite's features",
+      "description": "The features the suite's modules offer, each with what applies now and why.",
+      "empty": "The suite has no features of its own yet"
     }
   }
 }

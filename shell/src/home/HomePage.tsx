@@ -47,10 +47,12 @@ function HomeView({ me }: { me: Me }) {
   const { t } = useTranslation();
   const session = useSession();
   const hostname = window.location.hostname;
+  // A suite's group only where the unit runs the suite (TF-244) and the person is entitled to one of its modules.
   const groups = useMemo(
     () =>
       openersBySuite(
         openersFor(manifests, session.permissions, { strict: import.meta.env.DEV }, session.entitlements.entitled),
+        session.entitlements.installed,
       ),
     [session.permissions, session.entitlements],
   );

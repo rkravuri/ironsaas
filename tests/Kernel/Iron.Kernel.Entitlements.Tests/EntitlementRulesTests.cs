@@ -59,6 +59,30 @@ public class EntitlementRulesTests
     }
 
     [Fact]
+    [Proves("TF-244 AC5", "TF-244 AC6", "ADR-0059")]
+    public void AnEntryFollowsItsOwnPlansGraceAndADocumentWithoutSuitesReadsAsBefore()
+    {
+        var suiteModule = new ModuleEntitlement("purchasing", EntitlementStatus.Enabled, SubscriptionType.Platform, null, Start, End, 30, "procurement");
+        var foundationFeature = new FeatureEntitlement("authorization.role_transfer", EntitlementStatus.Enabled, Start, End, 7, SuiteName.Foundation);
+        var document = new EntitlementsDocument(EntitlementsDocument.CurrentFormat, "echo", 4, "standard", 7, DateTimeOffset.UnixEpoch, [suiteModule], [foundationFeature], [new SuitePlan("procurement", "procurement-essentials", 30)]);
+
+        var read = EntitlementsDocument.Parse(document.ToJson());
+
+        Assert.Equal(new SuitePlan("procurement", "procurement-essentials", 30), read.FindSuite("procurement"));
+        Assert.Null(read.FindSuite("school"));
+        var tenDaysAfter = End.AddDays(10);
+        Assert.Equal(new Entitlement(EntitlementStatus.Enabled, EntitlementReasons.InGrace), EntitlementRules.Module(read, "purchasing", tenDaysAfter));
+        Assert.Equal(new Entitlement(EntitlementStatus.Disabled, EntitlementReasons.Expired), EntitlementRules.Feature(read, "authorization.role_transfer", null, tenDaysAfter));
+        Assert.Equal(new Entitlement(EntitlementStatus.Disabled, EntitlementReasons.Expired), EntitlementRules.Module(read, "purchasing", End.AddDays(31)));
+
+        // A document written before plans per suite: no suites, and every entry follows the document's grace days.
+        var older = EntitlementsDocument.Parse(Documents.With(2, [Documents.Fixture(endsOn: End)], graceDays: 14).ToJson());
+        Assert.Empty(older.Suites ?? []);
+        Assert.Equal(EntitlementReasons.InGrace, EntitlementRules.Module(older, FixtureModule.Licence.Code, End.AddDays(14)).Reason);
+        Assert.Equal(EntitlementReasons.Expired, EntitlementRules.Module(older, FixtureModule.Licence.Code, End.AddDays(15)).Reason);
+    }
+
+    [Fact]
     [Proves("ADR-0034")]
     public void TheDocumentRoundTripsAndAFormatThisBuildDoesNotKnowIsRefused()
     {

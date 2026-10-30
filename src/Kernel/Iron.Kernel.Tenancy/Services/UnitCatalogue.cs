@@ -53,4 +53,39 @@ public sealed class UnitCatalogue(LicensingCatalogue catalogue)
         ArgumentNullException.ThrowIfNull(plan);
         return Unknown(plan.Modules.Select(m => m.Code), plan.Features);
     }
+
+    /// <summary>Whether a plan may belong to this group: the Foundation, or a suite this build carries (TF-244).</summary>
+    public bool KnowsGroup(string suite) => Catalogue.Suites.Contains(suite, StringComparer.Ordinal);
+
+    /// <summary>
+    /// TF-244 AC7: one message per module or feature of another group than the plan's, naming the code and the group it
+    /// belongs to. A plan of a suite names only that suite's; a Foundation plan only the Foundation's.
+    /// </summary>
+    public IReadOnlyList<string> OtherGroup(string suite, IEnumerable<string> modules, IEnumerable<string> features)
+    {
+        ArgumentNullException.ThrowIfNull(modules);
+        ArgumentNullException.ThrowIfNull(features);
+        var problems = new List<string>();
+        foreach (var module in modules.Distinct(StringComparer.Ordinal).Select(Catalogue.FindModule).OfType<LicensedModuleEntry>().Where(m => m.Suite != suite))
+        {
+            problems.Add($"'{module.Code}' is a module of {GroupName(module.Suite)}, not of {GroupName(suite)}: a plan names only its own group's modules and features.");
+        }
+
+        foreach (var feature in features.Distinct(StringComparer.Ordinal).Select(Catalogue.FindFeature).OfType<FeatureEntry>().Where(f => f.Suite != suite))
+        {
+            problems.Add($"'{feature.Code}' is a feature of {GroupName(feature.Suite)}, not of {GroupName(suite)}: a plan names only its own group's modules and features.");
+        }
+
+        return problems;
+    }
+
+    /// <summary>The same check for a plan as it is stored, before it is applied.</summary>
+    public IReadOnlyList<string> OtherGroup(Plan plan)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        return OtherGroup(plan.Suite, plan.Modules.Select(m => m.Code), plan.Features);
+    }
+
+    /// <summary>A group as a message names it: the Foundation, or the suite by its short name.</summary>
+    public static string GroupName(string suite) => suite == SuiteName.Foundation ? "the Foundation (foundation)" : $"the suite '{suite}'";
 }

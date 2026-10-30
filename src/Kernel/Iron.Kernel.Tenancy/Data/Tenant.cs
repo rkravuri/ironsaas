@@ -83,13 +83,20 @@ public sealed class Tenant : AuditedEntity, ITenantWide
 
     public void MarkForSampleRecords(bool enabled) => SampleRecords = enabled;
 
-    /// <summary>A plan applied: its code and grace days, and the next revision, which the caller writes into the history.</summary>
+    /// <summary>A Foundation plan applied: its code and grace days, and the next revision, which the caller writes into the history.</summary>
     public int ApplyPlan(string plan, int graceDays)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(plan);
         ArgumentOutOfRangeException.ThrowIfNegative(graceDays);
         Plan = plan;
         GraceDays = graceDays;
+        EntitlementsRevision++;
+        return EntitlementsRevision;
+    }
+
+    /// <summary>The entitlements changed otherwise, by a suite's plan or a suite added or removed (TF-244): the next revision.</summary>
+    public int NextRevision()
+    {
         EntitlementsRevision++;
         return EntitlementsRevision;
     }

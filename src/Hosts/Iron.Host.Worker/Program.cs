@@ -25,6 +25,7 @@ using Iron.Kernel.Telemetry.Clock;
 using Iron.Kernel.Telemetry.Health;
 using Iron.Kernel.Telemetry.Heartbeat;
 using Iron.Kernel.Visibility;
+using Iron.Suites.Procurement.Purchasing;
 
 if (HealthProbe.IsCommand(args))
 {
@@ -38,9 +39,12 @@ var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
-// The modules this worker runs, in order: the same list as the API host, without endpoints. Protection is here for its
-// audit event types, which the alert rules count (ADR-0056); its limits apply to requests, which the worker serves none of.
-IReadOnlyList<IModule> modules = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+// The modules this worker runs, in order: the same lists as the API host, without endpoints: the Foundation's, then
+// those of the suites the unit's configuration names (TF-244, ADR-0059). Protection is here for its audit event types,
+// which the alert rules count (ADR-0056); its limits apply to requests, which the worker serves none of.
+IReadOnlyList<IModule> foundation = [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+var suites = InstalledSuites.From(builder.Configuration, [PurchasingModule.Suite()]);
+var modules = InstalledSuites.Compose(foundation, suites);
 
 builder.AddIronTelemetry("iron-worker", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);
@@ -55,7 +59,7 @@ var connectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException("ConnectionStrings:Database is required. Set ConnectionStrings__Database for this unit.");
 builder.Services.AddIronDatabase(connectionString, builder.Configuration["Database:AppRole"], builder.Configuration["Database:AuditReaderRole"]);
 builder.Services.AddIronDatabaseHealthCheck();
-builder.Services.AddModules(builder.Configuration, modules);
+builder.Services.AddModules(builder.Configuration, modules, suites);
 
 // The daily passes that belong to one process per unit, not to every API replica.
 builder.Services.AddAccessReviewEscalation();

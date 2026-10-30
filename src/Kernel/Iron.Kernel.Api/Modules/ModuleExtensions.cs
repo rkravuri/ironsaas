@@ -23,13 +23,18 @@ public sealed class ModuleCollection(IReadOnlyList<IModule> modules)
 
 public static class ModuleExtensions
 {
-    /// <summary>Registers the services of every module, the permission and licensing catalogues, and remembers the list for MapModules.</summary>
-    public static IServiceCollection AddModules(this IServiceCollection services, IConfiguration configuration, IReadOnlyList<IModule> modules)
+    /// <summary>
+    /// Registers the services of every module, the permission and licensing catalogues, and remembers the list for
+    /// MapModules. <paramref name="suites"/> are the suites the host runs (TF-244, ADR-0059): a module of a suite comes
+    /// only with its suite, so a unit never serves part of a suite it was not given.
+    /// </summary>
+    public static IServiceCollection AddModules(this IServiceCollection services, IConfiguration configuration, IReadOnlyList<IModule> modules, IReadOnlyList<SuiteDefinition>? suites = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(modules);
 
+        var installed = suites ?? [];
         var names = new HashSet<string>(StringComparer.Ordinal);
         var permissions = new List<Permission>();
         foreach (var module in modules)
@@ -37,6 +42,11 @@ public static class ModuleExtensions
             if (!names.Add(module.Name))
             {
                 throw new InvalidOperationException($"The module '{module.Name}' is listed twice.");
+            }
+
+            if (module.Suite != SuiteName.Foundation && installed.All(suite => suite.ShortName != module.Suite))
+            {
+                throw new InvalidOperationException($"The module '{module.Name}' belongs to the suite '{module.Suite}', which this host does not run; a suite's modules come with their suite (TF-244).");
             }
 
             foreach (var permission in module.Permissions)
@@ -53,6 +63,7 @@ public static class ModuleExtensions
         }
 
         services.AddSingleton(new ModuleCollection(modules));
+        services.AddSingleton(new UnitSuites(installed));
         services.AddSingleton(new PermissionCatalogue(permissions));
         services.AddSingleton(LicensingCatalogue.From(modules));
         services.AddSingleton(new SettingDeclarations(modules));

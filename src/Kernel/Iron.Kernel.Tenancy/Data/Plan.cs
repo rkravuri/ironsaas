@@ -11,12 +11,14 @@ public sealed record PlanModule(string Code, EntitlementStatus Status, Subscript
 /// <summary>
 /// A template of entitlements (TF-042): licensed modules, features and a grace period in days, applied to a tenant in
 /// one action. Kernel modules are never in a plan (ADR-0034); the codes are checked against the catalogue of the build
-/// the units run when the plan is saved and again when it is applied.
+/// the units run when the plan is saved and again when it is applied. A plan belongs to one group, the Foundation or a
+/// suite, and names only that group's modules and features (TF-244 AC7, ADR-0059); its group never changes.
 /// </summary>
 public sealed partial class Plan : AuditedEntity, ITenantWide
 {
     public const int CodeMaxLength = 64;
     public const int NameMaxLength = 200;
+    public const int SuiteMaxLength = 40;
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -28,11 +30,12 @@ public sealed partial class Plan : AuditedEntity, ITenantWide
     {
         Code = string.Empty;
         Name = string.Empty;
+        Suite = SuiteName.Foundation;
         ModulesJson = "[]";
         Features = [];
     }
 
-    public Plan(string code, string name, int graceDays, IReadOnlyList<PlanModule> modules, IReadOnlyList<string> features)
+    public Plan(string code, string name, int graceDays, IReadOnlyList<PlanModule> modules, IReadOnlyList<string> features, string suite = SuiteName.Foundation)
         : this()
     {
         if (!IsValidCode(code))
@@ -40,11 +43,20 @@ public sealed partial class Plan : AuditedEntity, ITenantWide
             throw new ArgumentException($"'{code}' is not a plan code.", nameof(code));
         }
 
+        if (suite != SuiteName.Foundation && !SuiteName.IsShortName(suite))
+        {
+            throw new ArgumentException($"'{suite}' is neither the Foundation nor a suite's short name.", nameof(suite));
+        }
+
         Code = code;
+        Suite = suite;
         Change(name, graceDays, modules, features);
     }
 
     public string Code { get; private set; }
+
+    /// <summary>The plan's group: <c>foundation</c>, which every tenant holds one plan of, or a suite's short name (TF-244).</summary>
+    public string Suite { get; private set; }
 
     public string Name { get; private set; }
 
