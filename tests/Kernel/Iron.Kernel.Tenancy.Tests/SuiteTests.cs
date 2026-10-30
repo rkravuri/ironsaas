@@ -219,12 +219,21 @@ public class SuiteTests(TenancyFixture fixture)
         await using var scope = provider.CreateAsyncScope();
         var registry = scope.ServiceProvider.GetRequiredService<TenantRegistry>();
 
-        var created = await registry.CreateAsync(new NewTenant($"with-{suffix}", "With", [], $"admin@with-{suffix}.test", null, SizeClass.Small, null, null, Suites: [new SuiteChoice(Procurement, Essentials), new SuiteChoice("Procurement")]), Cancel);
+        var created = await registry.CreateAsync(new NewTenant($"with-{suffix}", "With", [], $"admin@with-{suffix}.test", null, SizeClass.Small, null, null, Suites: [new SuiteChoice(Procurement, Essentials), new SuiteChoice("Procurement")], Reason: " Bought with the suite "), Cancel);
         Assert.True(created.IsSuccess, created.IsFailure ? created.Error.Message : null);
         Assert.Equal([Procurement], created.Value.InstalledSuites);
         var suites = await scope.ServiceProvider.GetRequiredService<SuiteService>().ListAsync($"with-{suffix}", Cancel);
         var suite = Assert.Single(suites.Value);
         Assert.Equal((Procurement, Essentials, 30), (suite.Suite, suite.Plan, suite.GraceDays));
+
+        // The operator's reason is the trail's and the history's, for the tenant and for its suite's plan.
+        var registered = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking().SingleAsync(e => e.EventType == TenancyAuditEvents.TenantCreated && e.Target == $"with-{suffix}", Cancel);
+        Assert.Equal("Bought with the suite", registered.Reason);
+        var context = scope.ServiceProvider.GetRequiredService<TenancyDbContext>();
+        var history = await context.EntitlementHistory.AsNoTracking().Where(c => c.TenantSlug == $"with-{suffix}").ToListAsync(Cancel);
+        Assert.All(history, c => Assert.Equal("Bought with the suite", c.Reason));
+        Assert.Contains(history, c => (c.Kind, c.Code) == ("plan", Procurement));
+        Assert.Contains(history, c => (c.Kind, c.Code) == ("module", "purchasing"));
 
         var unknown = await registry.CreateAsync(new NewTenant($"school-{suffix}", "School", [], $"admin@school-{suffix}.test", null, SizeClass.Small, null, null, Suites: [new SuiteChoice("school")]), Cancel);
         Assert.Equal(TenancyErrors.SuiteUnknown, unknown.Error.Code);

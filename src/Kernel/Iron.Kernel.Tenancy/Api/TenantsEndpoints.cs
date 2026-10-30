@@ -29,7 +29,8 @@ public sealed record CreateTenantRequest(
     string? Region,
     string? Plan,
     bool? SampleRecords = null,
-    IReadOnlyList<SuiteChoiceRequest>? Suites = null);
+    IReadOnlyList<SuiteChoiceRequest>? Suites = null,
+    string? Reason = null);
 
 /// <summary>A suite a new tenant starts with (TF-244), and its plan: the suite's only plan when none is named.</summary>
 public sealed record SuiteChoiceRequest(string Suite, string? Plan);
@@ -52,6 +53,7 @@ public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenan
         RuleFor(r => r.Plan).MaximumLength(64);
         RuleFor(r => r.Hostnames).MaximumCount(10);
         RuleForEach(r => r.Hostnames).NotEmpty().MaximumLength(TenantHostname.MaxLength);
+        RuleFor(r => r.Reason).MaximumLength(SuiteService.ReasonMaxLength);
         RuleFor(r => r.Suites).MaximumCount(10);
         RuleForEach(r => r.Suites).ChildRules(suite =>
         {
@@ -167,7 +169,7 @@ internal static class TenantsEndpoints
     private static async Task<IResult> CreateAsync(CreateTenantRequest request, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
     {
         var result = await registry.CreateAsync(
-            new NewTenant(request.Slug, request.DisplayName, request.Hostnames ?? [], request.AdministratorLoginId, request.AdministratorDisplayName, request.SizeClass ?? SizeClass.Small, request.Region, request.Plan, request.SampleRecords ?? false, request.Suites?.Select(s => new SuiteChoice(s.Suite, s.Plan)).ToList()),
+            new NewTenant(request.Slug, request.DisplayName, request.Hostnames ?? [], request.AdministratorLoginId, request.AdministratorDisplayName, request.SizeClass ?? SizeClass.Small, request.Region, request.Plan, request.SampleRecords ?? false, request.Suites?.Select(s => new SuiteChoice(s.Suite, s.Plan)).ToList(), request.Reason),
             cancellationToken);
         return ApiResults.From(result, http, tenant => TypedResults.Created($"{ApiRouting.Prefix}/tenants/{tenant.Slug}", tenant));
     }

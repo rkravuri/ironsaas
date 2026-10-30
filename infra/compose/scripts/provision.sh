@@ -4,7 +4,9 @@
 # RESET_FACTORS=1 also resets their second factors, ADR-0047; ACTION=impersonation asks for a one-time link to sign in
 # as the person named second, with REASON and MINUTES, ADR-0049; ACTION=sample-records marks the tenant's unit to run the
 # sample module for testing when SAMPLE_RECORDS=1, or unmarks it when SAMPLE_RECORDS=0, ADR-0057; a provisioning with
-# SAMPLE_RECORDS=1 registers the tenant marked),
+# SAMPLE_RECORDS=1 registers the tenant marked, and with SUITES=procurement registers it with those suites, each under
+# its only plan, ADR-0059; ACTION=suite-add adds SUITE to an active tenant under PLAN, or the suite's only plan, and
+# ACTION=suite-remove removes it, both with REASON, each an update job of the fleet, ADR-0059),
 # as an operator (client credentials), then follows the job until it ends and prints every step with its duration.
 # A link the job handed over (the first administrator's invitation, a recovery link) is printed once: the control plane
 # gives it once, to the operator who asked, and deletes it; it is never in the job's output (ADR-0046).
@@ -22,12 +24,16 @@ reason="${REASON:-}"
 reset_factors="${RESET_FACTORS:-0}"
 minutes="${MINUTES:-}"
 sample_records="${SAMPLE_RECORDS:-}"
+suites="${SUITES:-}"
+suite="${SUITE:-}"
+plan="${PLAN:-}"
 
-python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" "$sample_records" <<'PY'
+python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" "$sample_records" "$suites" "$suite" "$plan" <<'PY'
 import base64, json, sys, time, urllib.error, urllib.request
 
-control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes, sample_records = sys.argv[1:]
+control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes, sample_records, suites, suite, plan = sys.argv[1:]
 timeout = int(timeout)
+suites = [name.strip() for name in suites.split(",") if name.strip()]
 
 def call(method, path, body=None, token=None, form=None):
     data = None
@@ -58,13 +64,24 @@ access = token["access_token"]
 if action == "provision":
     status, existing = call("GET", f"/api/v1/tenants/{tenant}", token=access)
     if status == 404:
-        body = {"slug": tenant, "display_name": tenant.capitalize(), "administrator_login_id": administrator, "sample_records": sample_records == "1"}
+        body = {
+            "slug": tenant,
+            "display_name": tenant.capitalize(),
+            "administrator_login_id": administrator,
+            "sample_records": sample_records == "1",
+            "suites": [{"suite": name, "plan": None} for name in suites],
+            "reason": reason or None,
+        }
         status, created = call("POST", "/api/v1/tenants", body=body, token=access)
         if status != 201:
             sys.exit(f"Creating the tenant failed ({status}): {created}")
-        print(f"Registered tenant {tenant} with hostnames {', '.join(created['hostnames'])} and administrator {administrator}.")
+        with_suites = f" and the suites {', '.join(created['suites'])}" if created.get("suites") else ""
+        print(f"Registered tenant {tenant} with hostnames {', '.join(created['hostnames'])}, administrator {administrator}{with_suites}.")
     elif status == 200:
         print(f"Tenant {tenant} exists (status {existing['status']}).")
+        missing = [name for name in suites if name not in (existing.get("suites") or [])]
+        if missing:
+            print(f"It does not have {', '.join(missing)}: an existing tenant gains a suite with make suite-add TENANT={tenant} SUITE=<suite> REASON=\"...\".")
     else:
         sys.exit(f"Reading the tenant failed ({status}): {existing}")
 
@@ -85,6 +102,22 @@ elif action == "impersonation":
     # The person to sign in as, why, and for how long; the tenant decides whether its people may be signed in as at all.
     body = {"login_id": administrator, "reason": reason, "minutes": int(minutes) if minutes else None}
     status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", body=body, token=access)
+elif action in ("suite-add", "suite-remove"):
+    # The suite's entitlements change with the operator's reason, and the fleet's update job brings the unit along (ADR-0059).
+    if action == "suite-add":
+        status, change = call("POST", f"/api/v1/tenants/{tenant}/suites", body={"suite": suite, "plan": plan or None, "reason": reason}, token=access)
+    else:
+        status, change = call("POST", f"/api/v1/tenants/{tenant}/suites/{suite}/remove", body={"reason": reason}, token=access)
+    if status == 202:
+        entitlements = change["entitlements"]
+        verb = "Added" if action == "suite-add" else "Removed"
+        plan_named = entitlements["plan_after"] if action == "suite-add" else entitlements["plan_before"]
+        print(f"{verb} the suite {suite} ({plan_named}) at revision {entitlements['revision']}.")
+        for warning in entitlements.get("warnings", []):
+            print(f"  {warning}")
+        job = change["job"]
+    else:
+        job = change
 else:
     status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", token=access)
 if status == 202:
