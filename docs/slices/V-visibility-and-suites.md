@@ -27,7 +27,7 @@ The tasks of `docs/prompts/V.md`, one section each.
 | Task | What it builds | Requirements | State |
 |---|---|---|---|
 | V0 | Chores: the fleet image's five findings before their exceptions run out on 2026-11-28; dropping the old factor-secret column | | done |
-| V1 | Content visibility: visibility tags on people and records | TF-241 | in review (slice/v1-visibility) |
+| V1 | Content visibility: visibility tags on people and records | TF-241 | done |
 | V2 | Suites per tenant: a customer gets the suites it buys | TF-244 | outline |
 | V-close | Documentation, exceptions and closing notes | | outline |
 

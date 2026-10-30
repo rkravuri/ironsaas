@@ -1,8 +1,8 @@
 # ADR-0057: Content visibility: visibility tags in the record policy's query, stored on the record, measured first
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-29
-**Decided by:** Product owner and architect, in the brief of V1 and in its session, where the owner chose sample records in units marked for testing
+**Decided by:** Product owner and architect, in the brief of V1 and in its session, where the owner chose sample records in units marked for testing, and at the design session's review of it (2026-10-30), which added the model check's refusal of a business record whose table has no `visibility_tags` column
 
 ## Context
 
