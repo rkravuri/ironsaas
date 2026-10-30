@@ -22,7 +22,8 @@ One requirements document per layer and product (ADR-0041), each with its CSV be
 | `suites/procurement/invoicing-PRD.md` | Invoices, matching, payment status, credit notes | `INV-` |
 | `suites/procurement/contracts-PRD.md` | Contracts | `CON-` |
 | `suites/procurement/supplier-portal-PRD.md` | The supplier portal and the Supplier Network experience, a surface | `SPX-` |
-| `suites/procurement/<name>-scope.md` | Sourcing, auctions, projects and tasks, surveys, expenses: one page each, no requirements yet | `SRC-`, `AUC-`, `PRJ-`, `SRV-`, `EXP-` reserved |
+| `suites/procurement/<name>-scope.md` | The later modules: Spend Analytics and Savings, Sourcing (with auctions as a feature), Category and Savings Projects, Supplier Risk and Sustainability, Payments, Services and Contingent Workforce, Expenses: one page each, no requirements yet | `ANL-`, `SRC-`, `PRJ-`, `RSK-`, `PAY-`, `SVC-`, `EXP-` reserved; `AUC-` reserved and unused; `SRV-` retired |
+| `suites/procurement/README.md` | The suite's module list: each module, its licensing, its wave, its document and the leaders' equivalent; the deferred modules; the research log of the decision (ADR-0058). Not a requirements document | |
 
 ## Beside them, at the top of this folder
 
