@@ -287,6 +287,43 @@ Decided in T6, each small enough for a line here (the larger ones are ADR-0050's
 - At the review: a break-glass account acts as itself, so the "signed in as them by" filter finds its events by `actor_id`; operators and people by `impersonator_id`. The list comes from the trail's own records (`identity.break_glass_opened` by name, the operator's name kept with each event), so the audit module needs nothing from Identity.
 - Vitest's file cache keeps a module's glob from seeing a new manifest until `node_modules/.vitest-cache` is cleared; CI starts clean.
 
+## The eProcurement Suite's modules
+
+The owner reviewed the eProcurement Suite's module list against the leading suites on 2026-10-29 and accepted it without change, and decided that Requests and Intake supports desktop buying, central buying and the mix, as configuration; `docs/prompts/EPS-modules.md` writes those decisions into the requirement documents. Documentation only, beside one change to the requirements check.
+
+| Task | State | Branch | Notes |
+|---|---|---|---|
+| EPS-modules The suite's module list, and Requests and Intake | in review | slice/eps-modules | Commits: prompt 4e6195e, then 5cfdd70 (the module list in `docs/prd/suites/procurement/README.md` with licensing, waves, documents, the leaders' equivalents, the deferred modules and the research log; ADR-0058 proposed; four new scopes, `ANL-`, `RSK-`, `PAY-`, `SVC-`; Auctions merged into Sourcing as `sourcing.auctions`, `AUC-` reserved and unused; Projects and tasks reframed as Category and Savings Projects, `PRJ-` kept; Surveys removed, `SRV-` retired, TF-242's sentence and the map's note; `prd_check` passes a README in any folder by, with a test), b4fdefc (REQ-101, REQ-102, REQ-121 to REQ-123, REQ-141, REQ-142, REQ-161 to REQ-163; ORD-161 to ORD-164; INV-141 to INV-143; CON-101; the keys of REQ-081 and ORD-142; section 7.2 with PR9 to PR16), and the commit with this row (`docs/risk/eps-modules.md`). 18 new requirements with 65 criteria, each with an error case; 14 `[Decision]` defaults proposed, listed below. make prd-check passed (37 tests; 22 slices); make trace passed (94 Python tests; 85 of 500 requirements and 289 of 1746 criteria with a test; S1 to S3 done with 31 exceptions, none missing); make format changed nothing; make security passed with nothing failing but the one approved exception |
+
+Decided in the task, each small enough for a line here (the module list's decision is ADR-0058):
+
+- ADR-0058 records the owner's decision, since it replaces the scopes row of ADR-0041's decision 1 (its prefixes); it is proposed, for the design session to accept. ADR-0041 carries a dated note under that row.
+- `tools/prd_check.py` passes by a file named `README.md` in any folder, not only at the top, since the suite's module list is its README; a requirements document is still named `*-PRD.md` and refused when the check does not know it.
+- The wave rows stand after PR8 in section 7.2's table, numbered PR9 to PR16; each needs only what its row names, so wave 2 may start once PR7 is done, beside PR8, which waits for the Supplier Network. A scope's row builds no requirement until its PRD is written.
+- Requests and Intake's new requirements go where their needs are: intake and the buying model with PR2; routing and a buyer's consolidation with PR3; REQ-163 with PR4, beside ORD-164's shares, which hear of receipts; automatic orders and their window with PR6, since only catalogue and contract lines are ordered automatically (REQ-142 depends on CAT-021 and CAT-022). Country e-invoicing's frame goes with PR5, its connections with S7; CON-101 is PR11, Contracts' authoring tier in wave 2.
+- The product is Requests and Intake; its module keeps `Iron.Suites.Procurement.Requests`, the prefix `REQ-` and the permissions `requests.*` ("module 3 keeps its name"). The new modules' code names and licence codes are left to the slices that build them; only the features' codes are named, in the kernel's `area.feature` form.
+- Permissions proposed, decided by the slices that build them: `requests.requests.record_on_behalf`, `requests.types.manage`, `requests.configuration.manage`, `invoicing.e_invoicing.manage`.
+- Two notification keys, declared where the product declares its keys, the requirements that raise them depending on the declaration: "request recorded on your behalf" (REQ-081, raised by REQ-122) and "automatic order returned to the queue" (ORD-142, raised by ORD-162).
+- Each new scope proposes its place in the process order (ADR-0042, decision 8): Supplier Risk and Sustainability after Supplier management; Services and Contingent Workforce between Receiving and Invoicing; Payments after Invoicing; Spend Analytics and Savings after Payments; Category and Savings Projects last; Expenses apart; Sourcing keeps its place.
+- The research log names the sources the brief lists, marks every vendor's description as a vendor source and the mandates' dates as read on 2026-10-29; the EU laws carry their EUR-Lex addresses; the formats and rails the requirements name are the team's knowledge, to be cited when each country's or module's requirements are written. The leaders' equivalents are their own product names.
+
+The `[Decision]` defaults proposed in the task, for the design session:
+
+1. INV-141: a country's feature is `invoicing.e_invoicing_` with the ISO 3166-1 alpha-2 code in lowercase, or the regime's name; a legal entity turns it on with the date its obligation starts.
+2. INV-142: one invoice model inside, mapped to EN 16931's semantic model, and one mapping per format.
+3. REQ-101: a tenant's own request types are each based on one of the five; the type is chosen once, and another type means a new request.
+4. REQ-102: the starter reviews, inactive: software to security or IT always and to legal when terms must be signed; services and contractors to legal when terms must be signed and to procurement above 10,000; free-text goods to procurement above 10,000; any type to finance above 50,000 or with a line without budget; catalogue items nothing beyond the approval.
+5. REQ-121: a category's model comes before a unit's, the nearest unit up the tree within each; under central buying automatic orders are off unless the tenant allows them.
+6. REQ-122: the original is required; a need given by telephone or in person is recorded with a note of who asked and when; recording on behalf takes its own permission, held by the buyers' role.
+7. REQ-123: one request per person or unit and legal entity, created in Draft for the buyer to submit.
+8. REQ-141: between the two limits a line is marked "quotations advised", without blocking; no limits until the tenant sets them; a category's limit before its legal entity's.
+9. REQ-142: the suppliers enabled for automatic orders are named in the rules, not on the supplier's purchasing profile; no rules, no automatic orders.
+10. REQ-162: the consolidation window is on, daily, closing at 16:00 in the legal entity's time zone on its working days; a line needed before the next close is published at once.
+11. ORD-161: until Sourcing exists, a "source first" line is ordered only with the buyer's reason.
+12. ORD-162: a buyer of the line's purchasing group owns an automatic order, else of the legal entity's buying group; it is submitted at once and issued once approved; a failed one goes back to the buyer.
+13. ORD-163: a line of a window's group that cannot be ordered leaves the group, and the rest is ordered.
+14. ORD-164: identical means the same item or supplier item, supplier, unit, price and ship-to; the need-by date is the earliest share's; receipts are shared out earliest need-by first unless the receiver names a share; the option is off until a legal entity turns it on.
+
 ## Maintenance
 
 | Task | State | Branch | Notes |
@@ -300,6 +337,7 @@ Decided in T6, each small enough for a line here (the larger ones are ADR-0050's
 1. A platform document holds the browser tests' new people too, each run's, and a platform version cannot be retired: until a way to withdraw one exists, the runbook says not to publish one on a laptop that runs `make e2e`. Should the platform's documents be retirable, as a tenant's are, or should the browser tests' setup accept them for the people it makes?
 2. India's MSME readings (BF-204, RCV-029, INV-011, INV-087) stay `[Decision]`, to be confirmed by a practitioner in India, as the pack's research log asks.
 3. OMG's BPMN schema files carry no licence notice of their own; `docs/licences.md` reads them under the BPMN 2.0 specification's licence, which the owner confirms (ADR-0045).
+4. EPS-modules' fourteen `[Decision]` defaults (the section "The eProcurement Suite's modules" lists them) wait for the design session, with ADR-0058.
 
 ## Later items
 
@@ -385,4 +423,7 @@ Carried into S3 and beyond; the S2 plan's closing notes group them by area, the 
 - From S3 T10b: the operator has make targets and the control plane's API for incidents and alerts; console pages for them wait for the operator's console. Moved to S6 at S3-close, with the operator console.
 - From S3 T10b: a rule for each event raises one alert per pass and group, so several in one minute are one alert with their count. Settled at S3-close: by design (ADR-0056).
 - From S3 T10b's review: the client's address in the audit trail is personal data and needs a retention shorter than the trail's. The way is to encrypt it with a key destroyed when that retention ends (crypto-shredding), so the address becomes unreadable while the chain's hashes stay valid. It belongs with the privacy requirements TF-196 to TF-198. Moved to S6 at S3-close, where the privacy requests are built.
+- From EPS-modules: the module list puts Purchasing's module skeleton in V2, so that suites per tenant (TF-244) have a module to install; V's slice plan does not name it yet, for the design session when it writes V2's task.
+- From EPS-modules: each country's e-invoicing feature confirms its mandate's dates against its tax authority, and cites its formats, when its own requirements are written (INV-141); the research log records the dates as read on 2026-10-29.
+- From EPS-modules: each later module's process reference pack confirms its leaders' equivalents with the external practitioner (PM-002), and fixes the place in the process order its scope proposes (ADR-0042, decision 8); `tools/prd_check.py` then gains its prefix and, for a product, its place in `PROCESS_ORDER`.
 - Settled by S3-close: TF-014 AC10 states what a person sees when their identity provider answers 503 (`identity.sso.unavailable`), and a .NET test and two page tests prove it: the start and the callback say in words that the company login cannot be reached now and what to do, and no session or link is made.
