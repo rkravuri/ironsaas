@@ -1,5 +1,5 @@
 import { expect, request as playwrightRequest, test, type APIRequestContext, type Page } from "@playwright/test";
-import { signIn } from "./helpers";
+import { signIn, suitesOfTenant } from "./helpers";
 
 /**
  * ADR-0034 on a real unit: the operator moves the tenant from Enterprise to Standard in the control plane, and within a
@@ -128,7 +128,14 @@ test.describe("the console's Subscription page on a unit", () => {
 
       await expect(page.getByRole("heading", { level: 2, name: "Subscription" })).toBeVisible();
       await expect(page.getByText("Enterprise", { exact: true })).toBeVisible();
-      await expect(page.getByText("No licensed modules yet")).toBeVisible();
+      // The licensed modules are the suites' (ADR-0059): Purchasing where the tenant has the eProcurement Suite, none otherwise.
+      if ((await suitesOfTenant(tenant)).includes("procurement")) {
+        await expect(
+          page.getByRole("table", { name: "Licensed modules" }).getByRole("row", { name: /purchasing/ }),
+        ).toContainText("In your plan");
+      } else {
+        await expect(page.getByText("No licensed modules yet")).toBeVisible();
+      }
       const transfer = page
         .getByRole("table", { name: "Features" })
         .getByRole("row", { name: /Export the tenant's roles/ });

@@ -1,5 +1,5 @@
-import { expect, request as playwrightRequest, test, type Page } from "@playwright/test";
-import { signIn } from "./helpers";
+import { expect, test, type Page } from "@playwright/test";
+import { signIn, suitesOfTenant } from "./helpers";
 
 /**
  * TF-244 on a real unit (ADR-0059): the tenant's suites as the control plane records them, and what the shell shows for
@@ -7,32 +7,8 @@ import { signIn } from "./helpers";
  * the installation and the plan; where it does not, there is no group and the suite's endpoint answers not found. The
  * control plane is reached as `make e2e` passes it (E2E_CONTROL_URL, E2E_OPERATOR_SECRET); the tenant is the one under test.
  */
-const controlUrl = process.env.E2E_CONTROL_URL ?? "http://localhost:5200";
-const operatorSecret = process.env.E2E_OPERATOR_SECRET ?? "";
 const tenant =
   process.env.E2E_TENANT ?? new URL(process.env.E2E_BASE_URL ?? "https://smoke.localhost").hostname.split(".")[0];
-
-async function suitesOfTenant(): Promise<string[]> {
-  if (!operatorSecret) {
-    throw new Error("E2E_OPERATOR_SECRET is required: the control plane's operator secret, which make e2e passes.");
-  }
-  const control = await playwrightRequest.newContext({ baseURL: controlUrl });
-  try {
-    const token = await control.post("/connect/token", {
-      form: { grant_type: "client_credentials" },
-      headers: { Authorization: `Basic ${Buffer.from(`operator:${operatorSecret}`).toString("base64")}` },
-    });
-    expect(token.ok(), await token.text()).toBe(true);
-    const { access_token: accessToken } = (await token.json()) as { access_token: string };
-    const suites = await control.get(`/api/v1/tenants/${tenant}/suites`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    expect(suites.ok(), await suites.text()).toBe(true);
-    return ((await suites.json()) as { suite: string }[]).map((suite) => suite.suite);
-  } finally {
-    await control.dispose();
-  }
-}
 
 /** What the unit's API answers for the suite's About endpoint, asked from the page with the browser's session. */
 async function aboutStatus(page: Page): Promise<number> {
@@ -48,7 +24,7 @@ async function aboutStatus(page: Page): Promise<number> {
 test("the eProcurement Suite's group and About page are there exactly where the tenant has the suite [TF-244 AC1, TF-244 AC2, ADR-0059]", async ({
   page,
 }) => {
-  const suites = await suitesOfTenant();
+  const suites = await suitesOfTenant(tenant);
   await signIn(page);
   await page.goto("/");
   await expect(page.getByRole("region", { name: "IronSaaS Foundation" })).toBeVisible();
