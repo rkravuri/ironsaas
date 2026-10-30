@@ -124,3 +124,78 @@ Documentation: the next free ADR (the filter's place in the policy engine; the s
 - [ ] A retired tag never makes a record suddenly visible.
 - [ ] The explanation and access reviews show tags.
 - [ ] The storage choice is measured, not assumed.
+
+---
+
+## V2. Suites per tenant, with the eProcurement Suite's skeleton
+
+Sharpened on 2026-10-29 after the module decision. TF-244: a customer gets the suites it buys. The Foundation is always installed; a suite's modules are migrated, seeded and loaded only for tenants that bought it; adding a suite is an update job, and removing one switches its modules off and keeps their data. Inside a suite, modules and features are entitlements (A4).
+
+The owner chose **Option B**: the eProcurement Suite is declared for real now, with its first module, **Purchasing** (module 1 of the suite's list, which PR0 fills later), containing no business data yet. Its one real function is an **"About this suite"** page and endpoint that show what is installed for the tenant, and under which plan. That lets the laptop and the pipeline prove suite installation end to end, in the slice about exactly that, instead of discovering its problems inside the first business slice.
+
+### Opening message
+
+```
+Read CLAUDE.md, .claude/rules/backend.md, .claude/rules/frontend.md, docs/STATUS.md,
+docs/slices/V-visibility-and-suites.md, docs/adr/0018, 0029, 0034, 0043, 0055 and the ADR of V1,
+TF-040 to TF-046 and TF-244 in docs/prd/foundation/technical-foundation-PRD.md, and
+docs/prd/suites/procurement/README.md and purchasing-PRD.md. Then read
+src/Kernel/Iron.Kernel.Tenancy (plans, tenant entitlements, the catalogue),
+src/Kernel/Iron.Kernel.Fleet (provisioning, update jobs, the unit runtime and its template),
+src/Kernel/Iron.Kernel.Entitlements, src/Kernel/Iron.Kernel.Api (IModule, module registration),
+src/Hosts, src/Suites/ and its READMEs, tests/Iron.Architecture.Tests (the suite rules of L2), and in
+the shell src/modules (registry, the suite folders), the home page and /me/context. Then read
+docs/prompts/V.md and add section V2 from docs/prompts/V-V2.md, delete that file, and commit the
+prompt alone first on a new branch slice/v2-suites from main. Then follow section V2: write a short
+plan into the session, and build without waiting for approval unless the "When to stop" rule in
+CLAUDE.md applies. Done when: the eProcurement Suite is declared with its Purchasing module, its
+schema and its About page; a tenant provisioned with the suite gets its schema, endpoints and page,
+and a tenant without it gets none of them; adding the suite to an active tenant is an update job,
+and removing it switches its modules off and keeps the data; plans exist for the Foundation and per
+suite, and a plan of one suite cannot name another's module; every criterion of TF-244 has a test;
+on the laptop echo has the suite and bravo does not, then bravo gains it and loses it again; the
+release's integration stage provisions a tenant with the suite; make verify passes, make smoke
+TENANT=echo and make e2e TENANT=echo pass, and the change merges through a pull request. Finish with
+the report, its Risk section, the matrix's counts for TF-244, the brief's six questions for the
+About page, and screenshots of it in both schemes. Then stop.
+```
+
+### Instructions
+
+1. **The suite and its first module.**
+   - The eProcurement Suite, short name `procurement`, declared in code with its display name and description.
+   - `Iron.Suites.Procurement.Purchasing` in `src/Suites/Procurement/`, layer `Suite`, suite `Procurement` (ADR-0043), schema `procurement_purchasing`. No business entities yet; one table records the suite's installation in this tenant (installed version, installed at, by which job). PR0 fills the module later.
+   - Its permission for the About page, for example `purchasing.suite.read`, given by the seed to the tenant administrator role.
+   - Its threat model, as T10a's check requires.
+2. **The About page and endpoint.** `GET /api/v1/suites/procurement/about` answers what is installed for this tenant: the suite, its version, when and by which job it was installed, its plan, its modules with their entitlement state, and its features. In the shell, an "About this suite" page under the suite's group on the home page, in the console template, read-only. It is a real function: an administrator can see exactly what the tenant has.
+3. **Plans: the Foundation and each suite** (TF-244).
+   - Kernel features such as `authorization.role_transfer` belong to a **Foundation plan** that every tenant has (today's Standard and Enterprise become Foundation plans).
+   - Each suite has **its own plans**. Seed one for the eProcurement Suite (for example "eProcurement Essentials") listing the Purchasing module. Later modules join the suite's plans as they arrive.
+   - A tenant has one Foundation plan and, per suite it bought, one suite plan with its dates. A suite plan that names a module of another suite, or of the Foundation, is refused (the TF-244 error case).
+   - Record in the ADR how the Foundation plan and suite plans combine into the tenant's entitlements.
+4. **Installing a suite per purchase** (TF-244).
+   - The control plane records each tenant's suites. Provisioning takes the suites to install. `make provision TENANT=x SUITES=procurement` and `make suite-add TENANT=x SUITE=procurement PLAN=...` and `make suite-remove TENANT=x SUITE=procurement`, each audited with the operator and a reason.
+   - The unit's configuration lists its suites. At start, a unit registers the modules of the Foundation and of its suites only; a suite it does not have maps no endpoints, has no schemas, and sends no shell modules.
+   - Adding a suite to an active tenant is an update job: migrate and seed the suite's modules, then restart the unit with the suite in its configuration.
+   - Removing a suite is an update job too: the unit restarts without it, so its endpoints and pages are gone, and its schemas and data stay. Adding it again later finds the data where it was.
+   - A suite plan's end date and grace work as A4's entitlements do: an expired suite's modules are switched off, not uninstalled.
+   - Images: one image per release carries the Foundation and every suite (ADR-0043). The installation record (T8) names the tenant's suites.
+5. **The shell.** `/me/context` names the tenant's suites. The home page groups openers by suite (L2), and shows the eProcurement Suite's group only where it is installed and entitled. Every string in the catalogue; the scan covers the About page in both schemes.
+6. **Tests.** Each names its criteria, and every criterion of TF-244 is covered:
+   - a tenant with the suite has its schema, its endpoint and its page; a tenant without it has none, and the endpoint answers not found;
+   - adding the suite to an active tenant migrates, seeds and loads it; removing it keeps the schema and its rows; adding it again finds them;
+   - a suite plan naming another suite's module is refused;
+   - a suite's expiry switches its modules off within a minute, with A4's grace;
+   - the Foundation never references a suite (L2's architecture tests still pass);
+   - the smoke gains a step that reads the About endpoint on echo; the browser tests open the About page; the release's integration stage provisions its tenant with the suite.
+7. **On the laptop.** `make images`, `make up-control`; give echo the suite (`make suite-add TENANT=echo SUITE=procurement ...`), leave bravo without it, then add it to bravo, check the About page, remove it and check that the data stays; `make update-unit` for acme; `make smoke TENANT=echo`, `make e2e TENANT=echo`.
+
+Documentation: the next free ADR (Option B and why; the Foundation plan and suite plans; installing, removing and expiring a suite; what a unit loads at start); the Suites and Purchasing READMEs; the runbook (`suite-add`, `suite-remove`, provisioning with suites); STATUS.
+
+### Review checklist
+
+- [ ] A tenant without the suite has no schema, endpoint or page of it.
+- [ ] Removing a suite keeps its data, and adding it again finds the data.
+- [ ] A suite plan cannot name another suite's or the Foundation's module.
+- [ ] The About page shows exactly what the tenant has.
+- [ ] The pipeline's tenant is provisioned with the suite.
