@@ -93,7 +93,7 @@ const decided = [item("01a17b00-0000-7000-8000-0000000000e3", "Dan Decided", tru
 const heavy = { timeout: 10_000 };
 const heavyTest = 20_000;
 
-function show(signed = false) {
+function show(signed = false, campaign: typeof record & { subject?: string } = record) {
   const stub = stubFetch({
     "GET /api/v1/signatures/types": () =>
       json({
@@ -109,7 +109,7 @@ function show(signed = false) {
         ],
       }),
     "GET /api/v1/me": () => json(me(reviewer)),
-    [`GET /api/v1/access-reviews/${review}`]: () => json(record),
+    [`GET /api/v1/access-reviews/${review}`]: () => json(campaign),
     [`GET ${items}?state=open&page_number=1&page_size=50&sort=unit_name`]: () => json(list(open)),
     [`GET ${items}?state=decided&page_number=1&page_size=50&sort=unit_name`]: () => json(list(decided)),
     [`POST /api/v1/access-reviews/${review}/confirm`]: () => json({ confirmed: 2, already_decided: 0 }),
@@ -185,6 +185,21 @@ describe("the access review page (TF-038)", () => {
         item_ids: others.map((row) => row.id),
         comment: null,
       });
+    },
+    heavyTest,
+  );
+  it(
+    "says that each row of a review of visibility tags is a tag someone held, which a revoke takes away [ADR-0057]",
+    async () => {
+      show(false, { ...record, subject: "visibility_tags" });
+
+      expect(
+        await screen.findByText(
+          "Each row is a visibility tag someone held when the review started. Confirm keeps it; revoke takes it away at once.",
+          {},
+          heavy,
+        ),
+      ).toBeInTheDocument();
     },
     heavyTest,
   );

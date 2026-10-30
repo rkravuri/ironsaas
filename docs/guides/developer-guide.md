@@ -324,6 +324,25 @@ The page and its total count are counted under the policy. `PolicyQuery<T>` narr
 
 **Testing it:** each block and combination without a database, with a `PolicySubject` over a fake reach (`RecordRulesTests` in the Data tests); the policy against PostgreSQL with records of other units in the table (`RecordPolicyTests`); the architecture tests check the registration.
 
+## Visibility tags on a record type (TF-241, ADR-0057)
+
+Every business record carries visibility tags with no code of its own: `BusinessRecord.VisibilityTags`, a `text[]` of tag codes in the record's own table, empty by default. The policy engine filters every list and read by id by the reader's tags, after the scope rule and the module's policy, in the same query: a reader who holds tags sees a record without tags or one that shares a tag with them; one who holds none sees every record their roles allow. The field history records the tags as any other field. Leave the property as the conventions map it: the model check fails, naming the entity, for a business record whose table has no `text[]` column `visibility_tags` (renamed, converted or mapped to no table), as it does for one without its history. What a module does:
+
+**Let people change the tags.** The action `tag` belongs to the policy, like `share`; give it a permission, usually the module's manage permission:
+
+```csharp
+RecordRules.UnitVisibility<Order>(OrdersPermissions.Read,
+    (RecordActions.Update, OrdersPermissions.Manage),
+    (RecordActions.Share, OrdersPermissions.Manage),
+    (RecordActions.Tag, OrdersPermissions.Manage));
+```
+
+A module never sets tags itself: `IRecordTags.ChangeAsync(recordType, id, codes, ct)` does, holding rule 5 (a person puts on, or takes off, only tags they hold, unless they hold none; a retired tag is put on nothing). The kernel maps it as `GET` and `PUT /api/v1/record-tags/{type}/{id}`. In the shell, give the record page `tags={{ recordType: "purchase_order", recordId: order.id }}` and the record template shows the tags under the header, with the change for a reader who may.
+
+**Take the master's tags (rule 6), when the product's PRD says so.** In `AddServices`, name the master by its record type and the field that holds its id: `services.AddTagsFromMaster<Order>("supplier", order => order.SupplierId);`. A new order without tags of its own takes, when it is saved, the tags its supplier carries then; later changes of the supplier's tags do not follow. The master may be another module's: it is named, never referenced.
+
+**Testing it.** The filter, rule 5 and rule 6 are the kernel's, tested once on the data tests' sample module (`VisibilityTagsTests`); a module tests that its policy names `tag` and that its own rule 6 declaration gives a new record its master's tags. A running unit marked for testing has sample records (`make sample-records`, ADR-0057), which the smoke's `visibility-tags` step and `shell/e2e/visibility.spec.ts` use.
+
 ## Granting access (ADR-0031)
 
 **Roles and scopes.** A role is a set of permissions with a code, a name and the kind of principal it is for. An assignment gives a role to a principal at a scope: the whole tenant, one unit, a unit with the units below it, or one record. Declare new permissions in the module's Contracts and list them in its `Permissions`; the catalogue (`GET /api/v1/permissions`) and the role editor pick them up, grouped by module, with their risk. The seed keeps the system roles in step with the catalogue: `tenant-administrator` holds everything, `read-only` and `service-default` every `*.read`.

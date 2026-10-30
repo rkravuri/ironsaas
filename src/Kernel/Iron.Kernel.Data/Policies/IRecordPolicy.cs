@@ -22,6 +22,9 @@ public static class RecordActions
 
     /// <summary>Changing who sees the record beyond its unit (ADR-0038): the policy decides it like any other action.</summary>
     public const string Share = "share";
+
+    /// <summary>Changing the record's visibility tags (TF-241, ADR-0057): the policy decides who may, rule 5 which tags.</summary>
+    public const string Tag = "tag";
 }
 
 /// <summary>What a policy answers for one record and one action (ADR-0032).</summary>
@@ -46,24 +49,35 @@ public enum PolicyDecision
 /// <summary>
 /// Who asks, and what each of their permissions reaches for one record type (ADR-0030). The reach of a permission is
 /// asked once and kept for the rest of the evaluation, so a policy can ask for it as often as it likes. The visibility
-/// says how a reach meets the record type's sharing (ADR-0038).
+/// says how a reach meets the record type's sharing (ADR-0038); the tags are the visibility tags the subject holds,
+/// which narrow what the scope and the policy show (TF-241, ADR-0057).
 /// </summary>
 public sealed class PolicySubject
 {
     private readonly Func<Permission, CancellationToken, Task<RecordAccess>> _reach;
+    private readonly Func<CancellationToken, Task<IReadOnlyList<string>>>? _tags;
     private readonly Dictionary<string, RecordAccess> _known = new(StringComparer.Ordinal);
+    private IReadOnlyList<string>? _held;
 
-    public PolicySubject(Guid principalId, Func<Permission, CancellationToken, Task<RecordAccess>> reach, RecordVisibility? visibility = null)
+    public PolicySubject(Guid principalId, Func<Permission, CancellationToken, Task<RecordAccess>> reach, RecordVisibility? visibility = null, Func<CancellationToken, Task<IReadOnlyList<string>>>? tags = null)
     {
         ArgumentNullException.ThrowIfNull(reach);
         PrincipalId = principalId;
         _reach = reach;
+        _tags = tags;
         Visibility = visibility ?? RecordVisibility.WithoutShares;
     }
 
     public Guid PrincipalId { get; }
 
     public RecordVisibility Visibility { get; }
+
+    /// <summary>The codes of the visibility tags the subject holds, asked once; none where the host keeps no tags.</summary>
+    public async Task<IReadOnlyList<string>> HeldTagsAsync(CancellationToken cancellationToken)
+    {
+        _held ??= _tags is null ? [] : await _tags(cancellationToken).ConfigureAwait(false);
+        return _held;
+    }
 
     public async Task<RecordAccess> ReachAsync(Permission permission, CancellationToken cancellationToken)
     {

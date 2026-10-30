@@ -11,6 +11,7 @@
     <ProjectReference Include="../Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
     <ProjectReference Include="../Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
     <ProjectReference Include="Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Visibility/Contracts/Iron.Kernel.Visibility.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
   </ItemGroup>

@@ -99,6 +99,24 @@ class InstallationRecordTest(unittest.TestCase):
         self.assertEqual(sorted(failed), ["browser tests", "catalogue", "migrations kernel_probe", "seeds", "smoke", "version"])
         self.assertIn("missing 20310202000000_Things", failed["migrations kernel_probe"])
 
+    def test_a_unit_marked_for_testing_is_checked_against_the_seeds_with_the_sample_module(self) -> None:
+        """A unit that runs the sample module holds its permissions in its seeds: its schema in the database says so, and the record checks the seeds against the image's seeds with the sample module, and only those. [ADR-0057]"""
+        samples = self.root / "src/Kernel/Iron.Kernel.Samples/Data"
+        (samples / "Migrations").mkdir(parents=True)
+        (samples / "SampleRecord.cs").write_text('[Schema("kernel_samples")]\npublic sealed class SamplesDbContext { }\n', encoding="utf-8")
+        (samples / "Migrations/20310404000000_Initial.cs").write_text("// a migration", encoding="utf-8")
+        configuration = {"catalogue_sha256": "c" * 64, "seeds_sha256": self.seeds, "sample_seeds_sha256": "s" * 64, "permissions_sha256": "p" * 64}
+        applied = {"kernel_probe": ["20310101000000_Initial", "20310202000000_Things"], "kernel_samples": ["20310404000000_Initial"]}
+
+        sampled = self.record(configuration=configuration, applied=applied, database_seeds="s" * 64)
+        product_seeds = self.record(configuration=configuration, applied=applied, database_seeds=self.seeds)
+        unsampled = self.record(configuration=configuration, database_seeds="s" * 64)
+
+        self.assertTrue(all(check["passed"] for check in sampled["checks"]), sampled["checks"])  # type: ignore[union-attr, index]
+        self.assertIn("with the sample module", next(c["detail"] for c in sampled["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
+        self.assertFalse(next(c["passed"] for c in product_seeds["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
+        self.assertFalse(next(c["passed"] for c in unsampled["checks"] if c["name"] == "seeds"))  # type: ignore[union-attr, index]
+
     def test_the_seeds_text_is_the_images(self) -> None:
         """The seeds' canonical text: one line per system role by code, its permissions in order, as the API image writes it. [ADR-0052]"""
         self.assertEqual(installation_record.seeds_text(SEEDS), "read-only:b.thing.read\ntenant-administrator:a.thing.manage,b.thing.read\n")

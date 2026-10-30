@@ -24,7 +24,7 @@ import { RecordPage } from "@/components/templates";
 import { useHistoryOf } from "@/auth/record-history";
 import { SigningDialog } from "@/auth/SigningDialog";
 import { useResumedSigning } from "@/auth/signing-resume";
-import { dueLabel, progressLabel } from "./review-words";
+import { dueLabel, heldTagsWords, progressLabel, reviewedWords } from "./review-words";
 import { formatDate } from "@/i18n/dates";
 
 const states: ItemState[] = ["open", "decided", "all"];
@@ -222,7 +222,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
   const confirmOne = (item: ReviewItem) =>
     run(async () => {
       await decideItem(review.id, item.id, "confirm");
-      return t("reviews.items.confirmed", { name: item.principal_name, role: item.role_name });
+      return t("reviews.items.confirmed", { name: item.principal_name, role: reviewedWords(item, t) });
     });
 
   const confirmPage = () =>
@@ -237,6 +237,8 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         : t("reviews.items.confirmedMany", { count: result.confirmed });
     });
 
+  // A review of tag holders lists each holding's tag where a review of roles lists the role and its scope (ADR-0057).
+  const tagsReview = review.subject === "visibility_tags";
   const columns = useMemo<DataGridColumn<ReviewItem>[]>(
     () => [
       {
@@ -246,7 +248,16 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         filter: "text",
         flex: 2,
       },
-      { field: "role_name", headerKey: "reviews.items.columns.role", sortable: true, filter: "text", flex: 2 },
+      tagsReview
+        ? {
+            field: "tag_code",
+            headerKey: "reviews.items.columns.tag",
+            sortable: true,
+            filter: "text",
+            flex: 2,
+            format: (item: ReviewItem) => reviewedWords(item, t),
+          }
+        : { field: "role_name", headerKey: "reviews.items.columns.role", sortable: true, filter: "text", flex: 2 },
       { field: "unit_name", headerKey: "reviews.items.columns.unit", sortable: true, filter: "text", flex: 1 },
       {
         field: "unit_path",
@@ -254,11 +265,22 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         flex: 2,
         format: (item) => item.unit_path.map((step) => step.name).join(" / "),
       },
+      ...(tagsReview
+        ? []
+        : [
+            {
+              field: "scope_kind",
+              headerKey: "reviews.items.columns.scope",
+              width: 200,
+              format: (item: ReviewItem) => t(`reviews.items.scopes.${item.scope_kind}`),
+            },
+          ]),
+      // The tags the person held when the campaign started (TF-241 AC7): what their access lets them see.
       {
-        field: "scope_kind",
-        headerKey: "reviews.items.columns.scope",
-        width: 200,
-        format: (item) => t(`reviews.items.scopes.${item.scope_kind}`),
+        field: "held_tags",
+        headerKey: "reviews.items.columns.heldTags",
+        flex: 2,
+        format: (item) => heldTagsWords(item, t),
       },
       {
         field: "decision",
@@ -267,17 +289,21 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         format: (item) => decisionLabel(item, t),
       },
       // An item that takes part in a conflict of the report says so by the rule's name (TF-036): words, not a mark alone.
-      {
-        field: "conflicts",
-        headerKey: "reviews.items.columns.conflicts",
-        flex: 2,
-        format: (item) =>
-          item.conflicts.length > 0
-            ? t("reviews.items.conflict", { rules: item.conflicts.join(", ") })
-            : t("reviews.items.noConflict"),
-      },
+      ...(tagsReview
+        ? []
+        : [
+            {
+              field: "conflicts",
+              headerKey: "reviews.items.columns.conflicts",
+              flex: 2,
+              format: (item: ReviewItem) =>
+                item.conflicts.length > 0
+                  ? t("reviews.items.conflict", { rules: item.conflicts.join(", ") })
+                  : t("reviews.items.noConflict"),
+            },
+          ]),
     ],
-    [t],
+    [t, tagsReview],
   );
 
   const undecided = selected !== undefined && selected.decision === null && !selected.yours && open;
@@ -340,7 +366,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
         </Group>
       </Group>
       <Text size="sm" c="dimmed">
-        {t("reviews.items.intro")}
+        {t(tagsReview ? "reviews.items.introTags" : "reviews.items.intro")}
       </Text>
       {signed && open && (
         <Text size="sm" data-signed-decisions>
@@ -387,7 +413,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
       </div>
       <FormDialog
         opened={revoking !== undefined}
-        title={t("reviews.items.revokeTitle")}
+        title={t(revoking?.tag ? "reviews.items.revokeTagTitle" : "reviews.items.revokeTitle")}
         onClose={() => setRevoking(undefined)}
       >
         {revoking && (
@@ -398,7 +424,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
               const item = revoking;
               await decideItem(review.id, item.id, "revoke", comment);
               setRevoking(undefined);
-              await after(t("reviews.items.revoked", { name: item.principal_name, role: item.role_name }));
+              await after(t("reviews.items.revoked", { name: item.principal_name, role: reviewedWords(item, t) }));
             }}
           />
         )}
@@ -411,7 +437,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
           signing &&
           t(signing.decision === "revoke" ? "reviews.items.revokeMessage" : "reviews.items.signConfirmMessage", {
             name: signing.item.principal_name,
-            role: signing.item.role_name,
+            role: reviewedWords(signing.item, t),
             unit: signing.item.unit_name,
           })
         }
@@ -427,7 +453,7 @@ function Items({ review, onDecided }: { review: Review; onDecided: () => Promise
             await after(
               t(decision === "revoke" ? "reviews.items.revoked" : "reviews.items.confirmed", {
                 name: item.principal_name,
-                role: item.role_name,
+                role: reviewedWords(item, t),
               }),
             );
           }
@@ -466,7 +492,11 @@ function RevokeForm({
       secondary={{ label: t("dialog.cancel"), onClick: onClose }}
     >
       <Text size="sm">
-        {t("reviews.items.revokeMessage", { name: item.principal_name, role: item.role_name, unit: item.unit_name })}
+        {t(item.tag ? "reviews.items.revokeTagMessage" : "reviews.items.revokeMessage", {
+          name: item.principal_name,
+          role: reviewedWords(item, t),
+          unit: item.unit_name,
+        })}
       </Text>
       <Textarea
         label={t("reviews.items.comment")}

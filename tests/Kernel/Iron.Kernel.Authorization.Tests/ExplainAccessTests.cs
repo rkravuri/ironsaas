@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -12,12 +13,14 @@ using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Data;
+using Iron.Kernel.Data.Visibility;
 using Iron.Kernel.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -27,13 +30,15 @@ namespace Iron.Kernel.Authorization.Tests;
 /// <summary>
 /// Explaining access (TF-039, ADR-0039) over HTTP: the explanation agrees with the real call over a matrix of cases;
 /// a denial names its first failing check and an allowance the granting role and scope; an unknown person is not
-/// found; explaining is permissioned at the person's home unit and audited.
+/// found; explaining is permissioned at the person's home unit and audited; a record outside the person's visibility
+/// tags is explained by its tag check (TF-241 AC2, ADR-0057).
 /// </summary>
 [Collection(AuthorizationCollection.Name)]
 public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
 {
     private readonly RecordingAuditWriter _audit = new();
     private readonly ControlledGates _gates = new();
+    private readonly HeldTags _tags = new();
     private WebApplication? _app;
     private HttpClient _client = null!;
 
@@ -48,6 +53,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton<IPrincipals>(fixture.Principals);
         builder.Services.AddSingleton<IEntitlementGate>(_gates);
         builder.Services.AddSingleton<IFlagGate>(_gates);
+        builder.Services.AddSingleton<IVisibilityTags>(_tags);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
         builder.Services.AddModules(builder.Configuration, [new AuthorizationModule(), new DutyProbeModule(), new LicensedProbeModule()]);
@@ -107,6 +113,11 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
             new("a manager changes a crate below their unit", world.SalesManager, null, HttpMethod.Post, $"/api/v1/probe/crates/{world.NorthCrate}/update", "UpdateProbeCrate", Values(world.NorthCrate)),
             new("the administrator reads a crate that does not exist", world.Administrator, null, HttpMethod.Get, $"/api/v1/probe/crates/{world.Missing}", "GetProbeCrate", Values(world.Missing)),
 
+            // Then the reader's visibility tags: a crate of another tag is not found, one sharing a tag is seen.
+            new("a reader of one tag reads a crate of another", world.FinanceReader, null, HttpMethod.Get, $"/api/v1/probe/crates/{world.LatamCrate}", "GetProbeCrate", Values(world.LatamCrate)),
+            new("a reader of one tag reads a crate sharing it", world.FinanceReader, null, HttpMethod.Get, $"/api/v1/probe/crates/{world.MixedCrate}", "GetProbeCrate", Values(world.MixedCrate)),
+            new("a reader of one tag changes a crate of another", world.FinanceReader, null, HttpMethod.Post, $"/api/v1/probe/crates/{world.LatamCrate}/update", "UpdateProbeCrate", Values(world.LatamCrate)),
+
             // Signed in is enough.
             new("a person without roles reads their own assignments", world.Nobody, null, HttpMethod.Get, "/api/v1/role-assignments/mine", "MyRoleAssignments", NoValues),
         };
@@ -152,7 +163,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
         Assert.Equal(403, body.RootElement.GetProperty("status").GetInt32());
         var checks = body.RootElement.GetProperty("checks").EnumerateArray().Select(c => (c.GetProperty("check").GetString(), c.GetProperty("result").GetString())).ToList();
         Assert.Equal(
-            [("principal", "passed"), ("entitlement", "failed"), ("flags", "not_reached"), ("permission", "not_reached"), ("record_policy", "not_reached")],
+            [("principal", "passed"), ("entitlement", "failed"), ("flags", "not_reached"), ("permission", "not_reached"), ("record_policy", "not_reached"), ("visibility_tags", "not_reached")],
             checks);
         var entitlement = body.RootElement.GetProperty("checks")[1];
         Assert.Equal((EntitlementErrors.FeatureDisabled, AuthorizationFeatures.RoleTransfer.Code), (entitlement.GetProperty("error_code").GetString(), entitlement.GetProperty("facts").GetProperty("subject").GetString()));
@@ -203,6 +214,36 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
         {
             var policy = body.RootElement.GetProperty("checks")[4];
             Assert.Equal(("failed", "no_such_record", 404), (policy.GetProperty("result").GetString(), policy.GetProperty("reason").GetString(), policy.GetProperty("status").GetInt32()));
+        }
+    }
+
+    [Fact]
+    [Proves("TF-241 AC2", "TF-039 AC1", "ADR-0057")]
+    public async Task ACrateOfAnotherTagIsNotFoundAndTheExplanationNamesTheTagCheckWithTheTagsCompared()
+    {
+        var world = await WorldAsync();
+
+        using var real = await SendAsync(HttpMethod.Get, $"/api/v1/probe/crates/{world.LatamCrate}", world.FinanceReader, null, null);
+        using var hidden = await ExplainAsync(world.Administrator, world.FinanceReader, "GetProbeCrate", Values(world.LatamCrate));
+        using var shared = await ExplainAsync(world.Administrator, world.FinanceReader, "GetProbeCrate", Values(world.MixedCrate));
+
+        Assert.Equal(HttpStatusCode.NotFound, real.StatusCode);
+        using (var body = await JsonAsync(hidden))
+        {
+            Assert.Equal((false, 404), (body.RootElement.GetProperty("allowed").GetBoolean(), body.RootElement.GetProperty("status").GetInt32()));
+            var checks = body.RootElement.GetProperty("checks");
+            Assert.Equal(("record_policy", "passed", "visible"), (checks[4].GetProperty("check").GetString(), checks[4].GetProperty("result").GetString(), checks[4].GetProperty("reason").GetString()));
+            var tags = checks[5];
+            Assert.Equal(("visibility_tags", "failed", "no_shared_tag", 404), (tags.GetProperty("check").GetString(), tags.GetProperty("result").GetString(), tags.GetProperty("reason").GetString(), tags.GetProperty("status").GetInt32()));
+            Assert.Equal(("LATAM", "APAC"), (tags.GetProperty("facts").GetProperty("record_tags").GetString(), tags.GetProperty("facts").GetProperty("held_tags").GetString()));
+            Assert.Equal("The record carries LATAM; they hold APAC. They share no tag, so the record answers not found.", tags.GetProperty("message").GetString());
+        }
+
+        using (var body = await JsonAsync(shared))
+        {
+            Assert.True(body.RootElement.GetProperty("allowed").GetBoolean());
+            var tags = body.RootElement.GetProperty("checks")[5];
+            Assert.Equal(("passed", "shared_tag", "APAC"), (tags.GetProperty("result").GetString(), tags.GetProperty("reason").GetString(), tags.GetProperty("facts").GetProperty("shared_tags").GetString()));
         }
     }
 
@@ -339,9 +380,16 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
         var probe = scope.ServiceProvider.GetRequiredService<ProbeDbContext>();
         var northCrate = new Crate(north.Id, "north");
         var financeCrate = new Crate(finance.Id, "finance");
-        probe.Crates.AddRange(northCrate, financeCrate);
+        var latamCrate = new Crate(finance.Id, "finance, latam");
+        var mixedCrate = new Crate(finance.Id, "finance, apac and latam");
+        probe.Crates.AddRange(northCrate, financeCrate, latamCrate, mixedCrate);
         await probe.SaveChangesAsync(TestContext.Current.CancellationToken);
-        return new World(sales, north, finance, administrator, manager, reader, nobody, delegateId, northCrate.Id, financeCrate.Id, Ids.New());
+
+        // The reader holds APAC; the other people hold no tags, so they see every crate their roles allow.
+        await probe.Crates.Where(c => c.Id == latamCrate.Id).ExecuteUpdateAsync(c => c.SetProperty(x => x.VisibilityTags, new[] { "LATAM" }), TestContext.Current.CancellationToken);
+        await probe.Crates.Where(c => c.Id == mixedCrate.Id).ExecuteUpdateAsync(c => c.SetProperty(x => x.VisibilityTags, new[] { "APAC", "LATAM" }), TestContext.Current.CancellationToken);
+        _tags.Hold(reader, "APAC");
+        return new World(sales, north, finance, administrator, manager, reader, nobody, delegateId, northCrate.Id, financeCrate.Id, Ids.New(), latamCrate.Id, mixedCrate.Id);
     }
 
     private async Task GrantAsync(Guid principal, string roleName, IReadOnlyList<string> permissions, RoleScope scope)
@@ -354,9 +402,24 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
         await RoleServiceTests.AssignAsync(services, principal, role.Code, scope);
     }
 
-    private sealed record World(OrganisationUnit Sales, OrganisationUnit North, OrganisationUnit Finance, Guid Administrator, Guid SalesManager, Guid FinanceReader, Guid Nobody, Guid Delegate, Guid NorthCrate, Guid FinanceCrate, Guid Missing);
+    private sealed record World(OrganisationUnit Sales, OrganisationUnit North, OrganisationUnit Finance, Guid Administrator, Guid SalesManager, Guid FinanceReader, Guid Nobody, Guid Delegate, Guid NorthCrate, Guid FinanceCrate, Guid Missing, Guid LatamCrate, Guid MixedCrate);
 
     private sealed record Case(string Name, Guid Principal, Guid? ActingFor, HttpMethod Method, string Path, string Action, IReadOnlyDictionary<string, string> Values, object? Body = null, string? Disabled = null, string? Off = null, string? Killed = null);
+}
+
+/// <summary>The visibility tags each person holds, as the Visibility module would answer them (ADR-0057).</summary>
+public sealed class HeldTags : IVisibilityTags
+{
+    private readonly ConcurrentDictionary<Guid, IReadOnlyList<string>> _held = new();
+
+    public void Hold(Guid principal, params string[] codes) => _held[principal] = codes;
+
+    public Task<IReadOnlyList<string>> HeldAsync(Guid principalId, CancellationToken cancellationToken) => Task.FromResult(_held.GetValueOrDefault(principalId) ?? []);
+
+    public Task<IReadOnlyDictionary<string, VisibilityTagInfo>> FindAsync(IReadOnlyCollection<string> codes, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyDictionary<string, VisibilityTagInfo>>(codes.Distinct().ToDictionary(c => c, c => new VisibilityTagInfo(c, c, true), StringComparer.Ordinal));
+
+    public Task<IReadOnlyList<VisibilityTagInfo>> ActiveAsync(CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<VisibilityTagInfo>>([]);
 }
 
 /// <summary>The test principal of a header, acting for the person another header names, as a session that chose to act (ADR-0037).</summary>

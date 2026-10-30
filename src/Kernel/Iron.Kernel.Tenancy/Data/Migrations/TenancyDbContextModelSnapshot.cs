@@ -1265,6 +1265,10 @@ namespace Iron.Kernel.Tenancy.Data.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("region");
 
+                    b.Property<bool>("SampleRecords")
+                        .HasColumnType("boolean")
+                        .HasColumnName("sample_records");
+
                     b.Property<string>("SizeClass")
                         .IsRequired()
                         .HasMaxLength(20)

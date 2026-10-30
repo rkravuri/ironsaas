@@ -41,8 +41,9 @@ var builder = WebApplication.CreateBuilder(DatabaseCommands.StripCommand(args));
 builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
-// The modules this host runs (UnitModules): Audit first, then Authorization, Identity, Files and Entitlements.
-var modules = UnitModules.All();
+// The modules this host runs (UnitModules): Audit first, then Authorization, Identity, Files and Entitlements; and the
+// sample module where the unit's configuration switches it on (ADR-0057).
+var modules = UnitModules.ForUnit(builder.Configuration);
 
 builder.AddIronTelemetry("iron-api", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);

@@ -374,9 +374,13 @@ deprovision: ## Ask the fleet to take a tenant's unit down (data is kept): make 
 	@test -n "$(TENANT)" || (echo "usage: make deprovision TENANT=acme" && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=deprovision $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
-provision: ## Register a tenant in the control plane and request its provisioning: make provision TENANT=acme [ADMIN=admin@acme.localhost]
-	@test -n "$(TENANT)" || (echo "usage: make provision TENANT=acme [ADMIN=admin@acme.localhost]" && exit 1)
-	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) $(or $(ADMIN),admin@$(TENANT).localhost)
+provision: ## Register a tenant in the control plane and request its provisioning, SAMPLES=1 for a unit that runs the sample module (ADR-0057): make provision TENANT=acme [ADMIN=admin@acme.localhost] [SAMPLES=1]
+	@test -n "$(TENANT)" || (echo "usage: make provision TENANT=acme [ADMIN=admin@acme.localhost] [SAMPLES=1]" && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SAMPLE_RECORDS=$(SAMPLES) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) $(or $(ADMIN),admin@$(TENANT).localhost)
+
+sample-records: ## Mark a tenant's unit to run the sample module, whose records the smoke and the browser tests use (ADR-0057), or ON=0 to unmark it; then make update-unit: make sample-records TENANT=echo [ON=0]
+	@test -n "$(TENANT)" || (echo "usage: make sample-records TENANT=echo [ON=0]" && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=sample-records SAMPLE_RECORDS=$(or $(ON),1) $(COMPOSE_DIR)/scripts/provision.sh $(TENANT) -
 
 secret-dev: env ## Write the dev unit's secret to OpenBao (connection string, storage, key family) and make its keys, as the fleet does per tenant
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; $(COMPOSE_DIR)/scripts/write-dev-secret.sh
@@ -399,10 +403,10 @@ shell-node:
 # provision, update-unit and deprovision still refuse to run without a TENANT.
 TEST_TENANT = $(or $(TENANT),smoke)
 
-smoke: env test-provider ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions or reuses tenant smoke, or TENANT=x
+smoke: env test-provider ## Run the smoke test against the local stack (control plane, fleet and telemetry up): provisions tenant smoke marked for sample records, or reuses it, or TENANT=x
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \
 	SMOKE_CONTROL_URL=$(CONTROL_URL) SMOKE_OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) SMOKE_READER_SECRET=$(DEV_SMOKE_READER_SECRET) SMOKE_STORE_TOKEN=$$OPENBAO_ROOT_TOKEN \
-	SMOKE_TENANT=$(TEST_TENANT) SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
+	SMOKE_TENANT=$(TEST_TENANT) SMOKE_SAMPLE_RECORDS=1 SMOKE_REPORT=$${SMOKE_REPORT:-$(RESULTS)/smoke/smoke-report.json} dotnet run --project tools/Iron.Smoke --configuration Release
 
 e2e: shell-node env test-provider ## Set up the run's own unit with its people, run the Playwright tests in it against the smoke tenant, or TENANT=x, then deactivate its people and units whatever the result (make smoke with the same TENANT first; browsers: cd shell && npm run e2e:install)
 	@set -a; . $(COMPOSE_DIR)/.env; set +a; \

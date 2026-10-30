@@ -4,6 +4,7 @@ using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Sharing;
+using Iron.Kernel.Data.Visibility;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -48,9 +49,10 @@ public static class RecordPolicyAnswers
 /// <summary>
 /// One record and an action, explained (ADR-0039): allowed, with what let the reader see the record (<see cref="VisibleBy"/>);
 /// not found, because no such record exists or the reader may not see it; forbidden, because they may see it and the
-/// policy refuses the action.
+/// policy refuses the action. <see cref="Tags"/> is the tag check, made once the scope and the policy let the reader
+/// see the record: when it fails, the answer is not found whatever the action (TF-241 AC2, ADR-0057).
 /// </summary>
-public sealed record RecordPolicyExplanation(string RecordType, Guid RecordId, string Action, string Answer, bool Exists, string? VisibleBy);
+public sealed record RecordPolicyExplanation(string RecordType, Guid RecordId, string Action, string Answer, bool Exists, string? VisibleBy, RecordTagCheck? Tags = null);
 
 /// <summary>A record type's policy bound to one principal: apply it to a query, or open one record for an action.</summary>
 public sealed class PolicyEvaluation<T>
@@ -82,13 +84,13 @@ public sealed class PolicyEvaluation<T>
 
     /// <summary>
     /// A list: the scope rule (ADR-0030) for the read permission, following the record's sharing mode, then the policy's
-    /// filter, joined with AND, so a policy narrows and never widens; then the reader's working unit and the units below
-    /// it, unless they see all their units (ADR-0038). Each page it reads is audited when it holds private records of
-    /// units outside the reader's home unit.
+    /// filter, joined with AND, so a policy narrows and never widens; then the reader's visibility tags (ADR-0057); then
+    /// the reader's working unit and the units below it, unless they see all their units (ADR-0038). Each page it reads
+    /// is audited when it holds private records of units outside the reader's home unit.
     /// </summary>
     public async Task<PolicyQuery<T>> ApplyAsync(IQueryable<T> source, CancellationToken cancellationToken)
     {
-        var query = await ReadableAsync(source, cancellationToken).ConfigureAwait(false);
+        var query = await ReadableAsync(source, withTags: true, cancellationToken).ConfigureAwait(false);
         var working = _units is null ? null : await _units.WorkingUnitsAsync(Subject.PrincipalId, cancellationToken).ConfigureAwait(false);
         if (working is not null)
         {
@@ -108,7 +110,7 @@ public sealed class PolicyEvaluation<T>
     public async Task<Result<T>> FindAsync(Guid id, string action, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(action);
-        var (record, decision) = await DecideAsync(id, action, cancellationToken).ConfigureAwait(false);
+        var (record, decision) = await DecideAsync(id, action, withTags: true, cancellationToken).ConfigureAwait(false);
         if (record is null)
         {
             await RefusedAsync(id, action, RecordAnswers.NotFound, cancellationToken).ConfigureAwait(false);
@@ -129,11 +131,15 @@ public sealed class PolicyEvaluation<T>
         return record;
     }
 
-    /// <summary>What <see cref="FindAsync"/> would answer, and why, with nothing audited (ADR-0039): the same decision.</summary>
+    /// <summary>
+    /// What <see cref="FindAsync"/> would answer, and why, with nothing audited (ADR-0039): the same decision, taken in its
+    /// steps. The scope and the policy first; then, for a record they let the reader see, the tag check, which answers
+    /// not found when it fails, as the query does; then the policy's answer for the action (ADR-0057).
+    /// </summary>
     public async Task<RecordPolicyExplanation> ExplainAsync(Guid id, string action, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(action);
-        var (record, decision) = await DecideAsync(id, action, cancellationToken).ConfigureAwait(false);
+        var (record, decision) = await DecideAsync(id, action, withTags: false, cancellationToken).ConfigureAwait(false);
         if (record is null)
         {
             var exists = await _set().AsNoTracking().AnyAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
@@ -142,19 +148,22 @@ public sealed class PolicyEvaluation<T>
 
         var reach = await Subject.ReachAsync(_registration.Read, cancellationToken).ConfigureAwait(false);
         var visibleBy = await Subject.Visibility.ReasonAsync(record, reach, cancellationToken).ConfigureAwait(false) ?? VisibleBy.Scope;
-        var answer = decision switch
-        {
-            PolicyDecision.Allowed => RecordPolicyAnswers.Allowed,
-            PolicyDecision.NotVisible => RecordPolicyAnswers.NotFound,
-            _ => RecordPolicyAnswers.Forbidden,
-        };
-        return new RecordPolicyExplanation(_registration.Name, id, action, answer, true, visibleBy);
+        var tags = RecordTagCheck.Of(await Subject.HeldTagsAsync(cancellationToken).ConfigureAwait(false), record.VisibilityTags);
+        var answer = !tags.Passed
+            ? RecordPolicyAnswers.NotFound
+            : decision switch
+            {
+                PolicyDecision.Allowed => RecordPolicyAnswers.Allowed,
+                PolicyDecision.NotVisible => RecordPolicyAnswers.NotFound,
+                _ => RecordPolicyAnswers.Forbidden,
+            };
+        return new RecordPolicyExplanation(_registration.Name, id, action, answer, true, visibleBy, tags);
     }
 
     /// <summary>The one decision for a record and an action: the record if the subject may read it, then the policy for any other action.</summary>
-    private async Task<(T? Record, PolicyDecision Decision)> DecideAsync(Guid id, string action, CancellationToken cancellationToken)
+    private async Task<(T? Record, PolicyDecision Decision)> DecideAsync(Guid id, string action, bool withTags, CancellationToken cancellationToken)
     {
-        var readable = await ReadableAsync(_set(), cancellationToken).ConfigureAwait(false);
+        var readable = await ReadableAsync(_set(), withTags, cancellationToken).ConfigureAwait(false);
         var record = await readable.SingleOrDefaultAsync(r => r.Id == id, cancellationToken).ConfigureAwait(false);
         if (record is null)
         {
@@ -166,13 +175,17 @@ public sealed class PolicyEvaluation<T>
             : (record, await _policy.DecideAsync(record, action, Subject, cancellationToken).ConfigureAwait(false));
     }
 
-    /// <summary>The scope rule following the sharing mode, then the policy: what the reader may read, before the working unit.</summary>
-    private async Task<IQueryable<T>> ReadableAsync(IQueryable<T> source, CancellationToken cancellationToken)
+    /// <summary>
+    /// The scope rule following the sharing mode, then the policy, then the reader's visibility tags: what the reader may
+    /// read, before the working unit. Each step is one more condition joined with AND, so none can widen another.
+    /// </summary>
+    private async Task<IQueryable<T>> ReadableAsync(IQueryable<T> source, bool withTags, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(source);
         var reach = await Subject.ReachAsync(_registration.Read, cancellationToken).ConfigureAwait(false);
         var readable = await _policy.ReadableAsync(Subject, cancellationToken).ConfigureAwait(false);
-        return source.Where(Subject.Visibility.Predicate<T>(reach)).Where(readable);
+        var query = source.Where(Subject.Visibility.Predicate<T>(reach)).Where(readable);
+        return withTags ? query.Where(VisibilityFilter.For<T>(await Subject.HeldTagsAsync(cancellationToken).ConfigureAwait(false))) : query;
     }
 
     /// <summary>A record read by id from outside the reader's home unit: audited with what allowed it, unless it is the tenant's.</summary>
@@ -259,9 +272,15 @@ public sealed class RecordPolicies(
             ?? throw new InvalidOperationException($"No record policy is registered for {typeof(T).Name}. Register one in the module's AddServices with AddRecordPolicy (ADR-0032).");
         var policy = services.GetRequiredService<IRecordPolicy<T>>();
 
-        // The shares come from the record's own module context, which maps the kernel's table, so a list joins them.
+        // The shares come from the record's own module context, which maps the kernel's table, so a list joins them. The
+        // tags the reader holds come from the Visibility module; a host without it filters by no tag (ADR-0057).
         var visibility = new RecordVisibility(registration.Name, ContextOf<T>().Set<RecordShare>());
-        var subject = new PolicySubject(principalId, (permission, ct) => access.AccessibleAsync(principalId, permission, registration.Name, ct), visibility);
+        var tags = services.GetService<IVisibilityTags>();
+        var subject = new PolicySubject(
+            principalId,
+            (permission, ct) => access.AccessibleAsync(principalId, permission, registration.Name, ct),
+            visibility,
+            tags is null ? null : ct => tags.HeldAsync(principalId, ct));
         return new PolicyEvaluation<T>(registration, policy, subject, SetOf<T>, logger, units, audit);
     }
 

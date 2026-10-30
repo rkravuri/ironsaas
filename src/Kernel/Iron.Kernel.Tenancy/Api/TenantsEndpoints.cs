@@ -27,7 +27,11 @@ public sealed record CreateTenantRequest(
     string? AdministratorDisplayName,
     SizeClass? SizeClass,
     string? Region,
-    string? Plan);
+    string? Plan,
+    bool? SampleRecords = null);
+
+/// <summary>Whether the tenant's unit runs the sample module, for testing (ADR-0057).</summary>
+public sealed record SampleRecordsRequest(bool Enabled);
 
 public sealed class CreateTenantRequestValidator : AbstractValidator<CreateTenantRequest>
 {
@@ -113,6 +117,7 @@ internal static class TenantsEndpoints
         tenants.MapGet("/{slug}", GetAsync).RequirePermission(TenancyPermissions.TenantsRead).Produces<TenantRecord>(StatusCodes.Status200OK).WithName("GetTenant").WithSummary("One tenant with its hostnames.");
         tenants.MapPost("/", CreateAsync).RequirePermission(TenancyPermissions.TenantsManage).Validate<CreateTenantRequest>().Produces<TenantRecord>(StatusCodes.Status201Created).WithName("CreateTenant").WithSummary("Register a tenant in Provisioning status.");
         tenants.MapPost("/{slug}/provision", ProvisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ProvisionTenant").WithSummary("Ask the fleet to provision the tenant.");
+        tenants.MapPut("/{slug}/sample-records", SampleRecordsAsync).RequirePermission(TenancyPermissions.TenantsManage).Produces<TenantRecord>(StatusCodes.Status200OK).WithName("SetTenantSampleRecords").WithSummary("Mark a tenant's unit to run the sample module for testing, or unmark it; the unit follows at its next provisioning or update.");
         tenants.MapPost("/{slug}/update", UpdateAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("UpdateTenantUnit").WithSummary("Ask the fleet to re-render and re-apply the unit of an active tenant.");
         tenants.MapPost("/{slug}/deprovision", DeprovisionAsync).RequirePermission(TenancyPermissions.TenantsProvision).Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("DeprovisionTenant").WithSummary("Ask the fleet to take the unit down; data is kept.");
         tenants.MapPost("/{slug}/administrator-recovery", RecoverAdministratorAsync).RequirePermission(TenancyPermissions.AdministratorsRecover).RateLimited(RateLimitPolicies.Recovery, "slug").Validate<AdministratorRecoveryRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("RecoverTenantAdministrator").WithSummary("Ask the fleet for a recovery link for a tenant's administrator, with a reason, and to reset their second factors when asked; the link is handed over once, valid 15 minutes and once.");
@@ -147,10 +152,13 @@ internal static class TenantsEndpoints
     private static async Task<IResult> CreateAsync(CreateTenantRequest request, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
     {
         var result = await registry.CreateAsync(
-            new NewTenant(request.Slug, request.DisplayName, request.Hostnames ?? [], request.AdministratorLoginId, request.AdministratorDisplayName, request.SizeClass ?? SizeClass.Small, request.Region, request.Plan),
+            new NewTenant(request.Slug, request.DisplayName, request.Hostnames ?? [], request.AdministratorLoginId, request.AdministratorDisplayName, request.SizeClass ?? SizeClass.Small, request.Region, request.Plan, request.SampleRecords ?? false),
             cancellationToken);
         return ApiResults.From(result, http, tenant => TypedResults.Created($"{ApiRouting.Prefix}/tenants/{tenant.Slug}", tenant));
     }
+
+    private static async Task<IResult> SampleRecordsAsync(string slug, SampleRecordsRequest request, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken) =>
+        ApiResults.From(await registry.SetSampleRecordsAsync(slug, request.Enabled, cancellationToken), http, tenant => TypedResults.Ok(tenant));
 
     private static async Task<IResult> ProvisionAsync(string slug, HttpContext http, TenantRegistry registry, CancellationToken cancellationToken)
     {

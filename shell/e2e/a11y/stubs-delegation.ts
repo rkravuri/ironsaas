@@ -159,6 +159,7 @@ export async function stubReviews(target: Page): Promise<void> {
       overdue: false,
       started_at: days(-5),
       progress: progress(3, 8),
+      subject: "roles",
     },
     {
       id: "01a17e00-0000-7000-8000-000000000002",
@@ -168,6 +169,17 @@ export async function stubReviews(target: Page): Promise<void> {
       overdue: true,
       started_at: days(-40),
       progress: progress(10, 14, 4),
+      subject: "roles",
+    },
+    {
+      id: "01a17e00-0000-7000-8000-000000000004",
+      name: "Regional tags, Operations",
+      due_on: days(20).slice(0, 10),
+      status: "open",
+      overdue: false,
+      started_at: days(-2),
+      progress: progress(1, 6),
+      subject: "visibility_tags",
     },
     {
       id: "01a17e00-0000-7000-8000-000000000003",
@@ -177,6 +189,7 @@ export async function stubReviews(target: Page): Promise<void> {
       overdue: false,
       started_at: days(-160),
       progress: progress(22, 22),
+      subject: "roles",
     },
   ];
   await target.route("**/api/v1/access-reviews?**", (route) => route.fulfill({ json: listOf(summaries) }));
@@ -237,6 +250,17 @@ export async function stubReviews(target: Page): Promise<void> {
       unit_id: unit.id,
       unit_name: unit.name,
       unit_path: path(unit),
+      tag: null,
+      // The tags each person held when the campaign started (ADR-0057): most hold none, so they see every record their roles allow.
+      held_tags:
+        index % 3 === 0
+          ? [{ code: "APAC", name: "Asia Pacific" }]
+          : index === 4
+            ? [
+                { code: "APAC", name: "Asia Pacific" },
+                { code: "EMEA", name: "Europe, Middle East and Africa" },
+              ]
+            : [],
       decision:
         index < 3
           ? {

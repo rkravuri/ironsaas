@@ -1,4 +1,5 @@
 using Iron.Kernel.Data.Checks;
+using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Tests.Sample;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,8 +53,7 @@ public class ConventionsTests(PostgresFixture fixture)
     [Proves("ADR-0029")]
     public void TheModelPassesTheModelCheckForAPlatformModule()
     {
-        var options = new DbContextOptionsBuilder<SampleDbContext>().UseNpgsql(fixture.ConnectionString).Options;
-        using var context = new SampleDbContext(options);
+        using var context = new SampleDbContext(DesignTime.OptionsFor<SampleDbContext>());
 
         Assert.Empty(ModelCheck.Check(context.Model, nameof(SampleDbContext), isBusinessModule: false));
     }
@@ -62,8 +62,7 @@ public class ConventionsTests(PostgresFixture fixture)
     [Proves("TF-220 AC3")]
     public void TheModelCheckFlagsABusinessEntityWithoutAnOwningOrganisation()
     {
-        var options = new DbContextOptionsBuilder<SampleDbContext>().UseNpgsql(fixture.ConnectionString).Options;
-        using var context = new SampleDbContext(options);
+        using var context = new SampleDbContext(DesignTime.OptionsFor<SampleDbContext>());
 
         var violations = ModelCheck.Check(context.Model, nameof(SampleDbContext), isBusinessModule: true);
 
@@ -77,8 +76,7 @@ public class ConventionsTests(PostgresFixture fixture)
     [InlineData(true)]
     public void TheModelCheckRefusesABusinessRecordCarryingEitherMarkerInEveryModule(bool isBusinessModule)
     {
-        var options = new DbContextOptionsBuilder<ContextWithAMarkedRecord>().UseNpgsql(fixture.ConnectionString).Options;
-        using var context = new ContextWithAMarkedRecord(options);
+        using var context = new ContextWithAMarkedRecord(DesignTime.OptionsFor<ContextWithAMarkedRecord>());
 
         var violations = ModelCheck.Check(context.Model, nameof(ContextWithAMarkedRecord), isBusinessModule);
 

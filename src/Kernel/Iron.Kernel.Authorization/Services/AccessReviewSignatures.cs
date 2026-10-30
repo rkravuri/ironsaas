@@ -30,6 +30,27 @@ public sealed class AccessReviewSignatures(AuthorizationDbContext context, Acces
     {
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentNullException.ThrowIfNull(item);
+
+        // A tag holding's decision has a form of its own; a role assignment's keeps the form its signatures were made in.
+        if (item.IsTagHolding)
+        {
+            return RecordSnapshot.Of(RecordType, decision.Id, 1, $"Access review decision: {item.PrincipalName}, the tag {item.TagCode}", new
+            {
+                ReviewId = decision.ReviewId,
+                ItemId = item.Id,
+                HoldingId = item.AssignmentId,
+                PrincipalId = item.PrincipalId,
+                PrincipalName = item.PrincipalName,
+                TagCode = item.TagCode,
+                TagName = item.TagName,
+                UnitId = item.UnitId,
+                UnitName = item.UnitName,
+                Decision = decision.Decision == ReviewDecision.Confirm ? "confirm" : "revoke",
+                decision.Comment,
+                decision.AssignmentRemoved,
+            });
+        }
+
         return RecordSnapshot.Of(RecordType, decision.Id, 1, $"Access review decision: {item.PrincipalName}, {item.RoleName}", new
         {
             ReviewId = decision.ReviewId,

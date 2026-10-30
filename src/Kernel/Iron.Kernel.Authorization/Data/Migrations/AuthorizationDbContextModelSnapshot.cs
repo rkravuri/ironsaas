@@ -66,6 +66,10 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
+                    b.Property<int>("Subject")
+                        .HasColumnType("integer")
+                        .HasColumnName("subject");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -212,6 +216,20 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.PrimitiveCollection<List<string>>("HeldTagCodes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("held_tag_codes")
+                        .HasDefaultValueSql("'{}'");
+
+                    b.PrimitiveCollection<List<string>>("HeldTagNames")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("held_tag_names")
+                        .HasDefaultValueSql("'{}'");
+
                     b.Property<Guid>("PrincipalId")
                         .HasColumnType("uuid")
                         .HasColumnName("principal_id");
@@ -227,26 +245,37 @@ namespace Iron.Kernel.Authorization.Data.Migrations
                         .HasColumnName("review_id");
 
                     b.Property<string>("RoleCode")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("role_code");
 
-                    b.Property<Guid>("RoleId")
+                    b.Property<Guid?>("RoleId")
                         .HasColumnType("uuid")
                         .HasColumnName("role_id");
 
                     b.Property<string>("RoleName")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("role_name");
 
                     b.Property<string>("ScopeKind")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("scope_kind");
+
+                    b.Property<string>("TagCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("tag_code");
+
+                    b.Property<Guid?>("TagId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tag_id");
+
+                    b.Property<string>("TagName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tag_name");
 
                     b.Property<Guid>("UnitId")
                         .HasColumnType("uuid")

@@ -36,7 +36,7 @@ public sealed class UserService(
     IAuditWriter audit,
     ICurrentPrincipal actor)
 {
-    public const string RecordType = "principal";
+    public const string RecordType = IdentityRecordTypes.Principal;
 
     /// <summary>
     /// A recovery link for a person, issued by an administrator who may manage them (the endpoint checked

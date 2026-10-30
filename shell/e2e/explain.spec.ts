@@ -45,7 +45,7 @@ test.describe("explaining access and conflict rules", () => {
       ).toBeVisible();
       await expect(page.getByText("The first check that refuses it: The permission.")).toBeVisible();
       const checks = page.getByRole("list", { name: "The checks, in order" }).getByRole("listitem");
-      await expect(checks).toHaveCount(5);
+      await expect(checks).toHaveCount(6);
       await expect(checks.nth(0)).toContainText("The person: passed");
       await expect(checks.nth(1)).toContainText("The subscription: passed");
       await expect(checks.nth(2)).toContainText("Flags and kill switches: passed");
@@ -54,6 +54,7 @@ test.describe("explaining access and conflict rules", () => {
         'Child administrator does not hold the permission "Create, change and delete tenant roles" for the whole organisation.',
       );
       await expect(checks.nth(4)).toContainText("The record's policy: not reached");
+      await expect(checks.nth(5)).toContainText("The visibility tags: not reached");
       await page.screenshot({ path: `test-results/e2e/explain-child-${scheme}.png`, fullPage: true });
 
       // The API answers the same.

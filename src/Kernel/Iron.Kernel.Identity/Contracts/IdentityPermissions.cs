@@ -507,13 +507,19 @@ public static class SecurityEventKinds
     /// <summary>Someone signed in with the emergency account: always an alert, at high severity (ADR-0049).</summary>
     public const string EmergencySignIn = "emergency_sign_in";
 
+    /// <summary>
+    /// The person's visibility tags changed (TF-241, ADR-0057), which changes the records they see. The Visibility module
+    /// notes it and writes its own audit event, so no <c>identity.</c> event goes with this kind.
+    /// </summary>
+    public const string VisibilityTagsChanged = "visibility_tags_changed";
+
     public static IReadOnlyList<string> All =>
     [
         PasswordChanged, RecoveryLinkIssued, RecoveryLinkUsed, PasswordSetByRecovery, LoginLocked, LoginUnlocked, UserDeactivated, UserReactivated,
         FactorEnrolled, FactorRemoved, FactorsReset, RecoveryCodeUsed, RecoveryCodesRegenerated,
         SsoLinked, SsoOnlySet, SsoOnlyCleared,
         SessionEnded, AccessRevoked, ImpersonationStarted, ImpersonationEnded,
-        EmergencySet, EmergencyCleared, EmergencySignIn,
+        EmergencySet, EmergencyCleared, EmergencySignIn, VisibilityTagsChanged,
     ];
 
     /// <summary>The audit event a security event is written as.</summary>

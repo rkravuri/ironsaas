@@ -12,10 +12,14 @@ namespace Iron.Kernel.Data.Checks;
 /// and in a business module (a product) every entity is a <see cref="BusinessRecord"/> unless it is marked
 /// <see cref="ITenantWide"/> on purpose (TF-220: the build fails when a business entity lacks the owning organisation).
 /// In every module, a business record carries neither ITenantWide nor IOwnAccessRule, which would let it page without its policy (ADR-0032),
-/// and records its field-level history: it is marked <see cref="ITrackedChanges"/> (TF-062 AC2, ADR-0051).
+/// and records its field-level history: it is marked <see cref="ITrackedChanges"/> (TF-062 AC2, ADR-0051); and its table
+/// carries its visibility tags in a <c>text[]</c> column named <c>visibility_tags</c> (ADR-0057). Build the model with
+/// <see cref="Contexts.DesignTime"/>'s options, as a host does, so its names are the table's.
 /// </summary>
 public static class ModelCheck
 {
+    private const string VisibilityTagsColumn = "visibility_tags";
+
     public static IReadOnlyList<string> Check(IModel model, string contextName, bool isBusinessModule)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -55,6 +59,13 @@ public static class ModelCheck
                 continue;
             }
 
+            if (typeof(BusinessRecord).IsAssignableFrom(clrType) && !HasVisibilityTagsColumn(entityType))
+            {
+                violations.Add(
+                    $"{contextName}: {clrType.Name} is a business record whose table has no {VisibilityTagsColumn} column. Leave BusinessRecord.VisibilityTags as the conventions map it, a text[] column named {VisibilityTagsColumn} of the record's own table (TF-241, ADR-0057).");
+                continue;
+            }
+
             if (isBusinessModule
                 && !typeof(BusinessRecord).IsAssignableFrom(clrType)
                 && !typeof(ITenantWide).IsAssignableFrom(clrType))
@@ -65,6 +76,25 @@ public static class ModelCheck
         }
 
         return violations;
+    }
+
+    /// <summary>
+    /// The conventions map a business record's tags to a <c>text[]</c> column named <c>visibility_tags</c> of its own table
+    /// (ADR-0057), and a module could still rename it, convert it or map the record to no table: the policy's tag filter
+    /// cannot query a converted column, and the history names a field by its column, so a renamed one would show the
+    /// tags under another name.
+    /// </summary>
+    private static bool HasVisibilityTagsColumn(IEntityType entityType)
+    {
+        var property = entityType.FindProperty(nameof(BusinessRecord.VisibilityTags));
+        if (property is null || entityType.GetTableName() is not { } tableName)
+        {
+            return false;
+        }
+
+        var table = StoreObjectIdentifier.Table(tableName, entityType.GetSchema());
+        return property.GetColumnName(table) == VisibilityTagsColumn
+            && property.GetRelationalTypeMapping().StoreType == "text[]";
     }
 
     /// <summary>

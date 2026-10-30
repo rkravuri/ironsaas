@@ -54,6 +54,9 @@ public sealed class SecretsStep(
     /// <summary>The configuration key of the unit's key family in the key service (ADR-0054): <c>tenant-&lt;slug&gt;</c>.</summary>
     public const string KeyPrefixKey = "Keys:Prefix";
 
+    /// <summary>The unit secret's switch of the sample module, which the API host reads at start (<c>Iron.Kernel.Samples</c>, ADR-0057).</summary>
+    public const string SampleRecordsKey = "Samples:Enabled";
+
     public string Name => StepNames.Secrets;
 
     public int Order => 4;
@@ -82,6 +85,12 @@ public sealed class SecretsStep(
             // migrate grants the verifier's role its reads of the chain (ADR-0050); the unit never connects with it.
             ["Database:AuditReaderRole"] = context.AuditReaderRole,
         };
+
+        // A tenant the operator marked for testing runs the sample module (ADR-0057); every other unit never loads it.
+        if (context.Tenant.SampleRecords)
+        {
+            unit[SampleRecordsKey] = "true";
+        }
 
         var client = await ControlClientAsync(context, cancellationToken).ConfigureAwait(false);
         if (client is { } made)

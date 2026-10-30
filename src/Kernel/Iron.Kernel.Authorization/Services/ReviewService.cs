@@ -5,6 +5,7 @@ using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Visibility.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Authorization.Services;
@@ -12,7 +13,7 @@ namespace Iron.Kernel.Authorization.Services;
 /// <summary>A unit a campaign is to cover, alone or with every unit below it.</summary>
 public sealed record ReviewUnitInput(Guid UnitId, bool IncludeChildren);
 
-public sealed record StartReviewInput(string Name, DateOnly DueOn, IReadOnlyList<ReviewUnitInput> Units);
+public sealed record StartReviewInput(string Name, DateOnly DueOn, IReadOnlyList<ReviewUnitInput> Units, ReviewSubject Subject = ReviewSubject.Roles);
 
 public sealed record ReviewPerson(Guid Id, string Name);
 
@@ -42,7 +43,11 @@ public sealed record ReviewView(
     DateTimeOffset? ClosedAt,
     ReviewProgress Progress,
     IReadOnlyList<ReviewUnitProgress> ByUnit,
-    bool CanManage);
+    bool CanManage)
+{
+    /// <summary>Role assignments or visibility tag holdings (ADR-0057).</summary>
+    public ReviewSubject Subject { get; init; }
+}
 
 public sealed record ItemDecisionView(ReviewDecision Decision, string? Comment, ReviewPerson DecidedBy, DateTimeOffset DecidedAt, bool AssignmentRemoved)
 {
@@ -53,10 +58,15 @@ public sealed record ItemDecisionView(ReviewDecision Decision, string? Comment, 
     public SignatureSummary? Signature { get; init; }
 }
 
+/// <summary>A visibility tag as a review names it: its code and its name.</summary>
+public sealed record ReviewTagView(string Code, string Name);
+
 /// <summary>
-/// One item to decide: the assignment as it stood when the campaign started, and the decision once there is one.
-/// <c>Yours</c>: the item is about the reader's own access, so another reviewer decides it. <c>WithOwner</c>: nobody but
-/// its own person may review its unit, so the campaign's owner decides it (ADR-0037).
+/// One item to decide: the assignment, or the visibility tag holding, as it stood when the campaign started, and the
+/// decision once there is one. A role assignment's item has its role and scope; a holding's, its tag. Every item lists
+/// the tags its person held then (TF-241 AC7). <c>Yours</c>: the item is about the reader's own access, so another
+/// reviewer decides it. <c>WithOwner</c>: nobody but its own person may review its unit, so the campaign's owner decides
+/// it (ADR-0037).
 /// </summary>
 public sealed record ReviewItemView(
     Guid Id,
@@ -64,17 +74,24 @@ public sealed record ReviewItemView(
     Guid AssignmentId,
     Guid PrincipalId,
     string PrincipalName,
-    Guid RoleId,
-    string RoleCode,
-    string RoleName,
-    RoleScopeKind ScopeKind,
+    Guid? RoleId,
+    string? RoleCode,
+    string? RoleName,
+    RoleScopeKind? ScopeKind,
     Guid UnitId,
     string UnitName,
     IReadOnlyList<UnitStep> UnitPath,
     ItemDecisionView? Decision,
     bool Yours,
     bool WithOwner,
-    IReadOnlyList<string> Conflicts);
+    IReadOnlyList<string> Conflicts)
+{
+    /// <summary>The tag of a holding's item; null for a role assignment's.</summary>
+    public ReviewTagView? Tag { get; init; }
+
+    /// <summary>The tags the person held when the campaign started, in code order.</summary>
+    public IReadOnlyList<ReviewTagView> HeldTags { get; init; } = [];
+}
 
 /// <summary>What a confirm-all did: the items it confirmed, and those someone had decided already, which it left alone.</summary>
 public sealed record ConfirmManyView(int Confirmed, int AlreadyDecided);
@@ -106,7 +123,8 @@ public sealed class ReviewService(
     ICurrentPrincipal current,
     UnitReviewers reviewers,
     ISignatures signatures,
-    TimeProvider time)
+    TimeProvider time,
+    IVisibilityTagHolders? tagHolders = null)
 {
     public const string RecordType = "access_review";
 
@@ -166,31 +184,19 @@ public sealed class ReviewService(
             return Error.Validation(AuthorizationErrors.UnitNotFound, "One of the units does not exist.", new FieldError("units", "not_found", "Choose existing units."));
         }
 
+        if (input.Subject == ReviewSubject.VisibilityTags && tagHolders is null)
+        {
+            return Error.Validation(AuthorizationErrors.ReviewSubjectUnavailable, "This unit keeps no visibility tags to review.", new FieldError("subject", "unavailable", "Review role assignments."));
+        }
+
         var covered = await CoveredAsync(input.Units, chosen, cancellationToken).ConfigureAwait(false);
         var rootCovered = covered.Values.Any(u => u.ParentId is null);
         var coveredIds = covered.Keys.ToArray();
-
-        // Unit assignments at a covered unit, and the tenant-wide ones when the root is covered. A record assignment
-        // belongs to its record, not to a unit's people, and is left to the record's own review (ADR-0037).
-        var rows = await context.RoleAssignments.AsNoTracking()
-            .Where(a => ((a.ScopeKind == Scopes.Unit || a.ScopeKind == Scopes.UnitWithChildren) && coveredIds.Contains(a.ScopeId!.Value)) || (rootCovered && a.ScopeKind == Scopes.Tenant))
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-        var roleIds = rows.Select(r => r.RoleId).Distinct().ToArray();
-        var roles = await context.Roles.AsNoTracking().Where(r => roleIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, cancellationToken).ConfigureAwait(false);
-        var people = await principals.FindAsync([.. rows.Select(r => r.PrincipalId).Distinct()], cancellationToken).ConfigureAwait(false);
         var root = covered.Values.FirstOrDefault(u => u.ParentId is null);
-        var names = await NamesAsync(covered.Values.SelectMany(u => OrganisationUnit.PathIds(u.Path)), cancellationToken).ConfigureAwait(false);
-
-        var review = new AccessReview(input.Name, input.DueOn, current.Id);
-        var items = new List<AccessReviewItem>();
-        foreach (var row in rows)
-        {
-            var unit = row.ScopeKind == Scopes.Tenant ? root! : covered[row.ScopeId!.Value];
-            var path = OrganisationUnit.PathIds(unit.Path);
-            var name = people.TryGetValue(row.PrincipalId, out var person) ? person.DisplayName : row.PrincipalId.ToString("D");
-            items.Add(new AccessReviewItem(review.Id, row, name, roles[row.RoleId], path, [.. path.Select(id => names.GetValueOrDefault(id, string.Empty))]));
-        }
+        var review = new AccessReview(input.Name, input.DueOn, current.Id, input.Subject);
+        var items = input.Subject == ReviewSubject.VisibilityTags
+            ? await TagItemsAsync(review, covered, root, cancellationToken).ConfigureAwait(false)
+            : await RoleItemsAsync(review, covered, root, rootCovered, coveredIds, cancellationToken).ConfigureAwait(false);
 
         await using (var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false))
         {
@@ -204,6 +210,7 @@ public sealed class ReviewService(
                 ["due_on"] = review.DueOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
                 ["units"] = string.Join(',', input.Units.Select(u => u.IncludeChildren ? $"{u.UnitId:D}+children" : u.UnitId.ToString("D"))),
                 ["items"] = items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["subject"] = input.Subject == ReviewSubject.VisibilityTags ? "visibility_tags" : "roles",
             };
             await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.ReviewStarted, AuditOutcome.Success, current.Id, review.Name, details, RecordType, review.Id), cancellationToken).ConfigureAwait(false);
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -211,6 +218,73 @@ public sealed class ReviewService(
 
         return await DescribeAsync(review.Id, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// The role assignments of the covered units, and the tenant-wide ones when the root is covered, each with the tags
+    /// its person holds. A record assignment belongs to its record, not to a unit's people, and is left to the record's
+    /// own review (ADR-0037).
+    /// </summary>
+    private async Task<List<AccessReviewItem>> RoleItemsAsync(AccessReview review, Dictionary<Guid, OrganisationUnit> covered, OrganisationUnit? root, bool rootCovered, Guid[] coveredIds, CancellationToken cancellationToken)
+    {
+
+        var rows = await context.RoleAssignments.AsNoTracking()
+            .Where(a => ((a.ScopeKind == Scopes.Unit || a.ScopeKind == Scopes.UnitWithChildren) && coveredIds.Contains(a.ScopeId!.Value)) || (rootCovered && a.ScopeKind == Scopes.Tenant))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var roleIds = rows.Select(r => r.RoleId).Distinct().ToArray();
+        var roles = await context.Roles.AsNoTracking().Where(r => roleIds.Contains(r.Id)).ToDictionaryAsync(r => r.Id, cancellationToken).ConfigureAwait(false);
+        var people = await principals.FindAsync([.. rows.Select(r => r.PrincipalId).Distinct()], cancellationToken).ConfigureAwait(false);
+        var names = await NamesAsync(covered.Values.SelectMany(u => OrganisationUnit.PathIds(u.Path)), cancellationToken).ConfigureAwait(false);
+        var held = await HeldTagsAsync([.. rows.Select(r => r.PrincipalId).Distinct()], cancellationToken).ConfigureAwait(false);
+
+        var items = new List<AccessReviewItem>();
+        foreach (var row in rows)
+        {
+            var unit = row.ScopeKind == Scopes.Tenant ? root! : covered[row.ScopeId!.Value];
+            var path = OrganisationUnit.PathIds(unit.Path);
+            var name = people.TryGetValue(row.PrincipalId, out var person) ? person.DisplayName : row.PrincipalId.ToString("D");
+            items.Add(new AccessReviewItem(review.Id, row, name, roles[row.RoleId], path, [.. path.Select(id => names.GetValueOrDefault(id, string.Empty))], held.GetValueOrDefault(row.PrincipalId)));
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// Every visibility tag a person or a service account holds, at their home unit when the campaign covers it, or at the
+    /// root for one without a home unit when it covers the root (ADR-0057).
+    /// </summary>
+    private async Task<List<AccessReviewItem>> TagItemsAsync(AccessReview review, Dictionary<Guid, OrganisationUnit> covered, OrganisationUnit? root, CancellationToken cancellationToken)
+    {
+        var holdings = await tagHolders!.HoldingsAsync(null, cancellationToken).ConfigureAwait(false);
+        var people = await principals.FindAsync([.. holdings.Select(h => h.PrincipalId).Distinct()], cancellationToken).ConfigureAwait(false);
+        var names = await NamesAsync(covered.Values.SelectMany(u => OrganisationUnit.PathIds(u.Path)), cancellationToken).ConfigureAwait(false);
+        var held = holdings.GroupBy(h => h.PrincipalId).ToDictionary(g => g.Key, g => (IReadOnlyList<TagHoldingInfo>)[.. g]);
+        var items = new List<AccessReviewItem>();
+        foreach (var holding in holdings)
+        {
+            if (!people.TryGetValue(holding.PrincipalId, out var person))
+            {
+                continue;
+            }
+
+            var unit = person.HomeUnitId is { } home ? covered.GetValueOrDefault(home) : root;
+            if (unit is null)
+            {
+                continue;
+            }
+
+            var path = OrganisationUnit.PathIds(unit.Path);
+            items.Add(new AccessReviewItem(review.Id, holding, person.DisplayName, path, [.. path.Select(id => names.GetValueOrDefault(id, string.Empty))], held[holding.PrincipalId]));
+        }
+
+        return items;
+    }
+
+    /// <summary>The visibility tags each of these people holds, for the items that list them; none without the Visibility module.</summary>
+    private async Task<Dictionary<Guid, IReadOnlyList<TagHoldingInfo>>> HeldTagsAsync(IReadOnlyCollection<Guid> principalIds, CancellationToken cancellationToken) =>
+        tagHolders is null || principalIds.Count == 0
+            ? []
+            : (await tagHolders.HoldingsAsync(principalIds, cancellationToken).ConfigureAwait(false)).GroupBy(h => h.PrincipalId).ToDictionary(g => g.Key, g => (IReadOnlyList<TagHoldingInfo>)[.. g]);
 
     /// <summary>One campaign the reader may see, with the progress of what they may see.</summary>
     public async Task<Result<ReviewView>> DescribeAsync(Guid id, CancellationToken cancellationToken)
@@ -273,7 +347,10 @@ public sealed class ReviewService(
             review.ClosedAt,
             Progress(rows.Select(r => r.Decision)),
             byUnit,
-            manages);
+            manages)
+        {
+            Subject = review.Subject,
+        };
     }
 
     /// <summary>The progress of each campaign of a page, counted over what the reader may see, in two queries.</summary>
@@ -374,14 +451,18 @@ public sealed class ReviewService(
                 item.RoleId,
                 item.RoleCode,
                 item.RoleName,
-                Scopes.KindOf(item.ScopeKind),
+                item.ScopeKind is { } scope ? Scopes.KindOf(scope) : null,
                 item.UnitId,
                 item.UnitName,
                 [.. item.UnitPathIds.Zip(item.UnitPathNames, (unit, name) => new UnitStep(unit, name))],
                 decision,
                 IsOwn(item),
                 withOwner.Contains(item.Id),
-                conflicts.GetValueOrDefault(item.AssignmentId) ?? []);
+                item.IsTagHolding ? [] : conflicts.GetValueOrDefault(item.AssignmentId) ?? [])
+            {
+                Tag = item.IsTagHolding ? new ReviewTagView(item.TagCode!, item.TagName ?? item.TagCode!) : null,
+                HeldTags = [.. item.HeldTagCodes.Zip(item.HeldTagNames, (code, name) => new ReviewTagView(code, name))],
+            };
         })];
     }
 
@@ -451,7 +532,13 @@ public sealed class ReviewService(
             }
 
             removed = false;
-            if (decision == ReviewDecision.Revoke)
+            if (decision == ReviewDecision.Revoke && item.IsTagHolding)
+            {
+                // The holding goes through the Visibility module's own path, audited on the person's record; one gone
+                // already is recorded with nothing removed, as an assignment is.
+                removed = tagHolders is not null && await tagHolders.RemoveForReviewAsync(item.AssignmentId, reviewId, cancellationToken).ConfigureAwait(false);
+            }
+            else if (decision == ReviewDecision.Revoke)
             {
                 var removal = await assignments.RemoveForReviewAsync(item.AssignmentId, reviewId, cancellationToken).ConfigureAwait(false);
                 if (removal.IsFailure && removal.Error.Code != AuthorizationErrors.AssignmentNotFound)
@@ -479,7 +566,7 @@ public sealed class ReviewService(
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        if (removed)
+        if (removed && !item.IsTagHolding)
         {
             grants.Forget(item.PrincipalId); // the removal path cleared it inside the transaction; a request between could have read the old row
         }
@@ -688,7 +775,7 @@ public sealed class ReviewService(
             ["decision"] = decision == ReviewDecision.Confirm ? "confirm" : "revoke",
             ["assignment_id"] = item.AssignmentId.ToString("D"),
             ["principal_id"] = item.PrincipalId.ToString("D"),
-            ["role"] = item.RoleCode,
+            [item.IsTagHolding ? "tag" : "role"] = (item.IsTagHolding ? item.TagCode : item.RoleCode) ?? string.Empty,
             ["unit_id"] = item.UnitId.ToString("D"),
             ["assignment_removed"] = removed ? "true" : "false",
         };

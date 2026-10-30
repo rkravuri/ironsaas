@@ -74,7 +74,12 @@ public class PasswordRotationTests(PostgresFixture fixture)
         store.Password = Second;
         await AdminAsync($"ALTER ROLE {role} PASSWORD '{Second}'");
         dataSource.Clear();
-        await UntilAsync(() => Volatile.Read(ref requests) >= beforeRotation + 8);
+
+        // Counted from the clear, not from before the change: on a warm pool the four loops finished eight requests on their
+        // old connections while the role's password changed, and none opened a new one. Of eight after the clear, at most
+        // four ran on a connection opened before it.
+        var afterClear = Volatile.Read(ref requests);
+        await UntilAsync(() => Volatile.Read(ref requests) >= afterClear + 8);
         await stop.CancelAsync();
         await Task.WhenAll(serving);
 

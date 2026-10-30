@@ -47,7 +47,7 @@ await report.StepAsync("tenant", ["TF-180 AC2"], async () =>
     var existing = await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}", bearer: operatorToken, cancellationToken: ct);
     if (existing.Status == HttpStatusCode.NotFound)
     {
-        (await api.SendAsync(HttpMethod.Post, options.ControlUrl, "/api/v1/tenants", bearer: operatorToken, json: new { slug = options.Tenant, display_name = "Smoke", administrator_login_id = options.AdministratorLoginId }, cancellationToken: ct)).Expect(HttpStatusCode.Created, "create the tenant");
+        (await api.SendAsync(HttpMethod.Post, options.ControlUrl, "/api/v1/tenants", bearer: operatorToken, json: new { slug = options.Tenant, display_name = "Smoke", administrator_login_id = options.AdministratorLoginId, sample_records = options.SampleRecords }, cancellationToken: ct)).Expect(HttpStatusCode.Created, "create the tenant");
         existing = (await api.SendAsync(HttpMethod.Get, options.ControlUrl, $"/api/v1/tenants/{options.Tenant}", bearer: operatorToken, cancellationToken: ct)).Expect(HttpStatusCode.OK, "read the tenant");
     }
     else
@@ -456,6 +456,7 @@ var run = Convert.ToHexString(RandomNumberGenerator.GetBytes(3)).ToLowerInvarian
 Task<string> AdministratorAsync(CancellationToken cancellation) => signIn.AsAsync(options.AdministratorLoginId, administratorPassword ?? string.Empty, administratorApp, cancellation);
 var access = new AccessSteps(api, options, operatorToken ?? string.Empty, AdministratorAsync, run);
 await report.StepAsync("scoped-role", ["TF-033 AC1", "TF-035 AC1", "ADR-0031"], () => access.ScopedRoleAsync(ct));
+await report.StepAsync("visibility-tags", ["TF-241 AC1", "TF-241 AC3", "ADR-0057"], () => access.VisibilityTagsAsync(ct));
 await report.StepAsync("plan-change", ["TF-046 AC1", "ADR-0034"], () => access.PlanChangeAsync(ct));
 await report.StepAsync("kill-switch", ["ADR-0035"], () => access.KillSwitchAsync(ct));
 

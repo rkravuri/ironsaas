@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Tenancy.Services;
 
-public sealed record NewTenant(string Slug, string DisplayName, IReadOnlyList<string> Hostnames, string AdministratorLoginId, string? AdministratorDisplayName, SizeClass SizeClass, string? Region, string? Plan);
+public sealed record NewTenant(string Slug, string DisplayName, IReadOnlyList<string> Hostnames, string AdministratorLoginId, string? AdministratorDisplayName, SizeClass SizeClass, string? Region, string? Plan, bool SampleRecords = false);
 
 /// <summary>
 /// The tenant registry (TF-001): create with unique slug and hostnames, read, change status, and ask the fleet to
@@ -59,11 +59,12 @@ public sealed class TenantRegistry(
 
         var plan = (request.Plan ?? options.DefaultPlan).Trim().ToLowerInvariant();
         var tenant = new Tenant(tenantId, request.DisplayName, request.Region ?? options.DefaultRegion, plan, request.SizeClass, request.AdministratorLoginId, request.AdministratorDisplayName);
+        tenant.MarkForSampleRecords(request.SampleRecords);
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
         context.Tenants.Add(tenant);
         context.Hostnames.AddRange(hostnames.Select(h => new TenantHostname(tenant.Id, h)));
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.TenantCreated, AuditOutcome.Success, tenant.CreatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["hostnames"] = string.Join(",", hostnames), ["size_class"] = tenant.SizeClass.ToString().ToLowerInvariant(), ["plan"] = plan }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
+        await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.TenantCreated, AuditOutcome.Success, tenant.CreatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["hostnames"] = string.Join(",", hostnames), ["size_class"] = tenant.SizeClass.ToString().ToLowerInvariant(), ["plan"] = plan, ["sample_records"] = tenant.SampleRecords ? "true" : "false" }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
 
         // A tenant starts with its plan's entitlements (TF-042), in the same transaction; an unknown plan refuses the tenant.
         var applied = await entitlements.ApplyWithinAsync(tenant, new PlanApplication(plan, null, null, $"Tenant created with the plan {plan}"), cancellationToken).ConfigureAwait(false);
@@ -111,6 +112,30 @@ public sealed class TenantRegistry(
         await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.StatusChanged, AuditOutcome.Success, tenant.UpdatedBy, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["from"] = previous.ToString().ToLowerInvariant(), ["to"] = status.ToString().ToLowerInvariant() }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Marks a tenant's unit to run the sample module, or unmarks it (ADR-0057): the operator's choice for a tenant used for
+    /// testing, audited. The unit follows at its next provisioning or update, when the fleet writes its secret.
+    /// </summary>
+    public async Task<Result<TenantRecord>> SetSampleRecordsAsync(string slug, bool enabled, CancellationToken cancellationToken)
+    {
+        var tenant = await context.Tenants.SingleOrDefaultAsync(t => t.Slug == slug, cancellationToken).ConfigureAwait(false);
+        if (tenant is null)
+        {
+            return Error.NotFound(TenancyErrors.TenantNotFound, $"There is no tenant '{slug}'.");
+        }
+
+        if (tenant.SampleRecords != enabled)
+        {
+            await using var transaction = await unitOfWork.BeginAsync(cancellationToken).ConfigureAwait(false);
+            tenant.MarkForSampleRecords(enabled);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await audit.WriteAsync(new AuditEvent(TenancyAuditEvents.SampleRecordsChanged, AuditOutcome.Success, actor.Id, tenant.Slug, new Dictionary<string, string>(StringComparer.Ordinal) { ["sample_records"] = enabled ? "true" : "false" }, "tenant", tenant.Id), cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return ToRecord(tenant, await HostnamesOfAsync(tenant.Id, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>TF-002: a job for a tenant in Provisioning (or Failed earlier); an Active tenant is refused, so is any other status.</summary>
@@ -222,6 +247,6 @@ public sealed class TenantRegistry(
     public static TenantRecord ToRecord(Tenant tenant, IReadOnlyList<string> hostnames)
     {
         ArgumentNullException.ThrowIfNull(tenant);
-        return new TenantRecord(tenant.Id, tenant.Slug, tenant.DisplayName, hostnames, tenant.Region, tenant.Plan, tenant.SizeClass, tenant.Status, tenant.AdministratorLoginId, tenant.AdministratorDisplayName, tenant.DatabaseName, tenant.StorageContainer, tenant.CreatedAt, tenant.ActivatedAt);
+        return new TenantRecord(tenant.Id, tenant.Slug, tenant.DisplayName, hostnames, tenant.Region, tenant.Plan, tenant.SizeClass, tenant.Status, tenant.AdministratorLoginId, tenant.AdministratorDisplayName, tenant.DatabaseName, tenant.StorageContainer, tenant.CreatedAt, tenant.ActivatedAt, tenant.SampleRecords);
     }
 }

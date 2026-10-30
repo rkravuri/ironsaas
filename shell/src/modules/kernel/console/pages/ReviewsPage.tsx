@@ -2,10 +2,17 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Checkbox, TextInput } from "@mantine/core";
+import { Button, Checkbox, Radio, Stack, TextInput } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { z } from "zod";
-import { fetchReviews, fetchUnits, startReview, type Review, type ReviewSummary } from "@/api/authorization";
+import {
+  fetchReviews,
+  fetchUnits,
+  startReview,
+  type Review,
+  type ReviewSubject,
+  type ReviewSummary,
+} from "@/api/authorization";
 import { useSession } from "@/auth/session-context";
 import { DataGrid, type DataGridColumn } from "@/components/data-grid";
 import { Form, useZodForm } from "@/components/form";
@@ -20,6 +27,9 @@ import { formatDate } from "@/i18n/dates";
 const manage = "authz.reviews.manage";
 const defaultSort = [{ field: "created_at", direction: "desc" as const }];
 
+/** A new campaign reviews role assignments unless the manager chooses visibility tags (ADR-0057). */
+const rolesFirst: ReviewSubject = "roles";
+
 /**
  * Access reviews (TF-038) on the list template: the campaigns the reader manages or reviews, newest first, each with
  * its progress over what the reader may see. Starting one needs authz.reviews.manage for the whole tenant.
@@ -33,6 +43,12 @@ export function ReviewsPage() {
   const fetchPage = useCallback((query: string, signal?: AbortSignal) => fetchReviews(query, signal), []);
   const columns: DataGridColumn<ReviewSummary>[] = [
     { field: "name", headerKey: "reviews.columns.name", sortable: true, filter: "text", flex: 3 },
+    {
+      field: "subject",
+      headerKey: "reviews.columns.subject",
+      width: 180,
+      format: (row) => t(`reviews.subjects.${row.subject}`),
+    },
     {
       field: "due_on",
       headerKey: "reviews.columns.due",
@@ -99,7 +115,10 @@ export function ReviewsPage() {
   );
 }
 
-/** A campaign over one unit, with or without the units below it, and a due day: its items are taken when it starts. */
+/**
+ * A campaign over one unit, with or without the units below it, and a due day: its items are taken when it starts. It
+ * reviews the role assignments there, or the visibility tags the people homed there hold (ADR-0057).
+ */
 function StartReviewForm({ onClose, onDone }: { onClose: () => void; onDone: (review: Review) => Promise<void> }) {
   const { t } = useTranslation();
   const units = useQuery({ queryKey: ["authz", "units"], queryFn: ({ signal }) => fetchUnits(signal) });
@@ -114,10 +133,14 @@ function StartReviewForm({ onClose, onDone }: { onClose: () => void; onDone: (re
           .refine((value) => value >= first, t("reviews.start.duePassed")),
         unit_id: z.string().min(1, t("reviews.start.unitRequired")),
         include_children: z.boolean(),
+        subject: z.enum(["roles", "visibility_tags"]),
       }),
     [first, t],
   );
-  const form = useZodForm({ schema, initialValues: { name: "", due_on: "", unit_id: "", include_children: true } });
+  const form = useZodForm({
+    schema,
+    initialValues: { name: "", due_on: "", unit_id: "", include_children: true, subject: rolesFirst },
+  });
   return (
     <Form
       form={form}
@@ -127,6 +150,7 @@ function StartReviewForm({ onClose, onDone }: { onClose: () => void; onDone: (re
             name: values.name.trim(),
             due_on: values.due_on,
             units: [{ unit_id: values.unit_id, include_children: values.include_children }],
+            subject: values.subject,
           }),
         )
       }
@@ -139,6 +163,16 @@ function StartReviewForm({ onClose, onDone }: { onClose: () => void; onDone: (re
         data-autofocus
         {...form.getInputProps("name")}
       />
+      <Radio.Group label={t("reviews.start.subject")} {...form.getInputProps("subject")}>
+        <Stack gap="xs" mt={6}>
+          <Radio value="roles" label={t("reviews.subjects.roles")} description={t("reviews.start.rolesHint")} />
+          <Radio
+            value="visibility_tags"
+            label={t("reviews.subjects.visibility_tags")}
+            description={t("reviews.start.tagsHint")}
+          />
+        </Stack>
+      </Radio.Group>
       <TextInput
         type="date"
         label={t("reviews.start.due")}

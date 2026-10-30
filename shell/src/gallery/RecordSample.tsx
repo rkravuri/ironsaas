@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button, Divider, Stack, Table } from "@mantine/core";
 import type { RecordSharing } from "@/api/authorization";
+import type { HeldTags } from "@/api/visibility";
 import { ApprovalPanel, AttachmentPanel, CommentPanel, HistoryPanel } from "@/components/panels";
 import { SharingPanel } from "@/components/sharing";
+import { TagsPanel } from "@/components/visibility";
 import { RecordPage } from "@/components/templates";
 import { formatDate } from "@/i18n/dates";
 
@@ -35,10 +37,24 @@ const sampleSharing: RecordSharing = {
   choices: tree,
 };
 
+/** The sample order's visibility tags (ADR-0057): one active, one retired, and the tags the reader may put on it. */
+const sampleTags: HeldTags = {
+  tags: [
+    { code: "APAC", name: "Asia Pacific", active: true },
+    { code: "PROJECT-7", name: "Project Seven", active: false },
+  ],
+  may_change: true,
+  choices: [
+    { code: "APAC", name: "Asia Pacific", active: true },
+    { code: "EMEA", name: "Europe, Middle East and Africa", active: true },
+  ],
+};
+
 /** The sample record page: every panel behind its tab, on a made-up order. */
 export function RecordSample() {
   const { t } = useTranslation();
   const [sharing, setSharing] = useState(sampleSharing);
+  const [tags, setTags] = useState(sampleTags);
   const at = (day: number) => new Date(Date.UTC(2026, 9, day, 9, 30)).toISOString();
   return (
     <div id="gallery-record-page">
@@ -86,6 +102,25 @@ export function RecordSample() {
                       ...sharing,
                       mode,
                       units: tree.filter((choice) => units.includes(choice.id)).map(named),
+                    });
+                    return Promise.resolve();
+                  }}
+                />
+                <Divider my="md" />
+                <TagsPanel
+                  value={tags}
+                  label={t("visibility.control.label")}
+                  noneWords={t("visibility.control.none")}
+                  hint={t("visibility.control.hint")}
+                  dialogTitle={t("visibility.control.title")}
+                  onChange={(codes) => {
+                    const known = [...sampleTags.tags, ...sampleTags.choices];
+                    setTags({
+                      ...tags,
+                      tags: known.filter(
+                        (tag, index) =>
+                          codes.includes(tag.code) && known.findIndex((other) => other.code === tag.code) === index,
+                      ),
                     });
                     return Promise.resolve();
                   }}

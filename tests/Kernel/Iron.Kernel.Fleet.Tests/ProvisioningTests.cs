@@ -633,12 +633,40 @@ public class ProvisioningTests(FleetFixture fixture)
         Assert.Equal($"{acme}_audit", await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
     }
 
-    internal static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix)
+    [Fact]
+    [Proves("ADR-0057")]
+    public async Task ATenantMarkedForTestingGetsTheSampleModulesSwitchInItsUnitSecretAndNoOtherDoes()
+    {
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var marked = await RegisterAndRequestAsync(provider, "marked", sampleRecords: true);
+        var plain = await RegisterAndRequestAsync(provider, "plain");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        Assert.True(await harness.RunNextAsync());
+
+        using var root = new OpenBaoSecretStore(fixture.StoreOptions());
+        Assert.Equal("true", (await root.ReadAsync($"tenants/{marked}/unit", TestContext.Current.CancellationToken))![SecretsStep.SampleRecordsKey]);
+        Assert.False((await root.ReadAsync($"tenants/{plain}/unit", TestContext.Current.CancellationToken))!.ContainsKey(SecretsStep.SampleRecordsKey));
+
+        // Unmarked, the next update writes the unit secret without it: the unit stops loading the module.
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var registry = scope.ServiceProvider.GetRequiredService<TenantRegistry>();
+            Assert.False((await registry.SetSampleRecordsAsync(marked, false, TestContext.Current.CancellationToken)).Value.SampleRecords);
+            Assert.True((await registry.RequestUpdateAsync(marked, TestContext.Current.CancellationToken)).IsSuccess);
+        }
+
+        Assert.True(await harness.RunNextAsync());
+        Assert.False((await root.ReadAsync($"tenants/{marked}/unit", TestContext.Current.CancellationToken))!.ContainsKey(SecretsStep.SampleRecordsKey));
+    }
+
+    internal static async Task<string> RegisterAndRequestAsync(ServiceProvider provider, string prefix, bool sampleRecords = false)
     {
         var slug = $"{prefix}-{Ids.New():N}"[..20];
         await using var scope = provider.CreateAsyncScope();
         var registry = scope.ServiceProvider.GetRequiredService<TenantRegistry>();
-        var created = await registry.CreateAsync(new NewTenant(slug, prefix, [], $"admin@{prefix}.test", "Admin", SizeClass.Small, null, null), TestContext.Current.CancellationToken);
+        var created = await registry.CreateAsync(new NewTenant(slug, prefix, [], $"admin@{prefix}.test", "Admin", SizeClass.Small, null, null, sampleRecords), TestContext.Current.CancellationToken);
         Assert.True(created.IsSuccess, created.IsFailure ? created.Error.Message : null);
         var requested = await registry.RequestProvisioningAsync(slug, TestContext.Current.CancellationToken);
         Assert.True(requested.IsSuccess, requested.IsFailure ? requested.Error.Message : null);

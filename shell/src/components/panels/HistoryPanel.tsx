@@ -3,6 +3,7 @@ import { Stack, Table, Text, Timeline, Title } from "@mantine/core";
 import { EmptyState } from "./EmptyState";
 import { fieldWords } from "./field-words";
 import { formatDateTime } from "@/i18n/dates";
+import { valueWords } from "./history-words";
 
 /** One field of a save (TF-062): old and new as the history keeps them. */
 export interface HistoryFieldChange {
@@ -57,7 +58,7 @@ function Changes({ changes }: { changes: HistoryFieldChange[] }) {
       </Text>
     ) : (
       <Text span size="sm" {...(change.treatment === "masked" ? { ff: "monospace" } : {})}>
-        {text}
+        {valueWords(text, t("history.changes.emptyList"))}
       </Text>
     );
   return (

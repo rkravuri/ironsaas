@@ -6,12 +6,14 @@ import { Alert, Button, Table, Text } from "@mantine/core";
 import { ApiError } from "@/api/client";
 import { fetchUser, type UserRecord } from "@/api/identity";
 import { useHistoryOf } from "@/auth/record-history";
+import { useSession } from "@/auth/session-context";
 import { EmptyState, LoadingState } from "@/components/panels";
 import { RecordPage } from "@/components/templates";
 import { useRecentName } from "@/home/recent";
 import { AccessTab } from "./AccessTab";
 import { SignInTab } from "./SignInTab";
 import { UserActions } from "./UserActions";
+import { VisibilityTab, readVisibilityTags } from "./VisibilityTab";
 import { userStatus } from "./user-status";
 import { formatDateTime } from "@/i18n/dates";
 
@@ -64,6 +66,7 @@ function UserRecordView({ user }: { user: UserRecord }) {
   const { t } = useTranslation();
   useRecentName(user.display_name);
   const history = useHistoryOf("principal", user.id);
+  const readsTags = useSession().permissions.includes(readVisibilityTags);
   const [now] = useState(() => Date.now());
   const locked = user.locked_until != null && Date.parse(user.locked_until) > now;
   const rows: [string, string][] = [
@@ -108,6 +111,9 @@ function UserRecordView({ user }: { user: UserRecord }) {
         { value: "access", label: t("users.record.access"), panel: <AccessTab user={user} /> },
         ...(user.type === "user"
           ? [{ value: "sign-in", label: t("users.record.signIn"), panel: <SignInTab user={user} /> }]
+          : []),
+        ...(readsTags
+          ? [{ value: "visibility", label: t("users.record.visibility"), panel: <VisibilityTab user={user} /> }]
           : []),
       ]}
       history={history}

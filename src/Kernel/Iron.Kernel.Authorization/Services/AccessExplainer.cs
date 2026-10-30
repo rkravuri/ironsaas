@@ -21,6 +21,9 @@ public static class ExplainChecks
     public const string Flags = "flags";
     public const string Permission = "permission";
     public const string RecordPolicy = "record_policy";
+
+    /// <summary>The reader's visibility tags against the record's (TF-241 AC2, ADR-0057), once the scope and the policy let them see it.</summary>
+    public const string VisibilityTags = "visibility_tags";
 }
 
 /// <summary>What became of a check: passed, failed (the first failure decides), not reached after a failure, or nothing to check.</summary>
@@ -131,10 +134,15 @@ public sealed class AccessExplainer(
 
         if (checks[^1].Result != ExplainResults.Failed)
         {
-            checks.Add(await RecordPolicyCheckAsync(metadata, principalId, Value, cancellationToken).ConfigureAwait(false));
+            var (policy, tags) = await RecordPolicyCheckAsync(metadata, principalId, Value, cancellationToken).ConfigureAwait(false);
+            checks.Add(policy);
+            if (policy.Result != ExplainResults.Failed)
+            {
+                checks.Add(tags);
+            }
         }
 
-        string[] order = [ExplainChecks.Principal, ExplainChecks.Entitlement, ExplainChecks.Flags, ExplainChecks.Permission, ExplainChecks.RecordPolicy];
+        string[] order = [ExplainChecks.Principal, ExplainChecks.Entitlement, ExplainChecks.Flags, ExplainChecks.Permission, ExplainChecks.RecordPolicy, ExplainChecks.VisibilityTags];
         checks.AddRange(order.Skip(checks.Count).Select(ExplainedCheck.NotReached));
         var failed = checks.FirstOrDefault(c => c.Result == ExplainResults.Failed);
         var units = await UnitsAsync([principal.HomeUnitId, delegator?.HomeUnitId], cancellationToken).ConfigureAwait(false);
@@ -261,24 +269,63 @@ public sealed class AccessExplainer(
         return new ExplainedCheck(ExplainChecks.Permission, ExplainResults.Failed, reason, StatusCodes.Status403Forbidden, PermissionErrors.PermissionDenied, $"The permission {permission.Name} is not granted at the scope.", facts, []);
     }
 
-    private async Task<ExplainedCheck> RecordPolicyCheckAsync(EndpointMetadataCollection metadata, Guid principalId, Func<string, string?> value, CancellationToken cancellationToken)
+    /// <summary>
+    /// The record's policy, and then the tag check (ADR-0057), from one decision of the policy engine. The query runs the
+    /// scope rule, the policy and the tags together, and a record outside the reader's tags is not found whatever the
+    /// action; so when the tags fail, the policy's check passes as far as seeing the record, and the tag check fails.
+    /// </summary>
+    private async Task<(ExplainedCheck Policy, ExplainedCheck Tags)> RecordPolicyCheckAsync(EndpointMetadataCollection metadata, Guid principalId, Func<string, string?> value, CancellationToken cancellationToken)
     {
         if (metadata.GetMetadata<ScopeMetadata>() is not RecordScopeMetadata { PolicyAction: { } action } record
             || !Guid.TryParse(value(record.RouteValue), out var recordId)
             || services.GetService<IRecordPolicies>() is not { } policies)
         {
-            return new ExplainedCheck(ExplainChecks.RecordPolicy, ExplainResults.NotApplicable, "no_record", null, null, "The action opens no record through a record policy.", ExplainedCheck.Empty, []);
+            return (
+                new ExplainedCheck(ExplainChecks.RecordPolicy, ExplainResults.NotApplicable, "no_record", null, null, "The action opens no record through a record policy.", ExplainedCheck.Empty, []),
+                new ExplainedCheck(ExplainChecks.VisibilityTags, ExplainResults.NotApplicable, "no_record", null, null, "The action opens no record, so no tags are compared.", ExplainedCheck.Empty, []));
         }
 
         var explained = await policies.ExplainAsync(record.RecordType, recordId, action, principalId, cancellationToken).ConfigureAwait(false);
         var facts = Facts(("record_type", record.RecordType), ("record_id", recordId.ToString("D")), ("action", action), ("visible_by", explained.VisibleBy), ("exists", explained.Exists ? "true" : "false"));
-        return explained.Answer switch
+        var tags = TagCheck(explained.Tags);
+        if (explained.Tags is { Passed: false })
+        {
+            return (new ExplainedCheck(ExplainChecks.RecordPolicy, ExplainResults.Passed, "visible", null, null, "Their scope and the record's policy let them see the record.", facts, []), tags);
+        }
+
+        var policy = explained.Answer switch
         {
             RecordPolicyAnswers.Allowed => new ExplainedCheck(ExplainChecks.RecordPolicy, ExplainResults.Passed, "allowed", null, null, $"The record's policy allows {action}.", facts, []),
             RecordPolicyAnswers.Forbidden => new ExplainedCheck(ExplainChecks.RecordPolicy, ExplainResults.Failed, "forbidden", StatusCodes.Status403Forbidden, RecordErrors.Forbidden, $"They may see the record, and its policy refuses {action}.", facts, []),
             RecordPolicyAnswers.NotFound => new ExplainedCheck(ExplainChecks.RecordPolicy, ExplainResults.Failed, explained.Exists ? "not_visible" : "no_such_record", StatusCodes.Status404NotFound, RecordErrors.NotFound, explained.Exists ? "The record exists, and they may not see it." : "There is no such record.", facts, []),
             _ => new ExplainedCheck(ExplainChecks.RecordPolicy, ExplainResults.NotApplicable, "no_policy", null, null, "The record type has no policy.", facts, []),
         };
+        return (policy, tags);
+    }
+
+    /// <summary>The tags compared, in words (TF-241 AC2): the record's, the reader's, and the ones they share.</summary>
+    private static ExplainedCheck TagCheck(Iron.Kernel.Data.Visibility.RecordTagCheck? tags)
+    {
+        if (tags is null)
+        {
+            return new ExplainedCheck(ExplainChecks.VisibilityTags, ExplainResults.NotApplicable, "no_record", null, null, "No record was found to compare tags with.", ExplainedCheck.Empty, []);
+        }
+
+        static string Words(IReadOnlyList<string> codes) => string.Join(", ", codes);
+        var facts = Facts(("record_tags", Words(tags.RecordTags)), ("held_tags", Words(tags.HeldTags)), ("shared_tags", Words(tags.SharedTags)));
+        if (tags.RecordTags.Count == 0)
+        {
+            return new ExplainedCheck(ExplainChecks.VisibilityTags, ExplainResults.Passed, "untagged", null, null, "The record carries no visibility tag, so everyone who passes roles and units sees it.", facts, []);
+        }
+
+        if (tags.HeldTags.Count == 0)
+        {
+            return new ExplainedCheck(ExplainChecks.VisibilityTags, ExplainResults.Passed, "holds_none", null, null, "They hold no visibility tag, so they see every record their roles and units allow.", facts, []);
+        }
+
+        return tags.Passed
+            ? new ExplainedCheck(ExplainChecks.VisibilityTags, ExplainResults.Passed, "shared_tag", null, null, $"The record carries {Words(tags.RecordTags)}; they hold {Words(tags.HeldTags)}. They share {Words(tags.SharedTags)}, so they see it.", facts, [])
+            : new ExplainedCheck(ExplainChecks.VisibilityTags, ExplainResults.Failed, "no_shared_tag", StatusCodes.Status404NotFound, RecordErrors.NotFound, $"The record carries {Words(tags.RecordTags)}; they hold {Words(tags.HeldTags)}. They share no tag, so the record answers not found.", facts, []);
     }
 
     private async Task<Dictionary<Guid, string>> UnitsAsync(IEnumerable<Guid?> ids, CancellationToken cancellationToken)

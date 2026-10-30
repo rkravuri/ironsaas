@@ -157,7 +157,8 @@
       "changes": "Pending changes",
       "keys": "Keys",
       "securityAlerts": "Security alerts",
-      "alertRules": "Alert rules"
+      "alertRules": "Alert rules",
+      "visibility": "Content visibility"
     },
     "audit": {
       "title": "Audit",
@@ -174,6 +175,11 @@
       "evidencePacks": "Evidence packs",
       "validation": "Validation",
       "line": "Reviews of the audit trail, each signed by its reviewer, what every signature signed, the evidence an auditor asks for, and the validation of the version you run."
+    },
+    "samples": {
+      "title": "Samples",
+      "records": "Sample records",
+      "line": "Records for testing this unit: their visibility tags, sharing and history, as every product's records will have them."
     }
   },
   "users": {
@@ -217,7 +223,8 @@
       "noHomeUnit": "None",
       "details": "Details",
       "access": "Access",
-      "signIn": "Sign-in"
+      "signIn": "Sign-in",
+      "visibility": "Visibility"
     },
     "invite": {
       "open": "Invite a person",
@@ -730,7 +737,8 @@
       "new": "After",
       "none": "Empty",
       "masked": "Kept masked: only its last characters are stored.",
-      "secret": "Changed. A secret value is never kept."
+      "secret": "Changed. A secret value is never kept.",
+      "emptyList": "None"
     },
     "open": "History",
     "openNamed": "History of {{name}}",
@@ -1525,7 +1533,9 @@
       "audit": "Audit trail",
       "entitlements": "Subscription",
       "flags": "Flags",
-      "files": "Files"
+      "files": "Files",
+      "visibility": "Content visibility",
+      "samples": "Sample records"
     },
     "outcome": {
       "allowed": "{{name}} can: {{action}}",
@@ -1539,7 +1549,8 @@
       "entitlement": "The subscription",
       "flags": "Flags and kill switches",
       "permission": "The permission",
-      "record_policy": "The record's policy"
+      "record_policy": "The record's policy",
+      "visibility_tags": "The visibility tags"
     },
     "results": {
       "passed": "passed",
@@ -1594,7 +1605,15 @@
         "forbidden": "{{name}} may see the record, and its policy does not let them {{action}} it.",
         "not_visible": "The record exists, and {{name}} may not see it, so the system answers as if it did not.",
         "no_such_record": "There is no record with this id.",
-        "no_policy": "The record type has no policy."
+        "no_policy": "The record type has no policy.",
+        "visible": "Their units, the record's sharing and its policy let {{name}} see the record; its visibility tags come next."
+      },
+      "visibility_tags": {
+        "no_record": "The action opens no record, so no tags are compared.",
+        "untagged": "The record carries no visibility tag, so everyone who passes roles and units sees it.",
+        "holds_none": "{{name}} holds no visibility tag, so they see every record their roles and units allow.",
+        "shared_tag": "The record carries {{recordTags}}; {{name}} holds {{heldTags}}. They share {{sharedTags}}, so {{name}} sees it.",
+        "no_shared_tag": "The record carries {{recordTags}}; {{name}} holds {{heldTags}}. They share no tag, so the system answers as if the record did not exist."
       }
     }
   },
@@ -1666,15 +1685,127 @@
     "createForSomeone": "Delegate for someone",
     "historyName": "{{delegator}} to {{delegate}}"
   },
+  "visibility": {
+    "page": {
+      "title": "Content visibility",
+      "description": "Visibility tags narrow what people see, after their roles and units. A person who holds tags sees a tagged record only when they share one of its tags; one who holds none sees every record their roles allow. A record without tags is seen by everyone its unit allows."
+    },
+    "tags": {
+      "title": "Tags",
+      "description": "Define the tags here; give them to people on their user record, and to records on the record. A retired tag stays where it is, so nobody sees more than before, and is given to nobody new.",
+      "new": "New tag",
+      "none": "No visibility tags yet. Everyone sees every record their roles and units allow.",
+      "caption": "The visibility tags of this organisation",
+      "columns": {
+        "tag": "Tag",
+        "description": "Description",
+        "status": "Status",
+        "holders": "People who hold it",
+        "actions": "Actions"
+      },
+      "rename": "Rename",
+      "renameNamed": "Rename {{name}}",
+      "retire": "Retire",
+      "retireNamed": "Retire {{name}}",
+      "reactivate": "Reactivate",
+      "reactivateNamed": "Reactivate {{name}}",
+      "retireTitle": "Retire {{name}}",
+      "retireMessage": "The tag stays on the records and people that carry it, so nobody sees more than before. It can no longer be given to anyone or put on a record. Reactivate it to use it again.",
+      "created": "Created the tag {{name}} ({{code}}).",
+      "changed": "Saved the tag {{name}}.",
+      "retired": "Retired the tag {{name}}.",
+      "reactivated": "Reactivated the tag {{name}}."
+    },
+    "status": {
+      "active": "Active",
+      "retired": "Retired"
+    },
+    "holders": {
+      "title": "Who holds a tag",
+      "description": "The people and service accounts who hold a tag. Each sees the records that carry it, and the records without tags.",
+      "tag": "Tag",
+      "choose": "Choose a tag",
+      "chooseFirst": "Choose a tag to see who holds it.",
+      "gridLabel": "People who hold the tag",
+      "columns": {
+        "name": "Name",
+        "type": "Type",
+        "since": "Holds it since"
+      }
+    },
+    "dialog": {
+      "newTitle": "New visibility tag",
+      "renameTitle": "Rename {{name}}",
+      "code": "Code",
+      "codeHint": "Capitals, digits, hyphens and underscores, up to 32: APAC, PROJECT-7. It never changes and is never used again.",
+      "codeRule": "Use letters, digits, hyphens and underscores, up to 32, starting with a letter or a digit.",
+      "name": "Name",
+      "nameRequired": "Name the tag.",
+      "description": "Description",
+      "create": "Create the tag",
+      "save": "Save"
+    },
+    "tag": {
+      "words": "{{name}} ({{code}})",
+      "retiredWords": "{{name}} ({{code}}), retired"
+    },
+    "control": {
+      "label": "Visibility tags",
+      "none": "No visibility tags: everyone who may see records of its unit sees it.",
+      "hint": "A person who holds tags sees this record only when they share one of its tags. You put on, or take off, only tags you hold, unless you hold none.",
+      "title": "Change the record's visibility tags",
+      "change": "Change tags",
+      "save": "Save the tags",
+      "tags": "Tags",
+      "noChoices": "There are no tags you may put on this record.",
+      "failed": "The record's visibility tags could not be loaded. Try again in a moment."
+    },
+    "person": {
+      "label": "Visibility tags",
+      "none": "No visibility tags: {{name}} sees every record their roles and units allow.",
+      "hint": "With tags, {{name}} sees a tagged record only when they share one of its tags. You give, or take away, only tags you hold, unless you hold none.",
+      "title": "Change the visibility tags of {{name}}"
+    }
+  },
+  "samples": {
+    "title": "Sample records",
+    "description": "Records for testing this unit. You see those of your units and those shared with them; if you hold visibility tags, only the untagged ones and those that share a tag with you.",
+    "new": "New sample record",
+    "newTitle": "New sample record",
+    "name": "Name",
+    "nameRequired": "Name the record.",
+    "create": "Create",
+    "gridLabel": "Sample records",
+    "noTags": "None",
+    "columns": {
+      "name": "Name",
+      "tags": "Visibility tags",
+      "updated": "Changed"
+    },
+    "notFoundTitle": "No such record",
+    "notFoundText": "There is no sample record with this id that you may see.",
+    "backToList": "Back to the sample records",
+    "failed": "This record could not be loaded.",
+    "details": "Details",
+    "sharing": "Sharing",
+    "created": "Created",
+    "updatedLabel": "Changed",
+    "version": "Version"
+  },
   "reviews": {
     "title": "Access reviews",
-    "description": "Check, unit by unit, that people still need the roles they hold. A reviewer decides the units where they may review.",
+    "description": "Check, unit by unit, that people still need the roles or the visibility tags they hold. A reviewer decides the units where they may review.",
     "columns": {
       "name": "Name",
       "due": "Due",
       "status": "Status",
       "progress": "Progress",
-      "started": "Started"
+      "started": "Started",
+      "subject": "What it reviews"
+    },
+    "subjects": {
+      "roles": "Roles",
+      "visibility_tags": "Visibility tags"
     },
     "status": {
       "open": "Open",
@@ -1700,7 +1831,10 @@
       "unit": "Unit",
       "unitRequired": "Choose the unit to review.",
       "includeChildren": "Include the units below it",
-      "includeChildrenHint": "The roles held at every unit below the chosen one are reviewed too.",
+      "includeChildrenHint": "What is held at every unit below the chosen one is reviewed too.",
+      "subject": "What to review",
+      "rolesHint": "The roles people hold at the unit: confirm keeps a role, revoke ends it.",
+      "tagsHint": "The visibility tags the people homed at the unit hold: confirm keeps a tag, revoke takes it away.",
       "submit": "Start the review"
     },
     "record": {
@@ -1720,7 +1854,8 @@
     },
     "items": {
       "label": "Items of this review",
-      "intro": "Each row is a role someone held when the review started. Confirm keeps it; revoke ends it at once.",
+      "intro": "Each row is a role someone held when the review started. Confirm keeps it; revoke ends it at once. Someone who holds no visibility tags sees every record their roles allow.",
+      "introTags": "Each row is a visibility tag someone held when the review started. Confirm keeps it; revoke takes it away at once.",
       "which": "Which items",
       "states": {
         "open": "To decide",
@@ -1734,7 +1869,9 @@
         "scope": "Where it applies",
         "decision": "Decision",
         "path": "Path",
-        "conflicts": "Conflicts"
+        "conflicts": "Conflicts",
+        "tag": "Visibility tag",
+        "heldTags": "Tags they hold"
       },
       "scopes": {
         "tenant": "The whole tenant",
@@ -1761,7 +1898,11 @@
       "confirmedManyWithDecided_other": "Confirmed {{count}} items. {{decided}} had been decided by someone else meanwhile and were left as they were.",
       "revoked": "Revoked: {{name}} no longer holds {{role}}.",
       "revokeTitle": "Revoke this role",
+      "revokeTagTitle": "Revoke this tag",
       "revokeMessage": "{{name}} loses {{role}} at {{unit}} at once. Undo it by granting the role again.",
+      "revokeTagMessage": "{{name}} loses {{role}} at once, and with it the records only that tag let them see. Undo it by giving the tag again.",
+      "tagWords": "the tag {{name}} ({{code}})",
+      "noTags": "None",
       "revokeConfirm": "Revoke now",
       "comment": "Comment",
       "commentHint": "Optional. Kept with your decision.",
@@ -1897,7 +2038,8 @@
       "impersonation_ended": "Signing in as you ended",
       "emergency_set": "Marked as an emergency account",
       "emergency_cleared": "No longer an emergency account",
-      "emergency_sign_in": "Signed in with an emergency account"
+      "emergency_sign_in": "Signed in with an emergency account",
+      "visibility_tags_changed": "Visibility tags changed"
     },
     "actors": {
       "self": "You",

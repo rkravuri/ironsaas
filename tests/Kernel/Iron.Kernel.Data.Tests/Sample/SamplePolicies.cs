@@ -1,6 +1,7 @@
 using Iron.Kernel.Data.Contexts;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Policies;
+using Iron.Kernel.Data.Visibility;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -42,6 +43,12 @@ public static class SamplePermissions
     public static readonly Permission WidgetsManage = new("sample.widgets.manage", "Change widgets", Risk.Medium);
 
     public static readonly Permission ProposalsRead = new("sample.proposals.read", "View proposals", Risk.Low);
+
+    public static readonly Permission SuppliersRead = new("sample.suppliers.read", "View suppliers", Risk.Low);
+
+    public static readonly Permission SuppliersManage = new("sample.suppliers.manage", "Change suppliers", Risk.Medium);
+
+    public static readonly Permission OrdersRead = new("sample.orders.read", "View orders", Risk.Low);
 }
 
 /// <summary>The sample module's record policies, built from the kernel's blocks as a module writes them (ADR-0032).</summary>
@@ -60,13 +67,27 @@ public static class SamplePolicies
                 RecordRules.UnitVisibility<Proposal>(SamplePermissions.ProposalsRead),
                 RecordRules.OwnerWhile<Proposal>(p => p.Status == ProposalStatus.Draft, RecordActions.Update)));
 
-    /// <summary>Widgets: seen in the reader's units, changed and shared where the reader may manage them.</summary>
+    /// <summary>Widgets: seen in the reader's units, changed, shared and tagged where the reader may manage them.</summary>
     public static IServiceCollection AddWidgetPolicy(this IServiceCollection services) =>
         services.AddRecordPolicy(
             WidgetType,
             "Widgets",
             SamplePermissions.WidgetsRead,
-            RecordRules.UnitVisibility<Widget>(SamplePermissions.WidgetsRead, (RecordActions.Update, SamplePermissions.WidgetsManage), (RecordActions.Share, SamplePermissions.WidgetsManage)));
+            RecordRules.UnitVisibility<Widget>(
+                SamplePermissions.WidgetsRead,
+                (RecordActions.Update, SamplePermissions.WidgetsManage),
+                (RecordActions.Share, SamplePermissions.WidgetsManage),
+                (RecordActions.Tag, SamplePermissions.WidgetsManage)));
+
+    /// <summary>
+    /// Suppliers and their orders, a master and its transactions: an order takes its supplier's visibility tags when it
+    /// is created, the sample module's rule 6 of TF-241 (ADR-0057).
+    /// </summary>
+    public static IServiceCollection AddSupplierAndOrderPolicies(this IServiceCollection services) =>
+        services
+            .AddRecordPolicy(SampleSupplier.RecordType, "Suppliers", SamplePermissions.SuppliersRead, RecordRules.UnitVisibility<SampleSupplier>(SamplePermissions.SuppliersRead, (RecordActions.Tag, SamplePermissions.SuppliersManage)))
+            .AddRecordPolicy(SampleOrder.RecordType, "Orders", SamplePermissions.OrdersRead, RecordRules.UnitVisibility<SampleOrder>(SamplePermissions.OrdersRead))
+            .AddTagsFromMaster<SampleOrder>(SampleSupplier.RecordType, order => order.SupplierId);
 }
 
 /// <summary>A context whose business records carry the markers of other entities, for the model check's refusal (ADR-0032).</summary>

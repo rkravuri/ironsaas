@@ -12,7 +12,8 @@
     "keys",
     "monitoring",
     "protection",
-    "settings"
+    "settings",
+    "visibility"
   ],
   "suites": [
     {

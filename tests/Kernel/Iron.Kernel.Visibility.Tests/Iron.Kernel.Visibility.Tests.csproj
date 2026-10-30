@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Visibility tags against a PostgreSQL container (needs Docker): the tags' life, who holds them under the escalation rule, the audit and history of a change, a service account's tags, and the tags a principal acting for someone is filtered by. -->
+  <PropertyGroup>
+    <IronLayer>Test</IronLayer>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Iron.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Iron.Testing/Iron.Testing.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Authorization/Iron.Kernel.Authorization.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Authorization/Contracts/Iron.Kernel.Authorization.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Identity/Contracts/Iron.Kernel.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Visibility/Iron.Kernel.Visibility.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Visibility/Contracts/Iron.Kernel.Visibility.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -55,6 +55,15 @@ const actions = [
     permission: "identity.users.read",
     route_values: [],
   },
+  {
+    name: "GetSampleRecord",
+    summary: "One sample record you may see.",
+    module: "samples",
+    method: "GET",
+    route: "/api/v1/sample-records/{id}",
+    permission: "samples.records.read",
+    route_values: [{ name: "id", kind: "record", record_type: "sample_record" }],
+  },
 ];
 
 const principal = {
@@ -101,6 +110,7 @@ const denial = {
       },
     }),
     check("record_policy", "not_reached", "not_reached"),
+    check("visibility_tags", "not_reached", "not_reached"),
   ],
 };
 
@@ -136,6 +146,50 @@ const allowance = {
       ],
     }),
     check("record_policy", "not_applicable", "no_record"),
+    check("visibility_tags", "not_applicable", "no_record"),
+  ],
+};
+
+export const sampleRecordId = "01a19100-0000-7000-8000-000000000002";
+
+/** A record of another region: Grace's roles, units and the record's policy let her see it, her tags do not (ADR-0057). */
+const tagRefusal = {
+  principal,
+  action: actions[3],
+  acting_for: null,
+  allowed: false,
+  status: 404,
+  checks: [
+    check("principal", "passed", "active"),
+    check("entitlement", "not_applicable", "not_licensed"),
+    check("flags", "not_applicable", "no_flags"),
+    check("permission", "passed", "granted", {
+      facts: {
+        permission: "samples.records.read",
+        permission_name: "View sample records",
+        scope: "unit",
+        unit_id: north.id,
+        unit: north.name,
+      },
+      granted_by: [
+        {
+          assignment_id: "01a17e00-0000-7000-8000-0000000000f1",
+          role_id: operationsLead.id,
+          role_code: operationsLead.code,
+          role_name: operationsLead.name,
+          scope_kind: "unit_with_children",
+          unit: { id: operations.id, name: operations.name },
+          record_type: null,
+          record_id: null,
+        },
+      ],
+    }),
+    check("record_policy", "passed", "visible"),
+    check("visibility_tags", "failed", "no_shared_tag", {
+      status: 404,
+      error_code: "data.record.not_found",
+      facts: { record_tags: "LATAM", held_tags: "APAC", shared_tags: "" },
+    }),
   ],
 };
 
@@ -281,7 +335,7 @@ export async function stubExplainAndConflicts(target: Page): Promise<void> {
   await target.route("**/api/v1/access/explain?**", (route) => {
     const action = new URL(route.request().url()).searchParams.get("action");
     return route.fulfill({
-      json: action === "ImportRoles" ? denial : allowance,
+      json: action === "ImportRoles" ? denial : action === "GetSampleRecord" ? tagRefusal : allowance,
     });
   });
   await target.route("**/api/v1/conflict-rules?**", (route) => route.fulfill({ json: listOf(rules) }));

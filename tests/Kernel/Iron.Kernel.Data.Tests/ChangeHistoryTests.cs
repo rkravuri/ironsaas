@@ -163,8 +163,7 @@ public class ChangeHistoryTests(PostgresFixture fixture)
     [Proves("TF-062 AC2", "ADR-0051")]
     public void TheModelCheckFailsNamingABusinessRecordWithoutItsHistory()
     {
-        var options = new DbContextOptionsBuilder<ContextWithAnUntrackedRecord>().UseNpgsql(fixture.ConnectionString).Options;
-        using var context = new ContextWithAnUntrackedRecord(options);
+        using var context = new ContextWithAnUntrackedRecord(DesignTime.OptionsFor<ContextWithAnUntrackedRecord>());
 
         var violation = Assert.Single(ModelCheck.Check(context.Model, nameof(ContextWithAnUntrackedRecord), isBusinessModule: true));
 

@@ -64,6 +64,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0054](0054-keys-encryption-and-secrets.md) | Keys, encryption and secrets: a key service with keys per tenant, encrypted and searchable fields, rotation without downtime, passwords read again, separate control plane secrets, and TLS 1.2 and up | Accepted |
 | [0055](0055-how-code-reaches-main-scans-and-the-nightly-release.md) | How code reaches main: pull requests with every check green, the review exception, one security gate with expiring exceptions, bills of materials, threat models, coverage floors and the nightly release | Accepted |
 | [0056](0056-security-monitoring-incidents-and-lost-spans.md) | Security monitoring over the audit trail, the operator's alerting, incidents with the 72-hour notice, and the lost spans | Accepted |
+| [0057](0057-content-visibility-and-visibility-tags.md) | Content visibility: visibility tags in the record policy's query, stored on the record, measured first | Accepted |
 
 ## Reading order
 
