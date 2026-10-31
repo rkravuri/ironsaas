@@ -56,6 +56,21 @@ installed (TF-244, ADR-0059).
    ran commit together. A delivery locks its row and finds a handled one handled: a repeated delivery, by a second
    worker or a replay, changes nothing (TF-085 AC3, TF-111 AC2). A subscriber is named `module.what_it_does` and reads
    one event version through the publisher's Contracts (ADR-0042).
+
+   The target is under a second from the event to its handling on the laptop with the stack up; TF-085 AC1's bound is
+   10 seconds. An idle worker passes every 200 ms (`Events:Dispatch:IntervalMilliseconds`), and a pass that did work
+   is followed at once by the next. `tools/measurements/dispatch-latency.sh` measured it on echo on 2026-10-31, after
+   `make smoke` and `make e2e` on the branch's images, by the unit's own clock over every delivery handled at its first
+   attempt:
+
+   | Subscription | Deliveries | Median | 95th percentile | Longest |
+   |---|---|---|---|---|
+   | `authz.end_delegations_of_deactivated` | 21 | 128 ms | 225 ms | 431 ms |
+   | `identity.stop_acting_for_ended_delegation` | 1 | 144 ms | 144 ms | 144 ms |
+   | `samples.notice_created` | 6 | 171 ms | 322 ms | 365 ms |
+   | All | 28 | 155 ms | 316 ms | 431 ms |
+
+   Most of the median is the idle wait; the smoke's `events` step reports each run's own figure (107 ms in this one).
 6. **Order per record.** A delivery is due only when no earlier event of the same record is still pending for the same
    subscriber, so two events of one record reach a subscriber in the order of their positions. A change locks its
    record's row (its version), so the order of positions is the order of commits for one record. Different records,
