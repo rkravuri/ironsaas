@@ -478,7 +478,8 @@ function EventDetail({
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>{t("events.columns.subscriber")}</Table.Th>
-                <Table.Th>{t("events.columns.status")}</Table.Th>
+                {/* Wide enough for the badge's words, which say the status so it is never colour alone. */}
+                <Table.Th w={150}>{t("events.columns.status")}</Table.Th>
                 <Table.Th>{t("events.columns.attempts")}</Table.Th>
                 <Table.Th>{t("events.columns.when")}</Table.Th>
                 <Table.Th>{t("events.columns.error")}</Table.Th>
