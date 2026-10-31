@@ -1,5 +1,7 @@
 using Iron.Kernel.Jobs.Contracts;
+using Iron.Kernel.Jobs.Data;
 using Iron.Kernel.Jobs.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
@@ -137,20 +139,21 @@ public class RunnerTests(JobsFixture fixture)
     {
         var tenant = await fixture.NewTenantAsync();
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        await using var crashed = tenant.Build(time);
         await using var survivor = tenant.Build(time);
-        var id = await JobsTenant.StartAsync(crashed, ProbeJobsModule.Slow, "abandoned");
+        var id = await JobsTenant.StartAsync(survivor, ProbeJobsModule.Slow, "abandoned");
 
-        // The first worker takes the run and stops before it finishes: its tick claims, and nothing ever records the outcome.
-        using (var stop = new CancellationTokenSource())
+        // A worker took the run and died before it finished: the run stays running under a holder that is gone, with its lease.
+        const string crashed = "gone-host/4711/0badc0de";
+        await using (var scope = survivor.CreateAsyncScope())
         {
-            await JobsTenant.Runner(crashed).TickAsync(stop.Token);
-            await stop.CancelAsync();
-            await JobsTenant.Runner(crashed).DrainAsync();
+            var context = scope.ServiceProvider.GetRequiredService<JobsDbContext>();
+            var run = await context.Runs.SingleAsync(r => r.Id == id, Cancel);
+            run.Claim(crashed, time.GetUtcNow(), time.GetUtcNow() + ProbeJobsModule.Slow.Timeout + TimeSpan.FromSeconds(30));
+            await context.SaveChangesAsync(Cancel);
         }
 
         var held = await JobsTenant.RunAsync(survivor, id);
-        Assert.Equal((RunStates.Running, JobsTenant.Runner(crashed).Holder), (held.Status, held.Holder));
+        Assert.Equal((RunStates.Running, crashed), (held.Status, held.Holder));
 
         // Before its lease passes the run is the first worker's; after, the second takes it back.
         await JobsTenant.Runner(survivor).TickAsync(Cancel);
@@ -160,6 +163,33 @@ public class RunnerTests(JobsFixture fixture)
         Assert.Equal(1, tick.Recovered);
         var recovered = await JobsTenant.RunAsync(survivor, id);
         Assert.Equal((RunStates.Queued, 1, "The worker running it stopped before it finished."), (recovered.Status, recovered.Attempts, recovered.Error));
+    }
+
+    [Fact]
+    [Proves("ADR-0061")]
+    public async Task AWorkerThatStopsGivesItsRunsBackAtOnceUncountedAndTheNextWorkerTakesThemWithoutWaitingForALease()
+    {
+        var tenant = await fixture.NewTenantAsync();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        await using var stopping = tenant.Build(time);
+        await using var next = tenant.Build(time);
+        var id = await JobsTenant.StartAsync(stopping, ProbeJobsModule.Slow, "interrupted");
+
+        // The first worker takes the run, and its process stops, as at an update, before the run finishes.
+        using (var stop = new CancellationTokenSource())
+        {
+            await JobsTenant.Runner(stopping).TickAsync(stop.Token);
+            await stop.CancelAsync();
+            await JobsTenant.Runner(stopping).DrainAsync();
+        }
+
+        var givenBack = await JobsTenant.RunAsync(next, id);
+        var tick = await JobsTenant.Runner(next).TickAsync(Cancel);
+        var taken = await JobsTenant.RunAsync(next, id);
+
+        Assert.Equal((RunStates.Queued, 0, null, null), (givenBack.Status, givenBack.Attempts, givenBack.Holder, givenBack.LeaseUntil));
+        Assert.Contains("started, waiting", givenBack.Log, StringComparison.Ordinal);
+        Assert.Equal((0, RunStates.Running, 1, JobsTenant.Runner(next).Holder), (tick.Recovered, taken.Status, taken.Attempts, taken.Holder));
     }
 
     [Fact]

@@ -237,6 +237,28 @@ public sealed class JobRun : AuditedEntity, ITenantWide
         return true;
     }
 
+    /// <summary>
+    /// A run its worker stopped as its process shut down: back in the queue for any worker at once, its holder and lease
+    /// gone, and the interrupted attempt not counted, since nothing failed (ADR-0061). A process that dies instead leaves
+    /// the run to its lease.
+    /// </summary>
+    public bool GiveBack(DateTimeOffset at, string log)
+    {
+        if (Status != RunStates.Running)
+        {
+            return false;
+        }
+
+        Status = RunStates.Queued;
+        Attempts = Math.Max(0, Attempts - 1);
+        DueAt = at;
+        StartedAt = null;
+        Holder = null;
+        LeaseUntil = null;
+        Log = log.Length <= JobContext.LogMaxLength ? log : log[^JobContext.LogMaxLength..];
+        return true;
+    }
+
     public bool Hold(DateTimeOffset at)
     {
         if (Status != RunStates.Queued)

@@ -65,7 +65,10 @@ to its trace.
    transaction, under the record's row lock; then, under one advisory lock, takes back the runs whose lease passed and
    claims queued runs, interactive before normal before bulk, oldest first in a class, within each job's concurrency
    (TF-122 AC2), as many as the process has slots for (16). A run's lease is its timeout and 30 seconds: a worker that
-   died leaves its runs to be taken back by any worker once the lease passed, as a new attempt.
+   died leaves its runs to be taken back by any worker once the lease passed, as a new attempt. A worker that stops, as
+   at an update, gives its unfinished runs back to the queue at once, the interrupted attempt uncounted, so the next
+   worker takes them without waiting for a lease and a frequent job such as the dispatch pauses for no longer than the
+   restart.
 5. **A timeout cancels, logs and retries.** A run is cancelled at its timeout, its log says so, and it is retried by its
    policy (TF-120 AC2). A failed attempt waits the policy's first delay, doubled at each failure up to its longest,
    moved by up to a fifth either way at random so runs that failed together do not retry together (TF-123 AC1). The
@@ -87,7 +90,10 @@ to its trace.
 8. **A frequent loop is a term job.** Sealing every five seconds and dispatch every 300 milliseconds as runs of their own
    would write 17,000 and 288,000 run rows a day each. A term job is one run a minute that passes until its term ends,
    every few seconds as the loop did (`JobLoop`): it holds one runner slot, is coordinated, logged, retried and alerted
-   like any run, and the work keeps its latency (TF-085 AC1's 10 seconds is still the smoke's bound). A pass that throws
+   like any run, and the work keeps its latency (TF-085 AC1's 10 seconds is still the smoke's bound). Its term ends a
+   minute after its occurrence, when the next falls due, not a minute after it started: a run that started late ends on
+   time, so a lag never carries from one run to the next. The laptop showed why: counted from the start, every claim and
+   every pass that overran added to the lag, which reached 78 seconds for `keys.reencrypt` within minutes. A pass that throws
    is logged and the next one runs; the run fails, to be retried, only when its last pass failed.
 9. **What each process keeps for itself is a process job.** The flag, setting and entitlement caches live in each
    process's memory, so no other process can refresh them: their reads after the first are jobs of scope `EachProcess`

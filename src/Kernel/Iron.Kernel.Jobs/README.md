@@ -32,7 +32,8 @@ module declares its jobs without referencing this one.
   recorded as skipped and nothing runs.
 - **A run** is a scope of its own with the handler, cancelled at its timeout, in a span of `Iron.Jobs` with the tenant,
   the job, the run, the attempt and the class, linked to the request that started it. A failure waits the policy's
-  growing, jittered delay; after the last attempt it is a dead letter, audited in the same transaction.
+  growing, jittered delay; after the last attempt it is a dead letter, audited in the same transaction. A worker that
+  stops gives its unfinished runs back to the queue, uncounted; one that dies leaves them to their lease.
 - **Configuration** (`Jobs:Runner`): `TickMilliseconds` (500), `Slots` (16), `LeaseGraceSeconds` (30),
   `MissedAfterSeconds` (60). The unit's command takes `Jobs:Command` (`Action`, `Job`, `RunId`, `Reason`, `Operator`),
   which the fleet sets as `Jobs__Command__*`.

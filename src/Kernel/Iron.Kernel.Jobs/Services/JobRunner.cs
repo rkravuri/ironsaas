@@ -377,8 +377,9 @@ public sealed class JobRunner(
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            // The process is stopping: the run keeps its lease, and the next worker takes it back when the lease passes.
-            logger.LogInformation("The run {RunId} of {Job} stopped with its process; another worker takes it back.", run.Id, run.Job);
+            // The process is stopping, as at an update: the run goes back to the queue for the next worker at once, so a
+            // frequent job such as the dispatch waits for no lease. A process that dies leaves it to its lease instead.
+            await GiveBackAsync(run, context.Text).ConfigureAwait(false);
             return;
         }
         catch (OperationCanceledException) when (timeout.IsCancellationRequested)
@@ -404,6 +405,32 @@ public sealed class JobRunner(
         {
             // The run keeps its lease; when it passes, a worker takes the run back and runs it again, which is safe since a job is idempotent.
             logger.LogError(exception, "The outcome of the run {RunId} of {Job} could not be recorded; it is taken back when its lease passes.", run.Id, run.Job);
+        }
+    }
+
+    /// <summary>A run this process stopped, back in the queue uncounted, in a transaction of its own and a few seconds at most.</summary>
+    private async Task GiveBackAsync(JobRun stopped, string log)
+    {
+        try
+        {
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await using var scope = scopes.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var context = services.GetRequiredService<JobsDbContext>();
+            await using var transaction = await services.GetRequiredService<IUnitOfWork>().BeginAsync(deadline.Token).ConfigureAwait(false);
+            var run = await context.Runs.FromSql($"select * from kernel_jobs.runs where id = {stopped.Id} for update").SingleOrDefaultAsync(deadline.Token).ConfigureAwait(false);
+            if (run is null || run.Holder != Holder || !run.GiveBack(time.GetUtcNow(), log))
+            {
+                return;
+            }
+
+            await context.SaveChangesAsync(deadline.Token).ConfigureAwait(false);
+            await transaction.CommitAsync(deadline.Token).ConfigureAwait(false);
+            logger.LogInformation("The run {RunId} of {Job} stopped with its process and went back to the queue for the next worker.", stopped.Id, stopped.Job);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "The run {RunId} of {Job} could not go back to the queue; another worker takes it back when its lease passes.", stopped.Id, stopped.Job);
         }
     }
 
@@ -534,7 +561,7 @@ public sealed class JobRunnerService(JobRunner runner, RunnerOptions options, Ti
             }
         }
 
-        // Runs still going when the process stops keep their lease; the next worker takes them back.
+        // Runs still going when the process stops go back to the queue; a run that could not keeps its lease.
         await Task.WhenAny(runner.DrainAsync(), Task.Delay(TimeSpan.FromSeconds(10), CancellationToken.None)).ConfigureAwait(false);
     }
 }
