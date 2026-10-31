@@ -70,6 +70,8 @@ public sealed class TenancyModule : IModule
         services.AddScoped<OperatorJobs>();
         services.AddScoped<IValidator<OperatorEventSearchRequest>, OperatorEventSearchRequestValidator>();
         services.AddScoped<IValidator<OperatorEventReplayRequest>, OperatorEventReplayRequestValidator>();
+        services.AddScoped<IValidator<OperatorJobListRequest>, OperatorJobListRequestValidator>();
+        services.AddScoped<IValidator<OperatorJobActionRequest>, OperatorJobActionRequestValidator>();
         services.AddScoped<BreakGlassService>();
         services.AddScoped<PlatformDocumentService>();
         services.AddScoped<AuditChainService>();
