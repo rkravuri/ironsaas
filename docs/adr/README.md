@@ -68,7 +68,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0058](0058-the-eprocurement-suites-modules-waves-and-licensing.md) | The eProcurement Suite's modules, their waves and their licensing, and Requests and Intake's buying model as configuration | Accepted |
 | [0059](0059-suites-per-tenant-plans-per-suite-and-what-a-unit-loads.md) | Suites per tenant: the eProcurement Suite's skeleton, a plan per suite, and what a unit loads | Accepted |
 | [0060](0060-domain-events-the-outbox-subscriptions-and-replay.md) | Domain events: declared in code, an outbox in the change's transaction, subscriptions with an inbox, replay and a broker later | Accepted |
-| [0061](0061-jobs-declared-in-code-coordinated-in-postgresql.md) | Jobs: declared in code, coordinated in the unit's PostgreSQL, retried into dead letters, the worker's loops among them | Proposed |
+| [0061](0061-jobs-declared-in-code-coordinated-in-postgresql.md) | Jobs: declared in code, coordinated in the unit's PostgreSQL, retried into dead letters, the worker's loops among them | Accepted |
 
 ## Reading order
 

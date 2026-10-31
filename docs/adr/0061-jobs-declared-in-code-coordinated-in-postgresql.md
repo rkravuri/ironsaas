@@ -1,8 +1,8 @@
 # ADR-0061: Jobs: declared in code, coordinated in the unit's PostgreSQL, retried into dead letters, the worker's loops among them
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-31
-**Decided by:** Product owner and architect, in the brief of S4 T2
+**Decided by:** Product owner and architect, in the brief of S4 T2; accepted at the design session's review of T2 (2026-10-31) without change
 
 ## Context
 
