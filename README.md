@@ -8,18 +8,19 @@ The first suite is the **eProcurement Suite**: source to pay, from supplier mana
 
 | Part | What it is | Status | Requirements | Slices |
 |---|---|---|---|---|
-| Kernel | The technical mechanisms: tenancy and the fleet, identity, authorization and organisations, audit, entitlements, flags, settings, files, telemetry, the shell | Built in part: S1, S2 and S3 are done, V is next | [Technical Foundation PRD](docs/prd/foundation/technical-foundation-PRD.md) | [S1](docs/slices/S1-walking-skeleton.md), [S2](docs/slices/S2-access-control-organisations-and-design.md), [S3](docs/slices/S3-trust-and-compliance.md), [V](docs/slices/V-visibility-and-suites.md) and [S4](docs/slices/S4-platform-services.md) as skeletons; S5 to S9 in the PRD's section 7.1 |
+| Kernel | The technical mechanisms: tenancy and the fleet with suites per tenant, identity, authorization and organisations, content visibility, audit, entitlements, flags, settings, files, telemetry, the shell | Built in part: S1, S2, S3 and V are done, S4 is next | [Technical Foundation PRD](docs/prd/foundation/technical-foundation-PRD.md) | [S1](docs/slices/S1-walking-skeleton.md), [S2](docs/slices/S2-access-control-organisations-and-design.md), [S3](docs/slices/S3-trust-and-compliance.md) and [V](docs/slices/V-visibility-and-suites.md); [S4](docs/slices/S4-platform-services.md) as a skeleton; S5 to S9 in the PRD's section 7.1 |
 | Business masters | Organisations and legal entities, people, items, finance and budgets, locations, the supplier master, lookups, approvals and the delegation of authority, numbering and templates | Specified | [Business Foundation PRD](docs/prd/foundation/business-foundation-PRD.md) | B1 to B4 in the technical PRD's section 7.2 |
+| eProcurement Suite: declared | The suite in code (`procurement`), installed only for the tenants that bought it, with its shared master Purchasing as a skeleton: one table that records the installation, and an About page that shows what the tenant has; no business data yet | Declared: installed per tenant since V2; Purchasing's masters come with PR0 | the suite's [module list](docs/prd/suites/procurement/README.md); Purchasing's [PRD](docs/prd/suites/procurement/purchasing-PRD.md) | [V](docs/slices/V-visibility-and-suites.md) for the skeleton; PR0 in the technical PRD's section 7.2 |
 | eProcurement Suite: products | Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing | Specified | one PRD each in [`docs/prd/suites/procurement/`](docs/prd/suites/procurement/) | PR1 to PR7 in the technical PRD's section 7.2 |
 | eProcurement Suite: supplier portal | One portal for all the suppliers of all customers, on the kernel's Supplier Network | Specified | [Supplier portal PRD](docs/prd/suites/procurement/supplier-portal-PRD.md) | PR8, after the kernel's S8 |
 | eProcurement Suite: later modules | Spend Analytics and Savings, Sourcing with auctions, Category and Savings Projects, Supplier Risk and Sustainability (wave 2); Payments, Services and Contingent Workforce, Expenses (wave 3) | Scoped: one page each | the [module list](docs/prd/suites/procurement/README.md) and the `*-scope.md` pages beside it | waves 2 and 3, after PR7 in the technical PRD's section 7.2 |
 | Other suites | A School ERP and others | Not started | | |
 
-Built means it runs and its tests pass; specified means its requirements are written and accepted; scoped means one page says what it will be. Suites per tenant (TF-244) are specified and come with content visibility (TF-241), before the first business slice.
+Built means it runs and its tests pass; declared means it exists in code and is installed, without its function yet; specified means its requirements are written and accepted; scoped means one page says what it will be. Content visibility (TF-241) and suites per tenant (TF-244) are built (slice V), before the first business slice.
 
 ## How a customer buys
 
-A customer is a tenant with a unit of its own: its own database, storage container, secrets and containers. Every tenant has IronSaaS Foundation, with a Foundation plan that says which business modules and kernel features it has; today those plans are Standard and Enterprise. On top, a tenant buys one or more suites, each with a plan of its own modules and features, and a suite is installed only for the tenants that bought it (TF-244). Plans, entitlements, seats and a change of plan that reaches the tenant within a minute are built (ADR-0034); suites per tenant are specified.
+A customer is a tenant with a unit of its own: its own database, storage container, secrets and containers. Every tenant has IronSaaS Foundation, with a Foundation plan that says which business modules and kernel features it has; today those plans are Standard and Enterprise. On top, a tenant buys one or more suites, each with a plan of its own modules and features, and a suite is installed only for the tenants that bought it (TF-244). Plans, entitlements, seats and a change of plan that reaches the tenant within a minute are built (ADR-0034), and so are suites per tenant (ADR-0059): the operator installs a suite for a tenant with a reason, as an update job, and removing it keeps its data. The eProcurement Suite's one plan today is eProcurement Essentials, with Purchasing.
 
 ## Compliance
 
@@ -27,7 +28,7 @@ Five frameworks are in scope for every tenant (the technical PRD's section 5a): 
 
 Built today:
 
-- Every endpoint declares its permission, and access is denied by default. Roles are granted at the tenant, a unit or a record; record policies, sharing across units, delegation with both names on record, access reviews, conflict rules for duties one person must not hold together, and an explanation of every decision.
+- Every endpoint declares its permission, and access is denied by default. Roles are granted at the tenant, a unit or a record; record policies, sharing across units, visibility tags that narrow which records each person sees, delegation with both names on record, access reviews, conflict rules for duties one person must not hold together, and an explanation of every decision.
 - Sign-in under a password policy with lockout, a second factor (an authenticator app or a passkey) required by the tenant's policy, single sign-on through OpenID Connect, a recent sign-in before every risky action, server-side sessions a person or an administrator ends, and revocation within a minute.
 - Impersonation that names both people on every event and is shown to the person; break-glass only with a ticket and a second operator, reviewed afterwards; terms accepted per version.
 - An audit trail of sign-ins, denials, provisioning steps and every state change, written in the same transaction as the change, with each changed field; sealed into a chain per tenant, anchored outside the unit and verified daily; searched, exported, archived after 13 months and kept by retention classes and legal holds. Every time is the server's.
@@ -42,7 +43,7 @@ Built today:
 **Tenants and operations**
 
 - The control plane registers a tenant and the fleet provisions it in about fifteen seconds: its database roles and database, storage container, secrets path and token, migrations, seeds, and a unit of three containers (API, worker, shell) behind the ingress, checked through the ingress. A failed step resumes; an update job gives an active unit new images; de-provisioning keeps the data.
-- The control plane decides what each tenant has, by plan, module, feature and seat, and which flags and kill switches apply; a change reaches the tenant's API and shell within a minute.
+- The control plane decides what each tenant has, by plan (one for the Foundation and one per suite), module, feature and seat, and which flags and kill switches apply; a change reaches the tenant's API and shell within a minute.
 
 **People and access**
 
@@ -63,6 +64,11 @@ Built today:
 **Security operations** (S3)
 
 - The console's Keys, Security alerts and Alert rules pages; the operator's key rotations, audit verifications, alerts and incidents from the make targets in the runbook.
+
+**Visibility and suites** (V)
+
+- A tenant administrator defines visibility tags and gives them to people; a record carries tags, and a person who holds tags sees only the records that share one with them or carry none, in lists and by identifier, with the explanation of access and the access reviews showing the tags.
+- The operator installs a suite for a tenant that bought it, when it is registered or later, and removes it again keeping its data, each with a reason and an update job; a unit loads only the Foundation and its tenant's suites, and a tenant with the eProcurement Suite has its group on the home page and its About page.
 
 **The shell**
 
@@ -140,8 +146,10 @@ make run-api / make run-worker                           # the dev tenant from s
 make secret-control / migrate-control / seed-control     # the control plane's secret, database and operator
 make run-control / make run-fleet                        # the control plane from source on :5200
 make up-control / make down-control                      # the control plane as containers instead
-make provision TENANT=x / update-unit TENANT=x / deprovision TENANT=x
+make provision TENANT=x [SUITES=procurement REASON="..."] / update-unit TENANT=x / deprovision TENANT=x
+make suite-add TENANT=x SUITE=procurement REASON="..."   # a suite for an active tenant, and suite-remove (ADR-0059)
 make apply-plan TENANT=x PLAN=y [DRY_RUN=1]              # preview a plan for a tenant, then apply it
+make sample-records TENANT=x [ON=0]                      # the sample module in a test tenant's unit (ADR-0057)
 make flag KEY=k VALUE=v [TENANT=x]                       # a flag's rule for a tenant or the platform
 make kill-switch PATH=imports ON=true REASON="..."       # a kill switch, for the platform or TENANT=x
 make catalogue                                           # what the units can license, switch and set, grouped by suite
@@ -167,11 +175,12 @@ src/
     Iron.Kernel.Identity/  .Authorization/  .Audit/  .Files/          tenant modules
     Iron.Kernel.Entitlements/  .Flags/  .Settings/                    tenant modules (S2)
     Iron.Kernel.Compliance/  .Changes/  .Protection/  .Keys/  .Monitoring/   tenant modules (S3)
+    Iron.Kernel.Visibility/  .Samples/                                tenant modules (V; Samples in test units only)
     Iron.Kernel.Tenancy/  .Fleet/                                     control plane modules
       Api/  Services/  Data/  Contracts/  README.md                   inside every module
   Business/                  shared business masters (empty until the first business slice; README)
   Suites/                    one folder per suite (ADR-0043; README)
-    Procurement/             the eProcurement Suite: Iron.Suites.Procurement.* (empty until its first slice; README)
+    Procurement/             the eProcurement Suite: Iron.Suites.Procurement.*, its skeleton Purchasing since V2 (README)
   Hosts/
     Iron.Host.Api/  Iron.Host.Worker/            tenant unit hosts (+ Dockerfiles)
     Iron.Host.ControlPlane/  Iron.Host.Fleet/    control plane hosts (+ Dockerfiles)
@@ -194,7 +203,8 @@ docs/                        prd/ (foundation/, suites/procurement/), adr/, guid
 - Layers and suites: every project declares `<IronLayer>`, and a suite's project its `<IronSuite>` (the build stops without them). References go downward only: a suite may use Business and Kernel, Business may use Kernel, Kernel uses only Kernel; a suite never references another suite (ADR-0029, ADR-0043).
 - Module boundaries: a module may reference the kernel vocabulary, the kernel libraries and `Contracts` projects only. The compiler enforces it through project references; `tests/Iron.Architecture.Tests` names any violation, including type references into another module's `Api`, `Services` and `Data` namespaces.
 - No Foundation assembly reads the system clock directly; time comes from an injected `TimeProvider`.
-- Every module DbContext passes the model rules, its schema carries its layer's prefix or its suite's short name, and its migrations match its model; the schema check runs over the migrated schema.
+- Every module DbContext passes the model rules (a business record is tracked and its table keeps its visibility tags' column), its schema carries its layer's prefix or its suite's short name, and its migrations match its model; the schema check runs over the migrated schema.
+- Every image is pinned by its version and its digest (ADR-0055), and every tracked shell script is executable.
 - Every endpoint declares a permission, `RequireSignedIn` or `AllowAnonymous`; a host does not start otherwise, and the anonymous list is fixed by a test.
 - The requirement documents: every identifier once, every old identifier in the map, criteria in the Given, When, Then form with an error case, each CSV equal to its markdown, and dependencies down the layers, along the process order between a suite's products, and never from one suite to another (`make prd-check`, ADR-0041 to ADR-0043).
 - In the shell, nothing imports `ag-grid-*` outside the DataGrid wrapper, a module imports from its own layer or a lower one only and never from another suite, every route declares its permission, no colour is given by value, HTML is rendered in one component, and Prettier's check passes (ADR-0040, ADR-0053).

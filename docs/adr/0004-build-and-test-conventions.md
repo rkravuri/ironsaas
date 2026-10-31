@@ -19,6 +19,8 @@ TF-190 asks for enforced conventions as build checks and TF-191 for a pipeline t
 - CI runs on GitHub Actions (`.github/workflows/ci.yml`): restore, build, test. Security scans, container images and the integration stage arrive in T18.
 - Code style lives in `.editorconfig` and is applied with `dotnet format`. Style rules are suggestions today and become build errors once the first modules have code (T7), so that the rule set is tuned on real code first.
 
+**Since V-close (2026-10-31), at the design session's word, two conventions of the build's tooling are checks of their own.** Every shell script the repository tracks (`*.sh`) is executable, mode 100755 in git's index: `ScriptModeRulesTests` in `tests/Iron.Architecture.Tests` reads `git ls-files --stage` and fails naming each script without the bit and the command that gives it back, since editing a script through the Windows path of the WSL file system dropped the bit twice and git committed the new mode with the edit. And the shell's `import.meta.glob` is called without a type argument, its result typed on the variable: Vitest leaves out of its module cache a file whose text holds `import.meta.glob(`, and a type argument hid the call from that check, so a cached transform missed a new module folder (V2). The shell's lint refuses a typed glob (`typedGlobRule` in `shell/eslint.config.js`), and `shell/src/lint.test.ts` proves it.
+
 ## Options considered
 
 - Classic `.sln`. Rejected: GUID noise, hard to edit by hand.

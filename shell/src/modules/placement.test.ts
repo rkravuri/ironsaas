@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { manifests } from "./index";
 import type { ModuleManifest } from "./registry";
 
-/** Every module's manifest file, by its path under src/modules, read at transform time (ADR-0029, ADR-0043). */
-const manifestFiles = import.meta.glob<Record<string, unknown>>(
+/**
+ * Every module's manifest file, by its path under src/modules, read at transform time (ADR-0029, ADR-0043). The call
+ * has no type argument, so Vitest sees it and never caches this file's transform with a stale list of folders.
+ */
+const manifestFiles: Record<string, Record<string, unknown>> = import.meta.glob(
   ["./kernel/*/manifest.tsx", "./business/*/manifest.tsx", "./suites/*/*/manifest.tsx"],
   { eager: true },
 );

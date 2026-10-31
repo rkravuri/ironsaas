@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { ESLint, Linter } from "eslint";
 import { ironPlugin } from "../lint/plugin.js";
 
-// Every stylesheet under src, read at transform time; src/design is where values are allowed to live.
-const stylesheets = import.meta.glob<string>(["/src/**/*.css", "!/src/design/**"], {
+// Every stylesheet under src, read at transform time; src/design is where values are allowed to live. The call has no
+// type argument, so Vitest sees it and never caches this file's transform with a stale list of stylesheets.
+const stylesheets: Record<string, string> = import.meta.glob(["/src/**/*.css", "!/src/design/**"], {
   query: "?raw",
   import: "default",
   eager: true,
@@ -363,6 +364,23 @@ describe("the lint rules", () => {
       for (const [file, css] of files) {
         expect(await rawColoursInStylesheet(eslint, css), file).toEqual([]);
       }
+    }, 60_000);
+  });
+
+  /** A glob Vitest can see, so it never caches a file whose list of files depends on other files (ADR-0004, since V-close). */
+  describe("the glob rule", () => {
+    it("refuses a typed import.meta.glob and allows one whose variable carries the type [ADR-0004]", async () => {
+      const eslint = new ESLint();
+      const typed = 'export const files = import.meta.glob<string>("./*.css", { eager: true });\n';
+      const untyped = 'export const files: Record<string, string> = import.meta.glob("./*.css", { eager: true });\n';
+
+      const [refused] = await eslint.lintText(typed, { filePath: pagePath });
+      const [allowed] = await eslint.lintText(untyped, { filePath: pagePath });
+
+      expect(findings(refused, "no-restricted-syntax").map((message) => message.message)).toEqual([
+        expect.stringContaining("Write import.meta.glob(...) without a type argument") as string,
+      ]);
+      expect(findings(allowed, "no-restricted-syntax")).toEqual([]);
     }, 60_000);
   });
 });

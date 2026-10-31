@@ -1,6 +1,6 @@
 # Slice S4: platform services
 
-The fourth slice (the technical PRD's section 7.1): files with virus scan, notifications with templates and preferences, jobs with a console, the outbox and webhooks, the import and export framework, localisation with a second language, and the forms engine with answers mapped to records and one-time verified access for external respondents. S4 also sends the emails S3's exceptions wait for. This file is the skeleton S3-close left: the requirements, what earlier slices built towards them, and an empty task table. The design session writes what S4 proves, its design and its tasks.
+The fourth slice (the technical PRD's section 7.1): files with virus scan, notifications with templates and preferences, jobs with a console, the outbox and webhooks, the import and export framework, localisation with a second language, and the forms engine with answers mapped to records and one-time verified access for external respondents. S4 also sends the emails S3's exceptions wait for. This file is the skeleton S3-close left: the requirements, what earlier slices built towards them, and an empty task table; V-close added what V moves to it (section 4). The design session writes what S4 proves, its design and its tasks.
 
 ## 1. What S4 proves
 
@@ -12,14 +12,14 @@ To be written in the design session.
 |---|---|---|---|---|
 | TF-078 | Anti-tampering of files and uploads | Must | File names as display text (S3 T9a, ADR-0053) | Moved from S3's range with the files it protects |
 | TF-081 | Tenant-scoped data access | Must | One database per tenant, schemas per module (S1) | |
-| TF-082 | Migrations | Must | Generated migrations per module, run by the fleet's update job (S1, ADR-0008) | |
+| TF-082 | Migrations | Must | Generated migrations per module, run by the fleet's update job (S1, ADR-0008); a suite's only where it is installed (V2, ADR-0059) | |
 | TF-083 | Optimistic concurrency everywhere | Must | | |
 | TF-084 | Transactions, locks and atomic checks | Must | One unit of work with its audit event (ADR-0013) | |
 | TF-085 | Transactional outbox | Must | | |
 | TF-086 | Bulk loading | Should | | |
 | TF-087 | Backups and point-in-time recovery | Must | The store persists on the laptop (S2 P1, ADR-0028) | The drills come with the first Azure deployment (S3 T8, ADR-0052); the design session places what the laptop can prove |
-| TF-088 | Reference data and seeding | Must | Each module's seed, run by the fleet (S1, ADR-0014) | |
-| TF-089 | Data export and portability | Should | Role export and import (S2 A2), the audit trail's CSV (S3 T6) | |
+| TF-088 | Reference data and seeding | Must | Each module's seed, run by the fleet (S1, ADR-0014); a suite's seeds only where it is installed, and the seeds' hash per set of installed suites in the installation record (V2, ADR-0059) | Section 4 |
+| TF-089 | Data export and portability | Should | Role export and import (S2 A2), the audit trail's CSV (S3 T6) | An export of records under the record policy, tags included: section 4 |
 | TF-110 | Domain event catalogue | Must | Audit event types declared with their words (S3 T7, ADR-0051) | |
 | TF-111 | Event subscriptions inside the platform | Must | | |
 | TF-112 | Event replay and inspection | Should | | |
@@ -39,8 +39,8 @@ To be written in the design session.
 | TF-141 | Server messages and errors localised | Must | | The audit event types' and permissions' words are the server's English (S3 T7) |
 | TF-142 | Locale formats | Must | Every time in the person's zone (S3 T6) | |
 | TF-145 | Unicode and locale-aware text handling | Must | | |
-| TF-150 | Notification templates and channels | Must | The header's notification place (S2 D4) | |
-| TF-151 | Preferences, mandates and digests | Must | | |
+| TF-150 | Notification templates and channels | Must | The header's notification place (S2 D4) | A notification that names a record goes only to its readers: section 4 |
+| TF-151 | Preferences, mandates and digests | Must | | A digest leaves out what its reader may not see (TF-243 AC3): section 4 |
 | TF-152 | Delivery tracking and resend | Must | | TF-018 AC3's resend of an invitation |
 | TF-153 | In-app notification centre and real-time push | Must | | |
 | TF-154 | Email sending infrastructure | Must | The email kill switch declared (S2 A5) | TF-051 AC1 and AC2 wait for it |
@@ -67,11 +67,21 @@ Each an exception or a listed part in `docs/trace/exceptions.md`, approved at S3
 - a tenant's branding in its emails and the logo upload (TF-173 AC1 to AC3);
 - the first rich-text fields, shown through `RichTextView` (S3 T9a).
 
-## 4. Task breakdown
+## 4. What V moves to S4
+
+V built visibility tags (TF-241, ADR-0057) and suites per tenant (TF-244, ADR-0059). Until S4 nothing sends, attaches, exports or imports a business record, and every per-module service is a migration or a seed, so neither mechanism has yet met a service that could go around it. S4 is the first slice whose services carry records and run per module. Each item with its reason, for the design session to place in S4's tasks:
+
+- **A notification that names a record goes only to people who may read it** (TF-150, TF-151). Its readers are decided as a list's are, by the record's policy, its unit and its visibility tags, and a digest leaves out a record its reader may not see. TF-243 stays S5's with the approvals and tasks of the workflow engine, but its digest criterion (AC3) is first met by S4's digests, so S4 builds them to it. Reason: V1's later item, "until then nothing sends a person a record outside their tags, since nothing sends records", stops being true with S4.
+- **Attachments, exports and imports of records go through the record policy** (TF-160 AC2, TF-161, TF-086, TF-089). An attachment is read by those who may read its record, tags included; an export of records holds the rows its reader's list holds; an import that sets tags is held to rule 5 through `IRecordTags`. Reason: each is a second way to a record, and the policy decides access only where it is asked (ADR-0032, ADR-0057).
+- **Forms on records** (TF-242, TF-245): a form instance about a record goes only to people who may read the record, and answers mapped to it propose changes its policy allows. Reason: as notifications.
+- **A suite's services exist only where the suite is installed** (TF-082, TF-088, TF-110, TF-120, TF-140, TF-150, TF-242). A suite's notification templates, event subscriptions, jobs, strings and form templates are registered by its modules, so a unit without the suite has none of them, and the Foundation names none of them (ADR-0043, decision 8). Removing a suite leaves its data, never running work: its jobs and subscriptions stop with its modules. Reason: V2 made migrations, seeds and endpoints follow `Suites:Installed`; S4's services are the next things a module registers.
+- **The seeds per composition** (TF-088, TF-218). The installation record checks a unit's seeds against the hash of its composition, one per set of installed suites (V2). S4's reference data keeps that check; with a third suite the hashes become one per suite, combined (STATUS). Reason: S4's reference data is what the seeds become.
+
+## 5. Task breakdown
 
 | Task | What it builds | Requirements | State |
 |---|---|---|---|
 
-## 5. How we build
+## 6. How we build
 
 As in S3: each task is one Claude Code session from its section in `docs/prompts/S4.md` (ADR-0023), on its own branch from main, never stacked, and reaches main through a pull request with every check green (ADR-0055). The design session writes each section just before its task starts.

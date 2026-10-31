@@ -609,7 +609,8 @@ class Slice:
     requirements: list[str]
 
 
-SLICE_TITLE = re.compile(r"^# Slice (S\d+):\s*(.+)$")
+# A slice is numbered (S1) or named by a letter (V, the slice between S3 and S4).
+SLICE_TITLE = re.compile(r"^# Slice ([A-Z][A-Za-z0-9]*):\s*(.+)$")
 
 
 def requirement_cell(cell: str) -> list[str]:
@@ -631,7 +632,7 @@ def requirement_cell(cell: str) -> list[str]:
 def slices(root: Path) -> list[Slice]:
     """Every slice plan: done when its task table's every state is done; its requirements from its coverage table."""
     found = []
-    for path in sorted((root / "docs" / "slices").glob("S*.md")):
+    for path in sorted((root / "docs" / "slices").glob("*.md")):
         lines = path.read_text(encoding="utf-8").splitlines()
         title = SLICE_TITLE.match(lines[0]) if lines else None
         if not title:
