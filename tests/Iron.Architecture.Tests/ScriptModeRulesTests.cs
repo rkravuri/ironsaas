@@ -1,12 +1,12 @@
 namespace Iron.Architecture.Tests;
 
-/// <summary>Every tracked shell script keeps its executable bit, and the check that holds it (V2's review).</summary>
+/// <summary>Every tracked shell script keeps its executable bit, and the check that holds it (ADR-0004, since V-close).</summary>
 public class ScriptModeRulesTests
 {
     private const string Object = "0123456789abcdef0123456789abcdef01234567";
 
     [Fact]
-    [Untraced("A repository rule from V2's review, after editing through the Windows path dropped a script's executable bit twice; no requirement or ADR states file modes.")]
+    [Proves("ADR-0004")]
     public async Task EveryTrackedShellScriptIsExecutable()
     {
         var scan = await ScriptModeRules.CheckAsync(Repository.Root);
@@ -17,7 +17,7 @@ public class ScriptModeRulesTests
     }
 
     [Fact]
-    [Untraced("A repository rule from V2's review, after editing through the Windows path dropped a script's executable bit twice; no requirement or ADR states file modes.")]
+    [Proves("ADR-0004")]
     public void AScriptWithoutItsExecutableBitFailsNamingItAndTheFix()
     {
         var index = string.Concat(

@@ -367,13 +367,12 @@ describe("the lint rules", () => {
     }, 60_000);
   });
 
-  /** A glob Vitest can see, so it never caches a file whose list of files depends on other files (V2, V-close). */
+  /** A glob Vitest can see, so it never caches a file whose list of files depends on other files (ADR-0004, since V-close). */
   describe("the glob rule", () => {
-    // Untraced: a guard for the test tooling's cache, which no requirement or ADR states.
-    it("refuses a typed import.meta.glob and allows one typed with as [untraced]", async () => {
+    it("refuses a typed import.meta.glob and allows one whose variable carries the type [ADR-0004]", async () => {
       const eslint = new ESLint();
       const typed = 'export const files = import.meta.glob<string>("./*.css", { eager: true });\n';
-      const untyped = 'export const files = import.meta.glob("./*.css", { eager: true }) as Record<string, string>;\n';
+      const untyped = 'export const files: Record<string, string> = import.meta.glob("./*.css", { eager: true });\n';
 
       const [refused] = await eslint.lintText(typed, { filePath: pagePath });
       const [allowed] = await eslint.lintText(untyped, { filePath: pagePath });

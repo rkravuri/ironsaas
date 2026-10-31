@@ -78,7 +78,7 @@ V closed with every task's "done when" met on the laptop and the proofs of secti
   - V1: T9b's password rotation test counted its requests from before the pool's clear and failed on a warm pool (44d5563); the model check read the CLR's names until every caller built the model with the host's options (e9c576c);
   - V2: suite plans that other tests saved in the shared database made "the suite's only plan" ambiguous in a test; editing two scripts through the Windows path of WSL dropped their executable bit (82033b0); a stale Vitest cache hid the new suite's folder from the placement test; echo's Subscription page test expected no licensed module;
   - V-close: the matrix read only the plans named S<n>, so V's plan had never been held to its criteria; `init-env.sh` had no executable bit; V2's stale cache came from a typed glob that Vitest's own rule could not see.
-- **Decisions taken in review**, beyond what the sections asked, are in each task's row of `docs/STATUS.md`: the x/net exception's expiry and ADR-0055's dated paragraphs (V0), the model check's refusal (V1), the fourteen defaults with three changes (EPS-modules), and the test that every script keeps its executable bit (V2).
+- **Decisions taken in review**, beyond what the sections asked, are in each task's row of `docs/STATUS.md`: the x/net exception's expiry and ADR-0055's dated paragraphs (V0), the model check's refusal (V1), the fourteen defaults with three changes (EPS-modules), the test that every script keeps its executable bit (V2), and, at V-close's, the build conventions named in ADR-0004 and the experience foundations slice in the PRD's section 7.1.
 
 ### What the method learned
 
