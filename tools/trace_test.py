@@ -245,6 +245,16 @@ class TraceTest(unittest.TestCase):
         self.assertEqual(result.problems, [])
         self.assertEqual(result.gaps, {})
 
+    def test_a_slice_named_by_a_letter_is_held_to_its_criteria_as_a_numbered_one(self) -> None:
+        """A slice plan named by a letter (slice V) is read as a numbered one: once its every task is done, each criterion of its requirements needs a test or an exception. [ADR-0044]"""
+        self.files["docs/prd/foundation/technical-foundation-PRD.md"] += requirement("TF-004", "Visibility", 2)
+        self.files["docs/slices/V-probe.md"] = SLICE.replace("# Slice S1: probe", "# Slice V: probe by a letter").replace(
+            "| TF-001 | Registry | all | done |\n| TF-002 to 003 | Provisioning | all | done |", "| TF-004 | Visibility | all | done |"
+        )
+        result = self.build()
+        self.assertEqual([s.id for s in result.slices if s.done], ["S1", "V"])
+        self.assertIn("docs/slices/V-probe.md: TF-004 AC1 of done slice V has no test and no exception in docs/trace/exceptions.md", result.problems)
+
     def test_a_result_no_test_declares_is_refused(self) -> None:
         """A result the trace cannot place on a test it read fails it, so a test this reader misses cannot hide. [ADR-0044]"""
         self.files["artifacts/test-results/shell/vitest.xml"] = junit("src/registry.test.ts", ("the registry > lists the tenant [TF-001 AC1]", "passed"), ("the registry > a test the reader missed [ADR-0001]", "passed"))

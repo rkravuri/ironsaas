@@ -29,7 +29,7 @@ The tasks of `docs/prompts/V.md`, one section each.
 | V0 | Chores: the fleet image's five findings before their exceptions run out on 2026-11-28; dropping the old factor-secret column | | done |
 | V1 | Content visibility: visibility tags on people and records | TF-241 | done |
 | V2 | Suites per tenant: a customer gets the suites it buys; the eProcurement Suite's skeleton, the Purchasing module with its About page, is the first suite module a unit installs (`docs/prd/suites/procurement/README.md`, ADR-0058); how plans per suite combine and what a unit loads is ADR-0059 | TF-244 | done |
-| V-close | Documentation, exceptions and closing notes | | outline |
+| V-close | Documentation, exceptions and closing notes | | done |
 
 ## 5. How we build
 
