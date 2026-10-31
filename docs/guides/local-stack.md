@@ -208,7 +208,14 @@ jobs" in `docs/security/incident-response.md`.
 
 *Fairness between tenants.* Each unit's app role may hold at most 30, 60 or 120 connections on the database server by
 its size class, and each of its processes' pools a third of that, besides its containers' CPU and memory. A unit made
-before S4 T2 gets its limit at its next `make update-unit TENANT=x`. The measurement is `tools/measurements/job-fairness.sh`.
+before S4 T2 gets its limit at its next `make update-unit TENANT=x`. The measurement is
+`tools/measurements/job-fairness.sh echo acme`, which saturates echo with the sample module's bulk backlog and times
+acme's jobs (ADR-0061 records the result).
+
+*Two workers.* A unit's jobs are safe with more than one worker: `tools/measurements/job-workers.sh echo` restarts
+echo's worker, showing its runs go back to the queue for the new process, then runs two workers for five minutes and
+shows every occurrence ran once, and returns echo to one worker. A worker that stops gives its runs back at once; one
+that is killed leaves them to their lease, a run's timeout and 30 seconds, after which any worker takes them.
 
 **Break-glass** (TF-026, ADR-0049). When a tenant needs the operator's hands and nobody in it can act, two operators open a time-limited account in its unit. The control plane seeds two: `operator` and `operator-two` (`make seed-control`, or `make up-control`).
 

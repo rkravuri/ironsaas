@@ -110,7 +110,14 @@ to its trace.
     PostgreSQL. The bulk sample job `samples.saturate` queues 10,000 runs that each hold a connection and a processor;
     `tools/measurements/job-fairness.sh` starts it in one unit and times another unit's job.
 
-    {{FAIRNESS}}
+    Measured on the laptop on 2026-10-31, both units small (`tools/measurements/job-fairness.sh echo acme`): while
+    echo's backlog ran eight saturating runs at once with 1,636 more queued, its role holding 12 connections and its
+    worker at its limit of half a processor (49 to 51%), acme's three runs started by hand through the fleet waited
+    1.3 seconds from queued to started (1,337 ms median, 1,347 the longest), and its scheduled runs 0.4 seconds from
+    their occurrence (565 ms the longest), its worker at 5 to 22% of a processor. TF-122 AC1 asks for under a minute.
+    With two worker processes for five minutes (`tools/measurements/job-workers.sh echo`), the 31 occurrences of seven
+    scheduled jobs each ran once while both workers held runs; and after a worker's restart, the runs it had been
+    running were taken by the new process 16 to 17 seconds after the stop, the time it took to start (decision 4).
 11. **A suite's jobs run only where it is installed (TF-244, ADR-0059).** A suite's module declares its jobs as the
     Foundation's do; a unit that does not run the suite never declares them. When a suite is removed, its queued runs are
     held at the worker's next start (state `held`, no alert, no dead letter); they resume by themselves when the suite is

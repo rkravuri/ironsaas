@@ -65,7 +65,7 @@ docker exec --interactive foundation-postgres-1 psql --username "$superuser" --d
 select to_char(due_at, 'HH24:MI:SS') as queued, to_char(started_at, 'HH24:MI:SS') as started,
        round(extract(epoch from (started_at - due_at)) * 1000) as waited_ms, status, duration_ms
 from kernel_jobs.runs
-where job = '$job' and triggered_by is null and reason like 'Fairness measurement%' and due_at between '$started' and '$ended'
+where job = '$job' and reason like 'Fairness measurement%' and due_at between '$started' and '$ended'
 order by due_at;
 SQL
 
