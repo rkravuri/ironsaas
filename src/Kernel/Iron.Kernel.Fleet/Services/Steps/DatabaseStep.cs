@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using Iron.Kernel.Fleet.Contracts;
 using Iron.Kernel.Security.Secrets;
@@ -12,6 +13,8 @@ namespace Iron.Kernel.Fleet.Services.Steps;
 /// PUBLIC loses CONNECT on the database, so no other tenant's role can reach it (TF-005).
 /// An update runs it too (ADR-0028): with the secret in place nothing changes; with the secret lost, new passwords are
 /// kept and the roles altered to them, which heals a unit whose store forgot its credentials.
+/// The app role's connection limit follows the tenant's size class (TF-122, ADR-0061), set again at every update, so a
+/// changed class takes effect at the unit's next update.
 /// </summary>
 public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
 {
@@ -47,6 +50,8 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
         await EnsureRoleAsync(connection, context.OwnerRole, ownerPassword, cancellationToken).ConfigureAwait(false);
         await EnsureRoleAsync(connection, context.AppRole, appPassword, cancellationToken).ConfigureAwait(false);
         await EnsureRoleAsync(connection, context.AuditReaderRole, auditPassword, cancellationToken).ConfigureAwait(false);
+        var connections = SizeClasses.LimitsOf(context.Tenant.SizeClass).DatabaseConnections;
+        await ExecuteAsync(connection, $"ALTER ROLE {Quote(context.AppRole)} CONNECTION LIMIT {connections.ToString(CultureInfo.InvariantCulture)}", cancellationToken).ConfigureAwait(false);
 
         var database = context.Tenant.DatabaseName;
         var created = false;
@@ -59,7 +64,7 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
         await ExecuteAsync(connection, $"REVOKE ALL ON DATABASE {Quote(database)} FROM PUBLIC", cancellationToken).ConfigureAwait(false);
         await ExecuteAsync(connection, $"GRANT CONNECT ON DATABASE {Quote(database)} TO {Quote(context.AppRole)}", cancellationToken).ConfigureAwait(false);
         await ExecuteAsync(connection, $"GRANT CONNECT ON DATABASE {Quote(database)} TO {Quote(context.AuditReaderRole)}", cancellationToken).ConfigureAwait(false);
-        return $"database {database} {(created ? "created" : "exists")}; roles {context.OwnerRole}, {context.AppRole} and {context.AuditReaderRole}";
+        return $"database {database} {(created ? "created" : "exists")}; roles {context.OwnerRole}, {context.AppRole} (at most {connections} connections) and {context.AuditReaderRole}";
     }
 
     private static async Task EnsureRoleAsync(NpgsqlConnection connection, string role, string password, CancellationToken cancellationToken)
@@ -79,7 +84,7 @@ public sealed class DatabaseStep(ISecretStore secrets) : IProvisioningStep
         }
     }
 
-    [SqlFromIdentifiers("Runs the definitions this step builds: CREATE DATABASE, CREATE or ALTER ROLE and GRANT name the tenant's database and roles, quoted, and a role's generated password as a quoted literal; PostgreSQL takes no parameters there.")]
+    [SqlFromIdentifiers("Runs the definitions this step builds: CREATE DATABASE, CREATE or ALTER ROLE and GRANT name the tenant's database and roles, quoted, a role's generated password as a quoted literal, and a connection limit as an integer; PostgreSQL takes no parameters there.")]
     private static async Task ExecuteAsync(NpgsqlConnection connection, string sql, CancellationToken cancellationToken)
     {
         await using var command = new NpgsqlCommand(sql, connection);

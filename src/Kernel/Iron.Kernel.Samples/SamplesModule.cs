@@ -6,6 +6,7 @@ using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Samples.Api;
 using Iron.Kernel.Samples.Contracts;
 using Iron.Kernel.Samples.Data;
+using Iron.Kernel.Samples.Services;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,9 @@ public sealed class SamplesModule : IModule
     public IReadOnlyList<Permission> Permissions => SamplesPermissions.All;
 
     public IReadOnlyList<EventType> Events => SamplesEvents.All;
+
+    /// <summary>The smoke's job and the fairness proof's backlog (ADR-0061): only where the module runs.</summary>
+    public IReadOnlyList<JobDefinition> Jobs => [TallyRecordsJob.Definition, SaturateJob.Definition];
 
     public IReadOnlyList<EventSubscription> Subscriptions =>
     [

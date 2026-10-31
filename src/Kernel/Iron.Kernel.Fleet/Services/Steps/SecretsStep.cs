@@ -75,7 +75,7 @@ public sealed class SecretsStep(
 
         var unit = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["ConnectionStrings:Database"] = context.ConnectionString(context.AppRole, database[DatabaseStep.AppPasswordKey]),
+            ["ConnectionStrings:Database"] = context.AppConnectionString(database[DatabaseStep.AppPasswordKey]),
             ["Database:AppRole"] = context.AppRole,
             ["Storage:ContainerSasUrl"] = storage[StorageStep.ContainerSasUrlKey],
 

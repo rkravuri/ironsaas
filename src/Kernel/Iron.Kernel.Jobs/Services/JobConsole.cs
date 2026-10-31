@@ -49,6 +49,9 @@ public sealed class JobStarter(JobsDbContext context, JobDeclarations declaratio
         var run = new JobRun(job.Name, key, declared.Suite, job.Priority, now, now, by, payload: payload, traceParent: Activity.Current?.Id);
         context.Runs.Add(run);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // Nothing here changes the run again, and a starter that queues many runs in one scope stays as quick for the last.
+        context.Entry(run).State = EntityState.Detached;
         return run.Id;
     }
 }

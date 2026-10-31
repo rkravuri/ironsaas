@@ -111,7 +111,7 @@ public sealed class DatabasePasswordRotation(ITenantRegistry tenants, ISecretSto
         }, cancellationToken).ConfigureAwait(false);
         await secrets.WriteAsync(context.UnitSecretPath, new Dictionary<string, string>(unit, StringComparer.Ordinal)
         {
-            [StoreDatabaseCredentials.ConnectionStringKey] = context.ConnectionString(context.AppRole, password),
+            [StoreDatabaseCredentials.ConnectionStringKey] = context.AppConnectionString(password),
         }, cancellationToken).ConfigureAwait(false);
 
         await using var dataSource = NpgsqlDataSource.Create(admin);
