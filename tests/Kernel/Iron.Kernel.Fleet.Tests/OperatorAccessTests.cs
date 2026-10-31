@@ -238,6 +238,7 @@ public class OperatorAccessTests(FleetFixture fixture)
 
         Assert.Equal("list", list["Jobs__Command__Action"]);
         Assert.False(list.ContainsKey("Jobs__Command__Reason"));
+        Assert.Equal("Warning", list["Logging__LogLevel__Default"]); // the answer is the command's output, without the host's information lines
         Assert.Equal((JobKind.Jobs, ProvisioningStatus.Completed, StepNames.Jobs), (listJob!.Kind, listJob.Status, listJob.Steps.Single().Name));
         Assert.StartsWith("audit.retention active", listJob.Steps.Single().Output, StringComparison.Ordinal);
         Assert.Equal(TenancyErrors.JobsReasonRequired, withoutReason.Error.Code);

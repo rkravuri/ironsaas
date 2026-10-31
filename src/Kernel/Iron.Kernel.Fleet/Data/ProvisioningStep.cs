@@ -48,6 +48,9 @@ public sealed class ProvisioningStep : AuditedEntity
 
     public int? DurationMs { get; private set; }
 
+    /// <summary>The longest report a step keeps: an operator's answer from the unit, a job list or an event search, fits (ADR-0061).</summary>
+    public const int OutputMaxLength = 8000;
+
     /// <summary>What the step reports when it is done: the hostnames reserved, the invitation link, ...</summary>
     public string? Output { get; private set; }
 
@@ -65,7 +68,7 @@ public sealed class ProvisioningStep : AuditedEntity
     public void Complete(DateTimeOffset now, string? output)
     {
         Status = StepStatus.Completed;
-        Output = Trim(output, 2000);
+        Output = Trim(output, OutputMaxLength);
         Finish(now);
     }
 

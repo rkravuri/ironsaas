@@ -105,8 +105,8 @@ public sealed class JobsStep(IUnitRuntime runtime, ISecretStore secrets, SecretS
 /// </summary>
 public abstract class UnitAnswerStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
 {
-    /// <summary>The longest answer the step keeps.</summary>
-    public const int OutputMaxLength = 4000;
+    /// <summary>The longest answer the step keeps, its end, which holds the command's count: what a step's report holds.</summary>
+    public const int OutputMaxLength = Data.ProvisioningStep.OutputMaxLength;
 
     public abstract string Name { get; }
 
@@ -127,6 +127,8 @@ public abstract class UnitAnswerStep(IUnitRuntime runtime, ISecretStore secrets,
             environment[key] = value;
         }
 
+        // The command's answer is its output, so the host's own information lines stay out of it; warnings still show.
+        environment["Logging__LogLevel__Default"] = "Warning";
         var result = await runtime.RunCommandAsync(context.ToUnit(environment), [Name], cancellationToken).ConfigureAwait(false);
         if (!result.Succeeded)
         {
