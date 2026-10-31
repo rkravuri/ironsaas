@@ -75,7 +75,7 @@ public sealed class OperatorJobActionRequestValidator : AbstractValidator<Operat
 {
     public OperatorJobActionRequestValidator()
     {
-        RuleFor(r => r.Action).Must(OperatorJobs.Actions.Contains).WithMessage($"Name one of {string.Join(", ", OperatorJobs.Actions)}.");
+        RuleFor(r => r.Action).MaximumLength(20).Must(OperatorJobs.Actions.Contains).WithMessage($"Name one of {string.Join(", ", OperatorJobs.Actions)}.");
         RuleFor(r => r.Job).NotEmpty().MaximumLength(100).When(r => r.Action != OperatorJobs.Rerun);
         RuleFor(r => r.RunId).NotNull().When(r => r.Action == OperatorJobs.Rerun);
         RuleFor(r => r.Reason).NotEmpty().WithMessage("Say why: both audit trails keep it.").MaximumLength(500);
