@@ -199,3 +199,50 @@ Documentation: the next free ADR (Option B and why; the Foundation plan and suit
 - [ ] A suite plan cannot name another suite's or the Foundation's module.
 - [ ] The About page shows exactly what the tenant has.
 - [ ] The pipeline's tenant is provisioned with the suite.
+
+---
+
+## V-close. Exceptions, documentation and the closing notes
+
+Sharpened on 2026-10-30 after the module decision. Slice V built visibility tags (TF-241) and suites per tenant with the eProcurement Suite's skeleton (TF-244), after its chores (V0). It also carried two documentation tasks: the eProcurement Suite's module list (EPS-modules) and the Requests and Intake decisions. This task makes V a done slice in the matrix, leaves the documentation true for V, and readies S4.
+
+### Opening message
+
+```
+Read CLAUDE.md, docs/STATUS.md (all of it, the later items twice),
+docs/slices/V-visibility-and-suites.md, docs/slices/S4-platform-services.md, docs/trace/exceptions.md,
+docs/adr/README.md, the README, docs/guides/developer-guide.md, docs/guides/local-stack.md,
+docs/guides/definition-of-done.md, docs/licences.md and docs/prd/suites/procurement/README.md. Then
+read docs/prompts/V.md and add section V-close from docs/prompts/V-close.md, delete that file, and
+commit the prompt alone first on a new branch slice/v-close from main. Then follow section V-close:
+write a short plan into the session, and build without waiting for approval unless the "When to
+stop" rule in CLAUDE.md applies. Done when: V is a done slice in the matrix, with every criterion of
+TF-241 and TF-244 tested or listed as an approved exception with its home; every STATUS item marked
+for V is done or moved with a reason; the README, the runbook, the developer guide, the definition of
+done and the ADR index are true for V; the V plan has its coverage table and closing notes; S4's plan
+lists what V moves to it; the change merges through a pull request; make verify, make smoke
+TENANT=echo, make e2e TENANT=echo and an on-demand release on main pass, and main is tagged v-done.
+Finish with the report, its Risk section, the exceptions with their homes for approval, and what
+moves to S4. Then stop.
+```
+
+### Instructions
+
+1. **V as a done slice.** Mark V done in its plan's requirement list, so `make trace` treats it as done. Every criterion of TF-241 and TF-244 has a test, or a row in `docs/trace/exceptions.md` with its reason and its home. List each exception for the design session's approval.
+2. **STATUS.** Every later item marked for V is done, or moved with a reason. Keep the dated items as they are: M6 on 2026-11-04 (the fleet image and the remaining digests), the x/net exception until a fixed Compose release is two weeks old, and the move to PostgreSQL 19's final release. Add one later item from the design session: the accessibility scan also opens every gallery page with the browser's forced-colours mode on (Windows contrast themes), and fails if a page refuses the user's colours; its home is the experience foundations slice planned after S5.
+3. **The documentation, true for V.**
+   - **README:** "What works today" gains visibility tags and suites per tenant. The "Where it stands" table shows the eProcurement Suite as declared, with its Purchasing skeleton, and links the suite's module list.
+   - **Runbook:** every V make target (`sample-records`, `suite-add`, `suite-remove`, provisioning with suites) and every new symptom (a tenant without a suite it expects; a record hidden by its tags).
+   - **Developer guide:** "Visibility tags on a record type" and adding a module to a suite, checked for order and repetition.
+   - **ADR index and definition of done:** complete for V.
+4. **The V plan.** The coverage table, and the closing notes: what differed from the plan and why (V0's stop over the fleet image and the digest pinning it led to; the measured storage choice for tags; Option B for the suite; the module list and the Requests and Intake decisions written in between), and what V carries forward.
+5. **S4's plan.** Its skeleton (written at S3-close) gains what V moves to it, with the reasons. S4's tasks themselves are written in the design session.
+6. **The finish.** The change merges through a pull request. On main after the merge: `make verify`, `make smoke TENANT=echo`, `make e2e TENANT=echo`, and the release workflow started on demand, which must pass. Then tag `v-done` on the merge commit and push the tag.
+
+### Review checklist
+
+- [ ] V is done in the matrix, with every gap an approved exception with its home.
+- [ ] The dated later items are kept, and the forced-colours scan is recorded.
+- [ ] The README shows the eProcurement Suite as declared, without claiming what is not built.
+- [ ] The closing notes and S4's additions exist.
+- [ ] The release on main passes, and `v-done` is tagged.
