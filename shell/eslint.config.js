@@ -201,6 +201,13 @@ const colourRule = {
   message:
     "Colour by value is not allowed in a page (ADR-0024). Name a meaning instead: a theme colour (primary, danger, success, warning, info or the module's identity colour), dimmed, or a CSS variable from src/design/tokens.ts; never a hex, rgb(), hsl(), a palette name or a CSS colour name.",
 };
+// Vitest 5 keeps transformed files between runs, and leaves out a file whose text holds "import.meta.glob(", since its
+// list depends on other files; a type argument hides the call from that check, and a new folder then went unseen (V2).
+const typedGlobRule = {
+  selector: "CallExpression[callee.object.type='MetaProperty'][callee.property.name='glob'][typeArguments]",
+  message:
+    "Write import.meta.glob(...) without a type argument and type its result with `as`: Vitest caches the transform of a file whose glob it cannot see, and the list of files then goes stale.",
+};
 
 export default tseslint.config(
   { ignores: ["dist", "dist-gallery", "node_modules", "coverage"] },
@@ -263,7 +270,7 @@ export default tseslint.config(
     // Everything under src, except where the values are defined and where they are mapped into the grid.
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/design/**", "src/components/data-grid/theme.ts"],
-    rules: { "no-restricted-syntax": ["error", colourRule] },
+    rules: { "no-restricted-syntax": ["error", colourRule, typedGlobRule] },
   },
   {
     files: [
