@@ -35,7 +35,12 @@ public sealed class JobsFixture : IAsyncLifetime
     }
 
     /// <summary>A tenant of its own: a database migrated and seeded as the unit's commands do it.</summary>
-    public async Task<JobsTenant> NewTenantAsync(bool withSuite = false)
+    /// <remarks>
+    /// The other modules' jobs are tested in their own modules and wait paused here, unless <paramref name="holdOtherModules"/>
+    /// is false: those that pass for a term (<c>audit.seal_chain</c>, <c>events.dispatch</c>) would hold a runner on a clock
+    /// that only the test moves.
+    /// </remarks>
+    public async Task<JobsTenant> NewTenantAsync(bool withSuite = false, bool holdOtherModules = true)
     {
         var name = $"jobs{Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(4))}";
         var connectionString = await (_postgres ?? throw new InvalidOperationException("The fixture is not initialised.")).CreateDatabaseAsync(name, TestContext.Current.CancellationToken);
@@ -43,6 +48,19 @@ public sealed class JobsFixture : IAsyncLifetime
         await using var provider = tenant.Build(new FakeTimeProvider(DateTimeOffset.UtcNow));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["migrate"], TestContext.Current.CancellationToken));
         Assert.Equal(0, await DatabaseCommands.RunAsync(provider, ["seed"], TestContext.Current.CancellationToken));
+        if (holdOtherModules)
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<JobsDbContext>();
+            var others = await context.Jobs.Where(j => !j.Name.StartsWith("probe") && j.Name != PruneRunsJob.Definition.Name).ToListAsync(TestContext.Current.CancellationToken);
+            foreach (var record in others)
+            {
+                Assert.True(record.Pause(SystemPrincipal.SystemId, "Tested in its own module.", DateTimeOffset.UtcNow));
+            }
+
+            await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
         return tenant;
     }
 }
@@ -93,6 +111,9 @@ public sealed class JobsTenant(string connectionString, string database)
         services.AddSingleton<ITenantStanding>(Standing);
         IReadOnlyList<SuiteDefinition> suites = RunsProbeSuite ? [ProbeSuiteJobsModule.Definition()] : [];
         services.AddModules(configuration, InstalledSuites.Compose([new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new JobsModule(), new ProbeJobsModule()], suites), suites);
+
+        // The worker's handlers; a built provider starts no hosted service, so the tests tick the runner themselves.
+        services.AddJobHandlers();
         more?.Invoke(services);
         return services.BuildServiceProvider();
     }

@@ -35,6 +35,9 @@ public sealed class MonitoringModule(MonitoringScope scope) : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => MonitoringAuditEvents.Types;
 
+    /// <summary>A unit's rules and copies as jobs (ADR-0061); the control plane runs its own in loops, since it runs no job runner.</summary>
+    public IReadOnlyList<JobDefinition> Jobs => scope == MonitoringScope.Unit ? [RuleEvaluationJob.Definition, AlertCopyJob.Definition] : [];
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -73,19 +76,16 @@ public sealed class MonitoringModule(MonitoringScope scope) : IModule
 public static class MonitoringHosting
 {
     /// <summary>
-    /// The rules every minute, and the way to the operator: in a unit's worker, the copies to the control plane; in the
-    /// control plane, the operator's alerting. One host per database runs it; the pass takes a lock of its own anyway.
+    /// The control plane's rules every minute and the way to the operator's alerting, in its API (ADR-0056). A unit's
+    /// worker runs its rules and its copies to the control plane as the jobs <c>monitoring.evaluate_rules</c> and
+    /// <c>monitoring.copy_alerts</c> (ADR-0061), so it needs no call here.
     /// </summary>
     public static IServiceCollection AddMonitoring(this IServiceCollection services, MonitoringScope scope)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddHostedService<RuleEvaluationWorker>();
-        if (scope == MonitoringScope.Unit)
+        if (scope == MonitoringScope.ControlPlane)
         {
-            services.AddHostedService<AlertCopyWorker>();
-        }
-        else
-        {
+            services.AddHostedService<RuleEvaluationWorker>();
             services.AddHostedService<AlertmanagerWorker>();
         }
 

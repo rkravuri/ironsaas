@@ -29,6 +29,8 @@ public sealed class ChangesModule : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => ChangesAuditEvents.Types;
 
+    public IReadOnlyList<JobDefinition> Jobs => [ChangeExpiryJob.Definition];
+
     public IReadOnlyList<SettingDefinition> Settings => ChangesSettings.All;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
@@ -51,16 +53,5 @@ public sealed class ChangesModule : IModule
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         ChangesEndpoints.Map(endpoints);
-    }
-}
-
-public static class ChangesHosting
-{
-    /// <summary>The pass that expires pending changes nobody decided (ADR-0052), for the unit's worker host only.</summary>
-    public static IServiceCollection AddChangeExpiry(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddHostedService<ChangeExpiryWorker>();
-        return services;
     }
 }

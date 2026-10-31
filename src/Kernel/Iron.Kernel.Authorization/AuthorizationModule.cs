@@ -32,6 +32,8 @@ public sealed class AuthorizationModule : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => AuthorizationAuditEvents.Types;
 
+    public IReadOnlyList<JobDefinition> Jobs => [ReviewEscalationJob.Definition, ConflictReportJob.Definition];
+
     public IReadOnlyList<Feature> Features => AuthorizationFeatures.All;
 
     public IReadOnlyList<EventType> Events => AuthorizationEvents.All;

@@ -67,29 +67,15 @@ builder.Services.AddIronDatabase(connectionString, builder.Configuration["Databa
 builder.Services.AddIronDatabaseHealthCheck();
 builder.Services.AddModules(builder.Configuration, modules, suites);
 
-// The daily passes that belong to one process per unit, not to every API replica.
-builder.Services.AddAccessReviewEscalation();
-builder.Services.AddConflictReport();
-
-// Pending configuration changes nobody decided in time expire (TF-068, ADR-0052).
-builder.Services.AddChangeExpiry();
-
-// Evidence packs people asked for are made here, a few seconds after they ask (TF-067, ADR-0052).
-builder.Services.AddEvidencePacks();
-
-// The audit chain's sealing and anchors (TF-061, ADR-0050): one worker per unit seals, every few seconds.
+// The audit chain's anchors go to the control plane (TF-061, ADR-0050); the jobs audit.seal_chain and audit.retention seal and keep it.
 builder.Services.AddAuditSealing(builder.Configuration);
 
-// Key rotation's side in the unit (ADR-0054): rotations recorded in the tenant's trail, every encrypted value moved.
-builder.Services.AddKeyRotation();
+// The domain events' archive (ADR-0060), which the job events.archive runs; events.dispatch hands each event on.
+builder.Services.AddEventArchive();
 
-// The security alert rules every minute, and each alert copied to the control plane (TF-079, ADR-0056).
-builder.Services.AddMonitoring(MonitoringScope.Unit);
-
-// The domain events' dispatcher and their archive (TF-085, TF-111, ADR-0060): one worker per unit hands each event on.
-builder.Services.AddEventDispatch();
-
-// The jobs (TF-120, ADR-0061): this worker runs the unit's jobs, and any second worker shares them through the database.
+// The jobs (TF-120 to TF-124, ADR-0061): the modules' jobs, the work every loop of this worker did before S4 T2 among them
+// (sealing, retention, dispatch, re-encryption, the alert rules, evidence packs, expiries, reviews and the conflicts
+// report). This worker runs them, and any second worker shares them through the database.
 builder.Services.AddJobRunner();
 
 var app = builder.Build();

@@ -32,6 +32,8 @@ public sealed class SettingsModule : IModule
 
     public IReadOnlyList<SettingDefinition> Settings => ShellSettings.All;
 
+    public IReadOnlyList<JobDefinition> Jobs => [SettingsRefreshJob.Definition];
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);

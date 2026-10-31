@@ -285,7 +285,7 @@ public class RunnerTests(JobsFixture fixture)
     [Proves("TF-124 AC1", "ADR-0061")]
     public async Task ANewTenantsSeedMakesEveryDeclaredJobActiveAndScheduled()
     {
-        var tenant = await fixture.NewTenantAsync();
+        var tenant = await fixture.NewTenantAsync(holdOtherModules: false);
         await using var provider = tenant.Build(new FakeTimeProvider(DateTimeOffset.UtcNow));
         var declarations = provider.GetRequiredService<Iron.Kernel.Api.Modules.JobDeclarations>();
 
@@ -296,6 +296,12 @@ public class RunnerTests(JobsFixture fixture)
             Assert.Equal(job.IsScheduled, record.NextDueAt.HasValue);
         }
 
+        // The maintenance jobs the worker's loops became are among them (TF-124 AC1).
         Assert.Contains(declarations.UnitJobs, j => j.Name == PruneRunsJob.Definition.Name);
+        Assert.Contains(declarations.UnitJobs, j => j.Name == "audit.seal_chain");
+        Assert.Contains(declarations.UnitJobs, j => j.Name == "audit.retention");
+        Assert.Contains(declarations.UnitJobs, j => j.Name == "events.dispatch");
+        Assert.Contains(declarations.UnitJobs, j => j.Name == "events.archive");
+        Assert.Contains(declarations.UnitJobs, j => j.Name == "authz.escalate_reviews");
     }
 }

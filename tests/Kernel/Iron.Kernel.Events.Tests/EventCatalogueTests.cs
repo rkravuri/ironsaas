@@ -104,9 +104,9 @@ public class EventCatalogueTests
     [Proves("TF-113 AC3")]
     public void WithNoBrokerTheInProcessDispatcherIsUsed()
     {
-        var services = new ServiceCollection().AddEventDispatch();
-
-        Assert.Contains(services, d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(EventDispatchWorker));
+        // A unit's worker runs the in-process dispatcher as its job, and the control plane's fleet as its loop; no broker is configured anywhere.
+        Assert.Contains(new EventsModule().Jobs, job => job.Name == "events.dispatch" && job.HandlerType == typeof(EventDispatchJob));
+        Assert.Contains(new ServiceCollection().AddEventDispatch(), d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(EventDispatchWorker));
     }
 
     public sealed record Line(string Item, int Quantity);

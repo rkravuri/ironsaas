@@ -34,6 +34,8 @@ public sealed class FlagsModule : IModule
 
     public IReadOnlyList<Flag> Flags => ExampleFlags.All;
 
+    public IReadOnlyList<JobDefinition> Jobs => [FlagRefreshJob.Definition];
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);

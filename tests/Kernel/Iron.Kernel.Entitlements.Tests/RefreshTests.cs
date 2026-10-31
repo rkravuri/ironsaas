@@ -1,4 +1,5 @@
 using System.Diagnostics.Metrics;
+using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Entitlements.Contracts;
 using Iron.Kernel.Entitlements.Data;
@@ -6,6 +7,7 @@ using Iron.Kernel.Entitlements.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
@@ -21,15 +23,17 @@ public class RefreshTests(EntitlementsFixture fixture)
     private static readonly string RoleTransfer = AuthorizationFeatures.RoleTransfer.Code;
 
     [Fact]
-    [Proves("ADR-0034")]
+    [Proves("ADR-0034", "ADR-0061")]
     public async Task TheUnitReadsTheStoreEveryThirtySecondsAndLearnsAChangeWithoutARestart()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var source = new ControlledSource { Document = Documents.With(1, features: [Documents.Feature(RoleTransfer)]) };
         await using var provider = fixture.BuildServices(time, source, SystemPrincipal.Instance);
         var refresher = provider.GetRequiredService<EntitlementRefresher>();
+        var runner = provider.GetServices<IHostedService>().OfType<ProcessJobRunner>().Single(); // the reads after the first: entitlements.refresh_cache
 
         await refresher.StartAsync(TestContext.Current.CancellationToken);
+        await runner.StartAsync(TestContext.Current.CancellationToken);
         try
         {
             Assert.Equal(1, source.Reads);
@@ -48,7 +52,7 @@ public class RefreshTests(EntitlementsFixture fixture)
         }
         finally
         {
-            await refresher.StopAsync(TestContext.Current.CancellationToken);
+            await runner.StopAsync(TestContext.Current.CancellationToken);
         }
     }
 

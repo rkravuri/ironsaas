@@ -257,25 +257,24 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
         await DirectAsync(alan, creator, RoleScope.Unit(_tree.Sales.Id, includeChildren: true));
         await DirectAsync(alan, payer, RoleScope.Unit(_tree.North.Id));
 
+        // The job runs once a day (ADR-0061): a rule written since its last run shows its conflicts at its next.
+        Assert.Equal(TimeSpan.FromDays(1), ConflictReportJob.Definition.Schedule.Every);
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
         await using var provider = fixture.BuildServices(time, new FixedPrincipal(SystemPrincipal.SystemId), new RecordingAuditWriter());
-        using var worker = new ConflictReportWorker(provider.GetRequiredService<IServiceScopeFactory>(), time, NullLogger<ConflictReportWorker>.Instance);
         var started = time.GetUtcNow();
-        await worker.StartAsync(TestContext.Current.CancellationToken);
-
-        // The worker starts on its own thread: the clock moves in small steps until its first delay is waiting and ends.
-        await RunsAsync(provider, started, 1, () => time.Advance(TimeSpan.FromSeconds(30)));
+        await RunReportJobAsync(provider);
         Assert.Empty(await EntriesAsync(provider, alan));
 
-        // A rule written now: its conflicts appear by the next daily run, within a day.
         await RuleAsync("Create and pay invoices", Role(creator), Role(payer), ConflictModes.Warn, "Two people for every payment.");
         Assert.Empty(await EntriesAsync(provider, alan));
-        time.Advance(ConflictReportWorker.Interval);
-        await RunsAsync(provider, started, 2, () => { });
+        time.Advance(ConflictReportJob.Definition.Schedule.Every!.Value);
+        await RunReportJobAsync(provider);
 
         var entry = Assert.Single(await EntriesAsync(provider, alan));
         Assert.Equal(("Create and pay invoices", _tree.North.Id), (entry.RuleName, entry.UnitId));
-        await worker.StopAsync(TestContext.Current.CancellationToken);
+        await using var scope = provider.CreateAsyncScope();
+        Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>().ConflictReportRuns.AsNoTracking()
+            .CountAsync(r => r.Trigger == ConflictReportTriggers.Daily && r.CreatedAt >= started, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -401,23 +400,13 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
     }
 
     /// <summary>Waits, on the real clock, until the worker's runs since the start number this many, nudging the fake clock between looks.</summary>
-    private static async Task RunsAsync(IServiceProvider provider, DateTimeOffset since, int count, Action nudge)
+    /// <summary>One run of the conflicts report's job, as the worker's runner makes it.</summary>
+    private static async Task RunReportJobAsync(IServiceProvider provider)
     {
-        for (var attempt = 0; attempt < 200; attempt++)
-        {
-            nudge();
-            await using var scope = provider.CreateAsyncScope();
-            var runs = await scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>().ConflictReportRuns.AsNoTracking()
-                .CountAsync(r => r.Trigger == ConflictReportTriggers.Daily && r.CreatedAt >= since, TestContext.Current.CancellationToken);
-            if (runs >= count)
-            {
-                return;
-            }
-
-            await Task.Delay(50, TestContext.Current.CancellationToken);
-        }
-
-        Assert.Fail($"The worker did not run {count} time(s).");
+        await using var scope = provider.CreateAsyncScope();
+        var job = ActivatorUtilities.CreateInstance<ConflictReportJob>(scope.ServiceProvider, NullLogger<ConflictReportJob>.Instance);
+        var result = await job.RunAsync(new JobContext(Ids.New(), ConflictReportJob.Definition.Name, "test", 1, DateTimeOffset.UtcNow, null, null), TestContext.Current.CancellationToken);
+        Assert.True(result.IsSuccess, result.ToString());
     }
 
     private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body)

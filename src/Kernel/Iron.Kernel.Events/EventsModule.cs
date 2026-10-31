@@ -30,6 +30,9 @@ public sealed class EventsModule : IModule
 
     public IReadOnlyList<SettingDefinition> Settings => EventsSettings.All;
 
+    /// <summary>The unit's dispatch and archive (ADR-0061); the control plane dispatches in the fleet's loop and keeps its handled events.</summary>
+    public IReadOnlyList<JobDefinition> Jobs => [EventDispatchJob.Definition, EventArchiveJob.Definition];
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -37,7 +40,6 @@ public sealed class EventsModule : IModule
         services.TryAddSingleton(TimeProvider.System);
         services.AddIronDbContext<EventsDbContext>();
         services.AddSingleton(configuration.GetSection(DispatchOptions.SectionName).Get<DispatchOptions>() ?? new DispatchOptions());
-        services.AddSingleton(configuration.GetSection(ArchiveOptions.SectionName).Get<ArchiveOptions>() ?? new ArchiveOptions());
         services.TryAddSingleton<EventsMetrics>();
         services.TryAddSingleton<EventDispatcher>();
         services.AddHttpContextAccessor();
@@ -59,21 +61,26 @@ public sealed class EventsModule : IModule
 public static class EventsHosting
 {
     /// <summary>
-    /// The dispatcher and the archive (ADR-0060): in the unit's worker, one per unit, and in the fleet for the control
-    /// plane's own events. The API only publishes; a pass's hand-on takes an advisory lock anyway, and a delivery locks its
-    /// inbox row, so a second worker changes nothing. The archive writes to the tenant's files, so a host without them, as
-    /// the control plane is, keeps its handled events.
+    /// The control plane's dispatch loop, in the fleet (ADR-0060): the control plane runs no job runner, so its own events
+    /// are handed on here; it has no files, so it keeps its handled events. A unit's worker hands its events on through
+    /// its job <c>events.dispatch</c> (ADR-0061). A pass's hand-on takes an advisory lock, and a delivery locks its inbox
+    /// row, so a second process changes nothing.
     /// </summary>
-    public static IServiceCollection AddEventDispatch(this IServiceCollection services, bool archive = true)
+    public static IServiceCollection AddEventDispatch(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddHostedService<EventDispatchWorker>();
-        if (archive)
-        {
-            services.AddScoped<EventArchiver>();
-            services.AddHostedService<EventArchiveWorker>();
-        }
+        return services;
+    }
 
+    /// <summary>
+    /// The archive of a unit's handled events (ADR-0060), which its job <c>events.archive</c> runs: in the unit's worker,
+    /// which has the tenant's files.
+    /// </summary>
+    public static IServiceCollection AddEventArchive(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddScoped<EventArchiver>();
         return services;
     }
 }

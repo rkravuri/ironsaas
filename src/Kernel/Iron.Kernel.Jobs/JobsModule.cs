@@ -60,13 +60,31 @@ public sealed class JobsModule : IModule
 public static class JobsHosting
 {
     /// <summary>
-    /// The runner (ADR-0061): in the unit's worker, and in the fleet for the control plane's own jobs. Any number of
-    /// processes may run it; the database decides which takes each run. The API only starts runs and shows them.
+    /// The runner (ADR-0061), in the unit's worker: any number of worker processes may run it, and the database decides
+    /// which takes each run. The API only starts runs and shows them. Call it after AddModules.
     /// </summary>
     public static IServiceCollection AddJobRunner(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddJobHandlers();
         services.AddHostedService<JobRunnerService>();
+        return services;
+    }
+
+    /// <summary>
+    /// The handlers of the unit's jobs, which only a host that runs them resolves: their services are the worker's, so a
+    /// host that declares a job but does not run it, as the API and the control plane do, never builds its handler.
+    /// </summary>
+    public static IServiceCollection AddJobHandlers(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        var declarations = services.Select(d => d.ImplementationInstance).OfType<JobDeclarations>().LastOrDefault()
+            ?? throw new InvalidOperationException("AddJobHandlers runs after AddModules, which declares the jobs.");
+        foreach (var job in declarations.UnitJobs)
+        {
+            services.TryAddScoped(job.Definition.HandlerType);
+        }
+
         return services;
     }
 }

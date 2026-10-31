@@ -14,14 +14,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Iron.Kernel.Events.Services;
 
-/// <summary>How often the archive runs (<c>Events:Archive</c>).</summary>
-public sealed class ArchiveOptions
-{
-    public const string SectionName = "Events:Archive";
-
-    public int IntervalMinutes { get; set; } = 60;
-}
-
 /// <summary>
 /// The retention of the outbox (TF-112 AC2, ADR-0060): an event older than the tenant's retention that every subscriber
 /// handled is written, with its deliveries, to the tenant's container as one line of JSON, then leaves the outbox and the
@@ -118,33 +110,21 @@ public sealed class EventArchiver(EventsDbContext context, IUnitOfWork unitOfWor
     }
 }
 
-/// <summary>The archive's loop in the unit's worker: a pass soon after start, then every interval.</summary>
-public sealed class EventArchiveWorker(IServiceScopeFactory scopes, ArchiveOptions options, TimeProvider time, ILogger<EventArchiveWorker> logger) : BackgroundService
+/// <summary>
+/// <c>events.archive</c> (TF-112 AC2, TF-124, ADR-0060, ADR-0061): every hour, the events past the tenant's retention that
+/// every subscriber handled go to its container. Idempotent: a repeated run finds them gone and archives nothing.
+/// </summary>
+public sealed class EventArchiveJob(EventArchiver archiver) : IJob
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public static readonly JobDefinition Definition = JobDefinition.Create<EventArchiveJob>(
+        "events.archive", "Archives the domain events every subscriber handled, past the tenant's retention, to its container.", "Platform team",
+        JobSchedule.Interval(TimeSpan.FromHours(1), firstAfter: TimeSpan.FromMinutes(1)), PriorityClass.Bulk, TimeSpan.FromMinutes(30));
+
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
     {
-        var interval = TimeSpan.FromMinutes(Math.Max(1, options.IntervalMinutes));
-        try
-        {
-            await Task.Delay(TimeSpan.FromMinutes(1), time, stoppingToken).ConfigureAwait(false);
-            using var timer = new PeriodicTimer(interval, time);
-            do
-            {
-                try
-                {
-                    await using var scope = scopes.CreateAsyncScope();
-                    await scope.ServiceProvider.GetRequiredService<EventArchiver>().RunAsync(stoppingToken).ConfigureAwait(false);
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    logger.LogError(exception, "The archive of past events failed; it runs again in {Interval}.", interval);
-                }
-            }
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
-        }
-        catch (OperationCanceledException)
-        {
-            // Stopping.
-        }
+        ArgumentNullException.ThrowIfNull(context);
+        var archived = await archiver.RunAsync(cancellationToken).ConfigureAwait(false);
+        context.Log($"{archived} event(s) archived.");
+        return Result.Success();
     }
 }

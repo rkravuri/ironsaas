@@ -37,6 +37,8 @@ public sealed class IdentityModule : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => IdentityAuditEvents.Types;
 
+    public IReadOnlyList<JobDefinition> Jobs => [TokenCleanupJob.Definition];
+
     public IReadOnlyList<SettingDefinition> Settings => IdentitySettings.All;
 
     public IReadOnlyList<Duty> Duties => IdentityDuties.All;

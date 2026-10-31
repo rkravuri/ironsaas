@@ -40,13 +40,14 @@ public enum JobScheduleKind
 /// </summary>
 public sealed record JobSchedule
 {
-    private JobSchedule(JobScheduleKind kind, TimeSpan? every, string? cron, TimeSpan firstAfter, string? configurationKey)
+    private JobSchedule(JobScheduleKind kind, TimeSpan? every, string? cron, TimeSpan firstAfter, string? configurationKey, TimeSpan? longestConfigured = null)
     {
         Kind = kind;
         Every = every;
         Cron = cron;
         FirstAfter = firstAfter;
         ConfigurationKey = configurationKey;
+        LongestConfigured = longestConfigured;
     }
 
     public JobScheduleKind Kind { get; }
@@ -61,16 +62,19 @@ public sealed record JobSchedule
     /// <summary>A configuration key, in seconds, that replaces <see cref="Every"/> in a unit that sets it.</summary>
     public string? ConfigurationKey { get; }
 
+    /// <summary>The longest interval the configuration key may set, as the module bounded it before: a longer one is cut to it.</summary>
+    public TimeSpan? LongestConfigured { get; }
+
     public static JobSchedule Explicit { get; } = new(JobScheduleKind.Explicit, null, null, TimeSpan.Zero, null);
 
-    public static JobSchedule Interval(TimeSpan every, TimeSpan? firstAfter = null, string? configurationKey = null)
+    public static JobSchedule Interval(TimeSpan every, TimeSpan? firstAfter = null, string? configurationKey = null, TimeSpan? longestConfigured = null)
     {
         if (every <= TimeSpan.Zero || every > TimeSpan.FromDays(31))
         {
             throw new ArgumentOutOfRangeException(nameof(every), every, "A job's interval is more than nothing and at most 31 days.");
         }
 
-        return new JobSchedule(JobScheduleKind.Interval, every, null, firstAfter ?? TimeSpan.Zero, configurationKey);
+        return new JobSchedule(JobScheduleKind.Interval, every, null, firstAfter ?? TimeSpan.Zero, configurationKey, longestConfigured);
     }
 
     /// <summary>A cron expression of five fields (minute, hour, day of month, month, day of week), in the tenant's time zone.</summary>
@@ -329,4 +333,60 @@ public sealed class JobContext(Guid runId, string job, string key, int attempt, 
 public interface IJobStarter
 {
     Task<Guid> StartAsync(JobDefinition job, string key, string? payload, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// The run of a job whose work is a short pass every few seconds, such as the audit chain's sealing or the events'
+/// dispatch (ADR-0061): one run a minute, coordinated, logged and alerted as any run, that passes until its term ends,
+/// so the work keeps the latency its loop had. A pass that answers true has more to do and runs again at once. A pass
+/// that throws is logged and the next one runs; the run fails, to be retried and alerted by its policy, when its last
+/// pass failed.
+/// </summary>
+public static class JobLoop
+{
+    public static async Task<Result> RunAsync(JobContext context, TimeSpan term, TimeSpan every, TimeProvider time, Func<CancellationToken, Task<bool>> pass, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(time);
+        ArgumentNullException.ThrowIfNull(pass);
+        var ends = time.GetUtcNow() + term;
+        var passes = 0;
+        var failures = 0;
+        string? lastError = null;
+        while (true)
+        {
+            bool more;
+            try
+            {
+                more = await pass(cancellationToken).ConfigureAwait(false);
+                lastError = null;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                failures++;
+                lastError = $"{exception.GetType().Name}: {exception.Message}";
+                context.Log($"pass {passes + 1} failed: {lastError}");
+                more = false;
+            }
+
+            passes++;
+            var left = ends - time.GetUtcNow();
+            if (left <= TimeSpan.Zero)
+            {
+                break;
+            }
+
+            if (!more)
+            {
+                await Task.Delay(every < left ? every : left, time, cancellationToken).ConfigureAwait(false);
+                if (time.GetUtcNow() >= ends)
+                {
+                    break;
+                }
+            }
+        }
+
+        context.Log($"{passes} pass(es), {failures} failed.");
+        return lastError is null ? Result.Success() : Error.Unavailable("jobs.pass_failed", $"The last pass failed: {lastError}");
+    }
 }

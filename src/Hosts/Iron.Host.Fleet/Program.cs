@@ -12,7 +12,6 @@ using Iron.Kernel.Events;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Fleet;
 using Iron.Kernel.Identity;
-using Iron.Kernel.Jobs;
 using Iron.Kernel.Security;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Settings;
@@ -35,7 +34,7 @@ builder.Configuration.AddIronSecrets();
 var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 
 // The modules this worker runs, in order: the same list as the API host, without endpoints.
-IReadOnlyList<IModule> modules = [new AuditModule(), new EventsModule(), new JobsModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule()];
+IReadOnlyList<IModule> modules = [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule()];
 
 builder.AddIronTelemetry("iron-fleet", telemetry => telemetry.TenantId = tenant.Id.Value);
 builder.Services.AddIronTenant(tenant);
@@ -59,10 +58,7 @@ builder.Services.AddIronAuditVerification();
 
 // The fleet is the control plane's worker, so it delivers the control plane's own events (ADR-0060); it has no files to
 // archive them to.
-builder.Services.AddEventDispatch(archive: false);
-
-// The control plane's own jobs (ADR-0061), run here, in its worker.
-builder.Services.AddJobRunner();
+builder.Services.AddEventDispatch();
 
 var app = builder.Build();
 

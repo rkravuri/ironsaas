@@ -13,13 +13,22 @@ namespace Iron.Kernel.Api.Modules;
 /// </summary>
 public sealed class ProcessJobRunner(IServiceScopeFactory scopes, JobDeclarations declarations, TimeProvider time, ILogger<ProcessJobRunner> logger) : BackgroundService
 {
+    private DateTimeOffset _started;
+
+    public override Task StartAsync(CancellationToken cancellationToken)
+    {
+        // The first runs count from the host's start, not from when the loops first run, which .NET schedules later.
+        _started = time.GetUtcNow();
+        return base.StartAsync(cancellationToken);
+    }
+
     protected override Task ExecuteAsync(CancellationToken stoppingToken) =>
         Task.WhenAll(declarations.ProcessJobs.Select(job => LoopAsync(job, stoppingToken)));
 
     private async Task LoopAsync(DeclaredJob job, CancellationToken stoppingToken)
     {
         var every = job.Every!.Value;
-        var due = time.GetUtcNow() + job.Definition.Schedule.FirstAfter;
+        var due = _started + job.Definition.Schedule.FirstAfter;
         var failures = 0;
         try
         {

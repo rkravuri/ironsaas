@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -25,15 +26,17 @@ public class FlagRefreshTests(FlagsFixture fixture)
     private static readonly string Imports = KillSwitches.Imports.Key;
 
     [Fact]
-    [Proves("ADR-0035")]
+    [Proves("ADR-0035", "ADR-0061")]
     public async Task TheUnitReadsBothPathsEveryThirtySecondsAndLearnsAChangeWithoutARestart()
     {
         var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var source = new ControlledSource { Rules = Rules.Set(1, []) };
         await using var provider = fixture.BuildServices(time, source, SystemPrincipal.Instance);
         var refresher = provider.GetRequiredService<FlagRefresher>();
+        var runner = provider.GetServices<IHostedService>().OfType<ProcessJobRunner>().Single(); // the reads after the first: flags.refresh_cache
 
         await refresher.StartAsync(TestContext.Current.CancellationToken);
+        await runner.StartAsync(TestContext.Current.CancellationToken);
         try
         {
             Assert.False(await BooleanAsync(provider, Imports));
@@ -50,7 +53,7 @@ public class FlagRefreshTests(FlagsFixture fixture)
         }
         finally
         {
-            await refresher.StopAsync(TestContext.Current.CancellationToken);
+            await runner.StopAsync(TestContext.Current.CancellationToken);
         }
     }
 

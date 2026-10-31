@@ -28,9 +28,10 @@ public sealed class JobDeclarations
                 var every = job.Schedule.Every;
                 if (job.Schedule.ConfigurationKey is { } key && configuration?[key] is { Length: > 0 } configured)
                 {
-                    every = double.TryParse(configured, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds) && seconds > 0
-                        ? TimeSpan.FromSeconds(seconds)
-                        : throw new InvalidOperationException($"{key} is '{configured}', not a number of seconds above 0, for the job '{job.Name}'.");
+                    // The bounds the module's options had before its loop became a job: at least a second, at most what it allows.
+                    every = double.TryParse(configured, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)
+                        ? TimeSpan.FromSeconds(Math.Clamp(seconds, 1, (job.Schedule.LongestConfigured ?? TimeSpan.FromDays(31)).TotalSeconds))
+                        : throw new InvalidOperationException($"{key} is '{configured}', not a number of seconds, for the job '{job.Name}'.");
                 }
 
                 CronExpression? cron = null;

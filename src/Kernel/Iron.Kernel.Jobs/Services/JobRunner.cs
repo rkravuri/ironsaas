@@ -23,8 +23,11 @@ public sealed class RunnerOptions
 
     public int TickMilliseconds { get; set; } = 500;
 
-    /// <summary>The runs one worker process runs at once; a second process brings its own.</summary>
-    public int Slots { get; set; } = 4;
+    /// <summary>
+    /// The runs one worker process runs at once; a second process brings its own. The frequent jobs (sealing, dispatch,
+    /// re-encryption, the alert rules) each hold one for their minute's term, mostly waiting, so there are room for them and more.
+    /// </summary>
+    public int Slots { get; set; } = 16;
 
     /// <summary>How long past its timeout a run's lease lasts, before another worker takes the run as abandoned.</summary>
     public int LeaseGraceSeconds { get; set; } = 30;

@@ -369,9 +369,38 @@ public static class EventRecords
 }
 
 /// <summary>
-/// The dispatcher's loop in the unit's worker: a pass, then another at once while there is work, otherwise after the
-/// interval. A pass that throws is logged and the next one runs; nothing the outbox holds is lost by a crash, since the
-/// next start finds it there (TF-085).
+/// <c>events.dispatch</c> (TF-085, TF-111, TF-124, ADR-0060, ADR-0061): the unit's dispatcher, as a run a minute that
+/// passes every <c>Events:Dispatch:IntervalMilliseconds</c> (200 ms), and at once again while a pass found work, so an
+/// event is handed on within a second of its commit. Nothing the outbox holds is lost by a crash, since the next run,
+/// on any worker, finds it there (TF-085).
+/// </summary>
+public sealed class EventDispatchJob(EventDispatcher dispatcher, DispatchOptions options, TimeProvider time) : IJob
+{
+    public static readonly JobDefinition Definition = JobDefinition.Create<EventDispatchJob>(
+        "events.dispatch", "Hands each committed domain event to its subscribers within a second, retrying failures and parking dead letters.", "Platform team",
+        JobSchedule.Interval(TimeSpan.FromMinutes(1)), PriorityClass.Interactive, TimeSpan.FromMinutes(2));
+
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var handled = 0;
+        var dead = 0;
+        var result = await JobLoop.RunAsync(context, TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(Math.Max(10, options.IntervalMilliseconds)), time, async ct =>
+        {
+            var pass = await dispatcher.RunOnceAsync(ct).ConfigureAwait(false);
+            handled += pass.Handled;
+            dead += pass.DeadLettered;
+            return pass.DidWork;
+        }, cancellationToken).ConfigureAwait(false);
+        context.Log($"{handled} deliveries handled, {dead} dead-lettered.");
+        return result;
+    }
+}
+
+/// <summary>
+/// The control plane's dispatch loop, in the fleet (ADR-0060): the control plane runs no job runner, so its own events
+/// are handed on here, a pass, then another at once while there is work, otherwise after the interval. A unit's worker
+/// hands its events on through <see cref="EventDispatchJob"/>.
 /// </summary>
 public sealed class EventDispatchWorker(EventDispatcher dispatcher, DispatchOptions options, TimeProvider time, ILogger<EventDispatchWorker> logger) : BackgroundService
 {

@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using System.Text.Json;
+using Iron.Kernel.Api.Modules;
 using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Settings.Contracts;
 using Iron.Kernel.Settings.Data;
@@ -7,6 +8,7 @@ using Iron.Kernel.Settings.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
@@ -81,7 +83,7 @@ public class SettingsStoreTests(SettingsFixture fixture)
         Assert.Equal(50, await BatchAsync(worker, unit));
         time.Advance(TimeSpan.FromSeconds(30));
         await WaitForAsync(async () => await BatchAsync(worker, unit) == 75);
-        await worker.GetRequiredService<SettingsRefresher>().StopAsync(ct);
+        await worker.GetServices<IHostedService>().OfType<ProcessJobRunner>().Single().StopAsync(ct);
     }
 
     [Fact]
@@ -221,7 +223,12 @@ public class SettingsStoreTests(SettingsFixture fixture)
         Assert.True((await writer.ResetAsync(ProbeSettings.MailPassword.Key, SettingPlace.Tenant, ct)).IsSuccess);
     }
 
-    private static async Task StartAsync(IServiceProvider provider) => await provider.GetRequiredService<SettingsRefresher>().StartAsync(TestContext.Current.CancellationToken);
+    /// <summary>The first read, then the reads every 30 seconds: the job <c>settings.refresh_cache</c> (ADR-0061).</summary>
+    private static async Task StartAsync(IServiceProvider provider)
+    {
+        await provider.GetRequiredService<SettingsRefresher>().StartAsync(TestContext.Current.CancellationToken);
+        await provider.GetServices<IHostedService>().OfType<ProcessJobRunner>().Single().StartAsync(TestContext.Current.CancellationToken);
+    }
 
     private static async Task<int> BatchAsync(IServiceProvider provider, Guid unit, bool withTree = true)
     {

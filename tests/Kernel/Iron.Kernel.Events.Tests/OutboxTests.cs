@@ -103,8 +103,10 @@ public class OutboxTests(EventsFixture fixture)
     {
         var tenant = await fixture.NewTenantAsync();
         await using var provider = tenant.Build(TimeProvider.System);
-        var worker = new EventDispatchWorker(provider.GetRequiredService<EventDispatcher>(), provider.GetRequiredService<DispatchOptions>(), TimeProvider.System, NullLogger<EventDispatchWorker>.Instance);
-        await worker.StartAsync(Cancel);
+        // The unit's job, as the worker runs it: one run, passing every 200 ms.
+        var job = new EventDispatchJob(provider.GetRequiredService<EventDispatcher>(), provider.GetRequiredService<DispatchOptions>(), TimeProvider.System);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Cancel);
+        var running = job.RunAsync(new JobContext(Ids.New(), EventDispatchJob.Definition.Name, "test", 1, DateTimeOffset.UtcNow, null, null), stop.Token);
         try
         {
             var latencies = new List<TimeSpan>();
@@ -133,7 +135,8 @@ public class OutboxTests(EventsFixture fixture)
         }
         finally
         {
-            await worker.StopAsync(Cancel);
+            await stop.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
         }
     }
 
