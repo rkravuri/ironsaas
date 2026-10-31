@@ -20,7 +20,8 @@ and any second worker shares them through the unit's database, which is its tena
 or service account sees the jobs, their runs and logs, and the dead letters of jobs (and of events, with
 `events.events.read` too); with `jobs.jobs.manage` (high), a recent sign-in and a reason, they pause, resume, start a run
 now, and run a dead letter again. The operator does the same for a tenant through the control plane, as a fleet job
-running the unit's `jobs` command, with a reason in both trails. The control plane's own jobs run in the fleet.
+running the unit's `jobs` command, with a reason in both trails. The control plane runs no job runner yet: its own loops
+are hosted services of its hosts (ADR-0061, decision 14).
 
 ## Threats
 

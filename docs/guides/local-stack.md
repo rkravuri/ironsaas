@@ -36,6 +36,7 @@ Everything Foundation needs runs on the developer laptop in containers (PRD sect
 | `make verify-audit TENANT=x [FULL=1]`, `make audit-chain TENANT=x`, `make audit-accept-restore TENANT=x TICKET=t REASON="..."` | Verify a tenant's audit chain now, show its latest verifications and anchors, and accept the restore point a verification names (section 5, ADR-0050) |
 | `make rotate-key TENANT=x KEY=data\|index\|signing\|database REASON="..."`, `make key-status TENANT=x` | Rotate a tenant's key or database password as the key officer; its keys, versions and rotations (section 5, ADR-0054) |
 | `make events TENANT=x [EVENT_TYPE=t] [RECORD=id] [CORRELATION=c] [STATUS=dead]`, `make events-replay TENANT=x SUBSCRIBER=s REASON="..." IDS=id,id` (or `FROM=p [TO=p]`) | Search a tenant's domain events with each subscriber's state, never their data; replay them to one subscriber with the reason both audit trails keep (section 5, ADR-0060) |
+| `make jobs TENANT=x [JOB=j]`, `make job-run TENANT=x JOB=j REASON="..."`, `make job-pause`, `make job-resume` (both `TENANT`, `JOB`, `REASON`), `make job-rerun TENANT=x RUN=id REASON="..."` | List a tenant's jobs with their states, runs, backlog and last failure; start one now, pause or resume it, or run a dead letter again, each with the reason both audit trails keep (section 5, ADR-0061) |
 | `make security-alerts [TENANT=x] [STATE=open]`, `make security-alert-resolve ID=i NOTE="..."` | The control plane's security alerts, its own and the units'; resolve one of its own (section 6, ADR-0056) |
 | `make incident-declare`, `make incident-note`, `make incident-close`, `make incident-review`, `make incident-show` | An incident from its declaration to its review, by `docs/security/incident-response.md` (section 6, ADR-0056) |
 | `make installation-record TENANT=x`, `make validation-pack` | A laptop tenant's installation checked against the code, and the development validation pack (section 5, ADR-0052) |
@@ -171,6 +172,43 @@ make events-replay TENANT=acme SUBSCRIBER=authz.end_delegations_of_deactivated I
 ```
 
 The calls are `POST /api/v1/tenants/{slug}/events/search` and `.../events/replay` on the control plane (`tenancy.events.manage`, high; a replay with a fresh token and a reason). The fleet runs the unit's `events` command, and the job's output is the answer: positions, ids, types, records and states, never an event's data. A replay changes nothing for an event the subscriber handled; a dead letter goes back to pending and runs at the worker's next pass. Both audit trails keep the reason. Fix the cause first: the runbook's "Dead-lettered events" in `docs/security/incident-response.md` says how. When a suite is removed, the deliveries still waiting for its subscribers are held ("Held: suite removed"), neither tried nor alerted, and resume by themselves when the suite is added again; they are not dead letters and need nothing from you. The control plane has its own outbox, for its own Identity and Authorization; the fleet delivers it.
+
+**A tenant's jobs** (TF-120 to TF-124, ADR-0061). A unit's background work is its jobs: the audit chain's sealing and
+retention, the events' dispatch and archive, re-encryption, the alert rules, evidence packs, expiries, reviews, the
+conflicts report, token cleanup and the runs' own pruning, each declared by its module and run by the unit's worker. The
+tenant's administrators see them on the console's Jobs page (`/console/jobs`): each job's schedule, priority class,
+state, next and last runs, how long it usually takes, its backlog and its last failure with its error and log; with
+`jobs.jobs.manage` they pause, resume, start a job now and run a dead letter again, each with a reason. The Dead letters
+page (`/console/dead-letters`) lists the dead letters of jobs and events together. The operator does the same through
+the fleet:
+
+```
+make jobs TENANT=acme                                    # every job: state, schedule, class, next and last run, backlog, last failure
+make jobs TENANT=acme JOB=audit.retention                # one job
+make job-run TENANT=acme JOB=audit.retention REASON="Archive before the audit (ticket 31)"
+make job-pause TENANT=acme JOB=authz.conflict_report REASON="The rules are being reviewed (ticket 32)"
+make job-resume TENANT=acme JOB=authz.conflict_report REASON="The review is done (ticket 32)"
+make job-rerun TENANT=acme RUN=<run id> REASON="The storage answers again (ticket 33)"
+```
+
+The calls are `POST /api/v1/tenants/{slug}/jobs/list` and `.../jobs/act` on the control plane (`tenancy.jobs.manage`,
+high; an action with a fresh token and a reason). The fleet runs the unit's `jobs` command, and the job's output is the
+answer, without any run's log or payload. Both audit trails keep the operator's name and the reason. A paused job queues
+nothing, and its queued runs wait, until it is resumed. A suspended tenant's jobs are skipped, each occurrence recorded
+as skipped. A removed suite's queued runs are held ("Held: suite removed") and resume when the suite is added again.
+
+*Reading a missed-schedule alert.* `job_schedule_missed` means a scheduled job ran more than one interval and a minute
+late, so the occurrences between were passed over and only the latest ran. The alert's event names the job, how many
+occurrences it missed and how late it was. The usual causes, in order: the unit's worker was down or restarting
+(`docker compose -p tenant-<slug> ps`, and its heartbeat), its runner's slots were all held by long runs (the Jobs page,
+Running in the backlog), or the tenant was suspended. A housekeeping job catches up at its next run; nothing needs to be
+run by hand. `job_dead_letters` means a run failed as often as its job is retried: open it on the Dead letters page,
+read its error and log, fix the cause, then run it again. The runbooks are "Missed job schedules" and "Dead-lettered
+jobs" in `docs/security/incident-response.md`.
+
+*Fairness between tenants.* Each unit's app role may hold at most 30, 60 or 120 connections on the database server by
+its size class, and each of its processes' pools a third of that, besides its containers' CPU and memory. A unit made
+before S4 T2 gets its limit at its next `make update-unit TENANT=x`. The measurement is `tools/measurements/job-fairness.sh`.
 
 **Break-glass** (TF-026, ADR-0049). When a tenant needs the operator's hands and nobody in it can act, two operators open a time-limited account in its unit. The control plane seeds two: `operator` and `operator-two` (`make seed-control`, or `make up-control`).
 
@@ -419,6 +457,8 @@ For work on a module without a provisioned tenant: `make migrate`, `make seed` (
 | `make impersonate` or the break-glass approval answers 403 `auth.reauthentication_required` | The token is older than the five minutes step-up allows: the scripts ask a fresh one each time, so a clock far off between WSL and the containers is the likely cause |
 | `make impersonate`'s job fails with `identity.impersonation.operator_refused` | The tenant turned `identity.impersonation.operator_allowed` off on its Settings page: only its administrators may turn it back on |
 | The smoke's `events` step fails with "did not handle the record's event", or the Domain events page shows events Waiting for more than a few seconds | The unit's worker is not running or cannot reach its database: `docker compose -p tenant-<slug> ps` and `docker compose -p tenant-<slug> logs worker`. An image from before S4 T1 has no dispatcher: `make images` and `make update-unit` |
+| The smoke's `jobs` step fails with "is queued after 30 s", or the Jobs page shows runs Waiting for long | The unit's worker is not running, or its runner's slots are held: `docker compose -p tenant-<slug> logs worker`, and the Jobs page's backlog. An image from before S4 T2 has no runner: `make images` and `make update-unit` |
+| A job's run is a dead letter (the alert `job_dead_letters`, or the Dead letters page) | It failed as often as its job is retried: its error and log name why. Fix the cause, then run it again on the page or with `make job-rerun`; the runbook's "Dead-lettered jobs" section says what to check first |
 | An event is a dead letter (the alert `event_dead_letters`, or Dead letters on the Domain events page) | Its subscriber failed six times: the delivery's last error names why. Fix the cause, then replay it to that subscriber on the page or with `make events-replay`; the runbook's "Dead-lettered events" section says what to check first |
 | A break-glass access stays `ending` for more than two minutes | The fleet host is not running (`make logs SERVICE=fleet`), or its close job failed: the log says `The close of break-glass ... failed`, and it is asked again every minute. The unit refuses the account after its time whatever the fleet does |
 | `make shell-check` fails at `prettier --check` | A file is not formatted: `make format` (or `cd shell && npm run format`) and commit the result (ADR-0040) |

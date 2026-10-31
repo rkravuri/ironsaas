@@ -18,7 +18,7 @@ A flag is declared in its module's code (`IModule.Flags`): key, type (boolean, s
 ## How a unit knows
 
 - The control plane writes the global and region rules of every flag to `platform/flags`, one write for the whole platform, and a tenant's tenant, unit and user rules to `tenants/<slug>/flags`, with the tenant's region and plan. The unit's policy reads both.
-- `FlagRefresher` reads both every 30 seconds (`Flags:RefreshSeconds`, at most 60) and once before the host serves, after binding the provider. New rules replace the old in memory and in `kernel_flags.last_known`, with one upsert, so the API and the worker can both write the row at once.
+- `FlagRefresher` reads both once before the host serves, after binding the provider, then every 30 seconds (`Flags:RefreshSeconds`, at most 60) in the job `flags.refresh_cache`, which every process runs for itself (ADR-0061). New rules replace the old in memory and in `kernel_flags.last_known`, with one upsert, so the API and the worker can both write the row at once.
 - **Last known before defaults.** A failed read keeps the rules the unit has, however old, so a kill switch that is on stays on through an outage and a restart during it. Only a unit that never knew any rules evaluates on the code defaults, and that is the alert: an error line starting `ALERT: no flag rules are known` (once, then hourly), the gauge `flags.unknown` at 1 (meter `Iron.Flags`, beside `flags.age`, `flags.refresh_failures` and `flags.refusals`), and the readiness check `flags` Degraded. A path with nothing at it is an answer: no rules there.
 - A host without a store (the control plane, the fleet, `make run-api`) reads `Flags:Rules` (global rules: `Flag`, `Value` as JSON, `Reason`), with `Flags:Source=configuration`.
 

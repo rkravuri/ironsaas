@@ -26,7 +26,7 @@ Entitlements are the operator's and not in the list. An access review's revoke i
 
 On approval, the module that proposed the change answers its subject's state now (`IConfigurationChangeApplier.CurrentAsync`). When it differs from the change's before, something else changed it meanwhile: nothing applies, the change takes the current state as its before, counts one more review, keeps a note of both values, writes `changes.change_restarted`, and waits for a new decision. Otherwise the module applies it (`ApplyAsync`) through the same path a direct save takes, as the approver, with the approver's own rules, without asking for a second administrator again; the decision, the module's own events and field history, and `changes.change_approved`, which names both people, commit in one transaction (TF-068 AC3); then `AppliedAsync` lets the module read what it wrote back into a cache, as the settings do, so an approved value applies at once. A module that refuses (the approver lacks a permission the role holds, a conflict rule blocks) leaves the change pending.
 
-The requester withdraws their own change. A change nobody decides within `changes.four_eyes.expiry_days` (7) expires: the worker's pass every five minutes, and every list and decision, end it with `changes.change_expired`.
+The requester withdraws their own change. A change nobody decides within `changes.four_eyes.expiry_days` (7) expires: the job `changes.expire_pending` every five minutes (ADR-0061), and every list and decision, end it with `changes.change_expired`.
 
 ## Settings
 

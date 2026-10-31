@@ -85,7 +85,7 @@ The tasks of `docs/prompts/S4.md`, one section each; T1 was written in full, T2 
 | Task | What it builds | Requirements | State |
 |---|---|---|---|
 | T1 | Domain events, the transactional outbox, subscriptions, replay and inspection | TF-085, TF-110 to TF-113 | done (pull request #32, ADR-0060) |
-| T2 | Background jobs, the job console, fairness, retries and dead letters, maintenance jobs | TF-120 to TF-124; S3's exceptions TF-130 AC3 and TF-003 AC2 | outline |
+| T2 | Background jobs, the job console, fairness, retries and dead letters, maintenance jobs | TF-120 to TF-124; S3's exceptions TF-130 AC3 and TF-003 AC2 | in review (ADR-0061 proposed); TF-124 AC2 waits for T3's orphan purge and AC3 for the first Azure deployment's backup verification |
 | T3 | Files: upload rules, virus scanning, retention and purge; attachments through the record's access policy | TF-078, TF-161, TF-165 | outline |
 | T4 | Notifications: templates, channels, preferences, digests, delivery tracking, the in-app centre with live push, email, announcements; every email S3 left waiting | TF-150 to TF-156 | outline |
 | T5 | Documents: PDF rendering, templates, signature capture, numbering; the PDFs S3 left waiting | TF-162 to TF-164, TF-166 | outline |
