@@ -2,10 +2,12 @@ import {
   IconAdjustments,
   IconAlertTriangle,
   IconBellCog,
+  IconClockPlay,
   IconClipboardCheck,
   IconDevices,
   IconFileCertificate,
   IconHelpCircle,
+  IconInboxOff,
   IconKey,
   IconLogin2,
   IconReceipt,
@@ -24,11 +26,14 @@ import { AlertRulesPage } from "./pages/AlertRulesPage";
 import { ChangeRecordPage } from "./pages/ChangeRecordPage";
 import { ChangesPage } from "./pages/ChangesPage";
 import { ConflictsPage } from "./pages/ConflictsPage";
+import { DeadLettersPage } from "./pages/DeadLettersPage";
 import { DelegationsPage } from "./pages/DelegationsPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
 import { readEvents } from "./pages/event-filters";
 import { EventsPage } from "./pages/EventsPage";
 import { ExplainPage } from "./pages/ExplainPage";
+import { readJobs } from "./pages/job-words";
+import { JobsPage } from "./pages/JobsPage";
 import { KeysPage } from "./pages/KeysPage";
 import { ReviewRecordPage } from "./pages/ReviewRecordPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
@@ -54,7 +59,9 @@ import { VisibilityPage } from "./pages/VisibilityPage";
  * changes of sensitive configuration that wait for a second administrator (TF-068, ADR-0052). S3 T9b brought the keys, read only:
  * their versions, rotations and re-encryption; rotating them is the operator's (TF-075, ADR-0054). V1 brought content
  * visibility: the tenant's visibility tags and who holds them (TF-241, ADR-0057); people get theirs on their record.
- * S4 T1 brought the domain events, their subscribers and dead letters, and their replay (TF-112, ADR-0060).
+ * S4 T1 brought the domain events, their subscribers and dead letters, and their replay (TF-112, ADR-0060). S4 T2 brought
+ * the jobs, paused, resumed, started and run again with a reason, and one view of the dead letters of jobs and events
+ * (TF-121, TF-123, ADR-0061).
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -202,6 +209,20 @@ export const consoleManifest: ModuleManifest = {
       shortcuts: [...gridShortcuts, ...tabShortcuts],
     },
     {
+      path: "/console/jobs",
+      permission: readJobs,
+      element: <JobsPage />,
+      titleKey: "modules.console.jobs",
+      shortcuts: gridShortcuts,
+    },
+    {
+      path: "/console/dead-letters",
+      permission: readJobs,
+      element: <DeadLettersPage />,
+      titleKey: "modules.console.deadLetters",
+      shortcuts: gridShortcuts,
+    },
+    {
       path: "/console/sso/new",
       permission: "identity.sso.manage",
       element: <SsoProviderPage />,
@@ -316,6 +337,18 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/events",
       permission: readEvents,
       icon: <IconTimelineEvent size={16} />,
+    },
+    {
+      labelKey: "modules.console.jobs",
+      path: "/console/jobs",
+      permission: readJobs,
+      icon: <IconClockPlay size={16} />,
+    },
+    {
+      labelKey: "modules.console.deadLetters",
+      path: "/console/dead-letters",
+      permission: readJobs,
+      icon: <IconInboxOff size={16} />,
     },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },

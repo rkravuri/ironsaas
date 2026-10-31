@@ -1197,3 +1197,183 @@ export async function stubEvents(target: Page): Promise<void> {
   );
   await target.route(`**/api/v1/events/${domainEvent.id}`, (route) => route.fulfill({ json: domainEvent }));
 }
+
+/** A retention run that failed as often as it may, with its error and log, as the job console shows a dead letter (ADR-0061). */
+export const deadRun = {
+  id: "0198f0c2-0000-7000-8000-0000000000f1",
+  job: "audit.retention",
+  key: "2026-10-31T00:10:00.0000000+00:00",
+  status: "dead",
+  priority: "bulk",
+  attempts: 5,
+  scheduled_for: "2026-10-31T00:10:00Z",
+  due_at: "2026-10-31T00:10:00Z",
+  started_at: "2026-10-31T00:12:30Z",
+  finished_at: "2026-10-31T00:12:31Z",
+  duration_ms: 812,
+  error: "audit.archive.unavailable: The storage did not answer.",
+  triggered_by: null,
+  reason: null,
+  dead_at: "2026-10-31T00:12:31Z",
+  reruns: 0,
+  log: "Archiving 120 events of class standard.\nThe storage did not answer.",
+};
+
+const sealRun = {
+  ...deadRun,
+  id: "0198f0c2-0000-7000-8000-0000000000f2",
+  job: "audit.seal_chain",
+  key: "2026-10-31T10:00:00.0000000+00:00",
+  status: "succeeded",
+  priority: "normal",
+  attempts: 1,
+  scheduled_for: "2026-10-31T10:00:00Z",
+  due_at: "2026-10-31T10:00:00Z",
+  started_at: "2026-10-31T10:00:00Z",
+  finished_at: "2026-10-31T10:01:00Z",
+  duration_ms: 60_012,
+  error: null,
+  dead_at: null,
+  log: "Sealed 4 block(s) in 12 pass(es).",
+};
+
+const job = (name: string, extra: Record<string, unknown>) => ({
+  name,
+  module: name.slice(0, name.indexOf(".")),
+  suite: null,
+  description: "",
+  owner: "Platform team",
+  schedule: "every 1m",
+  scope: "unit",
+  priority: "normal",
+  timeout_seconds: 120,
+  attempts: 5,
+  max_parallel: 1,
+  unique_by: "the time it was scheduled for",
+  state: "active",
+  paused_at: null,
+  paused_by: null,
+  pause_reason: null,
+  next_run_at: "2026-10-31T10:02:00Z",
+  last_run: null,
+  last_failure: null,
+  typical_duration_ms: null,
+  queued: 0,
+  running: 0,
+  dead_letters: 0,
+  ...extra,
+});
+
+/** The unit's jobs as the console lists them: one failing, one paused, one each process runs, one a suite's (ADR-0061). */
+export const consoleJobs = [
+  job("audit.retention", {
+    description: "Archives and removes audit events past their retention.",
+    owner: "Platform security",
+    schedule: "every 1d",
+    priority: "bulk",
+    timeout_seconds: 7200,
+    next_run_at: "2026-11-01T00:10:00Z",
+    last_run: deadRun,
+    last_failure: deadRun,
+    typical_duration_ms: 900,
+    dead_letters: 1,
+  }),
+  job("audit.seal_chain", {
+    description: "Seals the audit trail's new events into blocks, every few seconds for a minute.",
+    owner: "Platform security",
+    last_run: sealRun,
+    typical_duration_ms: 60_000,
+    running: 1,
+  }),
+  job("authz.conflict_report", {
+    description: "Reports the people whose roles break a conflict rule.",
+    owner: "Access team",
+    schedule: "every 1d",
+    priority: "bulk",
+    state: "paused",
+    paused_at: "2026-10-31T08:00:00Z",
+    pause_reason: "The rules are being reviewed.",
+    next_run_at: null,
+  }),
+  job("flags.refresh_cache", {
+    description: "Reads the flag rules into this process.",
+    schedule: "every 30s",
+    scope: "each_process",
+    state: "each_process",
+    next_run_at: null,
+  }),
+  job("purchasing.close_stale_requests", {
+    description: "Closes requests nobody touched for 90 days.",
+    owner: "Purchasing",
+    suite: "procurement",
+    schedule: "cron 0 2 * * *",
+    priority: "bulk",
+  }),
+];
+
+/** The console for an administrator who reads and manages the jobs and replays events (ADR-0061). */
+export async function stubJobs(target: Page): Promise<void> {
+  await stubConsole(target);
+  const permissions = [
+    ...administrator,
+    "jobs.jobs.read",
+    "jobs.jobs.manage",
+    "events.events.read",
+    "events.events.replay",
+  ];
+  await target.route("**/api/v1/me", (route) =>
+    route.fulfill({
+      json: {
+        ...me,
+        permissions,
+        permissions_anywhere: permissions,
+        home_unit: { id: units[0].id, name: units[0].name, code: units[0].code },
+      },
+    }),
+  );
+  await target.route("**/api/v1/jobs", (route) => route.fulfill({ json: consoleJobs }));
+  await target.route("**/api/v1/jobs/audit.retention", (route) => route.fulfill({ json: consoleJobs[0] }));
+  await target.route("**/api/v1/jobs/audit.retention/runs?**", (route) =>
+    route.fulfill({
+      json: envelope(route.request().url(), [
+        deadRun,
+        {
+          ...deadRun,
+          id: "0198f0c2-0000-7000-8000-0000000000f3",
+          key: "2026-10-30T00:10:00.0000000+00:00",
+          status: "succeeded",
+          attempts: 1,
+          scheduled_for: "2026-10-30T00:10:00Z",
+          error: null,
+          dead_at: null,
+          duration_ms: 940,
+        },
+      ]),
+    }),
+  );
+  await target.route(`**/api/v1/jobs/runs/${deadRun.id}`, (route) => route.fulfill({ json: deadRun }));
+  await target.route("**/api/v1/dead-letters?**", (route) =>
+    route.fulfill({
+      json: envelope(route.request().url(), [
+        {
+          kind: "event",
+          id: domainEvent.id,
+          name: "authz.end_delegations_of_deactivated",
+          what: "identity.person.deactivated (version 1)",
+          attempts: 6,
+          error: "authz.delegation.locked: The delegation is being changed.",
+          dead_at: "2026-10-31T09:20:00Z",
+        },
+        {
+          kind: "job",
+          id: deadRun.id,
+          name: "audit.retention",
+          what: deadRun.key,
+          attempts: 5,
+          error: deadRun.error,
+          dead_at: "2026-10-31T00:12:31Z",
+        },
+      ]),
+    }),
+  );
+}
