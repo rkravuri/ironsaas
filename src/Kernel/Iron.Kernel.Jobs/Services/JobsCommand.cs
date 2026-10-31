@@ -73,8 +73,8 @@ public sealed class JobsCommand(JobConsole console, JobsCommandOptions asked) : 
 
     private async Task<int> ListAsync(CancellationToken cancellationToken)
     {
-        var jobs = await console.ListAsync(cancellationToken).ConfigureAwait(false);
-        foreach (var job in jobs.Where(j => asked.Job is not { Length: > 0 } || j.Name == asked.Job))
+        var jobs = (await console.ListAsync(cancellationToken).ConfigureAwait(false)).Where(j => asked.Job is not { Length: > 0 } || j.Name == asked.Job).ToList();
+        foreach (var job in jobs)
         {
             var last = job.LastRun is { } run ? $"{run.Status}@{Time(run.FinishedAt)}({run.DurationMs ?? 0}ms)" : "none";
             var failure = job.LastFailure is { } failed ? $" last_failure={Time(failed.FinishedAt)}:{failed.Error}" : string.Empty;

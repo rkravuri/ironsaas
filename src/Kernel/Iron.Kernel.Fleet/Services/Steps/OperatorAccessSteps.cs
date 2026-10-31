@@ -80,21 +80,44 @@ public sealed class BreakGlassOpenStep(IUnitRuntime runtime, ISecretStore secret
 /// the unit, as the owner role, with what the control plane asked on the job. Its answer, identifiers and states and never
 /// an event's data, is the step's output; a refusal fails the step with the command's reason.
 /// </summary>
-public sealed class EventsStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
+public sealed class EventsStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : UnitAnswerStep(runtime, secrets, fleetStore)
+{
+    public override string Name => StepNames.Events;
+
+    public override IReadOnlyCollection<JobKind> Kinds => [JobKind.Events];
+}
+
+/// <summary>
+/// The operator's list, start, pause, resume and re-run of a tenant's jobs (TF-121, ADR-0061): the image's <c>jobs</c>
+/// command in the unit, as the owner role. Its answer, the jobs' states and runs and never a run's log or payload, is the
+/// step's output; the unit's trail records each action in the operator's name with the reason.
+/// </summary>
+public sealed class JobsStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : UnitAnswerStep(runtime, secrets, fleetStore)
+{
+    public override string Name => StepNames.Jobs;
+
+    public override IReadOnlyCollection<JobKind> Kinds => [JobKind.Jobs];
+}
+
+/// <summary>
+/// A unit command whose answer is the step's output (ADR-0060, ADR-0061): the command is named as the step is, runs as the
+/// owner role with what the control plane put on the job, and fails the step with the command's own reason.
+/// </summary>
+public abstract class UnitAnswerStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
 {
     /// <summary>The longest answer the step keeps.</summary>
     public const int OutputMaxLength = 4000;
 
-    public string Name => StepNames.Events;
+    public abstract string Name { get; }
 
     public int Order => 1;
 
-    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Events];
+    public abstract IReadOnlyCollection<JobKind> Kinds { get; }
 
     public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(context);
-        var request = context.Request ?? throw new InvalidOperationException("An events job carries what the operator asked; this one has nothing.");
+        var request = context.Request ?? throw new InvalidOperationException($"A {Name} job carries what the operator asked; this one has nothing.");
         var environment = await UnitEnvironment.ForUnitAsync(context, secrets, fleetStore, cancellationToken).ConfigureAwait(false);
         UnitEnvironment.AddHostnames(environment, context.Tenant.Hostnames);
         var database = await secrets.ReadAsync(context.DatabaseSecretPath, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("The tenant's database secret is missing.");
@@ -104,10 +127,10 @@ public sealed class EventsStep(IUnitRuntime runtime, ISecretStore secrets, Secre
             environment[key] = value;
         }
 
-        var result = await runtime.RunCommandAsync(context.ToUnit(environment), [StepNames.Events], cancellationToken).ConfigureAwait(false);
+        var result = await runtime.RunCommandAsync(context.ToUnit(environment), [Name], cancellationToken).ConfigureAwait(false);
         if (!result.Succeeded)
         {
-            throw new InvalidOperationException($"events exited with {result.ExitCode}: {MigrateStep.Tail(result.Output)}");
+            throw new InvalidOperationException($"{Name} exited with {result.ExitCode}: {MigrateStep.Tail(result.Output)}");
         }
 
         var answer = result.Output.Trim();

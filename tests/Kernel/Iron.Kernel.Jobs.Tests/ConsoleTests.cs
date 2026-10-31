@@ -63,6 +63,55 @@ public class ConsoleTests(JobsFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0061")]
+    public async Task TheUnitsJobsCommandPausesInTheOperatorsNameListsTheStateAndRefusesWithoutAReason()
+    {
+        var tenant = await fixture.NewTenantAsync();
+        var time = new FakeTimeProvider(DateTimeOffset.UtcNow);
+
+        // As the fleet's job runs it: what the operator asked is in the unit's configuration, the answer is the output.
+        tenant.Configuration["Jobs:Command:Action"] = JobsCommand.Pause;
+        tenant.Configuration["Jobs:Command:Job"] = ProbeJobsModule.EveryMinute.Name;
+        tenant.Configuration["Jobs:Command:Operator"] = "olga@control.test";
+        var (refused, _) = await CommandAsync(tenant, time);
+        tenant.Configuration["Jobs:Command:Reason"] = "Ticket 14: the tenant's import runs tonight.";
+        var (paused, answer) = await CommandAsync(tenant, time);
+        tenant.Configuration["Jobs:Command:Action"] = JobsCommand.List;
+        tenant.Configuration["Jobs:Command:Reason"] = null;
+        var (listed, list) = await CommandAsync(tenant, time);
+        tenant.Configuration["Jobs:Command:Action"] = "delete";
+        var (unknown, _) = await CommandAsync(tenant, time);
+
+        Assert.Equal((1, 0, 0, 1), (refused, paused, listed, unknown));
+        Assert.StartsWith($"Paused {ProbeJobsModule.EveryMinute.Name}", answer, StringComparison.Ordinal);
+        Assert.StartsWith($"{ProbeJobsModule.EveryMinute.Name} paused ", list, StringComparison.Ordinal);
+        Assert.Contains("Listed: 1 job(s).", list, StringComparison.Ordinal);
+        Assert.Equal(1, await tenant.AuditCountAsync(JobsAuditEvents.JobPaused, ProbeJobsModule.EveryMinute.Name));
+        Assert.Equal("olga@control.test", await tenant.AuditDetailAsync(JobsAuditEvents.JobPaused, ProbeJobsModule.EveryMinute.Name, "operator"));
+    }
+
+    /// <summary>Runs the unit's <c>jobs</c> command with the tenant's configuration, and returns its exit code and output.</summary>
+    private static async Task<(int Code, string Output)> CommandAsync(JobsTenant tenant, TimeProvider time)
+    {
+        await using var provider = tenant.Build(time);
+        var writer = new StringWriter();
+        var original = Console.Out;
+        var originalError = Console.Error;
+        Console.SetOut(writer);
+        Console.SetError(TextWriter.Null);
+        try
+        {
+            var code = await Iron.Kernel.Data.Commands.DatabaseCommands.RunAsync(provider, [Iron.Kernel.Data.Commands.DatabaseCommands.Jobs], Cancel);
+            return (code, writer.ToString());
+        }
+        finally
+        {
+            Console.SetOut(original);
+            Console.SetError(originalError);
+        }
+    }
+
+    [Fact]
     [Proves("TF-121 AC2", "ADR-0061")]
     public async Task APausedJobSkipsItsRunsUntilResumedItsStateVisibleAndBothAudited()
     {
@@ -277,6 +326,7 @@ public class ConsoleTests(JobsFixture fixture)
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(tenant.ConnectionString);
         builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new JobsModule(), new ProbeJobsModule()]);
+        builder.Services.AddJobHandlers();
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
         var app = builder.Build();

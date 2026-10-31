@@ -8,7 +8,9 @@
 # its only plan, ADR-0059; ACTION=suite-add adds SUITE to an active tenant under PLAN, or the suite's only plan, and
 # ACTION=suite-remove removes it, both with REASON, each an update job of the fleet, ADR-0059; ACTION=events searches the
 # tenant's domain events by EVENT_TYPE, RECORD, CORRELATION or STATUS=dead, and ACTION=events-replay replays them to
-# SUBSCRIBER, by IDS or a range FROM to TO, with REASON, each a job the fleet runs in the unit, ADR-0060),
+# SUBSCRIBER, by IDS or a range FROM to TO, with REASON, each a job the fleet runs in the unit, ADR-0060; ACTION=jobs
+# lists the tenant's jobs, or the one named JOB, and ACTION=job-run, job-pause and job-resume start, pause and resume the
+# job JOB, and ACTION=job-rerun runs the run RUN again, each with REASON and each a job the fleet runs in the unit, ADR-0061),
 # as an operator (client credentials), then follows the job until it ends and prints every step with its duration.
 # A link the job handed over (the first administrator's invitation, a recovery link) is printed once: the control plane
 # gives it once, to the operator who asked, and deletes it; it is never in the job's output (ADR-0046).
@@ -37,11 +39,13 @@ subscriber="${SUBSCRIBER:-}"
 event_ids="${IDS:-}"
 from_position="${FROM:-}"
 to_position="${TO:-}"
+job_name="${JOB:-}"
+run_id="${RUN:-}"
 
-python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" "$sample_records" "$suites" "$suite" "$plan" "$event_type" "$record" "$correlation" "$status_filter" "$subscriber" "$event_ids" "$from_position" "$to_position" <<'PY'
+python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" "$sample_records" "$suites" "$suite" "$plan" "$event_type" "$record" "$correlation" "$status_filter" "$subscriber" "$event_ids" "$from_position" "$to_position" "$job_name" "$run_id" <<'PY'
 import base64, json, sys, time, urllib.error, urllib.request
 
-control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes, sample_records, suites, suite, plan, event_type, record, correlation, status_filter, subscriber, event_ids, from_position, to_position = sys.argv[1:]
+control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes, sample_records, suites, suite, plan, event_type, record, correlation, status_filter, subscriber, event_ids, from_position, to_position, job_name, run_id = sys.argv[1:]
 timeout = int(timeout)
 suites = [name.strip() for name in suites.split(",") if name.strip()]
 
@@ -121,6 +125,13 @@ elif action == "events-replay":
     ids = [value.strip() for value in event_ids.split(",") if value.strip()]
     body = {"subscriber": subscriber, "event_ids": ids or None, "from_position": int(from_position) if from_position else None, "to_position": int(to_position) if to_position else None, "reason": reason}
     status, job = call("POST", f"/api/v1/tenants/{tenant}/events/replay", body=body, token=access)
+elif action == "jobs":
+    # Every job of the tenant, or the one named; the job's output gives each one's state, runs, backlog and last failure (ADR-0061).
+    status, job = call("POST", f"/api/v1/tenants/{tenant}/jobs/list", body={"job": job_name or None}, token=access)
+elif action in ("job-run", "job-pause", "job-resume", "job-rerun"):
+    # A job started now, paused or resumed, or a run run again, with why: the unit's trail names the operator (ADR-0061).
+    body = {"action": action[len("job-"):], "job": job_name or None, "run_id": run_id or None, "reason": reason}
+    status, job = call("POST", f"/api/v1/tenants/{tenant}/jobs/act", body=body, token=access)
 elif action in ("suite-add", "suite-remove"):
     # The suite's entitlements change with the operator's reason, and the fleet's update job brings the unit along (ADR-0059).
     if action == "suite-add":

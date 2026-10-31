@@ -57,6 +57,31 @@ public sealed class OperatorEventReplayRequestValidator : AbstractValidator<Oper
     }
 }
 
+/// <summary>Which of a tenant's jobs the operator lists: one by name, or all (ADR-0061).</summary>
+public sealed record OperatorJobListRequest(string? Job);
+
+public sealed class OperatorJobListRequestValidator : AbstractValidator<OperatorJobListRequest>
+{
+    public OperatorJobListRequestValidator()
+    {
+        RuleFor(r => r.Job).MaximumLength(100);
+    }
+}
+
+/// <summary>What the operator does to a tenant's job: <c>run</c>, <c>pause</c> or <c>resume</c> a job, or <c>rerun</c> a run, with why.</summary>
+public sealed record OperatorJobActionRequest(string Action, string? Job, Guid? RunId, string Reason);
+
+public sealed class OperatorJobActionRequestValidator : AbstractValidator<OperatorJobActionRequest>
+{
+    public OperatorJobActionRequestValidator()
+    {
+        RuleFor(r => r.Action).Must(OperatorJobs.Actions.Contains).WithMessage($"Name one of {string.Join(", ", OperatorJobs.Actions)}.");
+        RuleFor(r => r.Job).NotEmpty().MaximumLength(100).When(r => r.Action != OperatorJobs.Rerun);
+        RuleFor(r => r.RunId).NotNull().When(r => r.Action == OperatorJobs.Rerun);
+        RuleFor(r => r.Reason).NotEmpty().WithMessage("Say why: both audit trails keep it.").MaximumLength(500);
+    }
+}
+
 /// <summary>Why, under which ticket, and for how long an operator needs emergency access to a tenant.</summary>
 public sealed record BreakGlassRequest(string Reason, string Ticket, int? Minutes);
 
@@ -175,6 +200,8 @@ internal static class OperatorAccessEndpoints
         tenants.MapPost("/{slug}/impersonation", ImpersonateAsync).RequirePermission(TenancyPermissions.ImpersonationStart).RequireRecentAuthentication().Validate<OperatorImpersonationRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ImpersonateInTenant").WithSummary("Ask the fleet for a one-time link to sign in as a person of a tenant that allows it, with a reason; the provisioning report gives it once to you.");
         tenants.MapPost("/{slug}/events/search", SearchEventsAsync).RequirePermission(TenancyPermissions.EventsManage).Validate<OperatorEventSearchRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("SearchTenantEvents").WithSummary("Ask the fleet to search a tenant's domain events by type, record or correlation id; the job's output lists them with their subscribers' states.");
         tenants.MapPost("/{slug}/events/replay", ReplayEventsAsync).RequirePermission(TenancyPermissions.EventsManage).RequireRecentAuthentication().Validate<OperatorEventReplayRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ReplayTenantEvents").WithSummary("Ask the fleet to replay a tenant's events to one subscriber, with a reason both audit trails keep; handled events stay handled.");
+        tenants.MapPost("/{slug}/jobs/list", ListJobsAsync).RequirePermission(TenancyPermissions.JobsManage).Validate<OperatorJobListRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ListTenantJobs").WithSummary("Ask the fleet for a tenant's jobs: each one's state, schedule, last and next runs, backlog and last failure.");
+        tenants.MapPost("/{slug}/jobs/act", ActOnJobAsync).RequirePermission(TenancyPermissions.JobsManage).RequireRecentAuthentication().Validate<OperatorJobActionRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ActOnTenantJob").WithSummary("Ask the fleet to start, pause or resume a tenant's job, or run a run again, with a reason both audit trails keep.");
         tenants.MapPost("/{slug}/break-glass", RequestAsync).RequirePermission(TenancyPermissions.BreakGlassRequest).Validate<BreakGlassRequest>().Produces<BreakGlassResponse>(StatusCodes.Status201Created).WithName("RequestBreakGlass").WithSummary("Ask for emergency access to a tenant, with a reason, a ticket and a duration; a second operator approves within 30 minutes.");
 
         var breakGlass = endpoints.MapApiGroup("break-glass");
@@ -203,6 +230,18 @@ internal static class OperatorAccessEndpoints
     private static async Task<IResult> ReplayEventsAsync(string slug, OperatorEventReplayRequest request, HttpContext http, OperatorEvents events, CancellationToken cancellationToken)
     {
         var result = await events.ReplayAsync(slug, new OperatorEventReplay(request.Subscriber, request.EventIds, request.FromPosition, request.ToPosition, request.Reason), cancellationToken);
+        return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
+    }
+
+    private static async Task<IResult> ListJobsAsync(string slug, OperatorJobListRequest request, HttpContext http, OperatorJobs jobs, CancellationToken cancellationToken)
+    {
+        var result = await jobs.ListAsync(slug, request.Job, cancellationToken);
+        return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
+    }
+
+    private static async Task<IResult> ActOnJobAsync(string slug, OperatorJobActionRequest request, HttpContext http, OperatorJobs jobs, CancellationToken cancellationToken)
+    {
+        var result = await jobs.ActAsync(slug, new OperatorJobAction(request.Action, request.Job, request.RunId, request.Reason), cancellationToken);
         return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
     }
 
