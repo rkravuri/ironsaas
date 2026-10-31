@@ -34,6 +34,9 @@ public enum JobKind
 
     /// <summary>The operator's search or replay of a tenant's domain events, with a reason (TF-112, ADR-0060): the unit's <c>events</c>, whose answer is the job's output.</summary>
     Events,
+
+    /// <summary>The operator's list, start, pause, resume or re-run of a tenant's jobs, with a reason (TF-121, ADR-0061): the unit's <c>jobs</c>, whose answer is the job's output.</summary>
+    Jobs,
 }
 
 public static class JobKinds
@@ -42,7 +45,7 @@ public static class JobKinds
     /// The operator's commands in an active tenant's unit (ADR-0046, ADR-0049): they change nothing of the tenant's status,
     /// and each runs one image command that hands its result over through the store.
     /// </summary>
-    public static bool IsOperatorCommand(this JobKind kind) => kind is JobKind.Recover or JobKind.Impersonate or JobKind.BreakGlassOpen or JobKind.BreakGlassClose or JobKind.Events;
+    public static bool IsOperatorCommand(this JobKind kind) => kind is JobKind.Recover or JobKind.Impersonate or JobKind.BreakGlassOpen or JobKind.BreakGlassClose or JobKind.Events or JobKind.Jobs;
 }
 
 /// <summary>

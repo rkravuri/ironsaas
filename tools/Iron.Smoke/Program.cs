@@ -505,6 +505,11 @@ await report.StepAsync("suites", ["TF-244 AC1", "TF-244 AC2", "ADR-0059"], () =>
 var eventSteps = new EventSteps(api, options, AdministratorAsync, run);
 await report.StepAsync("events", ["TF-085 AC1", "ADR-0060"], () => eventSteps.SampleEventHandledAsync(ct));
 
+// S4 T2's step (ADR-0061): the administrator starts the sample module's job through the job console with a reason, the
+// unit's worker runs it, and its run is found with its log and as the job's last run.
+var jobSteps = new JobSteps(api, options, AdministratorAsync, run);
+await report.StepAsync("jobs", ["ADR-0061"], () => jobSteps.SampleJobRunsAsync(ct));
+
 await report.WriteAsync();
 return report.Passed ? 0 : 1;
 

@@ -185,6 +185,27 @@ public class RuleEvaluationTests(MonitoringFixture fixture)
         Assert.All(alerts, a => Assert.Equal(1, a.Count));
     }
 
+    [Fact]
+    [Proves("TF-123 AC2", "TF-123 AC3", "ADR-0061")]
+    public async Task AJobsDeadLetterAndAMissedScheduleEachRaiseAnAlertAtOnceAndTenDeadLettersInAnHourRaiseAnother()
+    {
+        var tenant = await fixture.NewTenantAsync();
+        var (time, start) = Clock();
+        await tenant.WriteAsync(time, start, new AuditEvent("jobs.run_dead_lettered", AuditOutcome.Failure, Guid.Empty, "probe.flaky"));
+        await tenant.WriteAsync(time, start, new AuditEvent("jobs.schedule_missed", AuditOutcome.Failure, Guid.Empty, "audit.retention"));
+        for (var i = 0; i < 9; i++)
+        {
+            await tenant.WriteAsync(time, start.AddMinutes(1), new AuditEvent(i % 2 == 0 ? "jobs.run_dead_lettered" : "events.delivery_dead_lettered", AuditOutcome.Failure, Guid.Empty, $"subscriber.{i}"));
+        }
+
+        await tenant.EvaluateAsync(time, start.AddMinutes(2));
+
+        Assert.Equal("probe.flaky", Assert.Single(await AlertsAsync(tenant, "job_dead_letters"), a => a.GroupValue == "probe.flaky").GroupValue);
+        Assert.Equal("audit.retention", Assert.Single(await AlertsAsync(tenant, "job_schedule_missed")).GroupValue);
+        var growing = Assert.Single(await AlertsAsync(tenant, "dead_letters_growing"));
+        Assert.Equal(10, growing.Count);
+    }
+
     /// <summary>Denials of one principal, one after another from <paramref name="from"/>, on a clock of their own.</summary>
     internal static async Task DenialsAsync(MonitoredTenant tenant, Guid principal, DateTimeOffset from, int count, TimeSpan apart)
     {

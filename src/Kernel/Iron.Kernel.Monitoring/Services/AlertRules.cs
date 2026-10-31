@@ -108,6 +108,18 @@ public static class AlertRules
         new("event_dead_letters", "A domain event parked as a dead letter",
             [new("events.delivery_dead_lettered")], AuditGrouping.Target, 1, 10, 60, AlertSeverity.High, RuleScopes.Unit, Runbook("dead-lettered-events")),
 
+        // A job's run that failed as many times as its job is retried (TF-123 AC2, ADR-0061): one alert per job's burst.
+        new("job_dead_letters", "A job's run parked as a dead letter",
+            [new("jobs.run_dead_lettered")], AuditGrouping.Target, 1, 10, 60, AlertSeverity.High, RuleScopes.Unit, Runbook("dead-lettered-jobs")),
+
+        // A scheduled job that ran more than one interval late, passing occurrences over (TF-123 AC3, ADR-0061).
+        new("job_schedule_missed", "A job missed its schedule",
+            [new("jobs.schedule_missed")], AuditGrouping.Target, 1, 10, 60, AlertSeverity.High, RuleScopes.Unit, Runbook("missed-job-schedules")),
+
+        // Dead letters of jobs and events growing across the unit (ADR-0061): something fails more than one job or subscriber.
+        new("dead_letters_growing", "Dead letters of jobs and events growing",
+            [new("jobs.run_dead_lettered"), new("events.delivery_dead_lettered")], AuditGrouping.Everything, 10, 60, 60, AlertSeverity.High, RuleScopes.Unit, Runbook("dead-lettered-jobs")),
+
         // The control plane's own trail: what operators do, and what the fleet finds.
         new("operator_access_changes", "A change of the operators' critical access",
             [.. RoleEvents.Select(type => new AuditEventMatch(type, AuditOutcome.Success, AuditDetails.Critical, AuditDetails.True)), new("tenancy.key_rotation_requested"), new("tenancy.audit_restore_accepted")],

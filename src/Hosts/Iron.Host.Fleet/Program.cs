@@ -58,7 +58,7 @@ builder.Services.AddIronAuditVerification();
 
 // The fleet is the control plane's worker, so it delivers the control plane's own events (ADR-0060); it has no files to
 // archive them to.
-builder.Services.AddEventDispatch(archive: false);
+builder.Services.AddEventDispatch();
 
 var app = builder.Build();
 

@@ -66,8 +66,8 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                         .HasColumnName("kind");
 
                     b.Property<string>("Output")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
                         .HasColumnName("output");
 
                     b.Property<string>("Reason")
@@ -180,8 +180,8 @@ namespace Iron.Kernel.Fleet.Data.Migrations
                         .HasColumnName("order");
 
                     b.Property<string>("Output")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
                         .HasColumnName("output");
 
                     b.Property<DateTimeOffset?>("StartedAt")

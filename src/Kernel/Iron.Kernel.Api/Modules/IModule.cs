@@ -70,6 +70,13 @@ public interface IModule
     /// </summary>
     IReadOnlyList<EventSubscription> Subscriptions => [];
 
+    /// <summary>
+    /// The module's jobs (TF-120, ADR-0061), each with its schedule or trigger, scope, timeout, retry policy, concurrency,
+    /// priority class and owner. AddModules registers each handler; the worker runs a unit's jobs once per interval, and
+    /// every process its own jobs of <see cref="JobScope.EachProcess"/>.
+    /// </summary>
+    IReadOnlyList<JobDefinition> Jobs => [];
+
     void AddServices(IServiceCollection services, IConfiguration configuration);
 
     void MapEndpoints(IEndpointRouteBuilder endpoints);

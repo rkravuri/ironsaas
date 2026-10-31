@@ -112,44 +112,19 @@ public sealed class ReviewEscalationPass(
 }
 
 /// <summary>
-/// Runs the escalation pass in the unit's worker (TF-038 AC3): a minute after the worker starts, so a restart catches up,
-/// then once a day. A failed pass is logged and tried again the next day; nothing is lost, since the pass looks at the
-/// campaigns as they are.
+/// <c>authz.escalate_reviews</c> (TF-038 AC3, TF-124, ADR-0061): the escalation of late access reviews, a minute after a
+/// unit first schedules it, then once a day. Nothing is lost by a failed run, retried by its policy, since the pass looks
+/// at the campaigns as they are; a repeated run escalates nothing twice.
 /// </summary>
-public sealed class ReviewEscalationWorker(IServiceScopeFactory scopes, TimeProvider time, ILogger<ReviewEscalationWorker> logger) : BackgroundService
+public sealed class ReviewEscalationJob(ReviewEscalationPass pass) : IJob
 {
-    public static readonly TimeSpan FirstRunAfter = TimeSpan.FromMinutes(1);
+    public static readonly JobDefinition Definition = JobDefinition.Create<ReviewEscalationJob>(
+        "authz.escalate_reviews", "Escalates the access reviews whose reviewers are late.", "Platform team",
+        JobSchedule.Interval(TimeSpan.FromDays(1), firstAfter: TimeSpan.FromMinutes(1)), PriorityClass.Normal, TimeSpan.FromHours(1));
 
-    public static readonly TimeSpan Interval = TimeSpan.FromDays(1);
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
     {
-        try
-        {
-            await Task.Delay(FirstRunAfter, time, stoppingToken).ConfigureAwait(false);
-            using var timer = new PeriodicTimer(Interval, time);
-            do
-            {
-                await RunOnceAsync(stoppingToken).ConfigureAwait(false);
-            }
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
-        }
-        catch (OperationCanceledException)
-        {
-            // Stopping.
-        }
-    }
-
-    private async Task RunOnceAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await using var scope = scopes.CreateAsyncScope();
-            await scope.ServiceProvider.GetRequiredService<ReviewEscalationPass>().RunAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            logger.LogError(exception, "The access review escalation pass failed; it runs again in {Interval}.", Interval);
-        }
+        await pass.RunAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
     }
 }

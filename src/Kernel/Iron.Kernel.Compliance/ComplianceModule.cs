@@ -28,6 +28,8 @@ public sealed class ComplianceModule : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => ComplianceAuditEvents.Types;
 
+    public IReadOnlyList<JobDefinition> Jobs => [EvidencePackJob.Definition];
+
     public IReadOnlyList<SettingDefinition> Settings => ComplianceSettings.All;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
@@ -61,16 +63,5 @@ public sealed class ComplianceModule : IModule
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         ComplianceEndpoints.Map(endpoints);
-    }
-}
-
-public static class EvidencePackHosting
-{
-    /// <summary>The pass that makes the evidence packs people asked for (ADR-0052), for the unit's worker host only.</summary>
-    public static IServiceCollection AddEvidencePacks(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddHostedService<EvidencePackWorker>();
-        return services;
     }
 }

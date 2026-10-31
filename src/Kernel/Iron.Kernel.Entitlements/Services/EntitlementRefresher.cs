@@ -22,7 +22,7 @@ public sealed class EntitlementRefresher(
     EntitlementsMetrics metrics,
     TimeProvider time,
     ILogger<EntitlementRefresher> logger,
-    TenantContext? tenant = null) : BackgroundService
+    TenantContext? tenant = null) : IHostedService
 {
     /// <summary>How often a confirmation that changed nothing is written to the database: the age a restart sees is at most this wrong.</summary>
     public static readonly TimeSpan PersistEvery = TimeSpan.FromMinutes(10);
@@ -31,7 +31,7 @@ public sealed class EntitlementRefresher(
 
     private DateTimeOffset? _alertedAt;
 
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         using var first = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         first.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, options.StartTimeoutSeconds)));
@@ -45,24 +45,10 @@ public sealed class EntitlementRefresher(
             logger.LogWarning("The first read of the entitlements took longer than {Seconds} s; the unit starts with what it has and reads again in {Interval}.", options.StartTimeoutSeconds, options.RefreshInterval);
         }
 
-        await base.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(options.RefreshInterval, time);
-        try
-        {
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
-            {
-                await RefreshOnceAsync(stoppingToken).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Stopping.
-        }
-    }
+    /// <summary>The reads after the first are the job <c>entitlements.refresh_cache</c>, which every process runs for itself (ADR-0061).</summary>
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>The last known answer from the database, when this process has none fresher. A failure is logged, never thrown.</summary>
     public async Task RestoreAsync(CancellationToken cancellationToken)
@@ -165,5 +151,25 @@ public sealed class EntitlementRefresher(
             // The database did not answer; the answer in memory stands, and the next read keeps it again.
             logger.LogWarning("The last known entitlements could not be kept in the database: {Error}", exception.Message);
         }
+    }
+}
+
+/// <summary>
+/// <c>entitlements.refresh_cache</c> (TF-043, TF-124, ADR-0034, ADR-0061): every <c>Entitlements:RefreshSeconds</c> (30 s),
+/// each process reads the tenant's entitlements into its own cache, so it runs in each process. The first read is the
+/// refresher's, before the host serves.
+/// </summary>
+public sealed class EntitlementsRefreshJob(EntitlementRefresher refresher) : IJob
+{
+    public static readonly JobDefinition Definition = JobDefinition.Create<EntitlementsRefreshJob>(
+        "entitlements.refresh_cache", "Reads the tenant's entitlements into this process's cache.", "Platform team",
+        JobSchedule.Interval(TimeSpan.FromSeconds(30), firstAfter: TimeSpan.FromSeconds(30), configurationKey: $"{EntitlementsOptions.SectionName}:RefreshSeconds", longestConfigured: TimeSpan.FromSeconds(60)),
+        PriorityClass.Normal, TimeSpan.FromSeconds(30), new RetryPolicy(1, TimeSpan.Zero, TimeSpan.Zero), JobScope.EachProcess);
+
+    /// <summary>A failed read keeps what the process knows and raises its own alert; the next interval reads again.</summary>
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+    {
+        await refresher.RefreshOnceAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
     }
 }

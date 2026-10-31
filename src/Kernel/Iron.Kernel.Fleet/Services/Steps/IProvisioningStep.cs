@@ -67,6 +67,10 @@ public sealed class ProvisioningContext(TenantRecord tenant, FleetOptions option
 
     public string ConnectionString(string role, string password) =>
         $"Host={Options.Database.UnitHost};Port={Options.Database.UnitPort};Database={Tenant.DatabaseName};Username={role};Password={password}";
+
+    /// <summary>The unit's runtime connection, as the app role, with each process's pool inside the role's limit (TF-122, ADR-0061).</summary>
+    public string AppConnectionString(string password) =>
+        $"{ConnectionString(AppRole, password)};Maximum Pool Size={SizeClasses.LimitsOf(Tenant.SizeClass).ProcessPoolSize}";
 }
 
 /// <summary>One of the provisioning steps (TF-002). Steps are idempotent: running one again after a failure is safe.</summary>
@@ -100,4 +104,5 @@ public static class StepNames
     public const string BreakGlassClose = "break-glass-close";
     public const string ValidationPack = "validation-pack";
     public const string Events = "events";
+    public const string Jobs = "jobs";
 }

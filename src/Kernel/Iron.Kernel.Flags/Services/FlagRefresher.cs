@@ -22,7 +22,7 @@ public sealed class FlagRefresher(
     FlagsOptions options,
     FlagsMetrics metrics,
     TimeProvider time,
-    ILogger<FlagRefresher> logger) : BackgroundService
+    ILogger<FlagRefresher> logger) : IHostedService
 {
     /// <summary>How often a confirmation that changed nothing is written to the database.</summary>
     public static readonly TimeSpan PersistEvery = TimeSpan.FromMinutes(10);
@@ -32,7 +32,7 @@ public sealed class FlagRefresher(
     private DateTimeOffset? _alertedAt;
     private DateTimeOffset? _persistedAt;
 
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         // The provider first: a misconfigured one stops the host here, with its message (TF-056 AC2).
         services.GetRequiredService<OpenFeatureBinding>();
@@ -49,24 +49,10 @@ public sealed class FlagRefresher(
             logger.LogWarning("The first read of the flag rules took longer than {Seconds} s; the unit starts with what it has and reads again in {Interval}.", options.StartTimeoutSeconds, options.RefreshInterval);
         }
 
-        await base.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(options.RefreshInterval, time);
-        try
-        {
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
-            {
-                await RefreshOnceAsync(stoppingToken).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Stopping.
-        }
-    }
+    /// <summary>The reads after the first are the job <c>flags.refresh_cache</c>, which every process runs for itself (ADR-0061).</summary>
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>The last known rules from the database, when this process has none fresher. A failure is logged, never thrown.</summary>
     public async Task RestoreAsync(CancellationToken cancellationToken)
@@ -174,5 +160,25 @@ public sealed class FlagRefresher(
             // The database did not answer; the rules in memory stand, and the next read keeps them again.
             logger.LogWarning("The last known flag rules could not be kept in the database: {Error}", exception.Message);
         }
+    }
+}
+
+/// <summary>
+/// <c>flags.refresh_cache</c> (TF-124, ADR-0035, ADR-0061): every <c>Flags:RefreshSeconds</c> (30 s), each process reads
+/// the flag rules into its own cache, which no other process can do for it, so it runs in each process. The first read is
+/// the refresher's, before the host serves.
+/// </summary>
+public sealed class FlagRefreshJob(FlagRefresher refresher) : IJob
+{
+    public static readonly JobDefinition Definition = JobDefinition.Create<FlagRefreshJob>(
+        "flags.refresh_cache", "Reads the flag rules into this process's cache.", "Platform team",
+        JobSchedule.Interval(TimeSpan.FromSeconds(30), firstAfter: TimeSpan.FromSeconds(30), configurationKey: $"{FlagsOptions.SectionName}:RefreshSeconds", longestConfigured: TimeSpan.FromSeconds(60)),
+        PriorityClass.Normal, TimeSpan.FromSeconds(30), new RetryPolicy(1, TimeSpan.Zero, TimeSpan.Zero), JobScope.EachProcess);
+
+    /// <summary>A failed read keeps what the process knows and raises its own alert; the next interval reads again.</summary>
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+    {
+        await refresher.RefreshOnceAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
     }
 }

@@ -94,6 +94,9 @@ public static class TenancyPermissions
     /// <summary>Searching a tenant's domain events and replaying them to a subscriber, with a reason, through the fleet (TF-112, ADR-0060).</summary>
     public static readonly Permission EventsManage = new("tenancy.events.manage", "Search a tenant's domain events and replay them to a subscriber, with a reason", Risk.High);
 
+    /// <summary>Listing a tenant's jobs, and starting, pausing, resuming or re-running them with a reason, through the fleet (TF-121, ADR-0061).</summary>
+    public static readonly Permission JobsManage = new("tenancy.jobs.manage", "List a tenant's jobs, and start, pause, resume or run them again, with a reason", Risk.High);
+
     /// <summary>Asking for emergency access to a tenant, and ending it (TF-026): it needs a second operator to approve.</summary>
     public static readonly Permission BreakGlassRequest = new("tenancy.break_glass.request", "Ask for emergency access to a tenant with a reason and a ticket, and end it", Risk.High);
 
@@ -136,7 +139,7 @@ public static class TenancyPermissions
     /// <summary>Running an incident: declaring it, noting its timeline, recording its notices, closing it and recording its review.</summary>
     public static readonly Permission IncidentsManage = new("tenancy.incidents.manage", "Declare and run incidents: their timeline, notices to tenants, close and review", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, SuitesManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, EventsManage, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport, AlertCopiesAppend, IncidentsRead, IncidentsManage];
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, SuitesManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, EventsManage, JobsManage, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport, AlertCopiesAppend, IncidentsRead, IncidentsManage];
 }
 
 public static class TenancyErrors
@@ -202,6 +205,9 @@ public static class TenancyErrors
     /// <summary>The operator's impersonation needs a reason (TF-025 AC1).</summary>
     public const string ImpersonationReasonRequired = "tenancy.impersonation.reason_required";
     public const string EventsReasonRequired = "tenancy.events.reason_required";
+
+    /// <summary>The operator's start, pause, resume and re-run of a tenant's job need a reason (TF-121 AC2).</summary>
+    public const string JobsReasonRequired = "tenancy.jobs.reason_required";
 
     public const string BreakGlassNotFound = "tenancy.break_glass.not_found";
 
@@ -282,6 +288,12 @@ public static class TenancyAuditEvents
 
     /// <summary>The operator asked to replay a tenant's events to a subscriber, with a reason (ADR-0060); the unit audits its side.</summary>
     public const string EventsReplayRequested = "tenancy.events_replay_requested";
+
+    /// <summary>The operator listed a tenant's jobs (ADR-0061); the job's output is the answer.</summary>
+    public const string JobsListed = "tenancy.jobs_listed";
+
+    /// <summary>The operator asked to start, pause, resume or re-run a tenant's job, with a reason (TF-121 AC2); the unit audits its side.</summary>
+    public const string JobsActionRequested = "tenancy.jobs_action_requested";
 
     public const string BreakGlassRequested = "tenancy.break_glass_requested";
 
@@ -369,6 +381,8 @@ public static class TenancyAuditEvents
         new(ImpersonationRequested, "Sign-in-as requested"),
         new(EventsSearched, "A tenant's events searched"),
         new AuditEventType(EventsReplayRequested, "A tenant's events replayed").AsAdministrative(),
+        new(JobsListed, "A tenant's jobs listed"),
+        new AuditEventType(JobsActionRequested, "A tenant's job started, paused, resumed or run again").AsAdministrative(),
         new(BreakGlassRequested, "Break-glass access requested"),
         new(BreakGlassApproved, "Break-glass access approved"),
         new(BreakGlassExpired, "Break-glass request expired"),

@@ -1,11 +1,11 @@
 # Developer guide
 
-How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission, its limits and its checks, an audit event, a domain event and its subscriber, an encrypted or tracked field, a signature, a save that waits for a second administrator, a licence, a flag, a setting, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
+How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission, its limits and its checks, an audit event, a domain event and its subscriber, a job, an encrypted or tracked field, a signature, a save that waits for a second administrator, a licence, a flag, a setting, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
 
 The sections, in order:
 
 - The repository: Working on the repository, Layout, Rules the build enforces, Write an ADR, Requirements.
-- A module and its code: Add a module, Add a business module or a suite's module (with a module in a suite, installed per tenant), Hosts and unit commands, Writing code: the kernel vocabulary's conventions, Writing an entity and a module context, A table and its migration, A change and its audit event in one transaction, Publishing and subscribing to events, Writing an endpoint, An endpoint with a permission, Limits on what an endpoint takes, Who is acting, An API client, A unit's configuration, Observability and security in a host.
+- A module and its code: Add a module, Add a business module or a suite's module (with a module in a suite, installed per tenant), Hosts and unit commands, Writing code: the kernel vocabulary's conventions, Writing an entity and a module context, A table and its migration, A change and its audit event in one transaction, Publishing and subscribing to events, Writing a job, Writing an endpoint, An endpoint with a permission, Limits on what an endpoint takes, Who is acting, An API client, A unit's configuration, Observability and security in a host.
 - Who may do what: Where things are checked, Scoping an endpoint to a record, Record policies, Visibility tags on a record type, Granting access, Delegating and reviewing access, Working across units, Explaining access and conflicts.
 - Records under regulation: An encrypted field, and one found by its exact value; A record type under retention; A record's history; Signing a record; A save that waits for a second administrator; Contributing to an evidence pack.
 - What a tenant has: Licensing a module or feature, Feature flags and kill switches, Declaring a setting.
@@ -230,6 +230,68 @@ The subscription's name is `module.what_it_does`; it is the inbox's key, so it n
 **Test it** on the module's fixture: publish in a unit of work, run `EventDispatcher.RunOnceAsync` (the worker's pass) until it does no work, and check the handler's change. `tests/Kernel/Iron.Kernel.Events.Tests` shows the patterns: a rollback, a crash between commit and dispatch, a repeated delivery, order per record, a failing subscriber. A host that runs a publishing module runs the Events module too, before the modules that publish (`UnitModules`, the control plane's composition, and a test host's list); only the unit's worker and the fleet call `AddEventDispatch()`.
 
 **Inspect and replay.** The console's Domain events page (`/console/events`, `events.events.read`) searches by event, record, correlation id and day, shows each subscriber's state and the dead letters; with `events.events.replay` and a recent sign-in, and a reason, an administrator replays an event, or a range of positions, to one subscriber. The operator does the same with `make events TENANT=x` and `make events-replay`. The runbook's "Dead-lettered events" section says what to do with one.
+
+## Writing a job (TF-120 to TF-124, ADR-0061)
+
+Background work is a job: declared in its module, run by the unit's worker, coordinated through the unit's database so
+any number of workers run each occurrence once, retried, dead-lettered and alerted, and shown on the console's Jobs page.
+Never start a hosted service or a timer for a tenant's work.
+
+**Declare it** beside its handler, and list it in `IModule.Jobs`:
+
+```csharp
+public sealed class TokenCleanupJob(IdentityDbContext context, TimeProvider time) : IJob
+{
+    public static readonly JobDefinition Definition = JobDefinition.Create<TokenCleanupJob>(
+        "identity.token_cleanup", "Removes expired sign-in challenges and links, and idle counters of failed sign-ins.", "Platform security",
+        JobSchedule.Interval(TimeSpan.FromHours(1), firstAfter: TimeSpan.FromMinutes(5)), PriorityClass.Bulk, TimeSpan.FromMinutes(10));
+
+    public async Task<Result> RunAsync(JobContext run, CancellationToken cancellationToken) { ... }
+}
+```
+
+The name is `module.what_it_does` and never changes once deployed: the runs, the console and the alerts key on it. The
+schedule is `JobSchedule.Interval(every, firstAfter)` (a daily job need not run at every start),
+`JobSchedule.CronExpression("0 2 * * *")` in the tenant's time zone (the setting `jobs.time_zone`), or
+`JobSchedule.Explicit` for a job that runs only when started. The class is `Interactive` (a person waits for it),
+`Normal` (housekeeping) or `Bulk` (exports, imports, sweeps); the runner takes interactive work first, and a class that
+is not defined is refused where the job is declared. The timeout is what one run may take; the retry policy defaults to
+five attempts, 10 seconds doubling to 10 minutes with jitter, then a dead letter; `maxParallel` is how many runs may run
+at once. `make catalogue` lists the job under its module's suite, and the host test keeps the file equal to the code.
+
+**Make it idempotent.** A run may run twice: a retry after a timeout, a worker that died and whose run another took back,
+a person who runs a dead letter again. Write it so the second run changes nothing the first did: delete by a condition,
+not by a list read earlier; upsert, or check what is there before adding; work in batches and mark each batch done in
+the same transaction as its work; write outside the database (a file, a call) under a key that makes a repeat the same
+write. A run's key makes the run unique: a scheduled run's key is its occurrence, and a run you start gives its own:
+
+```csharp
+await starter.StartAsync(ExportJob.Definition, $"export:{request.Id:N}", payload, cancellationToken);
+```
+
+Inside a unit of work the run commits with the change that asked for it, so a subscription to a domain event that starts
+a job starts it once per event (key it by the event's id). A run started by a request keeps the request's trace.
+
+**Answer, do not throw, for what you expect.** Return `Result.Success()`, or a failure with an error code, which the run
+records and retries; an exception is retried the same way and logged with its stack. `run.Log(line)` writes the run's
+log, which the console shows with a failure: what the run did, counts and identifiers, never a secret or a person's data.
+
+**Work that passes every few seconds** is a term job: one run a minute whose handler calls
+`JobLoop.RunAsync(run, term, every, time, pass, cancellationToken)`, so the work keeps its latency without a run row for
+every pass. **Work each process keeps for itself**, a cache, is `scope: JobScope.EachProcess` with an interval: every API
+and worker process runs it, and nothing is recorded.
+
+**A suite's job** is declared in the suite's module; a unit that does not run the suite never declares it, and a
+removed suite's queued runs are held until it is added again.
+
+**Test it** on the module's fixture by running the handler, or the runner: `tests/Kernel/Iron.Kernel.Jobs.Tests` shows two
+workers, a timeout, a retry with the effect of one run, a crash recovered, priorities, a suspended tenant and a missed
+schedule. A test host that ticks the runner calls `AddJobHandlers()`; only the unit's worker calls `AddJobRunner()`.
+
+**See and steer it.** The console's Jobs page (`/console/jobs`, `jobs.jobs.read`) shows every job's schedule, state,
+next and last runs, durations, last failure with its log and backlog; with `jobs.jobs.manage`, a recent sign-in and a
+reason, an administrator pauses, resumes, starts it now or runs a dead letter again. The Dead letters page lists those of
+jobs and events together. The operator does the same with `make jobs TENANT=x` and its siblings (`local-stack.md`).
 
 ## Writing an endpoint (ADR-0009)
 

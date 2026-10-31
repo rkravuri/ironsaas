@@ -159,7 +159,9 @@
       "securityAlerts": "Security alerts",
       "alertRules": "Alert rules",
       "events": "Domain events",
-      "visibility": "Content visibility"
+      "visibility": "Content visibility",
+      "jobs": "Jobs",
+      "deadLetters": "Dead letters"
     },
     "audit": {
       "title": "Audit",
@@ -1332,7 +1334,8 @@
       "changes": "Four-eyes approval",
       "protection": "Protection of the sign-in and the API",
       "keys": "Keys",
-      "events": "Domain events"
+      "events": "Domain events",
+      "jobs": "Jobs"
     },
     "names": {
       "identity_session_idle_minutes": "A session ends without activity after",
@@ -1356,7 +1359,9 @@
       "protection_limits_api_per_minute": "Calls to the API by one person or client",
       "protection_limits_exports_per_hour": "Exports by one person or client",
       "keys_rotation_data_days": "The data and index keys rotate every",
-      "events_retention_days": "Handled events stay searchable for"
+      "events_retention_days": "Handled events stay searchable for",
+      "jobs_time_zone": "Scheduled jobs run in the time zone",
+      "jobs_history_days": "Finished job runs stay listed for"
     },
     "noAreas": "None: every change applies at once",
     "amounts": {
@@ -1379,7 +1384,9 @@
       "keys_rotation_data_days_one": "{{count}} day",
       "keys_rotation_data_days_other": "{{count}} days",
       "events_retention_days_one": "{{count}} day",
-      "events_retention_days_other": "{{count}} days"
+      "events_retention_days_other": "{{count}} days",
+      "jobs_history_days_one": "{{count}} day",
+      "jobs_history_days_other": "{{count}} days"
     },
     "choices": {
       "shell_colour_scheme": {
@@ -3378,6 +3385,174 @@
       "title": "The suite's features",
       "description": "The features the suite's modules offer, each with what applies now and why.",
       "empty": "The suite has no features of its own yet"
+    }
+  },
+  "jobs": {
+    "title": "Jobs",
+    "description": "The work your organisation's modules do in the background, such as sealing the audit trail, handing events on and removing what has expired: when each runs, how it went, and what waits.",
+    "sectionTitle": "Every job",
+    "sectionDescription": "Interactive work goes first, then housekeeping, then bulk work. A job that fails is tried again with a growing wait, then parked as a dead letter with an alert.",
+    "caption": "The jobs of your organisation, with their schedules, states, last runs and backlog",
+    "detailTitle": "The job",
+    "choose": "Choose a job to see its runs, its last failure and its log.",
+    "runsGridLabel": "Runs of {{name}}",
+    "openNamed": "Open {{name}}",
+    "suite": "Part of the suite {{suite}}",
+    "nextRun": "Next run {{at}}",
+    "noNextRun": "Runs when started",
+    "eachProcess": "Runs in each process",
+    "lastRunAt": "{{at}}, {{duration}}",
+    "notRunYet": "Not run yet",
+    "deadLetters_one": "{{count}} dead letter",
+    "deadLetters_other": "{{count}} dead letters",
+    "columns": {
+      "job": "Job",
+      "state": "State",
+      "lastRun": "Last run",
+      "backlog": "Backlog",
+      "scheduledFor": "Scheduled for",
+      "status": "Status",
+      "attempts": "Attempts",
+      "duration": "Took",
+      "key": "Run key",
+      "error": "Error"
+    },
+    "schedule": {
+      "every": "Every {{interval}}",
+      "cron": "At the times {{expression}}, in your organisation's time zone",
+      "whenStarted": "When started"
+    },
+    "priorities": {
+      "interactive": "Interactive",
+      "normal": "Normal",
+      "bulk": "Bulk"
+    },
+    "states": {
+      "active": "Active",
+      "paused": "Paused",
+      "held": "Held: suite removed",
+      "each_process": "In each process"
+    },
+    "runStatuses": {
+      "queued": "Waiting",
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "dead": "Dead letter",
+      "skipped": "Skipped",
+      "held": "Held: suite removed"
+    },
+    "duration": {
+      "ms_one": "{{count}} millisecond",
+      "ms_other": "{{count}} milliseconds",
+      "seconds_one": "{{count}} second",
+      "seconds_other": "{{count}} seconds",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours"
+    },
+    "detail": {
+      "owner": "Owner",
+      "schedule": "Schedule",
+      "priority": "Priority class",
+      "timeout": "A run may take",
+      "attempts": "Attempts before a dead letter",
+      "parallel": "Runs at once",
+      "uniqueBy": "A run is unique by",
+      "typical": "Usually takes",
+      "none": "Not known yet",
+      "pausedSince": "Paused since {{at}}: {{reason}}",
+      "held": "Its suite is no longer in your subscription: it runs again when the suite is added.",
+      "lastFailure": "Last failure, {{at}}",
+      "runs": "Runs",
+      "eachProcessRuns": "Each process runs this job for itself, so it has no runs to list. A failure is in the process's log.",
+      "run": "Run scheduled for {{at}}",
+      "ran": "Started {{started}}, took {{duration}}, attempt {{attempts}}.",
+      "notStarted": "Not started: due {{due}}.",
+      "startedBecause": "Started by hand: {{reason}}",
+      "noLog": "This run wrote nothing to its log."
+    },
+    "actions": {
+      "reason": "Reason",
+      "reasonHint": "Your organisation's audit trail keeps it with your name.",
+      "pause": {
+        "open": "Pause",
+        "title": "Pause {{name}}?",
+        "message": "{{name}} starts no run until you resume it. A run already started finishes.",
+        "confirm": "Pause",
+        "done": "{{name}} is paused. Resume it when its work may go on."
+      },
+      "resume": {
+        "open": "Resume",
+        "title": "Resume {{name}}?",
+        "message": "{{name}} runs again by its schedule, from now.",
+        "confirm": "Resume",
+        "done": "{{name}} is running by its schedule again."
+      },
+      "run": {
+        "open": "Run now",
+        "title": "Run {{name}} now?",
+        "message": "A run of {{name}} starts now, beside its schedule. A run that is already due is the same run.",
+        "confirm": "Run now",
+        "done": "A run of {{name}} is waiting for the worker. Its runs show how it went."
+      },
+      "rerun": {
+        "open": "Run again",
+        "title": "Run the dead letter again?",
+        "message": "The run of {{name}} is tried again now, with its attempts counted from one. Fix what made it fail first.",
+        "confirm": "Run again",
+        "done": "The run of {{name}} is waiting for the worker again."
+      }
+    },
+    "scheduleAndClass": "{{schedule}}, {{class}}",
+    "classes": {
+      "interactive": "interactive work",
+      "normal": "normal work",
+      "bulk": "bulk work"
+    },
+    "waiting": "{{count}} waiting",
+    "running": "{{count}} running"
+  },
+  "deadLetters": {
+    "title": "Dead letters",
+    "description": "What failed as often as it may: the runs of jobs, and the events a subscriber could not handle. Each waits here, with its error, until it is run again.",
+    "gridLabel": "Dead letters of jobs and events",
+    "choose": "Choose a dead letter to see its error and run it again.",
+    "kinds": {
+      "job": "Job run",
+      "event": "Event"
+    },
+    "columns": {
+      "parked": "Parked",
+      "kind": "Kind",
+      "name": "Job or subscriber",
+      "what": "Run or event",
+      "attempts": "Attempts",
+      "error": "Last error"
+    },
+    "detail": {
+      "job": "The run {{what}} failed {{attempts}} times and was parked {{at}}.",
+      "event": "{{what}} failed {{attempts}} times with this subscriber and was parked {{at}}."
+    },
+    "open": {
+      "job": "Open the job",
+      "event": "Open the event"
+    },
+    "actions": {
+      "job": {
+        "open": "Run again",
+        "title": "Run the job's run again?",
+        "message": "The run {{what}} of {{name}} is tried again now. Fix what made it fail first.",
+        "confirm": "Run again",
+        "done": "The run of {{name}} is waiting for the worker again."
+      },
+      "event": {
+        "open": "Replay",
+        "title": "Replay the event?",
+        "message": "{{what}} goes to {{name}} again now. Fix what made it fail first.",
+        "confirm": "Replay",
+        "done": "The event went to {{name}} again."
+      }
     }
   }
 }

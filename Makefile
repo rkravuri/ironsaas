@@ -9,7 +9,7 @@ COMPOSE_DIR := infra/compose
 COMPOSE := docker compose --file $(COMPOSE_DIR)/compose.yaml --env-file $(COMPOSE_DIR)/.env
 ALL_PROFILES := --profile telemetry --profile ci --profile control --profile sso
 
-.PHONY: events events-replay help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision suite-add suite-remove update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status incident-declare incident-note incident-close incident-review incident-show security-alerts security-alert-resolve up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security coverage protect-main protection-check
+.PHONY: events events-replay jobs job-run job-pause job-resume job-rerun help build test check prd-check prd-csv format format-check trace verify catalogue apply-plan flag kill-switch clean run-api run-worker migrate seed token secret-dev run-api-secrets secret-control migrate-control seed-control verify-control-audit run-control run-fleet provision suite-add suite-remove update-unit deprovision recover-admin smoke e2e test-provider break-glass-request break-glass-approve break-glass-link break-glass-end break-glass-show impersonate platform-document accept-documents verify-audit audit-chain audit-accept-restore rotate-key key-status incident-declare incident-note incident-close incident-review incident-show security-alerts security-alert-resolve up-control down-control integration shell-node shell-install shell-dev shell-check images ef-add ef-script env up up-slim up-ci down reset ps logs certs hosts shell-a11y installation-record validation-pack security image-scan images-security coverage protect-main protection-check
 
 help: ## Show this list
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -281,6 +281,26 @@ events: ## Search a tenant's domain events through the fleet, as the operator (A
 events-replay: ## Replay a tenant's events to one subscriber through the fleet, with a reason both audit trails keep (ADR-0060): make events-replay TENANT=acme SUBSCRIBER=authz.end_delegations_of_deactivated IDS=<id,id> REASON="..." (or FROM=<position> [TO=<position>])
 	@test -n "$(TENANT)" && test -n "$(SUBSCRIBER)" && test -n "$(REASON)" && test -n "$(IDS)$(FROM)" || (echo 'usage: make events-replay TENANT=acme SUBSCRIBER=module.what REASON="why" IDS=<id,id> | FROM=<position> [TO=<position>]' && exit 1)
 	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=events-replay SUBSCRIBER="$(SUBSCRIBER)" IDS="$(IDS)" FROM="$(FROM)" TO="$(TO)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT)
+
+jobs: ## List a tenant's jobs through the fleet, as the operator: state, schedule, runs, backlog and last failure (ADR-0061): make jobs TENANT=acme [JOB=audit.retention]
+	@test -n "$(TENANT)" || (echo 'usage: make jobs TENANT=acme [JOB=module.what]' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=jobs JOB="$(JOB)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT)
+
+job-run: ## Start a tenant's job now through the fleet, with a reason both audit trails keep (ADR-0061): make job-run TENANT=acme JOB=audit.retention REASON="..."
+	@test -n "$(TENANT)" && test -n "$(JOB)" && test -n "$(REASON)" || (echo 'usage: make job-run TENANT=acme JOB=module.what REASON="why, for the audit trails"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=job-run JOB="$(JOB)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT)
+
+job-pause: ## Pause a tenant's job through the fleet, with a reason both audit trails keep; it queues nothing until resumed (ADR-0061): make job-pause TENANT=acme JOB=audit.retention REASON="..."
+	@test -n "$(TENANT)" && test -n "$(JOB)" && test -n "$(REASON)" || (echo 'usage: make job-pause TENANT=acme JOB=module.what REASON="why, for the audit trails"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=job-pause JOB="$(JOB)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT)
+
+job-resume: ## Resume a paused job of a tenant through the fleet, with a reason (ADR-0061): make job-resume TENANT=acme JOB=audit.retention REASON="..."
+	@test -n "$(TENANT)" && test -n "$(JOB)" && test -n "$(REASON)" || (echo 'usage: make job-resume TENANT=acme JOB=module.what REASON="why, for the audit trails"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=job-resume JOB="$(JOB)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT)
+
+job-rerun: ## Run a tenant's failed run again through the fleet, after its cause is fixed, with a reason (ADR-0061): make job-rerun TENANT=acme RUN=<run id> REASON="..."
+	@test -n "$(TENANT)" && test -n "$(RUN)" && test -n "$(REASON)" || (echo 'usage: make job-rerun TENANT=acme RUN=<run id> REASON="why, for the audit trails"' && exit 1)
+	@CONTROL_URL=$(CONTROL_URL) OPERATOR_SECRET=$(DEV_OPERATOR_SECRET) ACTION=job-rerun RUN="$(RUN)" REASON="$(REASON)" $(COMPOSE_DIR)/scripts/provision.sh $(TENANT)
 
 break-glass-request: ## Ask for emergency access to a tenant as the operator, with a ticket and a reason; a second operator approves within 30 minutes (TF-026, ADR-0049): make break-glass-request TENANT=acme TICKET=INC-1 REASON="..." [MINUTES=60]
 	@test -n "$(TENANT)" && test -n "$(TICKET)" && test -n "$(REASON)" || (echo 'usage: make break-glass-request TENANT=acme TICKET=INC-1 REASON="why, for the audit trails" [MINUTES=60]' && exit 1)

@@ -71,6 +71,21 @@ public static class ModuleExtensions
         }
 
         services.AddSingleton(events);
+
+        // The jobs (ADR-0061): checked here. A process's own jobs run in every process, so their handlers are registered
+        // here; a unit's jobs run only where the job runner does, which registers theirs (AddJobRunner).
+        var jobs = new JobDeclarations(modules, configuration);
+        foreach (var job in jobs.ProcessJobs)
+        {
+            services.TryAddScoped(job.Definition.HandlerType);
+        }
+
+        services.AddSingleton(jobs);
+        if (jobs.ProcessJobs.Count > 0)
+        {
+            services.AddHostedService<ProcessJobRunner>();
+        }
+
         services.AddSingleton(new ModuleCollection(modules));
         services.AddSingleton(new UnitSuites(installed));
         services.AddSingleton(new PermissionCatalogue(permissions));

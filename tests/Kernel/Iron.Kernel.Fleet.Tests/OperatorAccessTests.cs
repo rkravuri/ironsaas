@@ -214,6 +214,43 @@ public class OperatorAccessTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0061", "ADR-0049")]
+    public async Task TheOperatorListsAndPausesATenantsJobsThroughTheUnitsCommandWithAReasonInTheTrail()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (provider, runtime, _, acting) = Start();
+        await using var _ = provider;
+        var slug = await ActiveTenantAsync(provider, "quebec");
+        var harness = new ProvisioningWorkerHarness(provider);
+        acting.Id = Olga;
+
+        var listed = await WithAsync(provider, s => s.GetRequiredService<OperatorJobs>().ListAsync(slug, null, ct));
+        Assert.True(await harness.RunNextAsync());
+        var list = runtime.Commands.Single(c => c.Command == "jobs").Unit.Environment;
+        var listJob = await WithAsync(provider, s => s.GetRequiredService<IProvisioningJobs>().FindAsync(listed.Value.Id, ct));
+
+        var withoutReason = await WithAsync(provider, s => s.GetRequiredService<OperatorJobs>().ActAsync(slug, new OperatorJobAction(OperatorJobs.Pause, "audit.retention", null, "  "), ct));
+        var paused = await WithAsync(provider, s => s.GetRequiredService<OperatorJobs>().ActAsync(slug, new OperatorJobAction(OperatorJobs.Pause, "audit.retention", null, "Ticket 14: the archive is being moved"), ct));
+        Assert.True(await harness.RunNextAsync());
+        var pause = runtime.Commands.Last(c => c.Command == "jobs").Unit.Environment;
+        var pauseJob = await WithAsync(provider, s => s.GetRequiredService<IProvisioningJobs>().FindAsync(paused.Value.Id, ct));
+        var audited = await AuditAsync(provider, TenancyAuditEvents.JobsActionRequested, slug);
+
+        Assert.Equal("list", list["Jobs__Command__Action"]);
+        Assert.False(list.ContainsKey("Jobs__Command__Reason"));
+        Assert.Equal("Warning", list["Logging__LogLevel__Default"]); // the answer is the command's output, without the host's information lines
+        Assert.Equal((JobKind.Jobs, ProvisioningStatus.Completed, StepNames.Jobs), (listJob!.Kind, listJob.Status, listJob.Steps.Single().Name));
+        Assert.StartsWith("audit.retention active", listJob.Steps.Single().Output, StringComparison.Ordinal);
+        Assert.Equal(TenancyErrors.JobsReasonRequired, withoutReason.Error.Code);
+        Assert.Equal(("pause", "audit.retention", "Ticket 14: the archive is being moved"), (pause["Jobs__Command__Action"], pause["Jobs__Command__Job"], pause["Jobs__Command__Reason"]));
+        Assert.False(string.IsNullOrEmpty(pause["Jobs__Command__Operator"]));
+        Assert.StartsWith("Paused audit.retention", pauseJob!.Steps.Single().Output, StringComparison.Ordinal);
+        Assert.Equal((Olga, "Ticket 14: the archive is being moved", AuditSeverity.High), (audited.ActorId, audited.Reason, audited.Severity));
+        using var details = JsonDocument.Parse(audited.Details!);
+        Assert.Equal(paused.Value.Id.ToString("D"), details.RootElement.GetProperty("job_id").GetString());
+    }
+
+    [Fact]
     [Proves("TF-028 AC1", "ADR-0049")]
     public async Task TheOperatorPublishesThePlatformsDocumentsWhichEveryUnitMayRead()
     {

@@ -118,16 +118,24 @@ public sealed class FleetOptions
     }
 }
 
-/// <summary>The container limits of a size class (TF-210, TF-007): the same image, different room.</summary>
-public sealed record UnitLimits(double ApiCpus, int ApiMemoryMb, double WorkerCpus, int WorkerMemoryMb, double ShellCpus = 0.25, int ShellMemoryMb = 64);
+/// <summary>
+/// The limits of a size class (TF-210, TF-007, TF-122): the same image, different room. The containers' CPU and memory,
+/// and the connections the unit's app role may hold on the shared database server, so that one tenant's backlog cannot
+/// take what another needs (ADR-0061). Each process's pool takes a third of them: the API and the worker, and room for a
+/// second worker; a pool that is full waits, where a connection over the role's limit would be refused.
+/// </summary>
+public sealed record UnitLimits(double ApiCpus, int ApiMemoryMb, double WorkerCpus, int WorkerMemoryMb, double ShellCpus = 0.25, int ShellMemoryMb = 64, int DatabaseConnections = 30)
+{
+    public int ProcessPoolSize => Math.Max(2, DatabaseConnections / 3);
+}
 
 public static class SizeClasses
 {
     public static UnitLimits LimitsOf(SizeClass sizeClass) => sizeClass switch
     {
         SizeClass.Small => new UnitLimits(0.5, 512, 0.5, 512),
-        SizeClass.Medium => new UnitLimits(1.0, 1024, 1.0, 1024, 0.5, 128),
-        SizeClass.Large => new UnitLimits(2.0, 2048, 2.0, 2048, 0.5, 128),
+        SizeClass.Medium => new UnitLimits(1.0, 1024, 1.0, 1024, 0.5, 128, 60),
+        SizeClass.Large => new UnitLimits(2.0, 2048, 2.0, 2048, 0.5, 128, 120),
         _ => throw new ArgumentOutOfRangeException(nameof(sizeClass), sizeClass, "Unknown size class."),
     };
 }

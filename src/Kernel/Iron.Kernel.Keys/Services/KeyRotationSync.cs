@@ -248,26 +248,25 @@ public sealed class KeyRotationSync(
     private sealed record RotationAnswer(Guid Id, string Key, string Trigger, string RequestedBy, string Reason, string State, int? FromVersion, int? ToVersion, DateTimeOffset? RotatedAt, DateTimeOffset? FinishedAt, DateTimeOffset? RetiredAt);
 }
 
-/// <summary>The unit's worker loop for keys: one pass every few seconds, which the worker host alone runs.</summary>
-public sealed class KeyWorker(IServiceScopeFactory scopes, KeyWorkerOptions options, TimeProvider time, ILogger<KeyWorker> logger) : BackgroundService
+/// <summary>
+/// <c>keys.reencrypt</c> (TF-075, TF-124, ADR-0054, ADR-0061): the unit's side of key rotation, as a run a minute that
+/// passes every <c>Keys:PollSeconds</c> (15 s): it asks the control plane for the tenant's keys, records their rotations
+/// in the tenant's trail, and moves every encrypted value onto the newest version. Each pass is idempotent: a value on
+/// the newest version is left as it is.
+/// </summary>
+public sealed class KeyReencryptJob(IServiceScopeFactory scopes, KeyWorkerOptions options, TimeProvider time) : IJob
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Math.Max(1, options.PollSeconds)), time);
-        do
+    public static readonly JobDefinition Definition = JobDefinition.Create<KeyReencryptJob>(
+        "keys.reencrypt", "Asks the control plane for the tenant's keys every few seconds, records their rotations, and re-encrypts every value onto the newest version.", "Platform security",
+        JobSchedule.Interval(TimeSpan.FromMinutes(1)), PriorityClass.Normal, TimeSpan.FromMinutes(30));
+
+    public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken) =>
+        JobLoop.RunAsync(context, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(Math.Max(1, options.PollSeconds)), time, async ct =>
         {
-            try
-            {
-                await using var scope = scopes.CreateAsyncScope();
-                await scope.ServiceProvider.GetRequiredService<KeyRotationSync>().RunOnceAsync(stoppingToken).ConfigureAwait(false);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                logger.LogError(exception, "The key worker's pass failed; it tries again at the next.");
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
-    }
+            await using var scope = scopes.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<KeyRotationSync>().RunOnceAsync(ct).ConfigureAwait(false);
+            return false;
+        }, cancellationToken);
 }
 
 /// <summary>A key check found by its exact value, with the value it opened to.</summary>

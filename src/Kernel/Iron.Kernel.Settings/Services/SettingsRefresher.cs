@@ -13,13 +13,13 @@ namespace Iron.Kernel.Settings.Services;
 /// other process within 30 seconds, without a restart (TF-059 AC2). A failed read keeps the last values; after five
 /// minutes of failures the alert is raised (TF-059 AC4): an error line, the gauge, and the readiness detail.
 /// </summary>
-public sealed class SettingsRefresher(IServiceScopeFactory scopes, SettingsCache cache, SettingsOptions options, SettingsMetrics metrics, TimeProvider time, ILogger<SettingsRefresher> logger) : BackgroundService
+public sealed class SettingsRefresher(IServiceScopeFactory scopes, SettingsCache cache, SettingsOptions options, SettingsMetrics metrics, TimeProvider time, ILogger<SettingsRefresher> logger) : IHostedService, IDisposable
 {
     private static readonly TimeSpan AlertEvery = TimeSpan.FromHours(1);
     private readonly SemaphoreSlim _gate = new(1, 1);
     private DateTimeOffset? _alertedAt;
 
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         using var first = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         first.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, options.StartTimeoutSeconds)));
@@ -32,24 +32,10 @@ public sealed class SettingsRefresher(IServiceScopeFactory scopes, SettingsCache
             logger.LogWarning("The first read of the settings took longer than {Seconds} s; the host starts on the defaults and reads again in {Interval}.", options.StartTimeoutSeconds, options.RefreshInterval);
         }
 
-        await base.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(options.RefreshInterval, time);
-        try
-        {
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
-            {
-                await RefreshOnceAsync(stoppingToken).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // Stopping.
-        }
-    }
+    /// <summary>The reads after the first are the job <c>settings.refresh_cache</c>, which every process runs for itself (ADR-0061).</summary>
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>One read of every value. A failure keeps the last values and is logged, never thrown.</summary>
     public async Task<bool> RefreshOnceAsync(CancellationToken cancellationToken)
@@ -88,11 +74,7 @@ public sealed class SettingsRefresher(IServiceScopeFactory scopes, SettingsCache
         }
     }
 
-    public override void Dispose()
-    {
-        _gate.Dispose();
-        base.Dispose();
-    }
+    public void Dispose() => _gate.Dispose();
 
     private static JsonElement Parse(string json)
     {
@@ -114,5 +96,24 @@ public sealed class SettingsRefresher(IServiceScopeFactory scopes, SettingsCache
         }
 
         logger.LogWarning("The settings could not be read ({Error}); {Stand}.", exception.Message, stand);
+    }
+}
+
+/// <summary>
+/// <c>settings.refresh_cache</c> (TF-124, ADR-0036, ADR-0061): every <c>Settings:RefreshSeconds</c> (30 s), each process
+/// reads every setting's value into its own cache, so it runs in each process. The first read is the refresher's.
+/// </summary>
+public sealed class SettingsRefreshJob(SettingsRefresher refresher) : IJob
+{
+    public static readonly JobDefinition Definition = JobDefinition.Create<SettingsRefreshJob>(
+        "settings.refresh_cache", "Reads every setting's value into this process's cache.", "Platform team",
+        JobSchedule.Interval(TimeSpan.FromSeconds(30), firstAfter: TimeSpan.FromSeconds(30), configurationKey: $"{SettingsOptions.SectionName}:RefreshSeconds", longestConfigured: TimeSpan.FromSeconds(30)),
+        PriorityClass.Normal, TimeSpan.FromSeconds(30), new RetryPolicy(1, TimeSpan.Zero, TimeSpan.Zero), JobScope.EachProcess);
+
+    /// <summary>A failed read keeps the last values and raises its own alert; the next interval reads again.</summary>
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+    {
+        await refresher.RefreshOnceAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
     }
 }

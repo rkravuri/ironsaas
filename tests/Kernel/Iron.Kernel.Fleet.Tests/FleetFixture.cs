@@ -200,6 +200,10 @@ public sealed class RecordingRuntime : IUnitRuntime
                 return new CommandResult(0, unit.Environment["Events__Command__Action"] == "replay"
                     ? "Replayed 1 event(s) to probe.count_orders: 1 requeued, 0 added, 0 already handled.\n"
                     : "Searched: 0 event(s), newest first, at most 200.\n");
+            case "jobs":
+                return new CommandResult(0, unit.Environment["Jobs__Command__Action"] == "list"
+                    ? "audit.retention active every 1d next=2026-11-01T00:10:00Z last=succeeded backlog=0\n"
+                    : $"Paused {unit.Environment["Jobs__Command__Job"]}: it queues no run until it is resumed.\n");
             default:
                 return new CommandResult(0, $"{name} done\n");
         }

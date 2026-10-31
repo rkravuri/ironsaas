@@ -21,7 +21,7 @@ public sealed class FleetDbContext(DbContextOptions<FleetDbContext> options) : M
             job.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
             job.Property(j => j.CurrentStep).HasMaxLength(50);
             job.Property(j => j.Error).HasMaxLength(2000);
-            job.Property(j => j.Output).HasMaxLength(2000);
+            job.Property(j => j.Output).HasMaxLength(ProvisioningStep.OutputMaxLength);
             job.Property(j => j.Subject).HasMaxLength(ProvisioningJob.SubjectMaxLength);
             job.Property(j => j.Reason).HasMaxLength(ProvisioningJob.ReasonMaxLength);
             job.Property(j => j.RequestedBy).HasMaxLength(ProvisioningJob.RequestedByMaxLength);
@@ -36,7 +36,7 @@ public sealed class FleetDbContext(DbContextOptions<FleetDbContext> options) : M
             step.HasOne<ProvisioningJob>().WithMany().HasForeignKey(s => s.JobId).OnDelete(DeleteBehavior.Cascade);
             step.Property(s => s.Name).HasMaxLength(ProvisioningStep.NameMaxLength);
             step.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
-            step.Property(s => s.Output).HasMaxLength(2000);
+            step.Property(s => s.Output).HasMaxLength(ProvisioningStep.OutputMaxLength);
             step.Property(s => s.Error).HasMaxLength(2000);
             step.HasIndex(s => new { s.JobId, s.Order }).IsUnique();
         });

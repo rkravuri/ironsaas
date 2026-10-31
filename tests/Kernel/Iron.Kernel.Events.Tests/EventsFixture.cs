@@ -93,8 +93,8 @@ public sealed class EventsTenant(string connectionString)
             : [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule()];
         services.AddModules(configuration, InstalledSuites.Compose(foundation, suites), suites);
 
-        // The worker's services; a built provider starts no hosted service, so the tests run each pass themselves.
-        services.AddEventDispatch();
+        // The worker's archive; the tests run each pass of the dispatcher and the archive themselves.
+        services.AddEventArchive();
         more?.Invoke(services);
         return services.BuildServiceProvider();
     }

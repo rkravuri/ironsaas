@@ -71,3 +71,13 @@ public static class EntitlementsAuditEvents
         new AuditEventType(SeatUnassigned, "Seat removed").AsAdministrative(),
     ];
 }
+
+/// <summary>
+/// Whether the unit's tenant is suspended, as the control plane last wrote it into the entitlements document (TF-122 AC3,
+/// ADR-0061): while it is, the unit's jobs are skipped and logged. Unknown, before the unit first read its entitlements,
+/// reads as not suspended, so a unit never stops its housekeeping for want of a document.
+/// </summary>
+public interface ITenantStanding
+{
+    bool Suspended { get; }
+}

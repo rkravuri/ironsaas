@@ -47,7 +47,7 @@ The snapshot's canonical form is in the Audit README, beside the audit event's. 
 
 ## Evidence packs (TF-067, ADR-0052)
 
-A request (`compliance.evidence_pack_requested`, actor the requester) records the period; a period that ends later than now ends now, and a period is at most ten years. The unit's worker (`EvidencePackWorker`, every five seconds) makes the next pack as the system, on the requester's behalf (`compliance.evidence_pack_made` or `compliance.evidence_pack_failed`), into the tenant's container at `evidence/<id>.zip`.
+A request (`compliance.evidence_pack_requested`, actor the requester) records the period; a period that ends later than now ends now, and a period is at most ten years. The unit's worker, in the job `compliance.evidence_packs` (one run a minute that looks every five seconds, ADR-0061), makes the next pack as the system, on the requester's behalf (`compliance.evidence_pack_made` or `compliance.evidence_pack_failed`), into the tenant's container at `evidence/<id>.zip`.
 
 Each module contributes its tables through `IEvidenceSource` (`Contracts/Evidence.cs`), which `EvidencePacks` gathers by document, in this order and folder:
 

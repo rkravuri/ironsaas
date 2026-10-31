@@ -29,6 +29,8 @@ public sealed class EntitlementsModule : IModule
 
     public IReadOnlyList<Permission> Permissions => EntitlementsPermissions.All;
 
+    public IReadOnlyList<JobDefinition> Jobs => [EntitlementsRefreshJob.Definition];
+
     public IReadOnlyList<AuditEventType> AuditEventTypes => EntitlementsAuditEvents.Types;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
@@ -55,6 +57,7 @@ public sealed class EntitlementsModule : IModule
         services.TryAddSingleton(TimeProvider.System);
         services.AddIronDbContext<EntitlementsDbContext>();
         services.AddSingleton<EntitlementCache>();
+        services.AddSingleton<ITenantStanding, TenantStanding>();
         services.AddSingleton<EntitlementsMetrics>();
         services.AddSingleton<EntitlementRefresher>();
         services.AddHostedService(provider => provider.GetRequiredService<EntitlementRefresher>());

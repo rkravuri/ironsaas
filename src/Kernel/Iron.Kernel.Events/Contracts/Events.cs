@@ -82,3 +82,17 @@ public static class DeliveryStates
     /// </summary>
     public const string Held = "held";
 }
+
+/// <summary>An event a subscriber parked, as the console's one view of every dead letter lists it beside the jobs' (ADR-0061).</summary>
+public sealed record EventDeadLetter(Guid EventId, string Subscriber, string Type, int Version, string RecordType, Guid RecordId, int Attempts, string? LastError, DateTimeOffset DeadAt);
+
+/// <summary>
+/// The dead letters of the event subscriptions, newest first (ADR-0060, ADR-0061): what the job console's view of every
+/// dead letter reads, through this contract, beside the jobs' own. A replay goes through the Events module's endpoint.
+/// </summary>
+public interface IEventDeadLetters
+{
+    Task<int> CountAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<EventDeadLetter>> NewestAsync(int skip, int take, CancellationToken cancellationToken);
+}

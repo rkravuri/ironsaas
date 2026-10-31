@@ -1,0 +1,38 @@
+import type { TFunction } from "i18next";
+import type { Job, JobRun } from "@/api/jobs";
+
+export const readJobs = "jobs.jobs.read";
+export const manageJobs = "jobs.jobs.manage";
+
+/**
+ * A job's schedule in the person's words. The API says it as the catalogue does (<c>every 5m</c>, <c>cron 0 2 * * *</c>,
+ * <c>when started</c>); the interval and the expression stay as they are, the words around them are translated.
+ */
+export function scheduleWords(schedule: string, t: TFunction): string {
+  if (schedule.startsWith("every ")) return t("jobs.schedule.every", { interval: schedule.slice("every ".length) });
+  if (schedule.startsWith("cron ")) return t("jobs.schedule.cron", { expression: schedule.slice("cron ".length) });
+  return t("jobs.schedule.whenStarted");
+}
+
+/**
+ * How long a run took, or may take: milliseconds below a second, then seconds, minutes or hours, each to one decimal
+ * only when it has one ("1.5 seconds", "2 hours").
+ */
+export function durationWords(ms: number | null, t: TFunction): string {
+  if (ms == null) return "";
+  if (ms < 1000) return t("jobs.duration.ms", { count: ms });
+  const tenths = (value: number) => Math.round(value * 10) / 10;
+  if (ms < 60_000) return t("jobs.duration.seconds", { count: tenths(ms / 1000) });
+  if (ms < 3_600_000) return t("jobs.duration.minutes", { count: tenths(ms / 60_000) });
+  return t("jobs.duration.hours", { count: tenths(ms / 3_600_000) });
+}
+
+/** Whether a person may pause, resume or start the job here: a job each process runs, or a held one, has no run to act on. */
+export function actsOnRuns(job: Job): boolean {
+  return job.scope === "unit" && job.state !== "held";
+}
+
+/** A run that may run again: the console runs a dead letter again, after its cause is fixed. */
+export function rerunnable(run: JobRun): boolean {
+  return run.status === "dead";
+}

@@ -6,7 +6,7 @@ Kernel module (ADR-0029). Schema `kernel_audit`. The audit trail (TF-060, ADR-00
 |---|---|
 | `Contracts/` | `AuditEvent`, `AuditOutcome`, `AuditSource`, `AuditSeverity`, `AuditPermissions`, `AuditEvents`, `AuditErrors`, `IAuditWriter`, `IAuditTrail` and `AuditTrailEntry`; the chain's `ChainedEvent`, `AuditCanonicalForm`, `ChainHead`, `AuditAnchor`; the verification's `AuditChainCheck`, `SealedEvent`, `ChainProblem`; the archive's `AuditArchiveFormat` |
 | `Data/` | `AuditDbContext`; `AuditEventRecord` (append-only, then sealed once); `AuditSeal`; `AuditArchiveBatch`, `AuditPrune`, `LegalHold`, `RetentionChoice`, `AuditExport`; the design-time factory, generated `Migrations/` with the chain's guards |
-| `Services/` | `AuditWriter`, `AuditTrail`; `AuditSealer` and its worker; `AuditAnchorSender`, through the Api library's `ControlPlaneClient`; `AuditArchiver`, `AuditPruner`, `AuditArchiveSearch`, `AuditExporter` and the daily `AuditRetentionWorker`; `RetentionPolicy`, `LegalHolds`, `BlobRecordArchive`, `RetentionAuditWriter` |
+| `Services/` | `AuditWriter`, `AuditTrail`; `AuditSealer`, with the job `audit.seal_chain` in a unit and `AuditSealingWorker` in the control plane; `AuditAnchorSender`, through the Api library's `ControlPlaneClient`; `AuditArchiver`, `AuditPruner`, `AuditArchiveSearch`, `AuditExporter` and the daily job `audit.retention` (`AuditRetentionJob`); `RetentionPolicy`, `LegalHolds`, `BlobRecordArchive`, `RetentionAuditWriter` |
 | `Api/` | the trail's search, export, archive search and chain status; retention classes; legal holds |
 
 ## Permissions
@@ -42,7 +42,7 @@ Event types are named by the module that raises them: `authz.permission_denied`,
 
 ## The chain (ADR-0050)
 
-Events are written as before, by many transactions at once. The unit's worker seals them every few seconds (`Audit:Sealing:Seconds`, 5): under the chain's lock, oldest first, each takes the next position, the hash before it and its own hash, through `kernel_audit.seal_event`, the one way the chain columns are set, once, at the position after the head. A trigger refuses any change to a sealed event and any change but the chain columns to an unsealed one, whatever the role. Positions are consecutive, so a gap always means a deleted event.
+Events are written as before, by many transactions at once. The unit's worker seals them every few seconds (`Audit:Sealing:Seconds`, 5), in the job `audit.seal_chain`, one run a minute that passes every few seconds (ADR-0061): under the chain's lock, oldest first, each takes the next position, the hash before it and its own hash, through `kernel_audit.seal_event`, the one way the chain columns are set, once, at the position after the head. A trigger refuses any change to a sealed event and any change but the chain columns to an unsealed one, whatever the role. Positions are consecutive, so a gap always means a deleted event.
 
 After each seal the worker sends the control plane an anchor (position, hash, time) as the unit's own client (`ControlPlane:ClientId` and `ClientSecret` in the unit secret, made by the fleet). The fleet verifies the chain daily against those anchors with a reader role of its own (`<tenant>_audit`, `IVerifierReadable` tables only); the unit never verifies itself.
 
@@ -163,7 +163,7 @@ The events are chained like any other, with canonical form version 2. The Histor
 
 ## Archive, pruning and retention (ADR-0050)
 
-The daily `AuditRetentionWorker`, in the unit's worker:
+The daily job `audit.retention` (ADR-0061), which the unit's worker runs ten minutes after it first schedules it, then every day:
 
 - **archives** sealed events older than the class `audit_online` (13 months by default) to the tenant's container in batches that keep every chain field, indexed in `archive_batches` by position and time, then removes them from the database through `kernel_audit.remove_archived`, which deletes archived rows only, from the oldest end;
 - **prunes** whole archived batches older than the class `audit_event` (7 years by default, never below the operator's minimum), from the oldest end only, writes `AuditPrune` with the position and hash it reached, and the unit anchors it as `pruned`, so the rest still verifies; a hold on the whole tenant stops it;

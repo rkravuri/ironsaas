@@ -118,7 +118,7 @@ public sealed class ProvisioningJob : AuditedEntity
         Status = ProvisioningStatus.Completed;
         CurrentStep = null;
         Error = null;
-        Output = output is { Length: > 2000 } ? output[..2000] : output;
+        Output = output is { Length: > ProvisioningStep.OutputMaxLength } ? output[..ProvisioningStep.OutputMaxLength] : output;
         FinishedAt = now;
     }
 

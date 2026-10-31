@@ -11,9 +11,11 @@ Security monitoring (TF-079, ADR-0056). Kernel module (ADR-0029), placement: no 
 | `Api/` | `/api/v1/alerts` (list, one, acknowledge, resolve) and `/api/v1/alert-rules` (list, `PUT /{name}`) |
 
 The module runs in a unit and in the control plane: the host lists it with its scope (`new MonitoringModule()` in a
-unit, `new MonitoringModule(MonitoringScope.ControlPlane)` there) and calls `AddMonitoring(scope)` where the rules run:
-the unit's worker (with the copies to the control plane every 15 seconds) and the control plane's API (with the posts
-to Alertmanager every 30 seconds).
+unit, `new MonitoringModule(MonitoringScope.ControlPlane)` there). In a unit the rules run as the job
+`monitoring.evaluate_rules` (every `Monitoring:EvaluationSeconds`, 60) and the copies to the control plane as
+`monitoring.copy_alerts` (every 15 seconds, one run a minute), both in the unit's worker (ADR-0061). The control plane's
+API calls `AddMonitoring(MonitoringScope.ControlPlane)`, which runs its rules and posts to Alertmanager every 30 seconds
+as hosted services, since the control plane runs no job runner yet.
 
 ## A rule
 

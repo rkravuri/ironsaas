@@ -186,6 +186,25 @@ last attempt. Fix the cause, then replay the event to that subscriber with a rea
 twice on an event it handled. Many dead letters at once for one subscriber after an update point to the release: roll
 the unit back, or fix and update, then replay the range.
 
+### Dead-lettered jobs
+
+`job_dead_letters`: a run of a job failed as many times as its job is retried (five by default, waiting about 10, 20, 40
+and 80 seconds between), and it is parked as a dead letter (ADR-0061). The job's next scheduled runs go on; a dead
+letter holds nothing back. `dead_letters_growing`: ten or more dead letters of jobs and events in an hour across the
+unit, which points past one job to something they share: the database, the store, a release. Open the console's Dead
+letters page (or `make jobs TENANT=x` as the operator), open the run, and read its error and its log. Fix the cause,
+then run it again from the page, or with `make job-run` for a new run, each with a reason. A run whose error says it
+timed out took longer than its job allows: look at what it was waiting for before you run it again.
+
+### Missed job schedules
+
+`job_schedule_missed`: a scheduled job ran more than one interval late, so the occurrences in between were passed over
+and only the latest ran (ADR-0061). Its usual causes, in order: the unit's worker was down or restarting (look at the
+worker's container and its heartbeat), the runner's slots were all held (look at the console's Jobs page for runs that
+take long), or the tenant was suspended. The alert says how many occurrences were missed and how late the job was.
+Nothing needs to be run by hand for a housekeeping job, since its next run catches up; a job whose every occurrence
+matters must say so in its key and be started again for the ones it missed.
+
 ### A failing rule
 
 A rule that cannot run raises an alert of its own, and the Alert rules page shows why: a value the operator set that is

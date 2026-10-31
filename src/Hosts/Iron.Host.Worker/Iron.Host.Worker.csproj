@@ -24,6 +24,7 @@
     <ProjectReference Include="../../Kernel/Iron.Kernel.Protection/Iron.Kernel.Protection.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Files/Iron.Kernel.Files.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Events/Iron.Kernel.Events.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Jobs/Iron.Kernel.Jobs.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Samples/Iron.Kernel.Samples.csproj" />
     <!-- The suites this image carries (ADR-0043, ADR-0059): a unit loads those its configuration names. -->
     <ProjectReference Include="../../Suites/Procurement/Iron.Suites.Procurement.Purchasing/Iron.Suites.Procurement.Purchasing.csproj" />

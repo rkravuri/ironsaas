@@ -9,7 +9,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | Criterion | Reason | Approved |
 |---|---|---|
 | TF-001 AC3 | A unit does not refuse its users while its tenant is Suspended: S1 built the registry's statuses, and the lifecycle operations are TF-004's, in S6. | 2026-10-21 |
-| TF-003 AC2 | No job runs in a tenant's worker yet; the jobs engine is S4. The worker's heartbeat span carries the tenant (`HeartbeatTests`, ADR-0011). | 2026-10-21 |
 | TF-020 AC1 | No refresh token exists yet: people sign in to a server-side session, through a password or a company login (ADR-0048), and API clients take 15-minute tokens by the client credentials grant (ADR-0015). Refresh tokens, their rotation and the family's revocation come with the partner API surfaces and their SDKs in S7; the notice to the person with S4's notifications. | 2026-10-29 |
 | TF-018 AC3 | An invitation is not resent: its link is given once, to the administrator who made the person or to the operator in the provisioning report (ADR-0046), and a person still Invited gets a new one only by reactivation or the seed. The invitation by email with its resend, the earlier link refused, comes with S4's notifications. | 2026-10-29 |
 | TF-019 AC1 | The security events are recorded, audited and shown in My profile's Security tab (S3 T2, T5); the email of a new device's sign-in is S4's notifications. | 2026-10-29 |
@@ -23,7 +22,6 @@ The first list was written by S3 T1 from the backfill of S1's and S2's tests and
 | TF-051 AC2 | As AC1: retrying blocked emails comes with S4's email. | 2026-10-21 |
 | TF-056 AC1 | One flag provider exists, the in-house one behind OpenFeature (ADR-0035); a second provider arrives when one is needed. | 2026-10-21 |
 | TF-056 AC3 | As AC1: with one provider there is no primary to choose. | 2026-10-21 |
-| TF-130 AC3 | No job is started by a request yet (S4). | 2026-10-21 |
 | TF-160 AC2 | Uploads, downloads and their permission check are S4; S1 built the storage interface and its readiness. | 2026-10-21 |
 | TF-160 AC3 | File versions are S4. | 2026-10-21 |
 | TF-171 AC2 | Saved views of the grid are S5. | 2026-10-21 |

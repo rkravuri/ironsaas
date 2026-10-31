@@ -203,6 +203,26 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("ADR-0061")]
+    public void TheCatalogueListsEveryJobTheUnitsModulesDeclareUnderItsSuiteWithItsScheduleAndClass()
+    {
+        var declared = Iron.Host.Api.UnitModules.All().SelectMany(m => m.Jobs.Select(job => (Module: m, Job: job))).ToList();
+        var catalogue = Iron.Host.Api.UnitModules.Catalogue();
+
+        Assert.Equal(declared.Select(d => d.Job.Name).Order(StringComparer.Ordinal), catalogue.Jobs.Select(j => j.Name));
+        foreach (var (module, job) in declared)
+        {
+            var entry = catalogue.Jobs.Single(e => e.Name == job.Name);
+            Assert.Equal((module.Suite, job.Schedule.Describe(), job.Priority, job.Scope), (entry.Suite, entry.Schedule, entry.Priority, entry.Scope));
+        }
+
+        // The worker's loops are among them (TF-124); the sample module's are not, since no product's unit runs it (ADR-0057).
+        string[] maintenance = ["audit.seal_chain", "audit.retention", "events.dispatch", "events.archive", "keys.reencrypt", "monitoring.evaluate_rules", "monitoring.copy_alerts", "compliance.evidence_packs", "changes.expire_pending", "authz.escalate_reviews", "authz.conflict_report", "identity.token_cleanup", "jobs.prune_runs", "flags.refresh_cache", "settings.refresh_cache", "entitlements.refresh_cache"];
+        Assert.All(maintenance, name => Assert.Contains(catalogue.Jobs, j => j.Name == name));
+        Assert.DoesNotContain(catalogue.Jobs, j => j.Module == "samples");
+    }
+
+    [Fact]
     [Proves("TF-244 AC1", "TF-244 AC2", "ADR-0059")]
     public async Task TheSuitesEndpointAnswersNotFoundInAUnitWithoutTheSuiteAndAsksForASignInWhereItRuns()
     {

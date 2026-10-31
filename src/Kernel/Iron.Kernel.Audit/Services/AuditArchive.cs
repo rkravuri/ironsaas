@@ -270,46 +270,31 @@ public sealed class AuditExporter(AuditDbContext context, IObjectStorage storage
     }
 }
 
-/// <summary>How often the retention passes run (<c>Audit:Retention</c>): once a day, the first some minutes after the start.</summary>
-public sealed class AuditRetentionOptions
-{
-    public const string SectionName = "Audit:Retention";
-
-    public int FirstRunAfterMinutes { get; set; } = 10;
-
-    public int EveryHours { get; set; } = 24;
-}
-
 /// <summary>
-/// The unit worker's daily pass of the trail's and the records' life (TF-064, TF-066, ADR-0050): the archive after the
-/// online period, the oldest end's pruning after the trail's retention, and the records past their classes' retention.
+/// <c>audit.retention</c> (TF-064, TF-066, TF-124, ADR-0050, ADR-0061): the unit's daily pass of the trail's and the
+/// records' life: the archive after the online period, the oldest end's pruning after the trail's retention, and the
+/// records past their classes' retention, sessions among them, which is the sessions' cleanup. Each step is idempotent:
+/// a run repeated archives, prunes and deletes nothing it did.
 /// </summary>
-public sealed class AuditRetentionWorker(IServiceScopeFactory scopes, AuditRetentionOptions options, TimeProvider time, ILogger<AuditRetentionWorker> logger) : BackgroundService
+public sealed class AuditRetentionJob(AuditArchiver archiver, AuditPruner pruner, RecordRetentionRunner records, ILogger<AuditRetentionJob> logger) : IJob
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public static readonly JobDefinition Definition = JobDefinition.Create<AuditRetentionJob>(
+        "audit.retention", "Archives the audit trail past its online period, prunes it past its retention, and deletes the records past their classes' retention, sessions among them.", "Platform team",
+        JobSchedule.Interval(TimeSpan.FromDays(1), firstAfter: TimeSpan.FromMinutes(10)), PriorityClass.Bulk, TimeSpan.FromHours(2));
+
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
     {
-        await Task.Delay(TimeSpan.FromMinutes(Math.Max(0, options.FirstRunAfterMinutes)), time, stoppingToken).ConfigureAwait(false);
-        using var timer = new PeriodicTimer(TimeSpan.FromHours(Math.Max(1, options.EveryHours)), time);
-        do
-        {
-            try
-            {
-                await using var scope = scopes.CreateAsyncScope();
-                var archived = await scope.ServiceProvider.GetRequiredService<AuditArchiver>().ArchiveAsync(stoppingToken).ConfigureAwait(false);
-                var pruned = await scope.ServiceProvider.GetRequiredService<AuditPruner>().PruneAsync(stoppingToken).ConfigureAwait(false);
-                var runs = await scope.ServiceProvider.GetRequiredService<RecordRetentionRunner>().RunAsync(stoppingToken).ConfigureAwait(false);
-                logger.LogInformation(
-                    "Retention: {Archived} audit events archived, the trail pruned up to {Pruned}, {Deleted} records deleted and {Held} held.",
-                    archived,
-                    pruned?.UpToPosition,
-                    runs.Sum(r => r.Deleted),
-                    runs.Sum(r => r.Held));
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                logger.LogError(exception, "The retention pass failed; it runs again in {Hours} hours.", options.EveryHours);
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
+        ArgumentNullException.ThrowIfNull(context);
+        var archived = await archiver.ArchiveAsync(cancellationToken).ConfigureAwait(false);
+        var pruned = await pruner.PruneAsync(cancellationToken).ConfigureAwait(false);
+        var runs = await records.RunAsync(cancellationToken).ConfigureAwait(false);
+        logger.LogInformation(
+            "Retention: {Archived} audit events archived, the trail pruned up to {Pruned}, {Deleted} records deleted and {Held} held.",
+            archived,
+            pruned?.UpToPosition,
+            runs.Sum(r => r.Deleted),
+            runs.Sum(r => r.Held));
+        context.Log(string.Create(CultureInfo.InvariantCulture, $"{archived} audit event(s) archived; the trail pruned up to {pruned?.UpToPosition.ToString(CultureInfo.InvariantCulture) ?? "nothing"}; {runs.Sum(r => r.Deleted)} record(s) deleted and {runs.Sum(r => r.Held)} held."));
+        return Result.Success();
     }
 }

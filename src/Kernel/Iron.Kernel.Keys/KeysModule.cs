@@ -28,6 +28,8 @@ public sealed class KeysModule : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => KeysAuditEvents.Types;
 
+    public IReadOnlyList<JobDefinition> Jobs => [KeyReencryptJob.Definition];
+
     public IReadOnlyList<SettingDefinition> Settings => KeysSettings.All;
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
@@ -52,16 +54,5 @@ public sealed class KeysModule : IModule
     {
         ArgumentNullException.ThrowIfNull(endpoints);
         KeysEndpoints.Map(endpoints);
-    }
-}
-
-public static class KeysHosting
-{
-    /// <summary>The unit's key worker (ADR-0054): rotations recorded and values moved, in the worker host only.</summary>
-    public static IServiceCollection AddKeyRotation(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        services.AddHostedService<KeyWorker>();
-        return services;
     }
 }

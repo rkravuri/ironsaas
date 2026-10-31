@@ -646,6 +646,7 @@
           "Iron.Kernel.Files": "[1.0.0, )",
           "Iron.Kernel.Flags": "[1.0.0, )",
           "Iron.Kernel.Identity": "[1.0.0, )",
+          "Iron.Kernel.Jobs": "[1.0.0, )",
           "Iron.Kernel.Keys": "[1.0.0, )",
           "Iron.Kernel.Monitoring": "[1.0.0, )",
           "Iron.Kernel.Protection": "[1.0.0, )",
@@ -670,6 +671,7 @@
           "Iron.Kernel.Flags": "[1.0.0, )",
           "Iron.Kernel.Fleet": "[1.0.0, )",
           "Iron.Kernel.Identity": "[1.0.0, )",
+          "Iron.Kernel.Jobs": "[1.0.0, )",
           "Iron.Kernel.Monitoring": "[1.0.0, )",
           "Iron.Kernel.Protection": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
@@ -691,6 +693,7 @@
           "Iron.Kernel.Flags": "[1.0.0, )",
           "Iron.Kernel.Fleet": "[1.0.0, )",
           "Iron.Kernel.Identity": "[1.0.0, )",
+          "Iron.Kernel.Jobs": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
           "Iron.Kernel.Settings": "[1.0.0, )",
           "Iron.Kernel.Telemetry": "[1.0.0, )",
@@ -712,6 +715,7 @@
           "Iron.Kernel.Files": "[1.0.0, )",
           "Iron.Kernel.Flags": "[1.0.0, )",
           "Iron.Kernel.Identity": "[1.0.0, )",
+          "Iron.Kernel.Jobs": "[1.0.0, )",
           "Iron.Kernel.Keys": "[1.0.0, )",
           "Iron.Kernel.Monitoring": "[1.0.0, )",
           "Iron.Kernel.Protection": "[1.0.0, )",
@@ -729,6 +733,7 @@
       "iron.kernel.api": {
         "type": "Project",
         "dependencies": {
+          "Cronos": "[0.13.0, )",
           "FluentValidation": "[12.1.1, )",
           "Iron.Kernel": "[1.0.0, )",
           "Iron.Kernel.Telemetry": "[1.0.0, )",
@@ -950,6 +955,25 @@
           "Iron.Kernel": "[1.0.0, )"
         }
       },
+      "iron.kernel.jobs": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Entitlements.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Events.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Jobs.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Settings.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.jobs.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
       "iron.kernel.keys": {
         "type": "Project",
         "dependencies": {
@@ -1135,6 +1159,12 @@
           "Azure.Core": "1.60.0",
           "Azure.Storage.Common": "12.29.0"
         }
+      },
+      "Cronos": {
+        "type": "CentralTransitive",
+        "requested": "[0.13.0, )",
+        "resolved": "0.13.0",
+        "contentHash": "Nkve+Yi0+ol3ntSBRHeW0ka9cJQ8vndSUvvkXqF9LVqwpoqWueyxu/HS275r98RDOmF7/mzRnZW5XXUBXob+TA=="
       },
       "EFCore.NamingConventions": {
         "type": "CentralTransitive",

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Iron.Kernel.Jobs: jobs declared in code, run once per unit per interval through the unit's database, with retries, dead letters, the job console and the operator's command (TF-120 to TF-124, ADR-0061). -->
+  <PropertyGroup>
+    <IronLayer>Kernel</IronLayer>
+    <!-- The Contracts folder is its own project (ADR-0001). Keep its files out of this project. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Contracts/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Iron.Kernel/Iron.Kernel.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
+    <ProjectReference Include="Contracts/Iron.Kernel.Jobs.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Audit/Contracts/Iron.Kernel.Audit.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Entitlements/Contracts/Iron.Kernel.Entitlements.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Events/Contracts/Iron.Kernel.Events.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Design-time only: lets "dotnet ef migrations add" run with this project as the start-up project. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

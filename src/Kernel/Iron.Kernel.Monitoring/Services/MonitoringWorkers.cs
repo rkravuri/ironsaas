@@ -39,7 +39,44 @@ public abstract class MonitoringLoop(IServiceScopeFactory scopes, TimeProvider t
     }
 }
 
-/// <summary>The rules, every minute (TF-079).</summary>
+/// <summary>
+/// <c>monitoring.evaluate_rules</c> (TF-079, TF-124, ADR-0056, ADR-0061): the alert rules over the unit's trail, every minute
+/// (<c>Monitoring:EvaluationSeconds</c>). A pass takes a lock of its own, and a rule that counts each event catches up
+/// after a gap, so a repeated run raises nothing twice.
+/// </summary>
+public sealed class RuleEvaluationJob(RuleEvaluator evaluator) : IJob
+{
+    public static readonly JobDefinition Definition = JobDefinition.Create<RuleEvaluationJob>(
+        "monitoring.evaluate_rules", "Runs the security alert rules over the tenant's audit trail every minute.", "Platform security",
+        JobSchedule.Interval(TimeSpan.FromMinutes(1), configurationKey: "Monitoring:EvaluationSeconds"), PriorityClass.Normal, TimeSpan.FromMinutes(5));
+
+    public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+    {
+        await evaluator.RunAsync(cancellationToken).ConfigureAwait(false);
+        return Result.Success();
+    }
+}
+
+/// <summary>
+/// <c>monitoring.copy_alerts</c> (TF-079, ADR-0056, ADR-0061): every <c>Monitoring:CopySeconds</c> (15 s), the unit's
+/// changed alerts to the control plane, as a run a minute that passes; the control plane keeps only the newest revision.
+/// </summary>
+public sealed class AlertCopyJob(IServiceScopeFactory scopes, MonitoringOptions options, TimeProvider time) : IJob
+{
+    public static readonly JobDefinition Definition = JobDefinition.Create<AlertCopyJob>(
+        "monitoring.copy_alerts", "Sends the tenant's changed security alerts to the control plane every few seconds.", "Platform security",
+        JobSchedule.Interval(TimeSpan.FromMinutes(1)), PriorityClass.Normal, TimeSpan.FromMinutes(2));
+
+    public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken) =>
+        JobLoop.RunAsync(context, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(Math.Max(1, options.CopySeconds)), time, async ct =>
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<AlertCopySender>().SendAsync(ct).ConfigureAwait(false);
+            return false;
+        }, cancellationToken);
+}
+
+/// <summary>The control plane's rules, every minute (TF-079), in its API; a unit runs them as its job.</summary>
 public sealed class RuleEvaluationWorker(IServiceScopeFactory scopes, MonitoringOptions options, TimeProvider time, ILogger<RuleEvaluationWorker> logger)
     : MonitoringLoop(scopes, time, logger)
 {
@@ -49,18 +86,6 @@ public sealed class RuleEvaluationWorker(IServiceScopeFactory scopes, Monitoring
 
     protected override Task RunOnceAsync(IServiceProvider services, CancellationToken cancellationToken) =>
         services.GetRequiredService<RuleEvaluator>().RunAsync(cancellationToken);
-}
-
-/// <summary>A unit's changed alerts to the control plane.</summary>
-public sealed class AlertCopyWorker(IServiceScopeFactory scopes, MonitoringOptions options, TimeProvider time, ILogger<AlertCopyWorker> logger)
-    : MonitoringLoop(scopes, time, logger)
-{
-    protected override TimeSpan Interval => TimeSpan.FromSeconds(Math.Max(1, options.CopySeconds));
-
-    protected override string What => "copy of the alerts to the control plane";
-
-    protected override Task RunOnceAsync(IServiceProvider services, CancellationToken cancellationToken) =>
-        services.GetRequiredService<AlertCopySender>().SendAsync(cancellationToken);
 }
 
 /// <summary>The control plane's alerts to the operator's alerting.</summary>

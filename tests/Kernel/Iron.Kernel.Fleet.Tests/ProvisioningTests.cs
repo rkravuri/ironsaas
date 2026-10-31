@@ -63,6 +63,57 @@ public class ProvisioningTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("TF-122 AC1", "ADR-0061")]
+    public async Task ATenantThatHoldsEveryConnectionItsSizeAllowsIsRefusedMoreWhileAnotherTenantStillConnects()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var runtime = new RecordingRuntime();
+        await using var provider = fixture.BuildServices(FleetFixture.Clock(), runtime);
+        var busy = await RegisterAndRequestAsync(provider, "busy");
+        var quiet = await RegisterAndRequestAsync(provider, "quiet");
+        var harness = new ProvisioningWorkerHarness(provider);
+        Assert.True(await harness.RunNextAsync());
+        Assert.True(await harness.RunNextAsync());
+
+        using var root = new OpenBaoSecretStore(fixture.StoreOptions());
+        var busyUnit = (await root.ReadAsync($"tenants/{busy}/unit", ct))!;
+        var quietUnit = (await root.ReadAsync($"tenants/{quiet}/unit", ct))!;
+        var limits = SizeClasses.LimitsOf(SizeClass.Small);
+        var pooled = new NpgsqlConnectionStringBuilder(busyUnit["ConnectionStrings:Database"]);
+        Assert.Equal(limits.ProcessPoolSize, pooled.MaxPoolSize);
+
+        // The busy tenant's backlog takes every connection its role may hold, outside any pool, as a runaway would.
+        var direct = new NpgsqlConnectionStringBuilder(busyUnit["ConnectionStrings:Database"]) { Pooling = false }.ToString();
+        var held = new List<NpgsqlConnection>();
+        try
+        {
+            for (var i = 0; i < limits.DatabaseConnections; i++)
+            {
+                var connection = new NpgsqlConnection(direct);
+                await connection.OpenAsync(ct);
+                held.Add(connection);
+            }
+
+            await using var oneMore = new NpgsqlConnection(direct);
+            var refused = await Assert.ThrowsAsync<PostgresException>(() => oneMore.OpenAsync(ct));
+            Assert.Equal(PostgresErrorCodes.TooManyConnections, refused.SqlState);
+
+            // The other tenant's unit connects at once: one tenant's backlog cannot take the server from another.
+            await using var other = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(quietUnit["ConnectionStrings:Database"]) { Pooling = false }.ToString());
+            await other.OpenAsync(ct);
+            await using var command = new NpgsqlCommand("select current_database()", other);
+            Assert.Equal(quiet, await command.ExecuteScalarAsync(ct));
+        }
+        finally
+        {
+            foreach (var connection in held)
+            {
+                await connection.DisposeAsync();
+            }
+        }
+    }
+
+    [Fact]
     [Proves("TF-210 AC1", "TF-210 AC2", "TF-074 AC5", "ADR-0018", "ADR-0054")]
     public async Task TheUnitReachesOnlyItsOwnDatabaseStoragePathSecretAndKeys()
     {

@@ -248,39 +248,23 @@ public sealed class EvidencePacks(
     }
 }
 
-/// <summary>Makes the evidence packs people asked for, a few seconds after they ask (ADR-0052), in the unit's worker.</summary>
-public sealed class EvidencePackWorker(IServiceScopeFactory scopes, TimeProvider time, ILogger<EvidencePackWorker> logger) : BackgroundService
+/// <summary>
+/// <c>compliance.evidence_packs</c> (TF-067, TF-124, ADR-0052, ADR-0061): the evidence packs people asked for, made a few
+/// seconds after they ask, as a run a minute that passes every five seconds, and at once again while it made one. One
+/// pack per scope: each reads the whole tenant, and a fresh scope keeps its memory short-lived. A pack is taken once.
+/// </summary>
+public sealed class EvidencePackJob(IServiceScopeFactory scopes, TimeProvider time) : IJob
 {
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        try
+    public static readonly JobDefinition Definition = JobDefinition.Create<EvidencePackJob>(
+        "compliance.evidence_packs", "Makes the evidence packs people asked for, a few seconds after they ask.", "Compliance team",
+        JobSchedule.Interval(TimeSpan.FromMinutes(1)), PriorityClass.Interactive, TimeSpan.FromMinutes(30));
+
+    public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken) =>
+        JobLoop.RunAsync(context, TimeSpan.FromMinutes(1), Interval, time, async ct =>
         {
-            using var timer = new PeriodicTimer(Interval, time);
-            do
-            {
-                try
-                {
-                    // One pack per scope: each reads the whole tenant, and a fresh scope keeps its memory short-lived.
-                    bool made;
-                    do
-                    {
-                        await using var scope = scopes.CreateAsyncScope();
-                        made = await scope.ServiceProvider.GetRequiredService<EvidencePacks>().BuildNextAsync(stoppingToken).ConfigureAwait(false);
-                    }
-                    while (made);
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    logger.LogError(exception, "The evidence pack pass failed; it runs again in {Interval}.", Interval);
-                }
-            }
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false));
-        }
-        catch (OperationCanceledException)
-        {
-            // Stopping.
-        }
-    }
+            await using var scope = scopes.CreateAsyncScope();
+            return await scope.ServiceProvider.GetRequiredService<EvidencePacks>().BuildNextAsync(ct).ConfigureAwait(false);
+        }, cancellationToken);
 }

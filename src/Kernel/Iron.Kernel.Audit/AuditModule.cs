@@ -31,6 +31,9 @@ public sealed class AuditModule : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => [.. AuditEvents.Types, .. RecordAuditEvents.Types];
 
+    /// <summary>The unit's sealing and retention (ADR-0061); the control plane seals in its own loop and keeps no archive.</summary>
+    public IReadOnlyList<JobDefinition> Jobs => [AuditSealJob.Definition, AuditRetentionJob.Definition];
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -108,8 +111,9 @@ public enum AuditAnchoring
 public static class AuditSealingHosting
 {
     /// <summary>
-    /// The audit chain's sealing and anchoring loop: a unit's worker, with the daily retention pass, anchors to the control
-    /// plane (ADR-0050); the control plane's API anchors to its own store (ADR-0053).
+    /// The audit chain's sealing and anchoring: a unit's worker anchors to the control plane (ADR-0050), and its jobs
+    /// <c>audit.seal_chain</c> and <c>audit.retention</c> seal and keep the trail (ADR-0061); the control plane's API
+    /// anchors to its own store (ADR-0053), sealing in a loop of its own, since the control plane runs no job runner.
     /// </summary>
     public static IServiceCollection AddAuditSealing(this IServiceCollection services, IConfiguration configuration, AuditAnchoring anchoring = AuditAnchoring.ControlPlane)
     {
@@ -117,20 +121,15 @@ public static class AuditSealingHosting
         ArgumentNullException.ThrowIfNull(configuration);
         var options = configuration.GetSection(AuditSealingOptions.SectionName).Get<AuditSealingOptions>() ?? new AuditSealingOptions();
         services.AddSingleton(options);
-        services.AddHostedService<AuditSealingWorker>();
         if (anchoring == AuditAnchoring.OwnStore)
         {
             // The control plane (ADR-0053): anchors to its store, which the host registers; no archive, no pruning.
             services.AddScoped<IAuditAnchorSink, AuditAnchorKeeper>();
+            services.AddHostedService<AuditSealingWorker>();
             return services;
         }
 
         services.AddScoped<IAuditAnchorSink>(provider => provider.GetRequiredService<AuditAnchorSender>());
-
-        // The archive, the trail's pruning and the records' retention, once a day.
-        var retention = configuration.GetSection(AuditRetentionOptions.SectionName).Get<AuditRetentionOptions>() ?? new AuditRetentionOptions();
-        services.AddSingleton(retention);
-        services.AddHostedService<AuditRetentionWorker>();
         return services;
     }
 }

@@ -28,3 +28,12 @@ without.
 
 The record's sharing (`/api/v1/record-sharing/sample_record/{id}`) and tags (`/api/v1/record-tags/sample_record/{id}`)
 are the kernel's own endpoints. The policy is `UnitVisibility` with `update`, `share` and `tag` for the manage permission.
+
+## Its jobs
+
+Two jobs run only when started (ADR-0061), and only in a unit that runs the module:
+
+| Job | Class | What |
+|---|---|---|
+| `samples.tally_records` | interactive | Counts the unit's sample records into the run's log. The smoke starts it through the job console and finds its run. |
+| `samples.saturate` | bulk, eight at once | Started without a payload, queues 10,000 runs of itself, each holding a database connection and a processor for 15 seconds, until five minutes from the start (`backlog`, `seconds` and `minutes` in a payload change them). The fairness proof (`tools/measurements/job-fairness.sh`) starts it in one tenant and times another tenant's run. Pause it to stop the backlog sooner; a run queued past its time ends at once. |
