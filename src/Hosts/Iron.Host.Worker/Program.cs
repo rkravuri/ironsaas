@@ -14,6 +14,7 @@ using Iron.Kernel.Events;
 using Iron.Kernel.Files;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Identity;
+using Iron.Kernel.Jobs;
 using Iron.Kernel.Keys;
 using Iron.Kernel.Monitoring;
 using Iron.Kernel.Monitoring.Contracts;
@@ -46,7 +47,7 @@ var tenant = TenantBinding.FromConfiguration(builder.Configuration);
 // for testing (ADR-0057), so the subscriptions of each are handled here, where the dispatcher runs (ADR-0060).
 // Protection is here for its audit event types, which the alert rules count (ADR-0056); its limits apply to requests,
 // which the worker serves none of.
-IReadOnlyList<IModule> foundation = [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+IReadOnlyList<IModule> foundation = [new AuditModule(), new EventsModule(), new JobsModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
 var suites = InstalledSuites.From(builder.Configuration, [PurchasingModule.Suite()]);
 var composed = InstalledSuites.Compose(foundation, suites);
 IReadOnlyList<IModule> modules = SamplesModule.IsEnabled(builder.Configuration) ? [.. composed, new SamplesModule()] : composed;
@@ -87,6 +88,9 @@ builder.Services.AddMonitoring(MonitoringScope.Unit);
 
 // The domain events' dispatcher and their archive (TF-085, TF-111, ADR-0060): one worker per unit hands each event on.
 builder.Services.AddEventDispatch();
+
+// The jobs (TF-120, ADR-0061): this worker runs the unit's jobs, and any second worker shares them through the database.
+builder.Services.AddJobRunner();
 
 var app = builder.Build();
 

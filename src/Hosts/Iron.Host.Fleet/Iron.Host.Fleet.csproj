@@ -16,6 +16,7 @@
     <ProjectReference Include="../../Kernel/Iron.Kernel.Authorization/Iron.Kernel.Authorization.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Audit/Iron.Kernel.Audit.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Events/Iron.Kernel.Events.csproj" />
+    <ProjectReference Include="../../Kernel/Iron.Kernel.Jobs/Iron.Kernel.Jobs.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Entitlements/Iron.Kernel.Entitlements.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Flags/Iron.Kernel.Flags.csproj" />
     <ProjectReference Include="../../Kernel/Iron.Kernel.Settings/Iron.Kernel.Settings.csproj" />

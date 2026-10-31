@@ -21,7 +21,8 @@ public sealed record SuitePlan(string Suite, string Plan, int GraceDays);
 /// after every committed change and the unit reads them (ADR-0034). Expired is not in it: the unit works it out from the
 /// end date and the grace days with its own clock. The revision grows by one with every change. <see cref="Plan"/> and
 /// <see cref="GraceDays"/> are the Foundation plan's; since TF-244 the suites the tenant has carry their own plans
-/// (<see cref="Suites"/>), and the modules and features are the union of every plan's (ADR-0059).
+/// (<see cref="Suites"/>), and the modules and features are the union of every plan's (ADR-0059). <see cref="Suspended"/>
+/// says the tenant is suspended, which stops its jobs (TF-122 AC3, ADR-0061); a document written before says nothing.
 /// </summary>
 public sealed record EntitlementsDocument(
     int FormatVersion,
@@ -32,7 +33,8 @@ public sealed record EntitlementsDocument(
     DateTimeOffset PublishedAt,
     IReadOnlyList<ModuleEntitlement> Modules,
     IReadOnlyList<FeatureEntitlement> Features,
-    IReadOnlyList<SuitePlan>? Suites = null)
+    IReadOnlyList<SuitePlan>? Suites = null,
+    bool Suspended = false)
 {
     public const int CurrentFormat = 1;
 

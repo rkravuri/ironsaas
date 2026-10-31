@@ -55,6 +55,7 @@ public sealed class EntitlementsModule : IModule
         services.TryAddSingleton(TimeProvider.System);
         services.AddIronDbContext<EntitlementsDbContext>();
         services.AddSingleton<EntitlementCache>();
+        services.AddSingleton<ITenantStanding, TenantStanding>();
         services.AddSingleton<EntitlementsMetrics>();
         services.AddSingleton<EntitlementRefresher>();
         services.AddHostedService(provider => provider.GetRequiredService<EntitlementRefresher>());

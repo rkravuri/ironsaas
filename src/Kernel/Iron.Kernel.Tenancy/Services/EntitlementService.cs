@@ -307,7 +307,8 @@ public sealed class EntitlementService(
             .Select(r => new FeatureEntitlement(r.Code, r.Status, r.StartsOn, r.EndsOn, GraceOf(r), r.Suite))
             .ToList();
         var plans = suites.Select(s => new SuitePlan(s.Suite, s.Plan, s.GraceDays)).ToList();
-        return new EntitlementsDocument(EntitlementsDocument.CurrentFormat, tenant.Slug, tenant.EntitlementsRevision, tenant.Plan, tenant.GraceDays, time.GetUtcNow(), modules, features, plans);
+        // A suspended tenant's unit skips its jobs while the suspension lasts (TF-122 AC3, ADR-0061).
+        return new EntitlementsDocument(EntitlementsDocument.CurrentFormat, tenant.Slug, tenant.EntitlementsRevision, tenant.Plan, tenant.GraceDays, time.GetUtcNow(), modules, features, plans, tenant.Status == TenantStatus.Suspended);
     }
 
     /// <summary>The tenant's entitlements, all of them or one group's (the Foundation's or a suite's).</summary>

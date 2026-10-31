@@ -130,6 +130,34 @@ public sealed record EventEntry(
     }
 }
 
+/// <summary>
+/// A job as the catalogue lists it (TF-120, ADR-0061): its name and module, what it does and who owns it, its schedule or
+/// trigger, where it runs, its timeout, attempts and concurrency, its priority class, and what makes a run unique.
+/// </summary>
+public sealed record JobEntry(
+    string Name,
+    string Module,
+    string Description,
+    string Owner,
+    string Schedule,
+    JobScope Scope,
+    int TimeoutSeconds,
+    int Attempts,
+    int MaxParallel,
+    PriorityClass Priority,
+    string UniqueBy)
+{
+    /// <summary>The suite of the declaring module (ADR-0043); the file says it once, as the group the entry sits in.</summary>
+    [JsonIgnore]
+    public string Suite { get; init; } = SuiteName.Foundation;
+
+    public static JobEntry From(JobDefinition job)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        return new JobEntry(job.Name, job.Module, job.Description, job.Owner, job.Schedule.Describe(), job.Scope, (int)job.Timeout.TotalSeconds, job.Retry.Attempts, job.MaxParallel, job.Priority, job.UniqueBy);
+    }
+}
+
 /// <summary>A duty as the catalogue lists it (ADR-0037): its code, the module that declares it, its name, what it is, and the permissions it covers.</summary>
 public sealed record DutyEntry(string Code, string Module, string Name, string Description, IReadOnlyList<string> Permissions)
 {
@@ -169,7 +197,7 @@ public sealed class LicensingCatalogue
     private readonly Dictionary<string, FeatureEntry> _features;
     private readonly Dictionary<string, FlagEntry> _flags;
 
-    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null, IEnumerable<DutyEntry>? duties = null, IEnumerable<StarterPlanEntry>? plans = null, IEnumerable<EventEntry>? events = null)
+    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null, IEnumerable<DutyEntry>? duties = null, IEnumerable<StarterPlanEntry>? plans = null, IEnumerable<EventEntry>? events = null, IEnumerable<JobEntry>? jobs = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
         ArgumentNullException.ThrowIfNull(features);
@@ -244,12 +272,23 @@ public sealed class LicensingCatalogue
         }
 
         Events = [.. (events ?? []).OrderBy(e => e.Name, StringComparer.Ordinal).ThenBy(e => e.Version)];
+        var jobNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var entry in jobs ?? [])
+        {
+            if (!jobNames.Add(entry.Name))
+            {
+                throw new InvalidOperationException($"The job '{entry.Name}' is declared twice.");
+            }
+        }
+
+        Jobs = [.. (jobs ?? []).OrderBy(j => j.Name, StringComparer.Ordinal)];
         Suites = [.. Modules.Select(m => m.Suite)
             .Concat(Features.Select(f => f.Suite))
             .Concat(Flags.Select(f => f.Suite))
             .Concat(Settings.Select(s => s.Suite))
             .Concat(Plans.Select(p => p.Suite))
             .Concat(Events.Select(e => e.Suite))
+            .Concat(Jobs.Select(j => j.Suite))
             .Where(suite => suite != SuiteName.Foundation)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -281,6 +320,9 @@ public sealed class LicensingCatalogue
 
     /// <summary>The domain events the build's modules publish (TF-110), by name and version, each with its subscribers.</summary>
     public IReadOnlyList<EventEntry> Events { get; }
+
+    /// <summary>The jobs the build's modules declare (TF-120, ADR-0061), by name.</summary>
+    public IReadOnlyList<JobEntry> Jobs { get; }
 
     /// <summary>The groups of the file: <c>foundation</c> first, then every suite with an entry, by short name (ADR-0043).</summary>
     public IReadOnlyList<string> Suites { get; }
@@ -314,6 +356,7 @@ public sealed class LicensingCatalogue
         var list = modules.ToList();
         var subscriptions = list.SelectMany(m => m.Subscriptions).ToList();
         var events = new List<EventEntry>();
+        var jobs = new List<JobEntry>();
         foreach (var module in list)
         {
             var suite = module.Suite;
@@ -349,6 +392,7 @@ public sealed class LicensingCatalogue
             settings.AddRange(module.Settings.Select(setting => SettingEntry.From(setting, module.Name) with { Suite = suite }));
             duties.AddRange(module.Duties.Select(duty => DutyEntry.From(duty, module.Name)));
             events.AddRange(module.Events.Select(type => EventEntry.From(type, subscriptions) with { Suite = suite }));
+            jobs.AddRange(module.Jobs.Select(job => JobEntry.From(job) with { Suite = suite }));
         }
 
         // A starter plan names only its own suite's modules and features (TF-244 AC7): refused here, at make catalogue.
@@ -363,7 +407,7 @@ public sealed class LicensingCatalogue
             }
         }
 
-        return new LicensingCatalogue(licensed, features, platform, flags, settings, duties, plans, events);
+        return new LicensingCatalogue(licensed, features, platform, flags, settings, duties, plans, events, jobs);
     }
 
     /// <summary>
@@ -374,7 +418,7 @@ public sealed class LicensingCatalogue
     {
         ArgumentNullException.ThrowIfNull(file);
         var retired = file.Flags.Where(f => f.Status == FlagStatus.Retired && FindFlag(f.Key) is null);
-        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings, Duties, Plans, Events);
+        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings, Duties, Plans, Events, Jobs);
     }
 
     /// <summary>
@@ -415,7 +459,8 @@ public sealed class LicensingCatalogue
             [.. Flags.Where(f => f.Suite == suite)],
             [.. Settings.Where(s => s.Suite == suite)],
             [.. Plans.Where(p => p.Suite == suite)],
-            [.. Events.Where(e => e.Suite == suite)]));
+            [.. Events.Where(e => e.Suite == suite)],
+            [.. Jobs.Where(j => j.Suite == suite)]));
         return JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, [.. groups], Duties), Json) + "\n";
     }
 
@@ -451,11 +496,12 @@ public sealed class LicensingCatalogue
             groups.SelectMany(g => (g.Settings ?? []).Select(s => s with { Suite = g.Suite })),
             document.Duties,
             groups.SelectMany(g => (g.Plans ?? []).Select(p => p with { Suite = g.Suite })),
-            groups.SelectMany(g => (g.Events ?? []).Select(e => e with { Suite = g.Suite })));
+            groups.SelectMany(g => (g.Events ?? []).Select(e => e with { Suite = g.Suite })),
+            groups.SelectMany(g => (g.Jobs ?? []).Select(j => j with { Suite = g.Suite })));
     }
 
     private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<SuiteGroup>? Suites, IReadOnlyList<DutyEntry>? Duties);
 
-    /// <summary>One suite's part of the file, or the Foundation's: what it licenses, switches and sets, the plans it brings (TF-244), and the events it publishes (TF-110).</summary>
-    private sealed record SuiteGroup(string Suite, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings, IReadOnlyList<StarterPlanEntry>? Plans = null, IReadOnlyList<EventEntry>? Events = null);
+    /// <summary>One suite's part of the file, or the Foundation's: what it licenses, switches and sets, the plans it brings (TF-244), the events it publishes (TF-110), and its jobs (TF-120).</summary>
+    private sealed record SuiteGroup(string Suite, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings, IReadOnlyList<StarterPlanEntry>? Plans = null, IReadOnlyList<EventEntry>? Events = null, IReadOnlyList<JobEntry>? Jobs = null);
 }

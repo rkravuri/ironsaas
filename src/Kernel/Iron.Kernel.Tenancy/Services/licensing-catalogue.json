@@ -10,6 +10,7 @@
     "files",
     "flags",
     "identity",
+    "jobs",
     "keys",
     "monitoring",
     "protection",
@@ -513,6 +514,38 @@
           "whole_number": true
         },
         {
+          "key": "jobs.history.days",
+          "module": "jobs",
+          "type": "number",
+          "description": "How many days a finished job run stays to look back at; a dead letter stays until it is run again.",
+          "default": 14,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 1 to 365.",
+          "choices": null,
+          "minimum": 1,
+          "maximum": 365,
+          "whole_number": true
+        },
+        {
+          "key": "jobs.time_zone",
+          "module": "jobs",
+          "type": "text",
+          "description": "The time zone the jobs' cron schedules are read in, such as Europe/London; UTC unless set.",
+          "default": "UTC",
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "a time zone's name, such as Europe/London or UTC",
+          "choices": null,
+          "minimum": null,
+          "maximum": null,
+          "whole_number": false
+        },
+        {
           "key": "keys.rotation.data_days",
           "module": "keys",
           "type": "number",
@@ -732,6 +765,21 @@
             "authz.end_delegations_of_deactivated"
           ]
         }
+      ],
+      "jobs": [
+        {
+          "name": "jobs.prune_runs",
+          "module": "jobs",
+          "description": "Removes finished job runs older than the tenant's history; dead letters stay.",
+          "owner": "Platform team",
+          "schedule": "every 1h",
+          "scope": "unit",
+          "timeout_seconds": 600,
+          "attempts": 5,
+          "max_parallel": 1,
+          "priority": "bulk",
+          "unique_by": "the time it was scheduled for"
+        }
       ]
     },
     {
@@ -796,7 +844,8 @@
           "replaced_by": null,
           "subscribers": []
         }
-      ]
+      ],
+      "jobs": []
     }
   ],
   "duties": [

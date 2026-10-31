@@ -26,6 +26,8 @@
   <ItemGroup Label="Api">
     <!-- Request validation with a fluent interface (Apache-2.0). -->
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <!-- Cron expressions with time zones and daylight saving, for jobs' schedules (MIT, HangfireIO/Cronos): S4 T2, ADR-0061. 0.13.0 of 2026-04-29. -->
+    <PackageVersion Include="Cronos" Version="0.13.0" />
     <!-- HTML sanitiser for rich text by an allow-list (MIT, mganss/HtmlSanitizer, on AngleSharp, MIT): S3 T9a, ADR-0053. 9.2.1039 of 2026-08-28, the newest stable. -->
     <PackageVersion Include="HtmlSanitizer" Version="9.2.1039" />
     <!-- Argon2id for password hashing (MIT, managed code). -->

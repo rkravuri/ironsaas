@@ -8,6 +8,7 @@ using Iron.Kernel.Events;
 using Iron.Kernel.Files;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Identity;
+using Iron.Kernel.Jobs;
 using Iron.Kernel.Keys;
 using Iron.Kernel.Monitoring;
 using Iron.Kernel.Protection;
@@ -20,7 +21,8 @@ namespace Iron.Host.Api;
 
 /// <summary>
 /// The modules a tenant unit runs, in order: Audit first (the others write events through its contract), then Events,
-/// whose outbox the others publish their domain events into (ADR-0060), then Authorization, then Identity (it replaces
+/// whose outbox the others publish their domain events into (ADR-0060), then Jobs, which runs every module's jobs
+/// (ADR-0061), then Authorization, then Identity (it replaces
 /// the default principal), then Files, Entitlements, Flags and Settings, then
 /// Visibility, whose tags narrow what every record policy shows (ADR-0057), then Compliance, which signs the records of
 /// the modules before it, then Changes, which holds the sensitive changes of the modules before it for a second
@@ -35,7 +37,7 @@ public static class UnitModules
     public const string CatalogueCommand = "catalogue";
 
     /// <summary>The Foundation's modules: what every tenant's unit runs.</summary>
-    public static IReadOnlyList<IModule> Foundation() => [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
+    public static IReadOnlyList<IModule> Foundation() => [new AuditModule(), new EventsModule(), new JobsModule(), new AuthorizationModule(), new IdentityModule(), new FilesModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new VisibilityModule(), new ComplianceModule(), new ChangesModule(), new ProtectionModule(), new KeysModule(), new MonitoringModule()];
 
     /// <summary>The suites this image carries (ADR-0043): one image for the Foundation and every suite.</summary>
     public static IReadOnlyList<SuiteDefinition> Suites() => [PurchasingModule.Suite()];

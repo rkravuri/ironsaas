@@ -43,6 +43,7 @@ public sealed class EventsModule : IModule
         services.AddHttpContextAccessor();
         services.AddScoped<IEventPublisher, EventPublisher>();
         services.AddScoped<EventInspection>();
+        services.AddScoped<IEventDeadLetters, EventDeadLetters>();
         services.AddSingleton(configuration.GetSection(EventsCommandOptions.SectionName).Get<EventsCommandOptions>() ?? new EventsCommandOptions());
         services.AddScoped<IUnitCommand, EventsCommand>();
         services.AddScoped<IValidator<ReplayEventsRequest>, ReplayEventsRequestValidator>();
