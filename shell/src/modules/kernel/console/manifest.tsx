@@ -14,6 +14,7 @@ import {
   IconSitemap,
   IconSquarePlus,
   IconTags,
+  IconTimelineEvent,
   IconUserShare,
   IconUsersGroup,
 } from "@tabler/icons-react";
@@ -25,6 +26,8 @@ import { ChangesPage } from "./pages/ChangesPage";
 import { ConflictsPage } from "./pages/ConflictsPage";
 import { DelegationsPage } from "./pages/DelegationsPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
+import { readEvents } from "./pages/event-filters";
+import { EventsPage } from "./pages/EventsPage";
 import { ExplainPage } from "./pages/ExplainPage";
 import { KeysPage } from "./pages/KeysPage";
 import { ReviewRecordPage } from "./pages/ReviewRecordPage";
@@ -51,6 +54,7 @@ import { VisibilityPage } from "./pages/VisibilityPage";
  * changes of sensitive configuration that wait for a second administrator (TF-068, ADR-0052). S3 T9b brought the keys, read only:
  * their versions, rotations and re-encryption; rotating them is the operator's (TF-075, ADR-0054). V1 brought content
  * visibility: the tenant's visibility tags and who holds them (TF-241, ADR-0057); people get theirs on their record.
+ * S4 T1 brought the domain events, their subscribers and dead letters, and their replay (TF-112, ADR-0060).
  */
 export const consoleManifest: ModuleManifest = {
   name: "console",
@@ -191,6 +195,13 @@ export const consoleManifest: ModuleManifest = {
       titleKey: "modules.console.alertRules",
     },
     {
+      path: "/console/events",
+      permission: readEvents,
+      element: <EventsPage />,
+      titleKey: "modules.console.events",
+      shortcuts: [...gridShortcuts, ...tabShortcuts],
+    },
+    {
       path: "/console/sso/new",
       permission: "identity.sso.manage",
       element: <SsoProviderPage />,
@@ -299,6 +310,12 @@ export const consoleManifest: ModuleManifest = {
       path: "/console/alert-rules",
       permission: "monitoring.alerts.read",
       icon: <IconBellCog size={16} />,
+    },
+    {
+      labelKey: "modules.console.events",
+      path: "/console/events",
+      permission: readEvents,
+      icon: <IconTimelineEvent size={16} />,
     },
   ],
   opener: { accent: "console", lineKey: "modules.console.line" },

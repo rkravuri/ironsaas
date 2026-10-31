@@ -5,6 +5,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Identity.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,7 @@ public sealed class VisibilityFixture : IAsyncLifetime
     /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
     private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
-    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new AuthorizationModule(), new VisibilityModule()];
+    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new EventsModule(), new AuthorizationModule(), new VisibilityModule()];
 
     public async ValueTask InitializeAsync()
     {

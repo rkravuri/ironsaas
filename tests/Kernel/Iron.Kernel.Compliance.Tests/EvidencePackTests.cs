@@ -20,6 +20,7 @@ using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Compliance.Data;
 using Iron.Kernel.Compliance.Services;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Files;
 using Iron.Kernel.Settings;
 using Iron.Kernel.Settings.Services;
@@ -283,7 +284,7 @@ public class EvidencePackTests(EvidenceFixture fixture)
             ["Storage:ConnectionString"] = fixture.StorageConnectionString,
             ["Storage:Container"] = EvidenceFixture.Container,
         });
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new SettingsModule(), new FilesModule(), new ComplianceModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new FilesModule(), new ComplianceModule()]);
         builder.Services.AddScoped<IEntitlementGate, Entitled>();
         builder.Services.AddScoped<IFlagGate, Entitled>();
         builder.Services.AddSingleton<IPrincipals>(fixture.People);

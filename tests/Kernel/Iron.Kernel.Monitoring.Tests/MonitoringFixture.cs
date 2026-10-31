@@ -9,6 +9,7 @@ using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.History;
 using Iron.Kernel.Monitoring.Contracts;
 using Iron.Kernel.Monitoring.Services;
@@ -79,7 +80,7 @@ public sealed class MonitoredTenant(string connectionString, MonitoringScope sco
         services.AddIronDatabase(ConnectionString);
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(Configuration).Build();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new MonitoringModule(Scope), new DeclaredTypesModule()]);
+        services.AddModules(configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new MonitoringModule(Scope), new DeclaredTypesModule()]);
         more?.Invoke(services);
         return services.BuildServiceProvider();
     }
@@ -121,7 +122,7 @@ public sealed class DeclaredTypesModule(IReadOnlyList<string>? leaveOut = null) 
     public IReadOnlyList<AuditEventType> AuditEventTypes =>
     [
         .. AlertRules.All.SelectMany(rule => rule.Matches).Select(m => m.EventType).Distinct(StringComparer.Ordinal)
-            .Where(type => !type.StartsWith("audit.", StringComparison.Ordinal) && !type.StartsWith("authz.", StringComparison.Ordinal) && !type.StartsWith("monitoring.", StringComparison.Ordinal))
+            .Where(type => !type.StartsWith("audit.", StringComparison.Ordinal) && !type.StartsWith("authz.", StringComparison.Ordinal) && !type.StartsWith("monitoring.", StringComparison.Ordinal) && !type.StartsWith("events.", StringComparison.Ordinal))
             .Where(type => leaveOut?.Contains(type, StringComparer.Ordinal) != true)
             .Select(type => new AuditEventType(type, type)),
     ];

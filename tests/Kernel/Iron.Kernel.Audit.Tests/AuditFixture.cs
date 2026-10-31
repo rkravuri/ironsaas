@@ -3,6 +3,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Files;
 using Iron.Testing;
 using Microsoft.AspNetCore.Http;
@@ -105,7 +106,7 @@ public sealed class AuditFixture : IAsyncLifetime
             ["Storage:ConnectionString"] = StorageConnectionString,
             ["Storage:Container"] = container,
         }).AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build();
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new FilesModule()]);
+        services.AddModules(configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new FilesModule()]);
         return services.BuildServiceProvider();
     }
 }

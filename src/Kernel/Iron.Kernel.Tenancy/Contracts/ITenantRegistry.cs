@@ -91,6 +91,9 @@ public static class TenancyPermissions
     /// </summary>
     public static readonly Permission ImpersonationStart = new("tenancy.impersonation.start", "Sign in as a person of a tenant that allows it, with a reason, through a one-time link", Risk.Critical);
 
+    /// <summary>Searching a tenant's domain events and replaying them to a subscriber, with a reason, through the fleet (TF-112, ADR-0060).</summary>
+    public static readonly Permission EventsManage = new("tenancy.events.manage", "Search a tenant's domain events and replay them to a subscriber, with a reason", Risk.High);
+
     /// <summary>Asking for emergency access to a tenant, and ending it (TF-026): it needs a second operator to approve.</summary>
     public static readonly Permission BreakGlassRequest = new("tenancy.break_glass.request", "Ask for emergency access to a tenant with a reason and a ticket, and end it", Risk.High);
 
@@ -133,7 +136,7 @@ public static class TenancyPermissions
     /// <summary>Running an incident: declaring it, noting its timeline, recording its notices, closing it and recording its review.</summary>
     public static readonly Permission IncidentsManage = new("tenancy.incidents.manage", "Declare and run incidents: their timeline, notices to tenants, close and review", Risk.High);
 
-    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, SuitesManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport, AlertCopiesAppend, IncidentsRead, IncidentsManage];
+    public static IReadOnlyList<Permission> All => [TenantsRead, TenantsManage, TenantsProvision, EntitlementsRead, EntitlementsManage, SuitesManage, FlagsRead, FlagsManage, KillSwitchesManage, AdministratorsRecover, ImpersonationStart, EventsManage, BreakGlassRequest, BreakGlassApprove, DocumentsManage, AuditAnchorsAppend, AuditChainsVerify, AuditRestoresAccept, KeysManage, KeysReport, AlertCopiesAppend, IncidentsRead, IncidentsManage];
 }
 
 public static class TenancyErrors
@@ -198,6 +201,7 @@ public static class TenancyErrors
 
     /// <summary>The operator's impersonation needs a reason (TF-025 AC1).</summary>
     public const string ImpersonationReasonRequired = "tenancy.impersonation.reason_required";
+    public const string EventsReasonRequired = "tenancy.events.reason_required";
 
     public const string BreakGlassNotFound = "tenancy.break_glass.not_found";
 
@@ -272,6 +276,12 @@ public static class TenancyAuditEvents
 
     /// <summary>The operator asked to sign in as a person of a tenant, with a reason (TF-025); the unit audits its side.</summary>
     public const string ImpersonationRequested = "tenancy.impersonation_requested";
+
+    /// <summary>The operator searched a tenant's domain events (ADR-0060); the job's output is the answer.</summary>
+    public const string EventsSearched = "tenancy.events_searched";
+
+    /// <summary>The operator asked to replay a tenant's events to a subscriber, with a reason (ADR-0060); the unit audits its side.</summary>
+    public const string EventsReplayRequested = "tenancy.events_replay_requested";
 
     public const string BreakGlassRequested = "tenancy.break_glass_requested";
 
@@ -357,6 +367,8 @@ public static class TenancyAuditEvents
         new(KillSwitchFlipped, "Kill switch changed"),
         new(AdministratorRecoveryRequested, "Administrator recovery requested"),
         new(ImpersonationRequested, "Sign-in-as requested"),
+        new(EventsSearched, "A tenant's events searched"),
+        new AuditEventType(EventsReplayRequested, "A tenant's events replayed").AsAdministrative(),
         new(BreakGlassRequested, "Break-glass access requested"),
         new(BreakGlassApproved, "Break-glass access approved"),
         new(BreakGlassExpired, "Break-glass request expired"),

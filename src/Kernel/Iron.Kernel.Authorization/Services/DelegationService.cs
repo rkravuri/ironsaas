@@ -5,6 +5,7 @@ using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Events.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Authorization.Services;
@@ -51,7 +52,8 @@ public sealed class DelegationService(
     IPermissionEvaluator evaluator,
     AccessGrants grants,
     TimeProvider time,
-    ConflictService segregation)
+    ConflictService segregation,
+    IEventPublisher events)
 {
     public const string RecordType = "delegation";
 
@@ -185,6 +187,7 @@ public sealed class DelegationService(
         delegation.End(now, current.Id, reason);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await audit.WriteAsync(new AuditEvent(AuthorizationAuditEvents.DelegationEnded, AuditOutcome.Success, current.Id, null, Details(delegation), RecordType, delegation.Id, delegation.EndReason), cancellationToken).ConfigureAwait(false);
+        await events.PublishAsync(AuthorizationEvents.DelegationEnded, delegation.Id, new DelegationEnded(delegation.Id, delegation.DelegatorId, delegation.DelegateId, DelegationEnded.ByPerson), cancellationToken).ConfigureAwait(false);
         await segregation.RefreshPrincipalAsync(delegation.DelegateId, cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return (await DescribeAsync([delegation], cancellationToken).ConfigureAwait(false))[0];
@@ -284,7 +287,7 @@ public sealed class DelegationService(
     private async Task<bool> HoldsAsync(AccessScope scope, CancellationToken cancellationToken) =>
         (await grants.PermissionsAtAsync(current.Id, scope, cancellationToken).ConfigureAwait(false)).Contains(AuthorizationPermissions.DelegationsManage.Name);
 
-    private Dictionary<string, string> Details(Delegation delegation) => new(StringComparer.Ordinal)
+    internal static Dictionary<string, string> Details(Delegation delegation) => new(StringComparer.Ordinal)
     {
         ["delegator"] = delegation.DelegatorId.ToString("D"),
         ["delegate"] = delegation.DelegateId.ToString("D"),

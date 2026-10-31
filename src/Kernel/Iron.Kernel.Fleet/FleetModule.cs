@@ -67,6 +67,7 @@ public sealed class FleetModule : IModule
         services.AddScoped<IProvisioningStep, ImpersonateStep>();
         services.AddScoped<IProvisioningStep, BreakGlassOpenStep>();
         services.AddScoped<IProvisioningStep, BreakGlassCloseStep>();
+        services.AddScoped<IProvisioningStep, EventsStep>();
 
         // The tenants' keys and database passwords, rotated and retired by the fleet (ADR-0054).
         services.AddScoped<KeyRotationRunner>();

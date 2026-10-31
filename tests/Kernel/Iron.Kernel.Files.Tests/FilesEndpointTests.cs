@@ -12,6 +12,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -45,7 +46,7 @@ public class FilesEndpointTests(FilesFixture fixture) : IAsyncLifetime
         builder.Services.AddScoped<ICurrentPrincipal, HeaderPrincipal>();
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FilesModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new FilesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

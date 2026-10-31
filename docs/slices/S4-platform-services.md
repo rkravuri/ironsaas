@@ -52,6 +52,7 @@ To be written in the design session.
 | TF-164 | Signature capture and signed documents | Should | Electronic signatures bound to their version (S3 T7, ADR-0051) | |
 | TF-165 | File retention, archival and purge | Must | Retention classes and legal holds (S3 T6, ADR-0050) | |
 | TF-166 | Document numbering service | Must | | TF-221 AC1 waits for it |
+| TF-206 | Connector configuration for external systems | Should | | Moved from S7 at the owner's decision of 2026-10-30, for Supplier Management's identity, bank account and sanctions checks (T9) |
 | TF-242 | Forms engine | Should | The schema form of the design system (S2 D3) | |
 | TF-245 | Mapping form answers to records | Should | | Change proposals before S5's governed changes (TF-247) |
 | TF-246 | One-time verified access for external respondents | Should | | Lets supplier information collection ship before the Supplier Network (S8) |
@@ -79,8 +80,29 @@ V built visibility tags (TF-241, ADR-0057) and suites per tenant (TF-244, ADR-00
 
 ## 5. Task breakdown
 
+The tasks of `docs/prompts/S4.md`, one section each; T1 was written in full, T2 to T9 as outlines the design session sharpens before each starts.
+
 | Task | What it builds | Requirements | State |
 |---|---|---|---|
+| T1 | Domain events, the transactional outbox, subscriptions, replay and inspection | TF-085, TF-110 to TF-113 | done (pull request #32, ADR-0060) |
+| T2 | Background jobs, the job console, fairness, retries and dead letters, maintenance jobs | TF-120 to TF-124; S3's exceptions TF-130 AC3 and TF-003 AC2 | outline |
+| T3 | Files: upload rules, virus scanning, retention and purge; attachments through the record's access policy | TF-078, TF-161, TF-165 | outline |
+| T4 | Notifications: templates, channels, preferences, digests, delivery tracking, the in-app centre with live push, email, announcements; every email S3 left waiting | TF-150 to TF-156 | outline |
+| T5 | Documents: PDF rendering, templates, signature capture, numbering; the PDFs S3 left waiting | TF-162 to TF-164, TF-166 | outline |
+| T6 | Localisation: a pseudo-language in every build and German as the first real second language, server messages, locale formats, Unicode | TF-140 to TF-142, TF-145 | outline |
+| T7 | Import, export and reference data through the record's access policy; bulk loading; seeds per suite | TF-086, TF-088, TF-089, TF-205 | outline |
+| T8 | The forms engine, with surveys, mapping answers to records, and the one-time verified link | TF-242, TF-245, TF-246 | outline |
+| T9 | Outbound connectors and webhooks, with the connector kinds Supplier Management needs (identity and tax status, bank accounts, sanctions) | TF-114, TF-206 | outline |
+| S4-close | Exceptions, documentation, closing notes | | outline |
+
+### The owner's decisions for S4 (2026-10-30)
+
+- TF-206 (connector configuration for external systems) moves into S4, in T9, because Supplier Management's checks of identity and tax status, bank accounts and sanctions need it before S7.
+- A pseudo-language in every build, and German as the first real second language (T6).
+- PDF rendering is chosen in T5 by measurement, under the open-source rule (ADR-0003).
+- Mailpit is the laptop's mail catcher (T4).
+- ClamAV runs in its own Compose profile, started for the file tests and the pipeline, not with the everyday stack (T3).
+- The rule V carries into every task: whatever S4 sends, attaches, exports, imports or asks about concerning a record goes only to people who may read that record, visibility tags included; and whatever a suite declares (templates, events, jobs, strings, forms, reference data) exists only where the suite is installed (section 4).
 
 ## 6. How we build
 

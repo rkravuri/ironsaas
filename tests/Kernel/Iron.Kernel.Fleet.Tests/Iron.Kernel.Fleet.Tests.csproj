@@ -37,6 +37,7 @@
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Fleet/Contracts/Iron.Kernel.Fleet.Contracts.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Tenancy/Iron.Kernel.Tenancy.csproj" />
     <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Tenancy/Contracts/Iron.Kernel.Tenancy.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Kernel/Iron.Kernel.Events/Iron.Kernel.Events.csproj" />
   </ItemGroup>
 
 </Project>

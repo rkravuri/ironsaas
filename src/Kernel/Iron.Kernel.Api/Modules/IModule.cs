@@ -58,6 +58,18 @@ public interface IModule
     /// </summary>
     IReadOnlyList<AuditEventType> AuditEventTypes => [];
 
+    /// <summary>
+    /// The domain events the module publishes (TF-110, ADR-0060), each declared in its Contracts with its name, version,
+    /// record type, data, description and owner. Each name starts with the module's name; the catalogue lists them.
+    /// </summary>
+    IReadOnlyList<EventType> Events => [];
+
+    /// <summary>
+    /// The events the module subscribes to (TF-111, ADR-0060), each by the publishing module's declaration, with the
+    /// handler AddModules registers. The worker's dispatcher hands every such event to it, at least once, in order per record.
+    /// </summary>
+    IReadOnlyList<EventSubscription> Subscriptions => [];
+
     void AddServices(IServiceCollection services, IConfiguration configuration);
 
     void MapEndpoints(IEndpointRouteBuilder endpoints);

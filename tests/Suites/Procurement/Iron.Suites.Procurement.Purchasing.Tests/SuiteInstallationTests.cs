@@ -4,6 +4,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Contexts;
+using Iron.Kernel.Events;
 using Iron.Suites.Procurement.Purchasing.Contracts;
 using Iron.Suites.Procurement.Purchasing.Data;
 using Microsoft.EntityFrameworkCore;
@@ -129,14 +130,52 @@ public class SuiteInstallationTests(PurchasingFixture fixture)
         Assert.Throws<InvalidOperationException>(() => new ServiceCollection().AddModules(new ConfigurationBuilder().Build(), [new PurchasingModule()]));
     }
 
+    [Fact]
+    [Proves("ADR-0060", "ADR-0059")]
+    public async Task ASuitesEventsAreDeclaredAndWrittenOnlyWhereTheUnitRunsTheSuite()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var with = await fixture.Postgres.CreateDatabaseAsync($"events_with_{Suffix()}", cancellationToken);
+        var without = await fixture.Postgres.CreateDatabaseAsync($"events_without_{Suffix()}", cancellationToken);
+
+        await RunAsync(with, withSuite: true, new FakeTimeProvider(Start), Settings(Ids.New(), "2026.10.31.2"), "migrate", "seed");
+        await RunAsync(without, withSuite: false, new FakeTimeProvider(Start), Settings(Ids.New(), "2026.10.31.2"), "migrate", "seed");
+
+        await using (var unit = Unit(with, withSuite: true, new FakeTimeProvider(Start), []))
+        {
+            var declarations = unit.GetRequiredService<EventDeclarations>();
+            Assert.NotNull(declarations.Find(PurchasingEvents.SuiteInstalled.Name, PurchasingEvents.SuiteInstalled.Version));
+        }
+
+        await using (var unit = Unit(without, withSuite: false, new FakeTimeProvider(Start), []))
+        {
+            var declarations = unit.GetRequiredService<EventDeclarations>();
+            Assert.Null(declarations.Find(PurchasingEvents.SuiteInstalled.Name, PurchasingEvents.SuiteInstalled.Version));
+            Assert.DoesNotContain(declarations.Events, e => e.Name.StartsWith("purchasing.", StringComparison.Ordinal));
+        }
+
+        var installation = await InstallationAsync(with, cancellationToken);
+        Assert.Equal(1, await OutboxAsync(with, PurchasingEvents.SuiteInstalled.Name, installation.Id, cancellationToken));
+        Assert.Equal(0, await OutboxAsync(without, PurchasingEvents.SuiteInstalled.Name, null, cancellationToken));
+    }
+
     private static Dictionary<string, string?> Settings(Guid job, string version) => new()
     {
         ["Seed:JobId"] = job.ToString("D"),
         ["Release:Version"] = version,
     };
 
-    /// <summary>A unit's migrate and seed, as the image's commands run them: the Foundation (here Audit) and, when asked, the suite.</summary>
+    /// <summary>A unit's migrate and seed, as the image's commands run them: the Foundation (here Audit and Events) and, when asked, the suite.</summary>
     private static async Task RunAsync(string connectionString, bool withSuite, TimeProvider time, Dictionary<string, string?> settings, params string[] commands)
+    {
+        await using var unit = Unit(connectionString, withSuite, time, settings);
+        foreach (var command in commands)
+        {
+            Assert.Equal(0, await DatabaseCommands.RunAsync(unit, [command], TestContext.Current.CancellationToken));
+        }
+    }
+
+    private static ServiceProvider Unit(string connectionString, bool withSuite, TimeProvider time, Dictionary<string, string?> settings)
     {
         settings[InstalledSuites.ConfigurationKey] = withSuite ? ProcurementSuite.ShortName : null;
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
@@ -148,12 +187,18 @@ public class SuiteInstallationTests(PurchasingFixture fixture)
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
         services.AddIronDatabase(connectionString);
-        services.AddModules(configuration, InstalledSuites.Compose([new AuditModule()], suites), suites);
-        await using var unit = services.BuildServiceProvider();
-        foreach (var command in commands)
-        {
-            Assert.Equal(0, await DatabaseCommands.RunAsync(unit, [command], TestContext.Current.CancellationToken));
-        }
+        services.AddModules(configuration, InstalledSuites.Compose([new AuditModule(), new EventsModule()], suites), suites);
+        return services.BuildServiceProvider();
+    }
+
+    private static async Task<long> OutboxAsync(string connectionString, string type, Guid? recordId, CancellationToken cancellationToken)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new NpgsqlCommand("select count(*) from kernel_events.outbox where type = @type and (@record::uuid is null or record_id = @record)", connection);
+        command.Parameters.AddWithValue("type", type);
+        command.Parameters.Add(new NpgsqlParameter("record", NpgsqlTypes.NpgsqlDbType.Uuid) { Value = (object?)recordId ?? DBNull.Value });
+        return (long)(await command.ExecuteScalarAsync(cancellationToken))!;
     }
 
     private static async Task<SuiteInstallation> InstallationAsync(string connectionString, CancellationToken cancellationToken)

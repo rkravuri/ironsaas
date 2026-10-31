@@ -6,7 +6,9 @@
 # sample module for testing when SAMPLE_RECORDS=1, or unmarks it when SAMPLE_RECORDS=0, ADR-0057; a provisioning with
 # SAMPLE_RECORDS=1 registers the tenant marked, and with SUITES=procurement registers it with those suites, each under
 # its only plan, ADR-0059; ACTION=suite-add adds SUITE to an active tenant under PLAN, or the suite's only plan, and
-# ACTION=suite-remove removes it, both with REASON, each an update job of the fleet, ADR-0059),
+# ACTION=suite-remove removes it, both with REASON, each an update job of the fleet, ADR-0059; ACTION=events searches the
+# tenant's domain events by EVENT_TYPE, RECORD, CORRELATION or STATUS=dead, and ACTION=events-replay replays them to
+# SUBSCRIBER, by IDS or a range FROM to TO, with REASON, each a job the fleet runs in the unit, ADR-0060),
 # as an operator (client credentials), then follows the job until it ends and prints every step with its duration.
 # A link the job handed over (the first administrator's invitation, a recovery link) is printed once: the control plane
 # gives it once, to the operator who asked, and deletes it; it is never in the job's output (ADR-0046).
@@ -27,11 +29,19 @@ sample_records="${SAMPLE_RECORDS:-}"
 suites="${SUITES:-}"
 suite="${SUITE:-}"
 plan="${PLAN:-}"
+event_type="${EVENT_TYPE:-}"
+record="${RECORD:-}"
+correlation="${CORRELATION:-}"
+status_filter="${STATUS:-}"
+subscriber="${SUBSCRIBER:-}"
+event_ids="${IDS:-}"
+from_position="${FROM:-}"
+to_position="${TO:-}"
 
-python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" "$sample_records" "$suites" "$suite" "$plan" <<'PY'
+python3 - "$control" "$client_id" "$secret" "$tenant" "$administrator" "$action" "$timeout" "$reason" "$reset_factors" "$minutes" "$sample_records" "$suites" "$suite" "$plan" "$event_type" "$record" "$correlation" "$status_filter" "$subscriber" "$event_ids" "$from_position" "$to_position" <<'PY'
 import base64, json, sys, time, urllib.error, urllib.request
 
-control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes, sample_records, suites, suite, plan = sys.argv[1:]
+control, client_id, secret, tenant, administrator, action, timeout, reason, reset_factors, minutes, sample_records, suites, suite, plan, event_type, record, correlation, status_filter, subscriber, event_ids, from_position, to_position = sys.argv[1:]
 timeout = int(timeout)
 suites = [name.strip() for name in suites.split(",") if name.strip()]
 
@@ -102,6 +112,15 @@ elif action == "impersonation":
     # The person to sign in as, why, and for how long; the tenant decides whether its people may be signed in as at all.
     body = {"login_id": administrator, "reason": reason, "minutes": int(minutes) if minutes else None}
     status, job = call("POST", f"/api/v1/tenants/{tenant}/{action}", body=body, token=access)
+elif action == "events":
+    # What the unit's events command searches by; the job's output lists the events with their subscribers' states (ADR-0060).
+    body = {"type": event_type or None, "record_id": record or None, "correlation_id": correlation or None, "dead_only": status_filter == "dead"}
+    status, job = call("POST", f"/api/v1/tenants/{tenant}/events/search", body=body, token=access)
+elif action == "events-replay":
+    # One subscriber, the events by id or a range of positions, and why; handled events stay handled (ADR-0060).
+    ids = [value.strip() for value in event_ids.split(",") if value.strip()]
+    body = {"subscriber": subscriber, "event_ids": ids or None, "from_position": int(from_position) if from_position else None, "to_position": int(to_position) if to_position else None, "reason": reason}
+    status, job = call("POST", f"/api/v1/tenants/{tenant}/events/replay", body=body, token=access)
 elif action in ("suite-add", "suite-remove"):
     # The suite's entitlements change with the operator's reason, and the fleet's update job brings the unit along (ADR-0059).
     if action == "suite-add":

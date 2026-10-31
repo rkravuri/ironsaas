@@ -11,6 +11,7 @@ using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Fleet;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Telemetry;
@@ -50,7 +51,7 @@ public class KeyEndpointTests(TenancyFixture fixture) : IAsyncLifetime
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
         builder.Services.AddIronSecretStore(builder.Configuration);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
         builder.Services.AddScoped<IRecentAuthentication, HeaderRecentAuthentication>();

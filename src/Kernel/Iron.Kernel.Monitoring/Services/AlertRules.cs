@@ -104,6 +104,10 @@ public static class AlertRules
             [new("protection.csp_reports_received")], AuditGrouping.Everything, 100, 10, 60, AlertSeverity.Normal, RuleScopes.Unit, Runbook("rate-limits-and-policy-reports"),
             SumKey: AuditDetails.Reports),
 
+        // A subscriber that failed an event as many times as it is retried (TF-085 AC2, ADR-0060): one alert per subscriber's burst.
+        new("event_dead_letters", "A domain event parked as a dead letter",
+            [new("events.delivery_dead_lettered")], AuditGrouping.Target, 1, 10, 60, AlertSeverity.High, RuleScopes.Unit, Runbook("dead-lettered-events")),
+
         // The control plane's own trail: what operators do, and what the fleet finds.
         new("operator_access_changes", "A change of the operators' critical access",
             [.. RoleEvents.Select(type => new AuditEventMatch(type, AuditOutcome.Success, AuditDetails.Critical, AuditDetails.True)), new("tenancy.key_rotation_requested"), new("tenancy.audit_restore_accepted")],

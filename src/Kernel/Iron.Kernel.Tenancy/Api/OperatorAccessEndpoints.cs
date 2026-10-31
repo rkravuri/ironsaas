@@ -30,6 +30,33 @@ public sealed class OperatorImpersonationRequestValidator : AbstractValidator<Op
     }
 }
 
+/// <summary>What the operator searches a tenant's events by (ADR-0060).</summary>
+public sealed record OperatorEventSearchRequest(string? Type, Guid? RecordId, string? CorrelationId, bool? DeadOnly);
+
+public sealed class OperatorEventSearchRequestValidator : AbstractValidator<OperatorEventSearchRequest>
+{
+    public OperatorEventSearchRequestValidator()
+    {
+        RuleFor(r => r.Type).MaximumLength(200);
+        RuleFor(r => r.CorrelationId).MaximumLength(64);
+    }
+}
+
+/// <summary>A replay the operator asks of a tenant: to one subscriber, of named events or a range of positions, with why.</summary>
+public sealed record OperatorEventReplayRequest(string Subscriber, IReadOnlyList<Guid>? EventIds, long? FromPosition, long? ToPosition, string Reason);
+
+public sealed class OperatorEventReplayRequestValidator : AbstractValidator<OperatorEventReplayRequest>
+{
+    public OperatorEventReplayRequestValidator()
+    {
+        RuleFor(r => r.Subscriber).NotEmpty().MaximumLength(100);
+        RuleFor(r => r.EventIds).MaximumCount(1000);
+        RuleFor(r => r.FromPosition).GreaterThanOrEqualTo(1);
+        RuleFor(r => r.ToPosition).GreaterThanOrEqualTo(1);
+        RuleFor(r => r.Reason).NotEmpty().WithMessage("Say why: both audit trails keep it.").MaximumLength(500);
+    }
+}
+
 /// <summary>Why, under which ticket, and for how long an operator needs emergency access to a tenant.</summary>
 public sealed record BreakGlassRequest(string Reason, string Ticket, int? Minutes);
 
@@ -146,6 +173,8 @@ internal static class OperatorAccessEndpoints
     {
         var tenants = endpoints.MapApiGroup("tenants");
         tenants.MapPost("/{slug}/impersonation", ImpersonateAsync).RequirePermission(TenancyPermissions.ImpersonationStart).RequireRecentAuthentication().Validate<OperatorImpersonationRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ImpersonateInTenant").WithSummary("Ask the fleet for a one-time link to sign in as a person of a tenant that allows it, with a reason; the provisioning report gives it once to you.");
+        tenants.MapPost("/{slug}/events/search", SearchEventsAsync).RequirePermission(TenancyPermissions.EventsManage).Validate<OperatorEventSearchRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("SearchTenantEvents").WithSummary("Ask the fleet to search a tenant's domain events by type, record or correlation id; the job's output lists them with their subscribers' states.");
+        tenants.MapPost("/{slug}/events/replay", ReplayEventsAsync).RequirePermission(TenancyPermissions.EventsManage).RequireRecentAuthentication().Validate<OperatorEventReplayRequest>().Produces<ProvisioningResponse>(StatusCodes.Status202Accepted).WithName("ReplayTenantEvents").WithSummary("Ask the fleet to replay a tenant's events to one subscriber, with a reason both audit trails keep; handled events stay handled.");
         tenants.MapPost("/{slug}/break-glass", RequestAsync).RequirePermission(TenancyPermissions.BreakGlassRequest).Validate<BreakGlassRequest>().Produces<BreakGlassResponse>(StatusCodes.Status201Created).WithName("RequestBreakGlass").WithSummary("Ask for emergency access to a tenant, with a reason, a ticket and a duration; a second operator approves within 30 minutes.");
 
         var breakGlass = endpoints.MapApiGroup("break-glass");
@@ -162,6 +191,18 @@ internal static class OperatorAccessEndpoints
     private static async Task<IResult> ImpersonateAsync(string slug, OperatorImpersonationRequest request, HttpContext http, OperatorImpersonation impersonation, CancellationToken cancellationToken)
     {
         var result = await impersonation.RequestAsync(slug, request.LoginId, request.Reason, request.Minutes, cancellationToken);
+        return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
+    }
+
+    private static async Task<IResult> SearchEventsAsync(string slug, OperatorEventSearchRequest request, HttpContext http, OperatorEvents events, CancellationToken cancellationToken)
+    {
+        var result = await events.SearchAsync(slug, new OperatorEventSearch(request.Type, request.RecordId, request.CorrelationId, request.DeadOnly == true), cancellationToken);
+        return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
+    }
+
+    private static async Task<IResult> ReplayEventsAsync(string slug, OperatorEventReplayRequest request, HttpContext http, OperatorEvents events, CancellationToken cancellationToken)
+    {
+        var result = await events.ReplayAsync(slug, new OperatorEventReplay(request.Subscriber, request.EventIds, request.FromPosition, request.ToPosition, request.Reason), cancellationToken);
         return ApiResults.From(result, http, job => TypedResults.Accepted($"{ApiRouting.Prefix}/tenants/{slug}/provisioning", ProvisioningResponse.From(job)));
     }
 

@@ -29,6 +29,8 @@ public sealed class PurchasingModule : IModule
 
     public IReadOnlyList<AuditEventType> AuditEventTypes => PurchasingAuditEvents.Types;
 
+    public IReadOnlyList<EventType> Events => PurchasingEvents.All;
+
     /// <summary>
     /// The eProcurement Suite as hosts compose it, with its modules in the suite's order, the shared master first
     /// (ADR-0042), and its starter plan, Essentials, which holds the Purchasing module; later modules join the suite's

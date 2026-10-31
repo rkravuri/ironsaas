@@ -139,7 +139,7 @@
 "FF-163","Supplier reports","moved","SUP-063","suites/procurement/supplier-management-PRD.md","","","",""
 "FF-164","Analytics data feed","covered","","","TF-089|TF-203","not built yet: TF-089 is S4, TF-203 S5","","Each product declares what it feeds (section 11.4 of each product PRD)."
 "FF-165","Document search","covered","","","TF-204","not built yet: S5","","Each product declares what it indexes and by which fields (section 11.4 of each product PRD)."
-"FF-166","Exports for audit and ERP","covered","","","TF-203|TF-205|TF-206","not built yet: TF-203 and TF-205 are S5, TF-206 S7; the audit export TF-064 is S3","","Each product declares its audit and ERP exports (section 11.4 of each product PRD)."
+"FF-166","Exports for audit and ERP","covered","","","TF-203|TF-205|TF-206","not built yet: TF-203 and TF-205 are S5, TF-206 S4; the audit export TF-064 is S3","","Each product declares its audit and ERP exports (section 11.4 of each product PRD)."
 "FF-170","Document type settings","split","BF-161|ORD-022","foundation/business-foundation-PRD.md|suites/procurement/orders-PRD.md","","","","At the review of L2 (ADR-0043, decision 8): the acknowledgement reminder days to Orders (ORD-022)."
 "FF-171","Supplier onboarding configuration","split","SUP-005|SPX-007","suites/procurement/supplier-management-PRD.md|suites/procurement/supplier-portal-PRD.md","","","","At the review of L2 (ADR-0043, decision 8): its portal channels to the supplier portal (SPX-007)."
 "FF-172","Matching and tolerance configuration screen","moved","INV-062","suites/procurement/invoicing-PRD.md","","","",""

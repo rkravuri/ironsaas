@@ -99,4 +99,5 @@ public static class StepNames
     public const string BreakGlassOpen = "break-glass-open";
     public const string BreakGlassClose = "break-glass-close";
     public const string ValidationPack = "validation-pack";
+    public const string Events = "events";
 }

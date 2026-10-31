@@ -7,6 +7,8 @@ using Iron.Kernel.Api.Validation;
 using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Lists;
 using Iron.Kernel.Data.Policies;
+using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Events.Contracts;
 using Iron.Kernel.Samples.Contracts;
 using Iron.Kernel.Samples.Data;
 using Microsoft.AspNetCore.Builder;
@@ -17,12 +19,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Iron.Kernel.Samples.Api;
 
-public sealed record SampleRecordResponse(Guid Id, string Name, Guid OwningUnitId, SharingMode SharingMode, IReadOnlyList<string> VisibilityTags, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, int Version)
+public sealed record SampleRecordResponse(Guid Id, string Name, Guid OwningUnitId, SharingMode SharingMode, IReadOnlyList<string> VisibilityTags, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, int Version, DateTimeOffset? NoticedAt)
 {
     public static SampleRecordResponse From(SampleRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);
-        return new(record.Id, record.Name, record.OwningOrganisationId, record.SharingMode, record.VisibilityTags, record.CreatedAt, record.UpdatedAt, record.Version);
+        return new(record.Id, record.Name, record.OwningOrganisationId, record.SharingMode, record.VisibilityTags, record.CreatedAt, record.UpdatedAt, record.Version, record.NoticedAt);
     }
 }
 
@@ -81,7 +83,7 @@ internal static class SampleRecordsEndpoints
         return ApiResults.List(page.Map(SampleRecordResponse.From), http, query);
     }
 
-    private static async Task<IResult> CreateAsync(CreateSampleRecordRequest request, HttpContext http, SamplesDbContext context, ICurrentPrincipal current, IPermissionEvaluator evaluator, CancellationToken cancellationToken)
+    private static async Task<IResult> CreateAsync(CreateSampleRecordRequest request, HttpContext http, SamplesDbContext context, ICurrentPrincipal current, IPermissionEvaluator evaluator, IUnitOfWork unitOfWork, IEventPublisher events, CancellationToken cancellationToken)
     {
         if (NewRecords.OwningUnit(current, request.UnitId) is not { } unit)
         {
@@ -95,9 +97,13 @@ internal static class SampleRecordsEndpoints
             return ApiResults.Problem(Error.Forbidden(PermissionErrors.PermissionDenied, $"You do not hold {SamplesPermissions.RecordsManage.Name} at this unit."), http);
         }
 
+        // The record and its event commit together (ADR-0060); the module's own subscriber notices it after the commit.
+        await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
         var record = new SampleRecord(unit, request.Name);
         context.Records.Add(record);
         await context.SaveChangesAsync(cancellationToken);
+        await events.PublishAsync(SamplesEvents.RecordCreated, record.Id, new SampleRecordCreated(record.Id, unit), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return TypedResults.Created($"{ApiRouting.Prefix}/sample-records/{record.Id}", SampleRecordResponse.From(record));
     }
 

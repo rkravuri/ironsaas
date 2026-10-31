@@ -16,6 +16,7 @@ using Iron.Kernel.Changes;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
@@ -703,7 +704,7 @@ public class SingleSignOnTests(IdentityFixture fixture, SsoFixture sso) : IClass
         // The store holds the providers' client secrets; the keys stay the process's, as in the other Identity tests.
         builder.Services.AddIronKeys(new ConfigurationBuilder().AddInMemoryCollection(IdentityFixture.Configuration).Build());
         builder.Services.AddIronSecretStore(builder.Configuration);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

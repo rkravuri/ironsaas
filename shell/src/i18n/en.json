@@ -158,6 +158,7 @@
       "keys": "Keys",
       "securityAlerts": "Security alerts",
       "alertRules": "Alert rules",
+      "events": "Domain events",
       "visibility": "Content visibility"
     },
     "audit": {
@@ -1330,7 +1331,8 @@
       "compliance": "Signing",
       "changes": "Four-eyes approval",
       "protection": "Protection of the sign-in and the API",
-      "keys": "Keys"
+      "keys": "Keys",
+      "events": "Domain events"
     },
     "names": {
       "identity_session_idle_minutes": "A session ends without activity after",
@@ -1353,7 +1355,8 @@
       "protection_limits_recovery_per_hour": "Recovery links for one account",
       "protection_limits_api_per_minute": "Calls to the API by one person or client",
       "protection_limits_exports_per_hour": "Exports by one person or client",
-      "keys_rotation_data_days": "The data and index keys rotate every"
+      "keys_rotation_data_days": "The data and index keys rotate every",
+      "events_retention_days": "Handled events stay searchable for"
     },
     "noAreas": "None: every change applies at once",
     "amounts": {
@@ -1374,7 +1377,9 @@
       "protection_limits_exports_per_hour_one": "{{count}} export an hour",
       "protection_limits_exports_per_hour_other": "{{count}} exports an hour",
       "keys_rotation_data_days_one": "{{count}} day",
-      "keys_rotation_data_days_other": "{{count}} days"
+      "keys_rotation_data_days_other": "{{count}} days",
+      "events_retention_days_one": "{{count}} day",
+      "events_retention_days_other": "{{count}} days"
     },
     "choices": {
       "shell_colour_scheme": {
@@ -3199,6 +3204,88 @@
       "anySeverity": "Any severity",
       "rule": "Rule",
       "anyRule": "Any rule"
+    }
+  },
+  "events": {
+    "title": "Domain events",
+    "description": "What your organisation's modules told each other about their changes, such as a person deactivated or a delegation ended, and how each subscriber handled it. An event names its record, never a copy of it.",
+    "gridLabel": "Domain events",
+    "deadGridLabel": "Dead letters",
+    "choose": "Choose an event to see its data and how each subscriber handled it.",
+    "typeVersion": "{{type}} (version {{version}})",
+    "tabs": {
+      "events": "Events",
+      "dead": "Dead letters"
+    },
+    "columns": {
+      "occurred": "Occurred",
+      "type": "Event",
+      "record": "Record",
+      "status": "Status",
+      "position": "Position",
+      "parked": "Parked",
+      "subscriber": "Subscriber",
+      "attempts": "Attempts",
+      "error": "Last error",
+      "when": "When",
+      "action": "Action"
+    },
+    "statuses": {
+      "pending": "Waiting",
+      "handled": "Handled",
+      "dead": "Dead letter",
+      "held": "Held: suite removed",
+      "no_subscriber": "No subscriber"
+    },
+    "filters": {
+      "type": "Event",
+      "anyType": "Any event",
+      "recordId": "Record identifier",
+      "correlationId": "Correlation identifier",
+      "from": "From",
+      "to": "To",
+      "apply": "Search"
+    },
+    "retention": {
+      "none_one": "Handled events stay searchable for {{count}} day, then go to your organisation's archive. None has been archived yet.",
+      "none_other": "Handled events stay searchable for {{count}} days, then go to your organisation's archive. None has been archived yet.",
+      "archived_one": "Handled events stay searchable for {{count}} day, then go to your organisation's archive. Events up to {{through}} are archived.",
+      "archived_other": "Handled events stay searchable for {{count}} days, then go to your organisation's archive. Events up to {{through}} are archived."
+    },
+    "detail": {
+      "record": "Record",
+      "occurred": "Occurred",
+      "actor": "Acted by",
+      "onBehalfOf": "On behalf of",
+      "correlation": "Correlation identifier",
+      "position": "Position",
+      "none": "None",
+      "data": "Data",
+      "subscribers": "Subscribers",
+      "noSubscriber": "No subscriber reads this event.",
+      "handledAt": "Handled {{at}}",
+      "deadAt": "Parked {{at}}",
+      "heldAt": "Held since {{at}}, until the suite is added again",
+      "nextAt": "Next attempt {{at}}",
+      "replays_one": "Replayed once",
+      "replays_other": "Replayed {{count}} times"
+    },
+    "replay": {
+      "open": "Replay",
+      "toSubscriber": "Replay to {{subscriber}}",
+      "range": "Replay a range",
+      "eventTitle": "Replay the event?",
+      "eventMessage": "{{type}} goes to {{subscriber}} again. If {{subscriber}} handled it, nothing changes; if it parked it, it is tried again now.",
+      "rangeTitle": "Replay a range of events?",
+      "rangeMessage": "Every event the subscriber reads between the two positions goes to it again, at most 1000. Events it handled stay handled.",
+      "subscriber": "Subscriber",
+      "fromPosition": "From position",
+      "toPosition": "To position",
+      "reason": "Reason",
+      "reasonHint": "Your organisation's audit trail keeps it with your name.",
+      "confirm": "Replay",
+      "done_one": "{{count}} event went to {{subscriber}}: {{requeued}} to be tried again, {{added}} given for the first time, {{handled}} already handled.",
+      "done_other": "{{count}} events went to {{subscriber}}: {{requeued}} to be tried again, {{added}} given for the first time, {{handled}} already handled."
     }
   },
   "alertRules": {

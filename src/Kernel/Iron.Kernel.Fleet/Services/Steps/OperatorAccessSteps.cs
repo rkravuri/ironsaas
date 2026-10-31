@@ -75,6 +75,46 @@ public sealed class BreakGlassOpenStep(IUnitRuntime runtime, ISecretStore secret
     protected override string Reported(JobRequest request) => $"break-glass account {request.Subject} opened; its sign-in link waits in the store for the operator who asked, once";
 }
 
+/// <summary>
+/// The operator's search or replay of a tenant's domain events (TF-112, ADR-0060): the image's <c>events</c> command in
+/// the unit, as the owner role, with what the control plane asked on the job. Its answer, identifiers and states and never
+/// an event's data, is the step's output; a refusal fails the step with the command's reason.
+/// </summary>
+public sealed class EventsStep(IUnitRuntime runtime, ISecretStore secrets, SecretStoreOptions fleetStore) : IProvisioningStep
+{
+    /// <summary>The longest answer the step keeps.</summary>
+    public const int OutputMaxLength = 4000;
+
+    public string Name => StepNames.Events;
+
+    public int Order => 1;
+
+    public IReadOnlyCollection<JobKind> Kinds => [JobKind.Events];
+
+    public async Task<string?> RunAsync(ProvisioningContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var request = context.Request ?? throw new InvalidOperationException("An events job carries what the operator asked; this one has nothing.");
+        var environment = await UnitEnvironment.ForUnitAsync(context, secrets, fleetStore, cancellationToken).ConfigureAwait(false);
+        UnitEnvironment.AddHostnames(environment, context.Tenant.Hostnames);
+        var database = await secrets.ReadAsync(context.DatabaseSecretPath, cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException("The tenant's database secret is missing.");
+        environment["ConnectionStrings__Database"] = context.ConnectionString(context.OwnerRole, database[DatabaseStep.OwnerPasswordKey]);
+        foreach (var (key, value) in request.Environment ?? new Dictionary<string, string>())
+        {
+            environment[key] = value;
+        }
+
+        var result = await runtime.RunCommandAsync(context.ToUnit(environment), [StepNames.Events], cancellationToken).ConfigureAwait(false);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"events exited with {result.ExitCode}: {MigrateStep.Tail(result.Output)}");
+        }
+
+        var answer = result.Output.Trim();
+        return answer.Length <= OutputMaxLength ? answer : "…" + answer[^(OutputMaxLength - 1)..];
+    }
+}
+
 /// <summary>The break-glass account ends, and its review of every action waits in the store for the control plane (TF-026 AC3).</summary>
 public sealed class BreakGlassCloseStep(IUnitRuntime runtime, ISecretStore secrets, ISecretStoreAdmin admin, SecretStoreOptions fleetStore) : OperatorCommandStep(runtime, secrets, admin, fleetStore)
 {

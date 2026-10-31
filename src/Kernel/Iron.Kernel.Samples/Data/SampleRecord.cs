@@ -29,11 +29,18 @@ public sealed class SampleRecord : BusinessRecord, ITrackedChanges
 
     public string Name { get; private set; }
 
+    /// <summary>When the sample module's own subscriber handled the record's creation event (ADR-0060), which the smoke reads.</summary>
+    [NotTracked]
+    public DateTimeOffset? NoticedAt { get; private set; }
+
     public void Rename(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Name = name.Trim();
     }
+
+    /// <summary>The first handling sets it; a later one leaves it.</summary>
+    public void Notice(DateTimeOffset at) => NoticedAt ??= at;
 }
 
 /// <summary>The <c>kernel_samples</c> schema, made only in units that load the sample module.</summary>

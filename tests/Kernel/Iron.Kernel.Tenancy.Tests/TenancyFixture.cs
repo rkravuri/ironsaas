@@ -3,6 +3,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Fleet;
 using Iron.Kernel.Security.Secrets;
 using Iron.Testing;
@@ -48,7 +49,7 @@ public sealed class TenancyFixture : IAsyncLifetime
         services.AddIronDatabase(ConnectionString);
         // No store: the entitlements stay behind in the store's copy, as when the store refuses a write (ADR-0034).
         services.AddIronSecretStore(new ConfigurationBuilder().Build());
-        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
+        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new EventsModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
         configure?.Invoke(services);
         return services.BuildServiceProvider();
     }

@@ -5,6 +5,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Settings;
 using Iron.Kernel.Settings.Services;
 using Microsoft.EntityFrameworkCore;
@@ -56,7 +57,7 @@ public sealed class ComplianceFixture : IAsyncLifetime
         services.AddSingleton(new TenantContext(TenantId.Parse("echo"), ["echo.localhost"]));
         services.AddLogging();
         services.AddIronDatabase(ConnectionString);
-        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new AuthorizationModule(), new SettingsModule(), new ComplianceModule()]);
+        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new ComplianceModule()]);
 
         // The sample module: no migrations, its tables created as they are, as the data tests' sample.
         services.AddIronDbContext<SampleDocumentsDbContext>(options => options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));

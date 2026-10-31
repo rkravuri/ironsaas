@@ -8,6 +8,7 @@ using Iron.Kernel.Api.Permissions;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -35,7 +36,7 @@ public class RolesEndpointTests(AuthorizationFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton<IAuditWriter>(_audit);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuthorizationModule()]);
+        builder.Services.AddModules(builder.Configuration, [new EventsModule(), new AuthorizationModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

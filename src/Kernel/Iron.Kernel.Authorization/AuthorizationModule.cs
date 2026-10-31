@@ -11,6 +11,7 @@ using Iron.Kernel.Data.Entities;
 using Iron.Kernel.Data.Policies;
 using Iron.Kernel.Data.Seeding;
 using Iron.Kernel.History;
+using Iron.Kernel.Identity.Contracts;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,14 @@ public sealed class AuthorizationModule : IModule
     public IReadOnlyList<AuditEventType> AuditEventTypes => AuthorizationAuditEvents.Types;
 
     public IReadOnlyList<Feature> Features => AuthorizationFeatures.All;
+
+    public IReadOnlyList<EventType> Events => AuthorizationEvents.All;
+
+    /// <summary>A deactivated person's delegations end (ADR-0060): through Identity's event, never a call into Identity.</summary>
+    public IReadOnlyList<EventSubscription> Subscriptions =>
+    [
+        EventSubscription.To<PersonDeactivated, DelegationsOfDeactivated>(IdentityEvents.PersonDeactivated, DelegationsOfDeactivated.Subscription, "Ends the delegations a deactivated person gives or holds."),
+    ];
 
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {

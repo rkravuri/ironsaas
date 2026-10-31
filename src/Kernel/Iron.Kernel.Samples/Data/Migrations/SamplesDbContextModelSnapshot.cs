@@ -100,6 +100,10 @@ namespace Iron.Kernel.Samples.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<DateTimeOffset?>("NoticedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("noticed_at");
+
                     b.Property<Guid>("OwningOrganisationId")
                         .HasColumnType("uuid")
                         .HasColumnName("owning_organisation_id");

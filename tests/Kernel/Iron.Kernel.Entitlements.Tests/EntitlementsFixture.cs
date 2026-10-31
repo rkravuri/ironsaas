@@ -9,6 +9,7 @@ using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Entitlements.Contracts;
 using Iron.Kernel.Entitlements.Services;
+using Iron.Kernel.Events;
 using Iron.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -30,7 +31,7 @@ public sealed class EntitlementsFixture : IAsyncLifetime
     /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
     private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
-    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new AuthorizationModule(), new EntitlementsModule(), new Flags.FlagsModule(), new FixtureModule()];
+    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new EventsModule(), new AuthorizationModule(), new EntitlementsModule(), new Flags.FlagsModule(), new FixtureModule()];
 
     public async ValueTask InitializeAsync()
     {

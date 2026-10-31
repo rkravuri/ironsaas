@@ -6,6 +6,7 @@ using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Security.Secrets;
 using Iron.Testing;
 using Microsoft.AspNetCore.Http;
@@ -27,7 +28,7 @@ public sealed class SettingsFixture : IAsyncLifetime
     /// <summary>The project's own database on the run's server, or on a server of its own when it runs alone (tests/Iron.Testing).</summary>
     private TestPostgres Postgres => _postgres ?? throw new InvalidOperationException("The fixture is not initialised.");
 
-    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new AuthorizationModule(), new SettingsModule(), new ProbeModule()];
+    public static IReadOnlyList<IModule> Modules() => [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new ProbeModule()];
 
     public async ValueTask InitializeAsync()
     {

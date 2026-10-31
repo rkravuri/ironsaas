@@ -1058,3 +1058,142 @@ export async function stubProcurementSuite(target: Page, body: unknown = procure
   );
   await target.route("**/api/v1/suites/procurement/about", (route) => route.fulfill({ json: body }));
 }
+
+/** A deactivation one subscriber parked after its last attempt and a removed suite's subscriber holds, as the console shows an event (ADR-0060). */
+export const domainEvent = {
+  id: "0198f0c2-0000-7000-8000-0000000000e1",
+  position: 41,
+  type: "identity.person.deactivated",
+  version: 1,
+  record_type: "principal",
+  record_id: "0198f0c2-0000-7000-8000-000000000001",
+  actor_id: "0198f0c2-0000-7000-8000-000000000002",
+  on_behalf_of_id: null,
+  occurred_at: "2026-10-31T09:00:00Z",
+  correlation_id: "0HN7Q1A2B3C4",
+  data: { person_id: "0198f0c2-0000-7000-8000-000000000001", sessions_ended: 2 },
+  status: "dead",
+  deliveries: [
+    {
+      subscriber: "authz.end_delegations_of_deactivated",
+      status: "dead",
+      attempts: 6,
+      next_attempt_at: "2026-10-31T09:20:00Z",
+      last_error: "authz.delegation.locked: The delegation is being changed.",
+      handled_at: null,
+      dead_at: "2026-10-31T09:20:00Z",
+      replays: 0,
+      held_at: null,
+    },
+    {
+      subscriber: "purchasing.reassign_requests_of_deactivated",
+      status: "held",
+      attempts: 0,
+      next_attempt_at: "2026-10-31T09:00:00Z",
+      last_error: null,
+      handled_at: null,
+      dead_at: null,
+      replays: 0,
+      held_at: "2026-10-31T09:05:00Z",
+    },
+  ],
+};
+
+/** The console for an administrator who reads and replays the domain events (ADR-0060). */
+export async function stubEvents(target: Page): Promise<void> {
+  await stubConsole(target);
+  const permissions = [...administrator, "events.events.read", "events.events.replay"];
+  await target.route("**/api/v1/me", (route) =>
+    route.fulfill({
+      json: {
+        ...me,
+        permissions,
+        permissions_anywhere: permissions,
+        home_unit: { id: units[0].id, name: units[0].name, code: units[0].code },
+      },
+    }),
+  );
+  const handled = {
+    ...domainEvent,
+    id: "0198f0c2-0000-7000-8000-0000000000e2",
+    position: 42,
+    type: "authz.delegation.ended",
+    record_type: "delegation",
+    record_id: "0198f0c2-0000-7000-8000-0000000000d1",
+    occurred_at: "2026-10-31T09:01:00Z",
+    status: "handled",
+    deliveries: [
+      {
+        subscriber: "identity.stop_acting_for_ended_delegation",
+        status: "handled",
+        attempts: 1,
+        next_attempt_at: "2026-10-31T09:01:00Z",
+        last_error: null,
+        handled_at: "2026-10-31T09:01:01Z",
+        dead_at: null,
+        replays: 0,
+        held_at: null,
+      },
+    ],
+  };
+  await target.route("**/api/v1/events?**", (route) =>
+    route.fulfill({ json: envelope(route.request().url(), [handled, domainEvent]) }),
+  );
+  await target.route("**/api/v1/events/dead-letters?**", (route) =>
+    route.fulfill({
+      json: envelope(route.request().url(), [
+        {
+          event_id: domainEvent.id,
+          position: domainEvent.position,
+          subscriber: "authz.end_delegations_of_deactivated",
+          type: domainEvent.type,
+          version: 1,
+          record_type: domainEvent.record_type,
+          record_id: domainEvent.record_id,
+          occurred_at: domainEvent.occurred_at,
+          attempts: 6,
+          last_error: "authz.delegation.locked: The delegation is being changed.",
+          dead_at: "2026-10-31T09:20:00Z",
+        },
+      ]),
+    }),
+  );
+  await target.route("**/api/v1/events/types", (route) =>
+    route.fulfill({
+      json: [
+        {
+          name: "authz.delegation.ended",
+          version: 1,
+          module: "authz",
+          record_type: "delegation",
+          description: "A delegation ended.",
+          owner: "Authorization module",
+          fields: [],
+          deprecated_on: null,
+          replaced_by: null,
+          subscribers: [
+            { name: "identity.stop_acting_for_ended_delegation", module: "identity", description: "Stops acting." },
+          ],
+        },
+        {
+          name: "identity.person.deactivated",
+          version: 1,
+          module: "identity",
+          record_type: "principal",
+          description: "A person was deactivated.",
+          owner: "Identity module",
+          fields: [],
+          deprecated_on: null,
+          replaced_by: null,
+          subscribers: [
+            { name: "authz.end_delegations_of_deactivated", module: "authz", description: "Ends delegations." },
+          ],
+        },
+      ],
+    }),
+  );
+  await target.route("**/api/v1/events/retention", (route) =>
+    route.fulfill({ json: { days: 90, archived_through: "2026-08-02T00:00:00Z", archives: 3 } }),
+  );
+  await target.route(`**/api/v1/events/${domainEvent.id}`, (route) => route.fulfill({ json: domainEvent }));
+}

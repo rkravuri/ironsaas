@@ -3,7 +3,7 @@ namespace Iron.Architecture.Tests;
 public class AssemblyReferenceRulesTests
 {
     [Fact]
-    [Proves("ADR-0001")]
+    [Proves("TF-111 AC3", "ADR-0001")]
     public void ReportsTypesInAnotherModulesPrivateNamespaces()
     {
         var referencedTypes = new List<(string Namespace, string Name)>

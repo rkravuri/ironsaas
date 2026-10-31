@@ -12,7 +12,8 @@ using Iron.Smoke;
 // none, or the unit refuses it), and a person of the run who enrols an app, signs in with its codes and with a recovery
 // code (ADR-0047). Two since S3 T9b: the ingress's TLS policy, and the index key rotated with its sample value still found
 // by its exact value (ADR-0054). One since V2: the tenant's suites, the About page where it has the eProcurement Suite and
-// not found where it does not (ADR-0059).
+// not found where it does not (ADR-0059). One since S4 T1: a sample record's domain event handled by its subscriber,
+// with the time it took (ADR-0060).
 var options = SmokeOptions.FromEnvironment();
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
@@ -498,6 +499,11 @@ await report.StepAsync("security-alert", ["TF-079 AC1", "ADR-0056"], () => monit
 // About page with its installation and plan where the tenant has it, not found where it does not. It reads only.
 var suiteSteps = new SuiteSteps(api, options, AdministratorAsync, operatorToken ?? string.Empty);
 await report.StepAsync("suites", ["TF-244 AC1", "TF-244 AC2", "ADR-0059"], () => suiteSteps.AboutAsync(ct));
+
+// S4 T1's step (ADR-0060): a sample record of the run raises its event in its transaction, the unit's worker hands it to
+// the sample module's subscriber within TF-085's 10 seconds, and the record is noticed; the report says how long it took.
+var eventSteps = new EventSteps(api, options, AdministratorAsync, run);
+await report.StepAsync("events", ["TF-085 AC1", "ADR-0060"], () => eventSteps.SampleEventHandledAsync(ct));
 
 await report.WriteAsync();
 return report.Passed ? 0 : 1;

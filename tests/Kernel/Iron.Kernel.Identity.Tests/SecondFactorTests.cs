@@ -18,6 +18,7 @@ using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.Encryption;
+using Iron.Kernel.Events;
 using Iron.Kernel.Handover;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
@@ -580,7 +581,7 @@ public class SecondFactorTests(IdentityFixture fixture)
         builder.Services.AddSingleton(IdentityFixture.Tenant);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(connectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

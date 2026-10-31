@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Iron.Kernel.Api.Modules;
 
@@ -62,6 +63,14 @@ public static class ModuleExtensions
             module.AddServices(services, configuration);
         }
 
+        // The events and subscriptions (ADR-0060): checked here, at start, and each subscription's handler registered.
+        var events = new EventDeclarations(modules);
+        foreach (var subscription in events.Subscriptions)
+        {
+            services.TryAddScoped(subscription.HandlerType);
+        }
+
+        services.AddSingleton(events);
         services.AddSingleton(new ModuleCollection(modules));
         services.AddSingleton(new UnitSuites(installed));
         services.AddSingleton(new PermissionCatalogue(permissions));

@@ -12,6 +12,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Services;
 using Iron.Kernel.Settings;
@@ -51,7 +52,7 @@ public class ActingForTests(IdentityFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton(IdentityFixture.Tenant);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 
@@ -147,6 +148,58 @@ public class ActingForTests(IdentityFixture fixture) : IAsyncLifetime
 
         using var again = await SendAsync(HttpMethod.Get, "/api/v1/users", graceCookie);
         Assert.Equal(HttpStatusCode.Forbidden, again.StatusCode);
+    }
+
+    [Fact]
+    [Proves("ADR-0060", "ADR-0037")]
+    public async Task DeactivatingTheDelegatorEndsTheDelegationThroughItsEventAndTheDelegateStopsActingAtOnce()
+    {
+        var (_, administratorCookie) = await PersonAsync("admin", SystemRoles.TenantAdministrator);
+        var (lead, leadCookie) = await PersonAsync("lead", SystemRoles.TenantAdministrator);
+        var (grace, graceCookie) = await PersonAsync("grace", null);
+        using (var created = await SendAsync(HttpMethod.Post, "/api/v1/delegations", leadCookie, new
+        {
+            delegate_id = grace,
+            duties = new[] { "identity.user_administration" },
+            starts_at = _time.GetUtcNow().AddMinutes(-1),
+            ends_at = _time.GetUtcNow().AddDays(5),
+            reason = "Covering the lead's desk.",
+        }))
+        {
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        using (var acting = await SendAsync(HttpMethod.Post, "/api/v1/me/acting-for", graceCookie, new { principal_id = lead }))
+        {
+            Assert.Equal(HttpStatusCode.OK, acting.StatusCode);
+        }
+
+        using (var deactivated = await SendAsync(HttpMethod.Post, $"/api/v1/users/{lead}/deactivate", administratorCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, deactivated.StatusCode);
+        }
+
+        // Identity published the deactivation; Authorization ends the delegation and publishes that; Identity stops Grace
+        // acting. Two passes of the worker's dispatcher, and no request of Grace's.
+        var dispatcher = _app!.Services.GetRequiredService<Iron.Kernel.Events.Services.EventDispatcher>();
+        for (var pass = 0; pass < 5 && (await dispatcher.RunOnceAsync(TestContext.Current.CancellationToken)).DidWork; pass++)
+        {
+        }
+
+        await using var scope = _app.Services.CreateAsyncScope();
+        var delegation = await scope.ServiceProvider.GetRequiredService<Iron.Kernel.Authorization.Data.AuthorizationDbContext>().Delegations.AsNoTracking().SingleAsync(d => d.DelegatorId == lead && d.DelegateId == grace, TestContext.Current.CancellationToken);
+        Assert.NotNull(delegation.EndedAt);
+        Assert.Equal((SystemPrincipal.SystemId, "The person was deactivated."), (delegation.EndedBy, delegation.EndReason));
+        var sessions = await scope.ServiceProvider.GetRequiredService<Iron.Kernel.Identity.Data.IdentityDbContext>().Sessions.AsNoTracking().Where(s => s.PrincipalId == grace && s.EndedAt == null).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.NotEmpty(sessions);
+        Assert.All(sessions, s => Assert.Null(s.ActingForId));
+        var ended = await scope.ServiceProvider.GetRequiredService<AuditDbContext>().Events.AsNoTracking().SingleAsync(e => e.ActorId == grace && e.EventType == IdentityAuditEvents.ActingEnded, TestContext.Current.CancellationToken);
+        Assert.Equal(lead, ended.OnBehalfOfId);
+
+        var outbox = scope.ServiceProvider.GetRequiredService<Iron.Kernel.Events.Data.EventsDbContext>();
+        var published = await outbox.Outbox.AsNoTracking().Where(e => e.RecordId == lead || e.RecordId == delegation.Id).Select(e => e.Type).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(["authz.delegation.ended", "identity.person.deactivated"], published.Order());
+        Assert.All(await outbox.Inbox.AsNoTracking().Where(i => i.RecordId == lead || i.RecordId == delegation.Id).ToListAsync(TestContext.Current.CancellationToken), i => Assert.Equal("handled", i.Status));
     }
 
     [Fact]

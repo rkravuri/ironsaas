@@ -8,7 +8,7 @@ The first suite is the **eProcurement Suite**: source to pay, from supplier mana
 
 | Part | What it is | Status | Requirements | Slices |
 |---|---|---|---|---|
-| Kernel | The technical mechanisms: tenancy and the fleet with suites per tenant, identity, authorization and organisations, content visibility, audit, entitlements, flags, settings, files, telemetry, the shell | Built in part: S1, S2, S3 and V are done, S4 is next | [Technical Foundation PRD](docs/prd/foundation/technical-foundation-PRD.md) | [S1](docs/slices/S1-walking-skeleton.md), [S2](docs/slices/S2-access-control-organisations-and-design.md), [S3](docs/slices/S3-trust-and-compliance.md) and [V](docs/slices/V-visibility-and-suites.md); [S4](docs/slices/S4-platform-services.md) as a skeleton; S5 to S9 in the PRD's section 7.1 |
+| Kernel | The technical mechanisms: tenancy and the fleet with suites per tenant, identity, authorization and organisations, content visibility, audit, entitlements, flags, settings, files, telemetry, the shell | Built in part: S1, S2, S3 and V are done, S4 is under way | [Technical Foundation PRD](docs/prd/foundation/technical-foundation-PRD.md) | [S1](docs/slices/S1-walking-skeleton.md), [S2](docs/slices/S2-access-control-organisations-and-design.md), [S3](docs/slices/S3-trust-and-compliance.md) and [V](docs/slices/V-visibility-and-suites.md); [S4](docs/slices/S4-platform-services.md) as a skeleton; S5 to S9 in the PRD's section 7.1 |
 | Business masters | Organisations and legal entities, people, items, finance and budgets, locations, the supplier master, lookups, approvals and the delegation of authority, numbering and templates | Specified | [Business Foundation PRD](docs/prd/foundation/business-foundation-PRD.md) | B1 to B4 in the technical PRD's section 7.2 |
 | eProcurement Suite: declared | The suite in code (`procurement`), installed only for the tenants that bought it, with its shared master Purchasing as a skeleton: one table that records the installation, and an About page that shows what the tenant has; no business data yet | Declared: installed per tenant since V2; Purchasing's masters come with PR0 | the suite's [module list](docs/prd/suites/procurement/README.md); Purchasing's [PRD](docs/prd/suites/procurement/purchasing-PRD.md) | [V](docs/slices/V-visibility-and-suites.md) for the skeleton; PR0 in the technical PRD's section 7.2 |
 | eProcurement Suite: products | Supplier management, Contracts, Catalogue, Requests, Orders, Receiving, Invoicing | Specified | one PRD each in [`docs/prd/suites/procurement/`](docs/prd/suites/procurement/) | PR1 to PR7 in the technical PRD's section 7.2 |
@@ -69,6 +69,10 @@ Built today:
 
 - A tenant administrator defines visibility tags and gives them to people; a record carries tags, and a person who holds tags sees only the records that share one with them or carry none, in lists and by identifier, with the explanation of access and the access reviews showing the tags.
 - The operator installs a suite for a tenant that bought it, when it is registered or later, and removes it again keeping its data, each with a reason and an update job; a unit loads only the Foundation and its tenant's suites, and a tenant with the eProcurement Suite has its group on the home page and its About page.
+
+**Platform services** (S4)
+
+- A module tells others of a change through a domain event, written in the change's own transaction and listed in the catalogue; the unit's worker hands it to each subscriber within a second, once, in order per record, retrying a failure and parking it as an alerted dead letter. Deactivating a person ends their delegations, and an ended delegation stops the delegate acting at once. The console's Domain events page searches the events and their dead letters and replays them, with a reason, as the operator can through the control plane (ADR-0060).
 
 **The shell**
 
@@ -152,7 +156,8 @@ make apply-plan TENANT=x PLAN=y [DRY_RUN=1]              # preview a plan for a 
 make sample-records TENANT=x [ON=0]                      # the sample module in a test tenant's unit (ADR-0057)
 make flag KEY=k VALUE=v [TENANT=x]                       # a flag's rule for a tenant or the platform
 make kill-switch PATH=imports ON=true REASON="..."       # a kill switch, for the platform or TENANT=x
-make catalogue                                           # what the units can license, switch and set, grouped by suite
+make events TENANT=x [STATUS=dead] / events-replay ...   # a tenant's domain events, and a replay to one subscriber (ADR-0060)
+make catalogue                                           # what the units can license, switch and set, and the events they publish, grouped by suite
 make prd-csv / make prd-check                            # the requirement documents' CSVs, and their check
 make smoke / make e2e [TENANT=x] / make integration      # the smoke test, the browser tests, the pipeline's stage
 make trace / make security / make coverage               # the traceability matrix, the security gate, the coverage floors (ADR-0044, ADR-0055)

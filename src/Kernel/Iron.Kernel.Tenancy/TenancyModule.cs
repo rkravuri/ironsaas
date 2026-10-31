@@ -66,6 +66,9 @@ public sealed class TenancyModule : IModule
         // The operator's support and emergency access, and the platform's documents (TF-025, TF-026, TF-028, ADR-0049).
         services.AddScoped<OperatorNames>();
         services.AddScoped<OperatorImpersonation>();
+        services.AddScoped<OperatorEvents>();
+        services.AddScoped<IValidator<OperatorEventSearchRequest>, OperatorEventSearchRequestValidator>();
+        services.AddScoped<IValidator<OperatorEventReplayRequest>, OperatorEventReplayRequestValidator>();
         services.AddScoped<BreakGlassService>();
         services.AddScoped<PlatformDocumentService>();
         services.AddScoped<AuditChainService>();

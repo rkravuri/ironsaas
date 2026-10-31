@@ -41,6 +41,14 @@ public sealed class IdentityModule : IModule
 
     public IReadOnlyList<Duty> Duties => IdentityDuties.All;
 
+    public IReadOnlyList<EventType> Events => IdentityEvents.All;
+
+    /// <summary>A delegate stops acting when the delegation ends (ADR-0060): through Authorization's event, never a call into it.</summary>
+    public IReadOnlyList<EventSubscription> Subscriptions =>
+    [
+        EventSubscription.To<DelegationEnded, ActingEndsWithDelegation>(AuthorizationEvents.DelegationEnded, ActingEndsWithDelegation.Subscription, "Stops the delegate's sessions acting for the delegator when the delegation ends."),
+    ];
+
     public void AddServices(IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);

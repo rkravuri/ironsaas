@@ -1,11 +1,11 @@
 # Developer guide
 
-How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission, its limits and its checks, an audit event, an encrypted or tracked field, a signature, a save that waits for a second administrator, a licence, a flag, a setting, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
+How to work on the repository and how to add the things a product needs: a module, an entity with its migration, an endpoint with its permission, its limits and its checks, an audit event, a domain event and its subscriber, an encrypted or tracked field, a signature, a save that waits for a second administrator, a licence, a flag, a setting, a shell page with a grid, a provisioning step. Each section names the ADR behind it. The laptop platform itself is in `local-stack.md`; what a change needs before it is merged is in `definition-of-done.md`.
 
 The sections, in order:
 
 - The repository: Working on the repository, Layout, Rules the build enforces, Write an ADR, Requirements.
-- A module and its code: Add a module, Add a business module or a suite's module (with a module in a suite, installed per tenant), Hosts and unit commands, Writing code: the kernel vocabulary's conventions, Writing an entity and a module context, A table and its migration, A change and its audit event in one transaction, Writing an endpoint, An endpoint with a permission, Limits on what an endpoint takes, Who is acting, An API client, A unit's configuration, Observability and security in a host.
+- A module and its code: Add a module, Add a business module or a suite's module (with a module in a suite, installed per tenant), Hosts and unit commands, Writing code: the kernel vocabulary's conventions, Writing an entity and a module context, A table and its migration, A change and its audit event in one transaction, Publishing and subscribing to events, Writing an endpoint, An endpoint with a permission, Limits on what an endpoint takes, Who is acting, An API client, A unit's configuration, Observability and security in a host.
 - Who may do what: Where things are checked, Scoping an endpoint to a record, Record policies, Visibility tags on a record type, Granting access, Delegating and reviewing access, Working across units, Explaining access and conflicts.
 - Records under regulation: An encrypted field, and one found by its exact value; A record type under retention; A record's history; Signing a record; A save that waits for a second administrator; Contributing to an evidence pack.
 - What a tenant has: Licensing a module or feature, Feature flags and kill switches, Declaring a setting.
@@ -181,6 +181,55 @@ The unit's worker seals each event into the tenant's chain a few seconds after i
 **Times are the server's** (TF-065, ADR-0050). `CreatedAt` and `UpdatedAt` are stamped from `TimeProvider` on save, whatever a caller set. A request body never carries a time the server records: take `starts_at` or `due_on` only for a period a person chooses, and add it to `ChosenTimes` in `tests/Iron.Host.Tests/HostTests.cs` with why; any other date in a request body fails that test.
 
 **An event a security alert should count** (TF-079, ADR-0056). Declare its type in the module's `*AuditEvents.Types`; a type nobody declares makes every rule that counts it fail. An export writes its event with `AuditDetails.Rows`, and a change that touches a critical area marks itself with `AuditDetails.Critical` when the rule cannot tell from the type alone; the writer adds the client's address to a refusal by itself. A new rule goes into `AlertRules.All` in Iron.Kernel.Monitoring with a section of its own in `docs/security/incident-response.md`, which `RunbookTests` checks.
+
+## Publishing and subscribing to events (TF-085, TF-110 to TF-112, ADR-0060)
+
+A module tells others of a change by publishing a domain event, in the change's own transaction, and never knows who listens. It is how an earlier module or product hears from a later one (ADR-0042). An audit event says who did what for the record; a domain event says what happened for the modules that react.
+
+**Declare the event** in the module's Contracts, with a record for its data, and list it in `IModule.Events`:
+
+```csharp
+public sealed record SampleRecordCreated(Guid RecordId, Guid UnitId);
+
+public static class SamplesEvents
+{
+    public static readonly EventType<SampleRecordCreated> RecordCreated = new(
+        "samples.record.created", 1, "sample_record", "A sample record was created, in a unit marked for testing.", "Platform tests");
+
+    public static IReadOnlyList<EventType> All => [RecordCreated];
+}
+```
+
+The name is `module.record.happened`, in the past tense. The data carries identifiers, not copies: `Guid` fields, codes (`string` or an enum, no spaces, at most 100 characters), numbers, flags, times, days, and lists of identifiers or codes. A name, an address, a description or a nested record is refused when the event is declared, and so is `[PersonalData]` on anything but an identifier; mark every field that names a person with it. The catalogue lists the event, its fields and its subscribers (`make catalogue`, and the host test that keeps the file equal to the code).
+
+**Change it by versions.** Adding an optional field (a nullable property) keeps the version. Anything else is a new `EventType` with the same name and the next version; mark the old one `.Deprecated(new DateOnly(2027, 1, 31), replacedBy: 2)`, publish both until that day and until no subscriber reads the old one, then remove it. The catalogue lists both, the old with its day.
+
+**Publish inside the unit of work**, after the change and beside its audit event:
+
+```csharp
+await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
+context.Records.Add(record);
+await context.SaveChangesAsync(cancellationToken);
+await events.PublishAsync(SamplesEvents.RecordCreated, record.Id, new SampleRecordCreated(record.Id, unit), cancellationToken);
+await transaction.CommitAsync(cancellationToken);
+```
+
+`IEventPublisher` (Iron.Kernel.Events.Contracts) takes the actor, the person acted for, the tenant and the correlation id from the request or the job; the record id is the record the event is about, and the order per record follows it. Outside a unit of work it throws, and so does data that does not match its declaration: both are a programmer's error, which a test finds. A rollback takes the event with it.
+
+**Subscribe** with a handler in the subscribing module and a subscription in its `IModule.Subscriptions`:
+
+```csharp
+public IReadOnlyList<EventSubscription> Subscriptions =>
+[
+    EventSubscription.To<SampleRecordCreated, NoticeCreatedSample>(SamplesEvents.RecordCreated, "samples.notice_created", "Marks a new sample record noticed."),
+];
+```
+
+The subscription's name is `module.what_it_does`; it is the inbox's key, so it never changes once deployed. The handler, `IEventHandler<T>`, reads the publisher's event through its Contracts and changes only its own module's records, in its own context; the dispatcher runs it in a unit of work that also marks the delivery handled, so what it changed and the record that it ran commit together, and a repeated delivery does not run it again. Return a failure, or throw, to roll it back and retry: 2, 4, 8, 16 and 32 seconds, then a dead letter with the error, audited and alerted (`event_dead_letters`). A handler must still be idempotent in what it touches outside the unit's database, such as a webhook. Load what you need by the event's identifiers, and treat a record that is gone as done. A suite's subscription is held, not retried, while its tenant does not run the suite: its waiting deliveries show "Held: suite removed" and resume by themselves when the suite is added again, so a suite's handler must not assume the events it reads are recent.
+
+**Test it** on the module's fixture: publish in a unit of work, run `EventDispatcher.RunOnceAsync` (the worker's pass) until it does no work, and check the handler's change. `tests/Kernel/Iron.Kernel.Events.Tests` shows the patterns: a rollback, a crash between commit and dispatch, a repeated delivery, order per record, a failing subscriber. A host that runs a publishing module runs the Events module too, before the modules that publish (`UnitModules`, the control plane's composition, and a test host's list); only the unit's worker and the fleet call `AddEventDispatch()`.
+
+**Inspect and replay.** The console's Domain events page (`/console/events`, `events.events.read`) searches by event, record, correlation id and day, shows each subscriber's state and the dead letters; with `events.events.replay` and a recent sign-in, and a reason, an administrator replays an event, or a range of positions, to one subscriber. The operator does the same with `make events TENANT=x` and `make events-replay`. The runbook's "Dead-lettered events" section says what to do with one.
 
 ## Writing an endpoint (ADR-0009)
 
