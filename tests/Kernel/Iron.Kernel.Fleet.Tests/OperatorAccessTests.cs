@@ -175,6 +175,45 @@ public class OperatorAccessTests(FleetFixture fixture)
     }
 
     [Fact]
+    [Proves("ADR-0060", "ADR-0049")]
+    public async Task TheOperatorSearchesAndReplaysATenantsEventsThroughTheUnitsCommandWithAReasonInTheTrail()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (provider, runtime, _, acting) = Start();
+        await using var _ = provider;
+        var slug = await ActiveTenantAsync(provider, "papa");
+        var harness = new ProvisioningWorkerHarness(provider);
+        acting.Id = Olga;
+        var record = Ids.New();
+        var dead = Ids.New();
+
+        var searched = await WithAsync(provider, s => s.GetRequiredService<OperatorEvents>().SearchAsync(slug, new OperatorEventSearch("identity.person.deactivated", record, null, DeadOnly: true), ct));
+        Assert.True(await harness.RunNextAsync());
+        var search = runtime.Commands.Single(c => c.Command == "events").Unit.Environment;
+        var searchJob = await WithAsync(provider, s => s.GetRequiredService<IProvisioningJobs>().FindAsync(searched.Value.Id, ct));
+
+        var withoutReason = await WithAsync(provider, s => s.GetRequiredService<OperatorEvents>().ReplayAsync(slug, new OperatorEventReplay("authz.end_delegations_of_deactivated", [dead], null, null, " "), ct));
+        var replayed = await WithAsync(provider, s => s.GetRequiredService<OperatorEvents>().ReplayAsync(slug, new OperatorEventReplay("authz.end_delegations_of_deactivated", [dead], null, null, "Ticket 12: the delegation stayed open"), ct));
+        Assert.True(await harness.RunNextAsync());
+        var replay = runtime.Commands.Last(c => c.Command == "events").Unit.Environment;
+        var replayJob = await WithAsync(provider, s => s.GetRequiredService<IProvisioningJobs>().FindAsync(replayed.Value.Id, ct));
+        var audited = await AuditAsync(provider, TenancyAuditEvents.EventsReplayRequested, slug);
+
+        Assert.Equal(("search", "identity.person.deactivated", record.ToString("D"), "dead"), (search["Events__Command__Action"], search["Events__Command__Type"], search["Events__Command__RecordId"], search["Events__Command__Status"]));
+        Assert.Equal(JobKind.Events, searchJob!.Kind);
+        Assert.Equal((ProvisioningStatus.Completed, StepNames.Events), (searchJob.Status, searchJob.Steps.Single().Name));
+        Assert.StartsWith("Searched: 0 event(s)", searchJob.Steps.Single().Output, StringComparison.Ordinal);
+        Assert.Equal(TenancyErrors.EventsReasonRequired, withoutReason.Error.Code);
+        Assert.Equal(("replay", "authz.end_delegations_of_deactivated", dead.ToString("D"), "Ticket 12: the delegation stayed open"), (replay["Events__Command__Action"], replay["Events__Command__Subscriber"], replay["Events__Command__Ids"], replay["Events__Command__Reason"]));
+        Assert.False(string.IsNullOrEmpty(replay["Events__Command__Operator"]));
+        Assert.StartsWith("Replayed 1 event(s)", replayJob!.Steps.Single().Output, StringComparison.Ordinal);
+        Assert.Equal((Olga, "Ticket 12: the delegation stayed open", AuditSeverity.High), (audited.ActorId, audited.Reason, audited.Severity));
+        using var details = JsonDocument.Parse(audited.Details!);
+        Assert.Equal(replayed.Value.Id.ToString("D"), details.RootElement.GetProperty("job_id").GetString());
+        Assert.DoesNotContain(details.RootElement.EnumerateObject(), property => property.Name == "reason"); // the reason sits in the event's own field, once
+    }
+
+    [Fact]
     [Proves("TF-028 AC1", "ADR-0049")]
     public async Task TheOperatorPublishesThePlatformsDocumentsWhichEveryUnitMayRead()
     {
