@@ -338,9 +338,11 @@ public interface IJobStarter
 /// <summary>
 /// The run of a job whose work is a short pass every few seconds, such as the audit chain's sealing or the events'
 /// dispatch (ADR-0061): one run a minute, coordinated, logged and alerted as any run, that passes until its term ends,
-/// so the work keeps the latency its loop had. A pass that answers true has more to do and runs again at once. A pass
-/// that throws is logged and the next one runs; the run fails, to be retried and alerted by its policy, when its last
-/// pass failed.
+/// so the work keeps the latency its loop had. The term ends a term after the run's occurrence, which is when the next
+/// one falls due: a run that started late ends on time, so no lag carries from one run to the next. A run started by
+/// hand runs a full term from its start, and a dead letter run again makes one pass. A pass that answers true has more to
+/// do and runs again at once. A pass that throws is logged and the next one runs; the run fails, to be retried and
+/// alerted by its policy, when its last pass failed.
 /// </summary>
 public static class JobLoop
 {
@@ -349,7 +351,8 @@ public static class JobLoop
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(pass);
-        var ends = time.GetUtcNow() + term;
+        var now = time.GetUtcNow();
+        var ends = context.ScheduledFor + term < now + term ? context.ScheduledFor + term : now + term;
         var passes = 0;
         var failures = 0;
         string? lastError = null;
