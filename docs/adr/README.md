@@ -67,7 +67,7 @@ Copy `0000-template.md` to the next free number. Keep the record short. Never ed
 | [0057](0057-content-visibility-and-visibility-tags.md) | Content visibility: visibility tags in the record policy's query, stored on the record, measured first | Accepted |
 | [0058](0058-the-eprocurement-suites-modules-waves-and-licensing.md) | The eProcurement Suite's modules, their waves and their licensing, and Requests and Intake's buying model as configuration | Accepted |
 | [0059](0059-suites-per-tenant-plans-per-suite-and-what-a-unit-loads.md) | Suites per tenant: the eProcurement Suite's skeleton, a plan per suite, and what a unit loads | Accepted |
-| [0060](0060-domain-events-the-outbox-subscriptions-and-replay.md) | Domain events: declared in code, an outbox in the change's transaction, subscriptions with an inbox, replay and a broker later | Proposed |
+| [0060](0060-domain-events-the-outbox-subscriptions-and-replay.md) | Domain events: declared in code, an outbox in the change's transaction, subscriptions with an inbox, replay and a broker later | Accepted |
 
 ## Reading order
 

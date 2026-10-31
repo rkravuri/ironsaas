@@ -1,8 +1,8 @@
 # ADR-0060: Domain events: declared in code, an outbox in the change's transaction, subscriptions with an inbox, replay and a broker later
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-10-31
-**Decided by:** Product owner and architect, in the brief of S4 T1
+**Decided by:** Product owner and architect, in the brief of S4 T1; accepted at the design session's review of T1 (2026-10-31), which made a removed suite's waiting deliveries held rather than dead letters (decision 10)
 
 ## Context
 
@@ -87,7 +87,7 @@ installed (TF-244, ADR-0059).
    received is given to it, and a handled one stays handled. The operator does the same for a tenant through the control
    plane, as a fleet job running the unit's `events` command. A handled event older than the tenant's retention
    (`events.retention.days`, 90 days) is archived to the tenant's container as a line of JSON, with its deliveries, and
-   leaves the outbox; a search for it says it was archived (TF-112 AC2). A dead letter or a pending delivery keeps its
+   leaves the outbox; a search for it says it was archived (TF-112 AC2). A dead letter, a pending or a held delivery keeps its
    event: someone still owes the work.
 9. **A broker later, without a change to publishers or handlers.** No broker is added. The outbox stays the source and
    the inbox the record of what each subscriber handled. A broker takes the hand-on's place: a relay reads the outbox in
@@ -100,9 +100,17 @@ installed (TF-244, ADR-0059).
    worker's.
 10. **Suites.** A suite's modules declare its events and subscriptions; a unit runs a suite's modules only where the
     suite is installed (ADR-0059), so a unit without the suite declares, stores, hands on and replays none of its events.
-    An event a removed suite's module published and nobody else reads is handed to nobody and archived in time; a
-    delivery still waiting for a removed suite's subscriber becomes a dead letter naming `events.subscriber.unknown`,
-    alerted, which a replay hands back once the suite returns. A subscription whose event no module of the host
+    An event a removed suite's module published and nobody else reads is handed to nobody and archived in time. Each
+    inbox row records the suite of its subscriber's module (none for the Foundation's). When a suite is removed, a
+    delivery still waiting for one of its subscribers is **held**: a status of its own, which the console shows as "Held:
+    suite removed" with the time, with no attempt counted, no error, no audit event, no alert and no dead letter, and no
+    replay, since the unit holds no such subscriber. The suites a unit runs are fixed for its process, so the dispatcher
+    settles them at its first pass after the update job restarts the unit: it holds the removed suites' waiting
+    deliveries, and makes the held deliveries of suites the unit runs again pending at once, delivered in the order of
+    their positions, by themselves. A held delivery keeps its event from the archive, since it is still owed. Held
+    deliveries are removed with the suite's data when that is deleted, which a tenant's offboarding brings (TF-004, S6).
+    A Foundation subscriber the unit no longer holds is a programmer's error, not a suite's removal: its deliveries still
+    become dead letters naming `events.subscriber.unknown`, alerted. A subscription whose event no module of the host
     publishes is idle, and a tenant's unit has none, which a host test checks.
 
 ## Options considered
