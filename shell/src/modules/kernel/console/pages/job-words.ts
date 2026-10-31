@@ -14,12 +14,17 @@ export function scheduleWords(schedule: string, t: TFunction): string {
   return t("jobs.schedule.whenStarted");
 }
 
-/** How long a run took: milliseconds below a second, seconds with one decimal below a minute, then minutes. */
+/**
+ * How long a run took, or may take: milliseconds below a second, then seconds, minutes or hours, each to one decimal
+ * only when it has one ("1.5 seconds", "2 hours").
+ */
 export function durationWords(ms: number | null, t: TFunction): string {
   if (ms == null) return "";
   if (ms < 1000) return t("jobs.duration.ms", { count: ms });
-  if (ms < 60_000) return t("jobs.duration.seconds", { value: (ms / 1000).toFixed(1) });
-  return t("jobs.duration.minutes", { value: (ms / 60_000).toFixed(1) });
+  const tenths = (value: number) => Math.round(value * 10) / 10;
+  if (ms < 60_000) return t("jobs.duration.seconds", { count: tenths(ms / 1000) });
+  if (ms < 3_600_000) return t("jobs.duration.minutes", { count: tenths(ms / 60_000) });
+  return t("jobs.duration.hours", { count: tenths(ms / 3_600_000) });
 }
 
 /** Whether a person may pause, resume or start the job here: a job each process runs, or a held one, has no run to act on. */

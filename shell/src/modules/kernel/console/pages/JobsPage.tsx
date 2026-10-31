@@ -2,7 +2,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Badge, Box, Button, Code, Group, Stack, Table, Text, Title } from "@mantine/core";
+import { Alert, Anchor, Badge, Box, Button, Code, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { IconPlayerPause, IconPlayerPlay, IconRepeat, IconRun } from "@tabler/icons-react";
 import { ApiError } from "@/api/client";
 import {
@@ -166,33 +166,41 @@ export function JobsPage() {
                       <Table.Thead>
                         <Table.Tr>
                           <Table.Th>{t("jobs.columns.job")}</Table.Th>
-                          <Table.Th>{t("jobs.columns.schedule")}</Table.Th>
-                          {/* Wide enough for the badge's words, which say the state so it is never colour alone. */}
-                          <Table.Th w={170}>{t("jobs.columns.state")}</Table.Th>
-                          <Table.Th>{t("jobs.columns.lastRun")}</Table.Th>
-                          <Table.Th>{t("jobs.columns.backlog")}</Table.Th>
-                          <Table.Th>{t("jobs.columns.action")}</Table.Th>
+                          {/* Wide enough for the badges' words, which say the state so it is never colour alone. */}
+                          <Table.Th w={190}>{t("jobs.columns.state")}</Table.Th>
+                          <Table.Th w={190}>{t("jobs.columns.lastRun")}</Table.Th>
+                          <Table.Th w={130}>{t("jobs.columns.backlog")}</Table.Th>
                         </Table.Tr>
                       </Table.Thead>
                       <Table.Tbody>
                         {jobs.data.map((item) => (
                           <Table.Tr key={item.name} data-job={item.name}>
                             <Table.Td>
-                              <Code>{item.name}</Code>
-                              <Text size="xs" c="dimmed" maw={360}>
+                              <Anchor
+                                component="button"
+                                type="button"
+                                ff="monospace"
+                                size="sm"
+                                fw={600}
+                                aria-label={t("jobs.openNamed", { name: item.name })}
+                                onClick={() => choose(item.name)}
+                              >
+                                {item.name}
+                              </Anchor>
+                              <Text size="xs" c="dimmed" maw={420}>
                                 {item.description}
+                              </Text>
+                              <Text size="xs" mt={2}>
+                                {t("jobs.scheduleAndClass", {
+                                  schedule: scheduleWords(item.schedule, t),
+                                  class: t(`jobs.classes.${item.priority}`),
+                                })}
                               </Text>
                               {item.suite && (
                                 <Text size="xs" c="dimmed">
                                   {t("jobs.suite", { suite: item.suite })}
                                 </Text>
                               )}
-                            </Table.Td>
-                            <Table.Td>
-                              <Text size="sm">{scheduleWords(item.schedule, t)}</Text>
-                              <Text size="xs" c="dimmed">
-                                {t(`jobs.priorities.${item.priority}`)}
-                              </Text>
                             </Table.Td>
                             <Table.Td>
                               <StateBadge state={item.state} />
@@ -222,22 +230,13 @@ export function JobsPage() {
                               )}
                             </Table.Td>
                             <Table.Td>
-                              <Text size="sm">{t("jobs.backlog", { queued: item.queued, running: item.running })}</Text>
+                              <Text size="sm">{t("jobs.waiting", { count: item.queued })}</Text>
+                              <Text size="sm">{t("jobs.running", { count: item.running })}</Text>
                               {item.dead_letters > 0 && (
                                 <Text size="xs" fw={600}>
                                   {t("jobs.deadLetters", { count: item.dead_letters })}
                                 </Text>
                               )}
-                            </Table.Td>
-                            <Table.Td>
-                              <Button
-                                variant="subtle"
-                                size="compact-sm"
-                                aria-label={t("jobs.openNamed", { name: item.name })}
-                                onClick={() => choose(item.name)}
-                              >
-                                {t("jobs.open")}
-                              </Button>
                             </Table.Td>
                           </Table.Tr>
                         ))}
@@ -266,7 +265,7 @@ export function JobsPage() {
                     {t("jobs.detail.eachProcessRuns")}
                   </Text>
                 ) : (
-                  <Box h={360}>
+                  <Box h={420}>
                     <DataGrid<JobRun>
                       key={shown.name}
                       columns={runColumns}

@@ -34,7 +34,9 @@ for (const scheme of schemes) {
     const failure = page.locator("[data-job-failure]");
     await expect(failure).toContainText("audit.archive.unavailable: The storage did not answer.");
     await expect(failure).toContainText("Archiving 120 events of class standard.");
-    await expect(page.getByRole("grid", { name: "Runs of audit.retention" }).getByText("Dead letter")).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Runs of audit.retention" }).getByRole("grid").getByText("Dead letter"),
+    ).toBeVisible();
     await expect(
       page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Jobs" }),
     ).toBeVisible();
@@ -59,7 +61,7 @@ for (const scheme of schemes) {
     await page.goto("/console/dead-letters");
 
     await expect(page.getByRole("heading", { level: 2, name: "Dead letters" })).toBeVisible();
-    const grid = page.getByRole("grid", { name: "Dead letters of jobs and events" });
+    const grid = page.getByRole("region", { name: "Dead letters of jobs and events" }).getByRole("grid");
     await expect(grid.getByText("Job run")).toBeVisible();
     await expect(grid.getByText("Event", { exact: true })).toBeVisible();
     await grid.getByText("audit.retention").click();

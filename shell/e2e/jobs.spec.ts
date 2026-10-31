@@ -40,7 +40,7 @@ test.describe("the tenant's jobs", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Jobs" })).toBeVisible();
     const table = page.getByRole("table", { name: /The jobs of your organisation/ });
     await expect(table.getByRole("row").filter({ hasText: "audit.seal_chain" })).toContainText("Active");
-    await expect(table.getByRole("row").filter({ hasText: "events.dispatch" })).toContainText("Interactive");
+    await expect(table.getByRole("row").filter({ hasText: "events.dispatch" })).toContainText("interactive work");
 
     await page.getByRole("button", { name: "Run now" }).click();
     const dialog = page.getByRole("dialog", { name: `Run ${job} now?` });
@@ -61,7 +61,7 @@ test.describe("the tenant's jobs", () => {
       .toBe("succeeded");
 
     await open(page, `/console/jobs?job=${job}`);
-    const runs = page.getByRole("grid", { name: `Runs of ${job}` });
+    const runs = page.getByRole("region", { name: `Runs of ${job}` }).getByRole("grid");
     await runs.getByText("Succeeded").first().click();
     await expect(page.locator("[data-run-detail]")).toContainText("sample record(s)");
     await page.screenshot({ path: "test-results/e2e/jobs.png", fullPage: true });

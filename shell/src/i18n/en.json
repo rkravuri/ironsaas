@@ -3396,7 +3396,6 @@
     "detailTitle": "The job",
     "choose": "Choose a job to see its runs, its last failure and its log.",
     "runsGridLabel": "Runs of {{name}}",
-    "open": "Open",
     "openNamed": "Open {{name}}",
     "suite": "Part of the suite {{suite}}",
     "nextRun": "Next run {{at}}",
@@ -3404,16 +3403,13 @@
     "eachProcess": "Runs in each process",
     "lastRunAt": "{{at}}, {{duration}}",
     "notRunYet": "Not run yet",
-    "backlog": "{{queued}} waiting, {{running}} running",
     "deadLetters_one": "{{count}} dead letter",
     "deadLetters_other": "{{count}} dead letters",
     "columns": {
       "job": "Job",
-      "schedule": "Schedule",
       "state": "State",
       "lastRun": "Last run",
       "backlog": "Backlog",
-      "action": "Action",
       "scheduledFor": "Scheduled for",
       "status": "Status",
       "attempts": "Attempts",
@@ -3448,8 +3444,12 @@
     "duration": {
       "ms_one": "{{count}} millisecond",
       "ms_other": "{{count}} milliseconds",
-      "seconds": "{{value}} seconds",
-      "minutes": "{{value}} minutes"
+      "seconds_one": "{{count}} second",
+      "seconds_other": "{{count}} seconds",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "hours_one": "{{count}} hour",
+      "hours_other": "{{count}} hours"
     },
     "detail": {
       "owner": "Owner",
@@ -3503,7 +3503,15 @@
         "confirm": "Run again",
         "done": "The run of {{name}} is waiting for the worker again."
       }
-    }
+    },
+    "scheduleAndClass": "{{schedule}}, {{class}}",
+    "classes": {
+      "interactive": "interactive work",
+      "normal": "normal work",
+      "bulk": "bulk work"
+    },
+    "waiting": "{{count}} waiting",
+    "running": "{{count}} running"
   },
   "deadLetters": {
     "title": "Dead letters",

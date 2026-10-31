@@ -103,8 +103,7 @@ describe("the console's jobs page", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Jobs" })).toBeInTheDocument();
     const table = await screen.findByRole("table", { name: /The jobs of your organisation/ });
     const row = within(table).getByText("audit.retention").closest("tr") as HTMLElement;
-    expect(row).toHaveTextContent("Every 1d");
-    expect(row).toHaveTextContent("Bulk");
+    expect(row).toHaveTextContent("Every 1d, bulk work");
     expect(row).toHaveTextContent("Active");
     expect(row).toHaveTextContent("Dead letter");
     expect(row).toHaveTextContent("812 milliseconds");
@@ -172,7 +171,8 @@ describe("the console's jobs page", () => {
     expect(scheduleWords("cron 0 2 * * *", t)).toBe('jobs.schedule.cron {"expression":"0 2 * * *"}');
     expect(scheduleWords("when started", t)).toBe("jobs.schedule.whenStarted {}");
     expect(durationWords(null, t)).toBe("");
-    expect(durationWords(1500, t)).toBe('jobs.duration.seconds {"value":"1.5"}');
+    expect(durationWords(1500, t)).toBe('jobs.duration.seconds {"count":1.5}');
+    expect(durationWords(7_200_000, t)).toBe('jobs.duration.hours {"count":2}');
   });
 });
 
