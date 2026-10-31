@@ -100,6 +100,36 @@ public sealed record StarterPlanEntry(string Code, string Name, int GraceDays, I
     public string Suite { get; init; } = SuiteName.Foundation;
 }
 
+/// <summary>
+/// A domain event as the catalogue lists it (TF-110, ADR-0060): its name and version, the module that publishes it, the
+/// record type it is about, what it means and who owns it, the fields of its data, the day it stops being published when
+/// a newer version replaces it, and the subscriptions of this build that read it.
+/// </summary>
+public sealed record EventEntry(
+    string Name,
+    int Version,
+    string Module,
+    string RecordType,
+    string Description,
+    string Owner,
+    IReadOnlyList<EventField> Fields,
+    DateOnly? DeprecatedOn,
+    int? ReplacedBy,
+    IReadOnlyList<string> Subscribers)
+{
+    /// <summary>The suite of the publishing module (ADR-0043); the file says it once, as the group the entry sits in.</summary>
+    [JsonIgnore]
+    public string Suite { get; init; } = SuiteName.Foundation;
+
+    public static EventEntry From(EventType type, IEnumerable<EventSubscription> subscriptions)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(subscriptions);
+        var readers = subscriptions.Where(s => s.Event.Name == type.Name && s.Event.Version == type.Version).Select(s => s.Name).Order(StringComparer.Ordinal);
+        return new EventEntry(type.Name, type.Version, type.Module, type.RecordType, type.Description, type.Owner, type.Fields, type.DeprecatedOn, type.ReplacedBy, [.. readers]);
+    }
+}
+
 /// <summary>A duty as the catalogue lists it (ADR-0037): its code, the module that declares it, its name, what it is, and the permissions it covers.</summary>
 public sealed record DutyEntry(string Code, string Module, string Name, string Description, IReadOnlyList<string> Permissions)
 {
@@ -139,7 +169,7 @@ public sealed class LicensingCatalogue
     private readonly Dictionary<string, FeatureEntry> _features;
     private readonly Dictionary<string, FlagEntry> _flags;
 
-    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null, IEnumerable<DutyEntry>? duties = null, IEnumerable<StarterPlanEntry>? plans = null)
+    public LicensingCatalogue(IEnumerable<LicensedModuleEntry> modules, IEnumerable<FeatureEntry> features, IEnumerable<string>? platform = null, IEnumerable<FlagEntry>? flags = null, IEnumerable<SettingEntry>? settings = null, IEnumerable<DutyEntry>? duties = null, IEnumerable<StarterPlanEntry>? plans = null, IEnumerable<EventEntry>? events = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
         ArgumentNullException.ThrowIfNull(features);
@@ -204,11 +234,22 @@ public sealed class LicensingCatalogue
         }
 
         Plans = [.. (plans ?? []).OrderBy(p => p.Code, StringComparer.Ordinal)];
+        var eventKeys = new HashSet<(string, int)>();
+        foreach (var entry in events ?? [])
+        {
+            if (!eventKeys.Add((entry.Name, entry.Version)))
+            {
+                throw new InvalidOperationException($"The event '{entry.Name}' version {entry.Version} is declared twice.");
+            }
+        }
+
+        Events = [.. (events ?? []).OrderBy(e => e.Name, StringComparer.Ordinal).ThenBy(e => e.Version)];
         Suites = [.. Modules.Select(m => m.Suite)
             .Concat(Features.Select(f => f.Suite))
             .Concat(Flags.Select(f => f.Suite))
             .Concat(Settings.Select(s => s.Suite))
             .Concat(Plans.Select(p => p.Suite))
+            .Concat(Events.Select(e => e.Suite))
             .Where(suite => suite != SuiteName.Foundation)
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -238,8 +279,13 @@ public sealed class LicensingCatalogue
     /// <summary>The plans the suites bring to start from (TF-244), by code; the Foundation's plans are the control plane's own.</summary>
     public IReadOnlyList<StarterPlanEntry> Plans { get; }
 
+    /// <summary>The domain events the build's modules publish (TF-110), by name and version, each with its subscribers.</summary>
+    public IReadOnlyList<EventEntry> Events { get; }
+
     /// <summary>The groups of the file: <c>foundation</c> first, then every suite with an entry, by short name (ADR-0043).</summary>
     public IReadOnlyList<string> Suites { get; }
+
+    public EventEntry? FindEvent(string name, int version) => Events.FirstOrDefault(e => e.Name == name && e.Version == version);
 
     public LicensedModuleEntry? FindModule(string code) => _modules.GetValueOrDefault(code);
 
@@ -265,7 +311,10 @@ public sealed class LicensingCatalogue
         var flags = KillSwitches.All.Select(flag => FlagEntry.From(flag, KernelModule)).ToList();
         var settings = new List<SettingEntry>();
         var duties = new List<DutyEntry> { DutyEntry.From(KernelDuties.All, KernelModule) };
-        foreach (var module in modules)
+        var list = modules.ToList();
+        var subscriptions = list.SelectMany(m => m.Subscriptions).ToList();
+        var events = new List<EventEntry>();
+        foreach (var module in list)
         {
             var suite = module.Suite;
             if (suite != SuiteName.Foundation && !SuiteName.IsShortName(suite))
@@ -299,6 +348,7 @@ public sealed class LicensingCatalogue
 
             settings.AddRange(module.Settings.Select(setting => SettingEntry.From(setting, module.Name) with { Suite = suite }));
             duties.AddRange(module.Duties.Select(duty => DutyEntry.From(duty, module.Name)));
+            events.AddRange(module.Events.Select(type => EventEntry.From(type, subscriptions) with { Suite = suite }));
         }
 
         // A starter plan names only its own suite's modules and features (TF-244 AC7): refused here, at make catalogue.
@@ -313,7 +363,7 @@ public sealed class LicensingCatalogue
             }
         }
 
-        return new LicensingCatalogue(licensed, features, platform, flags, settings, duties, plans);
+        return new LicensingCatalogue(licensed, features, platform, flags, settings, duties, plans, events);
     }
 
     /// <summary>
@@ -324,7 +374,7 @@ public sealed class LicensingCatalogue
     {
         ArgumentNullException.ThrowIfNull(file);
         var retired = file.Flags.Where(f => f.Status == FlagStatus.Retired && FindFlag(f.Key) is null);
-        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings, Duties, Plans);
+        return new LicensingCatalogue(Modules, Features, Platform, Flags.Concat(retired), Settings, Duties, Plans, Events);
     }
 
     /// <summary>
@@ -364,7 +414,8 @@ public sealed class LicensingCatalogue
             [.. Features.Where(f => f.Suite == suite)],
             [.. Flags.Where(f => f.Suite == suite)],
             [.. Settings.Where(s => s.Suite == suite)],
-            [.. Plans.Where(p => p.Suite == suite)]));
+            [.. Plans.Where(p => p.Suite == suite)],
+            [.. Events.Where(e => e.Suite == suite)]));
         return JsonSerializer.Serialize(new CatalogueDocument(FormatVersion, Platform, [.. groups], Duties), Json) + "\n";
     }
 
@@ -399,11 +450,12 @@ public sealed class LicensingCatalogue
             groups.SelectMany(g => (g.Flags ?? []).Select(f => f with { Suite = g.Suite })),
             groups.SelectMany(g => (g.Settings ?? []).Select(s => s with { Suite = g.Suite })),
             document.Duties,
-            groups.SelectMany(g => (g.Plans ?? []).Select(p => p with { Suite = g.Suite })));
+            groups.SelectMany(g => (g.Plans ?? []).Select(p => p with { Suite = g.Suite })),
+            groups.SelectMany(g => (g.Events ?? []).Select(e => e with { Suite = g.Suite })));
     }
 
     private sealed record CatalogueDocument(int FormatVersion, IReadOnlyList<string>? Platform, IReadOnlyList<SuiteGroup>? Suites, IReadOnlyList<DutyEntry>? Duties);
 
-    /// <summary>One suite's part of the file, or the Foundation's: what it licenses, switches and sets, and the plans it brings (TF-244).</summary>
-    private sealed record SuiteGroup(string Suite, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings, IReadOnlyList<StarterPlanEntry>? Plans = null);
+    /// <summary>One suite's part of the file, or the Foundation's: what it licenses, switches and sets, the plans it brings (TF-244), and the events it publishes (TF-110).</summary>
+    private sealed record SuiteGroup(string Suite, IReadOnlyList<LicensedModuleEntry>? Modules, IReadOnlyList<FeatureEntry>? Features, IReadOnlyList<FlagEntry>? Flags, IReadOnlyList<SettingEntry>? Settings, IReadOnlyList<StarterPlanEntry>? Plans = null, IReadOnlyList<EventEntry>? Events = null);
 }

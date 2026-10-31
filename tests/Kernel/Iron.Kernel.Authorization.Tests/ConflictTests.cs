@@ -11,6 +11,7 @@ using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -50,7 +51,7 @@ public class ConflictTests(AuthorizationFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton<IPrincipals>(fixture.Principals);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuthorizationModule(), new DutyProbeModule()]);
+        builder.Services.AddModules(builder.Configuration, [new EventsModule(), new AuthorizationModule(), new DutyProbeModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

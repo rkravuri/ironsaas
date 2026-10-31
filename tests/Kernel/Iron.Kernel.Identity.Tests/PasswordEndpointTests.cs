@@ -15,6 +15,7 @@ using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
@@ -283,7 +284,7 @@ public class PasswordEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton(IdentityFixture.Tenant);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(connectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

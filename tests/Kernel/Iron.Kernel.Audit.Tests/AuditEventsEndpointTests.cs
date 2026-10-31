@@ -11,6 +11,7 @@ using Iron.Kernel.Audit.Services;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Files;
 using Iron.Kernel.Files.Contracts;
 using Iron.Kernel.Telemetry;
@@ -45,7 +46,7 @@ public class AuditEventsEndpointTests(AuditFixture fixture) : IAsyncLifetime
             ["Storage:ConnectionString"] = fixture.StorageConnectionString,
             ["Storage:Container"] = AuditFixture.Container,
         });
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new FilesModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new FilesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
         builder.Services.AddSingleton<IPrincipals>(_people);

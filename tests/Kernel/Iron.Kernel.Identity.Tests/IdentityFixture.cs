@@ -7,6 +7,7 @@ using Iron.Kernel.Changes;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Iron.Kernel.Identity.Services;
@@ -131,7 +132,7 @@ public sealed class IdentityFixture : IAsyncLifetime
         services.AddSingleton(Tenant);
         services.AddLogging();
         services.AddIronDatabase(connectionString ?? ConnectionString);
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
+        services.AddModules(configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
         configure?.Invoke(services);
         return services.BuildServiceProvider();
     }

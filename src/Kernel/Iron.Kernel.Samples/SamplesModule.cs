@@ -24,6 +24,13 @@ public sealed class SamplesModule : IModule
 
     public IReadOnlyList<Permission> Permissions => SamplesPermissions.All;
 
+    public IReadOnlyList<EventType> Events => SamplesEvents.All;
+
+    public IReadOnlyList<EventSubscription> Subscriptions =>
+    [
+        EventSubscription.To<SampleRecordCreated, NoticeCreatedSample>(SamplesEvents.RecordCreated, NoticeCreatedSample.Subscription, "Marks a new sample record noticed, so the smoke sees an event handled end to end."),
+    ];
+
     /// <summary>Whether a unit's configuration switches the module on.</summary>
     public static bool IsEnabled(IConfiguration configuration)
     {

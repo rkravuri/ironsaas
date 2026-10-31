@@ -227,6 +227,8 @@
           "Iron.Kernel.Authorization.Contracts": "[1.0.0, )",
           "Iron.Kernel.Compliance.Contracts": "[1.0.0, )",
           "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Events.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Identity.Contracts": "[1.0.0, )",
           "Iron.Kernel.Visibility.Contracts": "[1.0.0, )"
         }
       },
@@ -304,6 +306,25 @@
           "Iron.Kernel": "[1.0.0, )"
         }
       },
+      "iron.kernel.events": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Events.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Files.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Settings.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Telemetry": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.events.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
       "iron.kernel.files": {
         "type": "Project",
         "dependencies": {
@@ -352,6 +373,7 @@
           "Iron.Kernel.Authorization.Contracts": "[1.0.0, )",
           "Iron.Kernel.Compliance.Contracts": "[1.0.0, )",
           "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Events.Contracts": "[1.0.0, )",
           "Iron.Kernel.Identity.Contracts": "[1.0.0, )",
           "Iron.Kernel.Protection.Contracts": "[1.0.0, )",
           "Iron.Kernel.Security": "[1.0.0, )",
@@ -414,6 +436,22 @@
         }
       },
       "iron.kernel.protection.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.samples": {
+        "type": "Project",
+        "dependencies": {
+          "Iron.Kernel": "[1.0.0, )",
+          "Iron.Kernel.Api": "[1.0.0, )",
+          "Iron.Kernel.Data": "[1.0.0, )",
+          "Iron.Kernel.Events.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Samples.Contracts": "[1.0.0, )"
+        }
+      },
+      "iron.kernel.samples.contracts": {
         "type": "Project",
         "dependencies": {
           "Iron.Kernel": "[1.0.0, )"
@@ -482,6 +520,7 @@
           "Iron.Kernel.Audit.Contracts": "[1.0.0, )",
           "Iron.Kernel.Data": "[1.0.0, )",
           "Iron.Kernel.Entitlements.Contracts": "[1.0.0, )",
+          "Iron.Kernel.Events.Contracts": "[1.0.0, )",
           "Iron.Suites.Procurement.Purchasing.Contracts": "[1.0.0, )"
         }
       },

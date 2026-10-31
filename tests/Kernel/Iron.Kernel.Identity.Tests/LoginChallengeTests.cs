@@ -9,6 +9,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Protection;
 using Iron.Kernel.Protection.Contracts;
@@ -51,7 +52,7 @@ public class LoginChallengeTests(IdentityFixture fixture) : IAsyncLifetime
         builder.Services.AddIronApi();
         builder.Services.AddIronSecurity(builder.Configuration);
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ProtectionModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule(), new ProtectionModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

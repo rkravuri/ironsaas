@@ -3,6 +3,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Testing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -59,7 +60,7 @@ public sealed class FilesFixture : IAsyncLifetime
         services.AddSingleton(principal);
         services.AddLogging();
         services.AddIronDatabase(ConnectionString);
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new FilesModule()]);
+        services.AddModules(configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new FilesModule()]);
         return services.BuildServiceProvider();
     }
 }

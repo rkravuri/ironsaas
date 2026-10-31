@@ -101,6 +101,34 @@ public class HostTests
     }
 
     [Fact]
+    [Proves("TF-110 AC1", "ADR-0060")]
+    public void EveryEventTheUnitsModulesSubscribeToIsPublishedByOneOfThemAndTheCatalogueListsItsPublisherAndReaders()
+    {
+        static IConfiguration With(string? samples, string? suites) => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [Iron.Kernel.Samples.Contracts.SamplesConfiguration.EnabledKey] = samples,
+            [Iron.Kernel.Api.Modules.InstalledSuites.ConfigurationKey] = suites,
+        }).Build();
+
+        // A subscription whose event no module of the unit publishes would never run: the declarations list it as unmatched.
+        Assert.Empty(new Iron.Kernel.Api.Modules.EventDeclarations(Iron.Host.Api.UnitModules.All()).Unmatched);
+        Assert.Empty(new Iron.Kernel.Api.Modules.EventDeclarations(Iron.Host.Api.UnitModules.ForUnit(With("true", null))).Unmatched);
+        Assert.Empty(new Iron.Kernel.Api.Modules.EventDeclarations(Iron.Host.Api.UnitModules.ForUnit(With(null, "procurement"))).Unmatched);
+
+        var events = Iron.Host.Api.UnitModules.Catalogue().Events;
+        var deactivated = Assert.Single(events, e => e.Name == "identity.person.deactivated");
+        Assert.Equal(("identity", "foundation"), (deactivated.Module, deactivated.Suite));
+        Assert.Equal(["authz.end_delegations_of_deactivated"], deactivated.Subscribers);
+        var ended = Assert.Single(events, e => e.Name == "authz.delegation.ended");
+        Assert.Equal(("authz", "foundation"), (ended.Module, ended.Suite));
+        Assert.Equal(["identity.stop_acting_for_ended_delegation"], ended.Subscribers);
+        Assert.Equal("procurement", Assert.Single(events, e => e.Name == "purchasing.suite.installed").Suite);
+
+        // The sample module is never in the catalogue (ADR-0057), nor are its events.
+        Assert.DoesNotContain(events, e => e.Name.StartsWith("samples.", StringComparison.Ordinal));
+    }
+
+    [Fact]
     [Proves("ADR-0052")]
     public async Task TheApiImageSaysItsVersionAndItsControlledConfigurationWithoutAHost()
     {

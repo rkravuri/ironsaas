@@ -13,6 +13,7 @@ using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Compliance;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Services;
 using Iron.Kernel.Settings;
@@ -47,7 +48,7 @@ public class TokenEndpointTests(IdentityFixture fixture) : IAsyncLifetime
         builder.Services.AddIronApi();
         builder.Services.AddIronOpenApi("Test API");
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new SettingsModule(), new ComplianceModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
 

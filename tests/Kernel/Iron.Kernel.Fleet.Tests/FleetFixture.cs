@@ -6,6 +6,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Fleet.Services;
 using Iron.Kernel.Security.Secrets;
 using Iron.Kernel.Tenancy;
@@ -121,7 +122,7 @@ public sealed class FleetFixture : IAsyncLifetime
         services.AddLogging();
         services.AddIronDatabase(ControlConnectionString);
         services.AddIronSecretStore(configuration);
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
+        services.AddModules(configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new FleetModule(), new TenancyModule()]);
         configure?.Invoke(services);
         return services.BuildServiceProvider();
     }
@@ -195,6 +196,10 @@ public sealed class RecordingRuntime : IUnitRuntime
                 var review = JsonSerializer.Serialize(ReviewEvents.Select(e => new Dictionary<string, string> { ["at"] = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture), ["event_type"] = e, ["outcome"] = "success" }));
                 await HandOverAsync(unit, "break_glass_review", unit.Environment["BreakGlass__Account"], string.Empty, DateTimeOffset.UtcNow.AddDays(1), cancellationToken, review);
                 return new CommandResult(0, "Handed over a break-glass review of 2 action(s).\n");
+            case "events":
+                return new CommandResult(0, unit.Environment["Events__Command__Action"] == "replay"
+                    ? "Replayed 1 event(s) to probe.count_orders: 1 requeued, 0 added, 0 already handled.\n"
+                    : "Searched: 0 event(s), newest first, at most 200.\n");
             default:
                 return new CommandResult(0, $"{name} done\n");
         }

@@ -12,6 +12,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Files;
 using Iron.Kernel.Files.Contracts;
 using Iron.Kernel.Settings;
@@ -81,7 +82,7 @@ public sealed class EvidenceFixture : IAsyncLifetime
             ["ControlPlane:ClientId"] = "unit-echo",
             ["ControlPlane:ClientSecret"] = "a unit client secret",
         }).AddInMemoryCollection(settings ?? new Dictionary<string, string?>()).Build();
-        services.AddModules(configuration, [new AuditModule(), new AuthorizationModule(), new SettingsModule(), new FilesModule(), new ComplianceModule()]);
+        services.AddModules(configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new FilesModule(), new ComplianceModule()]);
         services.AddSingleton<IPrincipals>(People);
         services.Replace(ServiceDescriptor.Singleton<ICurrentPrincipal>(actor));
         services.Replace(ServiceDescriptor.Singleton(provider => new ControlPlaneClient(provider.GetRequiredService<ControlPlaneOptions>(), provider.GetRequiredService<TimeProvider>(), ControlPlane.Handler())));

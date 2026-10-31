@@ -9,6 +9,7 @@ using Iron.Kernel.Compliance;
 using Iron.Kernel.Compliance.Contracts;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.History;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Settings;
@@ -60,7 +61,7 @@ public sealed class ChangesFixture : IAsyncLifetime
         services.AddSingleton(new TenantContext(TenantId.Parse("echo"), ["echo.localhost"]));
         services.AddLogging();
         services.AddIronDatabase(ConnectionString);
-        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new AuthorizationModule(), new IdentitySettingsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
+        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentitySettingsModule(), new SettingsModule(), new ComplianceModule(), new ChangesModule()]);
         services.AddSingleton<IPrincipals>(Principals);
         services.Replace(ServiceDescriptor.Singleton<ICurrentPrincipal>(actor));
         services.Replace(ServiceDescriptor.Singleton<ISignerAuthentication>(signer));

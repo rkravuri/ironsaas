@@ -11,6 +11,7 @@
     <ProjectReference Include="../Iron.Kernel.Data/Iron.Kernel.Data.csproj" />
     <ProjectReference Include="../Iron.Kernel.Api/Iron.Kernel.Api.csproj" />
     <ProjectReference Include="Contracts/Iron.Kernel.Samples.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Events/Contracts/Iron.Kernel.Events.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

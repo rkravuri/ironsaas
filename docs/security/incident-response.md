@@ -175,6 +175,17 @@ disputed, or a key rotation that failed. A broken chain is severity 1 until the 
 chain's runbook in `docs/guides/local-stack.md` (verify in full, compare with the anchors, accept a restore only with
 its ticket). A failed rotation leaves the old key in use: read the error with `make key-status TENANT=x` and rotate again.
 
+### Dead-lettered events
+
+`event_dead_letters`: a subscriber failed a domain event as many times as it is retried (six by default, over about a
+minute), and the event is parked for it (ADR-0060). The event's other subscribers went on, and so did the subscriber's
+later events, of this record and of others: a dead letter holds nothing back. It is an operational fault
+before it is a security one: a handler that throws, a record it expected and did not find, or a database refusal. Open
+the event on the console's Events page (or `make events TENANT=x STATUS=dead` as the operator) and read the error of its
+last attempt. Fix the cause, then replay the event to that subscriber with a reason; a replay never runs a subscriber
+twice on an event it handled. Many dead letters at once for one subscriber after an update point to the release: roll
+the unit back, or fix and update, then replay the range.
+
 ### A failing rule
 
 A rule that cannot run raises an alert of its own, and the Alert rules page shows why: a value the operator set that is

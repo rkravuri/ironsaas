@@ -8,6 +8,7 @@ using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Health;
 using Iron.Kernel.Entitlements;
+using Iron.Kernel.Events;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Fleet;
 using Iron.Kernel.Identity;
@@ -33,13 +34,14 @@ namespace Iron.Host.ControlPlane;
 public static class ControlPlaneComposition
 {
     /// <summary>
-    /// The modules this host runs, in order: Audit first (the others write events through its contract), then
-    /// Authorization, then Identity (it replaces the default principal), then Fleet and Tenancy (Tenancy asks Fleet for
-    /// jobs). The control plane stores no tenant files. Monitoring watches the platform's own trail and keeps the units'
-    /// alerts, which Tenancy takes in from them (ADR-0056).
+    /// The modules this host runs, in order: Audit first (the others write events through its contract), then Events
+    /// (Identity and Authorization publish and subscribe here as in a unit, ADR-0060), then Authorization, then Identity
+    /// (it replaces the default principal), then Fleet and Tenancy (Tenancy asks Fleet for jobs). The control plane stores
+    /// no tenant files. Monitoring watches the platform's own trail and keeps the units' alerts, which Tenancy takes in
+    /// from them (ADR-0056).
     /// </summary>
     public static IReadOnlyList<IModule> Modules() =>
-        [new AuditModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ProtectionModule(), new MonitoringModule(MonitoringScope.ControlPlane)];
+        [new AuditModule(), new EventsModule(), new AuthorizationModule(), new IdentityModule(), new FleetModule(), new TenancyModule(), new EntitlementsModule(), new FlagsModule(), new SettingsModule(), new ProtectionModule(), new MonitoringModule(MonitoringScope.ControlPlane)];
 
     public static WebApplicationBuilder AddControlPlane(this WebApplicationBuilder builder, TenantContext tenant)
     {

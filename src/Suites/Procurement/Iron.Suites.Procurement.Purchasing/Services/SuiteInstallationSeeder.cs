@@ -3,6 +3,7 @@ using Iron.Kernel;
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Data.Seeding;
 using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Events.Contracts;
 using Iron.Suites.Procurement.Purchasing.Contracts;
 using Iron.Suites.Procurement.Purchasing.Data;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,7 @@ public sealed class SuiteInstallationSeeder(
     IAuditWriter audit,
     TimeProvider time,
     IConfiguration configuration,
+    IEventPublisher events,
     ILogger<SuiteInstallationSeeder> logger) : ISeeder
 {
     public const string JobIdKey = "Seed:JobId";
@@ -66,6 +68,12 @@ public sealed class SuiteInstallationSeeder(
         };
         var action = first ? PurchasingAuditEvents.SuiteInstalled : PurchasingAuditEvents.SuiteSeeded;
         await audit.WriteAsync(new AuditEvent(action, AuditOutcome.Success, SystemPrincipal.SystemId, ProcurementSuite.ShortName, details, RecordType, installation.Id, "seed"), cancellationToken).ConfigureAwait(false);
+        if (first)
+        {
+            // The suite's own event (ADR-0060): only a unit that runs the suite declares and stores it.
+            await events.PublishAsync(PurchasingEvents.SuiteInstalled, installation.Id, new SuiteInstalled(installation.Id, ProcurementSuite.ShortName, version, job), cancellationToken).ConfigureAwait(false);
+        }
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         logger.LogInformation(first ? "The {Suite} suite is installed with release {Version} by job {Job}." : "The {Suite} suite is seeded again with release {Version} by job {Job}.", ProcurementSuite.ShortName, version, job?.ToString("D") ?? "none");
     }

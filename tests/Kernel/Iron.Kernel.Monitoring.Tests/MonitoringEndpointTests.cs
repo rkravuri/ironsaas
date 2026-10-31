@@ -11,6 +11,7 @@ using Iron.Kernel.Audit;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data;
+using Iron.Kernel.Events;
 using Iron.Kernel.Monitoring.Contracts;
 using Iron.Kernel.Monitoring.Data;
 using Iron.Kernel.Monitoring.Services;
@@ -171,7 +172,7 @@ public class MonitoringEndpointTests(MonitoringFixture fixture)
         builder.Services.AddSingleton(options);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(tenant.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new AuthorizationModule(), new MonitoringModule(), new DeclaredTypesModule()]);
+        builder.Services.AddModules(builder.Configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new MonitoringModule(), new DeclaredTypesModule()]);
         builder.Services.AddScoped<IEntitlementGate, AllEntitled>();
         builder.Services.AddScoped<IFlagGate, AllEntitled>();
         var app = builder.Build();

@@ -14,6 +14,7 @@ using Iron.Kernel.Authorization.Data;
 using Iron.Kernel.Authorization.Services;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Visibility;
+using Iron.Kernel.Events;
 using Iron.Kernel.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -56,7 +57,7 @@ public class ExplainAccessTests(AuthorizationFixture fixture) : IAsyncLifetime
         builder.Services.AddSingleton<IVisibilityTags>(_tags);
         builder.Services.AddIronApi();
         builder.Services.AddIronDatabase(fixture.ConnectionString);
-        builder.Services.AddModules(builder.Configuration, [new AuthorizationModule(), new DutyProbeModule(), new LicensedProbeModule()]);
+        builder.Services.AddModules(builder.Configuration, [new EventsModule(), new AuthorizationModule(), new DutyProbeModule(), new LicensedProbeModule()]);
 
         _app = builder.Build();
         _app.UseIronTelemetry();

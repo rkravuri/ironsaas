@@ -18,6 +18,7 @@
     <ProjectReference Include="../Iron.Kernel.Settings/Contracts/Iron.Kernel.Settings.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Compliance/Contracts/Iron.Kernel.Compliance.Contracts.csproj" />
     <ProjectReference Include="../Iron.Kernel.Protection/Contracts/Iron.Kernel.Protection.Contracts.csproj" />
+    <ProjectReference Include="../Iron.Kernel.Events/Contracts/Iron.Kernel.Events.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

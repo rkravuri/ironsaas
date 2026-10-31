@@ -10,6 +10,7 @@ using Iron.Kernel.Audit.Data;
 using Iron.Kernel.Authorization;
 using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
+using Iron.Kernel.Events;
 using Iron.Kernel.Keys.Contracts;
 using Iron.Kernel.Keys.Data;
 using Iron.Kernel.Keys.Services;
@@ -94,7 +95,7 @@ public sealed class Tenant(string connectionString, string prefix, TransitKeySer
         services.AddSingleton(options);
         services.AddSingleton(new ControlPlaneClient(options, time, ControlPlane));
         services.AddIronDatabase(connectionString);
-        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new AuthorizationModule(), new SettingsModule(), new KeysModule()]);
+        services.AddModules(new ConfigurationBuilder().Build(), [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new KeysModule()]);
         return services.BuildServiceProvider();
     }
 

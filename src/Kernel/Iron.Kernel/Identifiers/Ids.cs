@@ -15,4 +15,7 @@ public static class Ids
         ArgumentNullException.ThrowIfNull(time);
         return Guid.CreateVersion7(time.GetUtcNow());
     }
+
+    /// <summary>A new time-ordered identifier of a moment already taken, so the id tells that moment (a domain event's, ADR-0060).</summary>
+    public static Guid At(DateTimeOffset moment) => Guid.CreateVersion7(moment);
 }

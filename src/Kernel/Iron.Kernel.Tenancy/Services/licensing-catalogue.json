@@ -6,6 +6,7 @@
     "changes",
     "compliance",
     "entitlements",
+    "events",
     "files",
     "flags",
     "identity",
@@ -197,6 +198,22 @@
           "minimum": null,
           "maximum": null,
           "whole_number": false
+        },
+        {
+          "key": "events.retention.days",
+          "module": "events",
+          "type": "number",
+          "description": "How many days a handled domain event stays searchable before it is archived to the tenant's container.",
+          "default": 90,
+          "scopes": [
+            "tenant"
+          ],
+          "visible_to_shell": false,
+          "requirement": "A whole number from 7 to 3650.",
+          "choices": null,
+          "minimum": 7,
+          "maximum": 3650,
+          "whole_number": true
         },
         {
           "key": "identity.impersonation.max_minutes",
@@ -647,7 +664,75 @@
           "whole_number": false
         }
       ],
-      "plans": []
+      "plans": [],
+      "events": [
+        {
+          "name": "authz.delegation.ended",
+          "version": 1,
+          "module": "authz",
+          "record_type": "delegation",
+          "description": "A delegation of duties ended before its time, by a person or because a person on either side was deactivated.",
+          "owner": "Authorization module",
+          "fields": [
+            {
+              "name": "delegation_id",
+              "type": "identifier",
+              "required": true,
+              "personal": false
+            },
+            {
+              "name": "delegator_id",
+              "type": "identifier",
+              "required": true,
+              "personal": true
+            },
+            {
+              "name": "delegate_id",
+              "type": "identifier",
+              "required": true,
+              "personal": true
+            },
+            {
+              "name": "cause",
+              "type": "code",
+              "required": true,
+              "personal": false
+            }
+          ],
+          "deprecated_on": null,
+          "replaced_by": null,
+          "subscribers": [
+            "identity.stop_acting_for_ended_delegation"
+          ]
+        },
+        {
+          "name": "identity.person.deactivated",
+          "version": 1,
+          "module": "identity",
+          "record_type": "principal",
+          "description": "A person was deactivated: they cannot sign in, and every session of theirs ended.",
+          "owner": "Identity module",
+          "fields": [
+            {
+              "name": "person_id",
+              "type": "identifier",
+              "required": true,
+              "personal": true
+            },
+            {
+              "name": "sessions_ended",
+              "type": "integer",
+              "required": true,
+              "personal": false
+            }
+          ],
+          "deprecated_on": null,
+          "replaced_by": null,
+          "subscribers": [
+            "authz.end_delegations_of_deactivated"
+          ]
+        }
+      ]
     },
     {
       "suite": "procurement",
@@ -671,6 +756,45 @@
             "purchasing"
           ],
           "features": []
+        }
+      ],
+      "events": [
+        {
+          "name": "purchasing.suite.installed",
+          "version": 1,
+          "module": "purchasing",
+          "record_type": "suite_installation",
+          "description": "The eProcurement Suite was installed in this tenant, at its first seed.",
+          "owner": "Purchasing module",
+          "fields": [
+            {
+              "name": "installation_id",
+              "type": "identifier",
+              "required": true,
+              "personal": false
+            },
+            {
+              "name": "suite",
+              "type": "code",
+              "required": true,
+              "personal": false
+            },
+            {
+              "name": "release",
+              "type": "code",
+              "required": true,
+              "personal": false
+            },
+            {
+              "name": "job_id",
+              "type": "identifier",
+              "required": false,
+              "personal": false
+            }
+          ],
+          "deprecated_on": null,
+          "replaced_by": null,
+          "subscribers": []
         }
       ]
     }

@@ -12,6 +12,7 @@ using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Entitlements;
 using Iron.Kernel.Entitlements.Contracts;
 using Iron.Kernel.Entitlements.Services;
+using Iron.Kernel.Events;
 using Iron.Kernel.Flags;
 using Iron.Kernel.Telemetry;
 using Iron.Suites.Procurement.Purchasing.Contracts;
@@ -208,7 +209,7 @@ public class AboutEndpointTests(PurchasingFixture fixture)
 
         /// <summary>The Foundation's modules the About page and the context need, and the unit's suites.</summary>
         private static IReadOnlyList<IModule> Modules(IReadOnlyList<SuiteDefinition> suites) =>
-            InstalledSuites.Compose([new AuditModule(), new AuthorizationModule(), new EntitlementsModule(), new FlagsModule()], suites);
+            InstalledSuites.Compose([new AuditModule(), new EventsModule(), new AuthorizationModule(), new EntitlementsModule(), new FlagsModule()], suites);
 
         public async Task<Guid> PersonWithAsync(string role)
         {

@@ -19,7 +19,7 @@ namespace Iron.Kernel.Data.Commands;
 /// <c>break-glass-close</c>, the operator's support and emergency access (ADR-0049); <c>publish-validation-pack</c>, the
 /// fleet's, which puts a release's validation pack where every unit's update finds it (ADR-0052); <c>prepare-control</c>
 /// and <c>verify-control-audit</c>, the fleet's, which give the control plane its own roles and verify its own chain
-/// (ADR-0053).
+/// (ADR-0053); <c>events</c>, the operator's search and replay of a tenant's domain events (ADR-0060).
 /// </summary>
 public static class DatabaseCommands
 {
@@ -34,11 +34,12 @@ public static class DatabaseCommands
     public const string PublishValidationPack = "publish-validation-pack";
     public const string PrepareControl = "prepare-control";
     public const string VerifyControlAudit = "verify-control-audit";
+    public const string Events = "events";
 
     public static bool IsCommand(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
-        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant or RecoverAdministrator or Impersonate or BreakGlassOpen or BreakGlassClose or PublishValidationPack or PrepareControl or VerifyControlAudit;
+        return args.Length > 0 && args[0] is Migrate or Seed or SchemaCheck or Grant or RecoverAdministrator or Impersonate or BreakGlassOpen or BreakGlassClose or PublishValidationPack or PrepareControl or VerifyControlAudit or Events;
     }
 
     /// <summary>

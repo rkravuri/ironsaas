@@ -9,6 +9,7 @@ using Iron.Kernel.Data;
 using Iron.Kernel.Data.Commands;
 using Iron.Kernel.Data.History;
 using Iron.Kernel.Data.Policies;
+using Iron.Kernel.Events;
 using Iron.Kernel.History;
 using Iron.Testing;
 using Microsoft.AspNetCore.Builder;
@@ -121,7 +122,7 @@ public sealed class AuthorizationFixture : IAsyncLifetime
             }
         });
         services.AddIronDatabase(connectionString ?? ConnectionString);
-        services.AddModules(new ConfigurationBuilder().Build(), [new AuthorizationModule(), new DutyProbeModule(), .. more ?? []]);
+        services.AddModules(new ConfigurationBuilder().Build(), [new EventsModule(), new AuthorizationModule(), new DutyProbeModule(), .. more ?? []]);
         return services.BuildServiceProvider();
     }
 }

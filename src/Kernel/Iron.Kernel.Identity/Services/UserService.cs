@@ -1,6 +1,7 @@
 using Iron.Kernel.Audit.Contracts;
 using Iron.Kernel.Authorization.Contracts;
 using Iron.Kernel.Data.Transactions;
+using Iron.Kernel.Events.Contracts;
 using Iron.Kernel.Identity.Contracts;
 using Iron.Kernel.Identity.Data;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +35,8 @@ public sealed class UserService(
     ITenantAdministrators administrators,
     IUnitOfWork unitOfWork,
     IAuditWriter audit,
-    ICurrentPrincipal actor)
+    ICurrentPrincipal actor,
+    IEventPublisher events)
 {
     public const string RecordType = IdentityRecordTypes.Principal;
 
@@ -254,6 +256,9 @@ public sealed class UserService(
         var ended = await sessions.EndAllAsync(principal.Id, SessionEndReasons.Revoked, cancellationToken).ConfigureAwait(false);
         var details = new Dictionary<string, string>(StringComparer.Ordinal) { ["sessions_ended"] = ended.ToString(System.Globalization.CultureInfo.InvariantCulture) };
         await securityEvents.RecordAsync(principal, SecurityEventKinds.UserDeactivated, SecurityEventActors.Administrator, await ActorNameAsync(cancellationToken).ConfigureAwait(false), null, details, cancellationToken).ConfigureAwait(false);
+
+        // Authorization ends the person's delegations on it, after this commits (ADR-0060).
+        await events.PublishAsync(IdentityEvents.PersonDeactivated, principal.Id, new PersonDeactivated(principal.Id, ended), cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return principal;
     }
