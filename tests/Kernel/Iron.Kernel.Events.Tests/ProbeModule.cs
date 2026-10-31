@@ -55,6 +55,50 @@ public sealed class ProbeModule : IModule
     }
 }
 
+/// <summary>
+/// A module of a probe suite, which reads the probe's orders, as a suite's module reads a Foundation event: a unit runs it
+/// only where the suite is installed, and its waiting deliveries are held while the suite is removed (ADR-0060).
+/// </summary>
+public sealed class ProbeSuiteModule : IModule
+{
+    public const string SuiteShortName = "probesuite";
+    public const string Subscriber = "probesuite.count_orders";
+
+    public string Name => "probesuite";
+
+    public string Suite => SuiteShortName;
+
+    // A suite's module is licensed, as every one is (ADR-0034, ADR-0043).
+    public ModuleLicence? Licence { get; } = new("probesuite", SubscriptionType.Platform);
+
+    public IReadOnlyList<Permission> Permissions => [];
+
+    public IReadOnlyList<EventSubscription> Subscriptions =>
+    [
+        EventSubscription.To<OrderPlaced, SuiteCountingHandler>(ProbeModule.Placed, Subscriber, "Counts each order in the suite."),
+    ];
+
+    public static SuiteDefinition Definition() => new(SuiteShortName, "Probe suite", "A suite the events tests install and remove.", () => [new ProbeSuiteModule()]);
+
+    public void AddServices(IServiceCollection services, IConfiguration configuration)
+    {
+    }
+
+    public void MapEndpoints(IEndpointRouteBuilder endpoints)
+    {
+    }
+}
+
+public sealed class SuiteCountingHandler(ProbeBehaviour behaviour) : IEventHandler<OrderPlaced>
+{
+    public Task<Result> HandleAsync(DomainEvent<OrderPlaced> domainEvent, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(domainEvent);
+        behaviour.SuiteCounted.Enqueue(domainEvent.Data.OrderId);
+        return Task.FromResult(Result.Success());
+    }
+}
+
 /// <summary>What the probe's handlers do, which a test sets: how many times the flaky one fails, how, and how long the sequencer waits.</summary>
 public sealed class ProbeBehaviour
 {
@@ -69,6 +113,9 @@ public sealed class ProbeBehaviour
     public int FlakyAttempts => _flakyAttempts;
 
     public ConcurrentQueue<(Guid Record, int Sequence)> Sequence { get; } = new();
+
+    /// <summary>The orders the probe suite's subscriber counted, once each.</summary>
+    public ConcurrentQueue<Guid> SuiteCounted { get; } = new();
 
     private int _flakyAttempts;
 

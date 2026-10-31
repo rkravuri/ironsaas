@@ -83,7 +83,8 @@ public sealed class OutboxEvent : AuditedEntity, ITenantWide
 /// <summary>
 /// One subscriber's record of one event (TF-085, TF-111, ADR-0060): the inbox. Pending until the subscriber's handler ran
 /// and committed with this row marked handled, so a repeated delivery finds it handled and changes nothing; a failure
-/// counts an attempt and waits longer each time; after the last attempt, a dead letter with its error.
+/// counts an attempt and waits longer each time; after the last attempt, a dead letter with its error. A delivery to a
+/// subscriber of a suite the unit no longer runs is held until the suite returns.
 /// </summary>
 public sealed class InboxEntry : AuditedEntity, ITenantWide
 {
@@ -97,7 +98,7 @@ public sealed class InboxEntry : AuditedEntity, ITenantWide
         Status = DeliveryStates.Pending;
     }
 
-    public InboxEntry(string subscriber, Guid eventId, long position, string recordType, Guid recordId, DateTimeOffset dueAt)
+    public InboxEntry(string subscriber, Guid eventId, long position, string recordType, Guid recordId, DateTimeOffset dueAt, string? suite = null)
         : this()
     {
         Subscriber = subscriber;
@@ -106,9 +107,16 @@ public sealed class InboxEntry : AuditedEntity, ITenantWide
         RecordType = recordType;
         RecordId = recordId;
         NextAttemptAt = dueAt;
+        Suite = suite;
     }
 
     public string Subscriber { get; private set; }
+
+    /// <summary>The suite of the subscriber's module, or null for the Foundation's: a removed suite's deliveries are held by it.</summary>
+    public string? Suite { get; private set; }
+
+    /// <summary>When the delivery was held because its suite was removed; null unless it is held.</summary>
+    public DateTimeOffset? HeldAt { get; private set; }
 
     public Guid EventId { get; private set; }
 
@@ -154,6 +162,36 @@ public sealed class InboxEntry : AuditedEntity, ITenantWide
 
         Status = DeliveryStates.Dead;
         DeadAt = at;
+    }
+
+    /// <summary>
+    /// Held, because the unit no longer runs the subscriber's suite: neither tried, nor counted, nor a dead letter, until the
+    /// suite returns (ADR-0060). Only a pending delivery is held.
+    /// </summary>
+    public bool Hold(DateTimeOffset at)
+    {
+        if (Status != DeliveryStates.Pending)
+        {
+            return false;
+        }
+
+        Status = DeliveryStates.Held;
+        HeldAt = at;
+        return true;
+    }
+
+    /// <summary>Pending again, at once, because the subscriber's suite is back; its attempts are as they were when it was held.</summary>
+    public bool Resume(DateTimeOffset at)
+    {
+        if (Status != DeliveryStates.Held)
+        {
+            return false;
+        }
+
+        Status = DeliveryStates.Pending;
+        HeldAt = null;
+        NextAttemptAt = at;
+        return true;
     }
 
     /// <summary>Back to pending for a replay; a handled entry stays handled, so a replay never runs a handler twice on an event.</summary>
@@ -247,6 +285,7 @@ public sealed class EventsDbContext(DbContextOptions<EventsDbContext> options) :
             inbox.Property(i => i.Subscriber).HasMaxLength(InboxEntry.SubscriberMaxLength);
             inbox.Property(i => i.RecordType).HasMaxLength(OutboxEvent.RecordTypeMaxLength);
             inbox.Property(i => i.Status).HasMaxLength(10);
+            inbox.Property(i => i.Suite).HasMaxLength(40);
             inbox.Property(i => i.LastError).HasMaxLength(InboxEntry.ErrorMaxLength);
             inbox.HasIndex(i => new { i.Subscriber, i.EventId }).IsUnique();
             inbox.HasIndex(i => i.EventId);

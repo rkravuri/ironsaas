@@ -479,7 +479,7 @@ function EventDetail({
               <Table.Tr>
                 <Table.Th>{t("events.columns.subscriber")}</Table.Th>
                 {/* Wide enough for the badge's words, which say the status so it is never colour alone. */}
-                <Table.Th w={150}>{t("events.columns.status")}</Table.Th>
+                <Table.Th w={190}>{t("events.columns.status")}</Table.Th>
                 <Table.Th>{t("events.columns.attempts")}</Table.Th>
                 <Table.Th>{t("events.columns.when")}</Table.Th>
                 <Table.Th>{t("events.columns.error")}</Table.Th>
@@ -503,14 +503,17 @@ function EventDetail({
                   <Table.Td>{delivery.last_error ?? ""}</Table.Td>
                   {canReplay && (
                     <Table.Td>
-                      <Button
-                        size="compact-sm"
-                        variant="default"
-                        aria-label={t("events.replay.toSubscriber", { subscriber: delivery.subscriber })}
-                        onClick={() => onReplay(delivery.subscriber)}
-                      >
-                        {t("events.replay.open")}
-                      </Button>
+                      {/* A held delivery's subscriber is not in this unit: it resumes when its suite is added again. */}
+                      {delivery.status !== "held" && (
+                        <Button
+                          size="compact-sm"
+                          variant="default"
+                          aria-label={t("events.replay.toSubscriber", { subscriber: delivery.subscriber })}
+                          onClick={() => onReplay(delivery.subscriber)}
+                        >
+                          {t("events.replay.open")}
+                        </Button>
+                      )}
                     </Table.Td>
                   )}
                 </Table.Tr>
@@ -523,8 +526,11 @@ function EventDetail({
   );
 }
 
-/** When a delivery happened, or when it is tried next. */
+/** When a delivery happened, since when it is held, or when it is tried next. */
 function deliveryWhen(delivery: EventDelivery, t: TFunction): string {
+  if (delivery.status === "held" && delivery.held_at) {
+    return t("events.detail.heldAt", { at: formatDateTime(delivery.held_at) });
+  }
   if (delivery.status === "handled" && delivery.handled_at) {
     return t("events.detail.handledAt", { at: formatDateTime(delivery.handled_at) });
   }

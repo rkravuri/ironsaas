@@ -47,6 +47,7 @@ const deactivated = {
       handled_at: null,
       dead_at: "2026-10-31T09:20:00Z",
       replays: 0,
+      held_at: null,
     },
   ],
 };
@@ -129,6 +130,36 @@ describe("the console's events page", () => {
         "1 event went to authz.end_delegations_of_deactivated: 1 to be tried again, 0 given for the first time, 0 already handled.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("shows a removed suite's held delivery in words, with since when, and offers no replay to a subscriber the unit does not run [ADR-0060, ADR-0024]", async () => {
+    const held = {
+      ...deactivated,
+      status: "held",
+      deliveries: [
+        {
+          ...deactivated.deliveries[0],
+          subscriber: "purchasing.reassign_requests_of_deactivated",
+          status: "held",
+          attempts: 0,
+          last_error: null,
+          dead_at: null,
+          held_at: "2026-10-31T09:05:00Z",
+        },
+      ],
+    };
+    stubFetch(
+      handlers(["events.events.read", "events.events.replay"], {
+        [`GET /api/v1/events/${deactivated.id}`]: () => json(held),
+      }),
+    );
+    renderWithProviders(<EventsPage />, { route: `/console/events?event=${deactivated.id}` });
+
+    const detail = await screen.findByRole("region", { name: "identity.person.deactivated (version 1)" });
+    expect(within(detail).getAllByText("Held: suite removed")).toHaveLength(2);
+    expect(detail).toHaveTextContent("Held since");
+    expect(detail).toHaveTextContent("until the suite is added again");
+    expect(within(detail).queryByRole("button", { name: /Replay to/ })).not.toBeInTheDocument();
   });
 
   it("reports an event past the retention as archived, with what to do [TF-112 AC2, ADR-0060]", async () => {

@@ -1,16 +1,20 @@
 import { z } from "zod";
 import { listSchema, request } from "./client";
 
-/** Where an event stands with one subscriber (TF-111, ADR-0060): its attempts, the error of the last, and its replays. */
+/**
+ * Where an event stands with one subscriber (TF-111, ADR-0060): its attempts, the error of the last, its replays, and
+ * since when it is held, while the unit no longer runs the subscriber's suite.
+ */
 export const EventDeliverySchema = z.object({
   subscriber: z.string(),
-  status: z.enum(["pending", "handled", "dead"]),
+  status: z.enum(["pending", "handled", "dead", "held"]),
   attempts: z.number(),
   next_attempt_at: z.string(),
   last_error: z.string().nullable(),
   handled_at: z.string().nullable(),
   dead_at: z.string().nullable(),
   replays: z.number(),
+  held_at: z.string().nullable(),
 });
 export type EventDelivery = z.infer<typeof EventDeliverySchema>;
 
@@ -30,7 +34,7 @@ export const DomainEventSchema = z.object({
   occurred_at: z.string(),
   correlation_id: z.string().nullable(),
   data: z.record(z.string(), z.unknown()),
-  status: z.enum(["pending", "handled", "dead", "no_subscriber"]),
+  status: z.enum(["pending", "handled", "dead", "held", "no_subscriber"]),
   deliveries: z.array(EventDeliverySchema),
 });
 export type DomainEvent = z.infer<typeof DomainEventSchema>;

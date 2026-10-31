@@ -17,7 +17,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Iron.Kernel.Events.Api;
 
-public sealed record EventDeliveryResponse(string Subscriber, string Status, int Attempts, DateTimeOffset NextAttemptAt, string? LastError, DateTimeOffset? HandledAt, DateTimeOffset? DeadAt, int Replays);
+public sealed record EventDeliveryResponse(string Subscriber, string Status, int Attempts, DateTimeOffset NextAttemptAt, string? LastError, DateTimeOffset? HandledAt, DateTimeOffset? DeadAt, int Replays, DateTimeOffset? HeldAt);
 
 /// <summary>An event as the console shows it: what it is, about which record, who acted, when, its data, and where it stands with each subscriber.</summary>
 public sealed record EventResponse(
@@ -179,6 +179,6 @@ internal static class EventsEndpoints
             e.CorrelationId,
             data.RootElement.Clone(),
             view.Status,
-            [.. view.Deliveries.Select(d => new EventDeliveryResponse(d.Subscriber, d.Status, d.Attempts, d.NextAttemptAt, d.LastError, d.HandledAt, d.DeadAt, d.Replays))]);
+            [.. view.Deliveries.Select(d => new EventDeliveryResponse(d.Subscriber, d.Status, d.Attempts, d.NextAttemptAt, d.LastError, d.HandledAt, d.DeadAt, d.Replays, d.HeldAt))]);
     }
 }

@@ -9,19 +9,22 @@ using Microsoft.EntityFrameworkCore;
 namespace Iron.Kernel.Events.Services;
 
 /// <summary>Where an event stands with one subscriber.</summary>
-public sealed record DeliveryView(string Subscriber, string Status, int Attempts, DateTimeOffset NextAttemptAt, string? LastError, DateTimeOffset? HandledAt, DateTimeOffset? DeadAt, int Replays)
+public sealed record DeliveryView(string Subscriber, string Status, int Attempts, DateTimeOffset NextAttemptAt, string? LastError, DateTimeOffset? HandledAt, DateTimeOffset? DeadAt, int Replays, DateTimeOffset? HeldAt)
 {
     public static DeliveryView Of(InboxEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return new DeliveryView(entry.Subscriber, entry.Status, entry.Attempts, entry.NextAttemptAt, entry.LastError, entry.HandledAt, entry.DeadAt, entry.Replays);
+        return new DeliveryView(entry.Subscriber, entry.Status, entry.Attempts, entry.NextAttemptAt, entry.LastError, entry.HandledAt, entry.DeadAt, entry.Replays, entry.HeldAt);
     }
 }
 
 /// <summary>An event with where it stands with each of its subscribers.</summary>
 public sealed record EventView(OutboxEvent Event, IReadOnlyList<DeliveryView> Deliveries)
 {
-    /// <summary>One word for the event: waiting while any subscriber has it pending (or it is not handed on yet), dead while any parked it, handled when all did, or no subscriber.</summary>
+    /// <summary>
+    /// One word for the event: waiting while any subscriber has it pending (or it is not handed on yet), dead while any
+    /// parked it, held while a removed suite's subscriber has it, handled when all did, or no subscriber.
+    /// </summary>
     public string Status => Summary(Event.FannedAt is null, Deliveries.Select(d => d.Status));
 
     public static string Summary(bool waiting, IEnumerable<string> statuses)
@@ -35,6 +38,11 @@ public sealed record EventView(OutboxEvent Event, IReadOnlyList<DeliveryView> De
         if (all.Contains(DeliveryStates.Dead))
         {
             return DeliveryStates.Dead;
+        }
+
+        if (all.Contains(DeliveryStates.Held))
+        {
+            return DeliveryStates.Held;
         }
 
         return all.Count == 0 ? NoSubscriber : DeliveryStates.Handled;
@@ -173,7 +181,7 @@ public sealed class EventInspection(
             else if (outboxEvent.FannedAt is not null)
             {
                 // Handed on before this subscriber existed: it gets the event now. One not handed on yet gets it then.
-                context.Inbox.Add(new InboxEntry(subscription.Name, outboxEvent.Id, outboxEvent.Position, outboxEvent.RecordType, outboxEvent.RecordId, now));
+                context.Inbox.Add(new InboxEntry(subscription.Name, outboxEvent.Id, outboxEvent.Position, outboxEvent.RecordType, outboxEvent.RecordId, now, declarations.SuiteOf(subscription.Name)));
                 added++;
             }
             else

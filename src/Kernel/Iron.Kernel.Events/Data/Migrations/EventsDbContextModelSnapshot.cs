@@ -105,6 +105,10 @@ namespace Iron.Kernel.Events.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("handled_at");
 
+                    b.Property<DateTimeOffset?>("HeldAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("held_at");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -143,6 +147,11 @@ namespace Iron.Kernel.Events.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("subscriber");
+
+                    b.Property<string>("Suite")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("suite");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

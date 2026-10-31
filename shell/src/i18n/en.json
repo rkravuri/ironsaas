@@ -3234,6 +3234,7 @@
       "pending": "Waiting",
       "handled": "Handled",
       "dead": "Dead letter",
+      "held": "Held: suite removed",
       "no_subscriber": "No subscriber"
     },
     "filters": {
@@ -3264,6 +3265,7 @@
       "noSubscriber": "No subscriber reads this event.",
       "handledAt": "Handled {{at}}",
       "deadAt": "Parked {{at}}",
+      "heldAt": "Held since {{at}}, until the suite is added again",
       "nextAt": "Next attempt {{at}}",
       "replays_one": "Replayed once",
       "replays_other": "Replayed {{count}} times"

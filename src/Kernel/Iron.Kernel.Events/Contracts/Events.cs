@@ -75,4 +75,10 @@ public static class DeliveryStates
     public const string Pending = "pending";
     public const string Handled = "handled";
     public const string Dead = "dead";
+
+    /// <summary>
+    /// For a subscriber of a suite the unit no longer runs (ADR-0060): kept, neither tried nor alerted, and pending again by
+    /// itself when the suite is added back; removed with the suite's data when that is deleted.
+    /// </summary>
+    public const string Held = "held";
 }

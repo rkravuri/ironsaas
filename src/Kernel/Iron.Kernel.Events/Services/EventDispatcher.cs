@@ -67,10 +67,10 @@ public sealed class EventsMetrics : IDisposable
     public void Dispose() => _meter.Dispose();
 }
 
-/// <summary>What one pass of the dispatcher did.</summary>
-public sealed record DispatchPass(int HandedOn, int Handled, int Failed, int DeadLettered, int AlreadyHandled)
+/// <summary>What one pass of the dispatcher did; the first pass also holds a removed suite's deliveries and resumes a returned one's.</summary>
+public sealed record DispatchPass(int HandedOn, int Handled, int Failed, int DeadLettered, int AlreadyHandled, int Held = 0, int Resumed = 0)
 {
-    public bool DidWork => HandedOn + Handled + Failed + DeadLettered + AlreadyHandled > 0;
+    public bool DidWork => HandedOn + Handled + Failed + DeadLettered + AlreadyHandled + Held + Resumed > 0;
 }
 
 /// <summary>
@@ -82,10 +82,13 @@ public sealed record DispatchPass(int HandedOn, int Handled, int Failed, int Dea
 /// each time; after the last, the row is a dead letter with its error, audited, which the alert rules raise. One
 /// subscriber's failures never hold the others up, nor its other records. A broker could replace the hand-on later
 /// without a change to publishers or handlers (TF-113): the outbox stays the source, the inbox the record of what is done.
+/// A delivery to a subscriber of a suite the unit no longer runs is held, neither tried nor alerted, and resumes by itself
+/// when the suite returns: the suites a unit runs are fixed for its process, so the first pass settles both.
 /// </summary>
 public sealed class EventDispatcher(
     IServiceScopeFactory scopes,
     EventDeclarations declarations,
+    UnitSuites suites,
     DispatchOptions options,
     EventsMetrics metrics,
     TimeProvider time,
@@ -94,8 +97,11 @@ public sealed class EventDispatcher(
     /// <summary>The advisory lock a pass's hand-on takes, so two workers never hand the same event on twice.</summary>
     public const long HandOnLockKey = 0x1A_0E_7E_47;
 
+    private int _suitesSettled;
+
     public async Task<DispatchPass> RunOnceAsync(CancellationToken cancellationToken)
     {
+        var (held, resumed) = Volatile.Read(ref _suitesSettled) == 0 ? await SettleSuitesAsync(cancellationToken).ConfigureAwait(false) : (0, 0);
         var handedOn = await HandOnAsync(cancellationToken).ConfigureAwait(false);
         var due = await DueAsync(cancellationToken).ConfigureAwait(false);
         using var gate = new SemaphoreSlim(Math.Max(1, options.Parallelism));
@@ -117,7 +123,38 @@ public sealed class EventDispatcher(
             outcomes.Count(o => o == DeliveryOutcome.Handled),
             outcomes.Count(o => o == DeliveryOutcome.Failed),
             outcomes.Count(o => o == DeliveryOutcome.DeadLettered),
-            outcomes.Count(o => o == DeliveryOutcome.AlreadyHandled));
+            outcomes.Count(o => o == DeliveryOutcome.AlreadyHandled),
+            held + outcomes.Count(o => o == DeliveryOutcome.Held),
+            resumed);
+    }
+
+    /// <summary>
+    /// What a suite's removal or return left in the inbox (ADR-0060): a pending delivery to a subscriber of a suite this unit
+    /// does not run is held, with no attempt, no error, no audit event and no alert; a held one whose suite this unit runs
+    /// again is pending at once, in the order of its positions. Run once per process, at its first pass.
+    /// </summary>
+    private async Task<(int Held, int Resumed)> SettleSuitesAsync(CancellationToken cancellationToken)
+    {
+        var installed = suites.Installed.Select(suite => suite.ShortName).ToList();
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<EventsDbContext>();
+        var now = time.GetUtcNow();
+        var toHold = await context.Inbox
+            .Where(i => i.Status == DeliveryStates.Pending && i.Suite != null && !installed.Contains(i.Suite))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        var toResume = await context.Inbox
+            .Where(i => i.Status == DeliveryStates.Held && i.Suite != null && installed.Contains(i.Suite))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        var held = toHold.Count(entry => entry.Hold(now));
+        var resumed = toResume.Count(entry => entry.Resume(now));
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Volatile.Write(ref _suitesSettled, 1);
+        if (held + resumed > 0)
+        {
+            logger.LogInformation("Held {Held} deliveries of suites this unit no longer runs, and resumed {Resumed} of suites it runs again.", held, resumed);
+        }
+
+        return (held, resumed);
     }
 
     /// <summary>
@@ -163,7 +200,7 @@ public sealed class EventDispatcher(
         {
             foreach (var subscription in declarations.SubscribersOf(outboxEvent.Type, outboxEvent.EventVersion))
             {
-                context.Inbox.Add(new InboxEntry(subscription.Name, outboxEvent.Id, outboxEvent.Position, outboxEvent.RecordType, outboxEvent.RecordId, now));
+                context.Inbox.Add(new InboxEntry(subscription.Name, outboxEvent.Id, outboxEvent.Position, outboxEvent.RecordType, outboxEvent.RecordId, now, declarations.SuiteOf(subscription.Name)));
             }
 
             outboxEvent.Fan(now);
@@ -217,6 +254,15 @@ public sealed class EventDispatcher(
 
             var outboxEvent = await context.Outbox.AsNoTracking().SingleOrDefaultAsync(e => e.Id == due.EventId, cancellationToken).ConfigureAwait(false);
             var subscription = declarations.FindSubscription(due.Subscriber);
+            if (subscription is null && entry.Suite is { } suite && suites.Find(suite) is null)
+            {
+                // A subscriber of a suite this unit no longer runs: held until the suite returns, never a dead letter.
+                entry.Hold(time.GetUtcNow());
+                await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                return DeliveryOutcome.Held;
+            }
+
             if (outboxEvent is null || subscription is null)
             {
                 error = outboxEvent is null ? "events.event.not_found: the event is no longer in the outbox." : $"events.subscriber.unknown: no module of this unit holds the subscription {due.Subscriber}.";
@@ -303,13 +349,17 @@ public sealed class EventDispatcher(
     private sealed record Due(Guid Id, string Subscriber, Guid EventId);
 }
 
-/// <summary>What a delivery did: the handler ran and committed, failed and waits for its retry, failed its last attempt, or found the entry handled already.</summary>
+/// <summary>
+/// What a delivery did: the handler ran and committed, failed and waits for its retry, failed its last attempt, found the
+/// entry handled already, or held it because its subscriber's suite is no longer run.
+/// </summary>
 public enum DeliveryOutcome
 {
     Handled,
     Failed,
     DeadLettered,
     AlreadyHandled,
+    Held,
 }
 
 /// <summary>The record type an event is in the audit trail and the history: a dead letter, a replay, an archive name it.</summary>

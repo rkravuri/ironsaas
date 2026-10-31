@@ -1059,7 +1059,7 @@ export async function stubProcurementSuite(target: Page, body: unknown = procure
   await target.route("**/api/v1/suites/procurement/about", (route) => route.fulfill({ json: body }));
 }
 
-/** A deactivation whose subscriber parked it after its last attempt, as the console shows an event (ADR-0060). */
+/** A deactivation one subscriber parked after its last attempt and a removed suite's subscriber holds, as the console shows an event (ADR-0060). */
 export const domainEvent = {
   id: "0198f0c2-0000-7000-8000-0000000000e1",
   position: 41,
@@ -1083,6 +1083,18 @@ export const domainEvent = {
       handled_at: null,
       dead_at: "2026-10-31T09:20:00Z",
       replays: 0,
+      held_at: null,
+    },
+    {
+      subscriber: "purchasing.reassign_requests_of_deactivated",
+      status: "held",
+      attempts: 0,
+      next_attempt_at: "2026-10-31T09:00:00Z",
+      last_error: null,
+      handled_at: null,
+      dead_at: null,
+      replays: 0,
+      held_at: "2026-10-31T09:05:00Z",
     },
   ],
 };
@@ -1120,6 +1132,7 @@ export async function stubEvents(target: Page): Promise<void> {
         handled_at: "2026-10-31T09:01:01Z",
         dead_at: null,
         replays: 0,
+        held_at: null,
       },
     ],
   };

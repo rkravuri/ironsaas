@@ -10,6 +10,7 @@ public sealed class EventDeclarations
 {
     private readonly Dictionary<(string Name, int Version), EventType> _events = [];
     private readonly Dictionary<string, EventSubscription> _subscriptions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _suites = new(StringComparer.Ordinal);
 
     public EventDeclarations(IEnumerable<IModule> modules)
     {
@@ -44,6 +45,11 @@ public sealed class EventDeclarations
                 {
                     throw new InvalidOperationException($"The subscription '{subscription.Name}' is declared twice.");
                 }
+
+                if (module.Suite != SuiteName.Foundation)
+                {
+                    _suites[subscription.Name] = module.Suite;
+                }
             }
         }
     }
@@ -63,6 +69,9 @@ public sealed class EventDeclarations
     public EventType? Find(string name, int version) => _events.GetValueOrDefault((name, version));
 
     public EventSubscription? FindSubscription(string name) => _subscriptions.GetValueOrDefault(name);
+
+    /// <summary>The suite of the module that holds the subscription, or null for the Foundation's (and for one this host does not hold).</summary>
+    public string? SuiteOf(string subscription) => _suites.GetValueOrDefault(subscription);
 
     /// <summary>The subscriptions that read this event version, by name: the subscribers the dispatcher hands it to.</summary>
     public IReadOnlyList<EventSubscription> SubscribersOf(string name, int version) =>

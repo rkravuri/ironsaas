@@ -16,7 +16,7 @@ async function expectNoViolation(page: Page): Promise<void> {
 }
 
 for (const scheme of schemes) {
-  test(`the domain events page in the ${scheme} scheme: the events with their status in words, one opened with its data and subscribers, the dead letters, the replay by keyboard, and no WCAG 2.1 AA violation [TF-112 AC1, ADR-0060, ADR-0024]`, async ({
+  test(`the domain events page in the ${scheme} scheme: the events with their status in words, one opened with its data and subscribers (one held by a removed suite), the dead letters, the replay by keyboard, and no WCAG 2.1 AA violation [TF-112 AC1, ADR-0060, ADR-0024]`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -31,6 +31,9 @@ for (const scheme of schemes) {
     const detail = page.getByRole("region", { name: "identity.person.deactivated (version 1)" });
     await expect(detail).toContainText('"sessions_ended": 2');
     await expect(detail).toContainText("authz.delegation.locked: The delegation is being changed.");
+    await expect(
+      detail.getByRole("row").filter({ hasText: "purchasing.reassign_requests_of_deactivated" }),
+    ).toContainText("Held: suite removed");
     await expect(page.getByText(/Events up to .* are archived/)).toBeVisible();
     await expect(
       page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Domain events" }),

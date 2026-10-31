@@ -68,6 +68,12 @@ public sealed class EventsTenant(string connectionString)
         ["Events:Dispatch:FirstRetrySeconds"] = "2",
     };
 
+    /// <summary>Whether the unit runs the probe suite (ADR-0059): an update job adds or removes it, and the next process starts with it or without.</summary>
+    public bool RunsProbeSuite { get; set; }
+
+    /// <summary>Whether the unit runs the probe module, the Foundation's publisher and subscriber of the tests.</summary>
+    public bool RunsProbe { get; set; } = true;
+
     public ServiceProvider Build(TimeProvider time, Guid? principal = null, Action<IServiceCollection>? more = null)
     {
         var services = new ServiceCollection();
@@ -81,7 +87,11 @@ public sealed class EventsTenant(string connectionString)
         services.AddSingleton<IConfiguration>(configuration);
         services.AddSingleton(Behaviour);
         services.AddSingleton<IObjectStorage>(Storage);
-        services.AddModules(configuration, [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new ProbeModule()]);
+        IReadOnlyList<SuiteDefinition> suites = RunsProbeSuite ? [ProbeSuiteModule.Definition()] : [];
+        IReadOnlyList<IModule> foundation = RunsProbe
+            ? [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule(), new ProbeModule()]
+            : [new AuditModule(), new EventsModule(), new AuthorizationModule(), new SettingsModule()];
+        services.AddModules(configuration, InstalledSuites.Compose(foundation, suites), suites);
 
         // The worker's services; a built provider starts no hosted service, so the tests run each pass themselves.
         services.AddEventDispatch();
