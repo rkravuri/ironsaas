@@ -100,8 +100,10 @@ installed (TF-244, ADR-0059).
    worker's.
 10. **Suites.** A suite's modules declare its events and subscriptions; a unit runs a suite's modules only where the
     suite is installed (ADR-0059), so a unit without the suite declares, stores, hands on and replays none of its events.
-    An event left by a removed suite stays in the outbox with nobody to hand it to; a subscription whose event no module
-    of the host publishes is idle, and a tenant's unit has none, which a host test checks.
+    An event a removed suite's module published and nobody else reads is handed to nobody and archived in time; a
+    delivery still waiting for a removed suite's subscriber becomes a dead letter naming `events.subscriber.unknown`,
+    alerted, which a replay hands back once the suite returns. A subscription whose event no module of the host
+    publishes is idle, and a tenant's unit has none, which a host test checks.
 
 ## Options considered
 
